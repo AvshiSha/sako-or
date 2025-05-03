@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { 
   ChevronDownIcon, 
@@ -11,95 +12,72 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 import QuickViewModal from '../components/QuickViewModal'
-
-// Mock data - replace with your actual data source
-const products = [
-  {
-    id: 1,
-    name: 'America\'s Cup Classic',
-    price: 299.99,
-    category: 'America\'s Cup',
-    colors: ['black', 'white', 'navy'],
-    sizes: [7, 8, 9, 10, 11, 12],
-    images: [
-      '/images/products/americas-cup-1.jpg',
-      '/images/products/americas-cup-2.jpg'
-    ]
-  },
-  {
-    id: 2,
-    name: 'Downtown Runner',
-    price: 249.99,
-    category: 'Downtown',
-    colors: ['gray', 'blue', 'red'],
-    sizes: ['XS', 'S', 'M', 'L', 'XL'],
-    images: [
-      '/images/products/downtown-1.jpg',
-      '/images/products/downtown-2.jpg',
-      '/images/products/downtown-3.jpg'
-    ]
-  },
-  // Add more products...
-]
-
-const categories = [
-  'America\'s Cup',
-  'Downtown',
-  'Prax 01',
-  'All Products'
-]
-
-const colors = [
-  { name: 'Black', value: 'black', hex: '#000000' },
-  { name: 'White', value: 'white', hex: '#FFFFFF' },
-  { name: 'Navy', value: 'navy', hex: '#001F3F' },
-  { name: 'Gray', value: 'gray', hex: '#808080' },
-  { name: 'Blue', value: 'blue', hex: '#0074D9' },
-  { name: 'Red', value: 'red', hex: '#FF4136' }
-]
-
-const sizes = [7, 8, 9, 10, 11, 12]
-
-const sortOptions = [
-  { name: 'Relevance', value: 'relevance' },
-  { name: 'Price: Low to High', value: 'price-asc' },
-  { name: 'Price: High to Low', value: 'price-desc' },
-  { name: 'Newest Arrivals', value: 'newest' }
-]
+import { products, Product } from '../data/products'
 
 export default function CollectionPage() {
+  const pathname = usePathname()
+  const router = useRouter()
   const [selectedCategory, setSelectedCategory] = useState('All Products')
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
   const [selectedColors, setSelectedColors] = useState<string[]>([])
-  const [selectedSizes, setSelectedSizes] = useState<number[]>([])
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [sortBy, setSortBy] = useState('relevance')
   const [showFilters, setShowFilters] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
-  const [hoveredProduct, setHoveredProduct] = useState<number | null>(null)
-  const [selectedProduct, setSelectedProduct] = useState<any>(null)
+  const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
+
+  // Parse URL to get category and subcategory
+  useEffect(() => {
+    const pathSegments = pathname.split('/').filter(Boolean)
+    if (pathSegments.length >= 2) {
+      const category = pathSegments[1]
+      setSelectedCategory(category)
+      
+      if (pathSegments.length >= 4) {
+        const subcategory = pathSegments[3]
+        setSelectedSubcategory(subcategory)
+      } else {
+        setSelectedSubcategory(null)
+      }
+    } else {
+      setSelectedCategory('All Products')
+      setSelectedSubcategory(null)
+    }
+  }, [pathname])
+
+  const handleCategoryChange = (category: string) => {
+    if (category === 'All Products') {
+      router.push('/collection')
+    } else {
+      // Ensure the category is lowercase for consistency
+      const formattedCategory = category.toLowerCase()
+      router.push(`/collection/${formattedCategory}`)
+    }
+  }
+
+  const handleSubcategoryChange = (subcategory: string) => {
+    if (selectedCategory === 'All Products') return
+    const formattedCategory = selectedCategory.toLowerCase()
+    router.push(`/collection/${formattedCategory}/shoes/${subcategory}`)
+  }
 
   const filteredProducts = products
     .filter(product => selectedCategory === 'All Products' || product.category === selectedCategory)
+    .filter(product => !selectedSubcategory || product.subcategory === selectedSubcategory)
     .filter(product => selectedColors.length === 0 || product.colors.some(color => selectedColors.includes(color)))
     .filter(product => selectedSizes.length === 0 || product.sizes.some(size => selectedSizes.includes(size)))
 
-  const toggleColor = (color: string) => {
-    setSelectedColors(prev => 
-      prev.includes(color) 
-        ? prev.filter(c => c !== color)
-        : [...prev, color]
-    )
-  }
+  // Get unique subcategories for the selected category
+  const subcategories = selectedCategory === 'All Products' 
+    ? [] 
+    : [...new Set(products
+        .filter(p => p.category === selectedCategory)
+        .map(p => p.subcategory)
+        .filter((s): s is string => s !== undefined))]
 
-  const toggleSize = (size: number) => {
-    setSelectedSizes(prev => 
-      prev.includes(size) 
-        ? prev.filter(s => s !== size)
-        : [...prev, size]
-    )
-  }
-
-  const handleQuickView = (product: any) => {
+  const handleQuickView = (product: Product) => {
     setSelectedProduct(product)
     setIsQuickViewOpen(true)
   }
@@ -114,7 +92,27 @@ export default function CollectionPage() {
               Home
             </Link>
             <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
-            <span className="text-gray-900">New Collection</span>
+            {selectedCategory !== 'All Products' && (
+              <>
+                <Link 
+                  href={`/collection/${selectedCategory}`}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}
+                </Link>
+                {selectedSubcategory && (
+                  <>
+                    <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
+                    <Link 
+                      href={`/collection/${selectedCategory}/shoes/${selectedSubcategory}`}
+                      className="text-gray-900"
+                    >
+                      {selectedSubcategory.charAt(0).toUpperCase() + selectedSubcategory.slice(1)}
+                    </Link>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -138,12 +136,12 @@ export default function CollectionPage() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Categories</h3>
                 <div className="space-y-2">
-                  {categories.map((category) => (
+                  {['All Products', 'Women', 'Men'].map((category) => (
                     <button
                       key={category}
-                      onClick={() => setSelectedCategory(category)}
+                      onClick={() => handleCategoryChange(category)}
                       className={`block w-full text-left px-3 py-2 text-sm rounded-md ${
-                        selectedCategory === category
+                        selectedCategory.toLowerCase() === category.toLowerCase()
                           ? 'bg-gray-100 text-gray-900'
                           : 'text-gray-500 hover:bg-gray-50'
                       }`}
@@ -154,21 +152,49 @@ export default function CollectionPage() {
                 </div>
               </div>
 
+              {/* Subcategories */}
+              {subcategories.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-gray-900 mb-3">Subcategories</h3>
+                  <div className="space-y-2">
+                    {subcategories.map((subcategory) => (
+                      <button
+                        key={subcategory}
+                        onClick={() => handleSubcategoryChange(subcategory)}
+                        className={`block w-full text-left px-3 py-2 text-sm rounded-md ${
+                          selectedSubcategory === subcategory
+                            ? 'bg-gray-100 text-gray-900'
+                            : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >
+                        {subcategory}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Colors */}
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Colors</h3>
                 <div className="flex flex-wrap gap-2">
-                  {colors.map((color) => (
+                  {['Black', 'Silver', 'Gold', 'Nude', 'Red', 'Tan', 'Navy'].map((color) => (
                     <button
-                      key={color.value}
-                      onClick={() => toggleColor(color.value)}
+                      key={color}
+                      onClick={() => {
+                        setSelectedColors(prev => 
+                          prev.includes(color) 
+                            ? prev.filter(c => c !== color)
+                            : [...prev, color]
+                        )
+                      }}
                       className={`w-8 h-8 rounded-full border-2 ${
-                        selectedColors.includes(color.value)
+                        selectedColors.includes(color)
                           ? 'border-gray-900'
                           : 'border-gray-200'
                       }`}
-                      style={{ backgroundColor: color.hex }}
-                      title={color.name}
+                      style={{ backgroundColor: color.toLowerCase() }}
+                      title={color}
                     />
                   ))}
                 </div>
@@ -178,10 +204,16 @@ export default function CollectionPage() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Sizes</h3>
                 <div className="flex flex-wrap gap-2">
-                  {sizes.map((size) => (
+                  {['36', '37', '38', '39', '40'].map((size) => (
                     <button
                       key={size}
-                      onClick={() => toggleSize(size)}
+                      onClick={() => {
+                        setSelectedSizes(prev => 
+                          prev.includes(size) 
+                            ? prev.filter(s => s !== size)
+                            : [...prev, size]
+                        )
+                      }}
                       className={`w-10 h-10 flex items-center justify-center text-sm rounded-md border ${
                         selectedSizes.includes(size)
                           ? 'border-gray-900 text-gray-900 bg-gray-50'
@@ -193,14 +225,6 @@ export default function CollectionPage() {
                   ))}
                 </div>
               </div>
-
-              {/* Filter Button */}
-              <button
-                onClick={() => setShowFilters(false)}
-                className="w-full mt-4 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-50 border border-gray-200 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-              >
-                Apply Filters
-              </button>
             </div>
           </div>
 
@@ -230,11 +254,10 @@ export default function CollectionPage() {
                   onChange={(e) => setSortBy(e.target.value)}
                   className="text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-gray-50 text-gray-700 py-2 px-3"
                 >
-                  {sortOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.name}
-                    </option>
-                  ))}
+                  <option value="relevance">Relevance</option>
+                  <option value="price-asc">Price: Low to High</option>
+                  <option value="price-desc">Price: High to Low</option>
+                  <option value="newest">Newest Arrivals</option>
                 </select>
               </div>
             </div>
@@ -242,16 +265,27 @@ export default function CollectionPage() {
             {/* Product Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product) => (
-                <Link
+                <div
                   key={product.id}
-                  href={`/product/${product.id}`}
-                  className="group relative"
+                  className="group relative cursor-pointer"
+                  onMouseEnter={() => setHoveredProduct(product.id)}
+                  onMouseLeave={() => setHoveredProduct(null)}
+                  onClick={() => handleQuickView(product)}
                 >
-                  <motion.div
-                    onHoverStart={() => setHoveredProduct(product.id)}
-                    onHoverEnd={() => setHoveredProduct(null)}
-                  >
-                    <div className="aspect-square w-full overflow-hidden rounded-lg bg-gray-50 relative">
+                  <div className="aspect-square w-full overflow-hidden rounded-lg bg-gray-50 relative">
+                    {product.images[0].endsWith('.svg') ? (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Image
+                          src={product.images[0]}
+                          alt={product.name}
+                          width={500}
+                          height={500}
+                          className={`h-full w-full object-contain object-center transition-opacity duration-500 ${
+                            hoveredProduct === product.id ? 'opacity-0' : 'opacity-100'
+                          }`}
+                        />
+                      </div>
+                    ) : (
                       <Image
                         src={product.images[0]}
                         alt={product.name}
@@ -261,6 +295,20 @@ export default function CollectionPage() {
                           hoveredProduct === product.id ? 'opacity-0' : 'opacity-100'
                         }`}
                       />
+                    )}
+                    {product.images[1].endsWith('.svg') ? (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Image
+                          src={product.images[1]}
+                          alt={product.name}
+                          width={500}
+                          height={500}
+                          className={`h-full w-full object-contain object-center transition-opacity duration-500 ${
+                            hoveredProduct === product.id ? 'opacity-100' : 'opacity-0'
+                          }`}
+                        />
+                      </div>
+                    ) : (
                       <Image
                         src={product.images[1]}
                         alt={product.name}
@@ -270,41 +318,18 @@ export default function CollectionPage() {
                           hoveredProduct === product.id ? 'opacity-100' : 'opacity-0'
                         }`}
                       />
-                    </div>
-                    <div className="mt-4">
-                      <h3 className="text-sm font-medium text-gray-800 tracking-wide uppercase">
-                        {product.name}
-                      </h3>
-                      <p className="mt-1 text-base font-light text-gray-600">
-                        ${product.price.toFixed(2)}
-                      </p>
-                    </div>
-                  </motion.div>
-                </Link>
+                    )}
+                  </div>
+                  <div className="mt-4">
+                    <h3 className="text-sm font-medium text-gray-800 tracking-wide uppercase">
+                      {product.name}
+                    </h3>
+                    <p className="mt-1 text-base font-light text-gray-600">
+                      ${product.price.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
               ))}
-            </div>
-
-            {/* Pagination */}
-            <div className="mt-8 flex justify-center">
-              <nav className="flex items-center space-x-2">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className="px-3 py-2 rounded-md border border-gray-200 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                <span className="px-3 py-2 text-sm text-gray-500">
-                  Page {currentPage}
-                </span>
-                <button
-                  onClick={() => setCurrentPage(prev => prev + 1)}
-                  disabled={filteredProducts.length < 9}
-                  className="px-3 py-2 rounded-md border border-gray-200 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 disabled:opacity-50 disabled:hover:bg-gray-50"
-                >
-                  Next
-                </button>
-              </nav>
             </div>
           </div>
         </div>

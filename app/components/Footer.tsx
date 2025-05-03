@@ -39,7 +39,7 @@ export default function Footer() {
               <a
                 href="https://instagram.com"
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="https://www.instagram.com/sako.or/"
                 className="text-gray-400 hover:text-white transition-colors duration-300"
               >
                 <FaInstagram size={20} />

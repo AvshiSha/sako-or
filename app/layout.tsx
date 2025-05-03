@@ -1,29 +1,28 @@
-'use client'
-
 import './globals.css'
 import { Inter } from 'next/font/google'
-import Navigation from './components/Navigation'
-import Footer from './components/Footer'
-import { I18nextProvider } from 'react-i18next'
-import i18n from './i18n'
+import { dir } from 'i18next'
+import { languages } from '../i18n/settings'
+import ClientLayout from './components/ClientLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
+export async function generateStaticParams() {
+  return languages.map((lng) => ({ lng }))
+}
+
 export default function RootLayout({
   children,
+  params: { lng }
 }: {
   children: React.ReactNode
+  params: { lng: string }
 }) {
   return (
-    <html lang="en">
+    <html lang={lng} dir={dir(lng)}>
       <body className={inter.className}>
-        <I18nextProvider i18n={i18n}>
-          <Navigation />
-          <main className="min-h-screen">
-            {children}
-          </main>
-          <Footer />
-        </I18nextProvider>
+        <ClientLayout lng={lng}>
+          {children}
+        </ClientLayout>
       </body>
     </html>
   )

@@ -75,6 +75,8 @@ export default function ProductPage() {
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 })
   const [relatedProducts, setRelatedProducts] = useState<any[]>([])
 
+  const lng = params?.lng || 'en'
+
   useEffect(() => {
     // Reset states when product changes
     setSelectedColor(currentProduct.colors[0])
@@ -255,7 +257,7 @@ export default function ProductPage() {
                   {currentProduct.sizes.map((size) => (
                     <button
                       key={size}
-                      onClick={() => setSelectedSize(size)}
+                      onClick={() => setSelectedSize(Number(size))}
                       className={`py-2 text-center text-sm rounded-md border ${
                         selectedSize === size
                           ? 'border-gray-800 text-gray-800 bg-gray-50'

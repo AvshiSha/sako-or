@@ -3,10 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { FaFacebook, FaInstagram, FaTwitter, FaPinterest } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
+import { useParams } from 'next/navigation';
 
 export default function Footer() {
   const [email, setEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const { t } = useTranslation();
+  const params = useParams();
+  const lng = params?.lng || 'en';
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,9 +28,9 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-12 py-16">
           {/* Brand Section */}
           <div className="md:col-span-2">
-            <h2 className="text-2xl font-light tracking-wider mb-6">SAKO-OR</h2>
+            <h2 className="text-2xl font-light tracking-wider mb-6">{t('footer.brand')}</h2>
             <p className="text-gray-400 mb-6 max-w-md">
-              Discover the perfect blend of style and comfort with our premium footwear collection.
+              {t('footer.description')}
             </p>
             <div className="flex space-x-6">
               <a
@@ -65,26 +70,26 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-sm font-medium uppercase tracking-wider mb-6">Navigation</h3>
+            <h3 className="text-sm font-medium uppercase tracking-wider mb-6">{t('footer.navigation')}</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/" className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                  Home
+                <Link href={`/${lng}`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
+                  {t('navigation.home')}
                 </Link>
               </li>
               <li>
-                <Link href="/collection" className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                  Collections
+                <Link href={`/${lng}/collection`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
+                  {t('navigation.newCollection')}
                 </Link>
               </li>
               <li>
-                <Link href="/about" className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                  About Us
+                <Link href={`/${lng}/about`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
+                  {t('navigation.about')}
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                  Contact
+                <Link href={`/${lng}/contact`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
+                  {t('navigation.contact')}
                 </Link>
               </li>
             </ul>
@@ -92,9 +97,9 @@ export default function Footer() {
 
           {/* Newsletter */}
           <div>
-            <h3 className="text-sm font-medium uppercase tracking-wider mb-6">Stay Updated</h3>
+            <h3 className="text-sm font-medium uppercase tracking-wider mb-6">{t('footer.newsletter')}</h3>
             <p className="text-gray-400 mb-4 text-sm">
-              Subscribe to our newsletter for exclusive offers and updates.
+              {t('home.newsletterDescription')}
             </p>
             {!isSubscribed ? (
               <form onSubmit={handleSubscribe} className="flex flex-col space-y-3">
@@ -102,38 +107,37 @@ export default function Footer() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  className="px-4 py-2 rounded-sm bg-[#2a2a2a] text-white border border-gray-700 focus:outline-none focus:border-gray-500 text-sm"
+                  placeholder={t('home.emailPlaceholder')}
+                  className="px-4 py-2 bg-gray-800 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-white"
                   required
                 />
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-white text-[#1a1a1a] hover:bg-gray-100 transition-colors duration-300 text-sm font-medium"
+                  className="px-4 py-2 bg-white text-black rounded-md hover:bg-gray-200 transition-colors duration-300"
                 >
-                  Subscribe
+                  {t('footer.subscribe')}
                 </button>
               </form>
             ) : (
-              <p className="text-green-400 text-sm">Thank you for subscribing!</p>
+              <p className="text-green-400">{t('home.subscribeButton')}</p>
             )}
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-800"></div>
-
-        {/* Bottom Bar */}
-        <div className="py-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-          <p className="text-gray-500 text-sm">
-            &copy; {new Date().getFullYear()} SAKO-OR. All rights reserved.
-          </p>
-          <div className="flex space-x-6">
-            <Link href="/privacy" className="text-gray-500 hover:text-white transition-colors duration-300 text-sm">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="text-gray-500 hover:text-white transition-colors duration-300 text-sm">
-              Terms of Service
-            </Link>
+        {/* Bottom Footer */}
+        <div className="border-t border-gray-800 py-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-400 text-sm mb-4 md:mb-0">
+              {t('footer.copyright')}
+            </p>
+            <div className="flex space-x-6">
+              <Link href={`/${lng}/privacy`} className="text-gray-400 hover:text-white text-sm">
+                {t('footer.privacy')}
+              </Link>
+              <Link href={`/${lng}/terms`} className="text-gray-400 hover:text-white text-sm">
+                {t('footer.terms')}
+              </Link>
+            </div>
           </div>
         </div>
       </div>

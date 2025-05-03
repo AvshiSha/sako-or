@@ -5,7 +5,19 @@
       "women": "נשים",
       "men": "גברים",
       "about": "אודות",
-      "contact": "צור קשר"
+      "contact": "צור קשר",
+      "shoes": "נעליים",
+      "accessories": "אביזרים",
+      "subCategories": {
+        "highHeels": "עקבים גבוהים",
+        "boots": "מגפיים",
+        "oxford": "אוקספורד",
+        "sneakers": "סניקרס",
+        "sandals": "סנדלים",
+        "slippers": "כפכפים",
+        "coats": "מעילים",
+        "bags": "תיקים"
+      }
     },
     "footer": {
       "brand": "סכו-עור",
@@ -15,7 +27,7 @@
       "subscribe": "הרשמה",
       "privacy": "מדיניות פרטיות",
       "terms": "תנאי שימוש",
-      "copyright": "© 2024 סאקו-אור. כל הזכויות שמורות."
+      "copyright": "© 2025 סכו עור. כל הזכויות שמורות."
     },
     "about": {
       "title": "הסיפור שלנו",
@@ -47,10 +59,20 @@
       "name": "שם",
       "namePlaceholder": "השם שלך",
       "emailPlaceholder": "your@email.com",
-      "subject": "נושא",
-      "subjectPlaceholder": "נושא",
-      "message": "הודעה",
-      "messagePlaceholder": "ההודעה שלך",
-      "sendButton": "שלח הודעה"
+      "subject": "נושא"
+    },
+    "home": {
+      "brandName": "סכו עור",
+      "heroDescription": "גלו את האוסף המיוחד שלנו של הנעלה פרימיום, שמקורה אצל האומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין.",
+      "exploreCollections": "גלו את האוספים",
+      "collectionsTitle": "אוספים נבחרים",
+      "collectionsDescription": "כל פריט באוסף שלנו מייצג את ההרמוניה המושלמת של עיצוב, נוחות ואומנות",
+      "viewCollection": "צפו באוסף",
+      "featuredTitle": "פריטים מומלצים",
+      "featuredDescription": "גלו את העיצובים המבוקשים ביותר שלנו, כל אחד מספר סיפור ייחודי של יוקרה ותחכום",
+      "newsletterTitle": "הצטרפו לעולמנו",
+      "newsletterDescription": "הירשמו לקבלת עדכונים בלעדיים, גישה מוקדמת לאוספים חדשים והמלצות סגנון מותאמות אישית.",
+      "emailPlaceholder": "כתובת האימייל שלך",
+      "subscribeButton": "הרשמה"
     }
   }

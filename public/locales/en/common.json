@@ -4,8 +4,20 @@
     "newCollection": "New Collection",
     "women": "Women",
     "men": "Men",
-    "about": "About Us",
-    "contact": "Contact"
+    "about": "About",
+    "contact": "Contact",
+    "shoes": "Shoes",
+    "accessories": "Accessories",
+    "subCategories": {
+      "highHeels": "High Heels",
+      "boots": "Boots",
+      "oxford": "Oxford",
+      "sneakers": "Sneakers",
+      "sandals": "Sandals",
+      "slippers": "Slippers",
+      "coats": "Coats",
+      "bags": "Bags"
+    }
   },
   "footer": {
     "brand": "SAKO-OR",
@@ -52,5 +64,19 @@
     "message": "Message",
     "messagePlaceholder": "Your message",
     "sendButton": "Send Message"
+  },
+  "home": {
+    "brandName": "Sako Or",
+    "heroDescription": "Discover our curated collection of premium footwear, sourced from Europe's finest artisans and China's most prestigious manufacturers.",
+    "exploreCollections": "Explore Collections",
+    "collectionsTitle": "Curated Collections",
+    "collectionsDescription": "Each piece in our collection represents the perfect harmony of design, comfort, and craftsmanship",
+    "viewCollection": "View Collection",
+    "featuredTitle": "Featured Pieces",
+    "featuredDescription": "Discover our most coveted designs, each telling a unique story of luxury and sophistication",
+    "newsletterTitle": "Join Our World",
+    "newsletterDescription": "Subscribe to receive exclusive updates, early access to new collections, and personalized style recommendations.",
+    "emailPlaceholder": "Enter your email",
+    "subscribeButton": "Subscribe"
   }
 } 

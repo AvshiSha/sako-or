@@ -1,63 +1,56 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { Globe } from 'lucide-react'
+import i18next from 'i18next'
 
-export default function LanguageSwitcher() {
-  const [isOpen, setIsOpen] = useState(false)
+interface LanguageSwitcherProps {
+  currentLanguage: string;
+}
+
+export default function LanguageSwitcher({ currentLanguage }: LanguageSwitcherProps) {
+  const router = useRouter()
+  const pathname = usePathname()
   const { i18n } = useTranslation()
-  const isRTL = i18n.language === 'he'
 
-  const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'he', name: 'עברית' }
-  ]
-
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('language')
-    if (savedLanguage) {
-      i18n.changeLanguage(savedLanguage)
+  const handleLanguageChange = async (lng: string) => {
+    // Get the current path without the language prefix
+    let currentPath = pathname
+    if (pathname.startsWith('/en/') || pathname.startsWith('/he/')) {
+      currentPath = pathname.slice(3) // Remove the language prefix
+    } else if (pathname === '/en' || pathname === '/he') {
+      currentPath = '/' // Handle root path
     }
-  }, [i18n])
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng)
-    localStorage.setItem('language', lng)
-    setIsOpen(false)
+    // Change the language first
+    await i18next.changeLanguage(lng)
+    
+    // Then navigate to the new path with the selected language
+    router.push(`/${lng}${currentPath}`)
   }
 
   return (
-    <div className="relative">
+    <div className="flex space-x-2">
       <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 focus:outline-none"
+        onClick={() => handleLanguageChange('en')}
+        className={`px-2 py-1 text-sm font-medium rounded-md ${
+          currentLanguage === 'en'
+            ? 'bg-gray-900 text-white'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+        }`}
       >
-        <Globe className="h-5 w-5" />
-        <span className="text-sm font-medium">
-          {languages.find(lang => lang.code === i18n.language)?.name}
-        </span>
+        EN
       </button>
-
-      {isOpen && (
-        <div className={`absolute ${isRTL ? 'left-0' : 'right-0'} mt-2 w-32 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5`}>
-          <div className="py-1">
-            {languages.map((language) => (
-              <button
-                key={language.code}
-                onClick={() => changeLanguage(language.code)}
-                className={`block w-full text-left px-4 py-2 text-sm ${
-                  i18n.language === language.code
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                }`}
-              >
-                {language.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      <button
+        onClick={() => handleLanguageChange('he')}
+        className={`px-2 py-1 text-sm font-medium rounded-md ${
+          currentLanguage === 'he'
+            ? 'bg-gray-900 text-white'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+        }`}
+      >
+        HE
+      </button>
     </div>
   )
 } 

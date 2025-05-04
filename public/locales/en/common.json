@@ -27,11 +27,19 @@
     "subscribe": "Subscribe",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
-    "copyright": "© 2024 SAKO-OR. All rights reserved."
+    "copyright": "© 2025 SAKO-OR. All rights reserved."
   },
   "about": {
-    "title": "Our Story",
-    "subtitle": "Crafting timeless elegance through exceptional footwear",
+    "title": "About Us",
+    "description": "Welcome to SAKO-OR, where fashion meets comfort. We are dedicated to providing high-quality footwear and accessories that combine style, durability, and comfort.",
+    "mission": {
+      "title": "Our Mission",
+      "description": "To create exceptional footwear and accessories that enhance our customers' lives through superior quality, innovative design, and sustainable practices."
+    },
+    "vision": {
+      "title": "Our Vision",
+      "description": "To be the leading brand in the fashion industry, known for our commitment to quality, customer satisfaction, and environmental responsibility."
+    },
     "heritage": "Our Heritage",
     "heritageText": "Founded with a passion for craftsmanship and an eye for timeless design, SAKO-OR has been creating exceptional footwear since our inception. Our journey began with a simple belief: that every step should be taken in comfort and style.",
     "craftsmanship": "Craftsmanship",

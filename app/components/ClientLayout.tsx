@@ -65,11 +65,13 @@ export default function ClientLayout({
 
   return (
     <I18nextProvider i18n={i18next}>
-      <Navigation />
-      <main className="min-h-screen">
-        {children}
-      </main>
-      <Footer />
+      <div className="flex flex-col min-h-screen">
+        <Navigation />
+        <main className="flex-grow">
+          {children}
+        </main>
+        <Footer />
+      </div>
     </I18nextProvider>
   )
 } 

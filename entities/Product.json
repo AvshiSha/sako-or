@@ -1,0 +1,105 @@
+{
+    "name": "Product",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Product name"
+      },
+      "sku": {
+        "type": "string",
+        "description": "Unique SKU identifier"
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "shoes",
+          "coats",
+          "bags"
+        ],
+        "description": "Product category"
+      },
+      "sub_category": {
+        "type": "string",
+        "enum": [
+          "boots",
+          "heels",
+          "sandals",
+          "sneakers",
+          "winter_coats",
+          "rain_coats",
+          "tote_bags",
+          "crossbody_bags",
+          "clutches"
+        ],
+        "description": "Product sub-category"
+      },
+      "brand": {
+        "type": "string",
+        "description": "Brand name"
+      },
+      "country_of_origin": {
+        "type": "string",
+        "description": "Manufacturing country"
+      },
+      "price": {
+        "type": "number",
+        "description": "Current selling price"
+      },
+      "cost": {
+        "type": "number",
+        "description": "Product cost"
+      },
+      "available_sizes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Available sizes"
+      },
+      "colors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Available colors"
+      },
+      "description": {
+        "type": "string",
+        "description": "Product description"
+      },
+      "images": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Product image URLs"
+      },
+      "season": {
+        "type": "string",
+        "enum": [
+          "spring",
+          "summer",
+          "fall",
+          "winter"
+        ],
+        "description": "Product season"
+      },
+      "launch_date": {
+        "type": "string",
+        "format": "date",
+        "description": "Product launch date"
+      },
+      "is_new_arrival": {
+        "type": "boolean",
+        "default": false,
+        "description": "Is this a new arrival"
+      }
+    },
+    "required": [
+      "name",
+      "sku",
+      "category",
+      "price"
+    ]
+  }

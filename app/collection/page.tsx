@@ -9,10 +9,11 @@ import {
   ChevronDownIcon, 
   FunnelIcon, 
   ArrowsUpDownIcon,
-  XMarkIcon
+  XMarkIcon,
+  CubeIcon
 } from '@heroicons/react/24/outline'
 import QuickViewModal from '../components/QuickViewModal'
-import { products, Product } from '../data/products'
+import { productService, Product } from '@/lib/firebase'
 
 export default function CollectionPage() {
   const pathname = usePathname()
@@ -27,6 +28,24 @@ export default function CollectionPage() {
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch products from Firebase
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const productsData = await productService.getAllProducts({ isActive: true })
+        setProducts(productsData)
+      } catch (error) {
+        console.error('Error fetching products:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [])
 
   // Parse URL to get category and subcategory
   useEffect(() => {
@@ -64,22 +83,37 @@ export default function CollectionPage() {
   }
 
   const filteredProducts = products
-    .filter(product => selectedCategory === 'All Products' || product.category === selectedCategory)
-    .filter(product => !selectedSubcategory || product.subcategory === selectedSubcategory)
-    .filter(product => selectedColors.length === 0 || product.colors.some(color => selectedColors.includes(color)))
-    .filter(product => selectedSizes.length === 0 || product.sizes.some(size => selectedSizes.includes(size)))
+    .filter(product => selectedCategory === 'All Products' || product.category?.name?.toLowerCase() === selectedCategory.toLowerCase())
+    .filter(product => !selectedSubcategory || product.category?.name?.toLowerCase() === selectedSubcategory.toLowerCase())
+    .filter(product => selectedColors.length === 0 || product.variants.some(variant => selectedColors.includes(variant.color || '')))
+    .filter(product => selectedSizes.length === 0 || product.variants.some(variant => selectedSizes.includes(variant.size || '')))
 
   // Get unique subcategories for the selected category
   const subcategories = selectedCategory === 'All Products' 
     ? [] 
     : [...new Set(products
-        .filter(p => p.category === selectedCategory)
-        .map(p => p.subcategory)
+        .filter(p => p.category?.name?.toLowerCase() === selectedCategory.toLowerCase())
+        .map(p => p.category?.name)
         .filter((s): s is string => s !== undefined))]
+
+  // Get unique colors and sizes from variants
+  const allColors = [...new Set(products.flatMap(p => p.variants.map(v => v.color).filter(Boolean)))] as string[]
+  const allSizes = [...new Set(products.flatMap(p => p.variants.map(v => v.size).filter(Boolean)))] as string[]
 
   const handleQuickView = (product: Product) => {
     setSelectedProduct(product)
     setIsQuickViewOpen(true)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading products...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -178,7 +212,7 @@ export default function CollectionPage() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Colors</h3>
                 <div className="flex flex-wrap gap-2">
-                  {['Black', 'Silver', 'Gold', 'Nude', 'Red', 'Tan', 'Navy'].map((color) => (
+                  {allColors.map((color) => (
                     <button
                       key={color}
                       onClick={() => {
@@ -204,7 +238,7 @@ export default function CollectionPage() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Sizes</h3>
                 <div className="flex flex-wrap gap-2">
-                  {['36', '37', '38', '39', '40'].map((size) => (
+                  {allSizes.map((size) => (
                     <button
                       key={size}
                       onClick={() => {
@@ -214,10 +248,10 @@ export default function CollectionPage() {
                             : [...prev, size]
                         )
                       }}
-                      className={`w-10 h-10 flex items-center justify-center text-sm rounded-md border ${
+                      className={`px-3 py-1 text-sm border rounded-md ${
                         selectedSizes.includes(size)
-                          ? 'border-gray-900 text-gray-900 bg-gray-50'
-                          : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                          ? 'border-gray-900 bg-gray-900 text-white'
+                          : 'border-gray-200 text-gray-700 hover:border-gray-300'
                       }`}
                     >
                       {size}
@@ -228,109 +262,108 @@ export default function CollectionPage() {
             </div>
           </div>
 
-          {/* Main Content */}
+          {/* Products Grid */}
           <div className="flex-1">
-            {/* Sort and Filter Controls */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {selectedCategory === 'All Products' ? 'All Products' : selectedCategory}
+                </h1>
+                <p className="mt-1 text-sm text-gray-500">
+                  {filteredProducts.length} products
+                </p>
+              </div>
+              
+              <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+                {/* Mobile filter button */}
                 <button
                   onClick={() => setShowFilters(true)}
-                  className="md:hidden flex items-center text-gray-500 hover:text-gray-700 bg-gray-50 px-3 py-2 rounded-md border border-gray-200"
+                  className="md:hidden inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                 >
-                  <FunnelIcon className="h-5 w-5 mr-2" />
+                  <FunnelIcon className="h-4 w-4 mr-2" />
                   Filters
                 </button>
-                <span className="text-sm text-gray-500">
-                  {filteredProducts.length} products
-                </span>
-              </div>
-              <div className="flex items-center">
-                <label htmlFor="sort" className="text-sm text-gray-500 mr-2">
-                  Sort by:
-                </label>
+
+                {/* Sort */}
                 <select
-                  id="sort"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-500 focus:border-transparent bg-gray-50 text-gray-700 py-2 px-3"
+                  className="block w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                 >
                   <option value="relevance">Relevance</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="newest">Newest Arrivals</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="newest">Newest</option>
+                  <option value="featured">Featured</option>
                 </select>
               </div>
             </div>
 
-            {/* Product Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="group relative cursor-pointer"
-                  onMouseEnter={() => setHoveredProduct(product.id)}
-                  onMouseLeave={() => setHoveredProduct(null)}
-                  onClick={() => handleQuickView(product)}
-                >
-                  <div className="aspect-square w-full overflow-hidden rounded-lg bg-gray-50 relative">
-                    {product.images[0].endsWith('.svg') ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
+            {/* Products */}
+            {filteredProducts.length === 0 ? (
+              <div className="text-center py-12">
+                <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No products found</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Try adjusting your filters or search criteria.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    className="group relative"
+                    onHoverStart={() => setHoveredProduct(product.id || '')}
+                    onHoverEnd={() => setHoveredProduct(null)}
+                    whileHover={{ y: -4 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg bg-gray-200">
+                      {product.images && product.images.length > 0 ? (
                         <Image
-                          src={product.images[0]}
+                          src={product.images.find(img => img.isPrimary)?.url || product.images[0].url}
                           alt={product.name}
-                          width={500}
-                          height={500}
-                          className={`h-full w-full object-contain object-center transition-opacity duration-500 ${
-                            hoveredProduct === product.id ? 'opacity-0' : 'opacity-100'
-                          }`}
+                          width={400}
+                          height={400}
+                          className="h-full w-full object-cover object-center group-hover:opacity-75"
                         />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center bg-gray-200">
+                          <CubeIcon className="h-12 w-12 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="mt-4 flex justify-between">
+                      <div>
+                        <h3 className="text-sm text-gray-700">
+                          <Link href={`/product/${product.slug}`}>
+                            <span aria-hidden="true" className="absolute inset-0" />
+                            {product.name}
+                          </Link>
+                        </h3>
+                        <p className="mt-1 text-sm text-gray-500">{product.category?.name}</p>
                       </div>
-                    ) : (
-                      <Image
-                        src={product.images[0]}
-                        alt={product.name}
-                        width={500}
-                        height={500}
-                        className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500 ${
-                          hoveredProduct === product.id ? 'opacity-0' : 'opacity-100'
-                        }`}
-                      />
-                    )}
-                    {product.images[1].endsWith('.svg') ? (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Image
-                          src={product.images[1]}
-                          alt={product.name}
-                          width={500}
-                          height={500}
-                          className={`h-full w-full object-contain object-center transition-opacity duration-500 ${
-                            hoveredProduct === product.id ? 'opacity-100' : 'opacity-0'
-                          }`}
-                        />
-                      </div>
-                    ) : (
-                      <Image
-                        src={product.images[1]}
-                        alt={product.name}
-                        width={500}
-                        height={500}
-                        className={`absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500 ${
-                          hoveredProduct === product.id ? 'opacity-100' : 'opacity-0'
-                        }`}
-                      />
-                    )}
-                  </div>
-                  <div className="mt-4">
-                    <h3 className="text-sm font-medium text-gray-800 tracking-wide uppercase">
-                      {product.name}
-                    </h3>
-                    <p className="mt-1 text-base font-light text-gray-600">
-                      ${product.price.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                      <p className="text-sm font-medium text-gray-900">
+                        ${product.price.toFixed(2)}
+                      </p>
+                    </div>
+
+                    {/* Quick View Button */}
+                    <button
+                      onClick={() => handleQuickView(product)}
+                      className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                    >
+                      <span className="bg-white text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
+                        Quick View
+                      </span>
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -338,9 +371,12 @@ export default function CollectionPage() {
       {/* Quick View Modal */}
       {selectedProduct && (
         <QuickViewModal
-          isOpen={isQuickViewOpen}
-          onClose={() => setIsQuickViewOpen(false)}
           product={selectedProduct}
+          isOpen={isQuickViewOpen}
+          onClose={() => {
+            setIsQuickViewOpen(false)
+            setSelectedProduct(null)
+          }}
         />
       )}
     </div>

@@ -4,7 +4,7 @@ import { Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
-import { Product } from '../data/products'
+import { Product } from '@/lib/firebase'
 
 interface QuickViewModalProps {
   isOpen: boolean
@@ -13,6 +13,10 @@ interface QuickViewModalProps {
 }
 
 export default function QuickViewModal({ isOpen, onClose, product }: QuickViewModalProps) {
+  // Extract unique colors and sizes from variants
+  const colors = [...new Set(product.variants.map(v => v.color).filter(Boolean))] as string[]
+  const sizes = [...new Set(product.variants.map(v => v.size).filter(Boolean))] as string[]
+
   return (
     <Transition.Root show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
@@ -54,24 +58,18 @@ export default function QuickViewModal({ isOpen, onClose, product }: QuickViewMo
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                     <div className="grid grid-cols-1 gap-4">
                       <div className="aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
-                        {product.images[0].endsWith('.svg') ? (
-                          <div className="h-full w-full flex items-center justify-center">
-                            <Image
-                              src={product.images[0]}
-                              alt={product.name}
-                              width={500}
-                              height={500}
-                              className="h-full w-full object-contain object-center"
-                            />
-                          </div>
-                        ) : (
+                        {product.images && product.images.length > 0 ? (
                           <Image
-                            src={product.images[0]}
+                            src={product.images.find(img => img.isPrimary)?.url || product.images[0].url}
                             alt={product.name}
                             width={500}
                             height={500}
                             className="h-full w-full object-cover object-center"
                           />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-gray-200">
+                            <span className="text-gray-400">No image</span>
+                          </div>
                         )}
                       </div>
                       <div>
@@ -80,33 +78,45 @@ export default function QuickViewModal({ isOpen, onClose, product }: QuickViewMo
                         <p className="mt-2 text-lg font-medium text-gray-900">
                           ${product.price.toFixed(2)}
                         </p>
+                        {product.salePrice && (
+                          <p className="mt-1 text-sm text-red-600">
+                            Sale: ${product.salePrice.toFixed(2)}
+                          </p>
+                        )}
                       </div>
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-900">Available Colors</h4>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {product.colors.map((color) => (
-                            <div
-                              key={color}
-                              className="w-8 h-8 rounded-full border-2 border-gray-200"
-                              style={{ backgroundColor: color.toLowerCase() }}
-                              title={color}
-                            />
-                          ))}
+                      
+                      {colors.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium text-gray-900">Available Colors</h4>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {colors.map((color) => (
+                              <div
+                                key={color}
+                                className="w-8 h-8 rounded-full border-2 border-gray-200"
+                                style={{ backgroundColor: color.toLowerCase() }}
+                                title={color}
+                              />
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-900">Available Sizes</h4>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {product.sizes.map((size) => (
-                            <button
-                              key={size}
-                              className="w-10 h-10 flex items-center justify-center text-sm rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50"
-                            >
-                              {size}
-                            </button>
-                          ))}
+                      )}
+                      
+                      {sizes.length > 0 && (
+                        <div className="mt-4">
+                          <h4 className="text-sm font-medium text-gray-900">Available Sizes</h4>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {sizes.map((size) => (
+                              <button
+                                key={size}
+                                className="w-10 h-10 flex items-center justify-center text-sm rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50"
+                              >
+                                {size}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
+                      
                       <div className="mt-6">
                         <button
                           type="button"

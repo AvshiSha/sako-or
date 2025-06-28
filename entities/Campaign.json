@@ -1,0 +1,90 @@
+{
+    "name": "Campaign",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Campaign name"
+      },
+      "type": {
+        "type": "string",
+        "enum": [
+          "email",
+          "seasonal_sale",
+          "promotion",
+          "new_collection"
+        ],
+        "description": "Campaign type"
+      },
+      "start_date": {
+        "type": "string",
+        "format": "date",
+        "description": "Campaign start date"
+      },
+      "end_date": {
+        "type": "string",
+        "format": "date",
+        "description": "Campaign end date"
+      },
+      "discount_type": {
+        "type": "string",
+        "enum": [
+          "percentage",
+          "fixed_amount",
+          "buy_one_get_one"
+        ],
+        "description": "Type of discount"
+      },
+      "discount_value": {
+        "type": "number",
+        "description": "Discount value"
+      },
+      "applicable_categories": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Categories this campaign applies to"
+      },
+      "minimum_purchase": {
+        "type": "number",
+        "description": "Minimum purchase amount"
+      },
+      "target_audience": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "all",
+            "vip",
+            "new_customers",
+            "inactive_customers"
+          ]
+        },
+        "description": "Target audience segments"
+      },
+      "success_metrics": {
+        "type": "object",
+        "properties": {
+          "views": {
+            "type": "integer"
+          },
+          "clicks": {
+            "type": "integer"
+          },
+          "conversions": {
+            "type": "integer"
+          },
+          "revenue": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "required": [
+      "name",
+      "type",
+      "start_date",
+      "end_date"
+    ]
+  }

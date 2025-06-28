@@ -1,0 +1,55 @@
+{
+    "name": "Inventory",
+    "type": "object",
+    "properties": {
+      "product_id": {
+        "type": "string",
+        "description": "Reference to Product"
+      },
+      "size": {
+        "type": "string",
+        "description": "Size variant"
+      },
+      "color": {
+        "type": "string",
+        "description": "Color variant"
+      },
+      "quantity": {
+        "type": "integer",
+        "description": "Current stock quantity"
+      },
+      "location": {
+        "type": "string",
+        "enum": [
+          "online",
+          "rishon_lezion_store"
+        ],
+        "description": "Stock location"
+      },
+      "last_restock_date": {
+        "type": "string",
+        "format": "date",
+        "description": "Last restock date"
+      },
+      "reorder_point": {
+        "type": "integer",
+        "description": "Minimum quantity before reorder"
+      },
+      "status": {
+        "type": "string",
+        "enum": [
+          "in_stock",
+          "low_stock",
+          "out_of_stock"
+        ],
+        "description": "Stock status"
+      }
+    },
+    "required": [
+      "product_id",
+      "size",
+      "color",
+      "quantity",
+      "location"
+    ]
+  }

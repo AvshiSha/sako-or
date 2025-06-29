@@ -42,6 +42,7 @@ export interface Product {
   isNew: boolean;
   isActive: boolean;
   categoryId: string;
+  categorySlug?: string;
   category?: Category;
   images: ProductImage[];
   variants: ProductVariant[];

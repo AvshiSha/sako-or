@@ -275,10 +275,13 @@ export default function NewProductPage() {
       console.log('Image upload completed:', imageUrls)
       
       console.log('Preparing product data...')
-      // Convert the new form data structure to the existing Product interface
+      // Find the selected category object
+      const selectedCategoryObj = categories.find(cat => cat.id === formData.category);
+
       const productData: any = {
         name: formData.nameEn, // Use English name as primary name
-        slug: formData.nameEn.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim(),
+        slug: formData.nameEn.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim(), // Product slug for SEO
+        categorySlug: selectedCategoryObj ? selectedCategoryObj.slug : '', // Separate categorySlug for filtering
         description: formData.descriptionEn, // Use English description as primary description
         price: parseFloat(formData.price.toString()),
         stock: parseInt(formData.stock.toString()),
@@ -376,7 +379,7 @@ export default function NewProductPage() {
                     id="nameEn"
                     value={formData.nameEn}
                     onChange={(e) => handleInputChange('nameEn', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 ${
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
                       errors.nameEn ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter product name in English"
@@ -393,7 +396,7 @@ export default function NewProductPage() {
                     id="nameHe"
                     value={formData.nameHe}
                     onChange={(e) => handleInputChange('nameHe', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 ${
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
                       errors.nameHe ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter product name in Hebrew"
@@ -410,7 +413,7 @@ export default function NewProductPage() {
                     rows={3}
                     value={formData.descriptionEn}
                     onChange={(e) => handleInputChange('descriptionEn', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 ${
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
                       errors.descriptionEn ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter product description in English"
@@ -427,7 +430,7 @@ export default function NewProductPage() {
                     rows={3}
                     value={formData.descriptionHe}
                     onChange={(e) => handleInputChange('descriptionHe', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 ${
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
                       errors.descriptionHe ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter product description in Hebrew"
@@ -444,7 +447,7 @@ export default function NewProductPage() {
                     id="brand"
                     value={formData.brand}
                     onChange={(e) => handleInputChange('brand', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 ${
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
                       errors.brand ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter brand name"
@@ -461,7 +464,7 @@ export default function NewProductPage() {
                     id="sku"
                     value={formData.sku}
                     onChange={(e) => handleInputChange('sku', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600"
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                     placeholder="Stock keeping unit"
                   />
                 </div>
@@ -706,7 +709,7 @@ export default function NewProductPage() {
                     id="subcategory"
                     value={formData.subcategory}
                     onChange={(e) => handleInputChange('subcategory', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600"
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                     placeholder="Enter subcategory"
                   />
                 </div>

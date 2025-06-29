@@ -1,109 +1,102 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { 
-  ChevronDownIcon, 
-  FunnelIcon, 
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import {
+  ChevronDownIcon,
+  FunnelIcon,
   ArrowsUpDownIcon,
   XMarkIcon,
-  CubeIcon
-} from '@heroicons/react/24/outline'
-import QuickViewModal from '../components/QuickViewModal'
-import { productService, Product } from '@/lib/firebase'
+  CubeIcon,
+} from "@heroicons/react/24/outline";
+import QuickViewModal from "../../components/QuickViewModal";
+import { productService, Product } from "@/lib/firebase";
 
-export default function CollectionPage() {
-  const pathname = usePathname()
-  const router = useRouter()
-  const [selectedCategory, setSelectedCategory] = useState('All Products')
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null)
-  const [selectedColors, setSelectedColors] = useState<string[]>([])
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([])
-  const [sortBy, setSortBy] = useState('relevance')
-  const [showFilters, setShowFilters] = useState(false)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [hoveredProduct, setHoveredProduct] = useState<string | null>(null)
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
-  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+export default function CollectionSlugPage() {
+  const params = useParams();
+  const router = useRouter();
+  const slug = params.slug as string[] | undefined;
 
-  // Fetch products from Firebase
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const productsData = await productService.getAllProducts({ isActive: true })
-        setProducts(productsData)
-      } catch (error) {
-        console.error('Error fetching products:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchProducts()
-  }, [])
-
-  // Parse URL to get category and subcategory
-  useEffect(() => {
-    const pathSegments = pathname.split('/').filter(Boolean)
-    if (pathSegments.length >= 2) {
-      const category = pathSegments[1]
-      setSelectedCategory(category)
-      
-      if (pathSegments.length >= 4) {
-        const subcategory = pathSegments[3]
-        setSelectedSubcategory(subcategory)
-      } else {
-        setSelectedSubcategory(null)
-      }
-    } else {
-      setSelectedCategory('All Products')
-      setSelectedSubcategory(null)
-    }
-  }, [pathname])
-
-  const handleCategoryChange = (category: string) => {
-    if (category === 'All Products') {
-      router.push('/collection')
-    } else {
-      // Ensure the category is lowercase for consistency
-      const formattedCategory = category.toLowerCase()
-      router.push(`/collection/${formattedCategory}`)
+  // Determine category and subcategory from slug
+  let selectedCategory = "All Products";
+  let selectedSubcategory: string | null = null;
+  if (slug && slug.length > 0) {
+    selectedCategory = slug[0];
+    if (slug.length > 1) {
+      selectedSubcategory = slug.slice(1).join("/");
     }
   }
 
-  const handleSubcategoryChange = (subcategory: string) => {
-    if (selectedCategory === 'All Products') return
-    const formattedCategory = selectedCategory.toLowerCase()
-    router.push(`/collection/${formattedCategory}/shoes/${subcategory}`)
-  }
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState("relevance");
+  const [showFilters, setShowFilters] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Real-time fetch
+  useEffect(() => {
+    setLoading(true);
+    const unsubscribe = productService.onProductsChange((productsData) => {
+      setProducts(productsData);
+      setLoading(false);
+    }, { isActive: true });
+    return () => unsubscribe();
+  }, []);
+
+  // Filtering logic
   const filteredProducts = products
-    .filter(product => selectedCategory === 'All Products' || product.category?.name?.toLowerCase() === selectedCategory.toLowerCase())
-    .filter(product => !selectedSubcategory || product.category?.name?.toLowerCase() === selectedSubcategory.toLowerCase())
-    .filter(product => selectedColors.length === 0 || product.variants.some(variant => selectedColors.includes(variant.color || '')))
-    .filter(product => selectedSizes.length === 0 || product.variants.some(variant => selectedSizes.includes(variant.size || '')))
+    .filter((product) => {
+      // Category filter using categorySlug
+      if (selectedCategory === "All Products") return true;
+      if (!product.categorySlug) return false;
+      if (selectedSubcategory) {
+        // Match both category and subcategory slugs
+        return (
+          product.categorySlug.toLowerCase() === selectedSubcategory.toLowerCase() ||
+          product.categorySlug.toLowerCase() === selectedCategory.toLowerCase()
+        );
+      }
+      return product.categorySlug.toLowerCase() === selectedCategory.toLowerCase();
+    })
+    .filter((product) =>
+      selectedColors.length === 0 || product.variants.some((variant) => selectedColors.includes(variant.color || ""))
+    )
+    .filter((product) =>
+      selectedSizes.length === 0 || product.variants.some((variant) => selectedSizes.includes(variant.size || ""))
+    );
 
   // Get unique subcategories for the selected category
-  const subcategories = selectedCategory === 'All Products' 
-    ? [] 
-    : [...new Set(products
-        .filter(p => p.category?.name?.toLowerCase() === selectedCategory.toLowerCase())
-        .map(p => p.category?.name)
-        .filter((s): s is string => s !== undefined))]
+  const subcategories = selectedCategory === "All Products"
+    ? []
+    : [
+        ...new Set(
+          products
+            .filter((p) => p.category?.name?.toLowerCase() === selectedCategory.toLowerCase())
+            .map((p) => p.category?.name)
+            .filter((s): s is string => s !== undefined)
+        ),
+      ];
 
   // Get unique colors and sizes from variants
-  const allColors = [...new Set(products.flatMap(p => p.variants.map(v => v.color).filter(Boolean)))] as string[]
-  const allSizes = [...new Set(products.flatMap(p => p.variants.map(v => v.size).filter(Boolean)))] as string[]
+  const allColors = [
+    ...new Set(products.flatMap((p) => p.variants.map((v) => v.color).filter(Boolean))),
+  ] as string[];
+  const allSizes = [
+    ...new Set(products.flatMap((p) => p.variants.map((v) => v.size).filter(Boolean))),
+  ] as string[];
 
   const handleQuickView = (product: Product) => {
-    setSelectedProduct(product)
-    setIsQuickViewOpen(true)
-  }
+    setSelectedProduct(product);
+    setIsQuickViewOpen(true);
+  };
 
   if (loading) {
     return (
@@ -113,7 +106,7 @@ export default function CollectionPage() {
           <p className="mt-4 text-gray-600">Loading products...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -126,9 +119,9 @@ export default function CollectionPage() {
               Home
             </Link>
             <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
-            {selectedCategory !== 'All Products' && (
+            {selectedCategory !== "All Products" && (
               <>
-                <Link 
+                <Link
                   href={`/collection/${selectedCategory}`}
                   className="text-gray-500 hover:text-gray-700"
                 >
@@ -137,8 +130,8 @@ export default function CollectionPage() {
                 {selectedSubcategory && (
                   <>
                     <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
-                    <Link 
-                      href={`/collection/${selectedCategory}/shoes/${selectedSubcategory}`}
+                    <Link
+                      href={`/collection/${selectedCategory}/${selectedSubcategory}`}
                       className="text-gray-900"
                     >
                       {selectedSubcategory.charAt(0).toUpperCase() + selectedSubcategory.slice(1)}
@@ -154,7 +147,7 @@ export default function CollectionPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col md:flex-row gap-8">
           {/* Filters Sidebar */}
-          <div className={`md:w-64 ${showFilters ? 'block' : 'hidden md:block'}`}>
+          <div className={`md:w-64 ${showFilters ? "block" : "hidden md:block"}`}>
             <div className="sticky top-24">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-medium text-gray-900">Filters</h2>
@@ -170,14 +163,14 @@ export default function CollectionPage() {
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Categories</h3>
                 <div className="space-y-2">
-                  {['All Products', 'Women', 'Men'].map((category) => (
+                  {["All Products", "Women", "Men"].map((category) => (
                     <button
                       key={category}
-                      onClick={() => handleCategoryChange(category)}
+                      onClick={() => router.push(`/collection/${category.toLowerCase()}`)}
                       className={`block w-full text-left px-3 py-2 text-sm rounded-md ${
                         selectedCategory.toLowerCase() === category.toLowerCase()
-                          ? 'bg-gray-100 text-gray-900'
-                          : 'text-gray-500 hover:bg-gray-50'
+                          ? "bg-gray-100 text-gray-900"
+                          : "text-gray-500 hover:bg-gray-50"
                       }`}
                     >
                       {category}
@@ -194,11 +187,11 @@ export default function CollectionPage() {
                     {subcategories.map((subcategory) => (
                       <button
                         key={subcategory}
-                        onClick={() => handleSubcategoryChange(subcategory)}
+                        onClick={() => router.push(`/collection/${selectedCategory}/${subcategory}`)}
                         className={`block w-full text-left px-3 py-2 text-sm rounded-md ${
                           selectedSubcategory === subcategory
-                            ? 'bg-gray-100 text-gray-900'
-                            : 'text-gray-500 hover:bg-gray-50'
+                            ? "bg-gray-100 text-gray-900"
+                            : "text-gray-500 hover:bg-gray-50"
                         }`}
                       >
                         {subcategory}
@@ -216,16 +209,16 @@ export default function CollectionPage() {
                     <button
                       key={color}
                       onClick={() => {
-                        setSelectedColors(prev => 
-                          prev.includes(color) 
-                            ? prev.filter(c => c !== color)
+                        setSelectedColors((prev) =>
+                          prev.includes(color)
+                            ? prev.filter((c) => c !== color)
                             : [...prev, color]
-                        )
+                        );
                       }}
                       className={`w-8 h-8 rounded-full border-2 ${
                         selectedColors.includes(color)
-                          ? 'border-gray-900'
-                          : 'border-gray-200'
+                          ? "border-gray-900"
+                          : "border-gray-200"
                       }`}
                       style={{ backgroundColor: color.toLowerCase() }}
                       title={color}
@@ -242,16 +235,16 @@ export default function CollectionPage() {
                     <button
                       key={size}
                       onClick={() => {
-                        setSelectedSizes(prev => 
-                          prev.includes(size) 
-                            ? prev.filter(s => s !== size)
+                        setSelectedSizes((prev) =>
+                          prev.includes(size)
+                            ? prev.filter((s) => s !== size)
                             : [...prev, size]
-                        )
+                        );
                       }}
                       className={`px-3 py-1 text-sm border rounded-md ${
                         selectedSizes.includes(size)
-                          ? 'border-gray-900 bg-gray-900 text-white'
-                          : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : "border-gray-200 text-gray-700 hover:border-gray-300"
                       }`}
                     >
                       {size}
@@ -268,13 +261,13 @@ export default function CollectionPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {selectedCategory === 'All Products' ? 'All Products' : selectedCategory}
+                  {selectedCategory === "All Products" ? "All Products" : selectedCategory}
                 </h1>
                 <p className="mt-1 text-sm text-gray-500">
                   {filteredProducts.length} products
                 </p>
               </div>
-              
+
               <div className="mt-4 sm:mt-0 flex items-center space-x-4">
                 {/* Mobile filter button */}
                 <button
@@ -315,7 +308,7 @@ export default function CollectionPage() {
                   <motion.div
                     key={product.id}
                     className="group relative"
-                    onHoverStart={() => setHoveredProduct(product.id || '')}
+                    onHoverStart={() => setHoveredProduct(product.id || "")}
                     onHoverEnd={() => setHoveredProduct(null)}
                     whileHover={{ y: -4 }}
                     transition={{ duration: 0.2 }}
@@ -323,7 +316,7 @@ export default function CollectionPage() {
                     <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg bg-gray-200">
                       {product.images && product.images.length > 0 ? (
                         <Image
-                          src={product.images.find(img => img.isPrimary)?.url || product.images[0].url}
+                          src={product.images.find((img) => img.isPrimary)?.url || product.images[0].url}
                           alt={product.name}
                           width={400}
                           height={400}
@@ -335,7 +328,7 @@ export default function CollectionPage() {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="mt-4 flex justify-between">
                       <div>
                         <h3 className="text-sm text-gray-700">
@@ -374,11 +367,11 @@ export default function CollectionPage() {
           product={selectedProduct}
           isOpen={isQuickViewOpen}
           onClose={() => {
-            setIsQuickViewOpen(false)
-            setSelectedProduct(null)
+            setIsQuickViewOpen(false);
+            setSelectedProduct(null);
           }}
         />
       )}
     </div>
-  )
+  );
 } 

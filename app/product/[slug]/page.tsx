@@ -70,8 +70,8 @@ export default function ProductPage() {
                 {product.images?.map((img: any, idx: number) => (
                   <button key={idx} onClick={() => handleImageClick(idx)} className={`border rounded-md overflow-hidden w-20 h-20 ${currentImageIndex === idx ? 'border-indigo-600' : 'border-gray-200'}`}>
                     <Image src={img.url} alt={img.alt || product.name} width={80} height={80} className="object-cover w-full h-full" />
-                  </button>
-                ))}
+                    </button>
+                  ))}
               </div>
               <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-50">
                 {product.images && product.images[currentImageIndex] && (
@@ -81,20 +81,20 @@ export default function ProductPage() {
                     width={600}
                     height={600}
                     className="object-cover w-full h-full"
-                    onMouseEnter={() => setIsZoomed(true)}
-                    onMouseLeave={() => setIsZoomed(false)}
-                    onMouseMove={handleMouseMove}
+                  onMouseEnter={() => setIsZoomed(true)}
+                  onMouseLeave={() => setIsZoomed(false)}
+                  onMouseMove={handleMouseMove}
                   />
                 )}
-                {isZoomed && (
-                  <div
-                    className="absolute inset-0 bg-no-repeat bg-[length:200%]"
-                    style={{
+                  {isZoomed && (
+                    <div
+                      className="absolute inset-0 bg-no-repeat bg-[length:200%]"
+                      style={{
                       backgroundImage: `url(${product.images[currentImageIndex]?.url})`,
-                      backgroundPosition: `${zoomPosition.x}% ${zoomPosition.y}%`
-                    }}
-                  />
-                )}
+                        backgroundPosition: `${zoomPosition.x}% ${zoomPosition.y}%`
+                      }}
+                    />
+                  )}
               </div>
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function ProductPage() {
             <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
             <div className="text-xl text-indigo-700 font-semibold">
               {product.currency === 'ILS' ? '₪' : '$'}{product.price?.toFixed(2)}
-            </div>
+                </div>
             {product.salePrice && (
               <div className="text-lg text-red-600 font-semibold">
                 Sale: {product.currency === 'ILS' ? '₪' : '$'}{product.salePrice?.toFixed(2)}
@@ -130,7 +130,7 @@ export default function ProductPage() {
                   <div className="flex flex-wrap gap-2">
                     {product.colors.map((color: any, idx: number) => (
                       <button key={idx} onClick={() => setSelectedColor(color)} className={`px-3 py-1 rounded border ${selectedColor === color ? 'bg-indigo-600 text-white' : 'bg-white text-gray-900 border-gray-300'}`}>{color}</button>
-                    ))}
+                  ))}
                   </div>
                 </div>
               )}

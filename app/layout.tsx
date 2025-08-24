@@ -18,7 +18,7 @@ export default function RootLayout({
   params: { lng: string }
 }) {
   return (
-    <html lang={lng} dir={dir(lng)}>
+    <html lang={lng} dir={dir(lng)} className="light">
       <body className={inter.className}>
         <ClientLayout lng={lng}>
           {children}

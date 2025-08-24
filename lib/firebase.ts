@@ -206,12 +206,21 @@ export const productService = {
   async createProduct(productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const now = new Date();
+      let categorySlug = productData.categorySlug;
+      // If categorySlug is not provided, fetch it from the category
+      if (!categorySlug && productData.categoryId) {
+        const categoryDoc = await getDoc(doc(db, 'categories', productData.categoryId));
+        if (categoryDoc.exists()) {
+          const categoryData = categoryDoc.data() as Category;
+          categorySlug = categoryData.slug;
+        }
+      }
       const product = {
         ...productData,
+        categorySlug: categorySlug || '',
         createdAt: now,
         updatedAt: now
       };
-      
       const docRef = await addDoc(collection(db, 'products'), product);
       return docRef.id;
     } catch (error) {

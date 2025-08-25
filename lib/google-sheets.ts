@@ -9,13 +9,14 @@ interface GoogleSheetProduct {
   images: string
   sizes: string
   colors: string
-  stock: number
+  stock?: number // Legacy field
+  stockBySize?: string // New field for size-specific stock
+  sku: string // Required unique identifier
   featured?: boolean
   new?: boolean
   salePrice?: number
   saleStartDate?: string
   saleEndDate?: string
-  sku?: string
 }
 
 export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
@@ -41,16 +42,33 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
       // Create product slug
       const slug = row.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
-      // Check if product already exists
-      const existingProduct = await prisma.product.findUnique({
-        where: { slug }
-      })
+             // Check if product already exists by SKU
+       if (!row.sku || row.sku.trim() === '') {
+         results.errors++
+         results.errorsList.push(`Product "${row.name}" is missing required SKU`)
+         continue
+       }
 
-      if (existingProduct) {
-        results.errors++
-        results.errorsList.push(`Product "${row.name}" already exists with slug "${slug}"`)
-        continue
-      }
+       const existingProductBySku = await prisma.product.findFirst({
+         where: { sku: row.sku.trim() }
+       })
+
+       if (existingProductBySku) {
+         results.errors++
+         results.errorsList.push(`Product with SKU "${row.sku}" already exists`)
+         continue
+       }
+
+       // Check if product already exists by slug (additional check)
+       const existingProduct = await prisma.product.findUnique({
+         where: { slug }
+       })
+
+       if (existingProduct) {
+         results.errors++
+         results.errorsList.push(`Product "${row.name}" already exists with slug "${slug}"`)
+         continue
+       }
 
       // Parse images (assuming comma-separated URLs)
       const imageUrls = row.images.split(',').map(url => url.trim()).filter(Boolean)
@@ -60,6 +78,31 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
       
       // Parse colors (assuming comma-separated)
       const colors = row.colors.split(',').map(color => color.trim()).filter(Boolean)
+
+      // Parse stock by size
+      let stockBySize: Record<string, number> = {};
+      let totalStock = 0;
+      
+      if (row.stockBySize) {
+        // New format: "36:10,37:15,38:20,39:15,40:10"
+        const stockEntries = row.stockBySize.split(',').map(entry => entry.trim()).filter(Boolean);
+        stockBySize = {};
+        
+        for (const entry of stockEntries) {
+          const [size, quantity] = entry.split(':').map(s => s.trim());
+          if (size && quantity && !isNaN(parseInt(quantity))) {
+            stockBySize[size] = parseInt(quantity);
+            totalStock += parseInt(quantity);
+          }
+        }
+      } else if (row.stock) {
+        // Fallback to old format: distribute total stock evenly
+        const stockPerSize = Math.floor(parseInt(row.stock.toString()) / sizes.length);
+        sizes.forEach(size => {
+          stockBySize[size] = stockPerSize;
+          totalStock += stockPerSize;
+        });
+      }
 
       // Create product
       const product = await prisma.product.create({
@@ -72,7 +115,7 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
           saleStartDate: row.saleStartDate ? new Date(row.saleStartDate) : null,
           saleEndDate: row.saleEndDate ? new Date(row.saleEndDate) : null,
           sku: row.sku,
-          stock: parseInt(row.stock.toString()),
+          stock: totalStock,
           featured: row.featured || false,
           isNew: row.new || false,
           isActive: true,
@@ -90,7 +133,7 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
               colors.map(color => ({
                 size,
                 color,
-                stock: Math.floor(parseInt(row.stock.toString()) / (sizes.length * colors.length)),
+                stock: stockBySize[size] || 0,
                 sku: row.sku ? `${row.sku}-${size}-${color}` : undefined
               }))
             )
@@ -117,21 +160,40 @@ export async function exportToGoogleSheets() {
     }
   })
 
-  return products.map(product => ({
-    id: product.id,
-    name: product.name,
-    slug: product.slug,
-    description: product.description,
-    price: product.price,
-    salePrice: product.salePrice,
-    category: product.category.name,
-    stock: product.stock,
-    featured: product.featured,
-    new: product.isNew,
-    active: product.isActive,
-    images: product.images.map(img => img.url).join(', '),
-    variants: product.variants.length,
-    createdAt: product.createdAt,
-    updatedAt: product.updatedAt
-  }))
+  return products.map(product => {
+    // Group variants by size and sum their stock
+    const stockBySize: Record<string, number> = {};
+    product.variants.forEach(variant => {
+      if (variant.size && variant.stock !== null) {
+        if (!stockBySize[variant.size]) {
+          stockBySize[variant.size] = 0;
+        }
+        stockBySize[variant.size] += variant.stock;
+      }
+    });
+
+    // Convert to string format
+    const stockBySizeString = Object.entries(stockBySize)
+      .map(([size, stock]) => `${size}:${stock}`)
+      .join(',');
+
+    return {
+      id: product.id,
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      price: product.price,
+      salePrice: product.salePrice,
+      category: product.category.name,
+      stock: product.stock,
+      stockBySize: stockBySizeString,
+      featured: product.featured,
+      new: product.isNew,
+      active: product.isActive,
+      images: product.images.map(img => img.url).join(', '),
+      variants: product.variants.length,
+      createdAt: product.createdAt,
+      updatedAt: product.updatedAt
+    };
+  });
 } 

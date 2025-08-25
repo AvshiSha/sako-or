@@ -36,6 +36,75 @@ export default function ImportPage() {
       const text = await file.text()
       const sheetData = JSON.parse(text)
 
+             // Validate required fields and formats
+       const validationErrors: string[] = [];
+       const skuSet = new Set<string>();
+       
+       sheetData.forEach((product: any, index: number) => {
+         const rowNumber = index + 1;
+         
+         // Check required fields
+         if (!product.sku || product.sku.trim() === '') {
+           validationErrors.push(`Row ${rowNumber}: SKU is required`);
+         } else {
+           // Check for duplicate SKUs
+           const sku = product.sku.trim();
+           if (skuSet.has(sku)) {
+             validationErrors.push(`Row ${rowNumber}: Duplicate SKU "${sku}" found`);
+           } else {
+             skuSet.add(sku);
+           }
+         }
+         
+         // Check other required fields
+         if (!product.name || product.name.trim() === '') {
+           validationErrors.push(`Row ${rowNumber}: Product name is required`);
+         }
+         
+         if (!product.description || product.description.trim() === '') {
+           validationErrors.push(`Row ${rowNumber}: Product description is required`);
+         }
+         
+         if (!product.price || isNaN(parseFloat(product.price))) {
+           validationErrors.push(`Row ${rowNumber}: Valid product price is required`);
+         }
+         
+         if (!product.category || product.category.trim() === '') {
+           validationErrors.push(`Row ${rowNumber}: Product category is required`);
+         }
+         
+         if (!product.images || product.images.trim() === '') {
+           validationErrors.push(`Row ${rowNumber}: Product images are required`);
+         }
+         
+         if (!product.sizes || product.sizes.trim() === '') {
+           validationErrors.push(`Row ${rowNumber}: Product sizes are required`);
+         }
+         
+         if (!product.colors || product.colors.trim() === '') {
+           validationErrors.push(`Row ${rowNumber}: Product colors are required`);
+         }
+         
+         if (!product.stockBySize || product.stockBySize.trim() === '') {
+           validationErrors.push(`Row ${rowNumber}: stockBySize is required`);
+         } else {
+           // Validate stockBySize format
+           const stockEntries = product.stockBySize.split(',').map((entry: string) => entry.trim()).filter(Boolean);
+           for (const entry of stockEntries) {
+             const parts = entry.split(':');
+             if (parts.length !== 2 || isNaN(parseInt(parts[1]))) {
+               validationErrors.push(`Row ${rowNumber}: Invalid stockBySize format. Expected "size:quantity" but got "${entry}"`);
+             }
+           }
+         }
+       });
+
+      if (validationErrors.length > 0) {
+        alert(`Validation errors:\n${validationErrors.join('\n')}`);
+        setImporting(false);
+        return;
+      }
+
       const response = await fetch('/api/import', {
         method: 'POST',
         headers: {
@@ -70,13 +139,30 @@ export default function ImportPage() {
         images: "/images/products/pump-1.jpg,/images/products/pump-2.jpg",
         sizes: "36,37,38,39,40",
         colors: "Black,Silver,Gold",
-        stock: 50,
+        stockBySize: "36:10,37:15,38:20,39:15,40:10",
+        sku: "PUMP-001",
         featured: true,
         new: true,
         salePrice: null,
         saleStartDate: null,
-        saleEndDate: null,
-        sku: "PUMP-001"
+        saleEndDate: null
+      },
+      {
+        name: "Leather Oxford Shoes",
+        description: "Classic leather oxford shoes for men with premium craftsmanship.",
+        price: 199.99,
+        category: "men",
+        subcategory: "shoes",
+        images: "/images/products/oxford-1.jpg,/images/products/oxford-2.jpg",
+        sizes: "40,41,42,43,44,45",
+        colors: "Brown,Black,Navy",
+        stockBySize: "40:8,41:12,42:18,43:15,44:10,45:7",
+        sku: "OXFORD-001",
+        featured: false,
+        new: false,
+        salePrice: 179.99,
+        saleStartDate: "2024-01-01",
+        saleEndDate: "2024-12-31"
       }
     ]
 
@@ -92,7 +178,7 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
       <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -126,20 +212,31 @@ export default function ImportPage() {
                 <p className="text-sm text-gray-600 mt-1">
                   Export your Google Sheets data as JSON with the following structure:
                 </p>
-                <ul className="text-sm text-gray-600 mt-2 space-y-1">
-                  <li>• <strong>name</strong>: Product name (required)</li>
-                  <li>• <strong>description</strong>: Product description (required)</li>
-                  <li>• <strong>price</strong>: Product price (required)</li>
-                  <li>• <strong>category</strong>: Product category (required)</li>
-                  <li>• <strong>images</strong>: Comma-separated image URLs (required)</li>
-                  <li>• <strong>sizes</strong>: Comma-separated sizes (required)</li>
-                  <li>• <strong>colors</strong>: Comma-separated colors (required)</li>
-                  <li>• <strong>stock</strong>: Total stock quantity (required)</li>
-                  <li>• <strong>featured</strong>: Mark as featured (optional)</li>
-                  <li>• <strong>new</strong>: Mark as new (optional)</li>
-                  <li>• <strong>salePrice</strong>: Sale price (optional)</li>
-                  <li>• <strong>sku</strong>: Stock keeping unit (optional)</li>
-                </ul>
+                                 <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                   <p className="text-xs text-gray-600 mb-2"><strong>Example stockBySize format:</strong></p>
+                   <p className="text-xs text-gray-700 font-mono">"36:10,37:15,38:20,39:15,40:10"</p>
+                   <p className="text-xs text-gray-600 mt-1">This means: 10 units in size 36, 15 in size 37, etc.</p>
+                 </div>
+                 <div className="mt-3 p-3 bg-blue-50 rounded-md">
+                   <p className="text-xs text-blue-600 mb-2"><strong>Important:</strong></p>
+                   <p className="text-xs text-blue-700">• SKU must be unique across all products</p>
+                   <p className="text-xs text-blue-700">• Duplicate SKUs will be rejected</p>
+                   <p className="text-xs text-blue-700">• SKU is used as the primary identifier for products</p>
+                 </div>
+                                 <ul className="text-sm text-gray-600 mt-2 space-y-1">
+                   <li>• <strong>name</strong>: Product name (required)</li>
+                   <li>• <strong>description</strong>: Product description (required)</li>
+                   <li>• <strong>price</strong>: Product price (required)</li>
+                   <li>• <strong>category</strong>: Product category (required)</li>
+                   <li>• <strong>images</strong>: Comma-separated image URLs (required)</li>
+                   <li>• <strong>sizes</strong>: Comma-separated sizes (required)</li>
+                   <li>• <strong>colors</strong>: Comma-separated colors (required)</li>
+                   <li>• <strong>stockBySize</strong>: Size-specific stock quantities in format "size:quantity,size:quantity" (required)</li>
+                   <li>• <strong>sku</strong>: Stock keeping unit (required) - must be unique</li>
+                   <li>• <strong>featured</strong>: Mark as featured (optional)</li>
+                   <li>• <strong>new</strong>: Mark as new (optional)</li>
+                   <li>• <strong>salePrice</strong>: Sale price (optional)</li>
+                 </ul>
               </div>
               
               <div className="flex space-x-4">

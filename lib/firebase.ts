@@ -494,7 +494,23 @@ export const importService = {
         // Create product slug
         const slug = row.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
-        // Check if product already exists
+        // Check if product already exists by SKU
+        if (!row.sku || row.sku.trim() === '') {
+          results.errors++;
+          results.errorsList.push(`Product "${row.name}" is missing required SKU`);
+          continue;
+        }
+
+        const skuQuery = query(collection(db, 'products'), where('sku', '==', row.sku.trim()), limit(1));
+        const skuSnapshot = await getDocs(skuQuery);
+
+        if (!skuSnapshot.empty) {
+          results.errors++;
+          results.errorsList.push(`Product with SKU "${row.sku}" already exists`);
+          continue;
+        }
+
+        // Check if product already exists by slug (additional check)
         const productQuery = query(collection(db, 'products'), where('slug', '==', slug), limit(1));
         const productSnapshot = await getDocs(productQuery);
 
@@ -509,6 +525,31 @@ export const importService = {
         const sizes = row.sizes.split(',').map((size: string) => size.trim()).filter(Boolean);
         const colors = row.colors.split(',').map((color: string) => color.trim()).filter(Boolean);
 
+        // Parse stock by size
+        let stockBySize: Record<string, number> = {};
+        let totalStock = 0;
+        
+        if (row.stockBySize) {
+          // New format: "36:10,37:15,38:20,39:15,40:10"
+          const stockEntries = row.stockBySize.split(',').map((entry: string) => entry.trim()).filter(Boolean);
+          stockBySize = {};
+          
+                     for (const entry of stockEntries) {
+             const [size, quantity] = entry.split(':').map((s: string) => s.trim());
+             if (size && quantity && !isNaN(parseInt(quantity))) {
+               stockBySize[size] = parseInt(quantity);
+               totalStock += parseInt(quantity);
+             }
+           }
+        } else if (row.stock) {
+          // Fallback to old format: distribute total stock evenly
+          const stockPerSize = Math.floor(parseInt(row.stock.toString()) / sizes.length);
+          sizes.forEach((size: string) => {
+            stockBySize[size] = stockPerSize;
+            totalStock += stockPerSize;
+          });
+        }
+
         // Create product
         const productData = {
           name: row.name,
@@ -519,7 +560,7 @@ export const importService = {
           saleStartDate: row.saleStartDate ? new Date(row.saleStartDate) : null,
           saleEndDate: row.saleEndDate ? new Date(row.saleEndDate) : null,
           sku: row.sku,
-          stock: parseInt(row.stock.toString()),
+          stock: totalStock,
           featured: row.featured || false,
           isNew: row.new || false,
           isActive: true,
@@ -535,7 +576,7 @@ export const importService = {
             colors.map((color: string) => ({
               size,
               color,
-              stock: Math.floor(parseInt(row.stock.toString()) / (sizes.length * colors.length)),
+              stock: stockBySize[size] || 0,
               sku: row.sku ? `${row.sku}-${size}-${color}` : undefined,
               createdAt: new Date(),
               updatedAt: new Date()

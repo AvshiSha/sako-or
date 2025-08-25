@@ -11,7 +11,7 @@ import {
   XMarkIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
-import QuickViewModal from "../../../components/QuickViewModal";
+import QuickViewModal from "@/app/components/QuickViewModal";
 import { productService, Product, categoryService, Category } from "@/lib/firebase";
 
 export default function CollectionSlugPage() {

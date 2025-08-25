@@ -15,6 +15,14 @@
     ],
     "rewrites": [
       {
+        "source": "/test-images",
+        "destination": "/test-images.html"
+      },
+      {
+        "source": "/home-static",
+        "destination": "/home-static.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

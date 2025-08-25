@@ -1,0 +1,97 @@
+const { initializeApp } = require('firebase/app');
+const { getStorage, ref, uploadBytes, getDownloadURL } = require('firebase/storage');
+const fs = require('fs');
+const path = require('path');
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyA6M1iGDwf4iesgujOxqqLlkLddigFonL4",
+  authDomain: "sako-or.firebaseapp.com",
+  projectId: "sako-or",
+  storageBucket: "sako-or.firebasestorage.app",
+  messagingSenderId: "492015346123",
+  appId: "1:492015346123:web:2da31215f1b7f3212f164e",
+  measurementId: "G-WK1B8GCMT0"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const storage = getStorage(app);
+
+// Function to upload a file to Firebase Storage
+async function uploadFile(filePath, storagePath) {
+  try {
+    const fileBuffer = fs.readFileSync(filePath);
+    const storageRef = ref(storage, storagePath);
+    const snapshot = await uploadBytes(storageRef, fileBuffer);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log(`✅ Uploaded: ${filePath} -> ${downloadURL}`);
+    return downloadURL;
+  } catch (error) {
+    console.error(`❌ Error uploading ${filePath}:`, error);
+    return null;
+  }
+}
+
+// Function to recursively get all files from a directory
+function getAllFiles(dirPath, arrayOfFiles = []) {
+  const files = fs.readdirSync(dirPath);
+
+  files.forEach(file => {
+    const fullPath = path.join(dirPath, file);
+    if (fs.statSync(fullPath).isDirectory()) {
+      arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
+    } else {
+      arrayOfFiles.push(fullPath);
+    }
+  });
+
+  return arrayOfFiles;
+}
+
+// Main upload function
+async function uploadAllImages() {
+  const imagesDir = path.join(__dirname, '../public/images');
+  const allFiles = getAllFiles(imagesDir);
+  
+  console.log('🚀 Starting image upload to Firebase Storage...');
+  console.log(`📁 Found ${allFiles.length} files to upload`);
+  
+  const uploadedUrls = {};
+  
+  for (const filePath of allFiles) {
+    // Skip README files
+    if (path.basename(filePath) === 'README.md') {
+      continue;
+    }
+    
+    // Create storage path (remove the public/images prefix)
+    const relativePath = path.relative(path.join(__dirname, '../public/images'), filePath);
+    const storagePath = `images/${relativePath.replace(/\\/g, '/')}`;
+    
+    // Upload file
+    const downloadURL = await uploadFile(filePath, storagePath);
+    
+    if (downloadURL) {
+      // Store the mapping from local path to Firebase URL
+      const localPath = `/images/${relativePath.replace(/\\/g, '/')}`;
+      uploadedUrls[localPath] = downloadURL;
+    }
+  }
+  
+  // Save the URL mappings to a JSON file
+  const mappingsPath = path.join(__dirname, '../image-url-mappings.json');
+  fs.writeFileSync(mappingsPath, JSON.stringify(uploadedUrls, null, 2));
+  
+  console.log('\n🎉 Upload complete!');
+  console.log(`📄 URL mappings saved to: ${mappingsPath}`);
+  console.log('\n📋 Uploaded URLs:');
+  Object.entries(uploadedUrls).forEach(([localPath, firebaseUrl]) => {
+    console.log(`${localPath} -> ${firebaseUrl}`);
+  });
+  
+  return uploadedUrls;
+}
+
+// Run the upload
+uploadAllImages().catch(console.error);

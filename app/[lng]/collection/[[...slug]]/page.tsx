@@ -14,6 +14,12 @@ import {
 import QuickViewModal from "@/app/components/QuickViewModal";
 import { productService, Product, categoryService, Category } from "@/lib/firebase";
 
+// This function is required for static export
+export async function generateStaticParams() {
+  // Return an empty array for now - this will be populated when you have actual categories
+  return []
+}
+
 export default function CollectionSlugPage() {
   const params = useParams();
   const router = useRouter();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { productService, Product } from '@/lib/firebase'
+import { productService } from '@/lib/firebase'
 import { z } from 'zod'
 
 // Validation schema for creating/updating products
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     const isActive = searchParams.get('active')
     const limit = parseInt(searchParams.get('limit') || '20')
 
-    const filters: any = {}
+    const filters: Record<string, unknown> = {}
     
     if (category) filters.category = category
     if (featured === 'true') filters.featured = true

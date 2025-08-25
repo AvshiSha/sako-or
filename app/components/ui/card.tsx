@@ -1,40 +1,54 @@
 import * as React from "react"
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: React.ReactNode
+}
 
-export function Card({ className, ...props }: CardProps) {
+export function Card({ className, children, ...props }: CardProps) {
   return (
-    <div
-      className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className}`}
-      {...props}
-    />
+          <div
+        className={`rounded-lg border bg-card text-card-foreground shadow-sm ${className}`}
+        {...props}
+      >
+        {children}
+      </div>
   )
 }
 
-interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: React.ReactNode
+}
 
-export function CardHeader({ className, ...props }: CardHeaderProps) {
+export function CardHeader({ className, children, ...props }: CardHeaderProps) {
   return (
-    <div
-      className={`flex flex-col space-y-1.5 p-6 ${className}`}
-      {...props}
-    />
+          <div
+        className={`flex flex-col space-y-1.5 p-6 ${className}`}
+        {...props}
+      >
+        {children}
+      </div>
   )
 }
 
-interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {}
+interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
+  children?: React.ReactNode
+}
 
-export function CardTitle({ className, ...props }: CardTitleProps) {
+export function CardTitle({ className, children, ...props }: CardTitleProps) {
   return (
-    <h3
-      className={`text-2xl font-semibold leading-none tracking-tight ${className}`}
-      {...props}
-    />
+          <h3
+        className={`text-2xl font-semibold leading-none tracking-tight ${className}`}
+        {...props}
+      >
+        {children}
+      </h3>
   )
 }
 
-interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {}
+interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  children?: React.ReactNode
+}
 
-export function CardContent({ className, ...props }: CardContentProps) {
-  return <div className={`p-6 pt-0 ${className}`} {...props} />
+export function CardContent({ className, children, ...props }: CardContentProps) {
+  return <div className={`p-6 pt-0 ${className}`} {...props}>{children}</div>
 } 

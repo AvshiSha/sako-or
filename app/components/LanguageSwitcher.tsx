@@ -1,7 +1,6 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
 import i18next from 'i18next'
 
 interface LanguageSwitcherProps {
@@ -11,7 +10,7 @@ interface LanguageSwitcherProps {
 export default function LanguageSwitcher({ currentLanguage }: LanguageSwitcherProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { i18n } = useTranslation()
+  // const { t } = useTranslation() // TODO: Use translation if needed
 
   const handleLanguageChange = async (lng: string) => {
     // Get the current path without the language prefix

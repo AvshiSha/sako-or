@@ -6,25 +6,26 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
+import { getImageUrl, getCollectionImageUrl, getProductImageUrl } from '@/lib/image-urls'
 
 const collections = [
   {
     name: 'Luxury Heels',
     description: 'Elevate your style with our curated collection of designer heels',
     href: '/collection/high-heels',
-    imageSrc: '/images/collections/luxury-heels.jpg',
+    imageSrc: getCollectionImageUrl('Luxury Heels'),
   },
   {
     name: 'Designer Boots',
     description: 'Sophisticated boots for the modern fashion connoisseur',
     href: '/collection/boots',
-    imageSrc: '/images/collections/designer-boots.jpg',
+    imageSrc: getCollectionImageUrl('Designer Boots'),
   },
   {
     name: 'Classic Oxford',
     description: 'Timeless elegance meets contemporary design',
     href: '/collection/oxford',
-    imageSrc: '/images/collections/classic-oxford.jpg',
+    imageSrc: getCollectionImageUrl('Classic Oxford'),
   },
 ]
 
@@ -33,7 +34,7 @@ const featuredProducts = [
     id: 1,
     name: 'Italian Leather Stilettos',
     href: '/collection/high-heels/italian-stilettos',
-    imageSrc: '/images/products/italian-leather-stilettos.svg',
+    imageSrc: getProductImageUrl('Italian Leather Stilettos'),
     imageAlt: 'Handcrafted Italian leather stilettos',
     price: '$395',
     description: 'Handcrafted in Italy with premium leather',
@@ -42,7 +43,7 @@ const featuredProducts = [
     id: 2,
     name: 'Crystal Embellished Pumps',
     href: '/collection/high-heels/crystal-pumps',
-    imageSrc: '/images/products/crystal-embellished-pumps.svg',
+    imageSrc: getProductImageUrl('Crystal Embellished Pumps'),
     imageAlt: 'Elegant pumps with crystal embellishments',
     price: '$450',
     description: 'Adorned with Swarovski crystals',
@@ -51,7 +52,7 @@ const featuredProducts = [
     id: 3,
     name: 'Suede Chelsea Boots',
     href: '/collection/boots/suede-chelsea',
-    imageSrc: '/images/products/suede-chelsea-boots.svg',
+    imageSrc: getProductImageUrl('Suede Chelsea Boots'),
     imageAlt: 'Premium suede chelsea boots',
     price: '$375',
     description: 'Luxurious suede with artisanal craftsmanship',
@@ -70,7 +71,7 @@ export default function Home() {
       <div className="relative h-screen">
         <div className="absolute inset-0">
           <Image
-            src="/images/hero/main-hero.jpg"
+            src={getImageUrl("/images/hero/main-hero.jpg")}
             alt="Luxury footwear collection"
             fill
             className="object-cover"

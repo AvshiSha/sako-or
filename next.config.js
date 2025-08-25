@@ -4,7 +4,15 @@ const nextConfig = {
   images: {
     domains: [
       'firebasestorage.googleapis.com',
-      // add any other domains you use for images
+      'firebasestorage.googleapis.com',
+    ],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+        port: '',
+        pathname: '/v0/b/sako-or.firebasestorage.app/o/**',
+      },
     ],
   },
 }

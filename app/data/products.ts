@@ -1,3 +1,5 @@
+import { getImageUrl } from '@/lib/image-urls';
+
 export interface Product {
   id: string;
   name: string;
@@ -26,8 +28,8 @@ export const products: Product[] = [
     category: "women",
     subcategory: "boots",
     images: [
-      "/images/products/americas-cup-1.jpg",
-      "/images/products/americas-cup-2.jpg"
+      getImageUrl("/images/products/americas-cup-1.jpg"),
+      getImageUrl("/images/products/americas-cup-2.jpg")
     ],
     sizes: ["36", "37", "38", "39", "40"],
     colors: ["Black", "Silver", "Gold"],
@@ -42,8 +44,8 @@ export const products: Product[] = [
     category: "women",
     subcategory: "shoes",
     images: [
-      "/images/products/italian-leather-stilettos.svg",
-      "/images/products/italian-leather-stilettos.svg"
+      getImageUrl("/images/products/italian-leather-stilettos.svg"),
+      getImageUrl("/images/products/italian-leather-stilettos.svg")
     ],
     sizes: ["36", "37", "38", "39", "40"],
     colors: ["Nude", "Red", "Black"],
@@ -57,8 +59,8 @@ export const products: Product[] = [
     category: "women",
     subcategory: "shoes",
     images: [
-      "/images/products/suede-chelsea-boots.svg",
-      "/images/products/suede-chelsea-boots.svg"
+      getImageUrl("/images/products/suede-chelsea-boots.svg"),
+      getImageUrl("/images/products/suede-chelsea-boots.svg")
     ],
     sizes: ["36", "37", "38", "39", "40"],
     colors: ["Tan", "Navy", "Black"],

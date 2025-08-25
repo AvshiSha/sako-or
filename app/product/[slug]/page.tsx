@@ -6,11 +6,7 @@ import { useParams } from 'next/navigation'
 import Accordion from '@/app/components/Accordion'
 import { productService } from '@/lib/firebase'
 
-// This function is required for static export
-export async function generateStaticParams() {
-  // Return an empty array for now - this will be populated when you have actual products
-  return []
-}
+
 
 export default function ProductPage() {
   const params = useParams()

@@ -96,7 +96,7 @@ export default function NewProductPage() {
     fetchCategories()
   }, [])
 
-  const handleInputChange = (field: keyof ProductFormData, value: any) => {
+  const handleInputChange = (field: keyof ProductFormData, value: unknown) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -174,7 +174,7 @@ export default function NewProductPage() {
         
         console.log(`Image ${index + 1} uploaded successfully`)
         return url;
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`Error uploading image ${index + 1}:`, error);
         setImageFiles(prev => prev.map((img, i) => 
           i === index ? { ...img, uploading: false } : img
@@ -333,14 +333,10 @@ export default function NewProductPage() {
       setTimeout(() => {
         router.push('/admin/products')
       }, 2000)
-    } catch (error: any) {
+          } catch (error: unknown) {
       console.error('Error adding product:', error)
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        code: error.code
-      })
-      alert(`Error adding product: ${error.message || 'Please try again.'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      alert(`Error adding product: ${errorMessage}`)
     } finally {
       console.log('Setting isSubmitting to false')
       setIsSubmitting(false)

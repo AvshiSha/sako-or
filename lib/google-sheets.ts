@@ -105,7 +105,7 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
       }
 
       // Create product
-      const product = await prisma.product.create({
+      await prisma.product.create({
         data: {
           name: row.name,
           slug,

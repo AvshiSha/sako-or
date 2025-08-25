@@ -82,8 +82,8 @@ export default function Home() {
               Sako Or 
             </h1>
             <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10">
-              Discover our curated collection of premium footwear, sourced from Europe's finest artisans
-              and China's most prestigious manufacturers.
+              Discover our curated collection of premium footwear, sourced from Europe&apos;s finest artisans
+              and China&apos;s most prestigious manufacturers.
             </p>
             <Link
               href="/collection"

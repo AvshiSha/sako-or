@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { Menu, X, ChevronDown } from 'lucide-react'
 import LanguageSwitcher from './LanguageSwitcher'
-import { useParams, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 const womenCategories = {
   shoes: [
@@ -27,7 +27,7 @@ export default function Navigation() {
   const [isWomenMenuOpen, setIsWomenMenuOpen] = useState(false)
   const { t, i18n } = useTranslation()
   const pathname = usePathname()
-  const params = useParams()
+  // const params = useParams()
   const lng = pathname.startsWith('/he') ? 'he' : 'en'
   const isRTL = lng === 'he'
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)

@@ -19,12 +19,12 @@ const getLanguageFromPath = () => {
 }
 
 // Function to get base URL
-const getBaseUrl = () => {
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-  return '';
-}
+// const getBaseUrl = () => {
+//   if (typeof window !== 'undefined') {
+//     return window.location.origin;
+//   }
+//   return '';
+// }
 
 // Initialize i18next
 i18n

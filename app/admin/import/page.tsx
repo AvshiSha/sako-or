@@ -9,6 +9,24 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline'
 
+interface ImportProduct {
+  name: string
+  description: string
+  price: number
+  category: string
+  subcategory?: string
+  images: string
+  sizes: string
+  colors: string
+  stockBySize: string
+  sku: string
+  featured?: boolean
+  new?: boolean
+  salePrice?: number | null
+  saleStartDate?: string | null
+  saleEndDate?: string | null
+}
+
 export default function ImportPage() {
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
@@ -40,7 +58,7 @@ export default function ImportPage() {
        const validationErrors: string[] = [];
        const skuSet = new Set<string>();
        
-       sheetData.forEach((product: any, index: number) => {
+               sheetData.forEach((product: ImportProduct, index: number) => {
          const rowNumber = index + 1;
          
          // Check required fields
@@ -65,7 +83,7 @@ export default function ImportPage() {
            validationErrors.push(`Row ${rowNumber}: Product description is required`);
          }
          
-         if (!product.price || isNaN(parseFloat(product.price))) {
+                   if (!product.price || isNaN(parseFloat(product.price.toString()))) {
            validationErrors.push(`Row ${rowNumber}: Valid product price is required`);
          }
          
@@ -214,7 +232,7 @@ export default function ImportPage() {
                 </p>
                                  <div className="mt-3 p-3 bg-gray-50 rounded-md">
                    <p className="text-xs text-gray-600 mb-2"><strong>Example stockBySize format:</strong></p>
-                   <p className="text-xs text-gray-700 font-mono">"36:10,37:15,38:20,39:15,40:10"</p>
+                   <p className="text-xs text-gray-700 font-mono">&quot;36:10,37:15,38:20,39:15,40:10&quot;</p>
                    <p className="text-xs text-gray-600 mt-1">This means: 10 units in size 36, 15 in size 37, etc.</p>
                  </div>
                  <div className="mt-3 p-3 bg-blue-50 rounded-md">
@@ -231,7 +249,7 @@ export default function ImportPage() {
                    <li>• <strong>images</strong>: Comma-separated image URLs (required)</li>
                    <li>• <strong>sizes</strong>: Comma-separated sizes (required)</li>
                    <li>• <strong>colors</strong>: Comma-separated colors (required)</li>
-                   <li>• <strong>stockBySize</strong>: Size-specific stock quantities in format "size:quantity,size:quantity" (required)</li>
+                   <li>• <strong>stockBySize</strong>: Size-specific stock quantities in format &quot;size:quantity,size:quantity&quot; (required)</li>
                    <li>• <strong>sku</strong>: Stock keeping unit (required) - must be unique</li>
                    <li>• <strong>featured</strong>: Mark as featured (optional)</li>
                    <li>• <strong>new</strong>: Mark as new (optional)</li>

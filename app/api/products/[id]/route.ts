@@ -4,10 +4,11 @@ import { productService } from '@/lib/firebase'
 // GET /api/products/[id] - Get specific product
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
-    const product = await productService.getProductById(params.id)
+    const product = await productService.getProductById(id)
     
     if (!product) {
       return NextResponse.json(
@@ -29,13 +30,14 @@ export async function GET(
 // PUT /api/products/[id] - Update product
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     const body = await request.json()
     
     // Validate that product exists
-    const existingProduct = await productService.getProductById(params.id)
+    const existingProduct = await productService.getProductById(id)
     if (!existingProduct) {
       return NextResponse.json(
         { error: 'Product not found' },
@@ -44,13 +46,13 @@ export async function PUT(
     }
 
     // Update product
-    await productService.updateProduct(params.id, {
+    await productService.updateProduct(id, {
       ...body,
       updatedAt: new Date()
     })
 
     // Get updated product
-    const updatedProduct = await productService.getProductById(params.id)
+    const updatedProduct = await productService.getProductById(id)
 
     return NextResponse.json(updatedProduct)
   } catch (error) {
@@ -65,11 +67,12 @@ export async function PUT(
 // DELETE /api/products/[id] - Delete product
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   try {
     // Validate that product exists
-    const existingProduct = await productService.getProductById(params.id)
+    const existingProduct = await productService.getProductById(id)
     if (!existingProduct) {
       return NextResponse.json(
         { error: 'Product not found' },
@@ -78,7 +81,7 @@ export async function DELETE(
     }
 
     // Delete product
-    await productService.deleteProduct(params.id)
+    await productService.deleteProduct(id)
 
     return NextResponse.json({ message: 'Product deleted successfully' })
   } catch (error) {

@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import Accordion from '@/app/components/Accordion'
-import ProductCarousel from '@/app/components/ProductCarousel'
 import { productService } from '@/lib/firebase'
+
+// This function is required for static export
+export async function generateStaticParams() {
+  // Return an empty array for now - this will be populated when you have actual products
+  return []
+}
 
 export default function ProductPage() {
   const params = useParams()
   const slug = typeof params.slug === 'string' ? params.slug : Array.isArray(params.slug) ? params.slug[0] : ''
-  const [product, setProduct] = useState<any>(null)
+  const [product, setProduct] = useState<any>(null) // TODO: Add proper Product type
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedColor, setSelectedColor] = useState<string | null>(null)
@@ -22,7 +24,7 @@ export default function ProductPage() {
   const [isZoomed, setIsZoomed] = useState(false)
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 })
 
-  const lng = params?.lng || 'en'
+  // const lng = params?.lng || 'en'
 
   useEffect(() => {
     async function fetchProduct() {
@@ -33,7 +35,7 @@ export default function ProductPage() {
         setProduct(prod)
         setSelectedColor(prod?.colors?.[0] || null)
         setSelectedSize(prod?.sizes?.[0] || null)
-      } catch (err) {
+      } catch {
         setError('Product not found')
       } finally {
         setLoading(false)
@@ -67,7 +69,7 @@ export default function ProductPage() {
           <div className="lg:w-1/2">
             <div className="flex flex-col gap-4">
               <div className="flex gap-2 mb-4">
-                {product.images?.map((img: any, idx: number) => (
+                {product.images?.map((img: any, idx: number) => ( // TODO: Add proper ProductImage type
                   <button key={idx} onClick={() => handleImageClick(idx)} className={`border rounded-md overflow-hidden w-20 h-20 ${currentImageIndex === idx ? 'border-indigo-600' : 'border-gray-200'}`}>
                     <Image src={img.url} alt={img.alt || product.name} width={80} height={80} className="object-cover w-full h-full" />
                     </button>
@@ -117,7 +119,7 @@ export default function ProductPage() {
                 <div>
                   <div className="font-medium text-gray-800 mb-1">Available Sizes:</div>
                   <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((size: any, idx: number) => (
+                    {product.sizes.map((size: any, idx: number) => ( // TODO: Add proper type
                       <button key={idx} onClick={() => setSelectedSize(size)} className={`px-3 py-1 rounded border ${selectedSize === size ? 'bg-indigo-600 text-white' : 'bg-white text-gray-900 border-gray-300'}`}>{size}</button>
                     ))}
                   </div>
@@ -128,7 +130,7 @@ export default function ProductPage() {
                 <div>
                   <div className="font-medium text-gray-800 mb-1">Available Colors:</div>
                   <div className="flex flex-wrap gap-2">
-                    {product.colors.map((color: any, idx: number) => (
+                    {product.colors.map((color: any, idx: number) => ( // TODO: Add proper type
                       <button key={idx} onClick={() => setSelectedColor(color)} className={`px-3 py-1 rounded border ${selectedColor === color ? 'bg-indigo-600 text-white' : 'bg-white text-gray-900 border-gray-300'}`}>{color}</button>
                   ))}
                   </div>

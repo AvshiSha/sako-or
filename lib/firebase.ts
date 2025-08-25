@@ -18,7 +18,17 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+
+// Initialize analytics only on client side
+let analytics: any = null;
+if (typeof window !== 'undefined') {
+  try {
+    analytics = getAnalytics(app);
+  } catch (error) {
+    console.warn('Analytics initialization failed:', error);
+  }
+}
+
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
@@ -105,7 +115,7 @@ export const productService = {
   }): Promise<Product[]> {
     try {
       let q: Query = collection(db, 'products');
-      const constraints: any[] = [];
+      const constraints: any[] = []; // TODO: Fix type
       
       if (filters?.category) {
         constraints.push(where('categoryId', '==', filters.category));
@@ -262,7 +272,7 @@ export const productService = {
     isActive?: boolean;
   }) {
     let q: Query = collection(db, 'products');
-    const constraints: any[] = [];
+    const constraints: any[] = []; // TODO: Fix type
     
     if (filters?.category) {
       constraints.push(where('categoryId', '==', filters.category));
@@ -462,7 +472,7 @@ export const storageService = {
 
 // Google Sheets Import Service
 export const importService = {
-  async importFromGoogleSheets(sheetData: any[]): Promise<{ success: number; errors: number; errorsList: string[] }> {
+  async importFromGoogleSheets(sheetData: any[]): Promise<{ success: number; errors: number; errorsList: string[] }> { // TODO: Add proper type
     const results = {
       success: 0,
       errors: 0,

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import Image from 'next/image'
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -14,7 +15,7 @@ import {
 import { productService, Product } from '@/lib/firebase'
 import SuccessMessage from '@/app/components/SuccessMessage'
 
-export default function ProductsPage() {
+function ProductsPageContent() {
   const searchParams = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -208,12 +209,14 @@ export default function ProductsPage() {
                       <tr key={product.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="flex-shrink-0 h-10 w-10">
+                            <div className="flex-shrink-0 h-10 w-10 relative">
                               {product.images && product.images.length > 0 ? (
-                                <img
-                                  className="h-10 w-10 rounded-lg object-cover"
+                                <Image
+                                  className="rounded-lg object-cover"
                                   src={product.images.find(img => img.isPrimary)?.url || product.images[0].url}
                                   alt={product.name}
+                                  fill
+                                  sizes="40px"
                                 />
                               ) : (
                                 <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center">
@@ -311,5 +314,20 @@ export default function ProductsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <ProductsPageContent />
+    </Suspense>
   )
 }

@@ -25,7 +25,7 @@ const womenCategories = {
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isWomenMenuOpen, setIsWomenMenuOpen] = useState(false)
-  const { t, i18n } = useTranslation()
+  const { t, i18n } = useTranslation('common')
   const pathname = usePathname()
   // const params = useParams()
   const lng = pathname.startsWith('/he') ? 'he' : 'en'

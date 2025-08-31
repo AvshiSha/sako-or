@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { productService, categoryService, Category, storage } from '@/lib/firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import SuccessMessage from '@/app/components/SuccessMessage'
+import Image from 'next/image'
 
 interface ProductFormData {
   brand: string;
@@ -518,10 +519,11 @@ export default function NewProductPage() {
                     {imageFiles.map((imageFile, index) => (
                       <div key={index} className="relative group">
                         <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                          <img
+                          <Image
                             src={imageFile.preview}
                             alt={`Preview ${index + 1}`}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
                           />
                           {imageFile.uploading && (
                             <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">

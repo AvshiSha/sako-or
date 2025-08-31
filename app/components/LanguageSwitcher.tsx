@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, usePathname } from 'next/navigation'
-import i18next from 'i18next'
+import i18next from '../i18n'
 
 interface LanguageSwitcherProps {
   currentLanguage: string;

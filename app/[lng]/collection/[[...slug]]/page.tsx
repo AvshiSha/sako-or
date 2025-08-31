@@ -14,8 +14,6 @@ import {
 import QuickViewModal from "@/app/components/QuickViewModal";
 import { productService, Product, categoryService, Category } from "@/lib/firebase";
 
-
-
 export default function CollectionSlugPage() {
   const params = useParams();
   const router = useRouter();

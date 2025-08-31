@@ -1,0 +1,90 @@
+{
+  "navigation": {
+    "home": "Home",
+    "newCollection": "New Collection",
+    "women": "Women",
+    "men": "Men",
+    "about": "About",
+    "contact": "Contact",
+    "shoes": "Shoes",
+    "accessories": "Accessories",
+    "subCategories": {
+      "highHeels": "High Heels",
+      "boots": "Boots",
+      "oxford": "Oxford",
+      "sneakers": "Sneakers",
+      "sandals": "Sandals",
+      "slippers": "Slippers",
+      "coats": "Coats",
+      "bags": "Bags"
+    }
+  },
+  "footer": {
+    "brand": "SAKO-OR",
+    "description": "Crafting timeless elegance through exceptional footwear",
+    "navigation": "Navigation",
+    "newsletter": "Stay Updated",
+    "subscribe": "Subscribe",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "copyright": "© 2025 SAKO-OR. All rights reserved."
+  },
+  "about": {
+    "title": "About Us",
+    "description": "Welcome to SAKO-OR, where fashion meets comfort. We are dedicated to providing high-quality footwear and accessories that combine style, durability, and comfort.",
+    "mission": {
+      "title": "Our Mission",
+      "description": "To create exceptional footwear and accessories that enhance our customers' lives through superior quality, innovative design, and sustainable practices."
+    },
+    "vision": {
+      "title": "Our Vision",
+      "description": "To be the leading brand in the fashion industry, known for our commitment to quality, customer satisfaction, and environmental responsibility."
+    },
+    "heritage": "Our Heritage",
+    "heritageText": "Founded with a passion for craftsmanship and an eye for timeless design, SAKO-OR has been creating exceptional footwear since our inception. Our journey began with a simple belief: that every step should be taken in comfort and style.",
+    "craftsmanship": "Craftsmanship",
+    "craftsmanshipText": "Each pair of SAKO-OR shoes is a testament to our commitment to quality and attention to detail. Our skilled artisans combine time-honored techniques with contemporary design to create footwear that is both beautiful and functional.",
+    "values": "Our Values",
+    "quality": "Quality",
+    "qualityText": "We never compromise on the quality of our materials or craftsmanship.",
+    "sustainability": "Sustainability",
+    "sustainabilityText": "We are committed to responsible sourcing and sustainable practices.",
+    "innovation": "Innovation",
+    "innovationText": "We continuously evolve while staying true to our heritage.",
+    "team": "Meet Our Team",
+    "teamText": "Behind every SAKO-OR creation is a team of passionate individuals dedicated to excellence in design and craftsmanship."
+  },
+  "contact": {
+    "title": "Contact Us",
+    "subtitle": "We'd love to hear from you",
+    "getInTouch": "Get in Touch",
+    "getInTouchText": "Have questions about our products or services? We're here to help. Reach out to us through any of the channels below.",
+    "location": "Location",
+    "email": "Email",
+    "phone": "Phone",
+    "businessHours": "Business Hours",
+    "sendMessage": "Send Us a Message",
+    "name": "Name",
+    "namePlaceholder": "Your name",
+    "emailPlaceholder": "your@email.com",
+    "subject": "Subject",
+    "subjectPlaceholder": "Subject",
+    "message": "Message",
+    "messagePlaceholder": "Your message",
+    "sendButton": "Send Message"
+  },
+  "home": {
+    "brandName": "Sako Or",
+    "heroDescription": "Discover our curated collection of premium footwear, sourced from Europe's finest artisans and China's most prestigious manufacturers.",
+    "exploreCollections": "Explore Collections",
+    "collectionsTitle": "Curated Collections",
+    "collectionsDescription": "Each piece in our collection represents the perfect harmony of design, comfort, and craftsmanship",
+    "viewCollection": "View Collection",
+    "featuredTitle": "Featured Pieces",
+    "featuredDescription": "Discover our most coveted designs, each telling a unique story of luxury and sophistication",
+    "newsletterTitle": "Join Our World",
+    "newsletterDescription": "Subscribe to receive exclusive updates, early access to new collections, and personalized style recommendations.",
+    "emailPlaceholder": "Enter your email",
+    "subscribeButton": "Subscribe"
+  }
+} 

@@ -15,16 +15,61 @@
     ],
     "rewrites": [
       {
-        "source": "/test-images",
-        "destination": "/test-images.html"
+        "source": "/assets/**",
+        "destination": "/public/assets/**"
       },
       {
-        "source": "/home-static",
-        "destination": "/home-static.html"
+        "source": "/en/**",
+        "destination": "/en.html"
+      },
+      {
+        "source": "/he/**",
+        "destination": "/he.html"
+      },
+      {
+        "source": "/about/**",
+        "destination": "/about.html"
+      },
+      {
+        "source": "/contact/**",
+        "destination": "/contact.html"
+      },
+      {
+        "source": "/admin/**",
+        "destination": "/admin.html"
       },
       {
         "source": "**",
         "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/static/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/public/assets/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/assets/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
       }
     ]
   }

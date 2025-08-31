@@ -1,28 +1,21 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
+import Backend from 'i18next-http-backend'
 import { languages, defaultLanguage, fallbackLanguage } from '../i18n/settings'
 
-// Import translations directly
-import enTranslations from '../public/locales/en/common.json'
-import heTranslations from '../public/locales/he/common.json'
-
-// Initialize i18next with simplified configuration
+// Initialize i18next with HTTP backend to load translations at runtime
 i18n
+  .use(Backend)
   .use(initReactI18next)
   .init({
-    debug: false,
+    debug: true, // Enable debug temporarily to see what's happening
     lng: defaultLanguage, // Start with default language
     fallbackLng: fallbackLanguage,
     supportedLngs: languages,
     ns: ['common'],
     defaultNS: 'common',
-    resources: {
-      en: {
-        common: enTranslations
-      },
-      he: {
-        common: heTranslations
-      }
+    backend: {
+      loadPath: '/assets/i18n/{{lng}}.json', // Remove /public prefix
     },
     react: {
       useSuspense: false,
@@ -35,7 +28,7 @@ i18n
     interpolation: {
       escapeValue: false
     },
-    initImmediate: true,
+    initImmediate: true, // Enable immediate initialization
     load: 'languageOnly',
     saveMissing: false,
     missingKeyHandler: (lng, ns, key) => {

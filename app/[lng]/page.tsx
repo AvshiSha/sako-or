@@ -1,11 +1,6 @@
-'use client'
-
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
-import { useParams } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl } from '@/lib/image-urls'
 
 const collections = [
@@ -59,11 +54,44 @@ const featuredProducts = [
   },
 ]
 
-export default function Home() {
-  const params = useParams()
-  const { t } = useTranslation('common')
-  const lng = params?.lng || 'en'
+// Hardcoded translations for build-time rendering
+const translations = {
+  en: {
+    brandName: 'Sako Or',
+    heroDescription: 'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
+    exploreCollections: 'Explore Collections',
+    collectionsTitle: 'Curated Collections',
+    collectionsDescription: 'Each piece in our collection represents the perfect harmony of design, comfort, and craftsmanship',
+    viewCollection: 'View Collection',
+    featuredTitle: 'Featured Pieces',
+    featuredDescription: 'Discover our most coveted designs, each telling a unique story of luxury and sophistication',
+    newsletterTitle: 'Join Our World',
+    newsletterDescription: 'Subscribe to receive exclusive updates, early access to new collections, and personalized style recommendations.',
+    emailPlaceholder: 'Enter your email',
+    subscribeButton: 'Subscribe'
+  },
+  he: {
+    brandName: 'סאקו אור',
+    heroDescription: 'גלה את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין.',
+    exploreCollections: 'חקור אוספים',
+    collectionsTitle: 'אוספים מוקפדים',
+    collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
+    viewCollection: 'צפה באוסף',
+    featuredTitle: 'יצירות מובילות',
+    featuredDescription: 'גלה את העיצובים הנחשקים ביותר שלנו, כל אחד מספר סיפור ייחודי של יוקרה ותחכום',
+    newsletterTitle: 'הצטרף לעולמנו',
+    newsletterDescription: 'הירשם לקבלת עדכונים בלעדיים, גישה מוקדמת לאוספים חדשים והמלצות סגנון מותאמות אישית.',
+    emailPlaceholder: 'הזן את האימייל שלך',
+    subscribeButton: 'הירשם'
+  }
+}
+
+export default async function Home({ params }: { params: Promise<{ lng: string }> }) {
+  const { lng } = await params
   const isRTL = lng === 'he'
+  
+  // Get translations for current language
+  const t = translations[lng as keyof typeof translations]
 
   return (
     <div className={`bg-white ${isRTL ? 'text-right' : 'text-left'}`}>
@@ -80,43 +108,36 @@ export default function Home() {
           <div className="absolute inset-0 bg-neutral-900 opacity-60" />
         </div>
         <div className="relative h-full flex items-center justify-center text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8"
-          >
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-5xl md:text-7xl font-light text-white mb-6 tracking-tight">
-              {t('home.brandName')}
+              {t.brandName}
             </h1>
             <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10">
-              {t('home.heroDescription')}
+              {t.heroDescription}
             </p>
             <Link
               href={`/${lng}/collection`}
               className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
             >
-              {t('home.exploreCollections')}
+              {t.exploreCollections}
             </Link>
-          </motion.div>
+          </div>
         </div>
       </div>
 
       {/* Collections Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-light text-gray-900 mb-4">{t('home.collectionsTitle')}</h2>
+          <h2 className="text-3xl font-light text-gray-900 mb-4">{t.collectionsTitle}</h2>
           <p className="text-gray-500 max-w-2xl mx-auto">
-            {t('home.collectionsDescription')}
+            {t.collectionsDescription}
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {collections.map((collection) => (
-            <motion.div
+            <div
               key={collection.name}
-              whileHover={{ y: -10 }}
-              transition={{ duration: 0.3 }}
               className="group relative h-96"
             >
               <Image
@@ -135,11 +156,11 @@ export default function Home() {
                     href={`/${lng}${collection.href}`}
                     className="text-white text-sm tracking-wider hover:underline"
                   >
-                    {t('home.viewCollection')} →
+                    {t.viewCollection} →
                   </Link>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>
@@ -148,18 +169,16 @@ export default function Home() {
       <div className="bg-neutral-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-light text-gray-900 mb-4">{t('home.featuredTitle')}</h2>
+            <h2 className="text-3xl font-light text-gray-900 mb-4">{t.featuredTitle}</h2>
             <p className="text-gray-500 max-w-2xl mx-auto">
-              {t('home.featuredDescription')}
+              {t.featuredDescription}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {featuredProducts.map((product) => (
-              <motion.div
+              <div
                 key={product.id}
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.3 }}
                 className="group"
               >
                 <div className="relative aspect-square bg-gray-100 mb-4">
@@ -177,7 +196,7 @@ export default function Home() {
                 </h3>
                 <p className="text-sm text-gray-500 mb-2">{product.description}</p>
                 <p className="text-lg text-gray-900">{product.price}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
@@ -187,21 +206,21 @@ export default function Home() {
       <div className="bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="max-w-xl mx-auto text-center">
-            <h2 className="text-3xl font-light text-gray-900 mb-4">{t('home.newsletterTitle')}</h2>
+            <h2 className="text-3xl font-light text-gray-900 mb-4">{t.newsletterTitle}</h2>
             <p className="text-gray-500 mb-8">
-              {t('home.newsletterDescription')}
+              {t.newsletterDescription}
             </p>
             <form className="flex gap-4 max-w-md mx-auto">
               <input
                 type="email"
-                placeholder={t('home.emailPlaceholder')}
+                placeholder={t.emailPlaceholder}
                 className="flex-1 px-4 py-3 border border-gray-300 focus:border-gray-900 focus:ring-0"
               />
               <button
                 type="submit"
                 className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors duration-300"
               >
-                {t('home.subscribeButton')}
+                {t.subscribeButton}
               </button>
             </form>
           </div>

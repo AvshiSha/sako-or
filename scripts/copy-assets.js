@@ -1,18 +1,23 @@
 const fs = require('fs');
 const path = require('path');
 
-// Copy assets folder from public to build/public/assets
-const sourceDir = path.join(__dirname, '../public/assets');
-const targetDir1 = path.join(__dirname, '../build/public/assets');
-const targetDir2 = path.join(__dirname, '../build/assets');
+// Copy the entire app folder to build/app
+const appSourceDir = path.join(__dirname, '../app');
+const appTargetDir = path.join(__dirname, '../build/app');
 
-// Create target directories if they don't exist
-if (!fs.existsSync(targetDir1)) {
-  fs.mkdirSync(targetDir1, { recursive: true });
-}
-if (!fs.existsSync(targetDir2)) {
-  fs.mkdirSync(targetDir2, { recursive: true });
-}
+// Copy public folder to build/public
+const publicSourceDir = path.join(__dirname, '../public');
+const publicTargetDir = path.join(__dirname, '../build/public');
+
+// Copy other important folders and files
+const additionalFiles = [
+  { source: '../i18n', target: '../build/i18n' },
+  { source: '../lib', target: '../build/lib' },
+  { source: '../components', target: '../build/components' },
+  { source: '../data', target: '../build/data' },
+  { source: '../globals.css', target: '../build/globals.css' },
+  { source: '../i18n.ts', target: '../build/i18n.ts' }
+];
 
 // Copy files recursively
 function copyRecursive(src, dest) {
@@ -30,11 +35,39 @@ function copyRecursive(src, dest) {
 }
 
 try {
-  // Copy to both locations
-  copyRecursive(sourceDir, targetDir1);
-  copyRecursive(sourceDir, targetDir2);
-  console.log('✅ Assets copied successfully to build/public/assets/ and build/assets/');
+  // Copy app folder
+  if (fs.existsSync(appSourceDir)) {
+    copyRecursive(appSourceDir, appTargetDir);
+    console.log('✅ App folder copied successfully to build/app/');
+  }
+
+  // Copy public folder
+  if (fs.existsSync(publicSourceDir)) {
+    copyRecursive(publicSourceDir, publicTargetDir);
+    console.log('✅ Public folder copied successfully to build/public/');
+  }
+
+  // Copy additional files and folders
+  additionalFiles.forEach(({ source, target }) => {
+    const sourcePath = path.join(__dirname, source);
+    const targetPath = path.join(__dirname, target);
+    
+    if (fs.existsSync(sourcePath)) {
+      if (fs.statSync(sourcePath).isDirectory()) {
+        copyRecursive(sourcePath, targetPath);
+      } else {
+        const targetDir = path.dirname(targetPath);
+        if (!fs.existsSync(targetDir)) {
+          fs.mkdirSync(targetDir, { recursive: true });
+        }
+        fs.copyFileSync(sourcePath, targetPath);
+      }
+      console.log(`✅ ${source} copied successfully to ${target}`);
+    }
+  });
+
+  console.log('✅ All app files copied successfully to build/');
 } catch (error) {
-  console.error('❌ Error copying assets:', error);
+  console.error('❌ Error copying files:', error);
   process.exit(1);
 }

@@ -1,42 +1,29 @@
+
 {
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "storage": {
-    "rules": "storage.rules"
-  },
   "hosting": {
     "public": "build",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/*.log"
     ],
     "rewrites": [
+      {
+        "source": "/favicon.ico",
+        "destination": "/favicon.ico"
+      },
       {
         "source": "/assets/**",
         "destination": "/public/assets/**"
       },
       {
-        "source": "/en/**",
-        "destination": "/en.html"
+        "source": "/images/**",
+        "destination": "/public/images/**"
       },
       {
-        "source": "/he/**",
-        "destination": "/he.html"
-      },
-      {
-        "source": "/about/**",
-        "destination": "/about.html"
-      },
-      {
-        "source": "/contact/**",
-        "destination": "/contact.html"
-      },
-      {
-        "source": "/admin/**",
-        "destination": "/admin.html"
+        "source": "/locales/**",
+        "destination": "/public/locales/**"
       },
       {
         "source": "**",
@@ -45,7 +32,16 @@
     ],
     "headers": [
       {
-        "source": "/static/**",
+        "source": "/_next/static/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/_next/image/**",
         "headers": [
           {
             "key": "Cache-Control",
@@ -63,14 +59,40 @@
         ]
       },
       {
-        "source": "/assets/**",
+        "source": "/public/images/**",
         "headers": [
           {
             "key": "Cache-Control",
             "value": "public, max-age=31536000, immutable"
           }
         ]
+      },
+      {
+        "source": "/public/locales/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=0, must-revalidate"
+          }
+        ]
       }
     ]
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }
+  

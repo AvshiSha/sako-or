@@ -3,19 +3,19 @@ import { initReactI18next } from 'react-i18next'
 import Backend from 'i18next-http-backend'
 import { languages, defaultLanguage, fallbackLanguage } from '../i18n/settings'
 
-// Initialize i18next with HTTP backend to load translations at runtime
+// Initialize i18next with HTTP backend only
 i18n
   .use(Backend)
   .use(initReactI18next)
   .init({
-    debug: true, // Enable debug temporarily to see what's happening
+    debug: false, // Disable debug in production
     lng: defaultLanguage, // Start with default language
     fallbackLng: fallbackLanguage,
     supportedLngs: languages,
     ns: ['common'],
     defaultNS: 'common',
     backend: {
-      loadPath: '/assets/i18n/{{lng}}.json', // Remove /public prefix
+      loadPath: '/public/assets/i18n/{{lng}}.json', // Use the correct path
     },
     react: {
       useSuspense: false,

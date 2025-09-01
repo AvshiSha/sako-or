@@ -182,7 +182,7 @@ export default function CollectionSlugPage() {
       <nav className="bg-gray-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center space-x-2 py-4">
-            <Link href="/" className="text-gray-500 hover:text-gray-700">
+            <Link href={`/${lng}`} className="text-gray-500 hover:text-gray-700">
               Home
             </Link>
             <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
@@ -411,7 +411,7 @@ export default function CollectionSlugPage() {
                     <div className="mt-4 flex justify-between">
                       <div>
                         <h3 className="text-sm text-gray-700">
-                          <Link href={`/product/${product.slug}`}>
+                          <Link href={`/${lng}/product/${product.slug}`}>
                             <span aria-hidden="true" className="absolute inset-0" />
                             {product.name}
                           </Link>

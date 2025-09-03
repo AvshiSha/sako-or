@@ -28,6 +28,11 @@ export default function CollectionSlugPage() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
+  // Filter section expansion states
+  const [expandedCategories, setExpandedCategories] = useState(false);
+  const [expandedSubcategories, setExpandedSubcategories] = useState(false);
+  const [expandedColors, setExpandedColors] = useState(false);
+  const [expandedSizes, setExpandedSizes] = useState(false);
 
   // Update URL when filters change
   useEffect(() => {
@@ -408,119 +413,179 @@ export default function CollectionSlugPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
-            {/* Categories */}
-            <div className="mb-8 pb-6 border-b border-gray-100">
-              <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Categories</h3>
-              <div className="space-y-2">
-                {["All Products", "Women", "Men"].map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => {
-                      router.push(`/${lng}/collection/${category.toLowerCase()}`);
-                      setDesktopFiltersOpen(false);
-                    }}
-                    className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
+            {/* Categories - Collapsible */}
+            <div className="mb-6 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setExpandedCategories(!expandedCategories)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
+              >
+                <h3 className="text-sm font-medium text-black">Categories</h3>
+                <ChevronDownIcon 
+                  className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                    expandedCategories ? 'rotate-180' : ''
+                  }`} 
+                />
+              </button>
+              
+              {expandedCategories && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="space-y-2 pt-3">
+                    {["All Products", "Women", "Men"].map((category) => (
+                      <button
+                        key={category}
+                        onClick={() => {
+                          router.push(`/${lng}/collection/${category.toLowerCase()}`);
+                          setDesktopFiltersOpen(false);
+                        }}
+                        className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
+                      >
+                        {category}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Subcategories */}
-            <div className="mb-8 pb-6 border-b border-gray-100">
-              <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Subcategories</h3>
-              <div className="space-y-2">
-                {subcategories.map((subcategory) => {
-                  let targetPath;
-                  
-                  if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory)) {
-                    targetPath = `/${lng}/collection/women/shoes/${subcategory.toLowerCase().replace(' ', '-')}`;
-                  } else if (["Coats", "Bags"].includes(subcategory)) {
-                    targetPath = `/${lng}/collection/women/accessories/${subcategory.toLowerCase()}`;
-                  } else if (subcategory === "Shoes") {
-                    targetPath = `/${lng}/collection/women/shoes`;
-                  } else if (subcategory === "Accessories") {
-                    targetPath = `/${lng}/collection/women/accessories`;
-                  } else {
-                    targetPath = `/${lng}/collection/women/${subcategory}`;
-                  }
-                  
-                  return (
-                    <button
-                      key={subcategory}
-                      onClick={() => {
-                        router.push(targetPath);
-                        setDesktopFiltersOpen(false);
-                      }}
-                      className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
-                    >
-                      {subcategory}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Colors */}
-            <div className="mb-8 pb-6 border-b border-gray-100">
-              <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Color</h3>
-              <div className="space-y-2">
-                {allColors.map((color) => (
-                  <button
-                    key={color}
-                    onClick={() => {
-                      setSelectedColors((prev) =>
-                        prev.includes(color)
-                          ? prev.filter((c) => c !== color)
-                          : [...prev, color]
+            {/* Subcategories - Collapsible */}
+            <div className="mb-6 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setExpandedSubcategories(!expandedSubcategories)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
+              >
+                <h3 className="text-sm font-medium text-black">Subcategories</h3>
+                <ChevronDownIcon 
+                  className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                    expandedSubcategories ? 'rotate-180' : ''
+                  }`} 
+                />
+              </button>
+              
+              {expandedSubcategories && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="space-y-2 pt-3">
+                    {subcategories.map((subcategory) => {
+                      let targetPath;
+                      
+                      if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory)) {
+                        targetPath = `/${lng}/collection/women/shoes/${subcategory.toLowerCase().replace(' ', '-')}`;
+                      } else if (["Coats", "Bags"].includes(subcategory)) {
+                        targetPath = `/${lng}/collection/women/accessories/${subcategory.toLowerCase()}`;
+                      } else if (subcategory === "Shoes") {
+                        targetPath = `/${lng}/collection/women/shoes`;
+                      } else if (subcategory === "Accessories") {
+                        targetPath = `/${lng}/collection/women/accessories`;
+                      } else {
+                        targetPath = `/${lng}/collection/women/${subcategory}`;
+                      }
+                      
+                      return (
+                        <button
+                          key={subcategory}
+                          onClick={() => {
+                            router.push(targetPath);
+                            setDesktopFiltersOpen(false);
+                          }}
+                          className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
+                        >
+                          {subcategory}
+                        </button>
                       );
-                    }}
-                    className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
-                      selectedColors.includes(color)
-                        ? 'bg-gray-100 border border-gray-300'
-                        : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                    }`}
-                  >
-                    <div
-                      className="w-6 h-6 rounded-full border border-gray-200"
-                      style={{ backgroundColor: color.toLowerCase() }}
-                    />
-                    <span className="text-sm font-light text-black">{color}</span>
-                  </button>
-                ))}
-              </div>
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Sizes */}
-            <div className="mb-8">
-              <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Size</h3>
-              <div className="space-y-2">
-                {allSizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => {
-                      setSelectedSizes((prev) =>
-                        prev.includes(size)
-                          ? prev.filter((s) => s !== size)
-                          : [...prev, size]
-                      );
-                    }}
-                    className={`w-full text-left p-2 rounded-sm transition-all duration-200 ${
-                      selectedSizes.includes(size)
-                        ? 'bg-gray-100 border border-gray-300'
-                        : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                    }`}
-                  >
-                    <span className="text-sm font-light text-black">{size}</span>
-                  </button>
-                ))}
-              </div>
+            {/* Colors - Collapsible */}
+            <div className="mb-6 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setExpandedColors(!expandedColors)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
+              >
+                <h3 className="text-sm font-medium text-black">Colors</h3>
+                <ChevronDownIcon 
+                  className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                    expandedColors ? 'rotate-180' : ''
+                  }`} 
+                />
+              </button>
+              
+              {expandedColors && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="space-y-2 pt-3">
+                    {allColors.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          setSelectedColors((prev) =>
+                            prev.includes(color)
+                              ? prev.filter((c) => c !== color)
+                              : [...prev, color]
+                          );
+                        }}
+                        className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
+                          selectedColors.includes(color)
+                            ? 'bg-gray-100 border border-gray-300'
+                            : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                        }`}
+                      >
+                        <div
+                          className="w-6 h-6 rounded-full border border-gray-200"
+                          style={{ backgroundColor: color.toLowerCase() }}
+                        />
+                        <span className="text-sm font-light text-black">{color}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sizes - Collapsible */}
+            <div className="mb-6 border border-gray-200 rounded-lg">
+              <button
+                onClick={() => setExpandedSizes(!expandedSizes)}
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
+              >
+                <h3 className="text-sm font-medium text-black">Sizes</h3>
+                <ChevronDownIcon 
+                  className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                    expandedSizes ? 'rotate-180' : ''
+                  }`} 
+                />
+              </button>
+              
+              {expandedSizes && (
+                <div className="px-4 pb-4 border-t border-gray-100">
+                  <div className="grid grid-cols-3 gap-2 pt-3">
+                    {allSizes.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          setSelectedSizes((prev) =>
+                            prev.includes(size)
+                              ? prev.filter((s) => s !== size)
+                              : [...prev, size]
+                          );
+                        }}
+                        className={`p-2 rounded-sm transition-all duration-200 text-center ${
+                          selectedSizes.includes(size)
+                            ? 'bg-gray-100 border border-gray-300'
+                            : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                        }`}
+                      >
+                        <span className="text-sm font-light text-black">{size}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Clear Filters Button */}
             {(selectedColors.length > 0 || selectedSizes.length > 0) && (
-              <div className="mb-8">
+              <div className="mb-6">
                 <button
                   onClick={() => {
                     setSelectedColors([]);
@@ -572,117 +637,180 @@ export default function CollectionSlugPage() {
 
               <div className="flex-1 overflow-y-auto p-6">
                 {/* Mobile filter content - same as desktop but simplified */}
-                <div className="mb-8">
-                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Categories</h3>
-                  <div className="space-y-2">
-                                         {["All Products", "Women", "Men"].map((category) => (
-                       <button
-                         key={category}
-                         onClick={() => {
-                           router.push(`/${lng}/collection/${category.toLowerCase()}`);
-                           setMobileFiltersOpen(false);
-                         }}
-                         className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
-                       >
-                         {category}
-                       </button>
-                     ))}
-                  </div>
+                
+                {/* Categories - Collapsible */}
+                <div className="mb-6 border border-gray-200 rounded-lg">
+                  <button
+                    onClick={() => setExpandedCategories(!expandedCategories)}
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <h3 className="text-sm font-medium text-black">Categories</h3>
+                    <ChevronDownIcon 
+                      className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                        expandedCategories ? 'rotate-180' : ''
+                      }`} 
+                    />
+                  </button>
+                  
+                  {expandedCategories && (
+                    <div className="px-4 pb-4 border-t border-gray-100">
+                      <div className="space-y-2 pt-3">
+                        {["All Products", "Women", "Men"].map((category) => (
+                          <button
+                            key={category}
+                            onClick={() => {
+                              router.push(`/${lng}/collection/${category.toLowerCase()}`);
+                              setMobileFiltersOpen(false);
+                            }}
+                            className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="mb-8">
-                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Subcategories</h3>
-                  <div className="space-y-2">
-                    {subcategories.map((subcategory) => {
-                      let targetPath;
-                      
-                      if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory)) {
-                        targetPath = `/${lng}/collection/women/shoes/${subcategory.toLowerCase().replace(' ', '-')}`;
-                      } else if (["Coats", "Bags"].includes(subcategory)) {
-                        targetPath = `/${lng}/collection/women/accessories/${subcategory.toLowerCase()}`;
-                      } else if (subcategory === "Shoes") {
-                        targetPath = `/${lng}/collection/women/shoes`;
-                      } else if (subcategory === "Accessories") {
-                        targetPath = `/${lng}/collection/women/accessories`;
-                      } else {
-                        targetPath = `/${lng}/collection/women/${subcategory}`;
-                      }
-                      
-                                               return (
-                           <button
-                             key={subcategory}
-                             onClick={() => {
-                               router.push(targetPath);
-                               setMobileFiltersOpen(false);
-                             }}
-                             className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
-                           >
-                             {subcategory}
-                           </button>
-                         );
-                    })}
-                  </div>
-                </div>
-
-                {/* Colors - Mobile */}
-                <div className="mb-8">
-                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Color</h3>
-                  <div className="space-y-2">
-                    {allColors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => {
-                          setSelectedColors((prev) =>
-                            prev.includes(color)
-                              ? prev.filter((c) => c !== color)
-                              : [...prev, color]
+                {/* Subcategories - Collapsible */}
+                <div className="mb-6 border border-gray-200 rounded-lg">
+                  <button
+                    onClick={() => setExpandedSubcategories(!expandedSubcategories)}
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <h3 className="text-sm font-medium text-black">Subcategories</h3>
+                    <ChevronDownIcon 
+                      className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                        expandedSubcategories ? 'rotate-180' : ''
+                      }`} 
+                    />
+                  </button>
+                  
+                  {expandedSubcategories && (
+                    <div className="px-4 pb-4 border-t border-gray-100">
+                      <div className="space-y-2 pt-3">
+                        {subcategories.map((subcategory) => {
+                          let targetPath;
+                          
+                          if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory)) {
+                            targetPath = `/${lng}/collection/women/shoes/${subcategory.toLowerCase().replace(' ', '-')}`;
+                          } else if (["Coats", "Bags"].includes(subcategory)) {
+                            targetPath = `/${lng}/collection/women/accessories/${subcategory.toLowerCase()}`;
+                          } else if (subcategory === "Shoes") {
+                            targetPath = `/${lng}/collection/women/shoes`;
+                          } else if (subcategory === "Accessories") {
+                            targetPath = `/${lng}/collection/women/accessories`;
+                          } else {
+                            targetPath = `/${lng}/collection/women/${subcategory}`;
+                          }
+                          
+                          return (
+                            <button
+                              key={subcategory}
+                              onClick={() => {
+                                router.push(targetPath);
+                                setMobileFiltersOpen(false);
+                              }}
+                              className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
+                            >
+                              {subcategory}
+                            </button>
                           );
-                        }}
-                        className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
-                          selectedColors.includes(color)
-                            ? 'bg-gray-100 border border-gray-300'
-                            : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                        }`}
-                      >
-                        <div
-                          className="w-6 h-6 rounded-full border border-gray-200"
-                          style={{ backgroundColor: color.toLowerCase() }}
-                        />
-                        <span className="text-sm font-light text-black">{color}</span>
-                      </button>
-                    ))}
-                  </div>
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Sizes - Mobile */}
-                <div className="mb-8">
-                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Size</h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {allSizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => {
-                          setSelectedSizes((prev) =>
-                            prev.includes(size)
-                              ? prev.filter((s) => s !== size)
-                              : [...prev, size]
-                          );
-                        }}
-                        className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                          selectedSizes.includes(size)
-                            ? 'bg-gray-100 border border-gray-300'
-                            : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                        }`}
-                      >
-                        <span className="text-sm font-light text-black">{size}</span>
-                      </button>
-                    ))}
-                  </div>
+                {/* Colors - Collapsible */}
+                <div className="mb-6 border border-gray-200 rounded-lg">
+                  <button
+                    onClick={() => setExpandedColors(!expandedColors)}
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <h3 className="text-sm font-medium text-black">Colors</h3>
+                    <ChevronDownIcon 
+                      className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                        expandedColors ? 'rotate-180' : ''
+                      }`} 
+                    />
+                  </button>
+                  
+                  {expandedColors && (
+                    <div className="px-4 pb-4 border-t border-gray-100">
+                      <div className="space-y-2 pt-3">
+                        {allColors.map((color) => (
+                          <button
+                            key={color}
+                            onClick={() => {
+                              setSelectedColors((prev) =>
+                                prev.includes(color)
+                                  ? prev.filter((c) => c !== color)
+                                  : [...prev, color]
+                              );
+                            }}
+                            className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
+                              selectedColors.includes(color)
+                                ? 'bg-gray-100 border border-gray-300'
+                                : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                            }`}
+                          >
+                            <div
+                              className="w-6 h-6 rounded-full border border-gray-200"
+                              style={{ backgroundColor: color.toLowerCase() }}
+                            />
+                            <span className="text-sm font-light text-black">{color}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sizes - Collapsible */}
+                <div className="mb-6 border border-gray-200 rounded-lg">
+                  <button
+                    onClick={() => setExpandedSizes(!expandedSizes)}
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <h3 className="text-sm font-medium text-black">Sizes</h3>
+                    <ChevronDownIcon 
+                      className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                        expandedSizes ? 'rotate-180' : ''
+                      }`} 
+                    />
+                  </button>
+                  
+                  {expandedSizes && (
+                    <div className="px-4 pb-4 border-t border-gray-100">
+                      <div className="grid grid-cols-3 gap-2 pt-3">
+                        {allSizes.map((size) => (
+                          <button
+                            key={size}
+                            onClick={() => {
+                              setSelectedSizes((prev) =>
+                                prev.includes(size)
+                                  ? prev.filter((s) => s !== size)
+                                  : [...prev, size]
+                              );
+                            }}
+                            className={`p-2 rounded-sm transition-all duration-200 text-center ${
+                              selectedSizes.includes(size)
+                                ? 'bg-gray-100 border border-gray-300'
+                                : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                            }`}
+                          >
+                            <span className="text-sm font-light text-black">{size}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Clear Filters Button */}
                 {(selectedColors.length > 0 || selectedSizes.length > 0) && (
-                  <div className="mb-8">
+                  <div className="mb-6">
                     <button
                       onClick={() => {
                         setSelectedColors([]);

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import LanguageSwitcher from './LanguageSwitcher'
 
@@ -40,19 +40,29 @@ const translations = {
 
 export default function Navigation({ lng }: { lng: string }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [isMobileWomenOpen, setIsMobileWomenOpen] = useState(false)
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+    setIsMobileWomenOpen(false)
+  }
 
   return (
     <nav className={`fixed w-full bg-white shadow-md z-50 ${isRTL ? 'text-right' : 'text-left'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
+          {/* Logo */}
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href={`/${lng}`} className="text-2xl font-bold text-gray-900">
                 SAKO-OR
               </Link>
             </div>
+            
+            {/* Desktop Navigation */}
             <div className={`hidden sm:ml-6 sm:flex sm:space-x-8 relative ${isRTL ? 'mr-6' : 'ml-6'}`}>
               <Link
                 href={`/${lng}`}
@@ -119,9 +129,109 @@ export default function Navigation({ lng }: { lng: string }) {
               </Link>
             </div>
           </div>
+
+          {/* Right side - Language Switcher and Mobile Menu Button */}
           <div className="flex items-center">
             <LanguageSwitcher currentLanguage={lng} />
+            
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="sm:hidden ml-4 p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+            >
+              {isMobileMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Navigation Menu */}
+      <div className={`sm:hidden transition-all duration-300 ease-in-out ${isMobileMenuOpen ? 'max-h-screen opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+        <div className="px-2 pt-2 pb-3 space-y-1 bg-white border-t border-gray-200 shadow-lg">
+          {/* Home */}
+          <Link
+            href={`/${lng}`}
+            onClick={closeMobileMenu}
+            className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+          >
+            {t.home}
+          </Link>
+          
+          {/* New Collection */}
+          <Link
+            href={`/${lng}/collection`}
+            onClick={closeMobileMenu}
+            className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+          >
+            {t.newCollection}
+          </Link>
+          
+          {/* Women Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsMobileWomenOpen(!isMobileWomenOpen)}
+              className="w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md flex items-center justify-between"
+            >
+              {t.women}
+              <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isMobileWomenOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            <div className={`transition-all duration-200 ease-in-out ${isMobileWomenOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}`}>
+              <div className="ml-4 space-y-1">
+                {/* Shoes Section */}
+                <div className="px-3 py-2 text-sm font-medium text-gray-900 border-b border-gray-200">
+                  Shoes
+                </div>
+                {womenCategories.shoes.map((category) => (
+                  <Link
+                    key={category.name}
+                    href={`/${lng}${category.href}`}
+                    onClick={closeMobileMenu}
+                    className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                  >
+                    {category.name}
+                  </Link>
+                ))}
+                
+                {/* Accessories Section */}
+                <div className="px-3 py-2 text-sm font-medium text-gray-900 border-b border-gray-200 mt-2">
+                  Accessories
+                </div>
+                {womenCategories.accessories.map((category) => (
+                  <Link
+                    key={category.name}
+                    href={`/${lng}${category.href}`}
+                    onClick={closeMobileMenu}
+                    className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+                  >
+                    {category.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* About */}
+          <Link
+            href={`/${lng}/about`}
+            onClick={closeMobileMenu}
+            className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+          >
+            {t.about}
+          </Link>
+          
+          {/* Contact */}
+          <Link
+            href={`/${lng}/contact`}
+            onClick={closeMobileMenu}
+            className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md"
+          >
+            {t.contact}
+          </Link>
         </div>
       </div>
     </nav>

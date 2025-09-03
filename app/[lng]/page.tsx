@@ -94,7 +94,7 @@ export default async function Home({ params }: { params: Promise<{ lng: string }
   const t = translations[lng as keyof typeof translations]
 
   return (
-    <div className={`bg-white ${isRTL ? 'text-right' : 'text-left'}`}>
+    <div className={`bg-white pt-16 ${isRTL ? 'text-right' : 'text-left'}`}>
       {/* Hero section */}
       <div className="relative h-screen">
         <div className="absolute inset-0">

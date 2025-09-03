@@ -14,11 +14,15 @@ const translations = {
     home: 'Home',
     newCollection: 'New Collection',
     about: 'About',
-    contact: 'Contact'
+    contact: 'Contact',
+    copyright: '© 2025 SAKO-OR. All rights reserved.',
+    newsletterDescription: 'Subscribe to our newsletter for updates and exclusive offers.',
+    privacyPolicy: 'Privacy Policy',
+    termsOfService: 'Terms of Service'
   },
   he: {
     brand: 'סכו עור',
-    description: 'גלה את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין.',
+    description: 'גלה את הקולקציה שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
     navigation: 'ניווט',
     newsletter: 'עיתון',
     subscribe: 'הירשם',
@@ -27,7 +31,11 @@ const translations = {
     home: 'בית',
     newCollection: 'אוסף חדש',
     about: 'אודות',
-    contact: 'צור קשר'
+    contact: 'צור קשר',
+    copyright: '© 2025 סכו עור. כל הזכויות שמורות.',
+    newsletterDescription: 'הירשמו לעולמנו לקבלת עדכונים בלעדיים, גישה מוקדמת לקולקציה החדשה והמלצות לסגנון מותאמות אישית אלייך',
+    privacyPolicy: 'מדיניות פרטיות',
+    termsOfService: 'תנאי שימוש'
   }
 }
 
@@ -112,13 +120,13 @@ export default function Footer({ lng }: { lng: string }) {
           <div>
             <h3 className="text-sm font-medium uppercase tracking-wider mb-6">{t.newsletter}</h3>
             <p className="text-gray-400 mb-4 text-sm">
-              Subscribe to our newsletter for updates and exclusive offers.
+              {t.newsletterDescription}
             </p>
             <form className="flex">
               <input
                 type="email"
                 placeholder={t.subscribePlaceholder}
-                className="flex-1 px-4 py-2 bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white"
+                className="flex-1 px-4 py-2 bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white"
               />
               <button
                 type="submit"
@@ -134,14 +142,14 @@ export default function Footer({ lng }: { lng: string }) {
         <div className="border-t border-gray-800 py-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-400 text-sm">
-              © 2024 {t.brand}. All rights reserved.
+              {t.copyright}
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href={`/${lng}/privacy`} className="text-gray-400 hover:text-white text-sm">
-                Privacy Policy
+                {t.privacyPolicy}
               </Link>
               <Link href={`/${lng}/terms`} className="text-gray-400 hover:text-white text-sm">
-                Terms of Service
+                {t.termsOfService}
               </Link>
             </div>
           </div>

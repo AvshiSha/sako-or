@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { languageMetadata, getNativeLanguageName } from '../../i18n/settings'
 
 interface LanguageSwitcherProps {
   currentLanguage: string;
@@ -7,26 +8,21 @@ interface LanguageSwitcherProps {
 export default function LanguageSwitcher({ currentLanguage }: LanguageSwitcherProps) {
   return (
     <div className="flex space-x-2">
-      <Link
-        href={`/en`}
-        className={`px-2 py-1 text-sm font-medium rounded-md ${
-          currentLanguage === 'en'
-            ? 'bg-gray-900 text-white'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-        }`}
-      >
-        EN
-      </Link>
-      <Link
-        href={`/he`}
-        className={`px-2 py-1 text-sm font-medium rounded-md ${
-          currentLanguage === 'he'
-            ? 'bg-gray-900 text-white'
-            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-        }`}
-      >
-        HE
-      </Link>
+      {Object.entries(languageMetadata).map(([code, meta]) => (
+        <Link
+          key={code}
+          href={`/${code}`}
+          className={`px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+            currentLanguage === code
+              ? 'bg-gray-900 text-white shadow-md'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 border border-gray-200 hover:border-gray-300'
+          }`}
+          title={`${meta.name} - ${meta.nativeName}`}
+        >
+          <span className="mr-2">{meta.flag}</span>
+          {code.toUpperCase()}
+        </Link>
+      ))}
     </div>
   )
 } 

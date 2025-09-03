@@ -27,30 +27,66 @@ const collections = [
 const featuredProducts = [
   {
     id: 1,
-    name: 'Italian Leather Stilettos',
+    name: {
+      en: 'Italian Leather Stilettos',
+      he: 'נעלי סטילטו עור איטלקי'
+    },
     href: '/collection/high-heels/italian-stilettos',
     imageSrc: getProductImageUrl('Italian Leather Stilettos'),
-    imageAlt: 'Handcrafted Italian leather stilettos',
-    price: '$395',
-    description: 'Handcrafted in Italy with premium leather',
+    imageAlt: {
+      en: 'Handcrafted Italian leather stilettos',
+      he: 'נעלי סטילטו עור איטלקי בעבודת יד'
+    },
+    price: {
+      en: '$395',
+      he: '1099₪'
+    },
+    description: {
+      en: 'Handcrafted in Italy with premium leather',
+      he: 'עשויות בעבודת יד באיטליה מעור פרימיום'
+    },
   },
   {
     id: 2,
-    name: 'Crystal Embellished Pumps',
+    name: {
+      en: 'Crystal Embellished Pumps',
+      he: 'נעלי עקב מעוטרות קריסטלים'
+    },
     href: '/collection/high-heels/crystal-pumps',
     imageSrc: getProductImageUrl('Crystal Embellished Pumps'),
-    imageAlt: 'Elegant pumps with crystal embellishments',
-    price: '$450',
-    description: 'Adorned with Swarovski crystals',
+    imageAlt: {
+      en: 'Elegant pumps with crystal embellishments',
+      he: 'נעלי עקב אלגנטיות עם עיטורי קריסטל'
+    },
+    price: {
+      en: '$450',
+      he: '1199₪'
+    },
+    description: {
+      en: 'Adorned with Swarovski crystals',
+      he: 'מעוטרות בקריסטלי סברובסקי'
+    },
   },
   {
     id: 3,
-    name: 'Suede Chelsea Boots',
+    name: {
+      en: 'Suede Chelsea Boots',
+      he: 'מגפי צ\'לסי אופנתיות'
+    },
     href: '/collection/boots/suede-chelsea',
     imageSrc: getProductImageUrl('Suede Chelsea Boots'),
-    imageAlt: 'Premium suede chelsea boots',
-    price: '$375',
-    description: 'Luxurious suede with artisanal craftsmanship',
+    imageAlt: {
+      en: 'Premium suede chelsea boots',
+      he:  'מגפי צ\'לסי אופנתיות'
+    },
+    price: {
+      en:'$375',
+      he: '999₪'
+    },
+    description: {
+      en: 'Luxurious suede with artisanal craftsmanship',
+      he: 'מגפי צ\'לסי באיכות עוצרת נשימה'
+    },
   },
 ]
 
@@ -184,7 +220,7 @@ export default async function Home({ params }: { params: Promise<{ lng: string }
                 <div className="relative aspect-square bg-gray-100 mb-4">
                   <Image
                     src={product.imageSrc}
-                    alt={product.imageAlt}
+                    alt={product.imageAlt[lng as keyof typeof product.imageAlt]}
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -192,10 +228,10 @@ export default async function Home({ params }: { params: Promise<{ lng: string }
                   <div className="absolute inset-0 bg-gray-900/5 group-hover:bg-gray-900/10 transition-colors duration-300" />
                 </div>
                 <h3 className="text-lg font-light text-gray-900 mb-1">
-                  <Link href={`/${lng}${product.href}`}>{product.name}</Link>
+                  <Link href={`/${lng}${product.href}`}>{product.name[lng as keyof typeof product.name]}</Link>
                 </h3>
-                <p className="text-sm text-gray-500 mb-2">{product.description}</p>
-                <p className="text-lg text-gray-900">{product.price}</p>
+                <p className="text-sm text-gray-500 mb-2">{product.description[lng as keyof typeof product.description]}</p>
+                <p className="text-lg text-gray-900">{product.price[lng as keyof typeof product.price]}</p>
               </div>
             ))}
           </div>
@@ -214,7 +250,7 @@ export default async function Home({ params }: { params: Promise<{ lng: string }
               <input
                 type="email"
                 placeholder={t.emailPlaceholder}
-                className="flex-1 px-4 py-3 border border-gray-300 focus:border-gray-900 focus:ring-0"
+                className="flex-1 px-4 py-3 border text-gray-900 border-gray-600 focus:border-gray-900 focus:ring-0"
               />
               <button
                 type="submit"

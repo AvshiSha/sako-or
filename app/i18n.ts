@@ -8,14 +8,14 @@ i18n
   .use(Backend)
   .use(initReactI18next)
   .init({
-    debug: false, // Disable debug in production
+    debug: process.env.NODE_ENV === 'development', // Enable debug only in development
     lng: defaultLanguage, // Start with default language
     fallbackLng: fallbackLanguage,
     supportedLngs: languages,
     ns: ['common'],
     defaultNS: 'common',
     backend: {
-      loadPath: '/public/assets/i18n/{{lng}}.json', // Use the correct path
+      loadPath: '/assets/i18n/{{lng}}.json', // Simplified path
     },
     react: {
       useSuspense: false,
@@ -23,16 +23,18 @@ i18n
       bindI18nStore: 'added removed',
       transEmptyNodeValue: '',
       transSupportBasicHtmlNodes: true,
-      transKeepBasicHtmlNodesFor: ['br', 'strong', 'i', 'p']
+      transKeepBasicHtmlNodesFor: ['br', 'strong', 'i', 'p', 'span', 'div']
     },
     interpolation: {
       escapeValue: false
     },
     initImmediate: true, // Enable immediate initialization
     load: 'languageOnly',
-    saveMissing: false,
+    saveMissing: process.env.NODE_ENV === 'development', // Save missing keys only in development
     missingKeyHandler: (lng, ns, key) => {
-      console.warn(`Missing translation key: ${key} in language ${lng} and namespace ${ns}`);
+      if (process.env.NODE_ENV === 'development') {
+        console.warn(`Missing translation key: ${key} in language ${lng} and namespace ${ns}`);
+      }
     },
     appendNamespaceToMissingKey: false,
     parseMissingKeyHandler: (key) => {

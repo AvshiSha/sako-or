@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   ChevronDownIcon,
@@ -33,10 +33,16 @@ export default function CollectionSlugPage() {
   const [expandedSubcategories, setExpandedSubcategories] = useState(false);
   const [expandedColors, setExpandedColors] = useState(false);
   const [expandedSizes, setExpandedSizes] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Client-side only effect
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Update URL when filters change
   useEffect(() => {
-    if (!params) return;
+    if (!params || !isClient) return;
     
     const urlParams = new URLSearchParams();
     if (selectedColors.length > 0) {
@@ -56,10 +62,12 @@ export default function CollectionSlugPage() {
     if (window.location.pathname + window.location.search !== newUrl) {
       router.replace(newUrl, { scroll: false });
     }
-  }, [selectedColors, selectedSizes, params, router]);
+  }, [selectedColors, selectedSizes, params, router, isClient]);
   
   // Initialize filters from URL on mount
   useEffect(() => {
+    if (!isClient) return;
+    
     const searchParams = new URLSearchParams(window.location.search);
     const colorsParam = searchParams.get('colors');
     const sizesParam = searchParams.get('sizes');
@@ -70,7 +78,7 @@ export default function CollectionSlugPage() {
     if (sizesParam) {
       setSelectedSizes(sizesParam.split(','));
     }
-  }, []);
+  }, [isClient]);
 
   // Real-time fetch
   useEffect(() => {
@@ -90,6 +98,18 @@ export default function CollectionSlugPage() {
   // Add null checking for params after all hooks
   if (!params) {
     return <div>Loading...</div>;
+  }
+  
+  // Show loading until client-side hydration is complete
+  if (!isClient) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
   
   const slug = params.slug as string[] | undefined;
@@ -154,6 +174,29 @@ export default function CollectionSlugPage() {
       );
       return hasMatchingVariantSize || hasMatchingSize;
     });
+
+  // Apply sorting to filtered products
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
+    switch (sortBy) {
+      case "price-low":
+        return a.price - b.price; // Ascending price
+      case "price-high":
+        return b.price - a.price; // Descending price
+      case "newest":
+        // Sort by creation date (newest first) - assuming products have a createdAt field
+        if (a.createdAt && b.createdAt) {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        // Fallback to id for newer products (assuming higher id = newer)
+        const aId = typeof a.id === 'string' ? parseInt(a.id) : (typeof a.id === 'number' ? a.id : 0);
+        const bId = typeof b.id === 'string' ? parseInt(b.id) : (typeof b.id === 'number' ? b.id : 0);
+        return bId - aId;
+      case "relevance":
+      default:
+        // Relevance sorting - keep original order from database
+        return 0;
+    }
+  });
 
   const subcategories = [
     "Shoes", "Accessories", "High Heels", "Boots", "Oxford", 
@@ -248,7 +291,7 @@ export default function CollectionSlugPage() {
               }
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              {filteredProducts.length} products
+              {sortedProducts.length} products
             </p>
           </div>
 
@@ -296,7 +339,7 @@ export default function CollectionSlugPage() {
 
         {/* Products Grid - Full Width */}
         <div className="w-full">
-          {filteredProducts.length === 0 ? (
+          {sortedProducts.length === 0 ? (
             <div className="text-center py-12">
               <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No products found</h3>
@@ -306,7 +349,7 @@ export default function CollectionSlugPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {filteredProducts.map((product) => (
+              {sortedProducts.map((product) => (
                 <motion.div
                   key={product.id}
                   className="group relative"
@@ -377,7 +420,7 @@ export default function CollectionSlugPage() {
           {/* Background overlay for mobile/tablet */}
           <div className="fixed inset-0 z-40 lg:hidden">
             <div 
-              className="absolute inset-0 bg-black bg-opacity-50"
+              className="absolute inset-0 bg-black/30 transition-opacity duration-300 ease-in-out"
               onClick={() => setDesktopFiltersOpen(false)}
             />
           </div>
@@ -385,7 +428,7 @@ export default function CollectionSlugPage() {
           {/* Background overlay for large screens */}
           <div className="fixed inset-0 z-40 hidden lg:block">
             <div 
-              className="absolute inset-0 bg-black bg-opacity-30"
+              className="absolute inset-0 bg-black/30 transition-opacity duration-300 ease-in-out"
               onClick={() => setDesktopFiltersOpen(false)}
             />
           </div>
@@ -397,7 +440,7 @@ export default function CollectionSlugPage() {
         initial={{ x: '-100%' }}
         animate={{ x: desktopFiltersOpen ? 0 : '-100%' }}
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className={`fixed left-0 top-0 h-full w-80 bg-white shadow-xl z-50 ${
+        className={`fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 ${
           desktopFiltersOpen ? 'block' : 'hidden'
         }`}
       >
@@ -614,7 +657,7 @@ export default function CollectionSlugPage() {
       {mobileFiltersOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div 
-            className="absolute inset-0 bg-black bg-opacity-50"
+            className="absolute inset-0 bg-black/30"
             onClick={() => setMobileFiltersOpen(false)}
           />
           

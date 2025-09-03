@@ -28,12 +28,14 @@ function ProductsPageContent() {
     fetchProducts()
     
     // Check for success message in URL
-    const success = searchParams.get('success')
-    if (success) {
-      setSuccessMessage(success)
-      setShowSuccess(true)
-      // Clean up URL
-      window.history.replaceState({}, '', '/admin/products')
+    if (searchParams) {
+      const success = searchParams.get('success')
+      if (success) {
+        setSuccessMessage(success)
+        setShowSuccess(true)
+        // Clean up URL
+        window.history.replaceState({}, '', '/admin/products')
+      }
     }
   }, [searchParams])
 

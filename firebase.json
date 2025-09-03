@@ -8,10 +8,21 @@
       "**/node_modules/**",
       "**/*.log"
     ],
+    "redirects": [
+      {
+        "source": "/",
+        "destination": "/en/page.tsx",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
         "source": "/favicon.ico",
         "destination": "/favicon.ico"
+      },
+      {
+        "source": "/_next/**",
+        "destination": "/_next/**"
       },
       {
         "source": "/assets/**",

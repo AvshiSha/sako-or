@@ -17,6 +17,75 @@ import { productService, Product, categoryService, Category } from "@/lib/fireba
 export default function CollectionSlugPage() {
   const params = useParams();
   const router = useRouter();
+  
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState("relevance");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Update URL when filters change
+  useEffect(() => {
+    if (!params) return;
+    
+    const urlParams = new URLSearchParams();
+    if (selectedColors.length > 0) {
+      urlParams.set('colors', selectedColors.join(','));
+    }
+    if (selectedSizes.length > 0) {
+      urlParams.set('sizes', selectedSizes.join(','));
+    }
+    
+    const queryString = urlParams.toString();
+    const lng = params.lng as string;
+    const slug = params.slug as string[] | undefined;
+    const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
+    const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
+    
+    // Only update URL if it's different from current
+    if (window.location.pathname + window.location.search !== newUrl) {
+      router.replace(newUrl, { scroll: false });
+    }
+  }, [selectedColors, selectedSizes, params, router]);
+  
+  // Initialize filters from URL on mount
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const colorsParam = searchParams.get('colors');
+    const sizesParam = searchParams.get('sizes');
+    
+    if (colorsParam) {
+      setSelectedColors(colorsParam.split(','));
+    }
+    if (sizesParam) {
+      setSelectedSizes(sizesParam.split(','));
+    }
+  }, []);
+
+  // Real-time fetch
+  useEffect(() => {
+    setLoading(true);
+    const unsubscribe = productService.onProductsChange((productsData) => {
+      setProducts(productsData);
+      setLoading(false);
+    }, { isActive: true });
+    return () => unsubscribe();
+  }, []);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    categoryService.getAllCategories().then(setCategories).catch(console.error);
+  }, []);
+
+  // Add null checking for params after all hooks
+  if (!params) {
+    return <div>Loading...</div>;
+  }
+  
   const slug = params.slug as string[] | undefined;
   const lng = params.lng as string;
 
@@ -44,65 +113,6 @@ export default function CollectionSlugPage() {
        }
      }
    }
-
-     const [selectedColors, setSelectedColors] = useState<string[]>([]);
-   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
-   const [sortBy, setSortBy] = useState("relevance");
-   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
-   const [products, setProducts] = useState<Product[]>([]);
-   const [loading, setLoading] = useState(true);
-   const [categories, setCategories] = useState<Category[]>([]);
-
-   // Update URL when filters change
-   useEffect(() => {
-     const params = new URLSearchParams();
-     if (selectedColors.length > 0) {
-       params.set('colors', selectedColors.join(','));
-     }
-     if (selectedSizes.length > 0) {
-       params.set('sizes', selectedSizes.join(','));
-     }
-     
-     const queryString = params.toString();
-     const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
-     const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
-     
-     // Only update URL if it's different from current
-     if (window.location.pathname + window.location.search !== newUrl) {
-       router.replace(newUrl, { scroll: false });
-     }
-   }, [selectedColors, selectedSizes, lng, slug, router]);
-   
-   // Initialize filters from URL on mount
-   useEffect(() => {
-     const searchParams = new URLSearchParams(window.location.search);
-     const colorsParam = searchParams.get('colors');
-     const sizesParam = searchParams.get('sizes');
-     
-     if (colorsParam) {
-       setSelectedColors(colorsParam.split(','));
-     }
-     if (sizesParam) {
-       setSelectedSizes(sizesParam.split(','));
-     }
-   }, []);
-
-  // Real-time fetch
-  useEffect(() => {
-    setLoading(true);
-    const unsubscribe = productService.onProductsChange((productsData) => {
-      setProducts(productsData);
-      setLoading(false);
-    }, { isActive: true });
-    return () => unsubscribe();
-  }, []);
-
-  // Fetch categories on mount
-  useEffect(() => {
-    categoryService.getAllCategories().then(setCategories).catch(console.error);
-  }, []);
 
   // Filtering logic
   const subcategoryObj = categories.find(

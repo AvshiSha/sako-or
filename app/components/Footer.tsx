@@ -17,7 +17,7 @@ const translations = {
     contact: 'Contact'
   },
   he: {
-    brand: 'סאקו אור',
+    brand: 'סכו עור',
     description: 'גלה את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין.',
     navigation: 'ניווט',
     newsletter: 'עיתון',

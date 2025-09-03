@@ -27,6 +27,7 @@ export default function CollectionSlugPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
 
   // Update URL when filters change
   useEffect(() => {
@@ -230,236 +231,319 @@ export default function CollectionSlugPage() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Filters Sidebar */}
-          <div className="md:w-80">
-            <div className="sticky top-24 bg-white h-screen overflow-y-auto">
-              <div className="p-8">
-                <h2 className="text-lg font-light text-black tracking-wider uppercase mb-8">Filters</h2>
-
-                {/* Categories */}
-                <div className="mb-8 pb-6 border-b border-gray-100">
-                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Categories</h3>
-                  <div className="space-y-2">
-                                         {["All Products", "Women", "Men"].map((category) => (
-                       <button
-                         key={category}
-                         onClick={() => router.push(`/${lng}/collection/${category.toLowerCase()}`)}
-                         className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
-                       >
-                         {category}
-                       </button>
-                     ))}
-                  </div>
-                </div>
-
-                {/* Subcategories */}
-                <div className="mb-8 pb-6 border-b border-gray-100">
-                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Subcategories</h3>
-                  <div className="space-y-2">
-                    {subcategories.map((subcategory) => {
-                      let targetPath;
-                      
-                      if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory)) {
-                        targetPath = `/${lng}/collection/women/shoes/${subcategory.toLowerCase().replace(' ', '-')}`;
-                      } else if (["Coats", "Bags"].includes(subcategory)) {
-                        targetPath = `/${lng}/collection/women/accessories/${subcategory.toLowerCase()}`;
-                      } else if (subcategory === "Shoes") {
-                        targetPath = `/${lng}/collection/women/shoes`;
-                      } else if (subcategory === "Accessories") {
-                        targetPath = `/${lng}/collection/women/accessories`;
-                      } else {
-                        targetPath = `/${lng}/collection/women/${subcategory}`;
-                      }
-                      
-                                               return (
-                           <button
-                             key={subcategory}
-                             onClick={() => router.push(targetPath)}
-                             className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
-                           >
-                             {subcategory}
-                           </button>
-                         );
-                    })}
-                  </div>
-                </div>
-
-                {/* Colors */}
-                <div className="mb-8 pb-6 border-b border-gray-100">
-                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Color</h3>
-                  <div className="space-y-2">
-                    {allColors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => {
-                          setSelectedColors((prev) =>
-                            prev.includes(color)
-                              ? prev.filter((c) => c !== color)
-                              : [...prev, color]
-                          );
-                        }}
-                                                 className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
-                           selectedColors.includes(color)
-                             ? 'bg-gray-100 border border-gray-300'
-                             : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                         }`}
-                      >
-                        <div
-                          className="w-6 h-6 rounded-full border border-gray-200"
-                          style={{ backgroundColor: color.toLowerCase() }}
-                        />
-                        <span className="text-sm font-light text-black">{color}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Sizes */}
-                <div className="mb-8">
-                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Size</h3>
-                  <div className="space-y-2">
-                    {allSizes.map((size) => (
-                      <button
-                        key={size}
-                        onClick={() => {
-                          setSelectedSizes((prev) =>
-                            prev.includes(size)
-                              ? prev.filter((s) => s !== size)
-                              : [...prev, size]
-                          );
-                        }}
-                                                 className={`w-full text-left p-2 rounded-sm transition-all duration-200 ${
-                           selectedSizes.includes(size)
-                             ? 'bg-gray-100 border border-gray-300'
-                             : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                         }`}
-                      >
-                        <span className="text-sm font-light text-black">{size}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* Header with Filters Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {selectedSubcategory 
+                ? selectedSubcategory.charAt(0).toUpperCase() + selectedSubcategory.slice(1)
+                : selectedCategory === "All Products" 
+                  ? "All Products" 
+                  : selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)
+              }
+            </h1>
+            <p className="mt-1 text-sm text-gray-500">
+              {filteredProducts.length} products
+            </p>
           </div>
 
-          {/* Products Grid */}
-          <div className="flex-1">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
-                           <div>
-               <h1 className="text-2xl font-bold text-gray-900">
-                 {selectedSubcategory 
-                   ? selectedSubcategory.charAt(0).toUpperCase() + selectedSubcategory.slice(1)
-                   : selectedCategory === "All Products" 
-                     ? "All Products" 
-                     : selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)
-                 }
-               </h1>
-               <p className="mt-1 text-sm text-gray-500">
-                 {filteredProducts.length} products
-               </p>
-             </div>
+          <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+            {/* Desktop Filters Button */}
+            <button
+              onClick={() => setDesktopFiltersOpen(!desktopFiltersOpen)}
+              className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
+            >
+              <FunnelIcon className="h-4 w-4 mr-2" />
+              Filters
+              {(selectedColors.length > 0 || selectedSizes.length > 0) && (
+                <span className="ml-2 bg-black text-white text-xs rounded-full px-2 py-1">
+                  {selectedColors.length + selectedSizes.length}
+                </span>
+              )}
+            </button>
 
-              <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-                <button
-                  onClick={() => setMobileFiltersOpen(true)}
-                  className="md:hidden inline-flex items-center px-4 py-2 text-sm font-light text-black hover:text-gray-600"
-                >
-                  <FunnelIcon className="h-4 w-4 mr-2" />
-                  Filter
-                </button>
+            {/* Mobile Filters Button */}
+            <button
+              onClick={() => setMobileFiltersOpen(true)}
+              className="md:hidden inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
+            >
+              <FunnelIcon className="h-4 w-4 mr-2" />
+              Filters
+              {(selectedColors.length > 0 || selectedSizes.length > 0) && (
+                <span className="ml-2 bg-black text-white text-xs rounded-full px-2 py-1">
+                  {selectedColors.length + selectedSizes.length}
+                </span>
+              )}
+            </button>
 
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="block w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md text-black bg-white"
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="block w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md text-black bg-white"
+            >
+              <option value="relevance">Relevance</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+              <option value="newest">Newest</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Products Grid - Full Width */}
+        <div className="w-full">
+          {filteredProducts.length === 0 ? (
+            <div className="text-center py-12">
+              <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No products found</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Try adjusting your filters or search criteria.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredProducts.map((product) => (
+                <motion.div
+                  key={product.id}
+                  className="group relative"
+                  whileHover={{ y: -4 }}
+                  transition={{ duration: 0.2 }}
                 >
-                  <option value="relevance">Relevance</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="newest">Newest</option>
-                </select>
+                  <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200">
+                    {product.images && product.images.length > 0 ? (
+                      <Image
+                        src={product.images.find((img) => img.isPrimary)?.url || product.images[0].url}
+                        alt={product.name}
+                        width={400}
+                        height={400}
+                        className="h-full w-full object-cover object-center group-hover:opacity-75"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center bg-gray-200">
+                        <CubeIcon className="h-12 w-12 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex justify-between">
+                    <div>
+                      <h3 className="text-sm text-gray-700">
+                        <Link href={`/${lng}/product/${product.slug}`}>
+                          <span aria-hidden="true" className="absolute inset-0" />
+                          {product.name}
+                        </Link>
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">{product.category?.name}</p>
+                    </div>
+                    <p className="text-sm font-medium text-gray-900">
+                      ${product.price.toFixed(2)}
+                    </p>
+                  </div>
+
+                  {/* Quick View Button */}
+                  <button
+                    onClick={() => handleQuickView(product)}
+                    className="absolute inset-0 top-0 h-full w-full bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
+                    style={{ height: 'calc(100% - 4rem)' }}
+                  >
+                    {product.images && product.images.length > 1 ? (
+                      <Image
+                        src={product.images[1].url}
+                        alt={`${product.name} - Quick View`}
+                        width={400}
+                        height={400}
+                        className="h-full w-full object-cover object-center"
+                      />
+                    ) : (
+                      <div className="bg-white text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
+                        Quick View
+                      </div>
+                    )}
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop Filter Overlay */}
+      {desktopFiltersOpen && (
+        <>
+          {/* Background overlay for mobile/tablet */}
+          <div className="fixed inset-0 z-40 lg:hidden">
+            <div 
+              className="absolute inset-0 bg-black bg-opacity-50"
+              onClick={() => setDesktopFiltersOpen(false)}
+            />
+          </div>
+          
+          {/* Background overlay for large screens */}
+          <div className="fixed inset-0 z-40 hidden lg:block">
+            <div 
+              className="absolute inset-0 bg-black bg-opacity-30"
+              onClick={() => setDesktopFiltersOpen(false)}
+            />
+          </div>
+        </>
+      )}
+      
+      {/* Desktop Filter Sidebar - All Screen Sizes */}
+      <motion.div
+        initial={{ x: '-100%' }}
+        animate={{ x: desktopFiltersOpen ? 0 : '-100%' }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className={`fixed left-0 top-0 h-full w-80 bg-white shadow-xl z-50 ${
+          desktopFiltersOpen ? 'block' : 'hidden'
+        }`}
+      >
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between p-6 border-b border-gray-100">
+            <h2 className="text-lg font-light text-black tracking-wider uppercase">Filters</h2>
+            <button
+              onClick={() => setDesktopFiltersOpen(false)}
+              className="text-black hover:text-gray-600"
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6">
+            {/* Categories */}
+            <div className="mb-8 pb-6 border-b border-gray-100">
+              <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Categories</h3>
+              <div className="space-y-2">
+                {["All Products", "Women", "Men"].map((category) => (
+                  <button
+                    key={category}
+                    onClick={() => {
+                      router.push(`/${lng}/collection/${category.toLowerCase()}`);
+                      setDesktopFiltersOpen(false);
+                    }}
+                    className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
+                  >
+                    {category}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Products */}
-            {filteredProducts.length === 0 ? (
-              <div className="text-center py-12">
-                <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No products found</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Try adjusting your filters or search criteria.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {filteredProducts.map((product) => (
-                  <motion.div
-                    key={product.id}
-                    className="group relative"
-                    whileHover={{ y: -4 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200">
-                      {product.images && product.images.length > 0 ? (
-                        <Image
-                          src={product.images.find((img) => img.isPrimary)?.url || product.images[0].url}
-                          alt={product.name}
-                          width={400}
-                          height={400}
-                          className="h-full w-full object-cover object-center group-hover:opacity-75"
-                        />
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center bg-gray-200">
-                          <CubeIcon className="h-12 w-12 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-4 flex justify-between">
-                      <div>
-                        <h3 className="text-sm text-gray-700">
-                          <Link href={`/${lng}/product/${product.slug}`}>
-                            <span aria-hidden="true" className="absolute inset-0" />
-                            {product.name}
-                          </Link>
-                        </h3>
-                        <p className="mt-1 text-sm text-gray-500">{product.category?.name}</p>
-                      </div>
-                      <p className="text-sm font-medium text-gray-900">
-                        ${product.price.toFixed(2)}
-                      </p>
-                    </div>
-
-                    {/* Quick View Button */}
+            {/* Subcategories */}
+            <div className="mb-8 pb-6 border-b border-gray-100">
+              <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Subcategories</h3>
+              <div className="space-y-2">
+                {subcategories.map((subcategory) => {
+                  let targetPath;
+                  
+                  if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory)) {
+                    targetPath = `/${lng}/collection/women/shoes/${subcategory.toLowerCase().replace(' ', '-')}`;
+                  } else if (["Coats", "Bags"].includes(subcategory)) {
+                    targetPath = `/${lng}/collection/women/accessories/${subcategory.toLowerCase()}`;
+                  } else if (subcategory === "Shoes") {
+                    targetPath = `/${lng}/collection/women/shoes`;
+                  } else if (subcategory === "Accessories") {
+                    targetPath = `/${lng}/collection/women/accessories`;
+                  } else {
+                    targetPath = `/${lng}/collection/women/${subcategory}`;
+                  }
+                  
+                  return (
                     <button
-                      onClick={() => handleQuickView(product)}
-                      className="absolute inset-0 top-0 h-full w-full bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
-                      style={{ height: 'calc(100% - 4rem)' }}
+                      key={subcategory}
+                      onClick={() => {
+                        router.push(targetPath);
+                        setDesktopFiltersOpen(false);
+                      }}
+                      className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
                     >
-                      {product.images && product.images.length > 1 ? (
-                        <Image
-                          src={product.images[1].url}
-                          alt={`${product.name} - Quick View`}
-                          width={400}
-                          height={400}
-                          className="h-full w-full object-cover object-center"
-                        />
-                      ) : (
-                        <div className="bg-white text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
-                          Quick View
-                        </div>
-                      )}
+                      {subcategory}
                     </button>
-                  </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Colors */}
+            <div className="mb-8 pb-6 border-b border-gray-100">
+              <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Color</h3>
+              <div className="space-y-2">
+                {allColors.map((color) => (
+                  <button
+                    key={color}
+                    onClick={() => {
+                      setSelectedColors((prev) =>
+                        prev.includes(color)
+                          ? prev.filter((c) => c !== color)
+                          : [...prev, color]
+                      );
+                    }}
+                    className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
+                      selectedColors.includes(color)
+                        ? 'bg-gray-100 border border-gray-300'
+                        : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                    }`}
+                  >
+                    <div
+                      className="w-6 h-6 rounded-full border border-gray-200"
+                      style={{ backgroundColor: color.toLowerCase() }}
+                    />
+                    <span className="text-sm font-light text-black">{color}</span>
+                  </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Sizes */}
+            <div className="mb-8">
+              <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Size</h3>
+              <div className="space-y-2">
+                {allSizes.map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => {
+                      setSelectedSizes((prev) =>
+                        prev.includes(size)
+                          ? prev.filter((s) => s !== size)
+                          : [...prev, size]
+                      );
+                    }}
+                    className={`w-full text-left p-2 rounded-sm transition-all duration-200 ${
+                      selectedSizes.includes(size)
+                        ? 'bg-gray-100 border border-gray-300'
+                        : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                    }`}
+                  >
+                    <span className="text-sm font-light text-black">{size}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Clear Filters Button */}
+            {(selectedColors.length > 0 || selectedSizes.length > 0) && (
+              <div className="mb-8">
+                <button
+                  onClick={() => {
+                    setSelectedColors([]);
+                    setSelectedSizes([]);
+                  }}
+                  className="w-full py-2 px-4 text-sm font-light text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 border border-gray-200 rounded-sm"
+                >
+                  Clear All Filters
+                </button>
               </div>
             )}
           </div>
+
+          <div className="p-6 border-t border-gray-100">
+            <button
+              onClick={() => setDesktopFiltersOpen(false)}
+              className="w-full py-3 px-4 bg-black text-white text-sm font-light tracking-wider uppercase hover:bg-gray-800 transition-colors duration-200"
+            >
+              Apply Filters
+            </button>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Mobile Filter Overlay */}
       {mobileFiltersOpen && (
@@ -539,6 +623,77 @@ export default function CollectionSlugPage() {
                     })}
                   </div>
                 </div>
+
+                {/* Colors - Mobile */}
+                <div className="mb-8">
+                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Color</h3>
+                  <div className="space-y-2">
+                    {allColors.map((color) => (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          setSelectedColors((prev) =>
+                            prev.includes(color)
+                              ? prev.filter((c) => c !== color)
+                              : [...prev, color]
+                          );
+                        }}
+                        className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
+                          selectedColors.includes(color)
+                            ? 'bg-gray-100 border border-gray-300'
+                            : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                        }`}
+                      >
+                        <div
+                          className="w-6 h-6 rounded-full border border-gray-200"
+                          style={{ backgroundColor: color.toLowerCase() }}
+                        />
+                        <span className="text-sm font-light text-black">{color}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sizes - Mobile */}
+                <div className="mb-8">
+                  <h3 className="text-xs font-light text-black tracking-wider uppercase mb-4">Size</h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {allSizes.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => {
+                          setSelectedSizes((prev) =>
+                            prev.includes(size)
+                              ? prev.filter((s) => s !== size)
+                              : [...prev, size]
+                          );
+                        }}
+                        className={`p-2 rounded-sm transition-all duration-200 text-center ${
+                          selectedSizes.includes(size)
+                            ? 'bg-gray-100 border border-gray-300'
+                            : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                        }`}
+                      >
+                        <span className="text-sm font-light text-black">{size}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Clear Filters Button */}
+                {(selectedColors.length > 0 || selectedSizes.length > 0) && (
+                  <div className="mb-8">
+                    <button
+                      onClick={() => {
+                        setSelectedColors([]);
+                        setSelectedSizes([]);
+                      }}
+                      className="w-full py-2 px-4 text-sm font-light text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 border border-gray-200 rounded-sm"
+                    >
+                      Clear All Filters
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="p-6 border-t border-gray-100">

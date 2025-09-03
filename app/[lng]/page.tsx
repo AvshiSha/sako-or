@@ -71,9 +71,9 @@ const translations = {
     subscribeButton: 'Subscribe'
   },
   he: {
-    brandName: 'סאקו אור',
-    heroDescription: 'גלה את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין.',
-    exploreCollections: 'חקור אוספים',
+    brandName: 'סכו עור', // Don't fix it!!
+    heroDescription: 'גלה את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
+    exploreCollections: 'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
     collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
     viewCollection: 'צפה באוסף',

@@ -7,16 +7,16 @@ import LanguageSwitcher from './LanguageSwitcher'
 
 const womenCategories = {
   shoes: [
-    { name: 'High Heels', href: '/collection/women/shoes/high-heels' },
-    { name: 'Boots', href: '/collection/women/shoes/boots' },
-    { name: 'Oxford', href: '/collection/women/shoes/oxford' },
-    { name: 'Sneakers', href: '/collection/women/shoes/sneakers' },
-    { name: 'Sandals', href: '/collection/women/shoes/sandals' },
-    { name: 'Slippers', href: '/collection/women/shoes/slippers' }
+    { name: { en: 'High Heels', he: 'עקבים גבוהים' }, href: '/collection/women/shoes/high-heels' },
+    { name: { en: 'Boots', he: 'מגפיים' }, href: '/collection/women/shoes/boots' },
+    { name: { en: 'Oxford', he: 'אוקספורד' }, href: '/collection/women/shoes/oxford' },
+    { name: { en: 'Sneakers', he: 'סניקרס' }, href: '/collection/women/shoes/sneakers' },
+    { name: { en: 'Sandals', he: 'סנדלים' }, href: '/collection/women/shoes/sandals' },
+    { name: { en: 'Slippers', he: 'כפכפים' }, href: '/collection/women/shoes/slippers' }
   ],
   accessories: [
-    { name: 'Coats', href: '/collection/women/accessories/coats' },
-    { name: 'Bags', href: '/collection/women/accessories/bags' }
+    { name: { en: 'Coats', he: 'מעילים' }, href: '/collection/women/accessories/coats' },
+    { name: { en: 'Bags', he: 'תיקים' }, href: '/collection/women/accessories/bags' }
   ]
 }
 
@@ -26,13 +26,37 @@ const translations = {
     home: 'Home',
     newCollection: 'New Collection',
     women: 'Women',
+    subCategories: {
+      shoes: 'Shoes',
+      accessories: 'Accessories',
+      highHeels: 'High Heels',
+      boots: 'Boots',
+      oxford: 'Oxford',
+      sneakers: 'Sneakers',
+      sandals: 'Sandals',
+      slippers: 'Slippers',
+      coats: 'Coats',
+      bags: 'Bags'
+    },
     about: 'About',
     contact: 'Contact'
   },
   he: {
     home: 'בית',
-    newCollection: 'אוסף חדש',
+    newCollection: 'קולקציה חדשה',
     women: 'נשים',
+    subCategories: {
+      shoes: 'נעליים',
+      accessories: 'אביזרים',
+      highHeels: 'עקבים גבוהים',
+      boots: 'מגפיים',
+      oxford: 'אוקספורד',
+      sneakers: 'סניקרס',
+      sandals: 'סנדלים',
+      slippers: 'כפכפים',
+      coats: 'מעילים',
+      bags: 'תיקים'
+    },
     about: 'אודות',
     contact: 'צור קשר'
   }
@@ -42,12 +66,28 @@ export default function Navigation({ lng }: { lng: string }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMobileWomenOpen, setIsMobileWomenOpen] = useState(false)
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)
     setIsMobileWomenOpen(false)
+  }
+
+  const handleMouseEnter = () => {
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout)
+      setHoverTimeout(null)
+    }
+    setIsDropdownOpen(true)
+  }
+
+  const handleMouseLeave = () => {
+    const timeout = setTimeout(() => {
+      setIsDropdownOpen(false)
+    }, 300) // 300ms delay
+    setHoverTimeout(timeout)
   }
 
   return (
@@ -78,8 +118,8 @@ export default function Navigation({ lng }: { lng: string }) {
               </Link>
                <div 
                 className="relative"
-                onMouseEnter={() => setIsDropdownOpen(true)}
-                onMouseLeave={() => setIsDropdownOpen(false)}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
               >
                 <button 
                   className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium h-full"
@@ -90,27 +130,27 @@ export default function Navigation({ lng }: { lng: string }) {
                 </button>
                 <div className={`absolute top-full left-0 mt-1 w-64 bg-white shadow-lg rounded-md py-2 z-50 transition-all duration-200 ${isDropdownOpen ? 'block' : 'hidden'}`}>
                   <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-200">
-                    Shoes
+                    {t.subCategories.shoes}
                   </div>
                   {womenCategories.shoes.map((category) => (
                     <Link
-                      key={category.name}
+                      key={category.name.en}
                       href={`/${lng}${category.href}`}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      {category.name}
+                      {category.name[lng as keyof typeof category.name]}
                     </Link>
                   ))}
                   <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-200 mt-2">
-                    Accessories
+                    {t.subCategories.accessories}
                   </div>
                   {womenCategories.accessories.map((category) => (
                     <Link
-                      key={category.name}
+                      key={category.name.en}
                       href={`/${lng}${category.href}`}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      {category.name}
+                      {category.name[lng as keyof typeof category.name]}
                     </Link>
                   ))}
                 </div>
@@ -184,31 +224,31 @@ export default function Navigation({ lng }: { lng: string }) {
               <div className="ml-4 space-y-1">
                 {/* Shoes Section */}
                 <div className="px-3 py-2 text-sm font-medium text-gray-900 border-b border-gray-200">
-                  Shoes
+                  {t.subCategories.shoes}
                 </div>
                 {womenCategories.shoes.map((category) => (
                   <Link
-                    key={category.name}
+                    key={category.name.en}
                     href={`/${lng}${category.href}`}
                     onClick={closeMobileMenu}
                     className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
                   >
-                    {category.name}
+                    {category.name[lng as keyof typeof category.name]}
                   </Link>
                 ))}
                 
                 {/* Accessories Section */}
                 <div className="px-3 py-2 text-sm font-medium text-gray-900 border-b border-gray-200 mt-2">
-                  Accessories
+                  {t.subCategories.accessories}
                 </div>
                 {womenCategories.accessories.map((category) => (
                   <Link
-                    key={category.name}
+                    key={category.name.en}
                     href={`/${lng}${category.href}`}
                     onClick={closeMobileMenu}
                     className="block px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md"
                   >
-                    {category.name}
+                    {category.name[lng as keyof typeof category.name]}
                   </Link>
                 ))}
               </div>

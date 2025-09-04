@@ -5,20 +5,38 @@ import { getImageUrl, getCollectionImageUrl, getProductImageUrl } from '@/lib/im
 
 const collections = [
   {
-    name: 'Luxury Heels',
-    description: 'Elevate your style with our curated collection of designer heels',
+    name: {
+      en: 'Luxury Heels',
+      he: 'נעלי עקב יוקרתיות'
+    },
+    description: {
+      en: 'Elevate your style with our curated collection of designer heels',
+      he: 'העלאת הסגנון שלך עם אוסף מוקפד של עיצובנים'
+    },
     href: '/collection/high-heels',
     imageSrc: getCollectionImageUrl('Luxury Heels'),
   },
   {
-    name: 'Designer Boots',
-    description: 'Sophisticated boots for the modern fashion connoisseur',
+    name: {
+      en: 'Designer Boots',
+      he: 'מגפיים יוקרתיים'
+    },
+    description: {
+      en: 'Sophisticated boots for the modern fashion connoisseur',
+      he: 'מגפיים יוקרתיים בעלי עיצוב מורכב'
+    },
     href: '/collection/boots',
     imageSrc: getCollectionImageUrl('Designer Boots'),
   },
   {
-    name: 'Classic Oxford',
-    description: 'Timeless elegance meets contemporary design',
+    name: {
+      en: 'Classic Oxford',
+      he: 'נעלי אוקספורד קלאסיות'
+    },
+    description: {
+      en: 'Timeless elegance meets contemporary design',
+      he: 'נעלי אוקספורד יוקרתיות בעלות עיצוב מורכב'
+    },
     href: '/collection/oxford',
     imageSrc: getCollectionImageUrl('Classic Oxford'),
   },
@@ -173,12 +191,12 @@ export default async function Home({ params }: { params: Promise<{ lng: string }
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {collections.map((collection) => (
             <div
-              key={collection.name}
+              key={collection.name.en}
               className="group relative h-96"
             >
               <Image
                 src={collection.imageSrc}
-                alt={collection.name}
+                alt={collection.name[lng as keyof typeof collection.name]}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -186,8 +204,8 @@ export default async function Home({ params }: { params: Promise<{ lng: string }
               <div className="absolute inset-0 bg-gray-900 opacity-40 group-hover:opacity-30 transition-opacity duration-300" />
               <div className="relative h-full flex items-end p-8">
                 <div>
-                  <h3 className="text-2xl font-light text-white mb-2">{collection.name}</h3>
-                  <p className="text-white/80 mb-4">{collection.description}</p>
+                  <h3 className="text-2xl font-light text-white mb-2">{collection.name[lng as keyof typeof collection.name]}</h3>
+                  <p className="text-white/80 mb-4">{collection.description[lng as keyof typeof collection.description]}</p>
                   <Link
                     href={`/${lng}${collection.href}`}
                     className="text-white text-sm tracking-wider hover:underline"

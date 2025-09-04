@@ -1,5 +1,5 @@
 'use client'
-
+// google sheets import guide: https://github.com/sako-shop/sako-shop/blob/main/docs/GOOGLE_SHEETS_IMPORT_GUIDE.md
 import { useState } from 'react'
 import Link from 'next/link'
 import { 

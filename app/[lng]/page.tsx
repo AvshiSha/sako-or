@@ -1,7 +1,11 @@
-import React from 'react'
+'use client'
+
+import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl } from '@/lib/image-urls'
+import { newsletterService } from '@/lib/firebase'
+import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
 
 const collections = [
   {
@@ -11,7 +15,7 @@ const collections = [
     },
     description: {
       en: 'Elevate your style with our curated collection of designer heels',
-      he: 'העלאת הסגנון שלך עם אוסף מוקפד של עיצובנים'
+      he: 'העלאת הסגנון שלך עם אוסף מוקפד של עיצובים'
     },
     href: '/collection/high-heels',
     imageSrc: getCollectionImageUrl('Luxury Heels'),
@@ -140,12 +144,44 @@ const translations = {
   }
 }
 
-export default async function Home({ params }: { params: Promise<{ lng: string }> }) {
-  const { lng } = await params
+export default function Home({ params }: { params: Promise<{ lng: string }> }) {
+  const [lng, setLng] = useState<string>('en')
+  const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [subscribedEmail, setSubscribedEmail] = useState('')
+  
+  // Initialize language from params
+  React.useEffect(() => {
+    params.then(({ lng: language }) => {
+      setLng(language)
+    })
+  }, [params])
+  
   const isRTL = lng === 'he'
   
   // Get translations for current language
   const t = translations[lng as keyof typeof translations]
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!email.trim()) return
+    
+    setIsSubmitting(true)
+    
+    try {
+      await newsletterService.subscribeToNewsletter(email.trim())
+      setSubscribedEmail(email.trim())
+      setShowSuccessModal(true)
+      setEmail('') // Clear the form
+    } catch (error) {
+      console.error('Error subscribing to newsletter:', error)
+      // You could add error handling here, like showing an error message
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className={`bg-white pt-16 ${isRTL ? 'text-right' : 'text-left'}`}>
@@ -264,22 +300,35 @@ export default async function Home({ params }: { params: Promise<{ lng: string }
             <p className="text-gray-500 mb-8">
               {t.newsletterDescription}
             </p>
-            <form className="flex gap-4 max-w-md mx-auto">
+            <form onSubmit={handleNewsletterSubmit} className="flex gap-4 max-w-md mx-auto">
               <input
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.emailPlaceholder}
-                className="flex-1 px-4 py-3 border text-gray-900 border-gray-600 focus:border-gray-900 focus:ring-0"
+                required
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-3 border text-gray-900 border-gray-600 focus:border-gray-900 focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed"
               />
               <button
                 type="submit"
-                className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors duration-300"
+                disabled={isSubmitting || !email.trim()}
+                className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {t.subscribeButton}
+                {isSubmitting ? '...' : t.subscribeButton}
               </button>
             </form>
           </div>
         </div>
       </div>
+
+      {/* Newsletter Success Modal */}
+      <NewsletterSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        email={subscribedEmail}
+        lng={lng}
+      />
     </div>
   )
 } 

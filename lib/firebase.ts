@@ -103,6 +103,13 @@ export interface AppUser {
   updatedAt: Date;
 }
 
+export interface NewsletterEmail {
+  id?: string;
+  email: string;
+  subscribedAt: Date;
+  isActive: boolean;
+}
+
 // Product Services
 export const productService = {
   // Get all products
@@ -606,5 +613,74 @@ export const importService = {
     }
 
     return results;
+  }
+};
+
+// Newsletter Service
+export const newsletterService = {
+  // Subscribe to newsletter
+  async subscribeToNewsletter(email: string): Promise<string> {
+    try {
+      // Check if email already exists
+      const q = query(collection(db, 'emails'), where('email', '==', email), limit(1));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        // Email already exists, update to active
+        const existingDoc = querySnapshot.docs[0];
+        await updateDoc(doc(db, 'emails', existingDoc.id), {
+          isActive: true,
+          subscribedAt: new Date()
+        });
+        return existingDoc.id;
+      } else {
+        // Create new subscription
+        const emailData: Omit<NewsletterEmail, 'id'> = {
+          email,
+          subscribedAt: new Date(),
+          isActive: true
+        };
+        
+        const docRef = await addDoc(collection(db, 'emails'), emailData);
+        return docRef.id;
+      }
+    } catch (error) {
+      console.error('Error subscribing to newsletter:', error);
+      throw error;
+    }
+  },
+
+  // Unsubscribe from newsletter
+  async unsubscribeFromNewsletter(email: string): Promise<void> {
+    try {
+      const q = query(collection(db, 'emails'), where('email', '==', email), limit(1));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const docRef = doc(db, 'emails', querySnapshot.docs[0].id);
+        await updateDoc(docRef, {
+          isActive: false
+        });
+      }
+    } catch (error) {
+      console.error('Error unsubscribing from newsletter:', error);
+      throw error;
+    }
+  },
+
+  // Get all newsletter subscribers
+  async getAllSubscribers(): Promise<NewsletterEmail[]> {
+    try {
+      const q = query(collection(db, 'emails'), orderBy('subscribedAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as NewsletterEmail[];
+    } catch (error) {
+      console.error('Error fetching newsletter subscribers:', error);
+      throw error;
+    }
   }
 }; 

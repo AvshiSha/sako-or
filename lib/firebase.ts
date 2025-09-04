@@ -622,13 +622,13 @@ export const newsletterService = {
   async subscribeToNewsletter(email: string): Promise<string> {
     try {
       // Check if email already exists
-      const q = query(collection(db, 'emails'), where('email', '==', email), limit(1));
+      const q = query(collection(db, 'NewsletterEmails'), where('email', '==', email), limit(1));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
         // Email already exists, update to active
         const existingDoc = querySnapshot.docs[0];
-        await updateDoc(doc(db, 'emails', existingDoc.id), {
+        await updateDoc(doc(db, 'NewsletterEmails', existingDoc.id), {
           isActive: true,
           subscribedAt: new Date()
         });
@@ -641,7 +641,7 @@ export const newsletterService = {
           isActive: true
         };
         
-        const docRef = await addDoc(collection(db, 'emails'), emailData);
+        const docRef = await addDoc(collection(db, 'NewsletterEmails'), emailData);
         return docRef.id;
       }
     } catch (error) {
@@ -653,11 +653,11 @@ export const newsletterService = {
   // Unsubscribe from newsletter
   async unsubscribeFromNewsletter(email: string): Promise<void> {
     try {
-      const q = query(collection(db, 'emails'), where('email', '==', email), limit(1));
+      const q = query(collection(db, 'NewsletterEmails'), where('email', '==', email), limit(1));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
-        const docRef = doc(db, 'emails', querySnapshot.docs[0].id);
+        const docRef = doc(db, 'NewsletterEmails', querySnapshot.docs[0].id);
         await updateDoc(docRef, {
           isActive: false
         });
@@ -671,7 +671,7 @@ export const newsletterService = {
   // Get all newsletter subscribers
   async getAllSubscribers(): Promise<NewsletterEmail[]> {
     try {
-      const q = query(collection(db, 'emails'), orderBy('subscribedAt', 'desc'));
+      const q = query(collection(db, 'NewsletterEmails'), orderBy('subscribedAt', 'desc'));
       const querySnapshot = await getDocs(q);
       
       return querySnapshot.docs.map(doc => ({

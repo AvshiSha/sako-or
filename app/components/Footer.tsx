@@ -1,5 +1,10 @@
+'use client'
+
 import Link from 'next/link';
 import { FaFacebook, FaInstagram, FaTwitter, FaPinterest } from 'react-icons/fa';
+import { useState } from 'react';
+import { newsletterService } from '@/lib/firebase';
+import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal';
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -17,6 +22,9 @@ const translations = {
     contact: 'Contact',
     copyright: '© 2025 SAKO-OR. All rights reserved.',
     newsletterDescription: 'Subscribe to our newsletter for updates and exclusive offers.',
+    emailRequired: 'Email is required',
+    emailInvalid: 'Please enter a valid email address',
+    subscriptionError: 'Failed to subscribe. Please try again.',
     privacyPolicy: 'Privacy Policy',
     termsOfService: 'Terms of Service'
   },
@@ -24,23 +32,70 @@ const translations = {
     brand: 'סכו עור',
     description: 'גלה את הקולקציה שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
     navigation: 'ניווט',
-    newsletter: 'עיתון',
+    newsletter: 'ניוזלטר',
     subscribe: 'הירשם',
     subscribePlaceholder: 'הזן את האימייל שלך',
     subscribeSuccess: 'תודה שנרשמת!',
     home: 'בית',
-    newCollection: 'אוסף חדש',
+    newCollection: 'קולקציה חדשה',
     about: 'אודות',
     contact: 'צור קשר',
     copyright: '© 2025 סכו עור. כל הזכויות שמורות.',
     newsletterDescription: 'הירשמו לעולמנו לקבלת עדכונים בלעדיים, גישה מוקדמת לקולקציה החדשה והמלצות לסגנון מותאמות אישית אלייך',
+    emailRequired: 'נדרש אימייל',
+    emailInvalid: 'אנא הזן כתובת אימייל תקינה',
+    subscriptionError: 'ההרשמה נכשלה. אנא נסה שוב.',
     privacyPolicy: 'מדיניות פרטיות',
     termsOfService: 'תנאי שימוש'
   }
 }
 
 export default function Footer({ lng }: { lng: string }) {
+  const [email, setEmail] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [subscribedEmail, setSubscribedEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
+  
   const t = translations[lng as keyof typeof translations]
+  const isRTL = lng === 'he'
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    // Clear previous errors
+    setEmailError('')
+    
+    if (!email.trim()) {
+      setEmailError(t.emailRequired || 'Email is required')
+      return
+    }
+    
+    if (!validateEmail(email.trim())) {
+      setEmailError(t.emailInvalid || 'Please enter a valid email address')
+      return
+    }
+    
+    setIsSubmitting(true)
+    
+    try {
+      await newsletterService.subscribeToNewsletter(email.trim())
+      setSubscribedEmail(email.trim())
+      setShowSuccessModal(true)
+      setEmail('') // Clear the form
+      setEmailError('') // Clear any errors
+    } catch (error) {
+      console.error('Error subscribing to newsletter:', error)
+      setEmailError(t.subscriptionError || 'Failed to subscribe. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <footer className="bg-[#1a1a1a] text-white">
@@ -55,7 +110,7 @@ export default function Footer({ lng }: { lng: string }) {
             </p>
             <div className="flex space-x-6">
               <a
-                href="https://facebook.com"
+                href="https://www.facebook.com/sakoorbrand"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-white transition-colors duration-300"
@@ -63,21 +118,21 @@ export default function Footer({ lng }: { lng: string }) {
                 <FaFacebook size={20} />
               </a>
               <a
-                href="https://instagram.com"
+                href="https://www.instagram.com/sako.or/"
                 target="_blank"
                 rel="https://www.instagram.com/sako.or/"
                 className="text-gray-400 hover:text-white transition-colors duration-300"
               >
                 <FaInstagram size={20} />
               </a>
-              <a
+              {/* <a
                 href="https://twitter.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-white transition-colors duration-300"
               >
                 <FaTwitter size={20} />
-              </a>
+              </a> */}
               <a
                 href="https://pinterest.com"
                 target="_blank"
@@ -122,18 +177,35 @@ export default function Footer({ lng }: { lng: string }) {
             <p className="text-gray-400 mb-4 text-sm">
               {t.newsletterDescription}
             </p>
-            <form className="flex">
-              <input
-                type="email"
-                placeholder={t.subscribePlaceholder}
-                className="flex-1 px-4 py-2 bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-white"
-              />
-              <button
-                type="submit"
-                className="px-6 py-2 bg-white text-black hover:bg-gray-200 transition-colors duration-300"
-              >
-                {t.subscribe}
-              </button>
+            <form onSubmit={handleNewsletterSubmit}>
+              <div className="flex">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (emailError) setEmailError('') // Clear error when user types
+                  }}
+                  placeholder={t.subscribePlaceholder}
+                  required
+                  disabled={isSubmitting}
+                  className={`flex-1 px-4 py-2 bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    emailError ? 'focus:ring-red-500 border-red-500' : 'focus:ring-white'
+                  }`}
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !email.trim()}
+                  className="px-6 py-2 bg-white text-black hover:bg-gray-200 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? '...' : t.subscribe}
+                </button>
+              </div>
+              {emailError && (
+                <p className="mt-2 text-sm text-red-400">
+                  {emailError}
+                </p>
+              )}
             </form>
           </div>
         </div>
@@ -155,6 +227,14 @@ export default function Footer({ lng }: { lng: string }) {
           </div>
         </div>
       </div>
+
+      {/* Newsletter Success Modal */}
+      <NewsletterSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        email={subscribedEmail}
+        lng={lng}
+      />
     </footer>
   )
 } 

@@ -126,7 +126,10 @@ const translations = {
     newsletterTitle: 'Join Our World',
     newsletterDescription: 'Subscribe to receive exclusive updates, early access to new collections, and personalized style recommendations.',
     emailPlaceholder: 'Enter your email',
-    subscribeButton: 'Subscribe'
+    subscribeButton: 'Subscribe',
+    emailRequired: 'Email is required',
+    emailInvalid: 'Please enter a valid email address',
+    subscriptionError: 'Failed to subscribe. Please try again.'
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!
@@ -140,7 +143,10 @@ const translations = {
     newsletterTitle: 'הצטרף לעולמנו',
     newsletterDescription: 'הירשם לקבלת עדכונים בלעדיים, גישה מוקדמת לאוספים חדשים והמלצות סגנון מותאמות אישית.',
     emailPlaceholder: 'הזן את האימייל שלך',
-    subscribeButton: 'הירשם'
+    subscribeButton: 'הירשם',
+    emailRequired: 'נדרש אימייל',
+    emailInvalid: 'אנא הזן כתובת אימייל תקינה',
+    subscriptionError: 'ההרשמה נכשלה. אנא נסה שוב.'
   }
 }
 
@@ -150,6 +156,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [subscribedEmail, setSubscribedEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
   
   // Initialize language from params
   React.useEffect(() => {
@@ -163,10 +170,26 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   // Get translations for current language
   const t = translations[lng as keyof typeof translations]
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
   const handleNewsletterSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!email.trim()) return
+    // Clear previous errors
+    setEmailError('')
+    
+    if (!email.trim()) {
+      setEmailError(t.emailRequired || 'Email is required')
+      return
+    }
+    
+    if (!validateEmail(email.trim())) {
+      setEmailError(t.emailInvalid || 'Please enter a valid email address')
+      return
+    }
     
     setIsSubmitting(true)
     
@@ -175,9 +198,10 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       setSubscribedEmail(email.trim())
       setShowSuccessModal(true)
       setEmail('') // Clear the form
+      setEmailError('') // Clear any errors
     } catch (error) {
       console.error('Error subscribing to newsletter:', error)
-      // You could add error handling here, like showing an error message
+      setEmailError(t.subscriptionError || 'Failed to subscribe. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -300,23 +324,35 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
             <p className="text-gray-500 mb-8">
               {t.newsletterDescription}
             </p>
-            <form onSubmit={handleNewsletterSubmit} className="flex gap-4 max-w-md mx-auto">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t.emailPlaceholder}
-                required
-                disabled={isSubmitting}
-                className="flex-1 px-4 py-3 border text-gray-900 border-gray-600 focus:border-gray-900 focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed"
-              />
-              <button
-                type="submit"
-                disabled={isSubmitting || !email.trim()}
-                className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? '...' : t.subscribeButton}
-              </button>
+            <form onSubmit={handleNewsletterSubmit} className="max-w-md mx-auto">
+              <div className="flex gap-4">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value)
+                    if (emailError) setEmailError('') // Clear error when user types
+                  }}
+                  placeholder={t.emailPlaceholder}
+                  required
+                  disabled={isSubmitting}
+                  className={`flex-1 px-4 py-3 border text-gray-900 focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    emailError ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-gray-900'
+                  }`}
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !email.trim()}
+                  className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? '...' : t.subscribeButton}
+                </button>
+              </div>
+              {emailError && (
+                <p className="mt-2 text-sm text-red-600 text-center">
+                  {emailError}
+                </p>
+              )}
             </form>
           </div>
         </div>

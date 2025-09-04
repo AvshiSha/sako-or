@@ -25,5 +25,12 @@ service cloud.firestore {
       allow read, update: if request.auth != null && 
         (resource.data.userId == request.auth.uid || request.auth.token.admin == true);
     }
+    
+    // Allow anyone to subscribe to newsletter (NewsletterEmails collection)
+    match /NewsletterEmails/{emailId} {
+      allow create: if true; // Anyone can subscribe
+      allow update: if true; // Anyone can update their subscription status
+      allow read: if request.auth != null; // Only authenticated users can read (for admin purposes)
+    }
   }
 }

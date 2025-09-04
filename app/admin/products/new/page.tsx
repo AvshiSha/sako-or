@@ -280,10 +280,19 @@ export default function NewProductPage() {
       const selectedCategoryObj = categories.find(cat => cat.id === formData.category);
 
       const productData: any = {
-        name: formData.nameEn, // Use English name as primary name
-        slug: formData.nameEn.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim(), // Product slug for SEO
+        name: {
+          en: formData.nameEn,
+          he: formData.nameHe
+        },
+        slug: {
+          en: formData.nameEn.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim(),
+          he: formData.nameHe.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim()
+        },
         categorySlug: selectedCategoryObj ? selectedCategoryObj.slug : '', // Separate categorySlug for filtering
-        description: formData.descriptionEn, // Use English description as primary description
+        description: {
+          en: formData.descriptionEn,
+          he: formData.descriptionHe
+        },
         price: parseFloat(formData.price.toString()),
         stock: parseInt(formData.stock.toString()),
         featured: formData.featured,
@@ -292,7 +301,10 @@ export default function NewProductPage() {
         categoryId: formData.category,
         images: imageUrls.map((url, index) => ({
           url,
-          alt: `${formData.nameEn} - Image ${index + 1}`,
+          alt: {
+            en: `${formData.nameEn} - Image ${index + 1}`,
+            he: `${formData.nameHe} - תמונה ${index + 1}`
+          },
           isPrimary: index === 0,
           order: index,
           createdAt: new Date()
@@ -301,7 +313,6 @@ export default function NewProductPage() {
         tags: [], // Empty array for now
         sizes: formData.sizes, // Add sizes
         colors: formData.colors, // Add colors
-        descriptionHe: formData.descriptionHe, // Add Hebrew description
         brand: formData.brand, // Add brand
         subcategory: formData.subcategory, // Add subcategory
         currency: formData.currency

@@ -4,9 +4,18 @@ import { z } from 'zod'
 
 // Validation schema for creating/updating products
 const productSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  slug: z.string().min(1, 'Slug is required'),
-  description: z.string().min(1, 'Description is required'),
+  name: z.object({
+    en: z.string().min(1, 'English name is required'),
+    he: z.string().min(1, 'Hebrew name is required')
+  }),
+  slug: z.object({
+    en: z.string().min(1, 'English slug is required'),
+    he: z.string().min(1, 'Hebrew slug is required')
+  }),
+  description: z.object({
+    en: z.string().min(1, 'English description is required'),
+    he: z.string().min(1, 'Hebrew description is required')
+  }),
   price: z.number().positive('Price must be positive'),
   salePrice: z.number().positive().optional(),
   saleStartDate: z.string().optional(),
@@ -19,7 +28,10 @@ const productSchema = z.object({
   categoryId: z.string().min(1, 'Category is required'),
   images: z.array(z.object({
     url: z.string().url('Invalid image URL'),
-    alt: z.string().optional(),
+    alt: z.object({
+      en: z.string().optional(),
+      he: z.string().optional()
+    }).optional(),
     isPrimary: z.boolean().optional(),
     order: z.number().int().min(0).optional()
   })).optional(),
@@ -75,10 +87,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validatedData = productSchema.parse(body)
 
-    // Check if product with same slug already exists
-    const existingProduct = await productService.getProductBySlug(validatedData.slug)
+    // Check if product with same slug already exists (check both languages)
+    const existingProductEn = await productService.getProductBySlug(validatedData.slug.en, 'en')
+    const existingProductHe = await productService.getProductBySlug(validatedData.slug.he, 'he')
 
-    if (existingProduct) {
+    if (existingProductEn || existingProductHe) {
       return NextResponse.json(
         { error: 'Product with this slug already exists' },
         { status: 400 }
@@ -102,7 +115,10 @@ export async function POST(request: NextRequest) {
       categoryId: validatedData.categoryId,
       images: validatedData.images?.map((img, index) => ({
         url: img.url,
-        alt: img.alt,
+        alt: {
+          en: img.alt?.en || `${validatedData.name.en} - Image ${index + 1}`,
+          he: img.alt?.he || `${validatedData.name.he} - תמונה ${index + 1}`
+        },
         isPrimary: img.isPrimary || index === 0,
         order: img.order || index,
         createdAt: new Date()

@@ -14,9 +14,113 @@ import {
 import QuickViewModal from "@/app/components/QuickViewModal";
 import { productService, Product, categoryService, Category } from "@/lib/firebase";
 
+// Translations for the collection page
+const translations = {
+  en: {
+    home: "Home",
+    allProducts: "All Products",
+    women: "Women",
+    men: "Men",
+    products: "products",
+    filters: "Filters",
+    relevance: "Relevance",
+    priceLow: "Price: Low to High",
+    priceHigh: "Price: High to Low",
+    newest: "Newest",
+    noProductsFound: "No products found",
+    tryAdjusting: "Try adjusting your filters or search criteria.",
+    loadingProducts: "Loading products...",
+    loading: "Loading...",
+    categories: "Categories",
+    subcategories: "Subcategories",
+    colors: "Colors",
+    sizes: "Sizes",
+    clearAllFilters: "Clear All Filters",
+    applyFilters: "Apply Filters",
+    quickView: "Quick View",
+    subcategoriesList: {
+      shoes: "Shoes",
+      accessories: "Accessories",
+      highheels: "High Heels",
+      boots: "Boots",
+      oxford: "Oxford",
+      sneakers: "Sneakers",
+      sandals: "Sandals",
+      slippers: "Slippers",
+      coats: "Coats",
+      bags: "Bags"
+    },
+    categoriesList: {
+      women: "Women",
+      men: "Men",
+      allProducts: "All Products"
+    }
+  },
+  he: {
+    home: "בית",
+    allProducts: "כל המוצרים",
+    women: "נשים",
+    men: "גברים",
+    products: "מוצרים",
+    filters: "סינון",
+    relevance: "רלוונטיות",
+    priceLow: "מחיר: נמוך לגבוה",
+    priceHigh: "מחיר: גבוה לנמוך",
+    newest: "החדשים ביותר",
+    noProductsFound: "לא נמצאו מוצרים",
+    tryAdjusting: "נסו להתאים את המסננים או קריטריוני החיפוש.",
+    loadingProducts: "טוען מוצרים...",
+    loading: "טוען...",
+    categories: "קטגוריות",
+    subcategories: "תת-קטגוריות",
+    colors: "צבעים",
+    sizes: "מידות",
+    clearAllFilters: "נקה את כל המסננים",
+    applyFilters: "החל מסננים",
+    quickView: "תצוגה מהירה",
+    subcategoriesList: {
+      shoes: "נעליים",
+      accessories: "אביזרים",
+      highheels: "עקבים גבוהים",
+      boots: "מגפיים",
+      oxford: "אוקספורד",
+      sneakers: "סניקרס",
+      sandals: "סנדלים",
+      slippers: "נעלי בית",
+      coats: "מעילים",
+      bags: "תיקים"
+    },
+    categoriesList: {
+      women: "נשים",
+      men: "גברים",
+      allProducts: "כל המוצרים"
+    }
+  }
+};
+
 export default function CollectionSlugPage() {
   const params = useParams();
   const router = useRouter();
+  
+  // Get language from params
+  const lng = params?.lng as string || 'en';
+  const t = translations[lng as keyof typeof translations] || translations.en;
+
+  // Helper function to get translated category/subcategory name
+  const getTranslatedName = (category: string, subcategory?: string | null) => {
+    if (subcategory) {
+      // For subcategories, try to find a translation
+      // Handle different formats: "high-heels" -> "highheels", "High Heels" -> "highheels"
+      const subcategoryKey = subcategory.toLowerCase().replace(/[-\s]+/g, '');
+      const translatedSubcategory = t.subcategoriesList[subcategoryKey as keyof typeof t.subcategoriesList];
+      return translatedSubcategory || subcategory;
+    }
+    
+    // For main categories
+    const categoryKey = category.toLowerCase();
+    const translatedCategory = t.categoriesList[categoryKey as keyof typeof t.categoriesList];
+    return translatedCategory || category;
+  };
   
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -106,14 +210,13 @@ export default function CollectionSlugPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600">{t.loading}</p>
         </div>
       </div>
     );
   }
   
   const slug = params.slug as string[] | undefined;
-  const lng = params.lng as string;
 
      // Determine category and subcategory from slug
    let selectedCategory = "All Products";
@@ -199,8 +302,16 @@ export default function CollectionSlugPage() {
   });
 
   const subcategories = [
-    "Shoes", "Accessories", "High Heels", "Boots", "Oxford", 
-    "Sneakers", "Sandals", "Slippers", "Coats", "Bags"
+    { key: "Shoes", label: t.subcategoriesList.shoes },
+    { key: "Accessories", label: t.subcategoriesList.accessories },
+    { key: "High Heels", label: t.subcategoriesList.highheels },
+    { key: "Boots", label: t.subcategoriesList.boots },
+    { key: "Oxford", label: t.subcategoriesList.oxford },
+    { key: "Sneakers", label: t.subcategoriesList.sneakers },
+    { key: "Sandals", label: t.subcategoriesList.sandals },
+    { key: "Slippers", label: t.subcategoriesList.slippers },
+    { key: "Coats", label: t.subcategoriesList.coats },
+    { key: "Bags", label: t.subcategoriesList.bags }
   ];
 
   const allColors = [
@@ -229,7 +340,7 @@ export default function CollectionSlugPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading products...</p>
+          <p className="mt-4 text-gray-600">{t.loadingProducts}</p>
         </div>
       </div>
     );
@@ -242,7 +353,7 @@ export default function CollectionSlugPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center space-x-2 py-4">
             <Link href={`/${lng}`} className="text-gray-500 hover:text-gray-700">
-              Home
+              {t.home}
             </Link>
             <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
                          {selectedCategory !== "All Products" && (
@@ -252,7 +363,7 @@ export default function CollectionSlugPage() {
                      href={`/${lng}/collection/${selectedCategory}`}
                      className="text-gray-900"
                    >
-                     {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}
+                     {getTranslatedName(selectedCategory)}
                    </Link>
                  )}
                  {selectedSubcategory && (
@@ -261,14 +372,14 @@ export default function CollectionSlugPage() {
                        href={`/${lng}/collection/${selectedCategory}`}
                        className="text-gray-500 hover:text-gray-700"
                      >
-                       {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)}
+                       {getTranslatedName(selectedCategory)}
                      </Link>
                      <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
                      <Link
                        href={`/${lng}/collection/${selectedCategory}/${selectedSubcategory}`}
                        className="text-gray-900"
                      >
-                       {selectedSubcategory.charAt(0).toUpperCase() + selectedSubcategory.slice(1)}
+                       {getTranslatedName(selectedCategory, selectedSubcategory)}
                      </Link>
                    </>
                  )}
@@ -283,15 +394,10 @@ export default function CollectionSlugPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {selectedSubcategory 
-                ? selectedSubcategory.charAt(0).toUpperCase() + selectedSubcategory.slice(1)
-                : selectedCategory === "All Products" 
-                  ? "All Products" 
-                  : selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)
-              }
+              {getTranslatedName(selectedCategory, selectedSubcategory)}
             </h1>
             <p className="mt-1 text-sm text-gray-500">
-              {sortedProducts.length} products
+              {sortedProducts.length} {t.products}
             </p>
           </div>
 
@@ -302,7 +408,7 @@ export default function CollectionSlugPage() {
               className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
             >
               <FunnelIcon className="h-4 w-4 mr-2" />
-              Filters
+              {t.filters}
               {(selectedColors.length > 0 || selectedSizes.length > 0) && (
                 <span className="ml-2 bg-black text-white text-xs rounded-full px-2 py-1">
                   {selectedColors.length + selectedSizes.length}
@@ -316,7 +422,7 @@ export default function CollectionSlugPage() {
               className="md:hidden inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
             >
               <FunnelIcon className="h-4 w-4 mr-2" />
-              Filters
+              {t.filters}
               {(selectedColors.length > 0 || selectedSizes.length > 0) && (
                 <span className="ml-2 bg-black text-white text-xs rounded-full px-2 py-1">
                   {selectedColors.length + selectedSizes.length}
@@ -329,10 +435,10 @@ export default function CollectionSlugPage() {
               onChange={(e) => setSortBy(e.target.value)}
               className="block w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md text-black bg-white"
             >
-              <option value="relevance">Relevance</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-              <option value="newest">Newest</option>
+              <option value="relevance">{t.relevance}</option>
+              <option value="price-low">{t.priceLow}</option>
+              <option value="price-high">{t.priceHigh}</option>
+              <option value="newest">{t.newest}</option>
             </select>
           </div>
         </div>
@@ -342,9 +448,9 @@ export default function CollectionSlugPage() {
           {sortedProducts.length === 0 ? (
             <div className="text-center py-12">
               <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No products found</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">{t.noProductsFound}</h3>
               <p className="mt-1 text-sm text-gray-500">
-                Try adjusting your filters or search criteria.
+                {t.tryAdjusting}
               </p>
             </div>
           ) : (
@@ -403,7 +509,7 @@ export default function CollectionSlugPage() {
                       />
                     ) : (
                       <div className="bg-white text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
-                        Quick View
+                        {t.quickView}
                       </div>
                     )}
                   </button>
@@ -446,7 +552,7 @@ export default function CollectionSlugPage() {
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-100">
-            <h2 className="text-lg font-light text-black tracking-wider uppercase">Filters</h2>
+            <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
             <button
               onClick={() => setDesktopFiltersOpen(false)}
               className="text-black hover:text-gray-600"
@@ -462,7 +568,7 @@ export default function CollectionSlugPage() {
                 onClick={() => setExpandedCategories(!expandedCategories)}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
               >
-                <h3 className="text-sm font-medium text-black">Categories</h3>
+                <h3 className="text-sm font-medium text-black">{t.categories}</h3>
                 <ChevronDownIcon 
                   className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                     expandedCategories ? 'rotate-180' : ''
@@ -473,16 +579,20 @@ export default function CollectionSlugPage() {
               {expandedCategories && (
                 <div className="px-4 pb-4 border-t border-gray-100">
                   <div className="space-y-2 pt-3">
-                    {["All Products", "Women", "Men"].map((category) => (
+                    {[
+                      { key: "All Products", label: t.allProducts },
+                      { key: "Women", label: t.women },
+                      { key: "Men", label: t.men }
+                    ].map((category) => (
                       <button
-                        key={category}
+                        key={category.key}
                         onClick={() => {
-                          router.push(`/${lng}/collection/${category.toLowerCase()}`);
+                          router.push(`/${lng}/collection/${category.key.toLowerCase()}`);
                           setDesktopFiltersOpen(false);
                         }}
                         className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
                       >
-                        {category}
+                        {category.label}
                       </button>
                     ))}
                   </div>
@@ -496,7 +606,7 @@ export default function CollectionSlugPage() {
                 onClick={() => setExpandedSubcategories(!expandedSubcategories)}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
               >
-                <h3 className="text-sm font-medium text-black">Subcategories</h3>
+                <h3 className="text-sm font-medium text-black">{t.subcategories}</h3>
                 <ChevronDownIcon 
                   className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                     expandedSubcategories ? 'rotate-180' : ''
@@ -510,28 +620,28 @@ export default function CollectionSlugPage() {
                     {subcategories.map((subcategory) => {
                       let targetPath;
                       
-                      if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory)) {
-                        targetPath = `/${lng}/collection/women/shoes/${subcategory.toLowerCase().replace(' ', '-')}`;
-                      } else if (["Coats", "Bags"].includes(subcategory)) {
-                        targetPath = `/${lng}/collection/women/accessories/${subcategory.toLowerCase()}`;
-                      } else if (subcategory === "Shoes") {
+                      if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory.key)) {
+                        targetPath = `/${lng}/collection/women/shoes/${subcategory.key.toLowerCase().replace(' ', '-')}`;
+                      } else if (["Coats", "Bags"].includes(subcategory.key)) {
+                        targetPath = `/${lng}/collection/women/accessories/${subcategory.key.toLowerCase()}`;
+                      } else if (subcategory.key === "Shoes") {
                         targetPath = `/${lng}/collection/women/shoes`;
-                      } else if (subcategory === "Accessories") {
+                      } else if (subcategory.key === "Accessories") {
                         targetPath = `/${lng}/collection/women/accessories`;
                       } else {
-                        targetPath = `/${lng}/collection/women/${subcategory}`;
+                        targetPath = `/${lng}/collection/women/${subcategory.key}`;
                       }
                       
                       return (
                         <button
-                          key={subcategory}
+                          key={subcategory.key}
                           onClick={() => {
                             router.push(targetPath);
                             setDesktopFiltersOpen(false);
                           }}
                           className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
                         >
-                          {subcategory}
+                          {subcategory.label}
                         </button>
                       );
                     })}
@@ -546,7 +656,7 @@ export default function CollectionSlugPage() {
                 onClick={() => setExpandedColors(!expandedColors)}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
               >
-                <h3 className="text-sm font-medium text-black">Colors</h3>
+                <h3 className="text-sm font-medium text-black">{t.colors}</h3>
                 <ChevronDownIcon 
                   className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                     expandedColors ? 'rotate-180' : ''
@@ -591,7 +701,7 @@ export default function CollectionSlugPage() {
                 onClick={() => setExpandedSizes(!expandedSizes)}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
               >
-                <h3 className="text-sm font-medium text-black">Sizes</h3>
+                <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
                 <ChevronDownIcon 
                   className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                     expandedSizes ? 'rotate-180' : ''
@@ -636,7 +746,7 @@ export default function CollectionSlugPage() {
                   }}
                   className="w-full py-2 px-4 text-sm font-light text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 border border-gray-200 rounded-sm"
                 >
-                  Clear All Filters
+                  {t.clearAllFilters}
                 </button>
               </div>
             )}
@@ -647,7 +757,7 @@ export default function CollectionSlugPage() {
               onClick={() => setDesktopFiltersOpen(false)}
               className="w-full py-3 px-4 bg-black text-white text-sm font-light tracking-wider uppercase hover:bg-gray-800 transition-colors duration-200"
             >
-              Apply Filters
+              {t.applyFilters}
             </button>
           </div>
         </div>
@@ -669,7 +779,7 @@ export default function CollectionSlugPage() {
           >
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                <h2 className="text-lg font-light text-black tracking-wider uppercase">Filters</h2>
+                <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
                 <button
                   onClick={() => setMobileFiltersOpen(false)}
                   className="text-black hover:text-gray-600"
@@ -687,7 +797,7 @@ export default function CollectionSlugPage() {
                     onClick={() => setExpandedCategories(!expandedCategories)}
                     className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
                   >
-                    <h3 className="text-sm font-medium text-black">Categories</h3>
+                    <h3 className="text-sm font-medium text-black">{t.categories}</h3>
                     <ChevronDownIcon 
                       className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                         expandedCategories ? 'rotate-180' : ''
@@ -698,16 +808,20 @@ export default function CollectionSlugPage() {
                   {expandedCategories && (
                     <div className="px-4 pb-4 border-t border-gray-100">
                       <div className="space-y-2 pt-3">
-                        {["All Products", "Women", "Men"].map((category) => (
+                        {[
+                          { key: "All Products", label: t.allProducts },
+                          { key: "Women", label: t.women },
+                          { key: "Men", label: t.men }
+                        ].map((category) => (
                           <button
-                            key={category}
+                            key={category.key}
                             onClick={() => {
-                              router.push(`/${lng}/collection/${category.toLowerCase()}`);
+                              router.push(`/${lng}/collection/${category.key.toLowerCase()}`);
                               setMobileFiltersOpen(false);
                             }}
                             className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
                           >
-                            {category}
+                            {category.label}
                           </button>
                         ))}
                       </div>
@@ -721,7 +835,7 @@ export default function CollectionSlugPage() {
                     onClick={() => setExpandedSubcategories(!expandedSubcategories)}
                     className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
                   >
-                    <h3 className="text-sm font-medium text-black">Subcategories</h3>
+                    <h3 className="text-sm font-medium text-black">{t.subcategories}</h3>
                     <ChevronDownIcon 
                       className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                         expandedSubcategories ? 'rotate-180' : ''
@@ -735,28 +849,28 @@ export default function CollectionSlugPage() {
                         {subcategories.map((subcategory) => {
                           let targetPath;
                           
-                          if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory)) {
-                            targetPath = `/${lng}/collection/women/shoes/${subcategory.toLowerCase().replace(' ', '-')}`;
-                          } else if (["Coats", "Bags"].includes(subcategory)) {
-                            targetPath = `/${lng}/collection/women/accessories/${subcategory.toLowerCase()}`;
-                          } else if (subcategory === "Shoes") {
+                          if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory.key)) {
+                            targetPath = `/${lng}/collection/women/shoes/${subcategory.key.toLowerCase().replace(' ', '-')}`;
+                          } else if (["Coats", "Bags"].includes(subcategory.key)) {
+                            targetPath = `/${lng}/collection/women/accessories/${subcategory.key.toLowerCase()}`;
+                          } else if (subcategory.key === "Shoes") {
                             targetPath = `/${lng}/collection/women/shoes`;
-                          } else if (subcategory === "Accessories") {
+                          } else if (subcategory.key === "Accessories") {
                             targetPath = `/${lng}/collection/women/accessories`;
                           } else {
-                            targetPath = `/${lng}/collection/women/${subcategory}`;
+                            targetPath = `/${lng}/collection/women/${subcategory.key}`;
                           }
                           
                           return (
                             <button
-                              key={subcategory}
+                              key={subcategory.key}
                               onClick={() => {
                                 router.push(targetPath);
                                 setMobileFiltersOpen(false);
                               }}
                               className="w-full text-left text-sm font-light text-black hover:text-gray-800 hover:bg-gray-100 hover:border-gray-200 transition-all duration-300 py-2 px-3 rounded-sm border border-transparent"
                             >
-                              {subcategory}
+                              {subcategory.label}
                             </button>
                           );
                         })}
@@ -771,7 +885,7 @@ export default function CollectionSlugPage() {
                     onClick={() => setExpandedColors(!expandedColors)}
                     className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
                   >
-                    <h3 className="text-sm font-medium text-black">Colors</h3>
+                    <h3 className="text-sm font-medium text-black">{t.colors}</h3>
                     <ChevronDownIcon 
                       className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                         expandedColors ? 'rotate-180' : ''
@@ -816,7 +930,7 @@ export default function CollectionSlugPage() {
                     onClick={() => setExpandedSizes(!expandedSizes)}
                     className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
                   >
-                    <h3 className="text-sm font-medium text-black">Sizes</h3>
+                    <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
                     <ChevronDownIcon 
                       className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                         expandedSizes ? 'rotate-180' : ''
@@ -861,7 +975,7 @@ export default function CollectionSlugPage() {
                       }}
                       className="w-full py-2 px-4 text-sm font-light text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 border border-gray-200 rounded-sm"
                     >
-                      Clear All Filters
+                      {t.clearAllFilters}
                     </button>
                   </div>
                 )}
@@ -872,7 +986,7 @@ export default function CollectionSlugPage() {
                   onClick={() => setMobileFiltersOpen(false)}
                   className="w-full py-3 px-4 bg-black text-white text-sm font-light tracking-wider uppercase hover:bg-gray-800 transition-colors duration-200"
                 >
-                  Apply Filters
+                  {t.applyFilters}
                 </button>
               </div>
             </div>

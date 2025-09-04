@@ -4,18 +4,23 @@ import { Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
-import { Product } from '@/lib/firebase'
+import { Product, productHelpers } from '@/lib/firebase'
 
 interface QuickViewModalProps {
   isOpen: boolean
   onClose: () => void
   product: Product
+  language?: 'en' | 'he'
 }
 
-export default function QuickViewModal({ isOpen, onClose, product }: QuickViewModalProps) {
+export default function QuickViewModal({ isOpen, onClose, product, language = 'en' }: QuickViewModalProps) {
   // Extract unique colors and sizes from variants
   const colors = [...new Set(product.variants.map(v => v.color).filter(Boolean))] as string[]
   const sizes = [...new Set(product.variants.map(v => v.size).filter(Boolean))] as string[]
+  
+  // Get language-specific product data
+  const productName = productHelpers.getField(product, 'name', language)
+  const productDescription = productHelpers.getField(product, 'description', language)
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>
@@ -61,33 +66,35 @@ export default function QuickViewModal({ isOpen, onClose, product }: QuickViewMo
                         {product.images && product.images.length > 0 ? (
                           <Image
                             src={product.images.find(img => img.isPrimary)?.url || product.images[0].url}
-                            alt={product.name}
+                            alt={productHelpers.getImageAlt(product.images.find(img => img.isPrimary) || product.images[0], language)}
                             width={500}
                             height={500}
                             className="h-full w-full object-cover object-center"
                           />
                         ) : (
                           <div className="h-full w-full flex items-center justify-center bg-gray-200">
-                            <span className="text-gray-400">No image</span>
+                            <span className="text-gray-400">{language === 'he' ? 'אין תמונה' : 'No image'}</span>
                           </div>
                         )}
                       </div>
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
-                        <p className="mt-1 text-sm text-gray-500">{product.description}</p>
+                        <h3 className="text-lg font-medium text-gray-900">{productName}</h3>
+                        <p className="mt-1 text-sm text-gray-500">{productDescription}</p>
                         <p className="mt-2 text-lg font-medium text-gray-900">
                           ${product.price.toFixed(2)}
                         </p>
                         {product.salePrice && (
                           <p className="mt-1 text-sm text-red-600">
-                            Sale: ${product.salePrice.toFixed(2)}
+                            {language === 'he' ? 'מבצע' : 'Sale'}: ${product.salePrice.toFixed(2)}
                           </p>
                         )}
                       </div>
                       
                       {colors.length > 0 && (
                         <div className="mt-4">
-                          <h4 className="text-sm font-medium text-gray-900">Available Colors</h4>
+                          <h4 className="text-sm font-medium text-gray-900">
+                            {language === 'he' ? 'צבעים זמינים' : 'Available Colors'}
+                          </h4>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {colors.map((color) => (
                               <div
@@ -103,7 +110,9 @@ export default function QuickViewModal({ isOpen, onClose, product }: QuickViewMo
                       
                       {sizes.length > 0 && (
                         <div className="mt-4">
-                          <h4 className="text-sm font-medium text-gray-900">Available Sizes</h4>
+                          <h4 className="text-sm font-medium text-gray-900">
+                            {language === 'he' ? 'מידות זמינות' : 'Available Sizes'}
+                          </h4>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {sizes.map((size) => (
                               <button
@@ -122,7 +131,7 @@ export default function QuickViewModal({ isOpen, onClose, product }: QuickViewMo
                           type="button"
                           className="w-full rounded-md bg-gray-900 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900"
                         >
-                          Add to Cart
+                          {language === 'he' ? 'הוסף לעגלה' : 'Add to Cart'}
                         </button>
                       </div>
                     </div>

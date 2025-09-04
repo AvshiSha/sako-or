@@ -10,8 +10,20 @@ import {
 } from '@heroicons/react/24/outline'
 
 interface ImportProduct {
-  name: string
-  description: string
+  // Bilingual fields
+  name: {
+    en: string
+    he: string
+  }
+  description: {
+    en: string
+    he: string
+  }
+  slug?: {
+    en: string
+    he: string
+  }
+  // Non-language-specific fields
   price: number
   category: string
   subcategory?: string
@@ -35,6 +47,9 @@ export default function ImportPage() {
     success: number
     errors: number
     errorsList: string[]
+    missingTranslations: string[]
+    created: number
+    updated: number
   } | null>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,16 +89,32 @@ export default function ImportPage() {
            }
          }
          
+         // Check bilingual name fields
+         if (!product.name || typeof product.name !== 'object') {
+           validationErrors.push(`Row ${rowNumber}: Product name must be an object with en and he properties`);
+         } else {
+           if (!product.name.en || product.name.en.trim() === '') {
+             validationErrors.push(`Row ${rowNumber}: English name is required`);
+           }
+           if (!product.name.he || product.name.he.trim() === '') {
+             validationErrors.push(`Row ${rowNumber}: Hebrew name is required`);
+           }
+         }
+         
+         // Check bilingual description fields
+         if (!product.description || typeof product.description !== 'object') {
+           validationErrors.push(`Row ${rowNumber}: Product description must be an object with en and he properties`);
+         } else {
+           if (!product.description.en || product.description.en.trim() === '') {
+             validationErrors.push(`Row ${rowNumber}: English description is required`);
+           }
+           if (!product.description.he || product.description.he.trim() === '') {
+             validationErrors.push(`Row ${rowNumber}: Hebrew description is required`);
+           }
+         }
+         
          // Check other required fields
-         if (!product.name || product.name.trim() === '') {
-           validationErrors.push(`Row ${rowNumber}: Product name is required`);
-         }
-         
-         if (!product.description || product.description.trim() === '') {
-           validationErrors.push(`Row ${rowNumber}: Product description is required`);
-         }
-         
-                   if (!product.price || isNaN(parseFloat(product.price.toString()))) {
+         if (!product.price || isNaN(parseFloat(product.price.toString()))) {
            validationErrors.push(`Row ${rowNumber}: Valid product price is required`);
          }
          
@@ -149,8 +180,18 @@ export default function ImportPage() {
   const downloadTemplate = () => {
     const template = [
       {
-        name: "Crystal Embellished Pumps",
-        description: "Elegant pumps adorned with crystal embellishments for a touch of luxury.",
+        name: {
+          en: "Crystal Embellished Pumps",
+          he: "נעלי עקב מעוטרות בקריסטלים"
+        },
+        description: {
+          en: "Elegant pumps adorned with crystal embellishments for a touch of luxury.",
+          he: "נעלי עקב אלגנטיות מעוטרות בקריסטלים למגע של יוקרה."
+        },
+        slug: {
+          en: "crystal-embellished-pumps",
+          he: "נעלי-עקב-מעוטרות-קריסטלים"
+        },
         price: 299.99,
         category: "women",
         subcategory: "shoes",
@@ -166,8 +207,18 @@ export default function ImportPage() {
         saleEndDate: null
       },
       {
-        name: "Leather Oxford Shoes",
-        description: "Classic leather oxford shoes for men with premium craftsmanship.",
+        name: {
+          en: "Leather Oxford Shoes",
+          he: "נעלי אוקספורד מעור"
+        },
+        description: {
+          en: "Classic leather oxford shoes for men with premium craftsmanship.",
+          he: "נעלי אוקספורד מעור קלאסיות לגברים עם אומנות פרמיום."
+        },
+        slug: {
+          en: "leather-oxford-shoes",
+          he: "נעלי-אוקספורד-מעור"
+        },
         price: 199.99,
         category: "men",
         subcategory: "shoes",
@@ -242,8 +293,9 @@ export default function ImportPage() {
                    <p className="text-xs text-blue-700">• SKU is used as the primary identifier for products</p>
                  </div>
                                  <ul className="text-sm text-gray-600 mt-2 space-y-1">
-                   <li>• <strong>name</strong>: Product name (required)</li>
-                   <li>• <strong>description</strong>: Product description (required)</li>
+                   <li>• <strong>name</strong>: Object with en and he properties (required)</li>
+                   <li>• <strong>description</strong>: Object with en and he properties (required)</li>
+                   <li>• <strong>slug</strong>: Object with en and he properties (optional - auto-generated if missing)</li>
                    <li>• <strong>price</strong>: Product price (required)</li>
                    <li>• <strong>category</strong>: Product category (required)</li>
                    <li>• <strong>images</strong>: Comma-separated image URLs (required)</li>
@@ -329,16 +381,32 @@ export default function ImportPage() {
               </h3>
               
               <div className="space-y-4">
-                <div className="flex items-center space-x-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center text-green-600">
                     <CheckCircleIcon className="h-5 w-5 mr-2" />
-                    <span className="font-medium">{results.success} products imported successfully</span>
+                    <div>
+                      <div className="font-medium">{results.success} products processed</div>
+                      <div className="text-sm text-gray-600">{results.created} created, {results.updated} updated</div>
+                    </div>
                   </div>
                   
                   {results.errors > 0 && (
                     <div className="flex items-center text-red-600">
                       <XCircleIcon className="h-5 w-5 mr-2" />
-                      <span className="font-medium">{results.errors} errors</span>
+                      <div>
+                        <div className="font-medium">{results.errors} errors</div>
+                        <div className="text-sm text-gray-600">Check details below</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {results.missingTranslations.length > 0 && (
+                    <div className="flex items-center text-yellow-600">
+                      <XCircleIcon className="h-5 w-5 mr-2" />
+                      <div>
+                        <div className="font-medium">{results.missingTranslations.length} missing translations</div>
+                        <div className="text-sm text-gray-600">Products need both languages</div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -349,6 +417,17 @@ export default function ImportPage() {
                     <ul className="text-sm text-red-600 space-y-1">
                       {results.errorsList.map((error, index) => (
                         <li key={index}>• {error}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {results.missingTranslations.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 mb-2">Missing Translations:</h4>
+                    <ul className="text-sm text-yellow-600 space-y-1">
+                      {results.missingTranslations.map((translation, index) => (
+                        <li key={index}>• {translation}</li>
                       ))}
                     </ul>
                   </div>

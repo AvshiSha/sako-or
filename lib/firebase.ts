@@ -39,9 +39,20 @@ export { app, analytics, db, auth, storage };
 // Types
 export interface Product {
   id?: string;
-  name: string;
-  slug: string;
-  description: string;
+  // Bilingual fields
+  name: {
+    en: string;
+    he: string;
+  };
+  slug: {
+    en: string;
+    he: string;
+  };
+  description: {
+    en: string;
+    he: string;
+  };
+  // Non-language-specific fields
   price: number;
   salePrice?: number;
   saleStartDate?: Date;
@@ -77,7 +88,10 @@ export interface Category {
 export interface ProductImage {
   id?: string;
   url: string;
-  alt?: string;
+  alt?: {
+    en: string;
+    he: string;
+  };
   isPrimary: boolean;
   order: number;
   createdAt: Date;
@@ -109,6 +123,75 @@ export interface NewsletterEmail {
   subscribedAt: Date;
   isActive: boolean;
 }
+
+// Helper functions for bilingual products
+export const productHelpers = {
+  // Get product field in specific language
+  getField: (product: Product, field: 'name' | 'description' | 'slug', language: 'en' | 'he'): string => {
+    return product[field][language] || product[field].en || '';
+  },
+
+  // Get product image alt text in specific language
+  getImageAlt: (image: ProductImage, language: 'en' | 'he'): string => {
+    if (!image.alt) return '';
+    return image.alt[language] || image.alt.en || '';
+  },
+
+  // Generate slug from text
+  generateSlug: (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/[^\w\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .trim();
+  },
+
+  // Validate bilingual product data
+  validateBilingualProduct: (product: any): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    // Check required bilingual fields
+    if (!product.name || typeof product.name !== 'object') {
+      errors.push('Product name must be an object with en and he properties');
+    } else {
+      if (!product.name.en || product.name.en.trim() === '') {
+        errors.push('English name is required');
+      }
+      if (!product.name.he || product.name.he.trim() === '') {
+        errors.push('Hebrew name is required');
+      }
+    }
+
+    if (!product.description || typeof product.description !== 'object') {
+      errors.push('Product description must be an object with en and he properties');
+    } else {
+      if (!product.description.en || product.description.en.trim() === '') {
+        errors.push('English description is required');
+      }
+      if (!product.description.he || product.description.he.trim() === '') {
+        errors.push('Hebrew description is required');
+      }
+    }
+
+    // Check slugs (can be auto-generated if missing)
+    if (!product.slug || typeof product.slug !== 'object') {
+      errors.push('Product slug must be an object with en and he properties');
+    } else {
+      if (!product.slug.en || product.slug.en.trim() === '') {
+        errors.push('English slug is required');
+      }
+      if (!product.slug.he || product.slug.he.trim() === '') {
+        errors.push('Hebrew slug is required');
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+};
 
 // Product Services
 export const productService = {
@@ -192,10 +275,11 @@ export const productService = {
     }
   },
 
-  // Get product by slug
-  async getProductBySlug(slug: string): Promise<Product | null> {
+  // Get product by slug (language-specific)
+  async getProductBySlug(slug: string, language: 'en' | 'he' = 'en'): Promise<Product | null> {
     try {
-      const q = query(collection(db, 'products'), where('slug', '==', slug), limit(1));
+      // Query for products where the slug field matches the language-specific slug
+      const q = query(collection(db, 'products'), where(`slug.${language}`, '==', slug), limit(1));
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
@@ -477,17 +561,35 @@ export const storageService = {
   }
 };
 
-// Google Sheets Import Service
+// Bilingual Import Service
 export const importService = {
-  async importFromGoogleSheets(sheetData: any[]): Promise<{ success: number; errors: number; errorsList: string[] }> { // TODO: Add proper type
+  async importFromGoogleSheets(sheetData: any[]): Promise<{ 
+    success: number; 
+    errors: number; 
+    errorsList: string[];
+    missingTranslations: string[];
+    created: number;
+    updated: number;
+  }> {
     const results = {
       success: 0,
       errors: 0,
-      errorsList: [] as string[]
+      errorsList: [] as string[],
+      missingTranslations: [] as string[],
+      created: 0,
+      updated: 0
     };
 
     for (const row of sheetData) {
       try {
+        // Validate bilingual data
+        const validation = productHelpers.validateBilingualProduct(row);
+        if (!validation.isValid) {
+          results.errors++;
+          results.errorsList.push(`Product validation failed: ${validation.errors.join(', ')}`);
+          continue;
+        }
+
         // Create or find category
         const categoryQuery = query(collection(db, 'categories'), where('name', '==', row.category), limit(1));
         const categorySnapshot = await getDocs(categoryQuery);
@@ -508,33 +610,49 @@ export const importService = {
           categoryId = categorySnapshot.docs[0].id;
         }
 
-        // Create product slug
-        const slug = row.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        // Generate slugs if not provided
+        const enSlug = row.slug?.en || productHelpers.generateSlug(row.name.en);
+        const heSlug = row.slug?.he || productHelpers.generateSlug(row.name.he);
 
         // Check if product already exists by SKU
         if (!row.sku || row.sku.trim() === '') {
           results.errors++;
-          results.errorsList.push(`Product "${row.name}" is missing required SKU`);
+          results.errorsList.push(`Product "${row.name.en}" is missing required SKU`);
           continue;
         }
 
         const skuQuery = query(collection(db, 'products'), where('sku', '==', row.sku.trim()), limit(1));
         const skuSnapshot = await getDocs(skuQuery);
 
+        let isUpdate = false;
+        let existingProductId: string | null = null;
+
         if (!skuSnapshot.empty) {
-          results.errors++;
-          results.errorsList.push(`Product with SKU "${row.sku}" already exists`);
-          continue;
+          isUpdate = true;
+          existingProductId = skuSnapshot.docs[0].id;
         }
 
-        // Check if product already exists by slug (additional check)
-        const productQuery = query(collection(db, 'products'), where('slug', '==', slug), limit(1));
-        const productSnapshot = await getDocs(productQuery);
+        // Check for slug conflicts (only for new products)
+        if (!isUpdate) {
+          const enSlugQuery = query(collection(db, 'products'), where('slug.en', '==', enSlug), limit(1));
+          const heSlugQuery = query(collection(db, 'products'), where('slug.he', '==', heSlug), limit(1));
+          
+          const [enSlugSnapshot, heSlugSnapshot] = await Promise.all([
+            getDocs(enSlugQuery),
+            getDocs(heSlugQuery)
+          ]);
 
-        if (!productSnapshot.empty) {
-          results.errors++;
-          results.errorsList.push(`Product "${row.name}" already exists with slug "${slug}"`);
-          continue;
+          if (!enSlugSnapshot.empty) {
+            results.errors++;
+            results.errorsList.push(`Product with English slug "${enSlug}" already exists`);
+            continue;
+          }
+
+          if (!heSlugSnapshot.empty) {
+            results.errors++;
+            results.errorsList.push(`Product with Hebrew slug "${heSlug}" already exists`);
+            continue;
+          }
         }
 
         // Parse data
@@ -547,19 +665,17 @@ export const importService = {
         let totalStock = 0;
         
         if (row.stockBySize) {
-          // New format: "36:10,37:15,38:20,39:15,40:10"
           const stockEntries = row.stockBySize.split(',').map((entry: string) => entry.trim()).filter(Boolean);
           stockBySize = {};
           
-                     for (const entry of stockEntries) {
-             const [size, quantity] = entry.split(':').map((s: string) => s.trim());
-             if (size && quantity && !isNaN(parseInt(quantity))) {
-               stockBySize[size] = parseInt(quantity);
-               totalStock += parseInt(quantity);
-             }
-           }
+          for (const entry of stockEntries) {
+            const [size, quantity] = entry.split(':').map((s: string) => s.trim());
+            if (size && quantity && !isNaN(parseInt(quantity))) {
+              stockBySize[size] = parseInt(quantity);
+              totalStock += parseInt(quantity);
+            }
+          }
         } else if (row.stock) {
-          // Fallback to old format: distribute total stock evenly
           const stockPerSize = Math.floor(parseInt(row.stock.toString()) / sizes.length);
           sizes.forEach((size: string) => {
             stockBySize[size] = stockPerSize;
@@ -567,11 +683,20 @@ export const importService = {
           });
         }
 
-        // Create product
+        // Create bilingual product data
         const productData = {
-          name: row.name,
-          slug,
-          description: row.description,
+          name: {
+            en: row.name.en,
+            he: row.name.he
+          },
+          slug: {
+            en: enSlug,
+            he: heSlug
+          },
+          description: {
+            en: row.description.en,
+            he: row.description.he
+          },
           price: parseFloat(row.price.toString()),
           salePrice: row.salePrice ? parseFloat(row.salePrice.toString()) : null,
           saleStartDate: row.saleStartDate ? new Date(row.saleStartDate) : null,
@@ -584,7 +709,10 @@ export const importService = {
           categoryId,
           images: imageUrls.map((url: string, index: number) => ({
             url,
-            alt: `${row.name} - Image ${index + 1}`,
+            alt: {
+              en: `${row.name.en} - Image ${index + 1}`,
+              he: `${row.name.he} - תמונה ${index + 1}`
+            },
             isPrimary: index === 0,
             order: index,
             createdAt: new Date()
@@ -600,15 +728,27 @@ export const importService = {
             }))
           ),
           tags: [],
-          createdAt: new Date(),
+          createdAt: isUpdate ? undefined : new Date(),
           updatedAt: new Date()
         };
 
-        await addDoc(collection(db, 'products'), productData);
+        if (isUpdate && existingProductId) {
+          // Update existing product
+          await updateDoc(doc(db, 'products', existingProductId), productData);
+          results.updated++;
+        } else {
+          // Create new product
+          await addDoc(collection(db, 'products'), {
+            ...productData,
+            createdAt: new Date()
+          });
+          results.created++;
+        }
+
         results.success++;
       } catch (error) {
         results.errors++;
-        results.errorsList.push(`Error importing "${row.name}": ${error instanceof Error ? error.message : 'Unknown error'}`);
+        results.errorsList.push(`Error importing "${row.name?.en || 'Unknown'}": ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 

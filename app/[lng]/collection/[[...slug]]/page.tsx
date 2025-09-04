@@ -12,7 +12,7 @@ import {
   CubeIcon,
 } from "@heroicons/react/24/outline";
 import QuickViewModal from "@/app/components/QuickViewModal";
-import { productService, Product, categoryService, Category } from "@/lib/firebase";
+import { productService, Product, categoryService, Category, productHelpers } from "@/lib/firebase";
 
 // Translations for the collection page
 const translations = {
@@ -466,7 +466,7 @@ export default function CollectionSlugPage() {
                     {product.images && product.images.length > 0 ? (
                       <Image
                         src={product.images.find((img) => img.isPrimary)?.url || product.images[0].url}
-                        alt={product.name}
+                        alt={productHelpers.getField(product, 'name', lng as 'en' | 'he')}
                         width={400}
                         height={400}
                         className="h-full w-full object-cover object-center group-hover:opacity-75"
@@ -481,9 +481,9 @@ export default function CollectionSlugPage() {
                   <div className="mt-4 flex justify-between">
                     <div>
                       <h3 className="text-sm text-gray-700">
-                        <Link href={`/${lng}/product/${product.slug}`}>
+                        <Link href={`/${lng}/product/${productHelpers.getField(product, 'slug', lng as 'en' | 'he')}`}>
                           <span aria-hidden="true" className="absolute inset-0" />
-                          {product.name}
+                          {productHelpers.getField(product, 'name', lng as 'en' | 'he')}
                         </Link>
                       </h3>
                       <p className="mt-1 text-sm text-gray-500">{product.category?.name}</p>
@@ -502,7 +502,7 @@ export default function CollectionSlugPage() {
                     {product.images && product.images.length > 1 ? (
                       <Image
                         src={product.images[1].url}
-                        alt={`${product.name} - Quick View`}
+                        alt={`${productHelpers.getField(product, 'name', lng as 'en' | 'he')} - ${t.quickView}`}
                         width={400}
                         height={400}
                         className="h-full w-full object-cover object-center"
@@ -999,6 +999,7 @@ export default function CollectionSlugPage() {
         <QuickViewModal
           product={selectedProduct}
           isOpen={isQuickViewOpen}
+          language={lng as 'en' | 'he'}
           onClose={() => {
             setIsQuickViewOpen(false);
             setSelectedProduct(null);

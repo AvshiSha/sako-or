@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { motion } from 'framer-motion'
+// import { motion } from 'framer-motion'
 import { 
   ChevronLeftIcon, 
   HeartIcon, 
@@ -19,7 +19,7 @@ import { productService, productHelpers, Product } from '@/lib/firebase'
 
 export default function ProductPage() {
   const params = useParams()
-  const router = useRouter()
+  // const router = useRouter()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
@@ -95,7 +95,7 @@ export default function ProductPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Product Not Found</h1>
-          <p className="text-gray-600 mb-6">The product you're looking for doesn't exist.</p>
+          <p className="text-gray-600 mb-6">The product you&apos;re looking for doesn&apos;t exist.</p>
           <Link 
             href={`/${lng}/collection`}
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
@@ -110,7 +110,7 @@ export default function ProductPage() {
 
   const productName = productHelpers.getField(product, 'name', lng as 'en' | 'he')
   const productDescription = productHelpers.getField(product, 'description', lng as 'en' | 'he')
-  const productSlug = productHelpers.getField(product, 'slug', lng as 'en' | 'he')
+  // const productSlug = productHelpers.getField(product, 'slug', lng as 'en' | 'he')
 
   const handleAddToCart = () => {
     // TODO: Implement add to cart functionality

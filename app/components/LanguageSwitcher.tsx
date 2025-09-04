@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { languageMetadata, getNativeLanguageName } from '../../i18n/settings'
+import { languageMetadata } from '../../i18n/settings'
 
 interface LanguageSwitcherProps {
   currentLanguage: string;

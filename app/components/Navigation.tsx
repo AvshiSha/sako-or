@@ -93,7 +93,7 @@ const translations = {
 export default function Navigation({ lng }: { lng: string }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [isMobileWomenOpen, setIsMobileWomenOpen] = useState(false)
+  // const [isMobileWomenOpen, setIsMobileWomenOpen] = useState(false)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   
   // Mobile drawer state
@@ -117,7 +117,7 @@ export default function Navigation({ lng }: { lng: string }) {
       ]
       setDrawerStack([topLevelCategories])
     }
-  }, [isMobileMenuOpen, lng, t])
+  }, [isMobileMenuOpen, lng, t, drawerStack.length])
 
   // Handle ESC key
   useEffect(() => {
@@ -163,7 +163,7 @@ export default function Navigation({ lng }: { lng: string }) {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)
-    setIsMobileWomenOpen(false)
+    // setIsMobileWomenOpen(false)
     setDrawerStack([])
     setScrollPositions([])
   }

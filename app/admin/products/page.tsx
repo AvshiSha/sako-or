@@ -12,7 +12,7 @@ import {
   MagnifyingGlassIcon,
   CubeIcon
 } from '@heroicons/react/24/outline'
-import { productService, Product } from '@/lib/firebase'
+import { productService, Product, productHelpers } from '@/lib/firebase'
 import SuccessMessage from '@/app/components/SuccessMessage'
 
 function ProductsPageContent() {
@@ -65,8 +65,15 @@ function ProductsPageContent() {
   }
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    const productNameEn = productHelpers.getField(product, 'name', 'en')
+    const productNameHe = productHelpers.getField(product, 'name', 'he')
+    const productSlugEn = productHelpers.getField(product, 'slug', 'en')
+    const productSlugHe = productHelpers.getField(product, 'slug', 'he')
+    
+    const matchesSearch = productNameEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         productNameHe.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         productSlugEn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         productSlugHe.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesFilter = filter === 'all' ||
                          (filter === 'featured' && product.featured) ||
@@ -216,7 +223,7 @@ function ProductsPageContent() {
                                 <Image
                                   className="rounded-lg object-cover"
                                   src={product.images.find(img => img.isPrimary)?.url || product.images[0].url}
-                                  alt={product.name}
+                                  alt={productHelpers.getField(product, 'name', 'en')}
                                   fill
                                   sizes="40px"
                                 />
@@ -228,10 +235,13 @@ function ProductsPageContent() {
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
-                                {product.name}
+                                {productHelpers.getField(product, 'name', 'en')}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {product.slug}
+                                {productHelpers.getField(product, 'slug', 'en')}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                HE: {productHelpers.getField(product, 'name', 'he')}
                               </div>
                             </div>
                           </div>

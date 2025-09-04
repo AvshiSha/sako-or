@@ -11,7 +11,7 @@ export default function DashboardPage() {
     return <div>Loading...</div>;
   }
   
-  const lng = params.lng as string
+  // const lng = params.lng as string
 
   return <Dashboard />
 } 

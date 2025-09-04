@@ -1,4 +1,4 @@
-import { languages, isRTL, getLanguageDirection } from '../../i18n/settings'
+import { languages, getLanguageDirection } from '../../i18n/settings'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
 

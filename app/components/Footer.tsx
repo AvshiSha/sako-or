@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link';
-import { FaFacebook, FaInstagram, FaTwitter, FaPinterest } from 'react-icons/fa';
+import { FaFacebook, FaInstagram, FaPinterest } from 'react-icons/fa';
 import { useState } from 'react';
 import { newsletterService } from '@/lib/firebase';
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal';
@@ -58,7 +58,7 @@ export default function Footer({ lng }: { lng: string }) {
   const [emailError, setEmailError] = useState('')
   
   const t = translations[lng as keyof typeof translations]
-  const isRTL = lng === 'he'
+  // const isRTL = lng === 'he'
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

@@ -6,8 +6,10 @@ import {
   ArrowUpTrayIcon,
   DocumentTextIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline'
+import { convertCSVToJSON, parseCSV, downloadCSVTemplate } from '@/lib/csv-to-json-converter'
 
 interface ImportProduct {
   // Bilingual fields
@@ -51,13 +53,14 @@ export default function ImportPage() {
     created: number
     updated: number
   } | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
-    if (selectedFile && selectedFile.type === 'application/json') {
+    if (selectedFile && (selectedFile.type === 'application/json' || selectedFile.type === 'text/csv')) {
       setFile(selectedFile)
     } else {
-      alert('Please select a valid JSON file')
+      alert('Please select a valid JSON or CSV file')
     }
   }
 
@@ -67,7 +70,17 @@ export default function ImportPage() {
     setImporting(true)
     try {
       const text = await file.text()
-      const sheetData = JSON.parse(text)
+      let sheetData
+      
+      // Handle both JSON and CSV files
+      if (file.type === 'text/csv') {
+        const csvData = parseCSV(text)
+        console.log('Parsed CSV data:', csvData)
+        sheetData = convertCSVToJSON(csvData)
+        console.log('Converted to JSON:', sheetData)
+      } else {
+        sheetData = JSON.parse(text)
+      }
 
              // Validate required fields and formats
        const validationErrors: string[] = [];
@@ -149,7 +162,9 @@ export default function ImportPage() {
        });
 
       if (validationErrors.length > 0) {
-        alert(`Validation errors:\n${validationErrors.join('\n')}`);
+        // Show detailed error information
+        const errorMessage = `Validation errors:\n${validationErrors.join('\n')}\n\nFirst few rows of parsed data:\n${JSON.stringify(sheetData.slice(0, 2), null, 2)}`
+        alert(errorMessage);
         setImporting(false);
         return;
       }
@@ -246,6 +261,31 @@ export default function ImportPage() {
     URL.revokeObjectURL(url)
   }
 
+  const exportProducts = async () => {
+    setExporting(true)
+    try {
+      const response = await fetch('/api/admin/export')
+      if (!response.ok) {
+        throw new Error('Failed to export products')
+      }
+      
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `products-export-${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Export error:', error)
+      alert('Failed to export products. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pt-16">
       {/* Header */}
@@ -277,9 +317,9 @@ export default function ImportPage() {
             </h3>
             <div className="space-y-4">
               <div>
-                <h4 className="font-medium text-gray-900">Google Sheets Format</h4>
+                <h4 className="font-medium text-gray-900">Supported Formats</h4>
                 <p className="text-sm text-gray-600 mt-1">
-                  Export your Google Sheets data as JSON with the following structure:
+                  You can import products using either JSON or CSV format. For Google Sheets, export as CSV and upload directly, or convert to JSON format.
                 </p>
                                  <div className="mt-3 p-3 bg-gray-50 rounded-md">
                    <p className="text-xs text-gray-600 mb-2"><strong>Example stockBySize format:</strong></p>
@@ -315,7 +355,31 @@ export default function ImportPage() {
                   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                 >
                   <DocumentTextIcon className="h-4 w-4 mr-2" />
-                  Download Template
+                  Download JSON Template
+                </button>
+                <button
+                  onClick={downloadCSVTemplate}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  <DocumentTextIcon className="h-4 w-4 mr-2" />
+                  Download CSV Template
+                </button>
+                <button
+                  onClick={exportProducts}
+                  disabled={exporting}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {exporting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600 mr-2"></div>
+                      Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownTrayIcon className="h-4 w-4 mr-2" />
+                      Export Current Products
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -326,7 +390,7 @@ export default function ImportPage() {
         <div className="bg-white shadow rounded-lg mb-6">
           <div className="px-4 py-5 sm:p-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-              Upload JSON File
+              Upload File (JSON or CSV)
             </h3>
             
             <div className="space-y-4">
@@ -338,7 +402,7 @@ export default function ImportPage() {
                   id="file-upload"
                   name="file-upload"
                   type="file"
-                  accept=".json"
+                  accept=".json,.csv"
                   onChange={handleFileChange}
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                 />
@@ -354,7 +418,7 @@ export default function ImportPage() {
               <button
                 onClick={handleImport}
                 disabled={!file || importing}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:cursor-not-allowed"
               >
                 {importing ? (
                   <>

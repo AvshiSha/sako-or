@@ -177,13 +177,14 @@ export const productHelpers = {
 
     // Check slugs (can be auto-generated if missing)
     if (!product.slug || typeof product.slug !== 'object') {
-      errors.push('Product slug must be an object with en and he properties');
+      // Slugs can be auto-generated, so this is not a critical error
+      console.log('Slug will be auto-generated for product:', product.name?.en);
     } else {
       if (!product.slug.en || product.slug.en.trim() === '') {
-        errors.push('English slug is required');
+        console.log('English slug will be auto-generated for product:', product.name?.en);
       }
       if (!product.slug.he || product.slug.he.trim() === '') {
-        errors.push('Hebrew slug is required');
+        console.log('Hebrew slug will be auto-generated for product:', product.name?.en);
       }
     }
 
@@ -615,13 +616,18 @@ export const importService = {
 
     for (const row of sheetData) {
       try {
+        console.log('Processing product:', row.name?.en || 'Unknown');
+        
         // Validate bilingual data
         const validation = productHelpers.validateBilingualProduct(row);
         if (!validation.isValid) {
+          console.log('Validation failed for product:', row.name?.en, 'Errors:', validation.errors);
           results.errors++;
           results.errorsList.push(`Product validation failed: ${validation.errors.join(', ')}`);
           continue;
         }
+        
+        console.log('Validation passed for product:', row.name?.en);
 
         // Create or find category
         const categoryQuery = query(collection(db, 'categories'), where('name', '==', row.category), limit(1));
@@ -779,12 +785,15 @@ export const importService = {
         }
 
         results.success++;
+        console.log('Successfully processed product:', row.name?.en);
       } catch (error) {
+        console.log('Error processing product:', row.name?.en, error);
         results.errors++;
         results.errorsList.push(`Error importing "${row.name?.en || 'Unknown'}": ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
+    console.log('Import completed. Results:', results);
     return results;
   }
 };

@@ -8,10 +8,9 @@ import {
   ShoppingBagIcon,
   TrashIcon,
   MinusIcon,
-  PlusIcon,
-  ArrowLeftIcon
+  PlusIcon
 } from '@heroicons/react/24/outline'
-import { useCart, CartItem } from '@/app/hooks/useCart'
+import { useCart } from '@/app/hooks/useCart'
 
 export default function CartPage() {
   const params = useParams()
@@ -22,7 +21,6 @@ export default function CartPage() {
     items, 
     removeFromCart, 
     updateQuantity, 
-    clearCart, 
     getTotalPrice, 
     getTotalItems,
     loading 

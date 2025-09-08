@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -24,7 +24,6 @@ import Toast, { useToast } from '@/app/components/Toast'
 
 export default function ProductPage() {
   const params = useParams()
-  const router = useRouter()
   const searchParams = useSearchParams()
   const [product, setProduct] = useState<Product | null>(null)
   const [loading, setLoading] = useState(true)
@@ -104,7 +103,6 @@ export default function ProductPage() {
         // Fire Product View analytics event
         if (analytics && productData && typeof analytics.logEvent === 'function') {
           try {
-            // @ts-ignore - Firebase Analytics types
             analytics.logEvent('view_item', {
               currency: productData.currency || 'USD',
               value: productData.salePrice || productData.price,
@@ -131,6 +129,25 @@ export default function ProductPage() {
     fetchProduct()
   }, [sku, lng, isClient, sizeParam, colorParam])
 
+  // Check if variant is in stock
+  const getVariantStock = useCallback((size?: string, color?: string) => {
+    // If we have stock by size data, use that
+    if (product?.stockBySize && size && product.stockBySize[size] !== undefined) {
+      return product.stockBySize[size]
+    }
+    
+    // Fallback to variants if available
+    if (product?.variants) {
+      const variant = product.variants.find(v => 
+        (!size || v.size === size) && (!color || v.color === color)
+      )
+      return variant ? variant.stock : 0
+    }
+    
+    // Fallback to total stock
+    return product?.stock || 0
+  }, [product])
+
   // Reset quantity when size changes to ensure it doesn't exceed stock
   useEffect(() => {
     if (selectedSize && product) {
@@ -139,7 +156,7 @@ export default function ProductPage() {
         setQuantity(Math.max(1, sizeStock))
       }
     }
-  }, [selectedSize, selectedColor, product, quantity])
+  }, [selectedSize, selectedColor, product, quantity, getVariantStock])
 
   // Update URL when variant selections change
   useEffect(() => {
@@ -215,25 +232,6 @@ export default function ProductPage() {
     ? product.salePrice 
     : product.price
 
-  // Check if variant is in stock
-  const getVariantStock = (size?: string, color?: string) => {
-    // If we have stock by size data, use that
-    if (product.stockBySize && size && product.stockBySize[size] !== undefined) {
-      return product.stockBySize[size]
-    }
-    
-    // Fallback to variants if available
-    if (product.variants) {
-      const variant = product.variants.find(v => 
-        (!size || v.size === size) && (!color || v.color === color)
-      )
-      return variant ? variant.stock : 0
-    }
-    
-    // Fallback to total stock
-    return product.stock
-  }
-
   const currentStock = getVariantStock(selectedSize, selectedColor)
   const isOutOfStock = currentStock <= 0
 
@@ -245,7 +243,6 @@ export default function ProductPage() {
     // Fire Add to Cart analytics event
     if (analytics) {
       try {
-        // @ts-ignore - Firebase Analytics types
         analytics.logEvent('add_to_cart', {
           currency: product.currency || 'USD',
           value: currentPrice * quantity,

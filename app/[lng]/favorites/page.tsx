@@ -33,11 +33,8 @@ export default function FavoritesPage() {
   const [selectedProduct, setSelectedProduct] = useState<FavoriteProduct | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   
-  // Cart hook
-  const { addToCart } = useCart()
-  
   // Toast hook
-  const { toast, showToast, hideToast } = useToast()
+  const { toast, hideToast } = useToast()
 
   // Localized content
   const content = {
@@ -76,70 +73,70 @@ export default function FavoritesPage() {
   useEffect(() => {
     console.log('🔄 Favorites page: isClient changed to:', isClient)
     if (isClient) {
-      loadFavorites()
-    }
-  }, [isClient])
-
-  const loadFavorites = async () => {
-    if (!isClient) return
-    
-    try {
-      setLoading(true)
-      
-      // Get favorite SKUs from localStorage
-      const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
-      console.log('🔍 Favorites page: Found SKUs in localStorage:', favoriteSkus)
-      
-      if (favoriteSkus.length === 0) {
-        setFavorites([])
-        setLoading(false)
-        return
-      }
-
-      // Fetch product data for each favorite SKU
-      const favoriteProducts: FavoriteProduct[] = []
-      
-      for (const sku of favoriteSkus) {
+      const loadFavorites = async () => {
+        if (!isClient) return
+        
         try {
-          console.log('🔍 Favorites page: Fetching product for SKU:', sku)
-          const product = await productService.getProductBySku(sku)
-          console.log('📦 Favorites page: Product found:', product ? 'YES' : 'NO')
-          if (product) {
-            favoriteProducts.push(product)
-          } else {
-            // Product not found - mark as unavailable
-            favoriteProducts.push({
-              sku,
-              slug: { en: 'unavailable', he: 'לא-זמין' },
-              name: { en: 'Unavailable Product', he: 'מוצר לא זמין' },
-              description: { en: 'This product is no longer available', he: 'המוצר הזה כבר לא זמין' },
-              price: 0,
-              stock: 0,
-              featured: false,
-              isNew: false,
-              isActive: false,
-              categoryId: '',
-              images: [],
-              variants: [],
-              tags: [],
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              isUnavailable: true
-            } as FavoriteProduct)
+          setLoading(true)
+          
+          // Get favorite SKUs from localStorage
+          const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
+          console.log('🔍 Favorites page: Found SKUs in localStorage:', favoriteSkus)
+          
+          if (favoriteSkus.length === 0) {
+            setFavorites([])
+            setLoading(false)
+            return
           }
+
+          // Fetch product data for each favorite SKU
+          const favoriteProducts: FavoriteProduct[] = []
+          
+          for (const sku of favoriteSkus) {
+            try {
+              console.log('🔍 Favorites page: Fetching product for SKU:', sku)
+              const product = await productService.getProductBySku(sku)
+              console.log('📦 Favorites page: Product found:', product ? 'YES' : 'NO')
+              if (product) {
+                favoriteProducts.push(product)
+              } else {
+                // Product not found - mark as unavailable
+                favoriteProducts.push({
+                  sku,
+                  slug: { en: 'unavailable', he: 'לא-זמין' },
+                  name: { en: 'Unavailable Product', he: 'מוצר לא זמין' },
+                  description: { en: 'This product is no longer available', he: 'המוצר הזה כבר לא זמין' },
+                  price: 0,
+                  stock: 0,
+                  featured: false,
+                  isNew: false,
+                  isActive: false,
+                  categoryId: '',
+                  images: [],
+                  variants: [],
+                  tags: [],
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                  isUnavailable: true
+                } as FavoriteProduct)
+              }
+            } catch (error) {
+              console.error(`Error fetching product ${sku}:`, error)
+            }
+          }
+          
+          console.log('✅ Favorites page: Final products loaded:', favoriteProducts.length)
+          setFavorites(favoriteProducts)
         } catch (error) {
-          console.error(`Error fetching product ${sku}:`, error)
+          console.error('❌ Error loading favorites:', error)
+        } finally {
+          setLoading(false)
         }
       }
       
-      console.log('✅ Favorites page: Final products loaded:', favoriteProducts.length)
-      setFavorites(favoriteProducts)
-    } catch (error) {
-      console.error('❌ Error loading favorites:', error)
-    } finally {
-      setLoading(false)
+      loadFavorites()
     }
-  }
+  }, [isClient])
 
   const removeFromFavorites = (sku: string) => {
     if (!isClient) return
@@ -180,11 +177,6 @@ export default function FavoritesPage() {
     }
   }
 
-  const isFavorite = (sku: string) => {
-    if (!isClient) return false
-    const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
-    return favoriteSkus.includes(sku)
-  }
 
   if (!isClient) {
     return <div className="min-h-screen bg-gray-50"></div>

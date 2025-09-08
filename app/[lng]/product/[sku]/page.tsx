@@ -17,7 +17,6 @@ import {
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { productService, productHelpers, Product } from '@/lib/firebase'
 import { analytics } from '@/lib/firebase'
-import ProductLanguageSwitcher from '@/app/components/ProductLanguageSwitcher'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
@@ -391,9 +390,9 @@ export default function ProductPage() {
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         {/* Breadcrumb Navigation */}
-        <nav className="bg-gray-50 border-b border-gray-200">
+        <div className="bg-gray-50 border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-4">
+            <div className="flex items-center py-4">
               <div className={`flex items-center space-x-2 ${isRTL ? 'space-x-reverse' : ''}`}>
                 <Link href={`/${lng}`} className="text-gray-500 hover:text-gray-700">
                   {lng === 'he' ? 'בית' : 'Home'}
@@ -405,10 +404,9 @@ export default function ProductPage() {
                 <ChevronLeftIcon className={`h-4 w-4 text-gray-400 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
                 <span className="text-gray-900">{productName}</span>
               </div>
-              <ProductLanguageSwitcher currentLanguage={lng} sku={sku} />
             </div>
           </div>
-        </nav>
+        </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

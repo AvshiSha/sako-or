@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { languageMetadata } from '../../i18n/settings'
 
 interface ProductLanguageSwitcherProps {

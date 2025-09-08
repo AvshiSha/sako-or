@@ -118,7 +118,7 @@ export default function NewProductPage() {
   const handleSizeChange = (size: string, isSelected: boolean) => {
     setFormData(prev => {
       let newSizes = [...prev.sizes]
-      let newStockBySize = { ...prev.stockBySize }
+      const newStockBySize = { ...prev.stockBySize }
       
       if (isSelected) {
         // Add size if not already present

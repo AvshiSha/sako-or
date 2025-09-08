@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { ChevronDown, Menu, X, ArrowLeft, Heart, ShoppingBag } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
-import LanguageSwitcher from './LanguageSwitcher'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import MobileLanguageSwitcher from './MobileLanguageSwitcher'
 import { useCart } from '@/app/hooks/useCart'

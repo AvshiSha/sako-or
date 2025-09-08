@@ -12,7 +12,6 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { productService, Product } from '@/lib/firebase'
-import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import AddToCartModal from '@/app/components/AddToCartModal'
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Plus, Minus, ShoppingBag } from 'lucide-react'
+import Image from 'next/image'
 import { useCart } from '../hooks/useCart'
 import { useToast } from './Toast'
 
@@ -72,7 +73,6 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
 
   const currentStock = getCurrentStock()
   const isOutOfStock = currentStock <= 0
-  const maxQuantity = Math.min(quantity, currentStock)
 
   // Adjust quantity if it exceeds stock
   useEffect(() => {
@@ -169,13 +169,15 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
           {/* Product Info */}
           <div className="flex space-x-4">
             {product.images?.[0] && (
-              <img
+              <Image
                 src={product.images[0].url}
                 alt={
                   typeof product.images[0].alt === 'string' 
                     ? product.images[0].alt 
                     : product.images[0].alt?.[lng as 'en' | 'he'] || product.name?.[lng as 'en' | 'he'] || 'Product'
                 }
+                width={80}
+                height={80}
                 className="w-20 h-20 object-cover rounded-md"
               />
             )}

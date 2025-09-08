@@ -11,7 +11,6 @@ import {
   XMarkIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
-import QuickViewModal from "@/app/components/QuickViewModal";
 import { productService, Product, categoryService, Category, productHelpers } from "@/lib/firebase";
 
 // Translations for the collection page
@@ -37,7 +36,6 @@ const translations = {
     sizes: "Sizes",
     clearAllFilters: "Clear All Filters",
     applyFilters: "Apply Filters",
-    quickView: "Quick View",
     subcategoriesList: {
       shoes: "Shoes",
       accessories: "Accessories",
@@ -77,7 +75,6 @@ const translations = {
     sizes: "מידות",
     clearAllFilters: "נקה את כל המסננים",
     applyFilters: "החל מסננים",
-    quickView: "תצוגה מהירה",
     subcategoriesList: {
       shoes: "נעליים",
       accessories: "אביזרים",
@@ -126,8 +123,6 @@ export default function CollectionSlugPage() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState("relevance");
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -330,10 +325,6 @@ export default function CollectionSlugPage() {
     ]),
   ] as string[];
 
-  const handleQuickView = (product: Product) => {
-    setSelectedProduct(product);
-    setIsQuickViewOpen(true);
-  };
 
   if (loading) {
     return (
@@ -478,10 +469,19 @@ export default function CollectionSlugPage() {
                     )}
                   </div>
 
+                  {/* Out of Stock Indicator */}
+                  {product.stock <= 0 && (
+                    <div className="mt-2 text-center">
+                      <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        {lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mt-4 flex justify-between">
                     <div>
                       <h3 className="text-sm text-gray-700">
-                        <Link href={`/${lng}/product/${productHelpers.getField(product, 'slug', lng as 'en' | 'he')}`}>
+                        <Link href={`/${lng}/product/${product.sku}`}>
                           <span aria-hidden="true" className="absolute inset-0" />
                           {productHelpers.getField(product, 'name', lng as 'en' | 'he')}
                         </Link>
@@ -489,30 +489,10 @@ export default function CollectionSlugPage() {
                       <p className="mt-1 text-sm text-gray-500">{product.category?.name}</p>
                     </div>
                     <p className="text-sm font-medium text-gray-900">
-                      ${product.price.toFixed(2)}
+                    ₪{product.price.toFixed(2)}
                     </p>
                   </div>
 
-                  {/* Quick View Button */}
-                  <button
-                    onClick={() => handleQuickView(product)}
-                    className="absolute inset-0 top-0 h-full w-full bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100"
-                    style={{ height: 'calc(100% - 4rem)' }}
-                  >
-                    {product.images && product.images.length > 1 ? (
-                      <Image
-                        src={product.images[1].url}
-                        alt={`${productHelpers.getField(product, 'name', lng as 'en' | 'he')} - ${t.quickView}`}
-                        width={400}
-                        height={400}
-                        className="h-full w-full object-cover object-center"
-                      />
-                    ) : (
-                      <div className="bg-white text-gray-900 px-4 py-2 rounded-md text-sm font-medium">
-                        {t.quickView}
-                      </div>
-                    )}
-                  </button>
                 </motion.div>
               ))}
             </div>
@@ -994,18 +974,6 @@ export default function CollectionSlugPage() {
         </div>
       )}
 
-      {/* Quick View Modal */}
-      {selectedProduct && (
-        <QuickViewModal
-          product={selectedProduct}
-          isOpen={isQuickViewOpen}
-          language={lng as 'en' | 'he'}
-          onClose={() => {
-            setIsQuickViewOpen(false);
-            setSelectedProduct(null);
-          }}
-        />
-      )}
     </div>
   );
 }

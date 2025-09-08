@@ -251,11 +251,11 @@ function ProductsPageContent() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            ${product.price.toFixed(2)}
+                          ₪{product.price.toFixed(2)}
                           </div>
                           {product.salePrice && (
                             <div className="text-sm text-red-600">
-                              Sale: ${product.salePrice.toFixed(2)}
+                              Sale: ₪{product.salePrice.toFixed(2)}
                             </div>
                           )}
                         </td>

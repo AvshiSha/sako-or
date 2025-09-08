@@ -30,7 +30,7 @@ export async function GET() {
         slug: product.slug,
         price: product.price,
         category: product.category?.name || 'uncategorized',
-        subcategory: product.subcategory || '',
+        subcategory: '', // Subcategory not available in current Product interface
         images: product.images?.map(img => img.url).join(',') || '',
         sizes: product.sizes?.join(',') || '',
         colors: product.colors?.join(',') || '',

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown, Menu, X, ArrowLeft } from 'lucide-react'
+import { ChevronDown, Menu, X, ArrowLeft, Heart } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import LanguageSwitcher from './LanguageSwitcher'
 
@@ -112,6 +112,7 @@ export default function Navigation({ lng }: { lng: string }) {
         { key: 'home', name: t.home, href: `/${lng}` },
         { key: 'collection', name: t.newCollection, href: `/${lng}/collection` },
         { key: 'women', name: t.women, children: navigationStructure.women.children },
+        { key: 'favorites', name: lng === 'he' ? 'מועדפים' : 'Favorites', href: `/${lng}/favorites` },
         { key: 'about', name: t.about, href: `/${lng}/about` },
         { key: 'contact', name: t.contact, href: `/${lng}/contact` }
       ]
@@ -318,8 +319,17 @@ export default function Navigation({ lng }: { lng: string }) {
             </div>
           </div>
 
-          {/* Right side - Language Switcher and Mobile Menu Button */}
+          {/* Right side - Favorites, Language Switcher and Mobile Menu Button */}
           <div className="flex items-center gap-3">
+            {/* Favorites Link */}
+            <Link
+              href={`/${lng}/favorites`}
+              className="p-2 rounded-md text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors duration-200"
+              title={lng === 'he' ? 'מועדפים' : 'Favorites'}
+            >
+              <Heart className="h-5 w-5" />
+            </Link>
+            
             <LanguageSwitcher currentLanguage={lng} />
             
             {/* Mobile menu button */}

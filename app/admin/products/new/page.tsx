@@ -25,6 +25,7 @@ interface ProductFormData {
   sizes: string[];
   sku: string;
   stock: number;
+  stockBySize: Record<string, number>; // New field for stock by size
   subcategory: string;
   currency: string;
 }
@@ -41,6 +42,7 @@ interface FormErrors {
   sizes?: string;
   stock?: string;
   images?: string;
+  sku?: string;
 }
 
 interface ImageFile {
@@ -81,6 +83,7 @@ export default function NewProductPage() {
     sizes: [],
     sku: '',
     stock: 0,
+    stockBySize: {},
     subcategory: '',
     currency: 'ILS'
   })
@@ -110,6 +113,41 @@ export default function NewProductPage() {
         [field]: undefined
       }))
     }
+  }
+
+  const handleSizeChange = (size: string, isSelected: boolean) => {
+    setFormData(prev => {
+      let newSizes = [...prev.sizes]
+      let newStockBySize = { ...prev.stockBySize }
+      
+      if (isSelected) {
+        // Add size if not already present
+        if (!newSizes.includes(size)) {
+          newSizes.push(size)
+          newStockBySize[size] = 0 // Initialize stock to 0
+        }
+      } else {
+        // Remove size
+        newSizes = newSizes.filter(s => s !== size)
+        delete newStockBySize[size]
+      }
+      
+      return {
+        ...prev,
+        sizes: newSizes,
+        stockBySize: newStockBySize
+      }
+    })
+  }
+
+  const handleStockBySizeChange = (size: string, stock: number) => {
+    setFormData(prev => ({
+      ...prev,
+      stockBySize: {
+        ...prev.stockBySize,
+        [size]: stock
+      }
+    }))
   }
 
   const handleArrayChange = (field: 'colors' | 'sizes', value: string) => {
@@ -245,11 +283,12 @@ export default function NewProductPage() {
     if (formData.sizes.length === 0) {
       newErrors.sizes = 'At least one size is required'
     }
-    if (formData.stock < 0) {
-      newErrors.stock = 'Stock cannot be negative'
-    }
+    // Stock validation is now handled by stock by size
     if (imageFiles.length === 0) {
       newErrors.images = 'At least one image is required'
+    }
+    if (!formData.sku.trim()) {
+      newErrors.sku = 'SKU is required'
     }
 
     setErrors(newErrors)
@@ -294,7 +333,7 @@ export default function NewProductPage() {
           he: formData.descriptionHe
         },
         price: parseFloat(formData.price.toString()),
-        stock: parseInt(formData.stock.toString()),
+        stock: Object.values(formData.stockBySize).reduce((total, stock) => total + stock, 0), // Calculate total stock from size stocks
         featured: formData.featured,
         isNew: formData.new,
         isActive: true,
@@ -315,7 +354,8 @@ export default function NewProductPage() {
         colors: formData.colors, // Add colors
         brand: formData.brand, // Add brand
         subcategory: formData.subcategory, // Add subcategory
-        currency: formData.currency
+        currency: formData.currency,
+        stockBySize: formData.stockBySize // Add stock by size
       }
 
       // Only add optional fields if they have valid values
@@ -331,9 +371,8 @@ export default function NewProductPage() {
         productData.saleEndDate = new Date(formData.saleEndDate)
       }
       
-      if (formData.sku && formData.sku.trim()) {
-        productData.sku = formData.sku.trim()
-      }
+      // SKU is required and validated, so always include it
+      productData.sku = formData.sku.trim()
 
       console.log('Product data prepared:', productData)
       console.log('Calling productService.createProduct...')
@@ -465,16 +504,19 @@ export default function NewProductPage() {
 
                 <div>
                   <label htmlFor="sku" className="block text-sm font-medium text-gray-700">
-                    SKU
+                    SKU *
                   </label>
                   <input
                     type="text"
                     id="sku"
                     value={formData.sku}
                     onChange={(e) => handleInputChange('sku', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
-                    placeholder="Stock keeping unit"
+                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
+                      errors.sku ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="Stock keeping unit (e.g., SAK-12345)"
                   />
+                  {errors.sku && <p className="mt-1 text-sm text-red-600">{errors.sku}</p>}
                 </div>
               </div>
             </div>
@@ -619,23 +661,6 @@ export default function NewProductPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="stock" className="block text-sm font-medium text-gray-700">
-                    Total Stock
-                  </label>
-                  <input
-                    type="number"
-                    id="stock"
-                    min="0"
-                    value={formData.stock}
-                    onChange={(e) => handleInputChange('stock', e.target.value)}
-                    className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-900 ${
-                      errors.stock ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="0"
-                  />
-                  {errors.stock && <p className="mt-1 text-sm text-red-600">{errors.stock}</p>}
-                </div>
 
                 <div>
                   <label htmlFor="currency" className="block text-sm font-medium text-gray-700">
@@ -744,21 +769,48 @@ export default function NewProductPage() {
               {errors.colors && <p className="mt-2 text-sm text-red-600">{errors.colors}</p>}
             </div>
 
-            {/* Sizes */}
+            {/* Sizes and Stock */}
             <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Sizes *</h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                {commonSizes.map((size) => (
-                  <label key={size} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={formData.sizes.includes(size)}
-                      onChange={() => handleArrayChange('sizes', size)}
-                      className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="text-sm text-gray-700">{size}</span>
-                  </label>
-                ))}
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Sizes & Stock *</h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                  {commonSizes.map((size) => (
+                    <label key={size} className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.sizes.includes(size)}
+                        onChange={(e) => handleSizeChange(size, e.target.checked)}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm text-gray-700">{size}</span>
+                    </label>
+                  ))}
+                </div>
+                
+                {/* Stock by Size Inputs */}
+                {formData.sizes.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="text-md font-medium text-gray-900 mb-3">Stock per Size</h3>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                      {formData.sizes.map((size) => (
+                        <div key={size} className="space-y-1">
+                          <label htmlFor={`stock-${size}`} className="block text-sm font-medium text-gray-700">
+                            Size {size}
+                          </label>
+                          <input
+                            type="number"
+                            id={`stock-${size}`}
+                            min="0"
+                            value={formData.stockBySize[size] || 0}
+                            onChange={(e) => handleStockBySizeChange(size, parseInt(e.target.value) || 0)}
+                            className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                            placeholder="0"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               {errors.sizes && <p className="mt-2 text-sm text-red-600">{errors.sizes}</p>}
             </div>

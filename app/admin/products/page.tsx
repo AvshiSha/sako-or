@@ -294,7 +294,7 @@ function ProductsPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <Link
-                              href={`/product/${product.slug}`}
+                              href={`/en/product/${product.sku}`}
                               className="text-indigo-600 hover:text-indigo-900"
                               title="View"
                             >

@@ -73,6 +73,7 @@ export interface Product {
   colors?: string[];
   sizes?: string[];
   currency?: string;
+  stockBySize?: Record<string, number>; // Stock quantity for each size
 }
 
 export interface Category {
@@ -299,6 +300,38 @@ export const productService = {
       return null;
     } catch (error) {
       console.error('Error fetching product by slug:', error);
+      throw error;
+    }
+  },
+
+  // Get product by SKU
+  async getProductBySku(sku: string): Promise<Product | null> {
+    try {
+      console.log('🔍 Firebase: Searching for SKU:', sku);
+      const q = query(collection(db, 'products'), where('sku', '==', sku), limit(1));
+      const querySnapshot = await getDocs(q);
+      
+      console.log('📊 Firebase: Query returned', querySnapshot.docs.length, 'documents');
+      
+      if (!querySnapshot.empty) {
+        const docSnapshot = querySnapshot.docs[0];
+        const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
+        console.log('✅ Firebase: Product found:', product.name?.en);
+        
+        // Fetch category data
+        if (product.categoryId) {
+          const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
+          if (categoryDoc.exists()) {
+            product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+          }
+        }
+        
+        return product;
+      }
+      console.log('❌ Firebase: No product found with SKU:', sku);
+      return null;
+    } catch (error) {
+      console.error('❌ Firebase: Error fetching product by SKU:', error);
       throw error;
     }
   },

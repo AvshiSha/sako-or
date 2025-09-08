@@ -12,6 +12,9 @@ import {
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { productService, Product } from '@/lib/firebase'
+import { useCart } from '@/app/hooks/useCart'
+import Toast, { useToast } from '@/app/components/Toast'
+import AddToCartModal from '@/app/components/AddToCartModal'
 
 interface FavoriteProduct extends Product {
   isUnavailable?: boolean
@@ -27,6 +30,14 @@ export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<FavoriteProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<FavoriteProduct | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  
+  // Cart hook
+  const { addToCart } = useCart()
+  
+  // Toast hook
+  const { toast, showToast, hideToast } = useToast()
 
   // Localized content
   const content = {
@@ -293,7 +304,7 @@ export default function FavoritesPage() {
                       
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-lg font-bold text-gray-900">
-                          ${product.price.toFixed(2)}
+                        ₪{product.price.toFixed(2)}
                         </span>
                         {product.stock <= 0 && (
                           <span className="text-sm text-red-600 font-medium">
@@ -304,8 +315,8 @@ export default function FavoritesPage() {
 
                       <button
                         onClick={() => {
-                          // Add to cart logic here
-                          console.log('Add to cart:', product.sku)
+                          setSelectedProduct(product)
+                          setIsModalOpen(true)
                         }}
                         disabled={product.stock <= 0}
                         className={`w-full py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center ${
@@ -325,6 +336,25 @@ export default function FavoritesPage() {
           </div>
         )}
       </div>
+      
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+        type={toast.type}
+      />
+
+      {/* Add to Cart Modal */}
+      <AddToCartModal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false)
+          setSelectedProduct(null)
+        }}
+        product={selectedProduct}
+        lng={lng}
+      />
     </div>
   )
 }

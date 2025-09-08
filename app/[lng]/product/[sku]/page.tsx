@@ -19,6 +19,8 @@ import { productService, productHelpers, Product } from '@/lib/firebase'
 import { analytics } from '@/lib/firebase'
 import ProductLanguageSwitcher from '@/app/components/ProductLanguageSwitcher'
 import { useFavorites } from '@/app/hooks/useFavorites'
+import { useCart } from '@/app/hooks/useCart'
+import Toast, { useToast } from '@/app/components/Toast'
 
 export default function ProductPage() {
   const params = useParams()
@@ -32,9 +34,16 @@ export default function ProductPage() {
   const [selectedColor, setSelectedColor] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [isClient, setIsClient] = useState(false)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
   
   // Favorites hook
   const { isFavorite, toggleFavorite } = useFavorites()
+  
+  // Cart hook
+  const { addToCart } = useCart()
+  
+  // Toast hook
+  const { toast, showToast, hideToast } = useToast()
 
   // Get language and SKU from params
   const lng = params?.lng as string || 'en'
@@ -228,8 +237,10 @@ export default function ProductPage() {
   const currentStock = getVariantStock(selectedSize, selectedColor)
   const isOutOfStock = currentStock <= 0
 
-  const handleAddToCart = () => {
-    if (isOutOfStock) return
+  const handleAddToCart = async () => {
+    if (isOutOfStock || isAddingToCart) return
+
+    setIsAddingToCart(true)
 
     // Fire Add to Cart analytics event
     if (analytics) {
@@ -252,15 +263,52 @@ export default function ProductPage() {
       }
     }
 
-    // TODO: Implement actual add to cart functionality
-    console.log('Add to cart:', {
-      sku: product.sku,
-      name: productName,
-      size: selectedSize,
-      color: selectedColor,
-      quantity,
-      price: currentPrice
-    })
+    // Add to cart
+    if (product.sku) {
+      addToCart({
+        sku: product.sku,
+        name: {
+          en: product.name?.en || '',
+          he: product.name?.he || ''
+        },
+        price: product.price,
+        salePrice: product.salePrice,
+        currency: product.currency,
+        image: product.images?.[0]?.url,
+        size: selectedSize,
+        color: selectedColor,
+        maxStock: currentStock
+      })
+      
+      // Add multiple items if quantity > 1
+      for (let i = 1; i < quantity; i++) {
+        addToCart({
+          sku: product.sku,
+          name: {
+            en: product.name?.en || '',
+            he: product.name?.he || ''
+          },
+          price: product.price,
+          salePrice: product.salePrice,
+          currency: product.currency,
+          image: product.images?.[0]?.url,
+          size: selectedSize,
+          color: selectedColor,
+          maxStock: currentStock
+        })
+      }
+      
+      // Show success toast
+      const successMessage = lng === 'he' 
+        ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה` 
+        : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
+      showToast(successMessage, 'success')
+    }
+    
+    // Reset button state after a short delay
+    setTimeout(() => {
+      setIsAddingToCart(false)
+    }, 1000)
   }
 
   const handleShare = async () => {
@@ -424,12 +472,12 @@ export default function ProductPage() {
               {/* Price */}
               <div className="flex items-center space-x-4">
                 <span className="text-3xl font-bold text-gray-900">
-                  {currentPrice.toFixed(2)}
+                ₪{currentPrice.toFixed(2)}
                 </span>
                 {product.salePrice && currentPrice === product.salePrice && (
                   <>
                     <span className="text-xl text-gray-500 line-through">
-                      {product.price.toFixed(2)}
+                    ₪{product.price.toFixed(2)}
                     </span>
                     <span className="bg-red-100 text-red-800 text-sm font-medium px-2.5 py-0.5 rounded">
                       {lng === 'he' ? 'מבצע' : 'Sale'}
@@ -568,16 +616,18 @@ export default function ProductPage() {
               <div className="space-y-4">
                 <button
                   onClick={handleAddToCart}
-                  disabled={isOutOfStock || (product.sizes && product.sizes.length > 0 && !selectedSize)}
+                  disabled={isOutOfStock || (product.sizes && product.sizes.length > 0 && !selectedSize) || isAddingToCart}
                   className={`w-full py-3 px-6 rounded-md font-medium transition-colors duration-200 flex items-center justify-center ${
-                    isOutOfStock || (product.sizes && product.sizes.length > 0 && !selectedSize)
+                    isOutOfStock || (product.sizes && product.sizes.length > 0 && !selectedSize) || isAddingToCart
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
                 >
                   <ShoppingBagIcon className="h-5 w-5 mr-2" />
                   {(() => {
-                    if (isOutOfStock) {
+                    if (isAddingToCart) {
+                      return lng === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
+                    } else if (isOutOfStock) {
                       return lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
                     } else if (product.sizes && product.sizes.length > 0 && !selectedSize) {
                       return lng === 'he' ? 'בחר מידה' : 'Select Size'
@@ -647,6 +697,14 @@ export default function ProductPage() {
           </div>
         </div>
       </div>
+      
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+        type={toast.type}
+      />
     </>
   )
 }

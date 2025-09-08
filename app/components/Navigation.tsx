@@ -1,9 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown, Menu, X, ArrowLeft, Heart } from 'lucide-react'
+import { ChevronDown, Menu, X, ArrowLeft, Heart, ShoppingBag } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import LanguageSwitcher from './LanguageSwitcher'
+import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
+import MobileLanguageSwitcher from './MobileLanguageSwitcher'
+import { useCart } from '@/app/hooks/useCart'
 
 // Navigation structure for mobile drawer
 const getNavigationStructure = (lng: string) => ({
@@ -103,6 +106,10 @@ export default function Navigation({ lng }: { lng: string }) {
   const drawerRef = useRef<HTMLDivElement>(null)
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
+  
+  // Cart state
+  const { getTotalItems } = useCart()
+  const cartItemCount = getTotalItems()
 
   // Initialize drawer with top-level categories
   useEffect(() => {
@@ -112,6 +119,7 @@ export default function Navigation({ lng }: { lng: string }) {
         { key: 'home', name: t.home, href: `/${lng}` },
         { key: 'collection', name: t.newCollection, href: `/${lng}/collection` },
         { key: 'women', name: t.women, children: navigationStructure.women.children },
+        { key: 'cart', name: lng === 'he' ? 'עגלת קניות' : 'Shopping Cart', href: `/${lng}/cart` },
         { key: 'favorites', name: lng === 'he' ? 'מועדפים' : 'Favorites', href: `/${lng}/favorites` },
         { key: 'about', name: t.about, href: `/${lng}/about` },
         { key: 'contact', name: t.contact, href: `/${lng}/contact` }
@@ -319,18 +327,35 @@ export default function Navigation({ lng }: { lng: string }) {
             </div>
           </div>
 
-          {/* Right side - Favorites, Language Switcher and Mobile Menu Button */}
+          {/* Right side - Cart, Favorites, Language Switcher and Mobile Menu Button */}
           <div className="flex items-center gap-3">
-            {/* Favorites Link */}
-            <Link
-              href={`/${lng}/favorites`}
-              className="p-2 rounded-md text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors duration-200"
-              title={lng === 'he' ? 'מועדפים' : 'Favorites'}
-            >
-              <Heart className="h-5 w-5" />
-            </Link>
+            {/* Cart and Favorites grouped together */}
+            <div className="flex items-center gap-0.5">
+              {/* Cart Link */}
+              <Link
+                href={`/${lng}/cart`}
+                className="relative p-2 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
+                title={lng === 'he' ? 'עגלת קניות' : 'Shopping Cart'}
+              >
+                <ShoppingBag className="h-5 w-5" />
+                {cartItemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                    {cartItemCount > 99 ? '99+' : cartItemCount}
+                  </span>
+                )}
+              </Link>
+              
+              {/* Favorites Link */}
+              <Link
+                href={`/${lng}/favorites`}
+                className="p-2 rounded-md text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors duration-200"
+                title={lng === 'he' ? 'מועדפים' : 'Favorites'}
+              >
+                <Heart className="h-5 w-5" />
+              </Link>
+            </div>
             
-            <LanguageSwitcher currentLanguage={lng} />
+            <DropdownLanguageSwitcher currentLanguage={lng} />
             
             {/* Mobile menu button */}
             <button
@@ -421,6 +446,9 @@ export default function Navigation({ lng }: { lng: string }) {
                   ))}
                 </div>
               </div>
+              
+              {/* Mobile Language Switcher */}
+              <MobileLanguageSwitcher currentLanguage={lng} />
             </div>
           </div>
         </>

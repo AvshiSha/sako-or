@@ -17,8 +17,8 @@ const translations = {
     craftsmanshipText: 'Each piece in our collection is meticulously crafted by skilled artisans who have dedicated their lives to perfecting their craft. We source only the finest materials from around the world.'
   },
   he: {
-    title: 'אודות סאקו אור',
-    description: 'גלה את הסיפור מאחורי המחויבות שלנו לנעליים יוקרתיות ואומנות יוצאת דופן.',
+    title: 'אודות סכו עור',
+    description: 'גלה את הסיפור מאחורי המחויבות שלנו לנעליים יוקרתיות ואומנות יוצאת דופן',
     mission: {
       title: 'המשימה שלנו',
       description: 'לספק ללקוחות בררניים את הנעליים הטובות ביותר, שילוב של אומנות אירופאית עם עיצוב חדשני.'
@@ -28,7 +28,7 @@ const translations = {
       description: 'להיות היעד המוביל לנעליים יוקרתיות, לקבוע סטנדרטים חדשים באיכות וסגנון.'
     },
     heritage: 'המורשת שלנו',
-    heritageText: 'נוסד עם תשוקה למצוינות, סאקו אור מייצג את שיא האומנות של נעליים. המסע שלנו התחיל באמונה פשוטה: שכל צעד צריך להילקח בנוחות וסגנון.',
+    heritageText: 'נוסד עם תשוקה למצוינות, סכו עור מייצג את שיא האומנות של נעליים. המסע שלנו התחיל באמונה פשוטה: שכל צעד צריך להילקח בנוחות וסגנון.',
     craftsmanship: 'אומנות אומנותית',
     craftsmanshipText: 'כל חלק באוסף שלנו מעוצב בקפידה על ידי אומנים מיומנים שהקדישו את חייהם לשיפור האומנות שלהם. אנחנו מקור רק החומרים הטובים ביותר מכל העולם.'
   }

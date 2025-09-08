@@ -31,14 +31,18 @@ const translations = {
       address: '51 Rothchild Street, Rishon-Lezion, Israel',
       phone: '+972-50-123-4567',
       email: 'info@sako-or.com',
-      hours: 'Sunday - Thursday: 9:00 AM - 20:00 PM\nFriday: 9:00 AM - 15:00 PM\nSaturday: Closed'
+      hours: 'Sunday - Thursday: 9:00 AM - 20:00 PM\nFriday: 9:00 AM - 15:00 PM\nSaturday: Closed',
+      Address: 'Address',
+      Phone: 'Phone',
+      Email: 'Email',
+      BuisnessHours: 'Buisness Hours'
     },
     
     backToHome: 'Back to Home'
   },
   he: {
     title: 'צור קשר',
-    subtitle: 'התקשר עם הצוות שלנו',
+    subtitle: 'צרו קשר עם הצוות שלנו',
     description: 'נשמח לשמוע מכם. שלחו לנו הודעה ונחזור אליכם בהקדם האפשרי.',
     
     form: {
@@ -61,7 +65,11 @@ const translations = {
       address: 'רחוב רוטשילד 51, ראשון לציון, ישראל',
       phone: '08-9408848',
       email: 'info@sako-or.com',
-      hours: 'יום ראשון - חמישי: 9:00 - 20:00\nשישי: 9:00 - 15:00\nשבת: סגור'
+      hours: 'יום ראשון - חמישי: 9:00 - 20:00\nשישי: 9:00 - 15:00\nשבת: סגור',
+      Address: 'כתובת',
+      Phone: 'טלפון',
+      Email: 'אימייל',
+      BuisnessHours: 'שעות פעילות'
     },
     
     backToHome: 'חזרה לעמוד הבית'
@@ -78,6 +86,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [emailError, setEmailError] = useState('')
   
   // Initialize language from params
   React.useEffect(() => {
@@ -89,18 +98,42 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: value
     }))
+
+    // Validate email in real-time
+    if (name === 'email') {
+      if (value === '') {
+        setEmailError('')
+      } else if (!validateEmail(value)) {
+        setEmailError(lng === 'he' ? 'כתובת אימייל לא תקינה' : 'Invalid email address')
+      } else {
+        setEmailError('')
+      }
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate email before submission
+    if (!validateEmail(formData.email)) {
+      setEmailError(lng === 'he' ? 'כתובת אימייל לא תקינה' : 'Invalid email address')
+      return
+    }
+    
     setIsSubmitting(true)
     setSubmitStatus('idle')
+    setEmailError('')
     
     try {
       // Simulate form submission (replace with actual API call)
@@ -174,8 +207,15 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                   placeholder={t.form.emailPlaceholder}
                   required
                   disabled={isSubmitting}
-                  className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400"
+                  className={`w-full px-4 py-3 border text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400 ${
+                    emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {emailError && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {emailError}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -214,7 +254,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
 
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !!emailError}
                 className="w-full bg-gray-900 text-white py-3 px-6 rounded-md hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? t.form.submitting : t.form.submit}
@@ -252,7 +292,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                   <MapPin className="w-6 h-6 text-gray-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">Address</h3>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Address}</h3>
                   <p className="text-gray-600 leading-relaxed">
                     {t.contactInfo.address}
                   </p>
@@ -265,7 +305,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                   <Phone className="w-6 h-6 text-gray-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">Phone</h3>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Phone}</h3>
                   <a 
                     href={`tel:${t.contactInfo.phone}`}
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
@@ -281,7 +321,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                   <Mail className="w-6 h-6 text-gray-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">Email</h3>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Email}</h3>
                   <a 
                     href={`mailto:${t.contactInfo.email}`}
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
@@ -297,7 +337,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                   <Clock className="w-6 h-6 text-gray-400" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">Business Hours</h3>
+                  <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.BuisnessHours}</h3>
                   <p className="text-gray-600 leading-relaxed whitespace-pre-line">
                     {t.contactInfo.hours}
                   </p>
@@ -311,6 +351,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                 <p className="text-gray-500 text-sm">
                   {isRTL ? 'מפה תגיע בקרוב' : 'Map coming soon'}
                 </p>
+                <MapPin className="w-6 h-6 text-gray-400" />
               </div>
             </div>
           </div>

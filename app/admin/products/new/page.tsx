@@ -404,6 +404,8 @@ export default function NewProductPage() {
       console.log('Preparing product data...')
       // Find the selected category object (use the deepest selected category)
       let selectedCategoryId = formData.category;
+      let selectedCategoryPath = '';
+      
       if (formData.subsubcategory) {
         selectedCategoryId = formData.subsubcategory;
       } else if (formData.subcategory) {
@@ -411,6 +413,31 @@ export default function NewProductPage() {
       }
       
       const selectedCategoryObj = categories.find(cat => cat.id === selectedCategoryId);
+      
+      // Build the full category path for hierarchical collection routing
+      if (selectedCategoryObj && selectedCategoryObj.path) {
+        selectedCategoryPath = selectedCategoryObj.path;
+      } else if (selectedCategoryObj) {
+        // Fallback: build path from the category hierarchy
+        const mainCategory = categories.find(cat => cat.id === formData.category);
+        const subCategory = formData.subcategory ? categories.find(cat => cat.id === formData.subcategory) : null;
+        const subSubCategory = formData.subsubcategory ? categories.find(cat => cat.id === formData.subsubcategory) : null;
+        
+        if (mainCategory) {
+          const mainSlug = typeof mainCategory.slug === 'object' ? mainCategory.slug.en : mainCategory.slug;
+          selectedCategoryPath = mainSlug;
+          
+          if (subCategory) {
+            const subSlug = typeof subCategory.slug === 'object' ? subCategory.slug.en : subCategory.slug;
+            selectedCategoryPath += `/${subSlug}`;
+            
+            if (subSubCategory) {
+              const subSubSlug = typeof subSubCategory.slug === 'object' ? subSubCategory.slug.en : subSubCategory.slug;
+              selectedCategoryPath += `/${subSubSlug}`;
+            }
+          }
+        }
+      }
 
       const productData: any = {
         name: {
@@ -422,6 +449,7 @@ export default function NewProductPage() {
           he: formData.nameHe.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim()
         },
         categorySlug: selectedCategoryObj ? (typeof selectedCategoryObj.slug === 'string' ? selectedCategoryObj.slug : selectedCategoryObj.slug?.en || '') : '', // Separate categorySlug for filtering
+        categoryPath: selectedCategoryPath, // Full hierarchical path for collection routing
         description: {
           en: formData.descriptionEn,
           he: formData.descriptionHe

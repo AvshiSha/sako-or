@@ -219,25 +219,26 @@ export default function CollectionSlugPage() {
      // Determine category and subcategory from slug
    let selectedCategory = "All Products";
    let selectedSubcategory: string | null = null;
+   let selectedCategoryPath = "";
+   
    if (slug && slug.length > 0) {
-     selectedCategory = decodeURIComponent(slug[0]);
-     if (slug.length > 1) {
-       // For nested paths like women/shoes/oxford, we want the last part as subcategory
-       if (slug.length === 3 && slug[1] === "shoes") {
-         // URL: /en/collection/women/shoes/oxford
-         selectedCategory = "women";
-         selectedSubcategory = decodeURIComponent(slug[2]);
-       } else if (slug.length === 3 && slug[1] === "accessories") {
-         // URL: /en/collection/women/accessories/bags
-         selectedCategory = "women";
-         selectedSubcategory = decodeURIComponent(slug[2]);
-       } else if (slug.length === 2) {
-         // URL: /en/collection/women/shoes or /en/collection/women/accessories
-         selectedSubcategory = decodeURIComponent(slug[1]);
-       } else {
-         // Fallback for other cases
-         selectedSubcategory = decodeURIComponent(slug.slice(1).join("/"));
-       }
+     // Build the full category path from the slug
+     selectedCategoryPath = slug.map(s => decodeURIComponent(s)).join('/');
+     
+     if (slug.length === 1) {
+       // URL: /en/collection/women
+       selectedCategory = decodeURIComponent(slug[0]);
+     } else if (slug.length === 2) {
+       // URL: /en/collection/women/shoes
+       selectedCategory = decodeURIComponent(slug[0]);
+       selectedSubcategory = decodeURIComponent(slug[1]);
+     } else if (slug.length === 3) {
+       // URL: /en/collection/women/shoes/boots
+       selectedCategory = decodeURIComponent(slug[0]);
+       selectedSubcategory = decodeURIComponent(slug[2]); // The deepest category
+     } else {
+       // For deeper paths, use the full path
+       selectedCategory = selectedCategoryPath;
      }
    }
 
@@ -251,10 +252,33 @@ export default function CollectionSlugPage() {
   
   const filteredProducts = products
     .filter((product) => {
+      // Show all products
+      if (selectedCategory === "All Products") return true;
+      
+      // Handle hierarchical category filtering using categoryPath
+      if (product.categoryPath && selectedCategoryPath) {
+        const requestedPath = selectedCategoryPath.toLowerCase();
+        const productPath = product.categoryPath.toLowerCase();
+        
+        // Exact match: product should appear in its exact category path
+        if (productPath === requestedPath) return true;
+        
+        // Parent match: product should appear in parent category paths
+        // e.g., product with path "women/shoes/boots" should appear in "women" and "women/shoes"
+        if (productPath.startsWith(requestedPath + '/')) return true;
+        
+        // Child match: if we're viewing a parent category, show products from child categories
+        // e.g., when viewing "women", show products from "women/shoes" and "women/shoes/boots"
+        if (requestedPath.startsWith(productPath + '/')) return true;
+        
+        return false;
+      }
+      
+      // Fallback to old logic for backward compatibility
       if (selectedSubcategory && subcategoryObj) {
         return product.categoryId === subcategoryObj.id;
       }
-      if (selectedCategory === "All Products") return true;
+      
       if (!product.categorySlug) return false;
       return product.categorySlug.toLowerCase() === selectedCategory.toLowerCase();
     })

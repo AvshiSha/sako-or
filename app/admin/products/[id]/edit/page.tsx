@@ -391,6 +391,11 @@ function EditProductPage() {
         isNew: formData.new,
         isActive: true,
         categoryId: formData.category,
+        categoryPath: (() => {
+          // Build category path from the selected category
+          const selectedCategoryObj = categories.find(cat => cat.id === formData.category);
+          return selectedCategoryObj?.path || '';
+        })(),
         images: uploadedImageUrls.map((url, index) => ({
           url,
           alt: {

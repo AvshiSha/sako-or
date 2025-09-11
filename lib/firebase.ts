@@ -65,6 +65,7 @@ export interface Product {
   categoryId: string;
   categorySlug?: string;
   category?: Category;
+  categoryPath?: string; // Full category path like "women/shoes/heels"
   images: ProductImage[];
   variants: ProductVariant[];
   tags: string[];

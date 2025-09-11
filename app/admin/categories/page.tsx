@@ -50,7 +50,7 @@ function CategoriesPage() {
 
   useEffect(() => {
     fetchCategories()
-  }, [])
+  }, []) // fetchCategories is stable and doesn't need to be in dependencies
 
   const fetchCategories = async () => {
     try {

@@ -677,7 +677,7 @@ export default function ProductPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>
-                        <span>{product.category?.name}</span>
+                        <span>{typeof product.category?.name === 'object' ? (lng === 'he' ? product.category.name.he : product.category.name.en) : product.category?.name}</span>
                       </div>
                       {product.currency && (
                         <div className="flex justify-between">

@@ -32,7 +32,6 @@ const translations = {
 
 export default function Navigation({ lng }: { lng: string }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [categories, setCategories] = useState<Category[]>([])
   const [womenSubcategories, setWomenSubcategories] = useState<Array<{id: string, slug: string, name: string, subChildren?: Array<{id: string, slug: string, name: string}>}>>([])
   const [menSubcategories, setMenSubcategories] = useState<Array<{id: string, slug: string, name: string, subChildren?: Array<{id: string, slug: string, name: string}>}>>([])
   const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
@@ -53,7 +52,6 @@ export default function Navigation({ lng }: { lng: string }) {
       try {
         const navCategories = await categoryService.getNavigationCategories()
         console.log('Navigation - Fetched navigation categories:', navCategories)
-        setCategories(navCategories)
         
         // Find Women and Men categories and fetch their subcategories
         const womenCategory = navCategories.find(cat => 
@@ -128,7 +126,7 @@ export default function Navigation({ lng }: { lng: string }) {
         clearTimeout(openTimeout)
       }
     }
-  }, [hoverTimeout, openTimeout])
+  }, [hoverTimeout, openTimeout]) // Both timeouts are needed for cleanup
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -232,7 +230,7 @@ export default function Navigation({ lng }: { lng: string }) {
     setHoverTimeout(timeout)
   }
 
-  const handleDropdownMouseEnter = (dropdown: 'women' | 'men') => {
+  const handleDropdownMouseEnter = () => {
     // Clear timeouts when mouse enters dropdown
     if (hoverTimeout) {
       clearTimeout(hoverTimeout)
@@ -300,7 +298,7 @@ export default function Navigation({ lng }: { lng: string }) {
               {isWomenDropdownOpen && (
                 <div 
                   className="absolute top-full left-0 mt-1 w-64 bg-white shadow-lg border border-gray-200 rounded-md py-3 z-50"
-                  onMouseEnter={() => handleDropdownMouseEnter('women')}
+                  onMouseEnter={handleDropdownMouseEnter}
                   onMouseLeave={() => handleMouseLeave('women')}
                 >
                   {/* All Women Link */}
@@ -355,7 +353,7 @@ export default function Navigation({ lng }: { lng: string }) {
               {isMenDropdownOpen && (
                 <div 
                   className="absolute top-full left-0 mt-1 w-64 bg-white shadow-lg border border-gray-200 rounded-md py-3 z-50"
-                  onMouseEnter={() => handleDropdownMouseEnter('men')}
+                  onMouseEnter={handleDropdownMouseEnter}
                   onMouseLeave={() => handleMouseLeave('men')}
                 >
                   {/* All Men Link */}

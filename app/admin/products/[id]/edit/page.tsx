@@ -665,7 +665,7 @@ function EditProductPage() {
                   <option value="">Select a category</option>
                   {categories.map((category) => (
                     <option key={category.id} value={category.id}>
-                      {category.name}
+                      {typeof category.name === 'object' ? category.name.en : category.name}
                     </option>
                   ))}
                 </select>

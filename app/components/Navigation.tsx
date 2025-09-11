@@ -147,7 +147,7 @@ export default function Navigation({ lng }: { lng: string }) {
 
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
-  }, [hoverTimeout]) // hoverTimeout is needed for cleanup
+  }, [hoverTimeout, openTimeout]) // Both timeouts are needed for cleanup
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)

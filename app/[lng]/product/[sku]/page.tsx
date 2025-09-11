@@ -352,7 +352,7 @@ export default function ProductPage() {
       <Head>
         <title>{productName} | Sako</title>
         <meta name="description" content={productDescription} />
-        <meta name="keywords" content={`${productName}, ${product.category?.name}, shoes, footwear, ${product.sku}`} />
+        <meta name="keywords" content={`${productName}, ${product.category?.name ? (typeof product.category.name === 'object' ? product.category.name.en : product.category.name) : ''}, shoes, footwear, ${product.sku}`} />
         
         {/* Canonical URL */}
         <link rel="canonical" href={`https://sako-or.com/${lng}/product/${sku}`} />

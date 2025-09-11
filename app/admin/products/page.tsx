@@ -248,7 +248,7 @@ function ProductsPageContent() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.category?.name || 'No category'}
+                          {product.category?.name ? (typeof product.category.name === 'object' ? product.category.name.en : product.category.name) : 'No category'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">

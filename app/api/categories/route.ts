@@ -4,10 +4,23 @@ import { z } from 'zod'
 
 // Validation schema for creating/updating categories
 const categorySchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  slug: z.string().min(1, 'Slug is required'),
-  description: z.string().optional(),
-  image: z.string().url('Invalid image URL').optional()
+  name: z.object({
+    en: z.string().min(1, 'English name is required'),
+    he: z.string().min(1, 'Hebrew name is required')
+  }),
+  slug: z.object({
+    en: z.string().min(1, 'English slug is required'),
+    he: z.string().min(1, 'Hebrew slug is required')
+  }),
+  description: z.object({
+    en: z.string().optional(),
+    he: z.string().optional()
+  }).optional(),
+  image: z.string().url('Invalid image URL').optional(),
+  parentId: z.string().optional(),
+  level: z.number().min(0).max(2),
+  isEnabled: z.boolean().default(true),
+  sortOrder: z.number().min(0)
 })
 
 // GET /api/categories - Get all categories
@@ -35,7 +48,11 @@ export async function POST(request: NextRequest) {
       name: validatedData.name,
       slug: validatedData.slug,
       description: validatedData.description,
-      image: validatedData.image
+      image: validatedData.image,
+      parentId: validatedData.parentId,
+      level: validatedData.level,
+      isEnabled: validatedData.isEnabled,
+      sortOrder: validatedData.sortOrder
     })
 
     // Get the created category

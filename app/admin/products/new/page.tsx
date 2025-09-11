@@ -726,7 +726,7 @@ export default function NewProductPage() {
                   >
                     <option value="" className="text-gray-600">Select a category</option>
                     {categories.map((category) => (
-                      <option key={category.id} value={category.id} className="text-gray-900"> // TODO: fix this
+                      <option key={category.id} value={category.id} className="text-gray-900">
                         {typeof category.name === 'object' ? category.name.en : category.name}
                       </option>
                     ))}

@@ -660,6 +660,7 @@ export default function ProductPage() {
                     {lng === 'he' ? 'שתף' : 'Share'}
                   </button>
                 </div>
+
               </div>
 
               {/* Product Info */}

@@ -10,8 +10,11 @@ import {
   CogIcon,
   PlusIcon,
   ArrowUpTrayIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline'
+import ProtectedRoute from '@/app/components/ProtectedRoute'
+import { useAuth } from '@/app/contexts/AuthContext'
 
 interface DashboardStats {
   totalProducts: number
@@ -20,11 +23,12 @@ interface DashboardStats {
   outOfStockItems: number
 }
 
-export default function AdminDashboard() {
+function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     fetchStats()
@@ -100,6 +104,10 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              <div className="text-right mr-4">
+                <p className="text-sm font-medium text-gray-900">{user?.email}</p>
+                <p className="text-xs text-gray-500">Admin User</p>
+              </div>
               <Link
                 href="/admin/import"
                 className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -114,6 +122,12 @@ export default function AdminDashboard() {
                 <PlusIcon className="h-4 w-4 mr-2" />
                 Add Product
               </Link>
+              <button
+                onClick={logout}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
@@ -352,5 +366,13 @@ export default function AdminDashboard() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <ProtectedRoute>
+      <AdminDashboard />
+    </ProtectedRoute>
   )
 } 

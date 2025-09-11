@@ -12,6 +12,7 @@ import {
   MagnifyingGlassIcon,
   CubeIcon
 } from '@heroicons/react/24/outline'
+import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { productService, Product, productHelpers } from '@/lib/firebase'
 import SuccessMessage from '@/app/components/SuccessMessage'
 
@@ -331,15 +332,17 @@ function ProductsPageContent() {
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+    <ProtectedRoute>
+      <Suspense fallback={
+        <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
         </div>
-      </div>
-    }>
-      <ProductsPageContent />
-    </Suspense>
+      }>
+        <ProductsPageContent />
+      </Suspense>
+    </ProtectedRoute>
   )
 }

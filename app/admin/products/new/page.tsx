@@ -402,22 +402,26 @@ export default function NewProductPage() {
       console.log('Image upload completed:', imageUrls)
       
       console.log('Preparing product data...')
-      // Find the selected category object (use the deepest selected category)
-      let selectedCategoryId = formData.category;
+      
+      // Use the main category ID for categoryId (for backward compatibility)
+      const selectedCategoryId = formData.category;
       let selectedCategoryPath = '';
       
+      // Find the deepest category object for path generation
+      let deepestCategoryId = formData.category;
       if (formData.subsubcategory) {
-        selectedCategoryId = formData.subsubcategory;
+        deepestCategoryId = formData.subsubcategory;
       } else if (formData.subcategory) {
-        selectedCategoryId = formData.subcategory;
+        deepestCategoryId = formData.subcategory;
       }
       
       const selectedCategoryObj = categories.find(cat => cat.id === selectedCategoryId);
+      const deepestCategoryObj = categories.find(cat => cat.id === deepestCategoryId);
       
       // Build the full category path for hierarchical collection routing
-      if (selectedCategoryObj && selectedCategoryObj.path) {
-        selectedCategoryPath = selectedCategoryObj.path;
-      } else if (selectedCategoryObj) {
+      if (deepestCategoryObj && deepestCategoryObj.path) {
+        selectedCategoryPath = deepestCategoryObj.path;
+      } else {
         // Fallback: build path from the category hierarchy
         const mainCategory = categories.find(cat => cat.id === formData.category);
         const subCategory = formData.subcategory ? categories.find(cat => cat.id === formData.subcategory) : null;
@@ -439,6 +443,7 @@ export default function NewProductPage() {
         }
       }
 
+
       const productData: any = {
         name: {
           en: formData.nameEn,
@@ -448,7 +453,11 @@ export default function NewProductPage() {
           en: formData.nameEn.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim(),
           he: formData.nameHe.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim()
         },
-        categorySlug: selectedCategoryObj ? (typeof selectedCategoryObj.slug === 'string' ? selectedCategoryObj.slug : selectedCategoryObj.slug?.en || '') : '', // Separate categorySlug for filtering
+        categorySlug: (() => {
+          // For backward compatibility, categorySlug should be the main category slug
+          const mainCategoryObj = categories.find(cat => cat.id === formData.category);
+          return mainCategoryObj ? (typeof mainCategoryObj.slug === 'string' ? mainCategoryObj.slug : mainCategoryObj.slug?.en || '') : '';
+        })(),
         categoryPath: selectedCategoryPath, // Full hierarchical path for collection routing
         description: {
           en: formData.descriptionEn,

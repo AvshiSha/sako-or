@@ -249,6 +249,8 @@ export const productService = {
       
       for (const docSnapshot of querySnapshot.docs) {
         const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
+        
+        
         // Fetch category data
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
@@ -371,6 +373,8 @@ export const productService = {
         createdAt: now,
         updatedAt: now
       };
+      
+      
       const docRef = await addDoc(collection(db, 'products'), product);
       return docRef.id;
     } catch (error) {

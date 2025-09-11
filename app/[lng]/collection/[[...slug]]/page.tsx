@@ -192,7 +192,6 @@ export default function CollectionSlugPage() {
   // Fetch categories on mount
   useEffect(() => {
     categoryService.getAllCategories().then(cats => {
-      console.log('Fetched categories:', cats);
       setCategories(cats);
     }).catch(console.error);
   }, []);
@@ -225,6 +224,7 @@ export default function CollectionSlugPage() {
      // Build the full category path from the slug
      selectedCategoryPath = slug.map(s => decodeURIComponent(s)).join('/');
      
+     
      if (slug.length === 1) {
        // URL: /en/collection/women
        selectedCategory = decodeURIComponent(slug[0]);
@@ -240,6 +240,7 @@ export default function CollectionSlugPage() {
        // For deeper paths, use the full path
        selectedCategory = selectedCategoryPath;
      }
+     
    }
 
   // Filtering logic
@@ -255,21 +256,28 @@ export default function CollectionSlugPage() {
       // Show all products
       if (selectedCategory === "All Products") return true;
       
+      
       // Handle hierarchical category filtering using categoryPath
       if (product.categoryPath && selectedCategoryPath) {
         const requestedPath = selectedCategoryPath.toLowerCase();
         const productPath = product.categoryPath.toLowerCase();
         
         // Exact match: product should appear in its exact category path
-        if (productPath === requestedPath) return true;
+        if (productPath === requestedPath) {
+          return true;
+        }
         
         // Parent match: product should appear in parent category paths
         // e.g., product with path "women/shoes/boots" should appear in "women" and "women/shoes"
-        if (productPath.startsWith(requestedPath + '/')) return true;
+        if (productPath.startsWith(requestedPath + '/')) {
+          return true;
+        }
         
         // Child match: if we're viewing a parent category, show products from child categories
         // e.g., when viewing "women", show products from "women/shoes" and "women/shoes/boots"
-        if (requestedPath.startsWith(productPath + '/')) return true;
+        if (requestedPath.startsWith(productPath + '/')) {
+          return true;
+        }
         
         return false;
       }
@@ -279,7 +287,9 @@ export default function CollectionSlugPage() {
         return product.categoryId === subcategoryObj.id;
       }
       
-      if (!product.categorySlug) return false;
+      if (!product.categorySlug) {
+        return false;
+      }
       return product.categorySlug.toLowerCase() === selectedCategory.toLowerCase();
     })
     .filter((product) => {

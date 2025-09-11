@@ -224,7 +224,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
         <div className="relative h-full flex items-center justify-center text-center">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-5xl md:text-7xl font-light text-white mb-6 tracking-tight">
-              {t.brandName}
+              Sako-Or
             </h1>
             <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10">
               {t.heroDescription}

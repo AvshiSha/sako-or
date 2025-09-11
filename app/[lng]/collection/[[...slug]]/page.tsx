@@ -191,7 +191,10 @@ export default function CollectionSlugPage() {
 
   // Fetch categories on mount
   useEffect(() => {
-    categoryService.getAllCategories().then(setCategories).catch(console.error);
+    categoryService.getAllCategories().then(cats => {
+      console.log('Fetched categories:', cats);
+      setCategories(cats);
+    }).catch(console.error);
   }, []);
 
   // Add null checking for params after all hooks
@@ -240,7 +243,10 @@ export default function CollectionSlugPage() {
 
   // Filtering logic
   const subcategoryObj = categories.find(
-    (cat) => cat.slug.toLowerCase() === (selectedSubcategory || '').toLowerCase()
+    (cat) => {
+      const catSlug = typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '';
+      return catSlug.toLowerCase() === (selectedSubcategory || '').toLowerCase();
+    }
   );
   
   const filteredProducts = products
@@ -296,18 +302,43 @@ export default function CollectionSlugPage() {
     }
   });
 
-  const subcategories = [
-    { key: "Shoes", label: t.subcategoriesList.shoes },
-    { key: "Accessories", label: t.subcategoriesList.accessories },
-    { key: "High Heels", label: t.subcategoriesList.highheels },
-    { key: "Boots", label: t.subcategoriesList.boots },
-    { key: "Oxford", label: t.subcategoriesList.oxford },
-    { key: "Sneakers", label: t.subcategoriesList.sneakers },
-    { key: "Sandals", label: t.subcategoriesList.sandals },
-    { key: "Slippers", label: t.subcategoriesList.slippers },
-    { key: "Coats", label: t.subcategoriesList.coats },
-    { key: "Bags", label: t.subcategoriesList.bags }
-  ];
+  // Get subcategories from the fetched categories, filtered by current category
+  const subcategories = categories
+    .filter(cat => {
+      // Only sub-categories (level 1) that belong to the current main category
+      if (cat.level !== 1) return false;
+      
+      // If we're viewing women's collection, only show subcategories under women
+      if (selectedCategory.toLowerCase() === 'women') {
+        // Find the women category
+        const womenCategory = categories.find(c => 
+          c.level === 0 && 
+          (typeof c.slug === 'string' ? c.slug : c.slug?.en || '').toLowerCase() === 'women'
+        );
+        return womenCategory && cat.parentId === womenCategory.id;
+      }
+      
+      // If we're viewing men's collection, only show subcategories under men
+      if (selectedCategory.toLowerCase() === 'men') {
+        // Find the men category
+        const menCategory = categories.find(c => 
+          c.level === 0 && 
+          (typeof c.slug === 'string' ? c.slug : c.slug?.en || '').toLowerCase() === 'men'
+        );
+        return menCategory && cat.parentId === menCategory.id;
+      }
+      
+      return false;
+    })
+    .map(cat => ({
+      key: typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '',
+      label: typeof cat.name === 'string' ? cat.name : (lng === 'he' ? cat.name?.he : cat.name?.en) || '',
+      id: cat.id
+    }));
+
+  // Debug logging
+  console.log('Selected category:', selectedCategory);
+  console.log('Filtered subcategories:', subcategories);
 
   const allColors = [
     ...new Set([
@@ -486,7 +517,15 @@ export default function CollectionSlugPage() {
                           {productHelpers.getField(product, 'name', lng as 'en' | 'he')}
                         </Link>
                       </h3>
-                      <p className="mt-1 text-sm text-gray-500">{product.category?.name}</p>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {product.category?.name ? 
+                          (typeof product.category.name === 'string' ? 
+                            product.category.name : 
+                            (lng === 'he' ? product.category.name.he : product.category.name.en)
+                          ) : 
+                          ''
+                        }
+                      </p>
                     </div>
                     <p className="text-sm font-medium text-gray-900">
                     ₪{product.price.toFixed(2)}
@@ -598,19 +637,8 @@ export default function CollectionSlugPage() {
                 <div className="px-4 pb-4 border-t border-gray-100">
                   <div className="space-y-2 pt-3">
                     {subcategories.map((subcategory) => {
-                      let targetPath;
-                      
-                      if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory.key)) {
-                        targetPath = `/${lng}/collection/women/shoes/${subcategory.key.toLowerCase().replace(' ', '-')}`;
-                      } else if (["Coats", "Bags"].includes(subcategory.key)) {
-                        targetPath = `/${lng}/collection/women/accessories/${subcategory.key.toLowerCase()}`;
-                      } else if (subcategory.key === "Shoes") {
-                        targetPath = `/${lng}/collection/women/shoes`;
-                      } else if (subcategory.key === "Accessories") {
-                        targetPath = `/${lng}/collection/women/accessories`;
-                      } else {
-                        targetPath = `/${lng}/collection/women/${subcategory.key}`;
-                      }
+                      // Create dynamic path based on the subcategory slug
+                      const targetPath = `/${lng}/collection/women/${subcategory.key}`;
                       
                       return (
                         <button
@@ -827,19 +855,8 @@ export default function CollectionSlugPage() {
                     <div className="px-4 pb-4 border-t border-gray-100">
                       <div className="space-y-2 pt-3">
                         {subcategories.map((subcategory) => {
-                          let targetPath;
-                          
-                          if (["High Heels", "Boots", "Oxford", "Sneakers", "Sandals", "Slippers"].includes(subcategory.key)) {
-                            targetPath = `/${lng}/collection/women/shoes/${subcategory.key.toLowerCase().replace(' ', '-')}`;
-                          } else if (["Coats", "Bags"].includes(subcategory.key)) {
-                            targetPath = `/${lng}/collection/women/accessories/${subcategory.key.toLowerCase()}`;
-                          } else if (subcategory.key === "Shoes") {
-                            targetPath = `/${lng}/collection/women/shoes`;
-                          } else if (subcategory.key === "Accessories") {
-                            targetPath = `/${lng}/collection/women/accessories`;
-                          } else {
-                            targetPath = `/${lng}/collection/women/${subcategory.key}`;
-                          }
+                          // Create dynamic path based on the subcategory slug
+                          const targetPath = `/${lng}/collection/women/${subcategory.key}`;
                           
                           return (
                             <button

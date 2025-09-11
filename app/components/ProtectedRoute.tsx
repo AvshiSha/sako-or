@@ -15,23 +15,17 @@ export default function ProtectedRoute({ children, requireAdmin = true }: Protec
 
   useEffect(() => {
     if (!loading) {
-      console.log('Auth check:', { user: user?.email, isAdmin, requireAdmin })
-      
       if (!user) {
         // User not logged in, redirect to login
-        console.log('No user, redirecting to login')
         router.push('/admin/login')
         return
       }
       
       if (requireAdmin && !isAdmin) {
         // User logged in but not admin, redirect to home
-        console.log('User not admin, redirecting to home')
         router.push('/')
         return
       }
-      
-      console.log('User authenticated and authorized')
     }
   }, [user, loading, isAdmin, router, requireAdmin])
 

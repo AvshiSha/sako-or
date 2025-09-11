@@ -327,7 +327,7 @@ export default function NewProductPage() {
           en: formData.nameEn.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim(),
           he: formData.nameHe.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim()
         },
-        categorySlug: selectedCategoryObj ? selectedCategoryObj.slug : '', // Separate categorySlug for filtering
+        categorySlug: selectedCategoryObj ? (typeof selectedCategoryObj.slug === 'string' ? selectedCategoryObj.slug : selectedCategoryObj.slug?.en || '') : '', // Separate categorySlug for filtering
         description: {
           en: formData.descriptionEn,
           he: formData.descriptionHe

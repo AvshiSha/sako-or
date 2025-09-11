@@ -34,15 +34,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const isAdmin = user ? ADMIN_EMAILS.includes((user.email || '').toLowerCase()) : false
-  
-  // Debug logging
-  useEffect(() => {
-    if (user) {
-      console.log('User email:', user.email)
-      console.log('Admin emails:', ADMIN_EMAILS)
-      console.log('Is admin:', isAdmin)
-    }
-  }, [user, isAdmin])
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {

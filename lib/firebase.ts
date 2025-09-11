@@ -78,10 +78,24 @@ export interface Product {
 
 export interface Category {
   id?: string;
-  name: string;
-  slug: string;
-  description?: string;
+  name: {
+    en: string;
+    he: string;
+  };
+  slug: {
+    en: string;
+    he: string;
+  };
+  description?: {
+    en: string;
+    he: string;
+  };
   image?: string;
+  parentId?: string; // For sub-categories and sub-sub-categories
+  level: number; // 0 = main, 1 = sub, 2 = sub-sub
+  isEnabled: boolean; // Enable/disable toggle
+  sortOrder: number; // For ordering within the same level
+  path: string; // Full path like "women/shoes/heels"
   createdAt: Date;
   updatedAt: Date;
 }
@@ -347,7 +361,7 @@ export const productService = {
         const categoryDoc = await getDoc(doc(db, 'categories', productData.categoryId));
         if (categoryDoc.exists()) {
           const categoryData = categoryDoc.data() as Category;
-          categorySlug = categoryData.slug;
+          categorySlug = typeof categoryData.slug === 'string' ? categoryData.slug : categoryData.slug?.en || '';
         }
       }
       const product = {
@@ -442,7 +456,7 @@ export const categoryService = {
   // Get all categories
   async getAllCategories(): Promise<Category[]> {
     try {
-      const q = query(collection(db, 'categories'), orderBy('name', 'asc'));
+      const q = query(collection(db, 'categories'), orderBy('sortOrder', 'asc'));
       const querySnapshot = await getDocs(q);
       
       return querySnapshot.docs.map(doc => ({
@@ -455,21 +469,176 @@ export const categoryService = {
     }
   },
 
+  async getMainCategories(): Promise<Category[]> {
+    try {
+      const q = query(
+        collection(db, 'categories'), 
+        where('level', '==', 0),
+        orderBy('sortOrder', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Category[];
+    } catch (error) {
+      console.error('Error fetching main categories:', error);
+      throw error;
+    }
+  },
+
+  async getSubCategories(parentId: string): Promise<Category[]> {
+    try {
+      const q = query(
+        collection(db, 'categories'), 
+        where('parentId', '==', parentId),
+        orderBy('sortOrder', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Category[];
+    } catch (error) {
+      console.error('Error fetching sub categories:', error);
+      throw error;
+    }
+  },
+
+  async getEnabledCategories(): Promise<Category[]> {
+    try {
+      const q = query(
+        collection(db, 'categories'), 
+        where('isEnabled', '==', true),
+        orderBy('level', 'asc'),
+        orderBy('sortOrder', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Category[];
+    } catch (error) {
+      console.error('Error fetching enabled categories:', error);
+      throw error;
+    }
+  },
+
+  // Helper method to generate category path
+  async generateCategoryPath(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path'>): Promise<string> {
+    if (categoryData.level === 0) {
+      // Main category - path is just the slug
+      return categoryData.slug.en;
+    }
+    
+    if (categoryData.parentId) {
+      // Get parent category to build path
+      const parentCategory = await this.getCategoryById(categoryData.parentId);
+      if (parentCategory) {
+        return `${parentCategory.path}/${categoryData.slug.en}`;
+      }
+    }
+    
+    // Fallback - just use the slug
+    return categoryData.slug.en;
+  },
+
+  // Get category by ID
+  async getCategoryById(categoryId: string): Promise<Category | null> {
+    try {
+      const docRef = doc(db, 'categories', categoryId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return {
+          id: docSnap.id,
+          ...docSnap.data()
+        } as Category;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching category by ID:', error);
+      throw error;
+    }
+  },
+
   // Create category
-  async createCategory(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async createCategory(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path'>): Promise<string> {
     try {
       const now = new Date();
-      const category = {
-        ...categoryData,
+      
+      // Get the next sort order for this level
+      const sortOrder = await this.getNextSortOrder(categoryData.level, categoryData.parentId);
+      
+      // Generate the category path
+      const path = await this.generateCategoryPath(categoryData);
+      
+      // Build category object, only including defined fields
+      const category: any = {
+        name: categoryData.name,
+        slug: categoryData.slug,
+        level: categoryData.level,
+        isEnabled: categoryData.isEnabled,
+        sortOrder,
+        path,
         createdAt: now,
         updatedAt: now
       };
+      
+      // Add optional fields only if they have values
+      if (categoryData.description) {
+        category.description = categoryData.description;
+      }
+      
+      if (categoryData.image && categoryData.image.trim()) {
+        category.image = categoryData.image;
+      }
+      
+      if (categoryData.parentId && categoryData.parentId.trim()) {
+        category.parentId = categoryData.parentId;
+      }
       
       const docRef = await addDoc(collection(db, 'categories'), category);
       return docRef.id;
     } catch (error) {
       console.error('Error creating category:', error);
       throw error;
+    }
+  },
+
+  async getNextSortOrder(level: number, parentId?: string): Promise<number> {
+    try {
+      let q;
+      if (parentId) {
+        q = query(
+          collection(db, 'categories'),
+          where('parentId', '==', parentId),
+          orderBy('sortOrder', 'desc'),
+          limit(1)
+        );
+      } else {
+        q = query(
+          collection(db, 'categories'),
+          where('level', '==', level),
+          where('parentId', '==', null),
+          orderBy('sortOrder', 'desc'),
+          limit(1)
+        );
+      }
+      
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.empty) {
+        return 0;
+      }
+      
+      const lastCategory = querySnapshot.docs[0].data() as Category;
+      return (lastCategory.sortOrder || 0) + 1;
+    } catch (error) {
+      console.error('Error getting next sort order:', error);
+      return 0;
     }
   },
 
@@ -494,6 +663,152 @@ export const categoryService = {
       await deleteDoc(docRef);
     } catch (error) {
       console.error('Error deleting category:', error);
+      throw error;
+    }
+  },
+
+  // Toggle category enabled status
+  async toggleCategoryStatus(id: string, isEnabled: boolean): Promise<void> {
+    try {
+      const docRef = doc(db, 'categories', id);
+      await updateDoc(docRef, {
+        isEnabled,
+        updatedAt: new Date()
+      });
+    } catch (error) {
+      console.error('Error toggling category status:', error);
+      throw error;
+    }
+  },
+
+  // Delete category and all its children
+  async deleteCategoryWithChildren(id: string): Promise<void> {
+    try {
+      // Get all sub-categories
+      const subCategories = await this.getSubCategories(id);
+      
+      // Recursively delete all sub-categories
+      for (const subCategory of subCategories) {
+        if (subCategory.id) {
+          await this.deleteCategoryWithChildren(subCategory.id);
+        }
+      }
+      
+      // Delete the main category
+      await this.deleteCategory(id);
+    } catch (error) {
+      console.error('Error deleting category with children:', error);
+      throw error;
+    }
+  },
+
+  // NEW: Get navigation categories (level 0 only)
+  async getNavigationCategories(): Promise<Category[]> {
+    try {
+      const q = query(
+        collection(db, 'categories'),
+        where('level', '==', 0),
+        where('isEnabled', '==', true),
+        orderBy('sortOrder', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Category[];
+    } catch (error) {
+      console.error('Error fetching navigation categories:', error);
+      throw error;
+    }
+  },
+
+  // NEW: Get category tree (hierarchical structure)
+  async getCategoryTree(): Promise<Category[]> {
+    try {
+      const allCategories = await this.getAllCategories();
+      return this.buildCategoryTree(allCategories);
+    } catch (error) {
+      console.error('Error fetching category tree:', error);
+      throw error;
+    }
+  },
+
+  // NEW: Build category tree from flat list
+  buildCategoryTree(categories: Category[]): Category[] {
+    const categoryMap = new Map<string, Category & { children: Category[] }>();
+    const rootCategories: (Category & { children: Category[] })[] = [];
+
+    // Create map of all categories with children array
+    categories.forEach(cat => {
+      categoryMap.set(cat.id!, { ...cat, children: [] });
+    });
+
+    // Build hierarchy
+    categories.forEach(cat => {
+      const categoryWithChildren = categoryMap.get(cat.id!);
+      if (!categoryWithChildren) return;
+
+      if (cat.level === 0) {
+        // Root category
+        rootCategories.push(categoryWithChildren);
+      } else if (cat.parentId) {
+        // Child category
+        const parent = categoryMap.get(cat.parentId);
+        if (parent) {
+          parent.children.push(categoryWithChildren);
+        }
+      }
+    });
+
+    return rootCategories;
+  },
+
+  // NEW: Get category path as array
+  async getCategoryPathArray(categoryId: string): Promise<string[]> {
+    try {
+      const category = await this.getCategoryById(categoryId);
+      if (!category) return [];
+      
+      return category.path.split('/');
+    } catch (error) {
+      console.error('Error getting category path array:', error);
+      throw error;
+    }
+  },
+
+  // NEW: Get categories by path
+  async getCategoriesByPath(path: string): Promise<Category[]> {
+    try {
+      const q = query(
+        collection(db, 'categories'),
+        where('path', '==', path)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Category[];
+    } catch (error) {
+      console.error('Error fetching categories by path:', error);
+      throw error;
+    }
+  },
+
+  // NEW: Bulk create categories
+  async bulkCreateCategories(categoriesData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path'>[]): Promise<string[]> {
+    try {
+      const categoryIds: string[] = [];
+      
+      for (const categoryData of categoriesData) {
+        const categoryId = await this.createCategory(categoryData);
+        categoryIds.push(categoryId);
+      }
+      
+      return categoryIds;
+    } catch (error) {
+      console.error('Error bulk creating categories:', error);
       throw error;
     }
   }

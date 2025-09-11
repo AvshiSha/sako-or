@@ -1,456 +1,613 @@
 'use client'
 
 import Link from 'next/link'
-import { ChevronDown, Menu, X, ArrowLeft, Heart, ShoppingBag } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { Menu, X, Heart, ShoppingBag, ChevronDown } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
-import MobileLanguageSwitcher from './MobileLanguageSwitcher'
 import { useCart } from '@/app/hooks/useCart'
-
-// Navigation structure for mobile drawer
-const getNavigationStructure = (lng: string) => ({
-  women: {
-    name: { en: 'Women', he: 'נשים' },
-    children: {
-      shoes: {
-        name: { en: 'Shoes', he: 'נעליים' },
-        children: {
-          highHeels: { name: { en: 'High Heels', he: 'עקבים גבוהים' }, href: `/${lng}/collection/women/shoes/high-heels` },
-          boots: { name: { en: 'Boots', he: 'מגפיים' }, href: `/${lng}/collection/women/shoes/boots` },
-          oxford: { name: { en: 'Oxford', he: 'אוקספורד' }, href: `/${lng}/collection/women/shoes/oxford` },
-          sneakers: { name: { en: 'Sneakers', he: 'סניקרס' }, href: `/${lng}/collection/women/shoes/sneakers` },
-          sandals: { name: { en: 'Sandals', he: 'סנדלים' }, href: `/${lng}/collection/women/shoes/sandals` },
-          slippers: { name: { en: 'Slippers', he: 'כפכפים' }, href: `/${lng}/collection/women/shoes/slippers` }
-        }
-      },
-      accessories: {
-        name: { en: 'Accessories', he: 'אביזרים' },
-        children: {
-          coats: { name: { en: 'Coats', he: 'מעילים' }, href: `/${lng}/collection/women/accessories/coats` },
-          bags: { name: { en: 'Bags', he: 'תיקים' }, href: `/${lng}/collection/women/accessories/bags` }
-        }
-      }
-    }
-  }
-})
-
-// Legacy structure for desktop dropdown (keeping for compatibility)
-const womenCategories = {
-  shoes: [
-    { name: { en: 'High Heels', he: 'עקבים גבוהים' }, href: '/collection/women/shoes/high-heels' },
-    { name: { en: 'Boots', he: 'מגפיים' }, href: '/collection/women/shoes/boots' },
-    { name: { en: 'Oxford', he: 'אוקספורד' }, href: '/collection/women/shoes/oxford' },
-    { name: { en: 'Sneakers', he: 'סניקרס' }, href: '/collection/women/shoes/sneakers' },
-    { name: { en: 'Sandals', he: 'סנדלים' }, href: '/collection/women/shoes/sandals' },
-    { name: { en: 'Slippers', he: 'כפכפים' }, href: '/collection/women/shoes/slippers' }
-  ],
-  accessories: [
-    { name: { en: 'Coats', he: 'מעילים' }, href: '/collection/women/accessories/coats' },
-    { name: { en: 'Bags', he: 'תיקים' }, href: '/collection/women/accessories/bags' }
-  ]
-}
+import { categoryService } from '@/lib/firebase'
+import { Category } from '@/lib/firebase'
 
 // Hardcoded translations for build-time rendering
 const translations = {
   en: {
     home: 'Home',
-    newCollection: 'New Collection',
     women: 'Women',
-    subCategories: {
-      shoes: 'Shoes',
-      accessories: 'Accessories',
-      highHeels: 'High Heels',
-      boots: 'Boots',
-      oxford: 'Oxford',
-      sneakers: 'Sneakers',
-      sandals: 'Sandals',
-      slippers: 'Slippers',
-      coats: 'Coats',
-      bags: 'Bags'
-    },
+    men: 'Men',
     about: 'About',
-    contact: 'Contact'
+    contact: 'Contact',
+    allWomen: 'All Women',
+    allMen: 'All Men'
   },
   he: {
     home: 'בית',
-    newCollection: 'קולקציה חדשה',
     women: 'נשים',
-    subCategories: {
-      shoes: 'נעליים',
-      accessories: 'אביזרים',
-      highHeels: 'עקבים גבוהים',
-      boots: 'מגפיים',
-      oxford: 'אוקספורד',
-      sneakers: 'סניקרס',
-      sandals: 'סנדלים',
-      slippers: 'כפכפים',
-      coats: 'מעילים',
-      bags: 'תיקים'
-    },
+    men: 'גברים',
     about: 'אודות',
-    contact: 'צור קשר'
+    contact: 'צרו קשר',
+    allWomen: 'כל קולקצית הנשים',
+    allMen: 'כל קולקצית הגברים'
   }
 }
 
 export default function Navigation({ lng }: { lng: string }) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  // const [isMobileWomenOpen, setIsMobileWomenOpen] = useState(false)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [womenSubcategories, setWomenSubcategories] = useState<Array<{id: string, slug: string, name: string, subChildren?: Array<{id: string, slug: string, name: string}>}>>([])
+  const [menSubcategories, setMenSubcategories] = useState<Array<{id: string, slug: string, name: string, subChildren?: Array<{id: string, slug: string, name: string}>}>>([])
+  const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
+  const [isMenDropdownOpen, setIsMenDropdownOpen] = useState(false)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
-  
-  // Mobile drawer state
-  const [drawerStack, setDrawerStack] = useState<any[]>([])
-  const [scrollPositions, setScrollPositions] = useState<number[]>([])
-  const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward' | null>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
-  const isRTL = lng === 'he'
-  const t = translations[lng as keyof typeof translations]
   
-  // Cart state
-  const { getTotalItems } = useCart()
-  const cartItemCount = getTotalItems()
+  // Mobile navigation state
+  const [mobileNavLevel, setMobileNavLevel] = useState<'main' | 'women' | 'men' | 'women-sub' | 'men-sub'>('main')
+  const [selectedMobileCategory, setSelectedMobileCategory] = useState<{id: string, slug: string, name: string, subChildren?: Array<{id: string, slug: string, name: string}>} | null>(null)
+  
+  const { items } = useCart()
 
-  // Initialize drawer with top-level categories
+  // Fetch navigation categories and subcategories on mount
   useEffect(() => {
-    if (isMobileMenuOpen && drawerStack.length === 0) {
-      const navigationStructure = getNavigationStructure(lng)
-      const topLevelCategories = [
-        { key: 'home', name: t.home, href: `/${lng}` },
-        { key: 'collection', name: t.newCollection, href: `/${lng}/collection` },
-        { key: 'women', name: t.women, children: navigationStructure.women.children },
-        { key: 'cart', name: lng === 'he' ? 'עגלת קניות' : 'Shopping Cart', href: `/${lng}/cart` },
-        { key: 'favorites', name: lng === 'he' ? 'מועדפים' : 'Favorites', href: `/${lng}/favorites` },
-        { key: 'about', name: t.about, href: `/${lng}/about` },
-        { key: 'contact', name: t.contact, href: `/${lng}/contact` }
-      ]
-      setDrawerStack([topLevelCategories])
-    }
-  }, [isMobileMenuOpen, lng, t, drawerStack.length])
-
-  // Handle ESC key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isMobileMenuOpen) {
-        closeMobileMenu()
+    const fetchCategories = async () => {
+      try {
+        const navCategories = await categoryService.getNavigationCategories()
+        console.log('Navigation - Fetched navigation categories:', navCategories)
+        setCategories(navCategories)
+        
+        // Find Women and Men categories and fetch their subcategories
+        const womenCategory = navCategories.find(cat => 
+          cat.level === 0 && 
+          (typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '').toLowerCase() === 'women'
+        )
+        
+        const menCategory = navCategories.find(cat => 
+          cat.level === 0 && 
+          (typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '').toLowerCase() === 'men'
+        )
+        
+        // Fetch subcategories for Women and Men
+        if (womenCategory?.id) {
+          const womenSubs = await categoryService.getSubCategories(womenCategory.id)
+          console.log('Navigation - Fetched women subcategories:', womenSubs)
+          
+          // Fetch sub-sub-categories for each subcategory
+          const womenSubsWithChildren = await Promise.all(womenSubs.map(async (sub) => {
+            const subChildren = await categoryService.getSubCategories(sub.id!)
+            return {
+              id: sub.id!,
+              slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
+              name: typeof sub.name === 'string' ? sub.name : (lng === 'he' ? sub.name?.he : sub.name?.en) || '',
+              subChildren: subChildren.map(child => ({
+                id: child.id!,
+                slug: typeof child.slug === 'string' ? child.slug : child.slug?.en || '',
+                name: typeof child.name === 'string' ? child.name : (lng === 'he' ? child.name?.he : child.name?.en) || ''
+              }))
+            }
+          }))
+          
+          setWomenSubcategories(womenSubsWithChildren)
+        }
+        
+        if (menCategory?.id) {
+          const menSubs = await categoryService.getSubCategories(menCategory.id)
+          console.log('Navigation - Fetched men subcategories:', menSubs)
+          
+          // Fetch sub-sub-categories for each subcategory
+          const menSubsWithChildren = await Promise.all(menSubs.map(async (sub) => {
+            const subChildren = await categoryService.getSubCategories(sub.id!)
+            return {
+              id: sub.id!,
+              slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
+              name: typeof sub.name === 'string' ? sub.name : (lng === 'he' ? sub.name?.he : sub.name?.en) || '',
+              subChildren: subChildren.map(child => ({
+                id: child.id!,
+                slug: typeof child.slug === 'string' ? child.slug : child.slug?.en || '',
+                name: typeof child.name === 'string' ? child.name : (lng === 'he' ? child.name?.he : child.name?.en) || ''
+              }))
+            }
+          }))
+          
+          setMenSubcategories(menSubsWithChildren)
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error)
       }
     }
-    document.addEventListener('keydown', handleEsc)
-    return () => document.removeEventListener('keydown', handleEsc)
-  }, [isMobileMenuOpen])
+    
+    fetchCategories()
+  }, [lng])
 
-  // Focus trap
+  // Cleanup timeout on unmount
   useEffect(() => {
-    if (isMobileMenuOpen && drawerRef.current) {
-      const focusableElements = drawerRef.current.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      )
-      const firstElement = focusableElements[0] as HTMLElement
-      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+    return () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout)
+      }
+    }
+  }, [hoverTimeout])
 
-      const handleTabKey = (e: KeyboardEvent) => {
-        if (e.key === 'Tab') {
-          if (e.shiftKey) {
-            if (document.activeElement === firstElement) {
-              lastElement?.focus()
-              e.preventDefault()
-            }
-          } else {
-            if (document.activeElement === lastElement) {
-              firstElement?.focus()
-              e.preventDefault()
-            }
-          }
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element
+      if (!target.closest('[data-dropdown]')) {
+        setIsWomenDropdownOpen(false)
+        setIsMenDropdownOpen(false)
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout)
+          setHoverTimeout(null)
         }
       }
-
-      firstElement?.focus()
-      document.addEventListener('keydown', handleTabKey)
-      return () => document.removeEventListener('keydown', handleTabKey)
     }
-  }, [isMobileMenuOpen, drawerStack])
+
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
+  }, [hoverTimeout])
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)
-    // setIsMobileWomenOpen(false)
-    setDrawerStack([])
-    setScrollPositions([])
+    setMobileNavLevel('main')
+    setSelectedMobileCategory(null)
   }
 
-  const handleMouseEnter = () => {
+  const navigateToLevel = (level: 'main' | 'women' | 'men' | 'women-sub' | 'men-sub', category?: {id: string, slug: string, name: string, subChildren?: Array<{id: string, slug: string, name: string}>}) => {
+    setMobileNavLevel(level)
+    setSelectedMobileCategory(category || null)
+  }
+
+  const navigateBack = () => {
+    switch (mobileNavLevel) {
+      case 'women-sub':
+        setMobileNavLevel('women')
+        setSelectedMobileCategory(null)
+        break
+      case 'men-sub':
+        setMobileNavLevel('men')
+        setSelectedMobileCategory(null)
+        break
+      case 'women':
+      case 'men':
+        setMobileNavLevel('main')
+        setSelectedMobileCategory(null)
+        break
+      default:
+        setMobileNavLevel('main')
+        setSelectedMobileCategory(null)
+    }
+  }
+
+  const handleMouseEnter = (dropdown: 'women' | 'men') => {
+    // Clear any existing timeout
     if (hoverTimeout) {
       clearTimeout(hoverTimeout)
       setHoverTimeout(null)
     }
-    setIsDropdownOpen(true)
+    
+    // Close the other dropdown immediately to prevent overlap
+    if (dropdown === 'women') {
+      setIsMenDropdownOpen(false)
+      setIsWomenDropdownOpen(true)
+    } else {
+      setIsWomenDropdownOpen(false)
+      setIsMenDropdownOpen(true)
+    }
   }
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = (dropdown: 'women' | 'men') => {
+    // Clear any existing timeout
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout)
+    }
+    
     const timeout = setTimeout(() => {
-      setIsDropdownOpen(false)
-    }, 300) // 300ms delay
+      if (dropdown === 'women') {
+        setIsWomenDropdownOpen(false)
+      } else {
+        setIsMenDropdownOpen(false)
+      }
+      setHoverTimeout(null)
+    }, 200) // Increased delay for better UX
+    
     setHoverTimeout(timeout)
   }
 
-  const navigateToSubcategory = (category: any) => {
-    if (category.children && !animationDirection) {
-      setAnimationDirection('forward')
-      
-      // Save current scroll position
-      const currentScroll = drawerRef.current?.scrollTop || 0
-      const newScrollPositions = [...scrollPositions, currentScroll]
-      setScrollPositions(newScrollPositions)
-      
-      // Convert children object to array
-      const childrenArray = Object.entries(category.children).map(([key, value]: [string, any]) => ({
-        key,
-        ...value
-      }))
-      
-      // Small delay to allow exit animation to start
-      setTimeout(() => {
-        setDrawerStack([...drawerStack, childrenArray])
-        // Reset animation direction after new content is loaded
-        setTimeout(() => setAnimationDirection(null), 50)
-      }, 150)
+  const handleDropdownMouseEnter = (dropdown: 'women' | 'men') => {
+    // Clear timeout when mouse enters dropdown
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout)
+      setHoverTimeout(null)
     }
   }
 
-  const navigateBack = () => {
-    if (drawerStack.length > 1 && !animationDirection) {
-      setAnimationDirection('backward')
-      
-      // Restore scroll position
-      const newScrollPositions = [...scrollPositions]
-      const previousScroll = newScrollPositions.pop() || 0
-      setScrollPositions(newScrollPositions)
-      
-      setDrawerStack(drawerStack.slice(0, -1))
-      
-      // Restore scroll position after animation
-      setTimeout(() => {
-        if (drawerRef.current) {
-          drawerRef.current.scrollTop = previousScroll
-        }
-        setAnimationDirection(null)
-      }, 300)
+  const handleNavigationMouseLeave = () => {
+    // Close all dropdowns when mouse leaves navigation area
+    if (hoverTimeout) {
+      clearTimeout(hoverTimeout)
     }
+    setIsWomenDropdownOpen(false)
+    setIsMenDropdownOpen(false)
+    setHoverTimeout(null)
   }
 
-  const handleCategoryClick = (category: any) => {
-    if (category.href) {
-      // Navigate to page
-      window.location.href = category.href
-    } else if (category.children) {
-      // Navigate to subcategory
-      navigateToSubcategory(category)
-    }
-  }
+
+  // Debug logging
+  console.log('Navigation - Women subcategories:', womenSubcategories)
+  console.log('Navigation - Men subcategories:', menSubcategories)
 
   return (
-    <nav className={`fixed w-full bg-white shadow-md z-50 ${isRTL ? 'text-right' : 'text-left'}`}>
+    <nav className="bg-white shadow-lg fixed w-full top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div 
+          className="flex justify-between items-center h-16"
+          onMouseLeave={handleNavigationMouseLeave}
+        >
           {/* Logo */}
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
+          <div className="flex items-center">
               <Link href={`/${lng}`} className="text-2xl font-bold text-gray-900">
-                SAKO-OR
+              SAKO OR
               </Link>
             </div>
             
             {/* Desktop Navigation */}
-            <div className={`hidden sm:ml-6 sm:flex sm:space-x-8 relative ${isRTL ? 'mr-6' : 'ml-6'}`}>
+          <div className="hidden md:flex items-center space-x-8">
               <Link
                 href={`/${lng}`}
-                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              className="text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
               >
-                {t.home}
+              {translations[lng as keyof typeof translations].home}
               </Link>
-              <Link
-                href={`/${lng}/collection`}
-                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+            
+            {/* Women Dropdown */}
+            <div className="relative" data-dropdown>
+              <button
+                onMouseEnter={() => handleMouseEnter('women')}
+                onMouseLeave={() => handleMouseLeave('women')}
+                className="flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
               >
-                {t.newCollection}
-              </Link>
-               <div 
-                className="relative"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-              >
-                <button 
-                  className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium h-full"
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                {translations[lng as keyof typeof translations].women}
+                <ChevronDown className="ml-1 h-4 w-4" />
+              </button>
+              
+              {isWomenDropdownOpen && (
+                <div 
+                  className="absolute top-full left-0 mt-1 w-48 bg-white shadow-lg border border-gray-200 rounded-md py-2 z-50"
+                  onMouseEnter={() => handleDropdownMouseEnter('women')}
+                  onMouseLeave={() => handleMouseLeave('women')}
                 >
-                  {t.women}
-                  <ChevronDown className={`${isRTL ? 'mr-2' : 'ml-2'} h-4 w-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-                <div className={`absolute top-full left-0 mt-1 w-64 bg-white shadow-lg rounded-md py-2 z-50 transition-all duration-200 ${isDropdownOpen ? 'block' : 'hidden'}`}>
-                  <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-200">
-                    {t.subCategories.shoes}
-                  </div>
-                  {womenCategories.shoes.map((category) => (
+                  <Link 
+                    href={`/${lng}/collection/women`}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150"
+                  >
+                    {translations[lng as keyof typeof translations].allWomen}
+                  </Link>
+                  {womenSubcategories.map((subcategory) => (
+                    <div key={subcategory.id} className="relative group">
+                      <Link
+                        href={`/${lng}/collection/women/${subcategory.slug}`}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
+                      >
+                        {subcategory.name}
+                      </Link>
+                      {/* Sub-sub-categories */}
+                      {subcategory.subChildren && subcategory.subChildren.length > 0 && (
+                        <div className="absolute left-full top-0 ml-1 w-48 bg-white shadow-lg border border-gray-200 rounded-md py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[60]">
+                          {subcategory.subChildren.map((subSubCategory) => (
                     <Link
-                      key={category.name.en}
-                      href={`/${lng}${category.href}`}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      {category.name[lng as keyof typeof category.name]}
+                              key={subSubCategory.id}
+                              href={`/${lng}/collection/women/${subcategory.slug}/${subSubCategory.slug}`}
+                              className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
+                            >
+                              {subSubCategory.name}
                     </Link>
-                  ))}
-                  <div className="px-4 py-2 text-sm font-medium text-gray-900 border-b border-gray-200 mt-2">
-                    {t.subCategories.accessories}
-                  </div>
-                  {womenCategories.accessories.map((category) => (
-                    <Link
-                      key={category.name.en}
-                      href={`/${lng}${category.href}`}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                    >
-                      {category.name[lng as keyof typeof category.name]}
-                    </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
+              )}
+                  </div>
+
+            {/* Men Dropdown */}
+            <div className="relative" data-dropdown>
+              <button
+                onMouseEnter={() => handleMouseEnter('men')}
+                onMouseLeave={() => handleMouseLeave('men')}
+                className="flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
+              >
+                {translations[lng as keyof typeof translations].men}
+                <ChevronDown className="ml-1 h-4 w-4" />
+              </button>
+              
+              {isMenDropdownOpen && (
+                <div 
+                  className="absolute top-full left-0 mt-1 w-48 bg-white shadow-lg border border-gray-200 rounded-md py-2 z-50"
+                  onMouseEnter={() => handleDropdownMouseEnter('men')}
+                  onMouseLeave={() => handleMouseLeave('men')}
+                >
+                  <Link 
+                    href={`/${lng}/collection/men`}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150"
+                  >
+                    {translations[lng as keyof typeof translations].allMen}
+                  </Link>
+                  {menSubcategories.map((subcategory) => (
+                    <div key={subcategory.id} className="relative group">
+                      <Link
+                        href={`/${lng}/collection/men/${subcategory.slug}`}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
+                      >
+                        {subcategory.name}
+                      </Link>
+                      {/* Sub-sub-categories */}
+                      {subcategory.subChildren && subcategory.subChildren.length > 0 && (
+                        <div className="absolute left-full top-0 ml-1 w-48 bg-white shadow-lg border border-gray-200 rounded-md py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[60]">
+                          {subcategory.subChildren.map((subSubCategory) => (
+                    <Link
+                              key={subSubCategory.id}
+                              href={`/${lng}/collection/men/${subcategory.slug}/${subSubCategory.slug}`}
+                              className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
+                            >
+                              {subSubCategory.name}
+                    </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
               </div>
+
               <Link
                 href={`/${lng}/about`}
-                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              className="text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
               >
-                {t.about}
+              {translations[lng as keyof typeof translations].about}
               </Link>
+            
               <Link
                 href={`/${lng}/contact`}
-                className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
+              className="text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
               >
-                {t.contact}
+              {translations[lng as keyof typeof translations].contact}
               </Link>
-            </div>
           </div>
 
-          {/* Right side - Cart, Favorites, Language Switcher and Mobile Menu Button */}
-          <div className="flex items-center gap-3">
-            {/* Cart and Favorites grouped together */}
-            <div className="flex items-center gap-0.5">
-              {/* Cart Link */}
+          {/* Right side icons */}
+          <div className="flex items-center space-x-4">
+            <Link 
+              href={`/${lng}/favorites`} 
+              className="text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+            >
+              <Heart className="h-5 w-5" />
+            </Link>
+            
               <Link
                 href={`/${lng}/cart`}
-                className="relative p-2 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
-                title={lng === 'he' ? 'עגלת קניות' : 'Shopping Cart'}
+              className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
               >
                 <ShoppingBag className="h-5 w-5" />
-                {cartItemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-indigo-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                    {cartItemCount > 99 ? '99+' : cartItemCount}
+              {items.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {items.length}
                   </span>
                 )}
               </Link>
-              
-              {/* Favorites Link */}
-              <Link
-                href={`/${lng}/favorites`}
-                className="p-2 rounded-md text-gray-500 hover:text-red-500 hover:bg-red-50 transition-colors duration-200"
-                title={lng === 'he' ? 'מועדפים' : 'Favorites'}
-              >
-                <Heart className="h-5 w-5" />
-              </Link>
-            </div>
             
             <DropdownLanguageSwitcher currentLanguage={lng} />
             
             {/* Mobile menu button */}
             <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="sm:hidden p-1 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="md:hidden text-gray-700 hover:text-gray-900"
             >
-              {isMobileMenuOpen ? (
-                <X className="h-6 w-8" />
-              ) : (
-                <Menu className="h-6 w-8" />
-              )}
+              <Menu className="h-6 w-6" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Navigation Drawer */}
+      {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <>
-          {/* Overlay */}
-          <div 
-            className="fixed inset-0 bg-black/40 z-40 sm:hidden"
-            onClick={closeMobileMenu}
-          />
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="fixed inset-0 bg-black/20 bg-opacity-50" onClick={closeMobileMenu} />
           
-          {/* Drawer */}
+          <div className="fixed top-0 left-0 h-full w-80 bg-white shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+              <button
+                onClick={closeMobileMenu}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
           <div 
             ref={drawerRef}
-            className="fixed top-0 left-0 h-full w-80 max-w-[85vw] bg-white shadow-xl z-50 sm:hidden transform transition-transform duration-300 ease-in-out"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation menu"
-            style={{
-              transform: isMobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)'
-            }}
-          >
-            {/* Drawer Content */}
-            <div className="flex flex-col h-full">
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {drawerStack.length > 1 ? (
+              className="overflow-y-auto h-full pb-20"
+            >
+              <div className="p-4">
+                {/* Header with back button (if not on main level) */}
+                {mobileNavLevel !== 'main' && (
+                  <div className="flex items-center mb-6 pb-4 border-b border-gray-200">
                     <button
                       onClick={navigateBack}
-                      className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-                      aria-label="Back"
+                      className="flex items-center text-gray-600 hover:text-gray-900 mr-3 p-2 rounded-md hover:bg-gray-50"
                     >
-                      <ArrowLeft className="h-5 w-5" />
-                      Back
+                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      
                     </button>
-                  ) : (
-                    'Menu'
-                  )}
-                </h2>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {mobileNavLevel === 'women' && translations[lng as keyof typeof translations].women}
+                      {mobileNavLevel === 'men' && translations[lng as keyof typeof translations].men}
+                      {mobileNavLevel === 'women-sub' && selectedMobileCategory?.name}
+                      {mobileNavLevel === 'men-sub' && selectedMobileCategory?.name}
+                    </h3>
+                  </div>
+                )}
+
+                {/* Main Level */}
+                {mobileNavLevel === 'main' && (
+                  <>
+                    <Link 
+                      href={`/${lng}`} 
+                      onClick={closeMobileMenu}
+                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100"
+                    >
+                      {translations[lng as keyof typeof translations].home}
+                    </Link>
+                    
                 <button
-                  onClick={closeMobileMenu}
-                  className="p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                  aria-label="Close menu"
+                      onClick={() => navigateToLevel('women')}
+                      className="block w-full text-left py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
                 >
-                  <X className="h-6 w-6" />
+                      {translations[lng as keyof typeof translations].women}
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                 </button>
-              </div>
-              
-              {/* Navigation Items */}
-              <div className="flex-1 overflow-y-auto">
-                <div 
-                  className={`p-4 space-y-1 transition-all duration-300 ease-in-out ${
-                    animationDirection === 'forward' 
-                      ? 'transform -translate-x-full opacity-0' 
-                      : animationDirection === 'backward'
-                      ? 'transform translate-x-full opacity-0'
-                      : 'transform translate-x-0 opacity-100'
-                  }`}
-                >
-                  {drawerStack[drawerStack.length - 1]?.map((category: any, index: number) => (
+                    
                     <button
-                      key={`${category.key}-${index}`}
-                      onClick={() => handleCategoryClick(category)}
-                      className="w-full text-left px-4 py-3 text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded-md flex items-center justify-between group transition-colors duration-200"
+                      onClick={() => navigateToLevel('men')}
+                      className="block w-full text-left py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
                     >
-                      <span>
-                        {category.name?.[lng as keyof typeof category.name] || category.name}
-                      </span>
-                      {category.children && (
-                        <ChevronDown className="h-4 w-4 text-gray-400 group-hover:text-gray-600 transition-colors duration-200" />
-                      )}
+                      {translations[lng as keyof typeof translations].men}
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
                     </button>
-                  ))}
+                    
+                    <Link 
+                      href={`/${lng}/about`} 
+                      onClick={closeMobileMenu}
+                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100"
+                    >
+                      {translations[lng as keyof typeof translations].about}
+                    </Link>
+                    
+                    <Link 
+                      href={`/${lng}/contact`} 
+                      onClick={closeMobileMenu}
+                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100"
+                    >
+                      {translations[lng as keyof typeof translations].contact}
+                    </Link>
+                  </>
+                )}
+
+                {/* Women Level */}
+                {mobileNavLevel === 'women' && (
+                  <>
+                    <Link 
+                      href={`/${lng}/collection/women`}
+                      onClick={closeMobileMenu}
+                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium"
+                    >
+                      {translations[lng as keyof typeof translations].allWomen}
+                    </Link>
+                    
+                    {womenSubcategories.map((subcategory) => (
+                      <div key={subcategory.id}>
+                        {subcategory.subChildren && subcategory.subChildren.length > 0 ? (
+                          <button
+                            onClick={() => navigateToLevel('women-sub', subcategory)}
+                            className="block w-full text-left py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
+                          >
+                            {subcategory.name}
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        ) : (
+                          <Link
+                            href={`/${lng}/collection/women/${subcategory.slug}`}
+                            onClick={closeMobileMenu}
+                            className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
+                          >
+                            {subcategory.name}
+                          </Link>
+                        )}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Men Level */}
+                {mobileNavLevel === 'men' && (
+                  <>
+                    <Link 
+                      href={`/${lng}/collection/men`}
+                      onClick={closeMobileMenu}
+                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium"
+                    >
+                      {translations[lng as keyof typeof translations].allMen}
+                    </Link>
+                    
+                    {menSubcategories.map((subcategory) => (
+                      <div key={subcategory.id}>
+                        {subcategory.subChildren && subcategory.subChildren.length > 0 ? (
+                          <button
+                            onClick={() => navigateToLevel('men-sub', subcategory)}
+                            className="block w-full text-left py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
+                          >
+                            {subcategory.name}
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        ) : (
+                          <Link
+                            href={`/${lng}/collection/men/${subcategory.slug}`}
+                            onClick={closeMobileMenu}
+                            className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
+                          >
+                            {subcategory.name}
+                          </Link>
+                        )}
                 </div>
+                    ))}
+                  </>
+                )}
+
+                {/* Women Sub-sub-categories Level */}
+                {mobileNavLevel === 'women-sub' && selectedMobileCategory && (
+                  <>
+                    {selectedMobileCategory.subChildren?.map((subSubCategory) => (
+                      <Link
+                        key={subSubCategory.id}
+                        href={`/${lng}/collection/women/${selectedMobileCategory.slug}/${subSubCategory.slug}`}
+                        onClick={closeMobileMenu}
+                        className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
+                      >
+                        {subSubCategory.name}
+                      </Link>
+                    ))}
+                  </>
+                )}
+
+                {/* Men Sub-sub-categories Level */}
+                {mobileNavLevel === 'men-sub' && selectedMobileCategory && (
+                  <>
+                    {selectedMobileCategory.subChildren?.map((subSubCategory) => (
+                      <Link
+                        key={subSubCategory.id}
+                        href={`/${lng}/collection/men/${selectedMobileCategory.slug}/${subSubCategory.slug}`}
+                        onClick={closeMobileMenu}
+                        className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
+                      >
+                        {subSubCategory.name}
+                      </Link>
+                    ))}
+                  </>
+                )}
               </div>
-              
-              {/* Mobile Language Switcher */}
-              <MobileLanguageSwitcher currentLanguage={lng} />
             </div>
           </div>
-        </>
+        </div>
       )}
     </nav>
   )

@@ -9,7 +9,9 @@ import Image from 'next/image'
 
 interface ProductFormData {
   brand: string;
-  category: string;
+  category: string; // Level 1 category ID
+  subcategory: string; // Level 2 category ID
+  subsubcategory: string; // Level 3 category ID
   colors: string[];
   descriptionEn: string;
   descriptionHe: string;
@@ -26,7 +28,6 @@ interface ProductFormData {
   sku: string;
   stock: number;
   stockBySize: Record<string, number>; // New field for stock by size
-  subcategory: string;
   currency: string;
 }
 
@@ -38,6 +39,8 @@ interface FormErrors {
   price?: string;
   brand?: string;
   category?: string;
+  subcategory?: string;
+  subsubcategory?: string;
   colors?: string;
   sizes?: string;
   stock?: string;
@@ -59,6 +62,9 @@ const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purpl
 export default function NewProductPage() {
   const router = useRouter()
   const [categories, setCategories] = useState<Category[]>([])
+  const [mainCategories, setMainCategories] = useState<Category[]>([])
+  const [subCategories, setSubCategories] = useState<Category[]>([])
+  const [subSubCategories, setSubSubCategories] = useState<Category[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -68,6 +74,8 @@ export default function NewProductPage() {
   const [formData, setFormData] = useState<ProductFormData>({
     brand: '',
     category: '',
+    subcategory: '',
+    subsubcategory: '',
     colors: [],
     descriptionEn: '',
     descriptionHe: '',
@@ -84,7 +92,6 @@ export default function NewProductPage() {
     sku: '',
     stock: 0,
     stockBySize: {},
-    subcategory: '',
     currency: 'ILS'
   })
 
@@ -93,6 +100,10 @@ export default function NewProductPage() {
       try {
         const cats = await categoryService.getAllCategories()
         setCategories(cats)
+        
+        // Filter main categories (level 0) that are enabled
+        const mainCats = cats.filter(cat => cat.level === 0 && cat.isEnabled)
+        setMainCategories(mainCats)
       } catch (error) {
         console.error('Error fetching categories:', error)
       }
@@ -113,6 +124,80 @@ export default function NewProductPage() {
         [field]: undefined
       }))
     }
+  }
+
+  const handleCategoryChange = async (categoryId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      category: categoryId,
+      subcategory: '', // Reset subcategory
+      subsubcategory: '' // Reset sub-subcategory
+    }))
+    
+    // Clear subcategory and sub-subcategory selections
+    setSubCategories([])
+    setSubSubCategories([])
+    
+    // Clear errors
+    setErrors(prev => ({
+      ...prev,
+      category: undefined,
+      subcategory: undefined,
+      subsubcategory: undefined
+    }))
+    
+    if (categoryId) {
+      try {
+        // Fetch subcategories for the selected main category
+        const subCats = await categoryService.getSubCategories(categoryId)
+        const enabledSubCats = subCats.filter(cat => cat.isEnabled)
+        setSubCategories(enabledSubCats)
+      } catch (error) {
+        console.error('Error fetching subcategories:', error)
+      }
+    }
+  }
+
+  const handleSubCategoryChange = async (subCategoryId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      subcategory: subCategoryId,
+      subsubcategory: '' // Reset sub-subcategory
+    }))
+    
+    // Clear sub-subcategory selections
+    setSubSubCategories([])
+    
+    // Clear errors
+    setErrors(prev => ({
+      ...prev,
+      subcategory: undefined,
+      subsubcategory: undefined
+    }))
+    
+    if (subCategoryId) {
+      try {
+        // Fetch sub-subcategories for the selected subcategory
+        const subSubCats = await categoryService.getSubCategories(subCategoryId)
+        const enabledSubSubCats = subSubCats.filter(cat => cat.isEnabled)
+        setSubSubCategories(enabledSubSubCats)
+      } catch (error) {
+        console.error('Error fetching sub-subcategories:', error)
+      }
+    }
+  }
+
+  const handleSubSubCategoryChange = (subSubCategoryId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      subsubcategory: subSubCategoryId
+    }))
+    
+    // Clear error
+    setErrors(prev => ({
+      ...prev,
+      subsubcategory: undefined
+    }))
   }
 
   const handleSizeChange = (size: string, isSelected: boolean) => {
@@ -275,8 +360,10 @@ export default function NewProductPage() {
       newErrors.brand = 'Brand is required'
     }
     if (!formData.category.trim()) {
-      newErrors.category = 'Category is required'
+      newErrors.category = 'Main category is required'
     }
+    // Note: subcategory and sub-subcategory are optional
+    // Users can select just a main category, or go deeper into the hierarchy
     if (formData.colors.length === 0) {
       newErrors.colors = 'At least one color is required'
     }
@@ -315,8 +402,15 @@ export default function NewProductPage() {
       console.log('Image upload completed:', imageUrls)
       
       console.log('Preparing product data...')
-      // Find the selected category object
-      const selectedCategoryObj = categories.find(cat => cat.id === formData.category);
+      // Find the selected category object (use the deepest selected category)
+      let selectedCategoryId = formData.category;
+      if (formData.subsubcategory) {
+        selectedCategoryId = formData.subsubcategory;
+      } else if (formData.subcategory) {
+        selectedCategoryId = formData.subcategory;
+      }
+      
+      const selectedCategoryObj = categories.find(cat => cat.id === selectedCategoryId);
 
       const productData: any = {
         name: {
@@ -714,18 +808,18 @@ export default function NewProductPage() {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <label htmlFor="category" className="block text-sm font-medium text-gray-700">
-                    Category *
+                    Main Category *
                   </label>
                   <select
                     id="category"
                     value={formData.category}
-                    onChange={(e) => handleInputChange('category', e.target.value)}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
                     className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 ${
                       errors.category ? 'border-red-300' : 'border-gray-300'
                     }`}
                   >
-                    <option value="" className="text-gray-600">Select a category</option>
-                    {categories.map((category) => (
+                    <option value="" className="text-gray-600">Select a main category</option>
+                    {mainCategories.map((category) => (
                       <option key={category.id} value={category.id} className="text-gray-900">
                         {typeof category.name === 'object' ? category.name.en : category.name}
                       </option>
@@ -734,19 +828,53 @@ export default function NewProductPage() {
                   {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
                 </div>
 
-                <div>
-                  <label htmlFor="subcategory" className="block text-sm font-medium text-gray-700">
-                    Subcategory
-                  </label>
-                  <input
-                    type="text"
-                    id="subcategory"
-                    value={formData.subcategory}
-                    onChange={(e) => handleInputChange('subcategory', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
-                    placeholder="Enter subcategory"
-                  />
-                </div>
+                {formData.category && subCategories.length > 0 && (
+                  <div>
+                    <label htmlFor="subcategory" className="block text-sm font-medium text-gray-700">
+                      Sub Category
+                    </label>
+                    <select
+                      id="subcategory"
+                      value={formData.subcategory}
+                      onChange={(e) => handleSubCategoryChange(e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 ${
+                        errors.subcategory ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="" className="text-gray-600">Select a sub category (optional)</option>
+                      {subCategories.map((category) => (
+                        <option key={category.id} value={category.id} className="text-gray-900">
+                          {typeof category.name === 'object' ? category.name.en : category.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.subcategory && <p className="mt-1 text-sm text-red-600">{errors.subcategory}</p>}
+                  </div>
+                )}
+
+                {formData.subcategory && subSubCategories.length > 0 && (
+                  <div>
+                    <label htmlFor="subsubcategory" className="block text-sm font-medium text-gray-700">
+                      Sub-Sub Category
+                    </label>
+                    <select
+                      id="subsubcategory"
+                      value={formData.subsubcategory}
+                      onChange={(e) => handleSubSubCategoryChange(e.target.value)}
+                      className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 ${
+                        errors.subsubcategory ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="" className="text-gray-600">Select a sub-sub category (optional)</option>
+                      {subSubCategories.map((category) => (
+                        <option key={category.id} value={category.id} className="text-gray-900">
+                          {typeof category.name === 'object' ? category.name.en : category.name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.subsubcategory && <p className="mt-1 text-sm text-red-600">{errors.subsubcategory}</p>}
+                  </div>
+                )}
               </div>
             </div>
 

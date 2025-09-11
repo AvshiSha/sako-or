@@ -6,7 +6,6 @@ import { useState, useRef, useEffect } from 'react'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import { useCart } from '@/app/hooks/useCart'
 import { categoryService } from '@/lib/firebase'
-import { Category } from '@/lib/firebase'
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -148,7 +147,7 @@ export default function Navigation({ lng }: { lng: string }) {
 
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
-  }, [hoverTimeout])
+  }, [hoverTimeout]) // hoverTimeout is needed for cleanup
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)

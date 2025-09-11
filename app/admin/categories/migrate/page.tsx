@@ -195,10 +195,16 @@ export default function MigrateCategoriesPage() {
                       <div key={category.id} className="px-4 py-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <h4 className="font-medium text-gray-900">{category.name}</h4>
-                            <p className="text-sm text-gray-600">/{category.slug}</p>
+                            <h4 className="font-medium text-gray-900">
+                              {typeof category.name === 'object' ? category.name.en : category.name}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              /{typeof category.slug === 'object' ? category.slug.en : category.slug}
+                            </p>
                             {category.description && (
-                              <p className="text-sm text-gray-500 mt-1">{category.description}</p>
+                              <p className="text-sm text-gray-500 mt-1">
+                                {typeof category.description === 'object' ? category.description.en : category.description}
+                              </p>
                             )}
                           </div>
                           <div className="text-sm text-gray-500">

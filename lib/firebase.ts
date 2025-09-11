@@ -456,13 +456,25 @@ export const categoryService = {
   // Get all categories
   async getAllCategories(): Promise<Category[]> {
     try {
+      console.log('Fetching all categories from Firebase...');
       const q = query(collection(db, 'categories'), orderBy('sortOrder', 'asc'));
       const querySnapshot = await getDocs(q);
       
-      return querySnapshot.docs.map(doc => ({
+      const categories = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Category[];
+      
+      console.log(`Retrieved ${categories.length} categories from Firebase:`, 
+        categories.map(cat => ({
+          id: cat.id,
+          name: typeof cat.name === 'object' ? cat.name?.en : cat.name,
+          level: cat.level,
+          parentId: cat.parentId
+        }))
+      );
+      
+      return categories;
     } catch (error) {
       console.error('Error fetching categories:', error);
       throw error;

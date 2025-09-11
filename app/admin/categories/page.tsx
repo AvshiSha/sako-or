@@ -55,23 +55,36 @@ function CategoriesPage() {
   const fetchCategories = async () => {
     try {
       setLoading(true)
-      const allCategories = await categoryService.getAllCategories()
+      console.log('Fetching categories...')
       
       // Ensure default navigation categories exist first
       await ensureDefaultCategories()
       
-      // Fetch all categories again (including newly created defaults)
-      const updatedAllCategories = await categoryService.getAllCategories()
+      // Fetch all categories (including newly created ones)
+      const allCategories = await categoryService.getAllCategories()
+      console.log('Raw categories from Firebase:', allCategories.length, 'categories')
+      
+      // Log all categories for debugging
+      allCategories.forEach(cat => {
+        console.log('Category:', {
+          id: cat.id,
+          name: typeof cat.name === 'object' ? cat.name?.en : cat.name,
+          level: cat.level,
+          parentId: cat.parentId,
+          path: cat.path
+        })
+      })
       
       // Remove duplicates by ID
-      const uniqueCategories = updatedAllCategories.filter((category, index, self) => 
+      const uniqueCategories = allCategories.filter((category, index, self) => 
         index === self.findIndex(c => c.id === category.id)
       )
       
-      console.log(`Removed ${updatedAllCategories.length - uniqueCategories.length} duplicate categories`)
+      console.log(`Total categories: ${allCategories.length}, Unique categories: ${uniqueCategories.length}`)
       
       // Build hierarchical structure with unique categories
       const hierarchicalCategories = buildHierarchy(uniqueCategories)
+      console.log('Built hierarchy with', hierarchicalCategories.length, 'root categories')
       
       setCategories(hierarchicalCategories)
     } catch (error) {
@@ -194,7 +207,13 @@ function CategoriesPage() {
     const categoryMap = new Map<string, CategoryWithChildren>()
     const rootCategories: CategoryWithChildren[] = []
 
-    console.log('Building hierarchy with categories:', allCategories.map(c => ({ id: c.id, name: c.name?.en, level: c.level, parentId: c.parentId })))
+    console.log('Building hierarchy with categories:', allCategories.map(c => ({ 
+      id: c.id, 
+      name: typeof c.name === 'object' ? c.name?.en : c.name, 
+      level: c.level, 
+      parentId: c.parentId,
+      path: c.path
+    })))
 
     // Create map of all categories
     allCategories.forEach(cat => {
@@ -203,10 +222,18 @@ function CategoriesPage() {
       }
     })
 
-    // Build hierarchy
+    // Build hierarchy - process by level order to ensure parents are processed first
     const processedCategories = new Set<string>() // Track processed categories to avoid duplicates
     
-    allCategories.forEach(cat => {
+    // Sort categories by level to ensure parents are processed before children
+    const sortedCategories = [...allCategories].sort((a, b) => a.level - b.level)
+    console.log('Processing categories in level order:', sortedCategories.map(c => ({ 
+      id: c.id, 
+      name: typeof c.name === 'object' ? c.name?.en : c.name, 
+      level: c.level 
+    })))
+    
+    sortedCategories.forEach(cat => {
       if (!cat.id) return // Skip categories without IDs
       if (processedCategories.has(cat.id)) {
         console.log(`Skipping duplicate category ${cat.id}`)
@@ -238,23 +265,48 @@ function CategoriesPage() {
         }
       } else if (cat.level === 2 && cat.parentId) {
         // Sub-sub-category
+        console.log(`Processing sub-sub-category: ${cat.id} (${typeof cat.name === 'object' ? cat.name?.en : cat.name}) with parentId: ${cat.parentId}`)
+        
         // Find the parent sub-category
         const parentSubCategory = allCategories.find(c => c.id === cat.parentId)
+        console.log(`Found parent sub-category:`, parentSubCategory ? {
+          id: parentSubCategory.id,
+          name: typeof parentSubCategory.name === 'object' ? parentSubCategory.name?.en : parentSubCategory.name,
+          level: parentSubCategory.level,
+          parentId: parentSubCategory.parentId
+        } : 'NOT FOUND')
+        
         if (parentSubCategory && parentSubCategory.parentId) {
           const grandParent = categoryMap.get(parentSubCategory.parentId)
+          console.log(`Found grandparent:`, grandParent ? {
+            id: grandParent.id,
+            name: typeof grandParent.name === 'object' ? grandParent.name?.en : grandParent.name
+          } : 'NOT FOUND')
+          
           if (grandParent) {
             const parentSub = grandParent.children!.find(c => c.id === cat.parentId)
+            console.log(`Found parent sub in children:`, parentSub ? {
+              id: parentSub.id,
+              name: typeof parentSub.name === 'object' ? parentSub.name?.en : parentSub.name
+            } : 'NOT FOUND')
+            
             if (parentSub) {
               // Check if already added to avoid duplicates
               const alreadyExists = parentSub.subChildren!.find(c => c.id === cat.id)
               if (!alreadyExists) {
-                console.log(`Adding sub-sub-category ${cat.id} to parent ${cat.parentId}`)
+                console.log(`Adding sub-sub-category ${cat.id} (${typeof cat.name === 'object' ? cat.name?.en : cat.name}) to parent ${cat.parentId}`)
                 parentSub.subChildren!.push(categoryWithChildren)
               } else {
                 console.log(`Sub-sub-category ${cat.id} already exists in parent ${cat.parentId}`)
               }
+            } else {
+              console.log(`Parent sub-category ${cat.parentId} not found in grandparent's children`)
             }
+          } else {
+            console.log(`Grandparent ${parentSubCategory.parentId} not found in categoryMap`)
           }
+        } else {
+          console.log(`Parent sub-category not found or missing grandparent ID`)
         }
       }
     })
@@ -621,13 +673,24 @@ function CategoriesPage() {
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
             </div>
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Add Main Category
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={fetchCategories}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Main Category
+              </button>
+            </div>
           </div>
           <p className="text-gray-600 mt-2">Manage hierarchical product categories and navigation structure</p>
         </div>

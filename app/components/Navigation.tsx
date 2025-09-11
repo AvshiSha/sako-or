@@ -38,6 +38,7 @@ export default function Navigation({ lng }: { lng: string }) {
   const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
   const [isMenDropdownOpen, setIsMenDropdownOpen] = useState(false)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
+  const [openTimeout, setOpenTimeout] = useState<NodeJS.Timeout | null>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
   
   // Mobile navigation state
@@ -117,14 +118,17 @@ export default function Navigation({ lng }: { lng: string }) {
     fetchCategories()
   }, [lng])
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (hoverTimeout) {
         clearTimeout(hoverTimeout)
       }
+      if (openTimeout) {
+        clearTimeout(openTimeout)
+      }
     }
-  }, [hoverTimeout])
+  }, [hoverTimeout, openTimeout])
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -136,6 +140,10 @@ export default function Navigation({ lng }: { lng: string }) {
         if (hoverTimeout) {
           clearTimeout(hoverTimeout)
           setHoverTimeout(null)
+        }
+        if (openTimeout) {
+          clearTimeout(openTimeout)
+          setOpenTimeout(null)
         }
       }
     }
@@ -177,26 +185,39 @@ export default function Navigation({ lng }: { lng: string }) {
   }
 
   const handleMouseEnter = (dropdown: 'women' | 'men') => {
-    // Clear any existing timeout
+    // Clear any existing timeouts
     if (hoverTimeout) {
       clearTimeout(hoverTimeout)
       setHoverTimeout(null)
     }
-    
-    // Close the other dropdown immediately to prevent overlap
-    if (dropdown === 'women') {
-      setIsMenDropdownOpen(false)
-      setIsWomenDropdownOpen(true)
-    } else {
-      setIsWomenDropdownOpen(false)
-      setIsMenDropdownOpen(true)
+    if (openTimeout) {
+      clearTimeout(openTimeout)
+      setOpenTimeout(null)
     }
+    
+    // Set a delay before opening the dropdown
+    const timeout = setTimeout(() => {
+      // Close the other dropdown to prevent overlap
+      if (dropdown === 'women') {
+        setIsMenDropdownOpen(false)
+        setIsWomenDropdownOpen(true)
+      } else {
+        setIsWomenDropdownOpen(false)
+        setIsMenDropdownOpen(true)
+      }
+    }, 300) // 300ms delay before opening
+    
+    setOpenTimeout(timeout)
   }
 
   const handleMouseLeave = (dropdown: 'women' | 'men') => {
-    // Clear any existing timeout
+    // Clear any existing timeouts
     if (hoverTimeout) {
       clearTimeout(hoverTimeout)
+    }
+    if (openTimeout) {
+      clearTimeout(openTimeout)
+      setOpenTimeout(null)
     }
     
     const timeout = setTimeout(() => {
@@ -206,16 +227,20 @@ export default function Navigation({ lng }: { lng: string }) {
         setIsMenDropdownOpen(false)
       }
       setHoverTimeout(null)
-    }, 200) // Increased delay for better UX
+    }, 200) // 200ms delay before closing
     
     setHoverTimeout(timeout)
   }
 
   const handleDropdownMouseEnter = (dropdown: 'women' | 'men') => {
-    // Clear timeout when mouse enters dropdown
+    // Clear timeouts when mouse enters dropdown
     if (hoverTimeout) {
       clearTimeout(hoverTimeout)
       setHoverTimeout(null)
+    }
+    if (openTimeout) {
+      clearTimeout(openTimeout)
+      setOpenTimeout(null)
     }
   }
 
@@ -224,9 +249,13 @@ export default function Navigation({ lng }: { lng: string }) {
     if (hoverTimeout) {
       clearTimeout(hoverTimeout)
     }
+    if (openTimeout) {
+      clearTimeout(openTimeout)
+    }
     setIsWomenDropdownOpen(false)
     setIsMenDropdownOpen(false)
     setHoverTimeout(null)
+    setOpenTimeout(null)
   }
 
 
@@ -262,7 +291,7 @@ export default function Navigation({ lng }: { lng: string }) {
               <button
                 onMouseEnter={() => handleMouseEnter('women')}
                 onMouseLeave={() => handleMouseLeave('women')}
-                className="flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
+                className={`flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50 ${isWomenDropdownOpen ? 'bg-gray-50' : ''}`}
               >
                 {translations[lng as keyof typeof translations].women}
                 <ChevronDown className="ml-1 h-4 w-4" />
@@ -270,35 +299,39 @@ export default function Navigation({ lng }: { lng: string }) {
               
               {isWomenDropdownOpen && (
                 <div 
-                  className="absolute top-full left-0 mt-1 w-48 bg-white shadow-lg border border-gray-200 rounded-md py-2 z-50"
+                  className="absolute top-full left-0 mt-1 w-64 bg-white shadow-lg border border-gray-200 rounded-md py-3 z-50"
                   onMouseEnter={() => handleDropdownMouseEnter('women')}
                   onMouseLeave={() => handleMouseLeave('women')}
                 >
+                  {/* All Women Link */}
                   <Link 
                     href={`/${lng}/collection/women`}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150 border-b border-gray-100 mb-3"
                   >
                     {translations[lng as keyof typeof translations].allWomen}
                   </Link>
+                  
+                  {/* Subcategories */}
                   {womenSubcategories.map((subcategory) => (
-                    <div key={subcategory.id} className="relative group">
+                    <div key={subcategory.id} className="mb-2">
                       <Link
                         href={`/${lng}/collection/women/${subcategory.slug}`}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
+                        className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
                       >
                         {subcategory.name}
                       </Link>
+                      
                       {/* Sub-sub-categories */}
                       {subcategory.subChildren && subcategory.subChildren.length > 0 && (
-                        <div className="absolute left-full top-0 ml-1 w-48 bg-white shadow-lg border border-gray-200 rounded-md py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[60]">
+                        <div className="pl-6 space-y-1">
                           {subcategory.subChildren.map((subSubCategory) => (
-                    <Link
+                            <Link
                               key={subSubCategory.id}
                               href={`/${lng}/collection/women/${subcategory.slug}/${subSubCategory.slug}`}
-                              className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
+                              className="block px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
                             >
                               {subSubCategory.name}
-                    </Link>
+                            </Link>
                           ))}
                         </div>
                       )}
@@ -313,7 +346,7 @@ export default function Navigation({ lng }: { lng: string }) {
               <button
                 onMouseEnter={() => handleMouseEnter('men')}
                 onMouseLeave={() => handleMouseLeave('men')}
-                className="flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
+                className={`flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50 ${isMenDropdownOpen ? 'bg-gray-50' : ''}`}
               >
                 {translations[lng as keyof typeof translations].men}
                 <ChevronDown className="ml-1 h-4 w-4" />
@@ -321,35 +354,39 @@ export default function Navigation({ lng }: { lng: string }) {
               
               {isMenDropdownOpen && (
                 <div 
-                  className="absolute top-full left-0 mt-1 w-48 bg-white shadow-lg border border-gray-200 rounded-md py-2 z-50"
+                  className="absolute top-full left-0 mt-1 w-64 bg-white shadow-lg border border-gray-200 rounded-md py-3 z-50"
                   onMouseEnter={() => handleDropdownMouseEnter('men')}
                   onMouseLeave={() => handleMouseLeave('men')}
                 >
+                  {/* All Men Link */}
                   <Link 
                     href={`/${lng}/collection/men`}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150"
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150 border-b border-gray-100 mb-3"
                   >
                     {translations[lng as keyof typeof translations].allMen}
                   </Link>
+                  
+                  {/* Subcategories */}
                   {menSubcategories.map((subcategory) => (
-                    <div key={subcategory.id} className="relative group">
+                    <div key={subcategory.id} className="mb-2">
                       <Link
                         href={`/${lng}/collection/men/${subcategory.slug}`}
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
+                        className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
                       >
                         {subcategory.name}
                       </Link>
+                      
                       {/* Sub-sub-categories */}
                       {subcategory.subChildren && subcategory.subChildren.length > 0 && (
-                        <div className="absolute left-full top-0 ml-1 w-48 bg-white shadow-lg border border-gray-200 rounded-md py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[60]">
+                        <div className="pl-6 space-y-1">
                           {subcategory.subChildren.map((subSubCategory) => (
-                    <Link
+                            <Link
                               key={subSubCategory.id}
                               href={`/${lng}/collection/men/${subcategory.slug}/${subSubCategory.slug}`}
-                              className="block px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
+                              className="block px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
                             >
                               {subSubCategory.name}
-                    </Link>
+                            </Link>
                           ))}
                         </div>
                       )}

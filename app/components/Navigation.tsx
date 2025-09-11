@@ -315,20 +315,20 @@ export default function Navigation({ lng }: { lng: string }) {
                         href={`/${lng}/collection/women/${subcategory.slug}`}
                         className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
                       >
-                        {subcategory.name}
+                        {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                       </Link>
                       
                       {/* Sub-sub-categories */}
                       {subcategory.subChildren && subcategory.subChildren.length > 0 && (
                         <div className="pl-6 space-y-1">
                           {subcategory.subChildren.map((subSubCategory) => (
-                            <Link
+                    <Link
                               key={subSubCategory.id}
                               href={`/${lng}/collection/women/${subcategory.slug}/${subSubCategory.slug}`}
                               className="block px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
                             >
-                              {subSubCategory.name}
-                            </Link>
+                              {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
+                    </Link>
                           ))}
                         </div>
                       )}
@@ -370,20 +370,20 @@ export default function Navigation({ lng }: { lng: string }) {
                         href={`/${lng}/collection/men/${subcategory.slug}`}
                         className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
                       >
-                        {subcategory.name}
+                        {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                       </Link>
                       
                       {/* Sub-sub-categories */}
                       {subcategory.subChildren && subcategory.subChildren.length > 0 && (
                         <div className="pl-6 space-y-1">
                           {subcategory.subChildren.map((subSubCategory) => (
-                            <Link
+                    <Link
                               key={subSubCategory.id}
                               href={`/${lng}/collection/men/${subcategory.slug}/${subSubCategory.slug}`}
                               className="block px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
                             >
-                              {subSubCategory.name}
-                            </Link>
+                              {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
+                    </Link>
                           ))}
                         </div>
                       )}
@@ -478,8 +478,8 @@ export default function Navigation({ lng }: { lng: string }) {
                     <h3 className="text-lg font-semibold text-gray-900">
                       {mobileNavLevel === 'women' && translations[lng as keyof typeof translations].women}
                       {mobileNavLevel === 'men' && translations[lng as keyof typeof translations].men}
-                      {mobileNavLevel === 'women-sub' && selectedMobileCategory?.name}
-                      {mobileNavLevel === 'men-sub' && selectedMobileCategory?.name}
+                      {mobileNavLevel === 'women-sub' && (typeof selectedMobileCategory?.name === 'object' ? (selectedMobileCategory.name as any).en : selectedMobileCategory?.name)}
+                      {mobileNavLevel === 'men-sub' && (typeof selectedMobileCategory?.name === 'object' ? (selectedMobileCategory.name as any).en : selectedMobileCategory?.name)}
                     </h3>
                   </div>
                 )}
@@ -551,7 +551,7 @@ export default function Navigation({ lng }: { lng: string }) {
                             onClick={() => navigateToLevel('women-sub', subcategory)}
                             className="block w-full text-left py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
                           >
-                            {subcategory.name}
+                            {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
@@ -562,7 +562,7 @@ export default function Navigation({ lng }: { lng: string }) {
                             onClick={closeMobileMenu}
                             className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                           >
-                            {subcategory.name}
+                            {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                           </Link>
                         )}
                       </div>
@@ -588,7 +588,7 @@ export default function Navigation({ lng }: { lng: string }) {
                             onClick={() => navigateToLevel('men-sub', subcategory)}
                             className="block w-full text-left py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
                           >
-                            {subcategory.name}
+                            {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                             </svg>
@@ -599,7 +599,7 @@ export default function Navigation({ lng }: { lng: string }) {
                             onClick={closeMobileMenu}
                             className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                           >
-                            {subcategory.name}
+                            {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                           </Link>
                         )}
                 </div>
@@ -617,7 +617,7 @@ export default function Navigation({ lng }: { lng: string }) {
                         onClick={closeMobileMenu}
                         className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                       >
-                        {subSubCategory.name}
+                        {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
                       </Link>
                     ))}
                   </>
@@ -633,7 +633,7 @@ export default function Navigation({ lng }: { lng: string }) {
                         onClick={closeMobileMenu}
                         className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                       >
-                        {subSubCategory.name}
+                        {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
                       </Link>
                     ))}
                   </>

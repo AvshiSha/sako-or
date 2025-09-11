@@ -44,16 +44,22 @@ export async function POST(request: NextRequest) {
     const validatedData = categorySchema.parse(body)
 
     // Create category
-    const categoryId = await categoryService.createCategory({
+    const categoryData: any = {
       name: validatedData.name,
       slug: validatedData.slug,
-      description: validatedData.description,
       image: validatedData.image,
       parentId: validatedData.parentId,
       level: validatedData.level,
       isEnabled: validatedData.isEnabled,
       sortOrder: validatedData.sortOrder
-    })
+    }
+
+    // Only include description if it's provided and has both en and he properties
+    if (validatedData.description && validatedData.description.en && validatedData.description.he) {
+      categoryData.description = validatedData.description
+    }
+
+    const categoryId = await categoryService.createCategory(categoryData)
 
     // Get the created category
     const categories = await categoryService.getAllCategories()

@@ -14,6 +14,7 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { productService, Product } from '@/lib/firebase'
 import Toast, { useToast } from '@/app/components/Toast'
 import AddToCartModal from '@/app/components/AddToCartModal'
+import QuickBuyDrawer from '@/app/components/QuickBuyDrawer'
 
 interface FavoriteProduct extends Product {
   isUnavailable?: boolean
@@ -31,6 +32,7 @@ export default function FavoritesPage() {
   const [isClient, setIsClient] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<FavoriteProduct | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   
   // Toast hook
   const { toast, hideToast } = useToast()
@@ -320,7 +322,11 @@ export default function FavoritesPage() {
                         <span className="text-lg font-bold text-gray-900">
                         ₪{product.price.toFixed(2)}
                         </span>
-                        {(!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => v.stock <= 0)) && (
+                        {(!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => {
+                          // Check if this color variant has any stock across all sizes
+                          const totalStock = v.sizes?.reduce((total, size) => total + size.stock, 0) || 0;
+                          return totalStock <= 0;
+                        })) && (
                           <span className="text-sm text-red-600 font-medium">
                             {t.outOfStock}
                           </span>
@@ -330,11 +336,19 @@ export default function FavoritesPage() {
                       <button
                         onClick={() => {
                           setSelectedProduct(product)
-                          setIsModalOpen(true)
+                          setIsQuickBuyOpen(true)
                         }}
-                        disabled={!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => v.stock <= 0)}
+                        disabled={!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => {
+                          // Check if this color variant has any stock across all sizes
+                          const totalStock = v.sizes?.reduce((total, size) => total + size.stock, 0) || 0;
+                          return totalStock <= 0;
+                        })}
                         className={`w-full py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center ${
-                          (!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => v.stock <= 0))
+                          (!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => {
+                            // Check if this color variant has any stock across all sizes
+                            const totalStock = v.sizes?.reduce((total, size) => total + size.stock, 0) || 0;
+                            return totalStock <= 0;
+                          }))
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             : 'bg-indigo-600 text-white hover:bg-indigo-700'
                         }`}
@@ -369,6 +383,19 @@ export default function FavoritesPage() {
         product={selectedProduct}
         lng={lng}
       />
+
+      {/* Quick Buy Drawer */}
+      {selectedProduct && (
+        <QuickBuyDrawer
+          isOpen={isQuickBuyOpen}
+          onClose={() => {
+            setIsQuickBuyOpen(false)
+            setSelectedProduct(null)
+          }}
+          product={selectedProduct}
+          language={lng as 'en' | 'he'}
+        />
+      )}
     </div>
   )
 }

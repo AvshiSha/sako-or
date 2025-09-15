@@ -10,13 +10,15 @@ export async function GET() {
     const exportData = products.map(product => {
       // Group variants by size and sum their stock
       const stockBySize: Record<string, number> = {}
-      product.variants?.forEach(variant => {
-        if (variant.size && variant.stock !== null) {
-          if (!stockBySize[variant.size]) {
-            stockBySize[variant.size] = 0
+      product.colorVariants?.forEach(variant => {
+        variant.sizes?.forEach(size => {
+          if (size.size && size.stock !== null) {
+            if (!stockBySize[size.size]) {
+              stockBySize[size.size] = 0
+            }
+            stockBySize[size.size] += size.stock
           }
-          stockBySize[variant.size] += variant.stock
-        }
+        })
       })
 
       // Convert to string format for import compatibility
@@ -28,19 +30,19 @@ export async function GET() {
         name: product.name,
         description: product.description,
         slug: product.slug,
-        price: product.price,
+        price: product.colorVariants?.[0]?.price || product.price,
         category: product.category?.name || 'uncategorized',
         subcategory: '', // Subcategory not available in current Product interface
-        images: product.images?.map(img => img.url).join(',') || '',
-        sizes: product.sizes?.join(',') || '',
-        colors: product.colors?.join(',') || '',
+        images: product.colorVariants?.[0]?.images?.map(img => img.url).join(',') || '',
+        sizes: product.colorVariants?.[0]?.sizes?.map(s => s.size).join(',') || '',
+        colors: product.colorVariants?.map(v => v.colorName).join(',') || '',
         stockBySize: stockBySizeString,
-        sku: product.sku || '',
+        sku: product.baseSku || product.sku || '',
         featured: product.featured || false,
         new: product.isNew || false,
-        salePrice: product.salePrice || null,
-        saleStartDate: product.saleStartDate || null,
-        saleEndDate: product.saleEndDate || null
+        salePrice: product.colorVariants?.[0]?.salePrice || null,
+        saleStartDate: product.colorVariants?.[0]?.saleStartDate || null,
+        saleEndDate: product.colorVariants?.[0]?.saleEndDate || null
       }
     })
 

@@ -102,6 +102,7 @@ export default function FavoritesPage() {
                 // Product not found - mark as unavailable
                 favoriteProducts.push({
                   sku,
+                  baseSku: sku, // Use sku as baseSku for backward compatibility
                   slug: { en: 'unavailable', he: 'לא-זמין' },
                   name: { en: 'Unavailable Product', he: 'מוצר לא זמין' },
                   description: { en: 'This product is no longer available', he: 'המוצר הזה כבר לא זמין' },
@@ -111,8 +112,7 @@ export default function FavoritesPage() {
                   isNew: false,
                   isActive: false,
                   categoryId: '',
-                  images: [],
-                  variants: [],
+                  colorVariants: [], // Add empty colorVariants array
                   tags: [],
                   createdAt: new Date(),
                   updatedAt: new Date(),

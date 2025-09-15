@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -11,7 +10,7 @@ import {
   XMarkIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
-import { productService, Product, categoryService, Category, productHelpers } from "@/lib/firebase";
+import { productService, Product, categoryService, Category } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
 
 // Translations for the collection page

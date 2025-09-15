@@ -168,9 +168,8 @@ export const productHelpers = {
   },
 
   // Get product image alt text in specific language
-  getImageAlt: (image: ProductImage, language: 'en' | 'he'): string => {
-    if (!image.alt) return '';
-    return image.alt[language] || image.alt.en || '';
+  getImageAlt: (image: ColorVariantImage, language: 'en' | 'he'): string => {
+    return image.alt || '';
   },
 
   // Generate slug from text

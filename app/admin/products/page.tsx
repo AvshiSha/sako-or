@@ -220,10 +220,10 @@ function ProductsPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10 relative">
-                              {product.images && product.images.length > 0 ? (
+                              {product.colorVariants?.[0]?.images && product.colorVariants[0].images.length > 0 ? (
                                 <Image
                                   className="rounded-lg object-cover"
-                                  src={product.images.find(img => img.isPrimary)?.url || product.images[0].url}
+                                  src={product.colorVariants[0].images.find(img => img.isPrimary)?.url || product.colorVariants[0].images[0].url}
                                   alt={productHelpers.getField(product, 'name', 'en')}
                                   fill
                                   sizes="40px"
@@ -252,23 +252,23 @@ function ProductsPageContent() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                          ₪{product.price.toFixed(2)}
+                          ₪{product.colorVariants?.[0]?.price?.toFixed(2) || product.price.toFixed(2)}
                           </div>
-                          {product.salePrice && (
+                          {product.colorVariants?.[0]?.salePrice && (
                             <div className="text-sm text-red-600">
-                              Sale: ₪{product.salePrice.toFixed(2)}
+                              Sale: ₪{product.colorVariants[0].salePrice.toFixed(2)}
                             </div>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            product.stock > 10 
+                            (product.colorVariants?.reduce((total, variant) => total + variant.stock, 0) || 0) > 10 
                               ? 'bg-green-100 text-green-800'
-                              : product.stock > 0
+                              : (product.colorVariants?.reduce((total, variant) => total + variant.stock, 0) || 0) > 0
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
                           }`}>
-                            {product.stock} in stock
+                            {product.colorVariants?.reduce((total, variant) => total + variant.stock, 0) || 0} in stock
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -295,7 +295,7 @@ function ProductsPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <Link
-                              href={`/en/product/${product.sku}`}
+                              href={`/en/product/${product.baseSku || product.sku}/${product.colorVariants?.[0]?.colorSlug || 'default'}`}
                               className="text-indigo-600 hover:text-indigo-900"
                               title="View"
                             >

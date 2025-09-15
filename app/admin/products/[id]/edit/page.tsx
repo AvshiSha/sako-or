@@ -107,29 +107,29 @@ function EditProductPage() {
           setFormData({
             brand: (product as any).brand || '',
             category: product.categoryId || '',
-            colors: product.colors || [],
+            colors: product.colorVariants?.map(v => v.colorName) || [],
             descriptionEn: product.description?.en || '',
             descriptionHe: product.description?.he || '',
             featured: product.featured || false,
-            images: product.images?.map(img => img.url) || [],
+            images: product.colorVariants?.[0]?.images?.map(img => img.url) || [],
             nameEn: product.name?.en || '',
             nameHe: product.name?.he || '',
             new: product.isNew || false,
-            price: product.price || 0,
-            saleEndDate: product.saleEndDate ? new Date(product.saleEndDate).toISOString().split('T')[0] : '',
-            salePrice: product.salePrice || 0,
-            saleStartDate: product.saleStartDate ? new Date(product.saleStartDate).toISOString().split('T')[0] : '',
-            sizes: product.sizes || [],
-            sku: product.sku || '',
-            stock: product.stock || 0,
-            stockBySize: product.stockBySize || {},
+            price: product.colorVariants?.[0]?.price || 0,
+            saleEndDate: product.colorVariants?.[0]?.saleEndDate ? new Date(product.colorVariants[0].saleEndDate).toISOString().split('T')[0] : '',
+            salePrice: product.colorVariants?.[0]?.salePrice || 0,
+            saleStartDate: product.colorVariants?.[0]?.saleStartDate ? new Date(product.colorVariants[0].saleStartDate).toISOString().split('T')[0] : '',
+            sizes: product.colorVariants?.[0]?.sizes?.map(s => s.size) || [],
+            sku: product.sku || product.baseSku || '',
+            stock: product.colorVariants?.[0]?.stock || 0,
+            stockBySize: product.colorVariants?.[0]?.sizes?.reduce((acc, s) => ({ ...acc, [s.size]: s.stock }), {}) || {},
             subcategory: (product as any).subcategory || '',
             currency: (product as any).currency || 'ILS'
           })
           
           // Set existing images as uploaded
-          if (product.images && product.images.length > 0) {
-            const existingImages: ImageFile[] = product.images.map(img => ({
+          if (product.colorVariants?.[0]?.images && product.colorVariants[0].images.length > 0) {
+            const existingImages: ImageFile[] = product.colorVariants[0].images.map(img => ({
               file: new File([], 'existing-image'),
               preview: img.url,
               uploading: false,

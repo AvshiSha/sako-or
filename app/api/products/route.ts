@@ -103,35 +103,14 @@ export async function POST(request: NextRequest) {
       name: validatedData.name,
       slug: validatedData.slug,
       description: validatedData.description,
+      baseSku: validatedData.sku || '',
+      sku: validatedData.sku, // Keep for backward compatibility
       price: validatedData.price,
-      salePrice: validatedData.salePrice,
-      saleStartDate: validatedData.saleStartDate ? new Date(validatedData.saleStartDate) : undefined,
-      saleEndDate: validatedData.saleEndDate ? new Date(validatedData.saleEndDate) : undefined,
-      sku: validatedData.sku,
-      stock: validatedData.stock,
       featured: validatedData.featured || false,
       isNew: validatedData.isNew || false,
       isActive: validatedData.isActive !== false,
       categoryId: validatedData.categoryId,
-      images: validatedData.images?.map((img, index) => ({
-        url: img.url,
-        alt: {
-          en: img.alt?.en || `${validatedData.name.en} - Image ${index + 1}`,
-          he: img.alt?.he || `${validatedData.name.he} - תמונה ${index + 1}`
-        },
-        isPrimary: img.isPrimary || index === 0,
-        order: img.order || index,
-        createdAt: new Date()
-      })) || [],
-      variants: validatedData.variants?.map(variant => ({
-        size: variant.size,
-        color: variant.color,
-        stock: variant.stock,
-        sku: variant.sku,
-        price: variant.price,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })) || [],
+      colorVariants: [], // Will be populated by color variant service
       tags: validatedData.tags || []
     }
 

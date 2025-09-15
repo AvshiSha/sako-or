@@ -248,9 +248,9 @@ export default function FavoritesPage() {
                       <ExclamationTriangleIcon className="h-12 w-12 text-gray-400" />
                     </div>
                   ) : (
-                    <Link href={`/${lng}/product/${product.sku}`}>
+                    <Link href={`/${lng}/product/${product.baseSku || product.sku}/${product.colorVariants?.[0]?.colorSlug || 'default'}`}>
                       <Image
-                        src={product.images?.[0]?.url || '/images/placeholder.svg'}
+                        src={product.colorVariants?.[0]?.images?.[0]?.url || '/images/placeholder.svg'}
                         alt={product.name?.[lng as 'en' | 'he'] || 'Product'}
                         fill
                         className="object-cover hover:scale-105 transition-transform duration-200"

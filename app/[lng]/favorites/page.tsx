@@ -94,9 +94,32 @@ export default function FavoritesPage() {
           for (const sku of favoriteSkus) {
             try {
               console.log('🔍 Favorites page: Fetching product for SKU:', sku)
-              const product = await productService.getProductBySku(sku)
-              console.log('📦 Favorites page: Product found:', product ? 'YES' : 'NO')
+              // Try to get product with color variants first (new system using baseSku)
+              let product = await productService.getProductWithColorVariants(sku)
+              console.log('📦 Favorites page: Product with variants found:', product ? 'YES' : 'NO')
+              
+              // If not found, try legacy method (using sku field)
+              if (!product) {
+                product = await productService.getProductBySku(sku)
+                console.log('📦 Favorites page: Legacy product found:', product ? 'YES' : 'NO')
+              }
+              
+              // If still not found, try searching by baseSku in legacy products
+              if (!product) {
+                const allProducts = await productService.getAllProducts()
+                product = allProducts.find(p => p.baseSku === sku) || null
+                console.log('📦 Favorites page: Found by baseSku search:', product ? 'YES' : 'NO')
+              }
+              
               if (product) {
+                console.log('📦 Favorites page: Product data:', {
+                  name: product.name?.en,
+                  baseSku: product.baseSku,
+                  sku: product.sku,
+                  hasColorVariants: !!product.colorVariants,
+                  colorVariantsCount: product.colorVariants?.length || 0,
+                  firstVariantImages: product.colorVariants?.[0]?.images?.length || 0
+                })
                 favoriteProducts.push(product)
               } else {
                 // Product not found - mark as unavailable

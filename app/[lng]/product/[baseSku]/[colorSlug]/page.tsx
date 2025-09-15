@@ -375,23 +375,49 @@ export default function ProductColorPage() {
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         {/* Breadcrumb Navigation */}
-        <div className="bg-gray-50 border-b border-gray-200">
+        <div className="pt-16 bg-white border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center py-4">
-              <div className={`flex items-center space-x-2 ${isRTL ? 'space-x-reverse' : ''}`}>
-                <Link href={`/${lng}`} className="text-gray-500 hover:text-gray-700">
-                  {lng === 'he' ? 'בית' : 'Home'}
-                </Link>
-                <ChevronLeftIcon className={`h-4 w-4 text-gray-400 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
-                <Link href={`/${lng}/collection`} className="text-gray-500 hover:text-gray-700">
-                  {lng === 'he' ? 'אוסף' : 'Collection'}
-                </Link>
-                <ChevronLeftIcon className={`h-4 w-4 text-gray-400 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
-                <span className="text-gray-900">{productName}</span>
-                <ChevronLeftIcon className={`h-4 w-4 text-gray-400 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
-                <span className="text-gray-900">{currentVariant.colorName}</span>
-              </div>
-            </div>
+            <nav className="py-6" aria-label="Breadcrumb">
+              <ol className={`flex items-center space-x-1 text-sm ${isRTL ? 'space-x-reverse' : ''}`}>
+                <li>
+                  <Link 
+                    href={`/${lng}`} 
+                    className="text-gray-500 hover:text-gray-700 transition-colors duration-200 font-medium"
+                  >
+                    {lng === 'he' ? 'בית' : 'Home'}
+                  </Link>
+                </li>
+                <li>
+                  <div className="flex items-center">
+                    <ChevronLeftIcon className={`h-4 w-4 text-gray-300 mx-2 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
+                  </div>
+                </li>
+                <li>
+                  <Link 
+                    href={`/${lng}/collection`} 
+                    className="text-gray-500 hover:text-gray-700 transition-colors duration-200 font-medium"
+                  >
+                    {lng === 'he' ? 'קולקציה' : 'Collection'}
+                  </Link>
+                </li>
+                <li>
+                  <div className="flex items-center">
+                    <ChevronLeftIcon className={`h-4 w-4 text-gray-300 mx-2 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
+                  </div>
+                </li>
+                <li>
+                  <span className="text-gray-900 font-medium">{productName}</span>
+                </li>
+                <li>
+                  <div className="flex items-center">
+                    <ChevronLeftIcon className={`h-4 w-4 text-gray-300 mx-2 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
+                  </div>
+                </li>
+                <li>
+                  <span className="text-gray-600 font-medium">{currentVariant.colorName}</span>
+                </li>
+              </ol>
+            </nav>
           </div>
         </div>
 
@@ -449,7 +475,7 @@ export default function ProductColorPage() {
               {/* Product Header */}
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  {productName} - {currentVariant.colorName}
+                  {productName}
                 </h1>
               </div>
 

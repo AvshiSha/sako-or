@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Product, ColorVariant } from '@/lib/firebase'
-import { HeartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
 interface ProductCardProps {
@@ -14,10 +14,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, language = 'en' }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isWishlisted, setIsWishlisted] = useState(false)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [touchEnd, setTouchEnd] = useState<number | null>(null)
   
   // Get the first active color variant for display
   const defaultVariant = product.colorVariants?.find(v => v.isActive) || product.colorVariants?.[0]
@@ -42,27 +39,15 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
   const currentPrice = getCurrentPrice()
   const productName = product.name?.[language] || product.name?.en || 'Unnamed Product'
   
-  // Get images from the active variant
-  const variantImages = activeVariant.images || []
-  const currentImage = variantImages[currentImageIndex]
+  // Get primary image from the active variant
+  const primaryImage = activeVariant.images?.find(img => img.isPrimary) || activeVariant.images?.[0]
+  
+  // Get available sizes for the active variant (only sizes with stock > 0)
+  const availableSizes = activeVariant.sizes?.filter(size => size.stock > 0) || []
   
   // Handle color variant selection - just change the display
   const handleVariantSelect = (variant: ColorVariant) => {
     setSelectedVariant(variant)
-    setCurrentImageIndex(0) // Reset to first image when changing color
-  }
-  
-  // Handle image carousel navigation
-  const handlePreviousImage = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setCurrentImageIndex(prev => prev > 0 ? prev - 1 : variantImages.length - 1)
-  }
-  
-  const handleNextImage = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setCurrentImageIndex(prev => prev < variantImages.length - 1 ? prev + 1 : 0)
   }
   
   // Handle wishlist toggle
@@ -81,47 +66,17 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
     console.log('Quick buy:', product.baseSku, activeVariant.colorSlug)
   }
 
-  // Touch handlers for mobile swipe
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > 50
-    const isRightSwipe = distance < -50
-
-    if (isLeftSwipe && variantImages.length > 1) {
-      // Swipe left - next image
-      setCurrentImageIndex(prev => prev < variantImages.length - 1 ? prev + 1 : 0)
-    }
-    if (isRightSwipe && variantImages.length > 1) {
-      // Swipe right - previous image
-      setCurrentImageIndex(prev => prev > 0 ? prev - 1 : variantImages.length - 1)
-    }
-  }
-
   return (
     <div className="group relative bg-gray-100">
       {/* Main Product Image Section - Clickable to go to selected variant */}
       <Link 
         href={`/${language}/product/${product.baseSku}/${activeVariant.colorSlug}`}
         className="relative aspect-square overflow-hidden bg-gray-50 block"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
-        {currentImage ? (
+        {primaryImage ? (
           <Image
-            src={currentImage.url}
-            alt={currentImage.alt || `${productName} - ${activeVariant.colorName}`}
+            src={primaryImage.url}
+            alt={primaryImage.alt || `${productName} - ${activeVariant.colorName}`}
             width={500}
             height={500}
             priority={true}
@@ -131,24 +86,6 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
           <div className="w-full h-full flex items-center justify-center bg-gray-200">
             <span className="text-gray-400 text-sm">No Image</span>
           </div>
-        )}
-        
-        {/* Image Carousel Controls */}
-        {variantImages.length > 1 && (
-          <>
-            <button
-              onClick={handlePreviousImage}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <ChevronLeftIcon className="h-4 w-4 text-gray-600" />
-            </button>
-            <button
-              onClick={handleNextImage}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <ChevronRightIcon className="h-4 w-4 text-gray-600" />
-            </button>
-          </>
         )}
         
         {/* Wishlist Button */}

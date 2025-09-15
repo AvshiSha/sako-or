@@ -156,6 +156,8 @@ export default function ProductColorPage() {
 
   // Handle color change - navigate to new URL
   const handleColorChange = (newColorSlug: string) => {
+    console.log('Color change requested:', { newColorSlug, baseSku, lng })
+    console.log('Available variants:', product?.colorVariants?.map(v => ({ colorSlug: v.colorSlug, colorName: v.colorName, stock: v.stock })))
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
   }
 
@@ -468,19 +470,6 @@ export default function ProductColorPage() {
                 )}
               </div>
 
-              {/* Stock Status */}
-              <div className="flex items-center space-x-2">
-                {isOutOfStock ? (
-                  <span className="text-red-600 font-medium">
-                    {lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
-                  </span>
-                ) : (
-                  <span className="text-green-600 font-medium">
-                    {lng === 'he' ? `זמין במלאי (${currentStock} יחידות)` : `In Stock (${currentStock} units)`}
-                  </span>
-                )}
-              </div>
-
               {/* Description */}
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -495,25 +484,62 @@ export default function ProductColorPage() {
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     {lng === 'he' ? 'צבע' : 'Color'}
                   </h3>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex gap-2 overflow-x-auto pb-2">
                     {product.colorVariants.map((variant) => {
                       const isCurrentVariant = variant.colorSlug === colorSlug
-                      const isVariantOutOfStock = variant.stock <= 0
+                      // Check if variant has any available sizes (stock > 0)
+                      const isVariantOutOfStock = !variant.sizes || variant.sizes.length === 0 || variant.sizes.every(size => size.stock <= 0)
+                      const variantImage = variant.images?.find(img => img.isPrimary) || variant.images?.[0]
                       
                       return (
                         <button
                           key={variant.colorSlug}
-                          onClick={() => !isVariantOutOfStock && handleColorChange(variant.colorSlug)}
+                          onClick={() => {
+                            console.log('Color button clicked:', { 
+                              colorSlug: variant.colorSlug, 
+                              colorName: variant.colorName, 
+                              isVariantOutOfStock,
+                              currentColorSlug: colorSlug,
+                              variantStock: variant.stock,
+                              sizes: variant.sizes?.map(s => ({ size: s.size, stock: s.stock }))
+                            })
+                            if (!isVariantOutOfStock) {
+                              handleColorChange(variant.colorSlug)
+                            }
+                          }}
                           disabled={isVariantOutOfStock}
-                          className={`px-4 py-2 border rounded-md text-sm font-medium transition-colors ${
-                            isCurrentVariant
-                              ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
-                              : isVariantOutOfStock
-                              ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                              : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                          }`}
+                          className="flex-shrink-0 relative group"
+                          title={variant.colorName}
                         >
-                          {variant.colorName}
+                          {/* Product image */}
+                          {variantImage ? (
+                            <div className={`w-12 h-12 rounded-full overflow-hidden border-2 border-transparent ${
+                              isVariantOutOfStock ? 'opacity-50' : ''
+                            }`}>
+                              <Image
+                                src={variantImage.url}
+                                alt={variant.colorName}
+                                width={48}
+                                height={48}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className={`w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center ${
+                              isVariantOutOfStock ? 'opacity-50' : ''
+                            }`}>
+                              <span className="text-xs text-gray-500">{variant.colorName}</span>
+                            </div>
+                          )}
+                          
+                          {/* Selection line indicator */}
+                          <div 
+                            className={`absolute -bottom-1 left-0 w-12 h-0.5 transition-all duration-200 ${
+                              isCurrentVariant 
+                                ? 'bg-black' 
+                                : 'bg-transparent group-hover:bg-gray-400'
+                            }`}
+                          />
                         </button>
                       )
                     })}
@@ -528,26 +554,23 @@ export default function ProductColorPage() {
                     {lng === 'he' ? 'מידה' : 'Size'}
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {currentVariant.sizes.map((sizeData) => {
-                      const isSizeOutOfStock = sizeData.stock <= 0
-                      
-                      return (
-                        <button
-                          key={sizeData.size}
-                          onClick={() => !isSizeOutOfStock && setSelectedSize(sizeData.size)}
-                          disabled={isSizeOutOfStock}
-                          className={`px-4 py-2 border rounded-md text-sm font-medium ${
-                            selectedSize === sizeData.size
-                              ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
-                              : isSizeOutOfStock
-                              ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                              : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                          }`}
-                        >
-                          {sizeData.size}
-                        </button>
-                      )
-                    })}
+                    {currentVariant.sizes
+                      .filter(sizeData => sizeData.stock > 0) // Only show available sizes
+                      .map((sizeData) => {
+                        return (
+                          <button
+                            key={sizeData.size}
+                            onClick={() => setSelectedSize(sizeData.size)}
+                            className={`px-4 py-2 border rounded-md text-sm font-medium ${
+                              selectedSize === sizeData.size
+                                ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                                : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                            }`}
+                          >
+                            {sizeData.size}
+                          </button>
+                        )
+                      })}
                   </div>
                 </div>
               )}

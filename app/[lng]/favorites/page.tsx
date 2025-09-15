@@ -297,7 +297,7 @@ export default function FavoritesPage() {
                         <span className="text-lg font-bold text-gray-900">
                         ₪{product.price.toFixed(2)}
                         </span>
-                        {product.stock <= 0 && (
+                        {(!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => v.stock <= 0)) && (
                           <span className="text-sm text-red-600 font-medium">
                             {t.outOfStock}
                           </span>
@@ -309,9 +309,9 @@ export default function FavoritesPage() {
                           setSelectedProduct(product)
                           setIsModalOpen(true)
                         }}
-                        disabled={product.stock <= 0}
+                        disabled={!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => v.stock <= 0)}
                         className={`w-full py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center ${
-                          product.stock <= 0
+                          (!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => v.stock <= 0))
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             : 'bg-indigo-600 text-white hover:bg-indigo-700'
                         }`}

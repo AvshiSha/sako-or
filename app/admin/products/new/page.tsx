@@ -916,39 +916,6 @@ export default function NewProductPage() {
                   </div>
                 </div>
 
-                {/* Shipping & Returns Section */}
-                <div className="sm:col-span-2">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping & Returns</h3>
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="shippingReturnsEn" className="block text-sm font-medium text-gray-700">
-                        Shipping & Returns (English)
-                      </label>
-                      <textarea
-                        id="shippingReturnsEn"
-                        rows={4}
-                        value={formData.shippingReturnsEn}
-                        onChange={(e) => handleInputChange('shippingReturnsEn', e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
-                        placeholder="Enter shipping and returns policy in English"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="shippingReturnsHe" className="block text-sm font-medium text-gray-700">
-                        Shipping & Returns (Hebrew)
-                      </label>
-                      <textarea
-                        id="shippingReturnsHe"
-                        rows={4}
-                        value={formData.shippingReturnsHe}
-                        onChange={(e) => handleInputChange('shippingReturnsHe', e.target.value)}
-                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
-                        placeholder="הזן מדיניות משלוחים והחזרות בעברית"
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 <div>
                   <label htmlFor="brand" className="block text-sm font-medium text-gray-700">
                     Brand *

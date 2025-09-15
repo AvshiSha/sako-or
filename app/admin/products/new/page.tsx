@@ -52,6 +52,22 @@ interface ProductFormData {
   saleStartDate: string;
   baseSku: string;
   currency: string;
+  
+  // Material & Care fields
+  upperMaterialEn: string;
+  upperMaterialHe: string;
+  materialInnerSoleEn: string;
+  materialInnerSoleHe: string;
+  liningEn: string;
+  liningHe: string;
+  soleEn: string;
+  soleHe: string;
+  heelHeightEn: string;
+  heelHeightHe: string;
+  
+  // Shipping & Returns field
+  shippingReturnsEn: string;
+  shippingReturnsHe: string;
 }
 
 interface FormErrors {
@@ -119,7 +135,23 @@ export default function NewProductPage() {
     salePrice: 0,
     saleStartDate: '',
     baseSku: '',
-    currency: 'ILS'
+    currency: 'ILS',
+    
+    // Material & Care fields
+    upperMaterialEn: '',
+    upperMaterialHe: '',
+    materialInnerSoleEn: '',
+    materialInnerSoleHe: '',
+    liningEn: '',
+    liningHe: '',
+    soleEn: '',
+    soleHe: '',
+    heelHeightEn: '',
+    heelHeightHe: '',
+    
+    // Shipping & Returns field
+    shippingReturnsEn: '',
+    shippingReturnsHe: ''
   })
 
   useEffect(() => {
@@ -513,7 +545,35 @@ export default function NewProductPage() {
         colors: formData.colors, // Add colors
         brand: formData.brand, // Add brand
         subcategory: formData.subcategory, // Add subcategory
-        currency: formData.currency
+        currency: formData.currency,
+        
+        // Material & Care fields
+        upperMaterial: formData.upperMaterialEn || formData.upperMaterialHe ? {
+          en: formData.upperMaterialEn,
+          he: formData.upperMaterialHe
+        } : undefined,
+        materialInnerSole: formData.materialInnerSoleEn || formData.materialInnerSoleHe ? {
+          en: formData.materialInnerSoleEn,
+          he: formData.materialInnerSoleHe
+        } : undefined,
+        lining: formData.liningEn || formData.liningHe ? {
+          en: formData.liningEn,
+          he: formData.liningHe
+        } : undefined,
+        sole: formData.soleEn || formData.soleHe ? {
+          en: formData.soleEn,
+          he: formData.soleHe
+        } : undefined,
+        heelHeight: formData.heelHeightEn || formData.heelHeightHe ? {
+          en: formData.heelHeightEn,
+          he: formData.heelHeightHe
+        } : undefined,
+        
+        // Shipping & Returns field
+        shippingReturns: formData.shippingReturnsEn || formData.shippingReturnsHe ? {
+          en: formData.shippingReturnsEn,
+          he: formData.shippingReturnsHe
+        } : undefined
       }
 
       // Only add optional fields if they have valid values
@@ -708,6 +768,185 @@ export default function NewProductPage() {
                     placeholder="Enter product description in Hebrew"
                   />
                   {errors.descriptionHe && <p className="mt-1 text-sm text-red-600">{errors.descriptionHe}</p>}
+                </div>
+
+                {/* Material & Care Section */}
+                <div className="sm:col-span-2">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Material & Care</h3>
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    {/* Upper Material */}
+                    <div>
+                      <label htmlFor="upperMaterialEn" className="block text-sm font-medium text-gray-700">
+                        Upper Material (English)
+                      </label>
+                      <input
+                        type="text"
+                        id="upperMaterialEn"
+                        value={formData.upperMaterialEn}
+                        onChange={(e) => handleInputChange('upperMaterialEn', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="e.g., Leather Combination"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="upperMaterialHe" className="block text-sm font-medium text-gray-700">
+                        Upper Material (Hebrew)
+                      </label>
+                      <input
+                        type="text"
+                        id="upperMaterialHe"
+                        value={formData.upperMaterialHe}
+                        onChange={(e) => handleInputChange('upperMaterialHe', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="לדוגמה: שילוב עור"
+                      />
+                    </div>
+
+                    {/* Material Inner Sole */}
+                    <div>
+                      <label htmlFor="materialInnerSoleEn" className="block text-sm font-medium text-gray-700">
+                        Material Inner Sole (English)
+                      </label>
+                      <input
+                        type="text"
+                        id="materialInnerSoleEn"
+                        value={formData.materialInnerSoleEn}
+                        onChange={(e) => handleInputChange('materialInnerSoleEn', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="e.g., Leather"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="materialInnerSoleHe" className="block text-sm font-medium text-gray-700">
+                        Material Inner Sole (Hebrew)
+                      </label>
+                      <input
+                        type="text"
+                        id="materialInnerSoleHe"
+                        value={formData.materialInnerSoleHe}
+                        onChange={(e) => handleInputChange('materialInnerSoleHe', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="לדוגמה: עור"
+                      />
+                    </div>
+
+                    {/* Lining */}
+                    <div>
+                      <label htmlFor="liningEn" className="block text-sm font-medium text-gray-700">
+                        Lining (English)
+                      </label>
+                      <input
+                        type="text"
+                        id="liningEn"
+                        value={formData.liningEn}
+                        onChange={(e) => handleInputChange('liningEn', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="e.g., 100% Textile"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="liningHe" className="block text-sm font-medium text-gray-700">
+                        Lining (Hebrew)
+                      </label>
+                      <input
+                        type="text"
+                        id="liningHe"
+                        value={formData.liningHe}
+                        onChange={(e) => handleInputChange('liningHe', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="לדוגמה: 100% טקסטיל"
+                      />
+                    </div>
+
+                    {/* Sole */}
+                    <div>
+                      <label htmlFor="soleEn" className="block text-sm font-medium text-gray-700">
+                        Sole (English)
+                      </label>
+                      <input
+                        type="text"
+                        id="soleEn"
+                        value={formData.soleEn}
+                        onChange={(e) => handleInputChange('soleEn', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="e.g., Rubber Sole"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="soleHe" className="block text-sm font-medium text-gray-700">
+                        Sole (Hebrew)
+                      </label>
+                      <input
+                        type="text"
+                        id="soleHe"
+                        value={formData.soleHe}
+                        onChange={(e) => handleInputChange('soleHe', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="לדוגמה: סוליה מגומי"
+                      />
+                    </div>
+
+                    {/* Heel Height */}
+                    <div>
+                      <label htmlFor="heelHeightEn" className="block text-sm font-medium text-gray-700">
+                        Heel Height (English)
+                      </label>
+                      <input
+                        type="text"
+                        id="heelHeightEn"
+                        value={formData.heelHeightEn}
+                        onChange={(e) => handleInputChange('heelHeightEn', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="e.g., 5cm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="heelHeightHe" className="block text-sm font-medium text-gray-700">
+                        Heel Height (Hebrew)
+                      </label>
+                      <input
+                        type="text"
+                        id="heelHeightHe"
+                        value={formData.heelHeightHe}
+                        onChange={(e) => handleInputChange('heelHeightHe', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="לדוגמה: 5 ס״מ"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shipping & Returns Section */}
+                <div className="sm:col-span-2">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping & Returns</h3>
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="shippingReturnsEn" className="block text-sm font-medium text-gray-700">
+                        Shipping & Returns (English)
+                      </label>
+                      <textarea
+                        id="shippingReturnsEn"
+                        rows={4}
+                        value={formData.shippingReturnsEn}
+                        onChange={(e) => handleInputChange('shippingReturnsEn', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="Enter shipping and returns policy in English"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="shippingReturnsHe" className="block text-sm font-medium text-gray-700">
+                        Shipping & Returns (Hebrew)
+                      </label>
+                      <textarea
+                        id="shippingReturnsHe"
+                        rows={4}
+                        value={formData.shippingReturnsHe}
+                        onChange={(e) => handleInputChange('shippingReturnsHe', e.target.value)}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="הזן מדיניות משלוחים והחזרות בעברית"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div>

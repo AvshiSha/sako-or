@@ -20,6 +20,7 @@ import { analytics } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
+import Accordion from '@/app/components/Accordion'
 
 interface ProductWithVariants extends Product {
   colorVariants: ColorVariant[]
@@ -735,6 +736,116 @@ export default function ProductColorPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Material & Care and Shipping & Returns Sections */}
+              <div className="border-t border-gray-200 pt-6">
+                <div className="space-y-4">
+                  {/* Material & Care Section */}
+                  {(product.upperMaterial || product.materialInnerSole || product.lining || product.sole || product.heelHeight) && (
+                    <Accordion title={lng === 'he' ? 'מפרט טכני' : 'Material & Care'}>
+                      <div className="space-y-3">
+                        {product.upperMaterial && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'חומר עליון:' : 'Upper Material:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.upperMaterial.he : product.upperMaterial.en}
+                            </span>
+                          </div>
+                        )}
+                        {product.materialInnerSole && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'חומר סוליה פנימית:' : 'Material Inner Sole:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialInnerSole.he : product.materialInnerSole.en}
+                            </span>
+                          </div>
+                        )}
+                        {product.lining && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'בטנה:' : 'Lining:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.lining.he : product.lining.en}
+                            </span>
+                          </div>
+                        )}
+                        {product.sole && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'סוליה:' : 'Sole:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.sole.he : product.sole.en}
+                            </span>
+                          </div>
+                        )}
+                        {product.heelHeight && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'גובה עקב:' : 'Heel Height:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.heelHeight.he : product.heelHeight.en}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </Accordion>
+                  )}
+
+                  {/* Shipping & Returns Section */}
+                  <Accordion title={lng === 'he' ? 'משלוחים והחזרות' : 'Shipping & Returns'}>
+                    <div className="text-sm text-gray-600 leading-relaxed">
+                      {product.shippingReturns ? (
+                        // Custom shipping returns content if provided by admin
+                        lng === 'he' ? product.shippingReturns.he : product.shippingReturns.en
+                      ) : (
+                        // Default shipping returns content
+                        lng === 'he' ? (
+                          <div className="space-y-3">
+                            <p><strong>משלוחים:</strong></p>
+                            <ul className="list-disc list-inside space-y-1 ml-4">
+                              <li>משלוח חינם על הזמנות מעל 300 ₪</li>
+                              <li>משלוח מהיר תוך 1-2 ימי עסקים</li>
+                              <li>משלוח לכל הארץ</li>
+                              <li>מעקב אחר המשלוח במייל</li>
+                            </ul>
+                            <p><strong>החזרות:</strong></p>
+                            <ul className="list-disc list-inside space-y-1 ml-4">
+                              <li>זכות החזרה תוך 30 יום</li>
+                              <li>החזרה חינמית</li>
+                              <li>המוצר חייב להיות במצב מקורי</li>
+                              <li>החזר כספי תוך 3-5 ימי עסקים</li>
+                            </ul>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <p><strong>Shipping:</strong></p>
+                            <ul className="list-disc list-inside space-y-1 ml-4">
+                              <li>Free shipping on orders over ₪300</li>
+                              <li>Fast shipping within 1-2 business days</li>
+                              <li>Nationwide delivery</li>
+                              <li>Email tracking updates</li>
+                            </ul>
+                            <p><strong>Returns:</strong></p>
+                            <ul className="list-disc list-inside space-y-1 ml-4">
+                              <li>30-day return policy</li>
+                              <li>Free returns</li>
+                              <li>Items must be in original condition</li>
+                              <li>Refund processed within 3-5 business days</li>
+                            </ul>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </Accordion>
                 </div>
               </div>
             </div>

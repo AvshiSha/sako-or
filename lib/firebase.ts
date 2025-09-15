@@ -63,6 +63,35 @@ export interface Product {
   categorySlug?: string;
   category?: Category;
   categoryPath?: string; // Full category path like "women/shoes/heels"
+  
+  // Material & Care information
+  upperMaterial?: {
+    en: string;
+    he: string;
+  };
+  materialInnerSole?: {
+    en: string;
+    he: string;
+  };
+  lining?: {
+    en: string;
+    he: string;
+  };
+  sole?: {
+    en: string;
+    he: string;
+  };
+  heelHeight?: {
+    en: string;
+    he: string;
+  };
+  
+  // Shipping & Returns information
+  shippingReturns?: {
+    en: string;
+    he: string;
+  };
+  
   colorVariants: ColorVariant[];
   tags: string[];
   createdAt: Date;

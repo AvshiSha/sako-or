@@ -49,6 +49,16 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  // Material & Care information
+  upperMaterial     String? // Upper Material in JSON format for EN/HE
+  materialInnerSole String? // Material Inner Sole in JSON format for EN/HE
+  lining           String? // Lining in JSON format for EN/HE
+  sole             String? // Sole in JSON format for EN/HE
+  heelHeight       String? // Heel Height in JSON format for EN/HE
+  
+  // Shipping & Returns information
+  shippingReturns  String? // Shipping & Returns in JSON format for EN/HE
+
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   

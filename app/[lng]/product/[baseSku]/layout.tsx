@@ -4,7 +4,7 @@ interface ProductLayoutProps {
   children: React.ReactNode
   params: Promise<{
     lng: string
-    sku: string
+    baseSku: string
   }>
 }
 

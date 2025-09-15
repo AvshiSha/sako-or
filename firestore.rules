@@ -6,13 +6,25 @@ service cloud.firestore {
       allow read: if true;
     }
     
-    // Allow write access to authenticated users and admin
-    // TODO: Restrict this in production
+    // Allow write access to all users (temporary for development)
     match /products/{productId} {
       allow write: if true; // Temporary: allow all writes for development
     }
     
     match /categories/{categoryId} {
+      allow write: if true; // Temporary: allow all writes for development
+    }
+    
+    // Color variant collections - temporary open access
+    match /colorVariants/{variantId} {
+      allow write: if true; // Temporary: allow all writes for development
+    }
+    
+    match /colorVariantImages/{imageId} {
+      allow write: if true; // Temporary: allow all writes for development
+    }
+    
+    match /colorVariantSizes/{sizeId} {
       allow write: if true; // Temporary: allow all writes for development
     }
     

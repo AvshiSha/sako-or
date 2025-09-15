@@ -3,21 +3,15 @@
 import { useState } from 'react'
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import ProductCard from './ProductCard'
-
-interface Product {
-  id: number
-  name: string
-  price: number
-  image: string
-  category: string
-}
+import { Product } from '@/lib/firebase'
 
 interface ProductCarouselProps {
   products: Product[]
   title: string
+  language?: 'en' | 'he'
 }
 
-export default function ProductCarousel({ products, title }: ProductCarouselProps) {
+export default function ProductCarousel({ products, title, language = 'en' }: ProductCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const itemsPerPage = 4
 
@@ -66,7 +60,7 @@ export default function ProductCarousel({ products, title }: ProductCarouselProp
               className="w-1/4 px-4"
               style={{ flex: `0 0 ${100 / itemsPerPage}%` }}
             >
-              <ProductCard {...product} />
+              <ProductCard product={product} language={language} />
             </div>
           ))}
         </div>

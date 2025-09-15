@@ -12,6 +12,7 @@ import {
   CubeIcon,
 } from "@heroicons/react/24/outline";
 import { productService, Product, categoryService, Category, productHelpers } from "@/lib/firebase";
+import ProductCard from "@/app/components/ProductCard";
 
 // Translations for the collection page
 const translations = {
@@ -294,23 +295,17 @@ export default function CollectionSlugPage() {
     })
     .filter((product) => {
       if (selectedColors.length === 0) return true;
-      const hasMatchingVariantColor = product.variants?.some((variant) => 
-        selectedColors.includes(variant.color || "")
+      const hasMatchingVariantColor = product.colorVariants?.some((variant) => 
+        selectedColors.includes(variant.colorName || "")
       );
-      const hasMatchingColor = product.colors?.some((color) => 
-        selectedColors.includes(color)
-      );
-      return hasMatchingVariantColor || hasMatchingColor;
+      return hasMatchingVariantColor;
     })
     .filter((product) => {
       if (selectedSizes.length === 0) return true;
-      const hasMatchingVariantSize = product.variants?.some((variant) => 
-        selectedSizes.includes(variant.size || "")
+      const hasMatchingVariantSize = product.colorVariants?.some((variant) => 
+        variant.sizes?.some((sizeObj) => selectedSizes.includes(sizeObj.size || ""))
       );
-      const hasMatchingSize = product.sizes?.some((size) => 
-        selectedSizes.includes(size)
-      );
-      return hasMatchingVariantSize || hasMatchingSize;
+      return hasMatchingVariantSize;
     });
 
   // Apply sorting to filtered products
@@ -376,15 +371,13 @@ export default function CollectionSlugPage() {
 
   const allColors = [
     ...new Set([
-      ...products.flatMap((p) => p.variants?.map((v) => v.color).filter(Boolean) || []),
-      ...products.flatMap((p) => p.colors || [])
+      ...products.flatMap((p) => p.colorVariants?.map((v) => v.colorName).filter(Boolean) || [])
     ]),
   ] as string[];
 
   const allSizes = [
     ...new Set([
-      ...products.flatMap((p) => p.variants?.map((v) => v.size).filter(Boolean) || []),
-      ...products.flatMap((p) => p.sizes || []),
+      ...products.flatMap((p) => p.colorVariants?.flatMap((v) => v.sizes?.map((s) => s.size).filter(Boolean) || []) || []),
       // Add any additional sizes you want to always show
       "35", "35.5", "36", "36.5", "37", "37.5", "38", "38.5", "39", "39.5", "40", "40.5", "41", "41.5", "42", "42.5", "43", "43.5", "44", "44.5", "45"
     ]),
@@ -510,62 +503,14 @@ export default function CollectionSlugPage() {
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6">
               {sortedProducts.map((product) => (
                 <motion.div
                   key={product.id}
-                  className="group relative"
                   whileHover={{ y: -4 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200">
-                    {product.images && product.images.length > 0 ? (
-                      <Image
-                        src={product.images.find((img) => img.isPrimary)?.url || product.images[0].url}
-                        alt={productHelpers.getField(product, 'name', lng as 'en' | 'he')}
-                        width={400}
-                        height={400}
-                        className="h-full w-full object-cover object-center group-hover:opacity-75"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center bg-gray-200">
-                        <CubeIcon className="h-12 w-12 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Out of Stock Indicator */}
-                  {product.stock <= 0 && (
-                    <div className="mt-2 text-center">
-                      <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        {lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex justify-between">
-                    <div>
-                      <h3 className="text-sm text-gray-700">
-                        <Link href={`/${lng}/product/${product.sku}`}>
-                          <span aria-hidden="true" className="absolute inset-0" />
-                          {productHelpers.getField(product, 'name', lng as 'en' | 'he')}
-                        </Link>
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {product.category?.name ? 
-                          (typeof product.category.name === 'string' ? 
-                            product.category.name : 
-                            (lng === 'he' ? product.category.name.he : product.category.name.en)
-                          ) : 
-                          ''
-                        }
-                      </p>
-                    </div>
-                    <p className="text-sm font-medium text-gray-900">
-                    ₪{product.price.toFixed(2)}
-                    </p>
-                  </div>
-
+                  <ProductCard product={product} language={lng as 'en' | 'he'} />
                 </motion.div>
               ))}
             </div>

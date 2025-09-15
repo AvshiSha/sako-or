@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Head from 'next/head'
@@ -15,21 +15,26 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
-import { productService, productHelpers, Product } from '@/lib/firebase'
+import { productService, productHelpers, Product, ColorVariant } from '@/lib/firebase'
 import { analytics } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 
-export default function ProductPage() {
+interface ProductWithVariants extends Product {
+  colorVariants: ColorVariant[]
+  defaultColorVariant?: ColorVariant
+}
+
+export default function ProductColorPage() {
   const params = useParams()
-  const searchParams = useSearchParams()
-  const [product, setProduct] = useState<Product | null>(null)
+  const router = useRouter()
+  const [product, setProduct] = useState<ProductWithVariants | null>(null)
+  const [currentVariant, setCurrentVariant] = useState<ColorVariant | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [selectedSize, setSelectedSize] = useState<string>('')
-  const [selectedColor, setSelectedColor] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [isClient, setIsClient] = useState(false)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
@@ -43,43 +48,27 @@ export default function ProductPage() {
   // Toast hook
   const { toast, showToast, hideToast } = useToast()
 
-  // Get language and SKU from params
+  // Get language, baseSku, and colorSlug from params
   const lng = params?.lng as string || 'en'
-  const sku = params?.sku as string
-
-  // Get variant selections from URL params
-  const sizeParam = searchParams?.get('size')
-  const colorParam = searchParams?.get('color')
+  const baseSku = params?.baseSku as string
+  const colorSlug = params?.colorSlug as string
 
   // Client-side only effect
   useEffect(() => {
     setIsClient(true)
   }, [])
 
-  // Fetch product data by SKU
+  // Fetch product data by baseSku and colorSlug
   useEffect(() => {
-    if (!sku || !isClient) return
+    if (!baseSku || !colorSlug || !isClient) return
 
     const fetchProduct = async () => {
       try {
         setLoading(true)
         setError(null)
         
-        // First try to get product by SKU
-        let productData = await productService.getProductBySku(sku)
-        
-        // If not found by SKU, try by slug (for old URLs)
-        if (!productData) {
-          productData = await productService.getProductBySlug(sku, lng as 'en' | 'he')
-          
-          // If found by slug, redirect to SKU-based URL
-          if (productData && productData.sku) {
-            const currentUrl = new URL(window.location.href)
-            const newUrl = `/${lng}/product/${productData.sku}${currentUrl.search}`
-            window.location.replace(newUrl)
-            return
-          }
-        }
+        // Get product with all color variants
+        const productData = await productService.getProductWithColorVariants(baseSku)
         
         if (!productData) {
           setError('Product not found')
@@ -87,29 +76,34 @@ export default function ProductPage() {
           return
         }
 
-        setProduct(productData)
+        // Find the specific color variant
+        const variant = productData.colorVariants.find(v => v.colorSlug === colorSlug)
         
-        // Set default selections from URL params or first available options
-        if (productData) {
-          if (productData.sizes && productData.sizes.length > 0) {
-            setSelectedSize(sizeParam || productData.sizes[0])
-          }
-          if (productData.colors && productData.colors.length > 0) {
-            setSelectedColor(colorParam || productData.colors[0])
-          }
+        if (!variant) {
+          setError('Color variant not found')
+          setLoading(false)
+          return
+        }
+
+        setProduct(productData)
+        setCurrentVariant(variant)
+        
+        // Set default size from first available
+        if (variant.sizes && variant.sizes.length > 0) {
+          setSelectedSize(variant.sizes[0].size)
         }
 
         // Fire Product View analytics event
         if (analytics && productData && typeof analytics.logEvent === 'function') {
           try {
             analytics.logEvent('view_item', {
-              currency: productData.currency || 'USD',
-              value: productData.salePrice || productData.price,
+              currency: 'USD',
+              value: variant.salePrice || variant.price || productData.price,
               items: [{
-                item_id: productData.sku,
-                item_name: productHelpers.getField(productData, 'name', lng as 'en' | 'he'),
+                item_id: variant.sizes.find(s => s.size === variant.sizes[0]?.size)?.sku || `${baseSku}-${colorSlug}`,
+                item_name: `${productHelpers.getField(productData, 'name', lng as 'en' | 'he')} - ${variant.colorName}`,
                 item_category: productData.category?.name || 'Unknown',
-                price: productData.salePrice || productData.price,
+                price: variant.salePrice || variant.price || productData.price,
                 quantity: 1
               }]
             })
@@ -126,50 +120,44 @@ export default function ProductPage() {
     }
 
     fetchProduct()
-  }, [sku, lng, isClient, sizeParam, colorParam])
+  }, [baseSku, colorSlug, lng, isClient])
 
-  // Check if variant is in stock
-  const getVariantStock = useCallback((size?: string, color?: string) => {
-    // If we have stock by size data, use that
-    if (product?.stockBySize && size && product.stockBySize[size] !== undefined) {
-      return product.stockBySize[size]
-    }
+  // Get current price (variant price takes precedence)
+  const getCurrentPrice = useCallback(() => {
+    if (!currentVariant) return 0
     
-    // Fallback to variants if available
-    if (product?.variants) {
-      const variant = product.variants.find(v => 
-        (!size || v.size === size) && (!color || v.color === color)
-      )
-      return variant ? variant.stock : 0
-    }
+    // Check if sale is active
+    const now = new Date()
+    const isSaleActive = currentVariant.salePrice && 
+      (!currentVariant.saleStartDate || now >= currentVariant.saleStartDate) &&
+      (!currentVariant.saleEndDate || now <= currentVariant.saleEndDate)
     
-    // Fallback to total stock
-    return product?.stock || 0
-  }, [product])
+    if (isSaleActive) return currentVariant.salePrice!
+    if (currentVariant.price) return currentVariant.price
+    return product?.price || 0
+  }, [currentVariant, product])
 
-  // Reset quantity when size changes to ensure it doesn't exceed stock
+  // Get stock for selected size
+  const getSizeStock = useCallback((size: string) => {
+    if (!currentVariant) return 0
+    const sizeData = currentVariant.sizes.find(s => s.size === size)
+    return sizeData?.stock || 0
+  }, [currentVariant])
+
+  // Reset quantity when size changes
   useEffect(() => {
-    if (selectedSize && product) {
-      const sizeStock = getVariantStock(selectedSize, selectedColor)
+    if (selectedSize && currentVariant) {
+      const sizeStock = getSizeStock(selectedSize)
       if (quantity > sizeStock) {
         setQuantity(Math.max(1, sizeStock))
       }
     }
-  }, [selectedSize, selectedColor, product, quantity, getVariantStock])
+  }, [selectedSize, currentVariant, quantity, getSizeStock])
 
-  // Update URL when variant selections change
-  useEffect(() => {
-    if (!isClient || !product) return
-
-    const newParams = new URLSearchParams(searchParams?.toString() || '')
-    if (selectedSize) newParams.set('size', selectedSize)
-    if (selectedColor) newParams.set('color', selectedColor)
-    
-    const newUrl = `${window.location.pathname}?${newParams.toString()}`
-    if (newUrl !== window.location.href) {
-      window.history.replaceState({}, '', newUrl)
-    }
-  }, [selectedSize, selectedColor, isClient, product, searchParams])
+  // Handle color change - navigate to new URL
+  const handleColorChange = (newColorSlug: string) => {
+    router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
+  }
 
   // Show loading until client-side hydration is complete
   if (!isClient) {
@@ -194,7 +182,7 @@ export default function ProductPage() {
     )
   }
 
-  if (error || !product) {
+  if (error || !product || !currentVariant) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -204,8 +192,8 @@ export default function ProductPage() {
           </h1>
           <p className="text-gray-600 mb-6">
             {lng === 'he' 
-              ? 'המוצר שחיפשת לא קיים או הוסר מהקטלוג.' 
-              : 'The product you\'re looking for doesn\'t exist or has been removed from the catalog.'
+              ? 'המוצר או הצבע שחיפשת לא קיים או הוסר מהקטלוג.' 
+              : 'The product or color you\'re looking for doesn\'t exist or has been removed from the catalog.'
             }
           </p>
           <Link 
@@ -223,33 +211,27 @@ export default function ProductPage() {
   const productName = productHelpers.getField(product, 'name', lng as 'en' | 'he')
   const productDescription = productHelpers.getField(product, 'description', lng as 'en' | 'he')
   const isRTL = lng === 'he'
-
-  // Get current price (sale price if available and valid)
-  const currentPrice = product.salePrice && 
-    (!product.saleStartDate || new Date() >= product.saleStartDate) &&
-    (!product.saleEndDate || new Date() <= product.saleEndDate)
-    ? product.salePrice 
-    : product.price
-
-  const currentStock = getVariantStock(selectedSize, selectedColor)
+  const currentPrice = getCurrentPrice()
+  const currentStock = getSizeStock(selectedSize)
   const isOutOfStock = currentStock <= 0
 
   const handleAddToCart = async () => {
-    if (isOutOfStock || isAddingToCart) return
+    if (isOutOfStock || isAddingToCart || !selectedSize) return
 
     setIsAddingToCart(true)
 
     // Fire Add to Cart analytics event
     if (analytics) {
       try {
+        const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
         analytics.logEvent('add_to_cart', {
-          currency: product.currency || 'USD',
+          currency: 'USD',
           value: currentPrice * quantity,
           items: [{
-            item_id: product.sku,
-            item_name: productName,
+            item_id: sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`,
+            item_name: `${productName} - ${currentVariant.colorName}`,
             item_category: product.category?.name || 'Unknown',
-            item_variant: `${selectedSize || ''}-${selectedColor || ''}`.replace(/^-|-$/g, ''),
+            item_variant: `${selectedSize}-${currentVariant.colorName}`,
             price: currentPrice,
             quantity: quantity
           }]
@@ -260,46 +242,45 @@ export default function ProductPage() {
     }
 
     // Add to cart
-    if (product.sku) {
+    const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
+    addToCart({
+      sku: sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`,
+      name: {
+        en: `${product.name?.en || ''} - ${currentVariant.colorName}`,
+        he: `${product.name?.he || ''} - ${currentVariant.colorName}`
+      },
+      price: currentPrice,
+      salePrice: currentVariant.salePrice,
+      currency: 'USD',
+      image: currentVariant.images?.[0]?.url,
+      size: selectedSize,
+      color: currentVariant.colorName,
+      maxStock: currentStock
+    })
+    
+    // Add multiple items if quantity > 1
+    for (let i = 1; i < quantity; i++) {
       addToCart({
-        sku: product.sku,
+        sku: sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`,
         name: {
-          en: product.name?.en || '',
-          he: product.name?.he || ''
+          en: `${product.name?.en || ''} - ${currentVariant.colorName}`,
+          he: `${product.name?.he || ''} - ${currentVariant.colorName}`
         },
-        price: product.price,
-        salePrice: product.salePrice,
-        currency: product.currency,
-        image: product.images?.[0]?.url,
+        price: currentPrice,
+        salePrice: currentVariant.salePrice,
+        currency: 'USD',
+        image: currentVariant.images?.[0]?.url,
         size: selectedSize,
-        color: selectedColor,
+        color: currentVariant.colorName,
         maxStock: currentStock
       })
-      
-      // Add multiple items if quantity > 1
-      for (let i = 1; i < quantity; i++) {
-        addToCart({
-          sku: product.sku,
-          name: {
-            en: product.name?.en || '',
-            he: product.name?.he || ''
-          },
-          price: product.price,
-          salePrice: product.salePrice,
-          currency: product.currency,
-          image: product.images?.[0]?.url,
-          size: selectedSize,
-          color: selectedColor,
-          maxStock: currentStock
-        })
-      }
-      
-      // Show success toast
-      const successMessage = lng === 'he' 
-        ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה` 
-        : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
-      showToast(successMessage, 'success')
     }
+    
+    // Show success toast
+    const successMessage = lng === 'he' 
+      ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה` 
+      : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
+    showToast(successMessage, 'success')
     
     // Reset button state after a short delay
     setTimeout(() => {
@@ -311,7 +292,7 @@ export default function ProductPage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: productName,
+          title: `${productName} - ${currentVariant.colorName}`,
           text: productDescription,
           url: window.location.href,
         })
@@ -321,7 +302,7 @@ export default function ProductPage() {
     } else {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href)
-      // TODO: Show toast notification
+      showToast(lng === 'he' ? 'הקישור הועתק' : 'Link copied', 'success')
     }
   }
 
@@ -329,9 +310,9 @@ export default function ProductPage() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "name": productName,
-    "description": productDescription,
-    "sku": product.sku,
+    "name": `${productName} - ${currentVariant.colorName}`,
+    "description": currentVariant.metaDescription || productDescription,
+    "sku": currentVariant.sizes.find(s => s.size === selectedSize)?.sku || `${baseSku}-${colorSlug}`,
     "brand": {
       "@type": "Brand",
       "name": "Sako"
@@ -339,47 +320,49 @@ export default function ProductPage() {
     "offers": {
       "@type": "Offer",
       "price": currentPrice,
-      "priceCurrency": product.currency || "USD",
+      "priceCurrency": "USD",
       "availability": isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
       "url": window.location.href
     },
-    "image": product.images?.map(img => img.url) || [],
-    "category": product.category?.name
+    "image": currentVariant.images?.map(img => img.url) || [],
+    "category": product.category?.name,
+    "color": currentVariant.colorName
   }
 
   return (
     <>
       <Head>
-        <title>{productName} | Sako</title>
-        <meta name="description" content={productDescription} />
-        <meta name="keywords" content={`${productName}, ${product.category?.name ? (typeof product.category.name === 'object' ? product.category.name.en : product.category.name) : ''}, shoes, footwear, ${product.sku}`} />
+        <title>{currentVariant.metaTitle || `${productName} - ${currentVariant.colorName}`} | Sako</title>
+        <meta name="description" content={currentVariant.metaDescription || productDescription} />
+        <meta name="keywords" content={`${productName}, ${currentVariant.colorName}, ${product.category?.name ? (typeof product.category.name === 'object' ? product.category.name.en : product.category.name) : ''}, shoes, footwear, ${baseSku}`} />
         
         {/* Canonical URL */}
-        <link rel="canonical" href={`https://sako-or.com/${lng}/product/${sku}`} />
+        <link rel="canonical" href={`https://sako-or.com/${lng}/product/${baseSku}/${colorSlug}`} />
         
         {/* Hreflang for language alternatives */}
-        <link rel="alternate" hrefLang="en" href={`https://sako-or.com/en/product/${sku}`} />
-        <link rel="alternate" hrefLang="he" href={`https://sako-or.com/he/product/${sku}`} />
-        <link rel="alternate" hrefLang="x-default" href={`https://sako-or.com/en/product/${sku}`} />
+        <link rel="alternate" hrefLang="en" href={`https://sako-or.com/en/product/${baseSku}/${colorSlug}`} />
+        <link rel="alternate" hrefLang="he" href={`https://sako-or.com/he/product/${baseSku}/${colorSlug}`} />
+        <link rel="alternate" hrefLang="x-default" href={`https://sako-or.com/en/product/${baseSku}/${colorSlug}`} />
         
         {/* Open Graph */}
-        <meta property="og:title" content={productName} />
-        <meta property="og:description" content={productDescription} />
+        <meta property="og:title" content={`${productName} - ${currentVariant.colorName}`} />
+        <meta property="og:description" content={currentVariant.metaDescription || productDescription} />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content={`https://sako-or.com/${lng}/product/${sku}`} />
-        <meta property="og:image" content={product.images?.[0]?.url} />
+        <meta property="og:url" content={`https://sako-or.com/${lng}/product/${baseSku}/${colorSlug}`} />
+        <meta property="og:image" content={currentVariant.images?.[0]?.url} />
         <meta property="og:site_name" content="Sako" />
         <meta property="product:price:amount" content={currentPrice.toString()} />
-        <meta property="product:price:currency" content={product.currency || "USD"} />
+        <meta property="product:price:currency" content="USD" />
         <meta property="product:availability" content={isOutOfStock ? "out of stock" : "in stock"} />
         <meta property="product:condition" content="new" />
         <meta property="product:brand" content="Sako" />
+        <meta property="product:color" content={currentVariant.colorName} />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={productName} />
-        <meta name="twitter:description" content={productDescription} />
-        <meta name="twitter:image" content={product.images?.[0]?.url} />
+        <meta name="twitter:title" content={`${productName} - ${currentVariant.colorName}`} />
+        <meta name="twitter:description" content={currentVariant.metaDescription || productDescription} />
+        <meta name="twitter:image" content={currentVariant.images?.[0]?.url} />
       </Head>
 
       {/* Structured Data */}
@@ -403,6 +386,8 @@ export default function ProductPage() {
                 </Link>
                 <ChevronLeftIcon className={`h-4 w-4 text-gray-400 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
                 <span className="text-gray-900">{productName}</span>
+                <ChevronLeftIcon className={`h-4 w-4 text-gray-400 ${isRTL ? 'rotate-90' : 'rotate-270'}`} />
+                <span className="text-gray-900">{currentVariant.colorName}</span>
               </div>
             </div>
           </div>
@@ -414,10 +399,10 @@ export default function ProductPage() {
             <div className="space-y-4">
               {/* Main Image */}
               <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg">
-                {product.images && product.images.length > 0 ? (
+                {currentVariant.images && currentVariant.images.length > 0 ? (
                   <Image
-                    src={product.images[selectedImageIndex]?.url}
-                    alt={productHelpers.getImageAlt(product.images[selectedImageIndex], lng as 'en' | 'he')}
+                    src={currentVariant.images[selectedImageIndex]?.url}
+                    alt={currentVariant.images[selectedImageIndex]?.alt || `${productName} - ${currentVariant.colorName}`}
                     width={600}
                     height={600}
                     className="h-full w-full object-cover object-center"
@@ -433,9 +418,9 @@ export default function ProductPage() {
               </div>
 
               {/* Thumbnail Images */}
-              {product.images && product.images.length > 1 && (
+              {currentVariant.images && currentVariant.images.length > 1 && (
                 <div className="grid grid-cols-4 gap-2">
-                  {product.images.map((image, index) => (
+                  {currentVariant.images.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImageIndex(index)}
@@ -445,7 +430,7 @@ export default function ProductPage() {
                     >
                       <Image
                         src={image.url}
-                        alt={productHelpers.getImageAlt(image, lng as 'en' | 'he')}
+                        alt={image.alt || `${productName} - ${currentVariant.colorName}`}
                         width={150}
                         height={150}
                         className="h-full w-full object-cover object-center"
@@ -461,18 +446,20 @@ export default function ProductPage() {
             <div className="space-y-6">
               {/* Product Header */}
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">{productName}</h1>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {productName} - {currentVariant.colorName}
+                </h1>
               </div>
 
               {/* Price */}
               <div className="flex items-center space-x-4">
                 <span className="text-3xl font-bold text-gray-900">
-                ₪{currentPrice.toFixed(2)}
+                  ₪{currentPrice.toFixed(2)}
                 </span>
-                {product.salePrice && currentPrice === product.salePrice && (
+                {currentVariant.salePrice && currentPrice === currentVariant.salePrice && (
                   <>
                     <span className="text-xl text-gray-500 line-through">
-                    ₪{product.price.toFixed(2)}
+                      ₪{(currentVariant.price || product.price).toFixed(2)}
                     </span>
                     <span className="bg-red-100 text-red-800 text-sm font-medium px-2.5 py-0.5 rounded">
                       {lng === 'he' ? 'מבצע' : 'Sale'}
@@ -502,31 +489,31 @@ export default function ProductPage() {
                 <p className="text-gray-600 leading-relaxed">{productDescription}</p>
               </div>
 
-              {/* Size Selection */}
-              {product.sizes && product.sizes.length > 0 && (
+              {/* Color Selection */}
+              {product.colorVariants && product.colorVariants.length > 1 && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {lng === 'he' ? 'מידה' : 'Size'}
+                    {lng === 'he' ? 'צבע' : 'Color'}
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((size) => {
-                      const sizeStock = getVariantStock(size, selectedColor)
-                      const isSizeOutOfStock = sizeStock <= 0
+                    {product.colorVariants.map((variant) => {
+                      const isCurrentVariant = variant.colorSlug === colorSlug
+                      const isVariantOutOfStock = variant.stock <= 0
                       
                       return (
                         <button
-                          key={size}
-                          onClick={() => !isSizeOutOfStock && setSelectedSize(size)}
-                          disabled={isSizeOutOfStock}
-                          className={`px-4 py-2 border rounded-md text-sm font-medium ${
-                            selectedSize === size
+                          key={variant.colorSlug}
+                          onClick={() => !isVariantOutOfStock && handleColorChange(variant.colorSlug)}
+                          disabled={isVariantOutOfStock}
+                          className={`px-4 py-2 border rounded-md text-sm font-medium transition-colors ${
+                            isCurrentVariant
                               ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
-                              : isSizeOutOfStock
+                              : isVariantOutOfStock
                               ? 'border-gray-200 text-gray-400 cursor-not-allowed'
                               : 'border-gray-300 text-gray-700 hover:border-gray-400'
                           }`}
                         >
-                          {size}
+                          {variant.colorName}
                         </button>
                       )
                     })}
@@ -534,32 +521,31 @@ export default function ProductPage() {
                 </div>
               )}
 
-              {/* Color Selection */}
-              {product.colors && product.colors.length > 0 && (
+              {/* Size Selection */}
+              {currentVariant.sizes && currentVariant.sizes.length > 0 && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {lng === 'he' ? 'צבע' : 'Color'}
+                    {lng === 'he' ? 'מידה' : 'Size'}
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {product.colors.map((color) => {
-                      const colorStock = getVariantStock(selectedSize, color)
-                      const isColorOutOfStock = colorStock <= 0
+                    {currentVariant.sizes.map((sizeData) => {
+                      const isSizeOutOfStock = sizeData.stock <= 0
                       
                       return (
                         <button
-                          key={color}
-                          onClick={() => !isColorOutOfStock && setSelectedColor(color)}
-                          disabled={isColorOutOfStock}
-                          className={`w-8 h-8 rounded-full border-2 ${
-                            selectedColor === color 
-                              ? 'border-indigo-600' 
-                              : isColorOutOfStock
-                              ? 'border-gray-200 opacity-50 cursor-not-allowed'
-                              : 'border-gray-300'
+                          key={sizeData.size}
+                          onClick={() => !isSizeOutOfStock && setSelectedSize(sizeData.size)}
+                          disabled={isSizeOutOfStock}
+                          className={`px-4 py-2 border rounded-md text-sm font-medium ${
+                            selectedSize === sizeData.size
+                              ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                              : isSizeOutOfStock
+                              ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'border-gray-300 text-gray-700 hover:border-gray-400'
                           }`}
-                          style={{ backgroundColor: color.toLowerCase() }}
-                          title={`${color}${isColorOutOfStock ? ' (Out of Stock)' : ''}`}
-                        />
+                        >
+                          {sizeData.size}
+                        </button>
                       )
                     })}
                   </div>
@@ -597,7 +583,7 @@ export default function ProductPage() {
                     }
                   </div>
                 )}
-                {!selectedSize && product.sizes && product.sizes.length > 0 && (
+                {!selectedSize && currentVariant.sizes && currentVariant.sizes.length > 0 && (
                   <div className="mt-2 text-sm text-gray-500">
                     {lng === 'he' 
                       ? 'אנא בחר מידה' 
@@ -611,9 +597,9 @@ export default function ProductPage() {
               <div className="space-y-4">
                 <button
                   onClick={handleAddToCart}
-                  disabled={isOutOfStock || (product.sizes && product.sizes.length > 0 && !selectedSize) || isAddingToCart}
+                  disabled={isOutOfStock || (currentVariant.sizes && currentVariant.sizes.length > 0 && !selectedSize) || isAddingToCart}
                   className={`w-full py-3 px-6 rounded-md font-medium transition-colors duration-200 flex items-center justify-center ${
-                    isOutOfStock || (product.sizes && product.sizes.length > 0 && !selectedSize) || isAddingToCart
+                    isOutOfStock || (currentVariant.sizes && currentVariant.sizes.length > 0 && !selectedSize) || isAddingToCart
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
@@ -624,7 +610,7 @@ export default function ProductPage() {
                       return lng === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
                     } else if (isOutOfStock) {
                       return lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
-                    } else if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+                    } else if (currentVariant.sizes && currentVariant.sizes.length > 0 && !selectedSize) {
                       return lng === 'he' ? 'בחר מידה' : 'Select Size'
                     } else {
                       return lng === 'he' ? 'הוסף לעגלה' : 'Add to Cart'
@@ -634,19 +620,35 @@ export default function ProductPage() {
 
                 <div className="flex space-x-4">
                   <button
-                    onClick={() => product.sku && toggleFavorite(product.sku)}
+                    onClick={() => {
+                      const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
+                      const sku = sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`
+                      toggleFavorite(sku)
+                    }}
                     className={`flex-1 py-3 px-6 rounded-md font-medium border transition-colors duration-200 flex items-center justify-center ${
-                      product.sku && isFavorite(product.sku)
+                      (() => {
+                        const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
+                        const sku = sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`
+                        return isFavorite(sku)
+                      })()
                         ? 'border-red-300 bg-red-50 text-red-600'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
-                    {product.sku && isFavorite(product.sku) ? (
+                    {(() => {
+                      const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
+                      const sku = sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`
+                      return isFavorite(sku)
+                    })() ? (
                       <HeartSolidIcon className="h-5 w-5 mr-2" />
                     ) : (
                       <HeartIcon className="h-5 w-5 mr-2" />
                     )}
-                    {product.sku && isFavorite(product.sku)
+                    {(() => {
+                      const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
+                      const sku = sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`
+                      return isFavorite(sku)
+                    })()
                       ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
                       : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')
                     }
@@ -660,7 +662,6 @@ export default function ProductPage() {
                     {lng === 'he' ? 'שתף' : 'Share'}
                   </button>
                 </div>
-
               </div>
 
               {/* Product Info */}
@@ -673,18 +674,16 @@ export default function ProductPage() {
                     <div className="mt-2 space-y-2 text-sm text-gray-600">
                       <div className="flex justify-between">
                         <span>SKU:</span>
-                        <span>{product.sku}</span>
+                        <span>{baseSku}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{lng === 'he' ? 'צבע' : 'Color'}:</span>
+                        <span>{currentVariant.colorName}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>
                         <span>{typeof product.category?.name === 'object' ? (lng === 'he' ? product.category.name.he : product.category.name.en) : product.category?.name}</span>
                       </div>
-                      {product.currency && (
-                        <div className="flex justify-between">
-                          <span>{lng === 'he' ? 'מטבע' : 'Currency'}:</span>
-                          <span>{product.currency}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>

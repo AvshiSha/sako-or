@@ -38,15 +38,11 @@ model Category {
 
 model Product {
   id          String   @id @default(cuid())
+  // Base product information (shared across all colors)
   name        String
   slug        String   @unique
   description String
-  price       Float
-  salePrice   Float?
-  saleStartDate DateTime?
-  saleEndDate   DateTime?
-  sku         String?  @unique
-  stock       Int      @default(0)
+  baseSku     String   @unique // Base SKU for the product family (e.g., "0000-0000")
   featured    Boolean  @default(false)
   isNew       Boolean  @default(false)
   isActive    Boolean  @default(true)
@@ -56,14 +52,51 @@ model Product {
   categoryId  String
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   
-  images      ProductImage[]
-  variants    ProductVariant[]
+  // Relations
+  colorVariants ColorVariant[]
   tags        ProductTag[]
 
   @@map("products")
 }
 
-model ProductImage {
+// Color-specific variant with its own images, pricing, and stock
+model ColorVariant {
+  id        String   @id @default(cuid())
+  // Color information
+  colorName String   // Display name (e.g., "Black", "Red")
+  colorSlug String   // URL slug (e.g., "black", "red")
+  colorHex  String?  // Hex color code for swatches
+  
+  // Pricing (can override base product pricing)
+  price     Float?   // Override price for this color
+  salePrice Float?   // Sale price for this color
+  saleStartDate DateTime?
+  saleEndDate   DateTime?
+  
+  // Stock and availability
+  stock     Int      @default(0)
+  isActive  Boolean  @default(true)
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  images    ColorVariantImage[]
+  sizes     ColorVariantSize[]
+
+  @@unique([productId, colorSlug])
+  @@map("color_variants")
+}
+
+// Images specific to each color variant
+model ColorVariantImage {
   id        String   @id @default(cuid())
   url       String
   alt       String?
@@ -71,26 +104,26 @@ model ProductImage {
   order     Int      @default(0)
   createdAt DateTime @default(now())
 
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorVariantId String
+  colorVariant   ColorVariant @relation(fields: [colorVariantId], references: [id], onDelete: Cascade)
 
-  @@map("product_images")
+  @@map("color_variant_images")
 }
 
-model ProductVariant {
+// Size and stock information per color variant
+model ColorVariantSize {
   id        String   @id @default(cuid())
-  size      String?
-  color     String?
+  size      String   // Size value (e.g., "S", "M", "L", "36", "37")
   stock     Int      @default(0)
-  sku       String?  @unique
-  price     Float?
+  sku       String?  @unique // Full SKU for this size/color combination
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  colorVariantId String
+  colorVariant   ColorVariant @relation(fields: [colorVariantId], references: [id], onDelete: Cascade)
 
-  @@map("product_variants")
+  @@unique([colorVariantId, size])
+  @@map("color_variant_sizes")
 }
 
 model Tag {

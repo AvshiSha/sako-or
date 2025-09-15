@@ -2,10 +2,36 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { productService, categoryService, Category, storage } from '@/lib/firebase'
+import { productService, categoryService, colorVariantService, Category, storage } from '@/lib/firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import Image from 'next/image'
+
+interface ImageFile {
+  file: File;
+  preview: string;
+  uploading: boolean;
+  uploaded: boolean;
+  url?: string;
+}
+
+interface ColorVariantData {
+  id: string;
+  colorName: string;
+  colorSlug: string;
+  colorHex: string;
+  price?: number;
+  salePrice?: number;
+  saleStartDate?: string;
+  saleEndDate?: string;
+  stock: number;
+  isActive: boolean;
+  images: ImageFile[];
+  sizes: string[];
+  stockBySize: Record<string, number>;
+  metaTitle?: string;
+  metaDescription?: string;
+}
 
 interface ProductFormData {
   brand: string;
@@ -13,10 +39,10 @@ interface ProductFormData {
   subcategory: string; // Level 2 category ID
   subsubcategory: string; // Level 3 category ID
   colors: string[];
+  colorVariants: ColorVariantData[];
   descriptionEn: string;
   descriptionHe: string;
   featured: boolean;
-  images: string[];
   nameEn: string;
   nameHe: string;
   new: boolean;
@@ -24,10 +50,7 @@ interface ProductFormData {
   saleEndDate: string;
   salePrice: number;
   saleStartDate: string;
-  sizes: string[];
-  sku: string;
-  stock: number;
-  stockBySize: Record<string, number>; // New field for stock by size
+  baseSku: string;
   currency: string;
 }
 
@@ -42,22 +65,31 @@ interface FormErrors {
   subcategory?: string;
   subsubcategory?: string;
   colors?: string;
-  sizes?: string;
-  stock?: string;
-  images?: string;
-  sku?: string;
+  baseSku?: string;
 }
 
-interface ImageFile {
-  file: File;
-  preview: string;
-  uploading: boolean;
-  uploaded: boolean;
-  url?: string;
-}
 
-const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
+const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL','34','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver'];
+
+// Color hex mapping
+const colorHexMap: Record<string, string> = {
+  'Black': '#000000',
+  'White': '#FFFFFF',
+  'Red': '#FF0000',
+  'Blue': '#0000FF',
+  'Green': '#008000',
+  'Yellow': '#FFFF00',
+  'Purple': '#800080',
+  'Pink': '#FFC0CB',
+  'Orange': '#FFA500',
+  'Brown': '#964B00',
+  'Gray': '#808080',
+  'Navy': '#000080',
+  'Beige': '#F5F5DC',
+  'Gold': '#FFD700',
+  'Silver': '#C0C0C0'
+};
 
 export default function NewProductPage() {
   const router = useRouter()
@@ -68,8 +100,6 @@ export default function NewProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
-  const [imageFiles, setImageFiles] = useState<ImageFile[]>([])
-  const [isDragOver, setIsDragOver] = useState(false)
 
   const [formData, setFormData] = useState<ProductFormData>({
     brand: '',
@@ -77,10 +107,10 @@ export default function NewProductPage() {
     subcategory: '',
     subsubcategory: '',
     colors: [],
+    colorVariants: [],
     descriptionEn: '',
     descriptionHe: '',
     featured: false,
-    images: [],
     nameEn: '',
     nameHe: '',
     new: false,
@@ -88,10 +118,7 @@ export default function NewProductPage() {
     saleEndDate: '',
     salePrice: 0,
     saleStartDate: '',
-    sizes: [],
-    sku: '',
-    stock: 0,
-    stockBySize: {},
+    baseSku: '',
     currency: 'ILS'
   })
 
@@ -200,49 +227,15 @@ export default function NewProductPage() {
     }))
   }
 
-  const handleSizeChange = (size: string, isSelected: boolean) => {
-    setFormData(prev => {
-      let newSizes = [...prev.sizes]
-      const newStockBySize = { ...prev.stockBySize }
-      
-      if (isSelected) {
-        // Add size if not already present
-        if (!newSizes.includes(size)) {
-          newSizes.push(size)
-          newStockBySize[size] = 0 // Initialize stock to 0
-        }
-      } else {
-        // Remove size
-        newSizes = newSizes.filter(s => s !== size)
-        delete newStockBySize[size]
-      }
-      
-      return {
-        ...prev,
-        sizes: newSizes,
-        stockBySize: newStockBySize
-      }
-    })
-  }
 
-  const handleStockBySizeChange = (size: string, stock: number) => {
-    setFormData(prev => ({
-      ...prev,
-      stockBySize: {
-        ...prev.stockBySize,
-        [size]: stock
-      }
-    }))
-  }
-
-  const handleArrayChange = (field: 'colors' | 'sizes', value: string) => {
+  const handleArrayChange = (field: 'colors', value: string) => {
     const currentArray = formData[field]
     if (currentArray.includes(value)) {
       setFormData(prev => ({
         ...prev,
         [field]: currentArray.filter(item => item !== value)
       }))
-    } else {
+      } else {
       setFormData(prev => ({
         ...prev,
         [field]: [...currentArray, value]
@@ -250,93 +243,149 @@ export default function NewProductPage() {
     }
   }
 
-  // Image upload functions
-  const handleFileSelect = (files: FileList | null) => {
+  // Generate color slug from color name
+  const generateColorSlug = (colorName: string): string => {
+    return colorName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+  }
+
+  // Handle color selection - create/update color variants
+  const handleColorSelection = (colorName: string, isSelected: boolean) => {
+    if (isSelected) {
+      // Add color to selected colors
+    setFormData(prev => ({
+      ...prev,
+        colors: [...prev.colors, colorName]
+      }))
+
+      // Create color variant if it doesn't exist
+      const existingVariant = formData.colorVariants.find(v => v.colorName === colorName)
+      if (!existingVariant) {
+        const newVariant: ColorVariantData = {
+          id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          colorName,
+          colorSlug: generateColorSlug(colorName),
+          colorHex: colorHexMap[colorName] || '#000000',
+          stock: 0,
+          isActive: true,
+          images: [],
+          sizes: [...commonSizes],
+          stockBySize: {}
+        }
+        
+      setFormData(prev => ({
+        ...prev,
+          colorVariants: [...prev.colorVariants, newVariant]
+      }))
+      }
+    } else {
+      // Remove color from selected colors
+      setFormData(prev => ({
+        ...prev,
+        colors: prev.colors.filter(c => c !== colorName)
+      }))
+
+      // Remove color variant
+      setFormData(prev => ({
+        ...prev,
+        colorVariants: prev.colorVariants.filter(v => v.colorName !== colorName)
+      }))
+    }
+  }
+
+  // Update color variant data
+  const updateColorVariant = (variantId: string, updates: Partial<ColorVariantData>) => {
+    setFormData(prev => ({
+      ...prev,
+      colorVariants: prev.colorVariants.map(variant => 
+        variant.id === variantId ? { ...variant, ...updates } : variant
+      )
+    }))
+  }
+
+  // Handle variant size stock change
+  const handleVariantSizeStockChange = (variantId: string, size: string, stock: number) => {
+    updateColorVariant(variantId, {
+      stockBySize: {
+        ...formData.colorVariants.find(v => v.id === variantId)?.stockBySize,
+        [size]: stock
+      }
+    })
+  }
+
+  // Handle variant image selection
+  const handleVariantImageSelect = (variantId: string, files: FileList | null) => {
     if (!files) return;
     
-    const newImageFiles: ImageFile[] = Array.from(files).map(file => ({
+    const newImages: ImageFile[] = Array.from(files).map(file => ({
       file,
       preview: URL.createObjectURL(file),
       uploading: false,
       uploaded: false
     }));
     
-    setImageFiles(prev => [...prev, ...newImageFiles]);
+    updateColorVariant(variantId, {
+      images: [...formData.colorVariants.find(v => v.id === variantId)?.images || [], ...newImages]
+    });
   };
 
-  const uploadImageToFirebase = async (imageFile: ImageFile): Promise<string> => {
-    console.log('Uploading image:', imageFile.file.name)
-    const timestamp = Date.now();
-    const fileName = `${timestamp}_${imageFile.file.name}`;
-    const storageRef = ref(storage, `products/${fileName}`);
-    
-    console.log('Storage reference created:', fileName)
-    await uploadBytes(storageRef, imageFile.file);
-    console.log('Image uploaded to storage')
-    
-    const downloadURL = await getDownloadURL(storageRef);
-    console.log('Download URL obtained:', downloadURL)
-    return downloadURL;
+  // Remove variant image
+  const removeVariantImage = (variantId: string, index: number) => {
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    if (!variant) return;
+
+    const updatedImages = variant.images.filter((_, i) => i !== index);
+    updateColorVariant(variantId, { images: updatedImages });
   };
 
-  const uploadAllImages = async (): Promise<string[]> => {
-    console.log('Starting upload of', imageFiles.length, 'images')
-    const uploadPromises = imageFiles.map(async (imageFile, index) => {
-      // Update uploading status
-      setImageFiles(prev => prev.map((img, i) => 
-        i === index ? { ...img, uploading: true } : img
-      ));
-      
-      try {
-        console.log(`Uploading image ${index + 1}/${imageFiles.length}`)
-        const url = await uploadImageToFirebase(imageFile);
-        
-        // Update uploaded status
-        setImageFiles(prev => prev.map((img, i) => 
-          i === index ? { ...img, uploading: false, uploaded: true, url } : img
-        ));
-        
-        console.log(`Image ${index + 1} uploaded successfully`)
-        return url;
-      } catch (error: unknown) {
-        console.error(`Error uploading image ${index + 1}:`, error);
-        setImageFiles(prev => prev.map((img, i) => 
-          i === index ? { ...img, uploading: false } : img
-        ));
-        throw error;
+  // Upload variant images
+  const uploadVariantImages = async (variantId: string): Promise<string[]> => {
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    if (!variant) return [];
+
+    const uploadedUrls: string[] = [];
+    
+    for (let i = 0; i < variant.images.length; i++) {
+      const imageFile = variant.images[i];
+      if (imageFile.uploaded && imageFile.url) {
+        uploadedUrls.push(imageFile.url);
+        continue;
       }
-    });
-    
-    console.log('Waiting for all uploads to complete...')
-    const results = await Promise.all(uploadPromises);
-    console.log('All images uploaded successfully')
-    return results;
+
+      try {
+        // Mark as uploading
+        updateColorVariant(variantId, {
+          images: variant.images.map((img, idx) => 
+            idx === i ? { ...img, uploading: true } : img
+          )
+        });
+
+        // Upload to Firebase Storage
+        const fileName = `products/${formData.baseSku}/${variant.colorSlug}/${Date.now()}-${i}-${imageFile.file.name}`;
+        const storageRef = ref(storage, fileName);
+        const snapshot = await uploadBytes(storageRef, imageFile.file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        // Mark as uploaded
+        updateColorVariant(variantId, {
+          images: variant.images.map((img, idx) => 
+            idx === i ? { ...img, uploading: false, uploaded: true, url: downloadURL } : img
+          )
+        });
+
+        uploadedUrls.push(downloadURL);
+      } catch (error) {
+        console.error('Error uploading variant image:', error);
+        // Mark as failed
+        updateColorVariant(variantId, {
+          images: variant.images.map((img, idx) => 
+            idx === i ? { ...img, uploading: false } : img
+          )
+        });
+      }
+    }
+
+    return uploadedUrls;
   };
-
-  const removeImage = (index: number) => {
-    setImageFiles(prev => {
-      const newFiles = prev.filter((_, i) => i !== index);
-      // Revoke object URL to prevent memory leaks
-      URL.revokeObjectURL(prev[index].preview);
-      return newFiles;
-    });
-  };
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  }, []);
-
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-  }, []);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
-  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
@@ -367,15 +416,8 @@ export default function NewProductPage() {
     if (formData.colors.length === 0) {
       newErrors.colors = 'At least one color is required'
     }
-    if (formData.sizes.length === 0) {
-      newErrors.sizes = 'At least one size is required'
-    }
-    // Stock validation is now handled by stock by size
-    if (imageFiles.length === 0) {
-      newErrors.images = 'At least one image is required'
-    }
-    if (!formData.sku.trim()) {
-      newErrors.sku = 'SKU is required'
+    if (!formData.baseSku.trim()) {
+      newErrors.baseSku = 'Base SKU is required'
     }
 
     setErrors(newErrors)
@@ -396,10 +438,6 @@ export default function NewProductPage() {
     setIsSubmitting(true)
     
     try {
-      console.log('Starting image upload...')
-      // Upload all images first
-      const imageUrls = await uploadAllImages()
-      console.log('Image upload completed:', imageUrls)
       
       console.log('Preparing product data...')
       
@@ -464,29 +502,18 @@ export default function NewProductPage() {
           he: formData.descriptionHe
         },
         price: parseFloat(formData.price.toString()),
-        stock: Object.values(formData.stockBySize).reduce((total, stock) => total + stock, 0), // Calculate total stock from size stocks
+        stock: 0, // Base product has no stock - stock is managed per color variant
         featured: formData.featured,
         isNew: formData.new,
         isActive: true,
         categoryId: formData.category,
-        images: imageUrls.map((url, index) => ({
-          url,
-          alt: {
-            en: `${formData.nameEn} - Image ${index + 1}`,
-            he: `${formData.nameHe} - תמונה ${index + 1}`
-          },
-          isPrimary: index === 0,
-          order: index,
-          createdAt: new Date()
-        })),
+        images: [], // No base product images - each color variant has its own images
         variants: [], // Empty array for now
         tags: [], // Empty array for now
-        sizes: formData.sizes, // Add sizes
         colors: formData.colors, // Add colors
         brand: formData.brand, // Add brand
         subcategory: formData.subcategory, // Add subcategory
-        currency: formData.currency,
-        stockBySize: formData.stockBySize // Add stock by size
+        currency: formData.currency
       }
 
       // Only add optional fields if they have valid values
@@ -502,14 +529,81 @@ export default function NewProductPage() {
         productData.saleEndDate = new Date(formData.saleEndDate)
       }
       
-      // SKU is required and validated, so always include it
-      productData.sku = formData.sku.trim()
+      // Base SKU is required and validated, so always include it
+      productData.baseSku = formData.baseSku.trim()
+      // Also set sku for backward compatibility with existing URL routing
+      productData.sku = formData.baseSku.trim()
 
       console.log('Product data prepared:', productData)
       console.log('Calling productService.createProduct...')
       
-      await productService.createProduct(productData)
-      console.log('Product created successfully')
+      const createdProductId = await productService.createProduct(productData)
+      console.log('Product created successfully:', createdProductId)
+      
+      // Create color variants
+      if (formData.colorVariants.length > 0) {
+        console.log('Creating color variants...')
+        for (const variantData of formData.colorVariants) {
+          // Upload variant images
+          const variantImageUrls = await uploadVariantImages(variantData.id)
+          
+          // Create color variant
+          const colorVariantData: any = {
+            productId: createdProductId,
+            colorName: variantData.colorName,
+            colorSlug: variantData.colorSlug,
+            colorHex: variantData.colorHex,
+            price: variantData.price || productData.price,
+            stock: variantData.stock,
+            isActive: variantData.isActive,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          }
+
+          // Only add optional fields if they have values
+          if (variantData.salePrice) {
+            colorVariantData.salePrice = variantData.salePrice
+          }
+          if (variantData.saleStartDate) {
+            colorVariantData.saleStartDate = new Date(variantData.saleStartDate)
+          }
+          if (variantData.saleEndDate) {
+            colorVariantData.saleEndDate = new Date(variantData.saleEndDate)
+          }
+          if (variantData.metaTitle) {
+            colorVariantData.metaTitle = variantData.metaTitle
+          }
+          if (variantData.metaDescription) {
+            colorVariantData.metaDescription = variantData.metaDescription
+          }
+          
+          const colorVariant = await colorVariantService.createColorVariant(colorVariantData)
+          console.log('Color variant created:', colorVariant)
+          
+          // Create variant images
+          for (let i = 0; i < variantImageUrls.length; i++) {
+            await colorVariantService.addColorVariantImage(colorVariant, {
+              url: variantImageUrls[i],
+              alt: `${productData.name.en} - ${variantData.colorName} - Image ${i + 1}`,
+              isPrimary: i === 0,
+              order: i
+            })
+          }
+          
+          // Create variant sizes
+          for (const size of variantData.sizes) {
+            const stock = variantData.stockBySize[size] || 0
+            const sizeSku = `${formData.baseSku}-${variantData.colorSlug}-${size}`
+            
+            await colorVariantService.addColorVariantSize(colorVariant, {
+              size,
+              stock,
+              sku: sizeSku
+            })
+          }
+        }
+        console.log('All color variants created successfully')
+      }
       
       setShowSuccess(true)
       setTimeout(() => {
@@ -634,112 +728,27 @@ export default function NewProductPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="sku" className="block text-sm font-medium text-gray-700">
-                    SKU *
+                  <label htmlFor="baseSku" className="block text-sm font-medium text-gray-700">
+                    Base SKU *
                   </label>
                   <input
                     type="text"
-                    id="sku"
-                    value={formData.sku}
-                    onChange={(e) => handleInputChange('sku', e.target.value)}
+                    id="baseSku"
+                    value={formData.baseSku}
+                    onChange={(e) => handleInputChange('baseSku', e.target.value)}
                     className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
-                      errors.sku ? 'border-red-300' : 'border-gray-300'
+                      errors.baseSku ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Stock keeping unit (e.g., SAK-12345)"
+                    placeholder="Base SKU for product family (e.g., OXF-001)"
                   />
-                  {errors.sku && <p className="mt-1 text-sm text-red-600">{errors.sku}</p>}
+                  <p className="mt-1 text-sm text-gray-500">
+                    This will be used to generate URLs like /product/{formData.baseSku || 'OXF-001'}/black
+                  </p>
+                  {errors.baseSku && <p className="mt-1 text-sm text-red-600">{errors.baseSku}</p>}
                 </div>
               </div>
             </div>
 
-            {/* Product Images */}
-            <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Product Images *</h2>
-              
-              {/* Image Upload Area */}
-              <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center ${
-                  isDragOver ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
-                }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-              >
-                <div className="space-y-4">
-                  <div className="flex justify-center">
-                    <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                      <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  <div>
-                    <label htmlFor="file-upload" className="cursor-pointer">
-                      <span className="mt-2 block text-sm font-medium text-gray-900">
-                        Drop images here or click to upload
-                      </span>
-                      <span className="mt-1 block text-xs text-gray-500">
-                        PNG, JPG, GIF up to 10MB each
-                      </span>
-                    </label>
-                    <input
-                      id="file-upload"
-                      name="file-upload"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      className="sr-only"
-                      onChange={(e) => handleFileSelect(e.target.files)}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {errors.images && <p className="mt-2 text-sm text-red-600">{errors.images}</p>}
-
-              {/* Image Previews */}
-              {imageFiles.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">Uploaded Images</h3>
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                    {imageFiles.map((imageFile, index) => (
-                      <div key={index} className="relative group">
-                        <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                          <Image
-                            src={imageFile.preview}
-                            alt={`Preview ${index + 1}`}
-                            fill
-                            className="object-cover"
-                          />
-                          {imageFile.uploading && (
-                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                            </div>
-                          )}
-                          {imageFile.uploaded && (
-                            <div className="absolute top-2 right-2">
-                              <div className="bg-green-500 text-white rounded-full p-1">
-                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 left-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                        <p className="mt-1 text-xs text-gray-500 truncate">{imageFile.file.name}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* Pricing */}
             <div>
@@ -924,61 +933,242 @@ export default function NewProductPage() {
                     <input
                       type="checkbox"
                       checked={formData.colors.includes(color)}
-                      onChange={() => handleArrayChange('colors', color)}
+                      onChange={(e) => handleColorSelection(color, e.target.checked)}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
+                    <div className="flex items-center space-x-2">
+                      <div 
+                        className="w-4 h-4 rounded border border-gray-300"
+                        style={{ backgroundColor: colorHexMap[color] || '#000000' }}
+                    />
                     <span className="text-sm text-gray-700">{color}</span>
+                    </div>
                   </label>
                 ))}
               </div>
               {errors.colors && <p className="mt-2 text-sm text-red-600">{errors.colors}</p>}
             </div>
 
-            {/* Sizes and Stock */}
+            {/* Color Variants */}
+            {formData.colorVariants.length > 0 && (
             <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Sizes & Stock *</h2>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                  {commonSizes.map((size) => (
-                    <label key={size} className="flex items-center space-x-2 cursor-pointer">
+                <h2 className="text-lg font-medium text-gray-900 mb-4">Color Variants</h2>
+                <div className="space-y-6">
+                  {formData.colorVariants.map((variant) => (
+                    <div key={variant.id} className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div 
+                            className="w-6 h-6 rounded border border-gray-300"
+                            style={{ backgroundColor: variant.colorHex }}
+                          />
+                          <h3 className="text-lg font-medium text-gray-900">{variant.colorName}</h3>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        checked={formData.sizes.includes(size)}
-                        onChange={(e) => handleSizeChange(size, e.target.checked)}
+                              checked={variant.isActive}
+                              onChange={(e) => updateColorVariant(variant.id, { isActive: e.target.checked })}
                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
-                      <span className="text-sm text-gray-700">{size}</span>
+                            <span className="text-sm text-gray-700">Active</span>
                     </label>
-                  ))}
+                        </div>
                 </div>
                 
-                {/* Stock by Size Inputs */}
-                {formData.sizes.length > 0 && (
-                  <div className="mt-6">
-                    <h3 className="text-md font-medium text-gray-900 mb-3">Stock per Size</h3>
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                      {formData.sizes.map((size) => (
-                        <div key={size} className="space-y-1">
-                          <label htmlFor={`stock-${size}`} className="block text-sm font-medium text-gray-700">
-                            Size {size}
+                      {/* URL Preview */}
+                      <div className="mb-4 p-3 bg-white border border-gray-200 rounded-md">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Preview URL
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <code className="text-sm bg-gray-400 text-white px-2 py-1 rounded">
+                            /product/{formData.baseSku || 'baseSku'}/{variant.colorSlug}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => window.open(`/product/${formData.baseSku}/${variant.colorSlug}`, '_blank')}
+                            className="text-sm text-indigo-600 hover:text-indigo-800"
+                            disabled={!formData.baseSku}
+                          >
+                            Preview
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Color Slug */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Color Slug
+                        </label>
+                        <input
+                          type="text"
+                          value={variant.colorSlug}
+                          onChange={(e) => updateColorVariant(variant.id, { colorSlug: e.target.value })}
+                          className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="URL-friendly slug"
+                        />
+                      </div>
+
+                      {/* Pricing */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Price Override (optional)
                           </label>
                           <input
                             type="number"
-                            id={`stock-${size}`}
+                            step="0.01"
+                            value={variant.price || ''}
+                            onChange={(e) => updateColorVariant(variant.id, { price: e.target.value ? parseFloat(e.target.value) : undefined })}
+                            className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Leave empty to use base price"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Sale Price (optional)
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={variant.salePrice || ''}
+                            onChange={(e) => updateColorVariant(variant.id, { salePrice: e.target.value ? parseFloat(e.target.value) : undefined })}
+                            className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Sale price for this color"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Stock by Size */}
+                      {variant.sizes.length > 0 && (
+                        <div className="mb-4">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Stock by Size
+                          </label>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                            {variant.sizes.map((size: string) => (
+                              <div key={size} className="text-center">
+                                <label className="block text-xs text-gray-600 mb-1">{size}</label>
+                                <input
+                                  type="number"
                             min="0"
-                            value={formData.stockBySize[size] || 0}
-                            onChange={(e) => handleStockBySizeChange(size, parseInt(e.target.value) || 0)}
-                            className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
-                            placeholder="0"
+                                  value={variant.stockBySize[size] || 0}
+                                  onChange={(e) => handleVariantSizeStockChange(variant.id, size, parseInt(e.target.value) || 0)}
+                                  className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
+
+                      {/* SEO Fields */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Meta Title (optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={variant.metaTitle || ''}
+                            onChange={(e) => updateColorVariant(variant.id, { metaTitle: e.target.value })}
+                            className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="SEO title for this color"
+                          />
               </div>
-              {errors.sizes && <p className="mt-2 text-sm text-red-600">{errors.sizes}</p>}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Meta Description (optional)
+                          </label>
+                          <textarea
+                            rows={2}
+                            value={variant.metaDescription || ''}
+                            onChange={(e) => updateColorVariant(variant.id, { metaDescription: e.target.value })}
+                            className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="SEO description for this color"
+                          />
+                        </div>
             </div>
+
+                      {/* Color Variant Images */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {variant.colorName} Images
+                        </label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                          <div className="text-center">
+                            <input
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={(e) => handleVariantImageSelect(variant.id, e.target.files)}
+                              className="hidden"
+                              id={`variant-images-${variant.id}`}
+                            />
+                            <label
+                              htmlFor={`variant-images-${variant.id}`}
+                              className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+                            >
+                              Upload {variant.colorName} Images
+                            </label>
+                            <p className="mt-2 text-sm text-gray-500">
+                              Upload images specific to this color variant
+                            </p>
+                          </div>
+                          
+                          {/* Variant Image Preview */}
+                          {variant.images.length > 0 && (
+                            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                              {variant.images.map((image, index) => (
+                                <div key={index} className="relative group">
+                                  <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100">
+                                    {image.uploading ? (
+                                      <div className="flex items-center justify-center h-full">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                      </div>
+                                    ) : image.uploaded ? (
+                                      <Image
+                                        src={image.url || image.preview}
+                                        alt={`${variant.colorName} - Image ${index + 1}`}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    ) : (
+                                      <Image
+                                        src={image.preview}
+                                        alt={`${variant.colorName} - Image ${index + 1}`}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    )}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeVariantImage(variant.id, index)}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    ×
+                                  </button>
+                                  {index === 0 && (
+                                    <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded">
+                                      Primary
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
 
             {/* Flags */}
             <div>

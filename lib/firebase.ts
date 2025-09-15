@@ -52,13 +52,10 @@ export interface Product {
     en: string;
     he: string;
   };
-  // Non-language-specific fields
-  price: number;
-  salePrice?: number;
-  saleStartDate?: Date;
-  saleEndDate?: Date;
-  sku?: string;
-  stock: number;
+  // Base product information (shared across all colors)
+  baseSku: string; // Base SKU for the product family (e.g., "0000-0000")
+  sku?: string; // Legacy SKU field for backward compatibility
+  price: number; // Default price (can be overridden by color variants)
   featured: boolean;
   isNew: boolean;
   isActive: boolean;
@@ -66,15 +63,11 @@ export interface Product {
   categorySlug?: string;
   category?: Category;
   categoryPath?: string; // Full category path like "women/shoes/heels"
-  images: ProductImage[];
-  variants: ProductVariant[];
+  colorVariants: ColorVariant[];
   tags: string[];
   createdAt: Date;
   updatedAt: Date;
-  colors?: string[];
-  sizes?: string[];
   currency?: string;
-  stockBySize?: Record<string, number>; // Stock quantity for each size
 }
 
 export interface Category {
@@ -101,25 +94,52 @@ export interface Category {
   updatedAt: Date;
 }
 
-export interface ProductImage {
+// Color-specific variant with its own images, pricing, and stock
+export interface ColorVariant {
+  id?: string;
+  // Color information
+  colorName: string; // Display name (e.g., "Black", "Red")
+  colorSlug: string; // URL slug (e.g., "black", "red")
+  colorHex?: string; // Hex color code for swatches
+  
+  // Pricing (can override base product pricing)
+  price?: number; // Override price for this color
+  salePrice?: number; // Sale price for this color
+  saleStartDate?: Date;
+  saleEndDate?: Date;
+  
+  // Stock and availability
+  stock: number;
+  isActive: boolean;
+  
+  // SEO
+  metaTitle?: string;
+  metaDescription?: string;
+  
+  createdAt: Date;
+  updatedAt: Date;
+
+  // Relations
+  images: ColorVariantImage[];
+  sizes: ColorVariantSize[];
+}
+
+// Images specific to each color variant
+export interface ColorVariantImage {
   id?: string;
   url: string;
-  alt?: {
-    en: string;
-    he: string;
-  };
+  alt?: string;
   isPrimary: boolean;
   order: number;
   createdAt: Date;
 }
 
-export interface ProductVariant {
+// Size and stock information per color variant
+export interface ColorVariantSize {
   id?: string;
-  size?: string;
-  color?: string;
+  size: string; // Size value (e.g., "S", "M", "L", "36", "37")
   stock: number;
-  sku?: string;
-  price?: number;
+  sku?: string; // Full SKU for this size/color combination
   createdAt: Date;
   updatedAt: Date;
 }
@@ -322,7 +342,93 @@ export const productService = {
     }
   },
 
-  // Get product by SKU
+  // Get product by base SKU (new system)
+  async getProductByBaseSku(baseSku: string): Promise<Product | null> {
+    try {
+      console.log('🔍 Firebase: Searching for base SKU:', baseSku);
+      const q = query(collection(db, 'products'), where('baseSku', '==', baseSku), limit(1));
+      const querySnapshot = await getDocs(q);
+      
+      console.log('📊 Firebase: Query returned', querySnapshot.docs.length, 'documents');
+      
+      if (!querySnapshot.empty) {
+        const docSnapshot = querySnapshot.docs[0];
+        const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
+        console.log('✅ Firebase: Product found:', product.name?.en);
+        
+        // Fetch category data
+        if (product.categoryId) {
+          const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
+          if (categoryDoc.exists()) {
+            product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+          }
+        }
+        
+        return product;
+      }
+      console.log('❌ Firebase: No product found with base SKU:', baseSku);
+      return null;
+    } catch (error) {
+      console.error('❌ Firebase: Error fetching product by base SKU:', error);
+      throw error;
+    }
+  },
+
+  // Get product with all color variants
+  async getProductWithColorVariants(baseSku: string): Promise<Product | null> {
+    try {
+      const product = await this.getProductByBaseSku(baseSku);
+      if (!product) return null;
+
+      // Fetch color variants
+      const colorVariantsQuery = query(
+        collection(db, 'colorVariants'),
+        where('productId', '==', product.id),
+        orderBy('createdAt', 'asc')
+      );
+      const colorVariantsSnapshot = await getDocs(colorVariantsQuery);
+      
+      const colorVariants: ColorVariant[] = [];
+      
+      for (const variantDoc of colorVariantsSnapshot.docs) {
+        const variant = { id: variantDoc.id, ...variantDoc.data() } as ColorVariant;
+        
+        // Fetch variant images
+        const imagesQuery = query(
+          collection(db, 'colorVariantImages'),
+          where('colorVariantId', '==', variant.id),
+          orderBy('order', 'asc')
+        );
+        const imagesSnapshot = await getDocs(imagesQuery);
+        variant.images = imagesSnapshot.docs.map(imgDoc => ({
+          id: imgDoc.id,
+          ...imgDoc.data()
+        })) as ColorVariantImage[];
+        
+        // Fetch variant sizes
+        const sizesQuery = query(
+          collection(db, 'colorVariantSizes'),
+          where('colorVariantId', '==', variant.id),
+          orderBy('size', 'asc')
+        );
+        const sizesSnapshot = await getDocs(sizesQuery);
+        variant.sizes = sizesSnapshot.docs.map(sizeDoc => ({
+          id: sizeDoc.id,
+          ...sizeDoc.data()
+        })) as ColorVariantSize[];
+        
+        colorVariants.push(variant);
+      }
+      
+      product.colorVariants = colorVariants;
+      return product;
+    } catch (error) {
+      console.error('Error fetching product with color variants:', error);
+      throw error;
+    }
+  },
+
+  // Get product by SKU (legacy support)
   async getProductBySku(sku: string): Promise<Product | null> {
     try {
       console.log('🔍 Firebase: Searching for SKU:', sku);
@@ -446,6 +552,49 @@ export const productService = {
           if (categoryDoc.exists()) {
             product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
+        }
+        
+        // Fetch color variants data
+        try {
+          const colorVariantsQuery = query(
+            collection(db, 'colorVariants'),
+            where('productId', '==', product.id),
+            where('isActive', '==', true)
+          );
+          const colorVariantsSnapshot = await getDocs(colorVariantsQuery);
+          
+          product.colorVariants = [];
+          for (const variantDoc of colorVariantsSnapshot.docs) {
+            const variant = { id: variantDoc.id, ...variantDoc.data() } as ColorVariant;
+            
+            // Fetch variant images
+            const imagesQuery = query(
+              collection(db, 'colorVariantImages'),
+              where('colorVariantId', '==', variant.id),
+              orderBy('order', 'asc')
+            );
+            const imagesSnapshot = await getDocs(imagesQuery);
+            variant.images = imagesSnapshot.docs.map(imgDoc => ({
+              id: imgDoc.id,
+              ...imgDoc.data()
+            } as ColorVariantImage));
+            
+            // Fetch variant sizes
+            const sizesQuery = query(
+              collection(db, 'colorVariantSizes'),
+              where('colorVariantId', '==', variant.id)
+            );
+            const sizesSnapshot = await getDocs(sizesQuery);
+            variant.sizes = sizesSnapshot.docs.map(sizeDoc => ({
+              id: sizeDoc.id,
+              ...sizeDoc.data()
+            } as ColorVariantSize));
+            
+            product.colorVariants.push(variant);
+          }
+        } catch (error) {
+          console.error('Error fetching color variants:', error);
+          product.colorVariants = [];
         }
         
         products.push(product);
@@ -1127,6 +1276,138 @@ export const importService = {
 
     console.log('Import completed. Results:', results);
     return results;
+  }
+};
+
+// Color Variant Services
+export const colorVariantService = {
+  // Create color variant
+  async createColorVariant(variantData: Omit<ColorVariant, 'id' | 'createdAt' | 'updatedAt' | 'images' | 'sizes'>): Promise<string> {
+    try {
+      const now = new Date();
+      const variant = {
+        ...variantData,
+        images: [],
+        sizes: [],
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      const docRef = await addDoc(collection(db, 'colorVariants'), variant);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating color variant:', error);
+      throw error;
+    }
+  },
+
+  // Update color variant
+  async updateColorVariant(id: string, variantData: Partial<ColorVariant>): Promise<void> {
+    try {
+      const docRef = doc(db, 'colorVariants', id);
+      await updateDoc(docRef, {
+        ...variantData,
+        updatedAt: new Date()
+      });
+    } catch (error) {
+      console.error('Error updating color variant:', error);
+      throw error;
+    }
+  },
+
+  // Delete color variant
+  async deleteColorVariant(id: string): Promise<void> {
+    try {
+      const docRef = doc(db, 'colorVariants', id);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting color variant:', error);
+      throw error;
+    }
+  },
+
+  // Add image to color variant
+  async addColorVariantImage(variantId: string, imageData: Omit<ColorVariantImage, 'id' | 'createdAt'>): Promise<string> {
+    try {
+      const now = new Date();
+      const image = {
+        ...imageData,
+        colorVariantId: variantId,
+        createdAt: now
+      };
+      
+      const docRef = await addDoc(collection(db, 'colorVariantImages'), image);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding color variant image:', error);
+      throw error;
+    }
+  },
+
+  // Update color variant image
+  async updateColorVariantImage(id: string, imageData: Partial<ColorVariantImage>): Promise<void> {
+    try {
+      const docRef = doc(db, 'colorVariantImages', id);
+      await updateDoc(docRef, imageData);
+    } catch (error) {
+      console.error('Error updating color variant image:', error);
+      throw error;
+    }
+  },
+
+  // Delete color variant image
+  async deleteColorVariantImage(id: string): Promise<void> {
+    try {
+      const docRef = doc(db, 'colorVariantImages', id);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting color variant image:', error);
+      throw error;
+    }
+  },
+
+  // Add size to color variant
+  async addColorVariantSize(variantId: string, sizeData: Omit<ColorVariantSize, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      const now = new Date();
+      const size = {
+        ...sizeData,
+        colorVariantId: variantId,
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      const docRef = await addDoc(collection(db, 'colorVariantSizes'), size);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding color variant size:', error);
+      throw error;
+    }
+  },
+
+  // Update color variant size
+  async updateColorVariantSize(id: string, sizeData: Partial<ColorVariantSize>): Promise<void> {
+    try {
+      const docRef = doc(db, 'colorVariantSizes', id);
+      await updateDoc(docRef, {
+        ...sizeData,
+        updatedAt: new Date()
+      });
+    } catch (error) {
+      console.error('Error updating color variant size:', error);
+      throw error;
+    }
+  },
+
+  // Delete color variant size
+  async deleteColorVariantSize(id: string): Promise<void> {
+    try {
+      const docRef = doc(db, 'colorVariantSizes', id);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting color variant size:', error);
+      throw error;
+    }
   }
 };
 

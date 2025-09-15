@@ -14,9 +14,9 @@ interface QuickViewModalProps {
 }
 
 export default function QuickViewModal({ isOpen, onClose, product, language = 'en' }: QuickViewModalProps) {
-  // Extract unique colors and sizes from variants
-  const colors = [...new Set(product.variants.map(v => v.color).filter(Boolean))] as string[]
-  const sizes = [...new Set(product.variants.map(v => v.size).filter(Boolean))] as string[]
+  // Extract unique colors and sizes from color variants
+  const colors = [...new Set(product.colorVariants?.map(v => v.colorName).filter(Boolean))] as string[]
+  const sizes = [...new Set(product.colorVariants?.flatMap(v => v.sizes?.map(s => s.size)).filter(Boolean))] as string[]
   
   // Get language-specific product data
   const productName = productHelpers.getField(product, 'name', language)
@@ -63,10 +63,10 @@ export default function QuickViewModal({ isOpen, onClose, product, language = 'e
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                     <div className="grid grid-cols-1 gap-4">
                       <div className="aspect-square w-full overflow-hidden rounded-lg bg-gray-100">
-                        {product.images && product.images.length > 0 ? (
+                        {product.colorVariants?.[0]?.images && product.colorVariants[0].images.length > 0 ? (
                           <Image
-                            src={product.images.find(img => img.isPrimary)?.url || product.images[0].url}
-                            alt={productHelpers.getImageAlt(product.images.find(img => img.isPrimary) || product.images[0], language)}
+                            src={product.colorVariants[0].images.find(img => img.isPrimary)?.url || product.colorVariants[0].images[0].url}
+                            alt={product.colorVariants[0].images.find(img => img.isPrimary)?.alt || product.colorVariants[0].images[0].alt || productName}
                             width={500}
                             height={500}
                             className="h-full w-full object-cover object-center"
@@ -81,11 +81,11 @@ export default function QuickViewModal({ isOpen, onClose, product, language = 'e
                         <h3 className="text-lg font-medium text-gray-900">{productName}</h3>
                         <p className="mt-1 text-sm text-gray-500">{productDescription}</p>
                         <p className="mt-2 text-lg font-medium text-gray-900">
-                          ${product.price.toFixed(2)}
+                          ₪{(product.colorVariants?.[0]?.price || product.price).toFixed(2)}
                         </p>
-                        {product.salePrice && (
+                        {product.colorVariants?.[0]?.salePrice && (
                           <p className="mt-1 text-sm text-red-600">
-                            {language === 'he' ? 'מבצע' : 'Sale'}: ${product.salePrice.toFixed(2)}
+                            {language === 'he' ? 'מבצע' : 'Sale'}: ₪{product.colorVariants[0].salePrice.toFixed(2)}
                           </p>
                         )}
                       </div>

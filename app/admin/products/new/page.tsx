@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { productService, categoryService, colorVariantService, Category, storage, Product } from '@/lib/firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import SuccessMessage from '@/app/components/SuccessMessage'
+import GoogleDrivePicker from '@/app/components/GoogleDrivePicker'
 import Image from 'next/image'
 
 interface ImageFile {
@@ -13,6 +14,7 @@ interface ImageFile {
   uploading: boolean;
   uploaded: boolean;
   url?: string;
+  isPrimary?: boolean;
 }
 
 interface VideoFile {
@@ -124,6 +126,8 @@ export default function NewProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [showGoogleDrivePicker, setShowGoogleDrivePicker] = useState(false)
+  const [currentVariantForGoogleDrive, setCurrentVariantForGoogleDrive] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
     brand: '',
@@ -357,15 +361,20 @@ export default function NewProductPage() {
   const handleVariantImageSelect = (variantId: string, files: FileList | null) => {
     if (!files) return;
     
-    const newImages: ImageFile[] = Array.from(files).map(file => ({
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    const existingImages = variant?.images || [];
+    const hasExistingImages = existingImages.length > 0;
+    
+    const newImages: ImageFile[] = Array.from(files).map((file, index) => ({
       file,
       preview: URL.createObjectURL(file),
       uploading: false,
-      uploaded: false
+      uploaded: false,
+      isPrimary: !hasExistingImages && index === 0 // Set first new image as primary if no existing images
     }));
     
     updateColorVariant(variantId, {
-      images: [...formData.colorVariants.find(v => v.id === variantId)?.images || [], ...newImages]
+      images: [...existingImages, ...newImages]
     });
   };
 
@@ -374,7 +383,14 @@ export default function NewProductPage() {
     const variant = formData.colorVariants.find(v => v.id === variantId);
     if (!variant) return;
 
+    const imageToRemove = variant.images[index];
     const updatedImages = variant.images.filter((_, i) => i !== index);
+    
+    // If we removed the primary image, set the first remaining image as primary
+    if (imageToRemove.isPrimary && updatedImages.length > 0) {
+      updatedImages[0].isPrimary = true;
+    }
+    
     updateColorVariant(variantId, { images: updatedImages });
   };
 
@@ -409,6 +425,130 @@ export default function NewProductPage() {
   // Remove variant video
   const removeVariantVideo = (variantId: string) => {
     updateColorVariant(variantId, { video: null });
+  };
+
+  // Handle Google Drive file selection
+  const handleGoogleDriveSelect = async (files: any[]) => {
+    if (!currentVariantForGoogleDrive) return;
+
+    try {
+      if (files.length === 0) {
+        alert('Please select at least one image to import.');
+        return;
+      }
+
+      // Show loading state
+      const loadingVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive);
+      if (loadingVariant) {
+        updateColorVariant(currentVariantForGoogleDrive, {
+          images: loadingVariant.images.map(img => ({ ...img, uploading: true }))
+        });
+      }
+
+      // Download files from Google Drive
+      const response = await fetch('/api/google-drive/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileIds: files.map(file => file.id)
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data.files || data.files.length === 0) {
+        throw new Error('No files were downloaded successfully');
+      }
+
+      // Convert base64 content to File objects
+      const importingVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive);
+      const existingImages = importingVariant?.images || [];
+      const hasExistingImages = existingImages.length > 0;
+      
+      const newImages: ImageFile[] = data.files.map((file: any, index: number) => {
+        try {
+          // Convert base64 to blob
+          const byteCharacters = atob(file.content);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: file.mimeType });
+          
+          // Create File object
+          const fileObj = new File([blob], file.name, { type: file.mimeType });
+          
+          return {
+            file: fileObj,
+            preview: URL.createObjectURL(blob),
+            uploading: false,
+            uploaded: false,
+            isPrimary: !hasExistingImages && index === 0 // Set first new image as primary if no existing images
+          };
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error);
+          return null;
+        }
+      }).filter(Boolean) as ImageFile[];
+
+      if (newImages.length === 0) {
+        throw new Error('No valid images could be processed');
+      }
+
+      // Add images to the current variant
+      updateColorVariant(currentVariantForGoogleDrive, {
+        images: [
+          ...formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive)?.images || [],
+          ...newImages
+        ]
+      });
+
+      setShowGoogleDrivePicker(false);
+      setCurrentVariantForGoogleDrive(null);
+
+      // Show success message
+      alert(`Successfully imported ${newImages.length} image(s) from Google Drive!`);
+    } catch (error) {
+      console.error('Error importing from Google Drive:', error);
+      
+      // Reset uploading state
+      const errorVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive);
+      if (errorVariant) {
+        updateColorVariant(currentVariantForGoogleDrive, {
+          images: errorVariant.images.map(img => ({ ...img, uploading: false }))
+        });
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to import images from Google Drive: ${errorMessage}`);
+    }
+  };
+
+  // Open Google Drive picker for a specific variant
+  const openGoogleDrivePicker = (variantId: string) => {
+    setCurrentVariantForGoogleDrive(variantId);
+    setShowGoogleDrivePicker(true);
+  };
+
+  // Set primary image for a variant
+  const setPrimaryImage = (variantId: string, imageIndex: number) => {
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    if (!variant) return;
+
+    // Update all images to set isPrimary correctly
+    const updatedImages = variant.images.map((img, index) => ({
+      ...img,
+      isPrimary: index === imageIndex
+    }));
+
+    updateColorVariant(variantId, { images: updatedImages });
   };
 
   // Upload variant images
@@ -746,10 +886,11 @@ export default function NewProductPage() {
           
           // Create variant images
           for (let i = 0; i < variantImageUrls.length; i++) {
+            const imageData = variantData.images[i];
             await colorVariantService.addColorVariantImage(colorVariant, {
               url: variantImageUrls[i],
               alt: `${productData.name.en} - ${variantData.colorName} - Image ${i + 1}`,
-              isPrimary: i === 0,
+              isPrimary: imageData.isPrimary || false,
               order: i
             })
           }
@@ -1410,65 +1551,121 @@ export default function NewProductPage() {
                         </label>
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                           <div className="text-center">
-                            <input
-                              type="file"
-                              multiple
-                              accept="image/*"
-                              onChange={(e) => handleVariantImageSelect(variant.id, e.target.files)}
-                              className="hidden"
-                              id={`variant-images-${variant.id}`}
-                            />
-                            <label
-                              htmlFor={`variant-images-${variant.id}`}
-                              className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-                            >
-                              Upload {variant.colorName} Images
-                            </label>
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={(e) => handleVariantImageSelect(variant.id, e.target.files)}
+                                className="hidden"
+                                id={`variant-images-${variant.id}`}
+                              />
+                              <label
+                                htmlFor={`variant-images-${variant.id}`}
+                                className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+                              >
+                                Upload {variant.colorName} Images
+                              </label>
+                              
+                              <button
+                                type="button"
+                                onClick={() => openGoogleDrivePicker(variant.id)}
+                                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                              >
+                                <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M7.71 6.71L6.29 5.29 12 0l5.71 5.29-1.42 1.42L13 3.83V15h-2V3.83L7.71 6.71z"/>
+                                  <path d="M19 7h-8v2h8v10H5V9h8V7H3v14h18V7z"/>
+                                </svg>
+                                Import from Google Drive
+                              </button>
+                            </div>
                             <p className="mt-2 text-sm text-gray-500">
-                              Upload images specific to this color variant
+                              Upload images from your computer or import from Google Drive
                             </p>
                           </div>
                           
                           {/* Variant Image Preview */}
                           {variant.images.length > 0 && (
-                            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                              {variant.images.map((image, index) => (
-                                <div key={index} className="relative group">
-                                  <div className="aspect-square relative overflow-hidden rounded-lg bg-gray-100">
-                                    {image.uploading ? (
-                                      <div className="flex items-center justify-center h-full">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                            <div className="mt-4">
+                              <div className="mb-3">
+                                <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                  Images ({variant.images.length})
+                                </h4>
+                                <p className="text-xs text-gray-500">
+                                  Click on any image to set it as the primary image (shown on product page)
+                                </p>
+                              </div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                {variant.images.map((image, index) => (
+                                  <div key={index} className="relative group">
+                                    <div 
+                                      className={`aspect-square relative overflow-hidden rounded-lg bg-gray-100 cursor-pointer transition-all duration-200 ${
+                                        image.isPrimary 
+                                          ? 'ring-2 ring-indigo-500 ring-offset-2' 
+                                          : 'hover:ring-2 hover:ring-gray-300'
+                                      }`}
+                                      onClick={() => setPrimaryImage(variant.id, index)}
+                                      title={image.isPrimary ? 'Primary image (click to change)' : 'Click to set as primary image'}
+                                    >
+                                      {image.uploading ? (
+                                        <div className="flex items-center justify-center h-full">
+                                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                        </div>
+                                      ) : image.uploaded ? (
+                                        <Image
+                                          src={image.url || image.preview}
+                                          alt={`${variant.colorName} - Image ${index + 1}`}
+                                          fill
+                                          className="object-cover"
+                                        />
+                                      ) : (
+                                        <Image
+                                          src={image.preview}
+                                          alt={`${variant.colorName} - Image ${index + 1}`}
+                                          fill
+                                          className="object-cover"
+                                        />
+                                      )}
+                                    </div>
+                                    
+                                    {/* Remove button */}
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        removeVariantImage(variant.id, index);
+                                      }}
+                                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      title="Remove image"
+                                    >
+                                      ×
+                                    </button>
+                                    
+                                    {/* Primary image indicator */}
+                                    {image.isPrimary && (
+                                      <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded font-medium">
+                                        Primary
                                       </div>
-                                    ) : image.uploaded ? (
-                                      <Image
-                                        src={image.url || image.preview}
-                                        alt={`${variant.colorName} - Image ${index + 1}`}
-                                        fill
-                                        className="object-cover"
-                                      />
-                                    ) : (
-                                      <Image
-                                        src={image.preview}
-                                        alt={`${variant.colorName} - Image ${index + 1}`}
-                                        fill
-                                        className="object-cover"
-                                      />
+                                    )}
+                                    
+                                    {/* Set as primary button for non-primary images */}
+                                    {!image.isPrimary && (
+                                      <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPrimaryImage(variant.id, index);
+                                          }}
+                                          className="w-full bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700 transition-colors"
+                                        >
+                                          Set as Primary
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => removeVariantImage(variant.id, index)}
-                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    ×
-                                  </button>
-                                  {index === 0 && (
-                                    <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded">
-                                      Primary
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1591,6 +1788,17 @@ export default function NewProductPage() {
           </form>
         </div>
       </div>
+
+      {/* Google Drive Picker Modal */}
+      <GoogleDrivePicker
+        isOpen={showGoogleDrivePicker}
+        onClose={() => {
+          setShowGoogleDrivePicker(false)
+          setCurrentVariantForGoogleDrive(null)
+        }}
+        onSelectFiles={handleGoogleDriveSelect}
+        multiple={true}
+      />
     </div>
   )
 } 

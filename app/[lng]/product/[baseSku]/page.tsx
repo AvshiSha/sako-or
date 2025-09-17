@@ -19,14 +19,15 @@ export default function ProductRedirectPage() {
         // Get product with color variants
         const product = await productService.getProductWithColorVariants(baseSku)
         
-        if (!product || !product.colorVariants || product.colorVariants.length === 0) {
+        if (!product || !product.colorVariants || Object.keys(product.colorVariants).length === 0) {
           // If no product or variants found, redirect to collection
           router.replace(`/${lng}/collection`)
           return
         }
 
-        // Find the first active color variant (or default if specified)
-        const defaultVariant = product.colorVariants.find(v => v.isActive) || product.colorVariants[0]
+        // Find the first available color variant
+        const variants = Object.values(product.colorVariants)
+        const defaultVariant = variants[0]
         
         if (defaultVariant) {
           // Redirect to the default color variant

@@ -23,15 +23,45 @@ import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 
 interface ProductWithVariants extends Product {
-  colorVariants: ColorVariant[]
-  defaultColorVariant?: ColorVariant
+  colorVariants: Record<string, {
+    colorSlug: string;
+    priceOverride?: number;
+    salePrice?: number;
+    stockBySize: Record<string, number>;
+    metaTitle?: string;
+    metaDescription?: string;
+    images: string[];
+    primaryImage?: string;
+    videos?: string[];
+  }>
+  defaultColorVariant?: {
+    colorSlug: string;
+    priceOverride?: number;
+    salePrice?: number;
+    stockBySize: Record<string, number>;
+    metaTitle?: string;
+    metaDescription?: string;
+    images: string[];
+    primaryImage?: string;
+    videos?: string[];
+  }
 }
 
 export default function ProductColorPage() {
   const params = useParams()
   const router = useRouter()
   const [product, setProduct] = useState<ProductWithVariants | null>(null)
-  const [currentVariant, setCurrentVariant] = useState<ColorVariant | null>(null)
+  const [currentVariant, setCurrentVariant] = useState<{
+    colorSlug: string;
+    priceOverride?: number;
+    salePrice?: number;
+    stockBySize: Record<string, number>;
+    metaTitle?: string;
+    metaDescription?: string;
+    images: string[];
+    primaryImage?: string;
+    videos?: string[];
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
@@ -78,7 +108,7 @@ export default function ProductColorPage() {
         }
 
         // Find the specific color variant
-        const variant = productData.colorVariants.find(v => v.colorSlug === colorSlug)
+        const variant = Object.values(productData.colorVariants).find(v => v.colorSlug === colorSlug)
         
         if (!variant) {
           setError('Color variant not found')
@@ -90,8 +120,9 @@ export default function ProductColorPage() {
         setCurrentVariant(variant)
         
         // Set default size from first available
-        if (variant.sizes && variant.sizes.length > 0) {
-          setSelectedSize(variant.sizes[0].size)
+        const availableSizes = Object.keys(variant.stockBySize).filter(size => variant.stockBySize[size] > 0)
+        if (availableSizes.length > 0) {
+          setSelectedSize(availableSizes[0])
         }
 
         // Reset image selection to 0 (video will be shown if available)
@@ -102,12 +133,12 @@ export default function ProductColorPage() {
           try {
             analytics.logEvent('view_item', {
               currency: 'USD',
-              value: variant.salePrice || variant.price || productData.price,
+              value: variant.salePrice || productData.price,
               items: [{
-                item_id: variant.sizes.find(s => s.size === variant.sizes[0]?.size)?.sku || `${baseSku}-${colorSlug}`,
-                item_name: `${productHelpers.getField(productData, 'name', lng as 'en' | 'he')} - ${variant.colorName}`,
-                item_category: productData.category?.name || 'Unknown',
-                price: variant.salePrice || variant.price || productData.price,
+                item_id: `${baseSku}-${colorSlug}`,
+                item_name: `${productHelpers.getField(productData, 'name', lng as 'en' | 'he')} - ${variant.colorSlug}`,
+                item_category: productData.category || 'Unknown',
+                price: variant.salePrice || productData.price,
                 quantity: 1
               }]
             })
@@ -131,21 +162,14 @@ export default function ProductColorPage() {
     if (!currentVariant) return 0
     
     // Check if sale is active
-    const now = new Date()
-    const isSaleActive = currentVariant.salePrice && 
-      (!currentVariant.saleStartDate || now >= currentVariant.saleStartDate) &&
-      (!currentVariant.saleEndDate || now <= currentVariant.saleEndDate)
-    
-    if (isSaleActive) return currentVariant.salePrice!
-    if (currentVariant.price) return currentVariant.price
+    if (currentVariant.salePrice) return currentVariant.salePrice
     return product?.price || 0
   }, [currentVariant, product])
 
   // Get stock for selected size
   const getSizeStock = useCallback((size: string) => {
     if (!currentVariant) return 0
-    const sizeData = currentVariant.sizes.find(s => s.size === size)
-    return sizeData?.stock || 0
+    return currentVariant.stockBySize[size] || 0
   }, [currentVariant])
 
   // Reset quantity when size changes
@@ -161,7 +185,7 @@ export default function ProductColorPage() {
   // Handle color change - navigate to new URL
   const handleColorChange = (newColorSlug: string) => {
     console.log('Color change requested:', { newColorSlug, baseSku, lng })
-    console.log('Available variants:', product?.colorVariants?.map(v => ({ colorSlug: v.colorSlug, colorName: v.colorName, stock: v.stock })))
+    console.log('Available variants:', product?.colorVariants ? Object.values(product.colorVariants).map(v => ({ colorSlug: v.colorSlug, stock: Object.values(v.stockBySize).reduce((sum, stock) => sum + stock, 0) })) : [])
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
   }
 
@@ -229,15 +253,15 @@ export default function ProductColorPage() {
     // Fire Add to Cart analytics event
     if (analytics) {
       try {
-        const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
+        const sku = `${baseSku}-${colorSlug}-${selectedSize}`
         analytics.logEvent('add_to_cart', {
           currency: 'USD',
           value: currentPrice * quantity,
           items: [{
-            item_id: sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`,
-            item_name: `${productName} - ${currentVariant.colorName}`,
-            item_category: product.category?.name || 'Unknown',
-            item_variant: `${selectedSize}-${currentVariant.colorName}`,
+            item_id: sku,
+            item_name: `${productName} - ${currentVariant.colorSlug}`,
+            item_category: product.category || 'Unknown',
+            item_variant: `${selectedSize}-${currentVariant.colorSlug}`,
             price: currentPrice,
             quantity: quantity
           }]
@@ -248,36 +272,36 @@ export default function ProductColorPage() {
     }
 
     // Add to cart
-    const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
+    const sku = `${baseSku}-${colorSlug}-${selectedSize}`
     addToCart({
-      sku: sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`,
+      sku: sku,
       name: {
-        en: `${product.name?.en || ''} - ${currentVariant.colorName}`,
-        he: `${product.name?.he || ''} - ${currentVariant.colorName}`
+        en: `${product.title_en || ''} - ${currentVariant.colorSlug}`,
+        he: `${product.title_he || ''} - ${currentVariant.colorSlug}`
       },
       price: currentPrice,
       salePrice: currentVariant.salePrice,
       currency: 'USD',
-      image: currentVariant.images?.[0]?.url,
+      image: currentVariant.images?.[0],
       size: selectedSize,
-      color: currentVariant.colorName,
+      color: currentVariant.colorSlug,
       maxStock: currentStock
     })
     
     // Add multiple items if quantity > 1
     for (let i = 1; i < quantity; i++) {
       addToCart({
-        sku: sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`,
+        sku: sku,
         name: {
-          en: `${product.name?.en || ''} - ${currentVariant.colorName}`,
-          he: `${product.name?.he || ''} - ${currentVariant.colorName}`
+          en: `${product.title_en || ''} - ${currentVariant.colorSlug}`,
+          he: `${product.title_he || ''} - ${currentVariant.colorSlug}`
         },
         price: currentPrice,
         salePrice: currentVariant.salePrice,
         currency: 'USD',
-        image: currentVariant.images?.[0]?.url,
+        image: currentVariant.images?.[0],
         size: selectedSize,
-        color: currentVariant.colorName,
+        color: currentVariant.colorSlug,
         maxStock: currentStock
       })
     }
@@ -298,7 +322,7 @@ export default function ProductColorPage() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${productName} - ${currentVariant.colorName}`,
+          title: `${productName} - ${currentVariant.colorSlug}`,
           text: productDescription,
           url: window.location.href,
         })
@@ -316,9 +340,9 @@ export default function ProductColorPage() {
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "name": `${productName} - ${currentVariant.colorName}`,
+    "name": `${productName} - ${currentVariant.colorSlug}`,
     "description": currentVariant.metaDescription || productDescription,
-    "sku": currentVariant.sizes.find(s => s.size === selectedSize)?.sku || `${baseSku}-${colorSlug}`,
+    "sku": `${baseSku}-${colorSlug}`,
     "brand": {
       "@type": "Brand",
       "name": "Sako"
@@ -330,17 +354,17 @@ export default function ProductColorPage() {
       "availability": isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
       "url": window.location.href
     },
-    "image": currentVariant.images?.map(img => img.url) || [],
-    "category": product.category?.name,
-    "color": currentVariant.colorName
+    "image": currentVariant.images || [],
+    "category": product.category,
+    "color": currentVariant.colorSlug
   }
 
   return (
     <>
       <Head>
-        <title>{currentVariant.metaTitle || `${productName} - ${currentVariant.colorName}`} | Sako</title>
+        <title>{currentVariant.metaTitle || `${productName} - ${currentVariant.colorSlug}`} | Sako</title>
         <meta name="description" content={currentVariant.metaDescription || productDescription} />
-        <meta name="keywords" content={`${productName}, ${currentVariant.colorName}, ${product.category?.name ? (typeof product.category.name === 'object' ? product.category.name.en : product.category.name) : ''}, shoes, footwear, ${baseSku}`} />
+        <meta name="keywords" content={`${productName}, ${currentVariant.colorSlug}, ${product.category || ''}, shoes, footwear, ${baseSku}`} />
         
         {/* Canonical URL */}
         <link rel="canonical" href={`https://sako-or.com/${lng}/product/${baseSku}/${colorSlug}`} />
@@ -351,24 +375,24 @@ export default function ProductColorPage() {
         <link rel="alternate" hrefLang="x-default" href={`https://sako-or.com/en/product/${baseSku}/${colorSlug}`} />
         
         {/* Open Graph */}
-        <meta property="og:title" content={`${productName} - ${currentVariant.colorName}`} />
+        <meta property="og:title" content={`${productName} - ${currentVariant.colorSlug}`} />
         <meta property="og:description" content={currentVariant.metaDescription || productDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`https://sako-or.com/${lng}/product/${baseSku}/${colorSlug}`} />
-        <meta property="og:image" content={currentVariant.images?.[0]?.url} />
+        <meta property="og:image" content={currentVariant.images?.[0]} />
         <meta property="og:site_name" content="Sako" />
         <meta property="product:price:amount" content={currentPrice.toString()} />
         <meta property="product:price:currency" content="USD" />
         <meta property="product:availability" content={isOutOfStock ? "out of stock" : "in stock"} />
         <meta property="product:condition" content="new" />
         <meta property="product:brand" content="Sako" />
-        <meta property="product:color" content={currentVariant.colorName} />
+        <meta property="product:color" content={currentVariant.colorSlug} />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`${productName} - ${currentVariant.colorName}`} />
+        <meta name="twitter:title" content={`${productName} - ${currentVariant.colorSlug}`} />
         <meta name="twitter:description" content={currentVariant.metaDescription || productDescription} />
-        <meta name="twitter:image" content={currentVariant.images?.[0]?.url} />
+        <meta name="twitter:image" content={currentVariant.images?.[0]} />
       </Head>
 
       {/* Structured Data */}
@@ -418,7 +442,7 @@ export default function ProductColorPage() {
                   </div>
                 </li>
                 <li>
-                  <span className="text-gray-600 font-medium">{currentVariant.colorName}</span>
+                  <span className="text-gray-600 font-medium">{currentVariant.colorSlug}</span>
                 </li>
               </ol>
             </nav>
@@ -431,23 +455,23 @@ export default function ProductColorPage() {
             <div className="space-y-4">
               {/* Main Media (Image or Video) */}
               <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg">
-                {currentVariant.videoUrl && selectedImageIndex === (currentVariant.images?.length || 0) ? (
+                {currentVariant.videos && currentVariant.videos.length > 0 && selectedImageIndex === (currentVariant.images?.length || 0) ? (
                   // Show video as the last "image"
                   <video
-                    src={currentVariant.videoUrl}
+                    src={currentVariant.videos[0]}
                     autoPlay
                     loop
                     muted
                     playsInline
                     className="h-full w-full object-cover object-center"
-                    poster={currentVariant.images?.[0]?.url} // Use first image as poster
+                    poster={currentVariant.images?.[0]} // Use first image as poster
                   >
                     Your browser does not support the video tag.
                   </video>
                 ) : currentVariant.images && currentVariant.images.length > 0 ? (
                   <Image
-                    src={currentVariant.images[selectedImageIndex]?.url}
-                    alt={currentVariant.images[selectedImageIndex]?.alt || `${productName} - ${currentVariant.colorName}`}
+                    src={currentVariant.images[selectedImageIndex]}
+                    alt={`${productName} - ${currentVariant.colorSlug}`}
                     width={600}
                     height={600}
                     className="h-full w-full object-cover object-center"
@@ -463,7 +487,7 @@ export default function ProductColorPage() {
               </div>
 
               {/* Thumbnail Images and Video */}
-              {(currentVariant.videoUrl || (currentVariant.images && currentVariant.images.length > 0)) && (
+              {((currentVariant.videos && currentVariant.videos.length > 0) || (currentVariant.images && currentVariant.images.length > 0)) && (
                 <div className="grid grid-cols-4 gap-2">
                   {/* Image thumbnails */}
                   {currentVariant.images && currentVariant.images.map((image, index) => (
@@ -475,8 +499,8 @@ export default function ProductColorPage() {
                       }`}
                     >
                       <Image
-                        src={image.url}
-                        alt={image.alt || `${productName} - ${currentVariant.colorName}`}
+                        src={image}
+                        alt={`${productName} - ${currentVariant.colorSlug}`}
                         width={150}
                         height={150}
                         className="h-full w-full object-cover object-center"
@@ -486,7 +510,7 @@ export default function ProductColorPage() {
                   ))}
                   
                   {/* Video thumbnail (always last if video exists) */}
-                  {currentVariant.videoUrl && (
+                  {currentVariant.videos && currentVariant.videos.length > 0 && (
                     <button
                       onClick={() => setSelectedImageIndex(currentVariant.images?.length || 0)}
                       className={`aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border-2 relative ${
@@ -494,13 +518,13 @@ export default function ProductColorPage() {
                       }`}
                     >
                       <video
-                        src={currentVariant.videoUrl}
+                        src={currentVariant.videos[0]}
                         autoPlay
                         loop
                         muted
                         playsInline
                         className="h-full w-full object-cover object-center"
-                        poster={currentVariant.images?.[0]?.url}
+                        poster={currentVariant.images?.[0]}
                       >
                         Your browser does not support the video tag.
                       </video>
@@ -527,7 +551,7 @@ export default function ProductColorPage() {
                 {currentVariant.salePrice && currentPrice === currentVariant.salePrice && (
                   <>
                     <span className="text-xl text-gray-500 line-through">
-                      ₪{(currentVariant.price || product.price).toFixed(2)}
+                      ₪{product.price.toFixed(2)}
                     </span>
                     <span className="bg-red-100 text-red-800 text-sm font-medium px-2.5 py-0.5 rounded">
                       {lng === 'he' ? 'מבצע' : 'Sale'}
@@ -545,17 +569,17 @@ export default function ProductColorPage() {
               </div>
 
               {/* Color Selection */}
-              {product.colorVariants && product.colorVariants.length > 1 && (
+              {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     {lng === 'he' ? 'צבע' : 'Color'}
                   </h3>
                   <div className="flex gap-2 overflow-x-auto pb-2">
-                    {product.colorVariants.map((variant) => {
+                    {Object.values(product.colorVariants).map((variant) => {
                       const isCurrentVariant = variant.colorSlug === colorSlug
                       // Check if variant has any available sizes (stock > 0)
-                      const isVariantOutOfStock = !variant.sizes || variant.sizes.length === 0 || variant.sizes.every(size => size.stock <= 0)
-                      const variantImage = variant.images?.find(img => img.isPrimary) || variant.images?.[0]
+                      const isVariantOutOfStock = Object.values(variant.stockBySize).every(stock => stock <= 0)
+                      const variantImage = variant.primaryImage || variant.images?.[0]
                       
                       return (
                         <button
@@ -563,11 +587,10 @@ export default function ProductColorPage() {
                           onClick={() => {
                             console.log('Color button clicked:', { 
                               colorSlug: variant.colorSlug, 
-                              colorName: variant.colorName, 
                               isVariantOutOfStock,
                               currentColorSlug: colorSlug,
-                              variantStock: variant.stock,
-                              sizes: variant.sizes?.map(s => ({ size: s.size, stock: s.stock }))
+                              variantStock: Object.values(variant.stockBySize).reduce((sum, stock) => sum + stock, 0),
+                              sizes: Object.entries(variant.stockBySize).map(([size, stock]) => ({ size, stock }))
                             })
                             if (!isVariantOutOfStock) {
                               handleColorChange(variant.colorSlug)
@@ -575,7 +598,7 @@ export default function ProductColorPage() {
                           }}
                           disabled={isVariantOutOfStock}
                           className="flex-shrink-0 relative group"
-                          title={variant.colorName}
+                          title={variant.colorSlug}
                         >
                           {/* Product image */}
                           {variantImage ? (
@@ -583,8 +606,8 @@ export default function ProductColorPage() {
                               isVariantOutOfStock ? 'opacity-50' : ''
                             }`}>
                               <Image
-                                src={variantImage.url}
-                                alt={variant.colorName}
+                                src={variantImage}
+                                alt={variant.colorSlug}
                                 width={48}
                                 height={48}
                                 className="w-full h-full object-cover"
@@ -594,7 +617,7 @@ export default function ProductColorPage() {
                             <div className={`w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center ${
                               isVariantOutOfStock ? 'opacity-50' : ''
                             }`}>
-                              <span className="text-xs text-gray-500">{variant.colorName}</span>
+                              <span className="text-xs text-gray-500">{variant.colorSlug}</span>
                             </div>
                           )}
                           
@@ -614,26 +637,26 @@ export default function ProductColorPage() {
               )}
 
               {/* Size Selection */}
-              {currentVariant.sizes && currentVariant.sizes.length > 0 && (
+              {Object.keys(currentVariant.stockBySize).length > 0 && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     {lng === 'he' ? 'מידה' : 'Size'}
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {currentVariant.sizes
-                      .filter(sizeData => sizeData.stock > 0) // Only show available sizes
-                      .map((sizeData) => {
+                    {Object.entries(currentVariant.stockBySize)
+                      .filter(([size, stock]) => stock > 0) // Only show available sizes
+                      .map(([size, stock]) => {
                         return (
                           <button
-                            key={sizeData.size}
-                            onClick={() => setSelectedSize(sizeData.size)}
+                            key={size}
+                            onClick={() => setSelectedSize(size)}
                             className={`px-4 py-2 border rounded-md text-sm font-medium ${
-                              selectedSize === sizeData.size
+                              selectedSize === size
                                 ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
                                 : 'border-gray-300 text-gray-700 hover:border-gray-400'
                             }`}
                           >
-                            {sizeData.size}
+                            {size}
                           </button>
                         )
                       })}
@@ -672,7 +695,7 @@ export default function ProductColorPage() {
                     }
                   </div>
                 )}
-                {!selectedSize && currentVariant.sizes && currentVariant.sizes.length > 0 && (
+                {!selectedSize && Object.keys(currentVariant.stockBySize).length > 0 && (
                   <div className="mt-2 text-sm text-gray-500">
                     {lng === 'he' 
                       ? 'אנא בחר מידה' 
@@ -686,9 +709,9 @@ export default function ProductColorPage() {
               <div className="space-y-4">
                 <button
                   onClick={handleAddToCart}
-                  disabled={isOutOfStock || (currentVariant.sizes && currentVariant.sizes.length > 0 && !selectedSize) || isAddingToCart}
+                  disabled={isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart}
                   className={`w-full py-3 px-6 rounded-md font-medium transition-colors duration-200 flex items-center justify-center ${
-                    isOutOfStock || (currentVariant.sizes && currentVariant.sizes.length > 0 && !selectedSize) || isAddingToCart
+                    isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'
                   }`}
@@ -699,7 +722,7 @@ export default function ProductColorPage() {
                       return lng === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
                     } else if (isOutOfStock) {
                       return lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
-                    } else if (currentVariant.sizes && currentVariant.sizes.length > 0 && !selectedSize) {
+                    } else if (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) {
                       return lng === 'he' ? 'בחר מידה' : 'Select Size'
                     } else {
                       return lng === 'he' ? 'הוסף לעגלה' : 'Add to Cart'
@@ -710,14 +733,12 @@ export default function ProductColorPage() {
                 <div className="flex space-x-4">
                   <button
                     onClick={() => {
-                      const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
-                      const sku = sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`
+                      const sku = `${baseSku}-${colorSlug}-${selectedSize}`
                       toggleFavorite(sku)
                     }}
                     className={`flex-1 py-3 px-6 rounded-md font-medium border transition-colors duration-200 flex items-center justify-center ${
                       (() => {
-                        const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
-                        const sku = sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`
+                        const sku = `${baseSku}-${colorSlug}-${selectedSize}`
                         return isFavorite(sku)
                       })()
                         ? 'border-red-300 bg-red-50 text-red-600'
@@ -725,8 +746,7 @@ export default function ProductColorPage() {
                     }`}
                   >
                     {(() => {
-                      const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
-                      const sku = sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`
+                      const sku = `${baseSku}-${colorSlug}-${selectedSize}`
                       return isFavorite(sku)
                     })() ? (
                       <HeartSolidIcon className="h-5 w-5 mr-2" />
@@ -734,8 +754,7 @@ export default function ProductColorPage() {
                       <HeartIcon className="h-5 w-5 mr-2" />
                     )}
                     {(() => {
-                      const sizeData = currentVariant.sizes.find(s => s.size === selectedSize)
-                      const sku = sizeData?.sku || `${baseSku}-${colorSlug}-${selectedSize}`
+                      const sku = `${baseSku}-${colorSlug}-${selectedSize}`
                       return isFavorite(sku)
                     })()
                       ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
@@ -767,11 +786,11 @@ export default function ProductColorPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'צבע' : 'Color'}:</span>
-                        <span>{currentVariant.colorName}</span>
+                        <span>{currentVariant.colorSlug}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>
-                        <span>{typeof product.category?.name === 'object' ? (lng === 'he' ? product.category.name.he : product.category.name.en) : product.category?.name}</span>
+                        <span>{product.category}</span>
                       </div>
                     </div>
                   </div>

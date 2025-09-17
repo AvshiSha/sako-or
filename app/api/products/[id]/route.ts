@@ -4,51 +4,55 @@ import { z } from 'zod'
 
 // Validation schema for updating products
 const productUpdateSchema = z.object({
-  name: z.object({
-    en: z.string().min(1, 'English name is required'),
-    he: z.string().min(1, 'Hebrew name is required')
-  }),
-  slug: z.object({
-    en: z.string().min(1, 'English slug is required'),
-    he: z.string().min(1, 'Hebrew slug is required')
-  }),
-  description: z.object({
-    en: z.string().min(1, 'English description is required'),
-    he: z.string().min(1, 'Hebrew description is required')
-  }),
-  price: z.number().positive('Price must be positive'),
-  salePrice: z.number().positive().optional(),
-  saleStartDate: z.string().nullable().optional(),
-  saleEndDate: z.string().nullable().optional(),
   sku: z.string().min(1, 'SKU is required'),
-  stock: z.number().int().min(0, 'Stock must be non-negative'),
-  featured: z.boolean().optional(),
-  isNew: z.boolean().optional(),
-  isActive: z.boolean().optional(),
-  categoryId: z.string().min(1, 'Category is required'),
-  images: z.array(z.object({
-    url: z.string().url('Invalid image URL'),
-    alt: z.object({
-      en: z.string().optional(),
-      he: z.string().optional()
-    }).optional(),
-    isPrimary: z.boolean().optional(),
-    order: z.number().int().min(0).optional()
-  })).optional(),
-  variants: z.array(z.object({
-    size: z.string().optional(),
-    color: z.string().optional(),
-    stock: z.number().int().min(0),
-    sku: z.string().optional(),
-    price: z.number().positive().optional()
-  })).optional(),
-  tags: z.array(z.string()).optional(),
-  colors: z.array(z.string()).optional(),
-  sizes: z.array(z.string()).optional(),
-  stockBySize: z.record(z.string(), z.number().int().min(0)).optional(),
-  brand: z.string().optional(),
-  subcategory: z.string().optional(),
-  currency: z.string().optional()
+  title_en: z.string().min(1, 'English title is required'),
+  title_he: z.string().min(1, 'Hebrew title is required'),
+  description_en: z.string().min(1, 'English description is required'),
+  description_he: z.string().min(1, 'Hebrew description is required'),
+  category: z.string().min(1, 'Category is required'),
+  subCategory: z.string().optional(),
+  subSubCategory: z.string().optional(),
+  categories_path: z.array(z.string()).optional(),
+  categories_path_id: z.array(z.string()).optional(),
+  brand: z.string().min(1, 'Brand is required'),
+  price: z.coerce.number().positive('Price must be positive'),
+  salePrice: z.coerce.number().positive().optional(),
+  currency: z.string().default('ILS'),
+  colorVariants: z.record(z.string(), z.object({
+    colorSlug: z.string(),
+    priceOverride: z.coerce.number().positive().optional(),
+    salePrice: z.coerce.number().positive().optional(),
+    stockBySize: z.record(z.string(), z.coerce.number().int().min(0)),
+    metaTitle: z.string().optional(),
+    metaDescription: z.string().optional(),
+    images: z.array(z.string()),
+    primaryImage: z.string().optional(),
+    videos: z.array(z.string()).optional()
+  })),
+  isEnabled: z.boolean().default(true),
+  isDeleted: z.boolean().default(false),
+  newProduct: z.boolean().default(false),
+  featuredProduct: z.boolean().default(false),
+  materialCare: z.object({
+    upperMaterial_en: z.string().optional(),
+    upperMaterial_he: z.string().optional(),
+    materialInnerSole_en: z.string().optional(),
+    materialInnerSole_he: z.string().optional(),
+    lining_en: z.string().optional(),
+    lining_he: z.string().optional(),
+    sole_en: z.string().optional(),
+    sole_he: z.string().optional(),
+    heelHeight_en: z.string().optional(),
+    heelHeight_he: z.string().optional()
+  }).optional(),
+  seo: z.object({
+    title_en: z.string().optional(),
+    title_he: z.string().optional(),
+    description_en: z.string().optional(),
+    description_he: z.string().optional(),
+    slug: z.string().optional()
+  }).optional(),
+  searchKeywords: z.array(z.string()).optional()
 })
 
 // GET /api/products/[id] - Get a specific product
@@ -107,95 +111,35 @@ export async function PUT(
       }
     }
 
-    // Check if slugs are being changed and if new slugs already exist
-    if (validatedData.slug.en !== existingProduct.slug?.en) {
-      const existingProductByEnSlug = await productService.getProductBySlug(validatedData.slug.en, 'en')
-      if (existingProductByEnSlug && existingProductByEnSlug.id !== id) {
-        return NextResponse.json(
-          { error: 'Product with this English slug already exists' },
-          { status: 400 }
-        )
-      }
-    }
-
-    if (validatedData.slug.he !== existingProduct.slug?.he) {
-      const existingProductByHeSlug = await productService.getProductBySlug(validatedData.slug.he, 'he')
-      if (existingProductByHeSlug && existingProductByHeSlug.id !== id) {
-        return NextResponse.json(
-          { error: 'Product with this Hebrew slug already exists' },
-          { status: 400 }
-        )
-      }
-    }
-
     // Prepare product data for update - filter out undefined values
     const productData: any = {
-      name: validatedData.name,
-      slug: validatedData.slug,
-      description: validatedData.description,
-      price: validatedData.price,
       sku: validatedData.sku,
-      stock: validatedData.stock,
-      featured: validatedData.featured || false,
-      isNew: validatedData.isNew || false,
-      isActive: validatedData.isActive !== false,
-      categoryId: validatedData.categoryId,
+      title_en: validatedData.title_en,
+      title_he: validatedData.title_he,
+      description_en: validatedData.description_en,
+      description_he: validatedData.description_he,
+      category: validatedData.category,
+      subCategory: validatedData.subCategory,
+      subSubCategory: validatedData.subSubCategory,
+      categories_path: validatedData.categories_path || [],
+      categories_path_id: validatedData.categories_path_id || [],
+      brand: validatedData.brand,
+      price: validatedData.price,
+      currency: validatedData.currency,
+      colorVariants: validatedData.colorVariants,
+      isEnabled: validatedData.isEnabled,
+      isDeleted: validatedData.isDeleted,
+      newProduct: validatedData.newProduct,
+      featuredProduct: validatedData.featuredProduct,
+      materialCare: validatedData.materialCare,
+      seo: validatedData.seo,
+      searchKeywords: validatedData.searchKeywords || [],
       updatedAt: new Date()
     }
 
     // Only add optional fields if they have values
     if (validatedData.salePrice && validatedData.salePrice > 0) {
       productData.salePrice = validatedData.salePrice
-    }
-    if (validatedData.saleStartDate && validatedData.saleStartDate !== null) {
-      productData.saleStartDate = new Date(validatedData.saleStartDate)
-    }
-    if (validatedData.saleEndDate && validatedData.saleEndDate !== null) {
-      productData.saleEndDate = new Date(validatedData.saleEndDate)
-    }
-    if (validatedData.images && validatedData.images.length > 0) {
-      productData.images = validatedData.images.map((img, index) => ({
-        url: img.url,
-        alt: {
-          en: img.alt?.en || `${validatedData.name.en} - Image ${index + 1}`,
-          he: img.alt?.he || `${validatedData.name.he} - תמונה ${index + 1}`
-        },
-        isPrimary: img.isPrimary || index === 0,
-        order: img.order || index,
-        createdAt: new Date()
-      }))
-    }
-    if (validatedData.variants && validatedData.variants.length > 0) {
-      productData.variants = validatedData.variants.map(variant => ({
-        size: variant.size,
-        color: variant.color,
-        stock: variant.stock,
-        sku: variant.sku,
-        price: variant.price,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }))
-    }
-    if (validatedData.tags && validatedData.tags.length > 0) {
-      productData.tags = validatedData.tags
-    }
-    if (validatedData.colors && validatedData.colors.length > 0) {
-      productData.colors = validatedData.colors
-    }
-    if (validatedData.sizes && validatedData.sizes.length > 0) {
-      productData.sizes = validatedData.sizes
-    }
-    if (validatedData.stockBySize && Object.keys(validatedData.stockBySize).length > 0) {
-      productData.stockBySize = validatedData.stockBySize
-    }
-    if (validatedData.brand) {
-      productData.brand = validatedData.brand
-    }
-    if (validatedData.subcategory) {
-      productData.subcategory = validatedData.subcategory
-    }
-    if (validatedData.currency) {
-      productData.currency = validatedData.currency
     }
 
     // Remove any undefined values before sending to Firebase

@@ -10,16 +10,18 @@ export async function GET() {
     const exportData = products.map(product => {
       // Group variants by size and sum their stock
       const stockBySize: Record<string, number> = {}
-      product.colorVariants?.forEach(variant => {
-        variant.sizes?.forEach(size => {
-          if (size.size && size.stock !== null) {
-            if (!stockBySize[size.size]) {
-              stockBySize[size.size] = 0
+      if (product.colorVariants) {
+        Object.values(product.colorVariants).forEach(variant => {
+          Object.entries(variant.stockBySize).forEach(([size, stock]) => {
+            if (size && stock !== null) {
+              if (!stockBySize[size]) {
+                stockBySize[size] = 0
+              }
+              stockBySize[size] += stock
             }
-            stockBySize[size.size] += size.stock
-          }
+          })
         })
-      })
+      }
 
       // Convert to string format for import compatibility
       const stockBySizeString = Object.entries(stockBySize)
@@ -30,19 +32,19 @@ export async function GET() {
         name: product.name,
         description: product.description,
         slug: product.slug,
-        price: product.colorVariants?.[0]?.price || product.price,
-        category: product.category?.name || 'uncategorized',
+        price: product.price,
+        category: product.category || 'uncategorized',
         subcategory: '', // Subcategory not available in current Product interface
-        images: product.colorVariants?.[0]?.images?.map(img => img.url).join(',') || '',
-        sizes: product.colorVariants?.[0]?.sizes?.map(s => s.size).join(',') || '',
-        colors: product.colorVariants?.map(v => v.colorName).join(',') || '',
+        images: product.colorVariants ? Object.values(product.colorVariants)[0]?.images?.join(',') || '' : '',
+        sizes: product.colorVariants ? Object.keys(Object.values(product.colorVariants)[0]?.stockBySize || {}).join(',') : '',
+        colors: product.colorVariants ? Object.values(product.colorVariants).map(v => v.colorSlug).join(',') : '',
         stockBySize: stockBySizeString,
         sku: product.baseSku || product.sku || '',
         featured: product.featured || false,
         new: product.isNew || false,
-        salePrice: product.colorVariants?.[0]?.salePrice || null,
-        saleStartDate: product.colorVariants?.[0]?.saleStartDate || null,
-        saleEndDate: product.colorVariants?.[0]?.saleEndDate || null
+        salePrice: product.salePrice || null,
+        saleStartDate: null,
+        saleEndDate: null
       }
     })
 

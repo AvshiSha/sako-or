@@ -45,54 +45,64 @@ interface ColorVariantData {
 }
 
 interface ProductFormData {
-  brand: string;
+  sku: string;
+  title_en: string;
+  title_he: string;
+  description_en: string;
+  description_he: string;
   category: string; // Level 1 category ID
-  subcategory: string; // Level 2 category ID
-  subsubcategory: string; // Level 3 category ID
-  colors: string[];
-  colorVariants: ColorVariantData[];
-  descriptionEn: string;
-  descriptionHe: string;
-  featured: boolean;
-  nameEn: string;
-  nameHe: string;
-  new: boolean;
+  subCategory: string; // Level 2 category ID
+  subSubCategory: string; // Level 3 category ID
+  categories_path: string[];
+  categories_path_id: string[];
+  brand: string;
   price: number;
-  saleEndDate: string;
   salePrice: number;
-  saleStartDate: string;
-  baseSku: string;
   currency: string;
+  colorVariants: ColorVariantData[];
+  isEnabled: boolean;
+  isDeleted: boolean;
+  newProduct: boolean;
+  featuredProduct: boolean;
   
   // Material & Care fields
-  upperMaterialEn: string;
-  upperMaterialHe: string;
-  materialInnerSoleEn: string;
-  materialInnerSoleHe: string;
-  liningEn: string;
-  liningHe: string;
-  soleEn: string;
-  soleHe: string;
-  heelHeightEn: string;
-  heelHeightHe: string;
+  materialCare: {
+    upperMaterial_en: string;
+    upperMaterial_he: string;
+    materialInnerSole_en: string;
+    materialInnerSole_he: string;
+    lining_en: string;
+    lining_he: string;
+    sole_en: string;
+    sole_he: string;
+    heelHeight_en: string;
+    heelHeight_he: string;
+  };
   
-  // Shipping & Returns field
-  shippingReturnsEn: string;
-  shippingReturnsHe: string;
+  // SEO fields
+  seo: {
+    title_en: string;
+    title_he: string;
+    description_en: string;
+    description_he: string;
+    slug: string;
+  };
+  
+  searchKeywords: string[];
 }
 
 interface FormErrors {
-  nameEn?: string;
-  nameHe?: string;
-  descriptionEn?: string;
-  descriptionHe?: string;
+  sku?: string;
+  title_en?: string;
+  title_he?: string;
+  description_en?: string;
+  description_he?: string;
   price?: string;
   brand?: string;
   category?: string;
-  subcategory?: string;
-  subsubcategory?: string;
-  colors?: string;
-  baseSku?: string;
+  subCategory?: string;
+  subSubCategory?: string;
+  colorVariants?: string;
 }
 
 
@@ -144,40 +154,50 @@ export default function NewProductPage() {
   const [currentVariantForGoogleDriveVideo, setCurrentVariantForGoogleDriveVideo] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
-    brand: '',
+    sku: '',
+    title_en: '',
+    title_he: '',
+    description_en: '',
+    description_he: '',
     category: '',
-    subcategory: '',
-    subsubcategory: '',
-    colors: [],
-    colorVariants: [],
-    descriptionEn: '',
-    descriptionHe: '',
-    featured: false,
-    nameEn: '',
-    nameHe: '',
-    new: false,
+    subCategory: '',
+    subSubCategory: '',
+    categories_path: [],
+    categories_path_id: [],
+    brand: '',
     price: 0,
-    saleEndDate: '',
     salePrice: 0,
-    saleStartDate: '',
-    baseSku: '',
     currency: 'ILS',
+    colorVariants: [],
+    isEnabled: true,
+    isDeleted: false,
+    newProduct: false,
+    featuredProduct: false,
     
     // Material & Care fields
-    upperMaterialEn: '',
-    upperMaterialHe: '',
-    materialInnerSoleEn: '',
-    materialInnerSoleHe: '',
-    liningEn: '',
-    liningHe: '',
-    soleEn: '',
-    soleHe: '',
-    heelHeightEn: '',
-    heelHeightHe: '',
+    materialCare: {
+      upperMaterial_en: '',
+      upperMaterial_he: '',
+      materialInnerSole_en: '',
+      materialInnerSole_he: '',
+      lining_en: '',
+      lining_he: '',
+      sole_en: '',
+      sole_he: '',
+      heelHeight_en: '',
+      heelHeight_he: ''
+    },
     
-    // Shipping & Returns field
-    shippingReturnsEn: '',
-    shippingReturnsHe: ''
+    // SEO fields
+    seo: {
+      title_en: '',
+      title_he: '',
+      description_en: '',
+      description_he: '',
+      slug: ''
+    },
+    
+    searchKeywords: []
   })
 
   useEffect(() => {
@@ -215,8 +235,8 @@ export default function NewProductPage() {
     setFormData(prev => ({
       ...prev,
       category: categoryId,
-      subcategory: '', // Reset subcategory
-      subsubcategory: '' // Reset sub-subcategory
+      subCategory: '', // Reset subcategory
+      subSubCategory: '' // Reset sub-subcategory
     }))
     
     // Clear subcategory and sub-subcategory selections
@@ -227,8 +247,8 @@ export default function NewProductPage() {
     setErrors(prev => ({
       ...prev,
       category: undefined,
-      subcategory: undefined,
-      subsubcategory: undefined
+      subCategory: undefined,
+      subSubCategory: undefined
     }))
     
     if (categoryId) {
@@ -246,8 +266,8 @@ export default function NewProductPage() {
   const handleSubCategoryChange = async (subCategoryId: string) => {
     setFormData(prev => ({
       ...prev,
-      subcategory: subCategoryId,
-      subsubcategory: '' // Reset sub-subcategory
+      subCategory: subCategoryId,
+      subSubCategory: '' // Reset sub-subcategory
     }))
     
     // Clear sub-subcategory selections
@@ -256,8 +276,8 @@ export default function NewProductPage() {
     // Clear errors
     setErrors(prev => ({
       ...prev,
-      subcategory: undefined,
-      subsubcategory: undefined
+      subCategory: undefined,
+      subSubCategory: undefined
     }))
     
     if (subCategoryId) {
@@ -275,18 +295,18 @@ export default function NewProductPage() {
   const handleSubSubCategoryChange = (subSubCategoryId: string) => {
     setFormData(prev => ({
       ...prev,
-      subsubcategory: subSubCategoryId
+      subSubCategory: subSubCategoryId
     }))
     
     // Clear error
     setErrors(prev => ({
       ...prev,
-      subsubcategory: undefined
+      subSubCategory: undefined
     }))
   }
 
 
-  const handleArrayChange = (field: 'colors', value: string) => {
+  const handleArrayChange = (field: 'searchKeywords', value: string) => {
     const currentArray = formData[field]
     if (currentArray.includes(value)) {
       setFormData(prev => ({
@@ -309,12 +329,6 @@ export default function NewProductPage() {
   // Handle color selection - create/update color variants
   const handleColorSelection = (colorName: string, isSelected: boolean) => {
     if (isSelected) {
-      // Add color to selected colors
-    setFormData(prev => ({
-      ...prev,
-        colors: [...prev.colors, colorName]
-      }))
-
       // Create color variant if it doesn't exist
       const existingVariant = formData.colorVariants.find(v => v.colorName === colorName)
       if (!existingVariant) {
@@ -331,18 +345,12 @@ export default function NewProductPage() {
           stockBySize: {}
         }
         
-      setFormData(prev => ({
-        ...prev,
+        setFormData(prev => ({
+          ...prev,
           colorVariants: [...prev.colorVariants, newVariant]
-      }))
+        }))
       }
     } else {
-      // Remove color from selected colors
-      setFormData(prev => ({
-        ...prev,
-        colors: prev.colors.filter(c => c !== colorName)
-      }))
-
       // Remove color variant
       setFormData(prev => ({
         ...prev,
@@ -707,7 +715,7 @@ export default function NewProductPage() {
         });
 
         // Upload to Firebase Storage
-        const fileName = `products/${formData.baseSku}/${variant.colorSlug}/${Date.now()}-${i}-${imageFile.file.name}`;
+        const fileName = `products/${formData.sku}/${variant.colorSlug}/${Date.now()}-${i}-${imageFile.file.name}`;
         const storageRef = ref(storage, fileName);
         const snapshot = await uploadBytes(storageRef, imageFile.file);
         const downloadURL = await getDownloadURL(snapshot.ref);
@@ -751,7 +759,7 @@ export default function NewProductPage() {
       });
 
       // Upload to Firebase Storage
-      const fileName = `products/${formData.baseSku}/${variant.colorSlug}/video/${Date.now()}-${videoFile.file.name}`;
+      const fileName = `products/${formData.sku}/${variant.colorSlug}/video/${Date.now()}-${videoFile.file.name}`;
       const storageRef = ref(storage, fileName);
       const snapshot = await uploadBytes(storageRef, videoFile.file);
       const downloadURL = await getDownloadURL(snapshot.ref);
@@ -775,17 +783,20 @@ export default function NewProductPage() {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
-    if (!formData.nameEn.trim()) {
-      newErrors.nameEn = 'English name is required'
+    if (!formData.sku.trim()) {
+      newErrors.sku = 'SKU is required'
     }
-    if (!formData.nameHe.trim()) {
-      newErrors.nameHe = 'Hebrew name is required'
+    if (!formData.title_en.trim()) {
+      newErrors.title_en = 'English title is required'
     }
-    if (!formData.descriptionEn.trim()) {
-      newErrors.descriptionEn = 'English description is required'
+    if (!formData.title_he.trim()) {
+      newErrors.title_he = 'Hebrew title is required'
     }
-    if (!formData.descriptionHe.trim()) {
-      newErrors.descriptionHe = 'Hebrew description is required'
+    if (!formData.description_en.trim()) {
+      newErrors.description_en = 'English description is required'
+    }
+    if (!formData.description_he.trim()) {
+      newErrors.description_he = 'Hebrew description is required'
     }
     if (formData.price <= 0) {
       newErrors.price = 'Price must be greater than 0'
@@ -796,13 +807,10 @@ export default function NewProductPage() {
     if (!formData.category.trim()) {
       newErrors.category = 'Main category is required'
     }
-    // Note: subcategory and sub-subcategory are optional
+    // Note: subCategory and subSubCategory are optional
     // Users can select just a main category, or go deeper into the hierarchy
-    if (formData.colors.length === 0) {
-      newErrors.colors = 'At least one color is required'
-    }
-    if (!formData.baseSku.trim()) {
-      newErrors.baseSku = 'Base SKU is required'
+    if (formData.colorVariants.length === 0) {
+      newErrors.colorVariants = 'At least one color variant is required'
     }
 
     setErrors(newErrors)
@@ -826,222 +834,101 @@ export default function NewProductPage() {
       
       console.log('Preparing product data...')
       
-      // Use the main category ID for categoryId (for backward compatibility)
-      const selectedCategoryId = formData.category;
-      let selectedCategoryPath = '';
+      // Build categories path and IDs
+      const categoriesPath: string[] = []
+      const categoriesPathId: string[] = []
       
-      // Find the deepest category object for path generation
-      let deepestCategoryId = formData.category;
-      if (formData.subsubcategory) {
-        deepestCategoryId = formData.subsubcategory;
-      } else if (formData.subcategory) {
-        deepestCategoryId = formData.subcategory;
-      }
-      
-      const selectedCategoryObj = categories.find(cat => cat.id === selectedCategoryId);
-      const deepestCategoryObj = categories.find(cat => cat.id === deepestCategoryId);
-      
-      // Build the full category path for hierarchical collection routing
-      if (deepestCategoryObj && deepestCategoryObj.path) {
-        selectedCategoryPath = deepestCategoryObj.path;
-      } else {
-        // Fallback: build path from the category hierarchy
-        const mainCategory = categories.find(cat => cat.id === formData.category);
-        const subCategory = formData.subcategory ? categories.find(cat => cat.id === formData.subcategory) : null;
-        const subSubCategory = formData.subsubcategory ? categories.find(cat => cat.id === formData.subsubcategory) : null;
+      const mainCategory = categories.find(cat => cat.id === formData.category)
+      if (mainCategory) {
+        const mainSlug = typeof mainCategory.slug === 'object' ? mainCategory.slug.en : mainCategory.slug
+        if (mainSlug) {
+          categoriesPath.push(mainSlug)
+          if (mainCategory.id) {
+            categoriesPathId.push(mainCategory.id)
+          }
+        }
         
-        if (mainCategory) {
-          const mainSlug = typeof mainCategory.slug === 'object' ? mainCategory.slug.en : mainCategory.slug;
-          selectedCategoryPath = mainSlug;
-          
+        if (formData.subCategory) {
+          const subCategory = categories.find(cat => cat.id === formData.subCategory)
           if (subCategory) {
-            const subSlug = typeof subCategory.slug === 'object' ? subCategory.slug.en : subCategory.slug;
-            selectedCategoryPath += `/${subSlug}`;
+            const subSlug = typeof subCategory.slug === 'object' ? subCategory.slug.en : subCategory.slug
+            if (subSlug) {
+              categoriesPath.push(subSlug)
+              if (subCategory.id) {
+                categoriesPathId.push(subCategory.id)
+              }
+            }
             
-            if (subSubCategory) {
-              const subSubSlug = typeof subSubCategory.slug === 'object' ? subSubCategory.slug.en : subSubCategory.slug;
-              selectedCategoryPath += `/${subSubSlug}`;
+            if (formData.subSubCategory) {
+              const subSubCategory = categories.find(cat => cat.id === formData.subSubCategory)
+              if (subSubCategory) {
+                const subSubSlug = typeof subSubCategory.slug === 'object' ? subSubCategory.slug.en : subSubCategory.slug
+                if (subSubSlug) {
+                  categoriesPath.push(subSubSlug)
+                  if (subSubCategory.id) {
+                    categoriesPathId.push(subSubCategory.id)
+                  }
+                }
+              }
             }
           }
         }
       }
 
+      // Convert color variants to the new format
+      const colorVariants: Record<string, any> = {}
+      for (const variant of formData.colorVariants) {
+        const uploadedImages = await uploadVariantImages(variant.id)
+        let videoUrl: string | null = null
+        if (variant.video) {
+          videoUrl = await uploadVariantVideo(variant.id)
+        }
+        
+        colorVariants[variant.colorSlug] = {
+          colorSlug: variant.colorSlug,
+          priceOverride: variant.price || null,
+          salePrice: variant.salePrice || null,
+          stockBySize: variant.stockBySize,
+          metaTitle: variant.metaTitle || '',
+          metaDescription: variant.metaDescription || '',
+          images: uploadedImages,
+          primaryImage: uploadedImages[0] || null,
+          videos: videoUrl ? [videoUrl] : []
+        }
+      }
 
       const productData: any = {
-        name: {
-          en: formData.nameEn,
-          he: formData.nameHe
-        },
-        slug: {
-          en: formData.nameEn.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim(),
-          he: formData.nameHe.toLowerCase().replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-').trim()
-        },
-        categorySlug: (() => {
-          // For backward compatibility, categorySlug should be the main category slug
-          const mainCategoryObj = categories.find(cat => cat.id === formData.category);
-          return mainCategoryObj ? (typeof mainCategoryObj.slug === 'string' ? mainCategoryObj.slug : mainCategoryObj.slug?.en || '') : '';
-        })(),
-        categoryPath: selectedCategoryPath, // Full hierarchical path for collection routing
-        description: {
-          en: formData.descriptionEn,
-          he: formData.descriptionHe
-        },
-        price: parseFloat(formData.price.toString()),
-        stock: 0, // Base product has no stock - stock is managed per color variant
-        featured: formData.featured,
-        isNew: formData.new,
-        isActive: true,
-        categoryId: formData.category,
-        images: [], // No base product images - each color variant has its own images
-        variants: [], // Empty array for now
-        tags: [], // Empty array for now
-        colors: formData.colors, // Add colors
-        brand: formData.brand, // Add brand
-        subcategory: formData.subcategory, // Add subcategory
+        sku: formData.sku,
+        title_en: formData.title_en,
+        title_he: formData.title_he,
+        description_en: formData.description_en,
+        description_he: formData.description_he,
+        category: formData.category,
+        subCategory: formData.subCategory,
+        subSubCategory: formData.subSubCategory,
+        categories_path: categoriesPath,
+        categories_path_id: categoriesPathId,
+        brand: formData.brand,
+        price: formData.price,
+        salePrice: formData.salePrice > 0 ? formData.salePrice : null,
         currency: formData.currency,
-        
-        // Material & Care fields (only include if they have values)
-        ...(formData.upperMaterialEn || formData.upperMaterialHe ? {
-          upperMaterial: {
-            en: formData.upperMaterialEn,
-            he: formData.upperMaterialHe
-          }
-        } : {}),
-        ...(formData.materialInnerSoleEn || formData.materialInnerSoleHe ? {
-          materialInnerSole: {
-            en: formData.materialInnerSoleEn,
-            he: formData.materialInnerSoleHe
-          }
-        } : {}),
-        ...(formData.liningEn || formData.liningHe ? {
-          lining: {
-            en: formData.liningEn,
-            he: formData.liningHe
-          }
-        } : {}),
-        ...(formData.soleEn || formData.soleHe ? {
-          sole: {
-            en: formData.soleEn,
-            he: formData.soleHe
-          }
-        } : {}),
-        ...(formData.heelHeightEn || formData.heelHeightHe ? {
-          heelHeight: {
-            en: formData.heelHeightEn,
-            he: formData.heelHeightHe
-          }
-        } : {}),
-        
-        // Shipping & Returns field (only include if it has values)
-        ...(formData.shippingReturnsEn || formData.shippingReturnsHe ? {
-          shippingReturns: {
-            en: formData.shippingReturnsEn,
-            he: formData.shippingReturnsHe
-          }
-        } : {})
+        colorVariants: colorVariants,
+        isEnabled: formData.isEnabled,
+        isDeleted: formData.isDeleted,
+        newProduct: formData.newProduct,
+        featuredProduct: formData.featuredProduct,
+        materialCare: formData.materialCare,
+        seo: formData.seo,
+        searchKeywords: formData.searchKeywords,
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
-
-      // Only add optional fields if they have valid values
-      if (formData.salePrice > 0) {
-        productData.salePrice = parseFloat(formData.salePrice.toString())
-      }
-      
-      if (formData.saleStartDate) {
-        productData.saleStartDate = new Date(formData.saleStartDate)
-      }
-      
-      if (formData.saleEndDate) {
-        productData.saleEndDate = new Date(formData.saleEndDate)
-      }
-      
-      // Base SKU is required and validated, so always include it
-      productData.baseSku = formData.baseSku.trim()
-      // Also set sku for backward compatibility with existing URL routing
-      productData.sku = formData.baseSku.trim()
 
       console.log('Product data prepared:', productData)
       console.log('Calling productService.createProduct...')
       
       const createdProductId = await productService.createProduct(productData)
       console.log('Product created successfully:', createdProductId)
-      
-      // Create color variants
-      if (formData.colorVariants.length > 0) {
-        console.log('Creating color variants...')
-        for (const variantData of formData.colorVariants) {
-          // Upload variant images
-          const variantImageUrls = await uploadVariantImages(variantData.id)
-          
-          // Upload variant video if present
-          let videoUrl: string | null = null;
-          if (variantData.video) {
-            console.log(`Uploading video for ${variantData.colorName} variant...`)
-            videoUrl = await uploadVariantVideo(variantData.id)
-          }
-          
-          // Create color variant
-          const colorVariantData: any = {
-            productId: createdProductId,
-            colorName: variantData.colorName,
-            colorSlug: variantData.colorSlug,
-            colorHex: variantData.colorHex,
-            price: variantData.price || productData.price,
-            stock: variantData.stock,
-            isActive: variantData.isActive,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          }
-
-          // Only add videoUrl if it has a value
-          if (videoUrl) {
-            colorVariantData.videoUrl = videoUrl
-          }
-
-          // Only add optional fields if they have values
-          if (variantData.salePrice && variantData.salePrice > 0) {
-            colorVariantData.salePrice = variantData.salePrice
-          }
-          if (variantData.saleStartDate && variantData.saleStartDate.trim()) {
-            colorVariantData.saleStartDate = new Date(variantData.saleStartDate)
-          }
-          if (variantData.saleEndDate && variantData.saleEndDate.trim()) {
-            colorVariantData.saleEndDate = new Date(variantData.saleEndDate)
-          }
-          if (variantData.metaTitle && variantData.metaTitle.trim()) {
-            colorVariantData.metaTitle = variantData.metaTitle
-          }
-          if (variantData.metaDescription && variantData.metaDescription.trim()) {
-            colorVariantData.metaDescription = variantData.metaDescription
-          }
-          
-          const colorVariant = await colorVariantService.createColorVariant(colorVariantData)
-          console.log('Color variant created:', colorVariant)
-          
-          // Create variant images
-          for (let i = 0; i < variantImageUrls.length; i++) {
-            const imageData = variantData.images[i];
-            await colorVariantService.addColorVariantImage(colorVariant, {
-              url: variantImageUrls[i],
-              alt: `${productData.name.en} - ${variantData.colorName} - Image ${i + 1}`,
-              isPrimary: imageData.isPrimary || false,
-              order: i
-            })
-          }
-          
-          // Create variant sizes
-          for (const size of variantData.sizes) {
-            const stock = variantData.stockBySize[size] || 0
-            const sizeSku = `${formData.baseSku}-${variantData.colorSlug}-${size}`
-            
-            await colorVariantService.addColorVariantSize(colorVariant, {
-              size,
-              stock,
-              sku: sizeSku
-            })
-          }
-        }
-        console.log('All color variants created successfully')
-      }
       
       setShowSuccess(true)
       setTimeout(() => {
@@ -1081,71 +968,71 @@ export default function NewProductPage() {
               <h2 className="text-lg font-medium text-gray-900 mb-4">Basic Information</h2>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="nameEn" className="block text-sm font-medium text-gray-700">
-                    Product Name (English) *
+                  <label htmlFor="title_en" className="block text-sm font-medium text-gray-700">
+                    Product Title (English) *
                   </label>
                   <input
                     type="text"
-                    id="nameEn"
-                    value={formData.nameEn}
-                    onChange={(e) => handleInputChange('nameEn', e.target.value)}
+                    id="title_en"
+                    value={formData.title_en}
+                    onChange={(e) => handleInputChange('title_en', e.target.value)}
                     className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
-                      errors.nameEn ? 'border-red-300' : 'border-gray-300'
+                      errors.title_en ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Enter product name in English"
+                    placeholder="Enter product title in English"
                   />
-                  {errors.nameEn && <p className="mt-1 text-sm text-red-600">{errors.nameEn}</p>}
+                  {errors.title_en && <p className="mt-1 text-sm text-red-600">{errors.title_en}</p>}
                 </div>
 
                 <div>
-                  <label htmlFor="nameHe" className="block text-sm font-medium text-gray-700">
-                    Product Name (Hebrew) *
+                  <label htmlFor="title_he" className="block text-sm font-medium text-gray-700">
+                    Product Title (Hebrew) *
                   </label>
                   <input
                     type="text"
-                    id="nameHe"
-                    value={formData.nameHe}
-                    onChange={(e) => handleInputChange('nameHe', e.target.value)}
+                    id="title_he"
+                    value={formData.title_he}
+                    onChange={(e) => handleInputChange('title_he', e.target.value)}
                     className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
-                      errors.nameHe ? 'border-red-300' : 'border-gray-300'
+                      errors.title_he ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Enter product name in Hebrew"
+                    placeholder="Enter product title in Hebrew"
                   />
-                  {errors.nameHe && <p className="mt-1 text-sm text-red-600">{errors.nameHe}</p>}
+                  {errors.title_he && <p className="mt-1 text-sm text-red-600">{errors.title_he}</p>}
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label htmlFor="descriptionEn" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="description_en" className="block text-sm font-medium text-gray-700">
                     Description (English) *
                   </label>
                   <textarea
-                    id="descriptionEn"
+                    id="description_en"
                     rows={3}
-                    value={formData.descriptionEn}
-                    onChange={(e) => handleInputChange('descriptionEn', e.target.value)}
+                    value={formData.description_en}
+                    onChange={(e) => handleInputChange('description_en', e.target.value)}
                     className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
-                      errors.descriptionEn ? 'border-red-300' : 'border-gray-300'
+                      errors.description_en ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter product description in English"
                   />
-                  {errors.descriptionEn && <p className="mt-1 text-sm text-red-600">{errors.descriptionEn}</p>}
+                  {errors.description_en && <p className="mt-1 text-sm text-red-600">{errors.description_en}</p>}
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label htmlFor="descriptionHe" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="description_he" className="block text-sm font-medium text-gray-700">
                     Description (Hebrew) *
                   </label>
                   <textarea
-                    id="descriptionHe"
+                    id="description_he"
                     rows={3}
-                    value={formData.descriptionHe}
-                    onChange={(e) => handleInputChange('descriptionHe', e.target.value)}
+                    value={formData.description_he}
+                    onChange={(e) => handleInputChange('description_he', e.target.value)}
                     className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
-                      errors.descriptionHe ? 'border-red-300' : 'border-gray-300'
+                      errors.description_he ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Enter product description in Hebrew"
                   />
-                  {errors.descriptionHe && <p className="mt-1 text-sm text-red-600">{errors.descriptionHe}</p>}
+                  {errors.description_he && <p className="mt-1 text-sm text-red-600">{errors.description_he}</p>}
                 </div>
 
                 {/* Material & Care Section */}
@@ -1154,27 +1041,27 @@ export default function NewProductPage() {
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     {/* Upper Material */}
                     <div>
-                      <label htmlFor="upperMaterialEn" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="upperMaterial_en" className="block text-sm font-medium text-gray-700">
                         Upper Material (English)
                       </label>
                       <input
                         type="text"
-                        id="upperMaterialEn"
-                        value={formData.upperMaterialEn}
-                        onChange={(e) => handleInputChange('upperMaterialEn', e.target.value)}
+                        id="upperMaterial_en"
+                        value={formData.materialCare.upperMaterial_en}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, upperMaterial_en: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="e.g., Leather Combination"
                       />
                     </div>
                     <div>
-                      <label htmlFor="upperMaterialHe" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="upperMaterial_he" className="block text-sm font-medium text-gray-700">
                         Upper Material (Hebrew)
                       </label>
                       <input
                         type="text"
-                        id="upperMaterialHe"
-                        value={formData.upperMaterialHe}
-                        onChange={(e) => handleInputChange('upperMaterialHe', e.target.value)}
+                        id="upperMaterial_he"
+                        value={formData.materialCare.upperMaterial_he}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, upperMaterial_he: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="לדוגמה: שילוב עור"
                       />
@@ -1182,27 +1069,27 @@ export default function NewProductPage() {
 
                     {/* Material Inner Sole */}
                     <div>
-                      <label htmlFor="materialInnerSoleEn" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="materialInnerSole_en" className="block text-sm font-medium text-gray-700">
                         Material Inner Sole (English)
                       </label>
                       <input
                         type="text"
-                        id="materialInnerSoleEn"
-                        value={formData.materialInnerSoleEn}
-                        onChange={(e) => handleInputChange('materialInnerSoleEn', e.target.value)}
+                        id="materialInnerSole_en"
+                        value={formData.materialCare.materialInnerSole_en}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, materialInnerSole_en: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="e.g., Leather"
                       />
                     </div>
                     <div>
-                      <label htmlFor="materialInnerSoleHe" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="materialInnerSole_he" className="block text-sm font-medium text-gray-700">
                         Material Inner Sole (Hebrew)
                       </label>
                       <input
                         type="text"
-                        id="materialInnerSoleHe"
-                        value={formData.materialInnerSoleHe}
-                        onChange={(e) => handleInputChange('materialInnerSoleHe', e.target.value)}
+                        id="materialInnerSole_he"
+                        value={formData.materialCare.materialInnerSole_he}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, materialInnerSole_he: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="לדוגמה: עור"
                       />
@@ -1210,27 +1097,27 @@ export default function NewProductPage() {
 
                     {/* Lining */}
                     <div>
-                      <label htmlFor="liningEn" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="lining_en" className="block text-sm font-medium text-gray-700">
                         Lining (English)
                       </label>
                       <input
                         type="text"
-                        id="liningEn"
-                        value={formData.liningEn}
-                        onChange={(e) => handleInputChange('liningEn', e.target.value)}
+                        id="lining_en"
+                        value={formData.materialCare.lining_en}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, lining_en: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="e.g., 100% Textile"
                       />
                     </div>
                     <div>
-                      <label htmlFor="liningHe" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="lining_he" className="block text-sm font-medium text-gray-700">
                         Lining (Hebrew)
                       </label>
                       <input
                         type="text"
-                        id="liningHe"
-                        value={formData.liningHe}
-                        onChange={(e) => handleInputChange('liningHe', e.target.value)}
+                        id="lining_he"
+                        value={formData.materialCare.lining_he}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, lining_he: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="לדוגמה: 100% טקסטיל"
                       />
@@ -1238,27 +1125,27 @@ export default function NewProductPage() {
 
                     {/* Sole */}
                     <div>
-                      <label htmlFor="soleEn" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="sole_en" className="block text-sm font-medium text-gray-700">
                         Sole (English)
                       </label>
                       <input
                         type="text"
-                        id="soleEn"
-                        value={formData.soleEn}
-                        onChange={(e) => handleInputChange('soleEn', e.target.value)}
+                        id="sole_en"
+                        value={formData.materialCare.sole_en}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, sole_en: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="e.g., Rubber Sole"
                       />
                     </div>
                     <div>
-                      <label htmlFor="soleHe" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="sole_he" className="block text-sm font-medium text-gray-700">
                         Sole (Hebrew)
                       </label>
                       <input
                         type="text"
-                        id="soleHe"
-                        value={formData.soleHe}
-                        onChange={(e) => handleInputChange('soleHe', e.target.value)}
+                        id="sole_he"
+                        value={formData.materialCare.sole_he}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, sole_he: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="לדוגמה: סוליה מגומי"
                       />
@@ -1266,27 +1153,27 @@ export default function NewProductPage() {
 
                     {/* Heel Height */}
                     <div>
-                      <label htmlFor="heelHeightEn" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="heelHeight_en" className="block text-sm font-medium text-gray-700">
                         Heel Height (English)
                       </label>
                       <input
                         type="text"
-                        id="heelHeightEn"
-                        value={formData.heelHeightEn}
-                        onChange={(e) => handleInputChange('heelHeightEn', e.target.value)}
+                        id="heelHeight_en"
+                        value={formData.materialCare.heelHeight_en}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, heelHeight_en: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="e.g., 5cm"
                       />
                     </div>
                     <div>
-                      <label htmlFor="heelHeightHe" className="block text-sm font-medium text-gray-700">
+                      <label htmlFor="heelHeight_he" className="block text-sm font-medium text-gray-700">
                         Heel Height (Hebrew)
                       </label>
                       <input
                         type="text"
-                        id="heelHeightHe"
-                        value={formData.heelHeightHe}
-                        onChange={(e) => handleInputChange('heelHeightHe', e.target.value)}
+                        id="heelHeight_he"
+                        value={formData.materialCare.heelHeight_he}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, heelHeight_he: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="לדוגמה: 5 ס״מ"
                       />
@@ -1312,23 +1199,23 @@ export default function NewProductPage() {
                 </div>
 
                 <div>
-                  <label htmlFor="baseSku" className="block text-sm font-medium text-gray-700">
-                    Base SKU *
+                  <label htmlFor="sku" className="block text-sm font-medium text-gray-700">
+                    SKU *
                   </label>
                   <input
                     type="text"
-                    id="baseSku"
-                    value={formData.baseSku}
-                    onChange={(e) => handleInputChange('baseSku', e.target.value)}
+                    id="sku"
+                    value={formData.sku}
+                    onChange={(e) => handleInputChange('sku', e.target.value)}
                     className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700 ${
-                      errors.baseSku ? 'border-red-300' : 'border-gray-300'
+                      errors.sku ? 'border-red-300' : 'border-gray-300'
                     }`}
-                    placeholder="Base SKU for product family (e.g., OXF-001)"
+                    placeholder="Product SKU (e.g., 0000-0000)"
                   />
                   <p className="mt-1 text-sm text-gray-500">
-                    This will be used to generate URLs like /product/{formData.baseSku || 'OXF-001'}/black
+                    This will be used to generate URLs like /product/{formData.sku || '0000-0000'}/black
                   </p>
-                  {errors.baseSku && <p className="mt-1 text-sm text-red-600">{errors.baseSku}</p>}
+                  {errors.sku && <p className="mt-1 text-sm text-red-600">{errors.sku}</p>}
                 </div>
 
               </div>
@@ -1403,34 +1290,6 @@ export default function NewProductPage() {
                 </div>
               </div>
 
-              {/* Sale Dates */}
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 mt-6">
-                <div>
-                  <label htmlFor="saleStartDate" className="block text-sm font-medium text-gray-700">
-                    Sale Start Date
-                  </label>
-                  <input
-                    type="date"
-                    id="saleStartDate"
-                    value={formData.saleStartDate}
-                    onChange={(e) => handleInputChange('saleStartDate', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="saleEndDate" className="block text-sm font-medium text-gray-700">
-                    Sale End Date
-                  </label>
-                  <input
-                    type="date"
-                    id="saleEndDate"
-                    value={formData.saleEndDate}
-                    onChange={(e) => handleInputChange('saleEndDate', e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
-                  />
-                </div>
-              </div>
             </div>
 
             {/* Categories */}
@@ -1461,15 +1320,15 @@ export default function NewProductPage() {
 
                 {formData.category && subCategories.length > 0 && (
                   <div>
-                    <label htmlFor="subcategory" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="subCategory" className="block text-sm font-medium text-gray-700">
                       Sub Category
                     </label>
                     <select
-                      id="subcategory"
-                      value={formData.subcategory}
+                      id="subCategory"
+                      value={formData.subCategory}
                       onChange={(e) => handleSubCategoryChange(e.target.value)}
                       className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 ${
-                        errors.subcategory ? 'border-red-300' : 'border-gray-300'
+                        errors.subCategory ? 'border-red-300' : 'border-gray-300'
                       }`}
                     >
                       <option value="" className="text-gray-600">Select a sub category (optional)</option>
@@ -1479,21 +1338,21 @@ export default function NewProductPage() {
                         </option>
                       ))}
                     </select>
-                    {errors.subcategory && <p className="mt-1 text-sm text-red-600">{errors.subcategory}</p>}
+                    {errors.subCategory && <p className="mt-1 text-sm text-red-600">{errors.subCategory}</p>}
                   </div>
                 )}
 
-                {formData.subcategory && subSubCategories.length > 0 && (
+                {formData.subCategory && subSubCategories.length > 0 && (
                   <div>
-                    <label htmlFor="subsubcategory" className="block text-sm font-medium text-gray-700">
+                    <label htmlFor="subSubCategory" className="block text-sm font-medium text-gray-700">
                       Sub-Sub Category
                     </label>
                     <select
-                      id="subsubcategory"
-                      value={formData.subsubcategory}
+                      id="subSubCategory"
+                      value={formData.subSubCategory}
                       onChange={(e) => handleSubSubCategoryChange(e.target.value)}
                       className={`mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900 ${
-                        errors.subsubcategory ? 'border-red-300' : 'border-gray-300'
+                        errors.subSubCategory ? 'border-red-300' : 'border-gray-300'
                       }`}
                     >
                       <option value="" className="text-gray-600">Select a sub-sub category (optional)</option>
@@ -1503,7 +1362,7 @@ export default function NewProductPage() {
                         </option>
                       ))}
                     </select>
-                    {errors.subsubcategory && <p className="mt-1 text-sm text-red-600">{errors.subsubcategory}</p>}
+                    {errors.subSubCategory && <p className="mt-1 text-sm text-red-600">{errors.subSubCategory}</p>}
                   </div>
                 )}
               </div>
@@ -1511,13 +1370,13 @@ export default function NewProductPage() {
 
             {/* Colors */}
             <div>
-              <h2 className="text-lg font-medium text-gray-900 mb-4">Colors *</h2>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Color Variants *</h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {commonColors.map((color) => (
                   <label key={color} className="flex items-center space-x-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={formData.colors.includes(color)}
+                      checked={formData.colorVariants.some(v => v.colorName === color)}
                       onChange={(e) => handleColorSelection(color, e.target.checked)}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
@@ -1531,7 +1390,7 @@ export default function NewProductPage() {
                   </label>
                 ))}
               </div>
-              {errors.colors && <p className="mt-2 text-sm text-red-600">{errors.colors}</p>}
+              {errors.colorVariants && <p className="mt-2 text-sm text-red-600">{errors.colorVariants}</p>}
             </div>
 
             {/* Color Variants */}
@@ -1569,13 +1428,13 @@ export default function NewProductPage() {
                         </label>
                         <div className="flex items-center space-x-2">
                           <code className="text-sm bg-gray-400 text-white px-2 py-1 rounded">
-                            /product/{formData.baseSku || 'baseSku'}/{variant.colorSlug}
+                            /product/{formData.sku || 'sku'}/{variant.colorSlug}
                           </code>
                           <button
                             type="button"
-                            onClick={() => window.open(`/product/${formData.baseSku}/${variant.colorSlug}`, '_blank')}
+                            onClick={() => window.open(`/product/${formData.sku}/${variant.colorSlug}`, '_blank')}
                             className="text-sm text-indigo-600 hover:text-indigo-800"
-                            disabled={!formData.baseSku}
+                            disabled={!formData.sku}
                           >
                             Preview
                           </button>
@@ -1887,6 +1746,102 @@ export default function NewProductPage() {
             )}
 
 
+            {/* SEO */}
+            <div>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">SEO Settings</h2>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="seo_title_en" className="block text-sm font-medium text-gray-700">
+                    SEO Title (English)
+                  </label>
+                  <input
+                    type="text"
+                    id="seo_title_en"
+                    value={formData.seo.title_en}
+                    onChange={(e) => handleInputChange('seo', { ...formData.seo, title_en: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                    placeholder="SEO title for search engines"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="seo_title_he" className="block text-sm font-medium text-gray-700">
+                    SEO Title (Hebrew)
+                  </label>
+                  <input
+                    type="text"
+                    id="seo_title_he"
+                    value={formData.seo.title_he}
+                    onChange={(e) => handleInputChange('seo', { ...formData.seo, title_he: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                    placeholder="כותרת SEO למנועי חיפוש"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="seo_description_en" className="block text-sm font-medium text-gray-700">
+                    SEO Description (English)
+                  </label>
+                  <textarea
+                    id="seo_description_en"
+                    rows={3}
+                    value={formData.seo.description_en}
+                    onChange={(e) => handleInputChange('seo', { ...formData.seo, description_en: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                    placeholder="SEO description for search engines"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label htmlFor="seo_description_he" className="block text-sm font-medium text-gray-700">
+                    SEO Description (Hebrew)
+                  </label>
+                  <textarea
+                    id="seo_description_he"
+                    rows={3}
+                    value={formData.seo.description_he}
+                    onChange={(e) => handleInputChange('seo', { ...formData.seo, description_he: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                    placeholder="תיאור SEO למנועי חיפוש"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="seo_slug" className="block text-sm font-medium text-gray-700">
+                    URL Slug
+                  </label>
+                  <input
+                    type="text"
+                    id="seo_slug"
+                    value={formData.seo.slug}
+                    onChange={(e) => handleInputChange('seo', { ...formData.seo, slug: e.target.value })}
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                    placeholder="url-friendly-slug"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Search Keywords */}
+            <div>
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Search Keywords</h2>
+              <div>
+                <label htmlFor="searchKeywords" className="block text-sm font-medium text-gray-700 mb-2">
+                  Keywords (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  id="searchKeywords"
+                  value={formData.searchKeywords.join(', ')}
+                  onChange={(e) => {
+                    const keywords = e.target.value.split(',').map(k => k.trim()).filter(k => k.length > 0)
+                    handleInputChange('searchKeywords', keywords)
+                  }}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                  placeholder="leather, boot, women, classic"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Enter keywords separated by commas to help customers find this product
+                </p>
+              </div>
+            </div>
+
             {/* Flags */}
             <div>
               <h2 className="text-lg font-medium text-gray-900 mb-4">Product Flags</h2>
@@ -1894,8 +1849,8 @@ export default function NewProductPage() {
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={formData.featured}
-                    onChange={(e) => handleInputChange('featured', e.target.checked)}
+                    checked={formData.featuredProduct}
+                    onChange={(e) => handleInputChange('featuredProduct', e.target.checked)}
                     className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                   <span className="text-sm font-medium text-gray-700">Featured Product</span>
@@ -1904,11 +1859,21 @@ export default function NewProductPage() {
                 <label className="flex items-center space-x-3 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={formData.new}
-                    onChange={(e) => handleInputChange('new', e.target.checked)}
+                    checked={formData.newProduct}
+                    onChange={(e) => handleInputChange('newProduct', e.target.checked)}
                     className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                   <span className="text-sm font-medium text-gray-700">New Product</span>
+                </label>
+
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isEnabled}
+                    onChange={(e) => handleInputChange('isEnabled', e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Enabled</span>
                 </label>
               </div>
             </div>

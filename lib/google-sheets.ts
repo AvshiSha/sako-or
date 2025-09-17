@@ -50,7 +50,7 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
        }
 
        const existingProductBySku = await prisma.product.findFirst({
-         where: { sku: row.sku.trim() }
+         where: { name: row.name }
        })
 
        if (existingProductBySku) {
@@ -110,34 +110,11 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
           name: row.name,
           slug,
           description: row.description,
-          price: parseFloat(row.price.toString()),
-          salePrice: row.salePrice ? parseFloat(row.salePrice.toString()) : null,
-          saleStartDate: row.saleStartDate ? new Date(row.saleStartDate) : null,
-          saleEndDate: row.saleEndDate ? new Date(row.saleEndDate) : null,
-          sku: row.sku,
-          stock: totalStock,
+          baseSku: row.sku,
           featured: row.featured || false,
           isNew: row.new || false,
           isActive: true,
-          categoryId: category.id,
-          images: {
-            create: imageUrls.map((url, index) => ({
-              url,
-              alt: `${row.name} - Image ${index + 1}`,
-              isPrimary: index === 0,
-              order: index
-            }))
-          },
-          variants: {
-            create: sizes.flatMap(size => 
-              colors.map(color => ({
-                size,
-                color,
-                stock: stockBySize[size] || 0,
-                sku: row.sku ? `${row.sku}-${size}-${color}` : undefined
-              }))
-            )
-          }
+          categoryId: category.id
         }
       })
 
@@ -154,44 +131,20 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
 export async function exportToGoogleSheets() {
   const products = await prisma.product.findMany({
     include: {
-      category: true,
-      images: true,
-      variants: true
+      category: true
     }
   })
 
   return products.map(product => {
-    // Group variants by size and sum their stock
-    const stockBySize: Record<string, number> = {};
-    product.variants.forEach(variant => {
-      if (variant.size && variant.stock !== null) {
-        if (!stockBySize[variant.size]) {
-          stockBySize[variant.size] = 0;
-        }
-        stockBySize[variant.size] += variant.stock;
-      }
-    });
-
-    // Convert to string format
-    const stockBySizeString = Object.entries(stockBySize)
-      .map(([size, stock]) => `${size}:${stock}`)
-      .join(',');
-
     return {
       id: product.id,
       name: product.name,
       slug: product.slug,
       description: product.description,
-      price: product.price,
-      salePrice: product.salePrice,
       category: product.category.name,
-      stock: product.stock,
-      stockBySize: stockBySizeString,
       featured: product.featured,
       new: product.isNew,
       active: product.isActive,
-      images: product.images.map(img => img.url).join(', '),
-      variants: product.variants.length,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt
     };

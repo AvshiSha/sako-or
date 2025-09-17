@@ -17,6 +17,8 @@ export default function DropdownLanguageSwitcher({ currentLanguage }: DropdownLa
 
   const handleLanguageChange = (newLanguage: string) => {
     // Replace the current language in the pathname
+    if (!pathname) return
+    
     const pathSegments = pathname.split('/')
     if (pathSegments[1] && Object.keys(languageMetadata).includes(pathSegments[1])) {
       pathSegments[1] = newLanguage

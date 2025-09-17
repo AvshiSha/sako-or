@@ -25,7 +25,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   const { addToCart } = useCart()
   
   // Get the first active color variant for display
-  const defaultVariant = product.colorVariants?.find(v => v.isActive) || product.colorVariants?.[0]
+  const defaultVariant = product.colorVariants ? Object.values(product.colorVariants)[0] : null
   const activeVariant = selectedVariant || defaultVariant
   
   if (!activeVariant) {
@@ -34,13 +34,8 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
 
   // Get current price (variant price takes precedence)
   const getCurrentPrice = () => {
-    const now = new Date()
-    const isSaleActive = activeVariant.salePrice && 
-      (!activeVariant.saleStartDate || now >= activeVariant.saleStartDate) &&
-      (!activeVariant.saleEndDate || now <= activeVariant.saleEndDate)
-    
-    if (isSaleActive) return activeVariant.salePrice!
-    if (activeVariant.price) return activeVariant.price
+    if (activeVariant.salePrice) return activeVariant.salePrice
+    if ('priceOverride' in activeVariant && activeVariant.priceOverride) return activeVariant.priceOverride
     return product.price
   }
 
@@ -48,13 +43,15 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   const productName = product.name?.[language] || product.name?.en || 'Unnamed Product'
   
   // Get primary image from the active variant
-  const primaryImage = activeVariant.images?.find(img => img.isPrimary) || activeVariant.images?.[0]
+  const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
   
   // Get available sizes for the active variant (only sizes with stock > 0)
-  const availableSizes = activeVariant.sizes?.filter(size => size.stock > 0) || []
+  const availableSizes = 'stockBySize' in activeVariant 
+    ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => ({ size, stock: activeVariant.stockBySize[size] }))
+    : []
   
   // Handle color variant selection
-  const handleVariantSelect = (variant: ColorVariant) => {
+  const handleVariantSelect = (variant: any) => {
     setSelectedVariant(variant)
     setSelectedSize('') // Reset size selection when color changes
   }
@@ -78,8 +75,8 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     if (sku && product.name) {
       // Get stock for selected size, or total stock if no size selected
       const maxStock = selectedSize 
-        ? activeVariant.sizes?.find(s => s.size === selectedSize)?.stock || 0
-        : activeVariant.sizes?.reduce((total, size) => total + size.stock, 0) || 0
+        ? ('stockBySize' in activeVariant ? activeVariant.stockBySize[selectedSize] || 0 : 0)
+        : ('stockBySize' in activeVariant ? Object.values(activeVariant.stockBySize).reduce((total, stock) => total + stock, 0) : 0)
       
       addToCart({
         sku: sku,
@@ -87,8 +84,8 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         price: currentPrice,
         salePrice: activeVariant.salePrice,
         currency: 'ILS',
-        image: primaryImage?.url,
-        color: activeVariant.colorName,
+        image: typeof primaryImage === 'string' ? primaryImage : primaryImage?.url,
+        color: activeVariant.colorSlug,
         size: selectedSize || undefined,
         maxStock: maxStock
       })
@@ -167,24 +164,24 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                       </div>
 
                       {/* Color Selection */}
-                      {product.colorVariants && product.colorVariants.length > 1 && (
+                      {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
                         <div className="mb-8">
                           <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-medium text-gray-900">
-                              {language === 'he' ? 'צבע' : 'Color'}: {activeVariant.colorName}
+                              {language === 'he' ? 'צבע' : 'Color'}: {activeVariant.colorSlug}
                             </h3>
                           </div>
                           <div className="flex gap-3">
-                            {product.colorVariants.map((variant) => {
-                              const variantImage = variant.images?.find(img => img.isPrimary) || variant.images?.[0]
-                              const isSelected = variant.id === activeVariant.id
+                            {Object.values(product.colorVariants).map((variant) => {
+                              const variantImage = variant.primaryImage || variant.images?.[0]
+                              const isSelected = variant.colorSlug === activeVariant.colorSlug
                               
                               return (
                                 <button
-                                  key={variant.id}
+                                  key={variant.colorSlug}
                                   onClick={() => handleVariantSelect(variant)}
                                   className="flex-shrink-0 relative group"
-                                  title={variant.colorName}
+                                  title={variant.colorSlug}
                                 >
                                   {/* Product image thumbnail */}
                                   {variantImage && (
@@ -194,8 +191,8 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                                         : 'border-gray-200 hover:border-gray-400'
                                     }`}>
                                       <Image
-                                        src={variantImage.url}
-                                        alt={variant.colorName}
+                                        src={variantImage}
+                                        alt={variant.colorSlug}
                                         width={48}
                                         height={48}
                                         className="w-full h-full object-cover"

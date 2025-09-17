@@ -39,30 +39,80 @@ export { app, analytics, db, auth, storage };
 // Types
 export interface Product {
   id?: string;
-  // Bilingual fields
-  name: {
+  // New structure fields
+  sku: string;
+  title_en: string;
+  title_he: string;
+  description_en: string;
+  description_he: string;
+  category: string;
+  subCategory?: string;
+  subSubCategory?: string;
+  categories_path: string[];
+  categories_path_id: string[];
+  brand: string;
+  price: number;
+  salePrice?: number;
+  currency: string;
+  colorVariants: Record<string, {
+    colorSlug: string;
+    priceOverride?: number;
+    salePrice?: number;
+    stockBySize: Record<string, number>;
+    metaTitle?: string;
+    metaDescription?: string;
+    images: string[];
+    primaryImage?: string;
+    videos?: string[];
+  }>;
+  isEnabled: boolean;
+  isDeleted: boolean;
+  newProduct: boolean;
+  featuredProduct: boolean;
+  materialCare?: {
+    upperMaterial_en?: string;
+    upperMaterial_he?: string;
+    materialInnerSole_en?: string;
+    materialInnerSole_he?: string;
+    lining_en?: string;
+    lining_he?: string;
+    sole_en?: string;
+    sole_he?: string;
+    heelHeight_en?: string;
+    heelHeight_he?: string;
+  };
+  seo?: {
+    title_en?: string;
+    title_he?: string;
+    description_en?: string;
+    description_he?: string;
+    slug?: string;
+  };
+  searchKeywords?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  
+  // Legacy fields for backward compatibility
+  name?: {
     en: string;
     he: string;
   };
-  slug: {
+  slug?: {
     en: string;
     he: string;
   };
-  description: {
+  description?: {
     en: string;
     he: string;
   };
-  // Base product information (shared across all colors)
-  baseSku: string; // Base SKU for the product family (e.g., "0000-0000")
-  sku?: string; // Legacy SKU field for backward compatibility
-  price: number; // Default price (can be overridden by color variants)
-  featured: boolean;
-  isNew: boolean;
-  isActive: boolean;
-  categoryId: string;
+  baseSku?: string;
+  featured?: boolean;
+  isNew?: boolean;
+  isActive?: boolean;
+  categoryId?: string;
   categorySlug?: string;
-  category?: Category;
-  categoryPath?: string; // Full category path like "women/shoes/heels"
+  categoryObj?: Category;
+  categoryPath?: string;
   
   // Material & Care information
   upperMaterial?: {
@@ -92,11 +142,7 @@ export interface Product {
     he: string;
   };
   
-  colorVariants: ColorVariant[];
   tags: string[];
-  createdAt: Date;
-  updatedAt: Date;
-  currency?: string;
   videoUrl?: string;
 }
 
@@ -197,7 +243,7 @@ export interface NewsletterEmail {
 export const productHelpers = {
   // Get product field in specific language
   getField: (product: Product, field: 'name' | 'description' | 'slug', language: 'en' | 'he'): string => {
-    return product[field][language] || product[field].en || '';
+    return product[field]?.[language] || product[field]?.en || '';
   },
 
   // Get product image alt text in specific language
@@ -307,7 +353,7 @@ export const productService = {
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
           if (categoryDoc.exists()) {
-            product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+            product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
         products.push(product);
@@ -333,7 +379,7 @@ export const productService = {
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
           if (categoryDoc.exists()) {
-            product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+            product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
         
@@ -361,7 +407,7 @@ export const productService = {
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
           if (categoryDoc.exists()) {
-            product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+            product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
         
@@ -392,7 +438,7 @@ export const productService = {
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
           if (categoryDoc.exists()) {
-            product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+            product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
         
@@ -452,7 +498,26 @@ export const productService = {
         colorVariants.push(variant);
       }
       
-      product.colorVariants = colorVariants;
+      // Convert array to Record format for new structure
+      product.colorVariants = colorVariants.reduce((acc, variant) => {
+        if (variant.colorSlug) {
+          acc[variant.colorSlug] = {
+            colorSlug: variant.colorSlug,
+            priceOverride: variant.price,
+            salePrice: variant.salePrice,
+            stockBySize: variant.sizes?.reduce((sizeAcc, size) => {
+              sizeAcc[size.size] = size.stock;
+              return sizeAcc;
+            }, {} as Record<string, number>) || {},
+            metaTitle: variant.metaTitle,
+            metaDescription: variant.metaDescription,
+            images: variant.images?.map(img => img.url) || [],
+            primaryImage: variant.images?.find(img => img.isPrimary)?.url,
+            videos: variant.videoUrl ? [variant.videoUrl] : []
+          };
+        }
+        return acc;
+      }, {} as Record<string, any>);
       return product;
     } catch (error) {
       console.error('Error fetching product with color variants:', error);
@@ -478,7 +543,7 @@ export const productService = {
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
           if (categoryDoc.exists()) {
-            product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+            product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
         
@@ -582,7 +647,7 @@ export const productService = {
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
           if (categoryDoc.exists()) {
-            product.category = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+            product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
         
@@ -595,7 +660,7 @@ export const productService = {
           );
           const colorVariantsSnapshot = await getDocs(colorVariantsQuery);
           
-          product.colorVariants = [];
+          product.colorVariants = {};
           for (const variantDoc of colorVariantsSnapshot.docs) {
             const variant = { id: variantDoc.id, ...variantDoc.data() } as ColorVariant;
             
@@ -622,11 +687,27 @@ export const productService = {
               ...sizeDoc.data()
             } as ColorVariantSize));
             
-            product.colorVariants.push(variant);
+            // Convert to new Record format
+            if (variant.colorSlug) {
+              product.colorVariants[variant.colorSlug] = {
+                colorSlug: variant.colorSlug,
+                priceOverride: variant.price,
+                salePrice: variant.salePrice,
+                stockBySize: variant.sizes?.reduce((sizeAcc, size) => {
+                  sizeAcc[size.size] = size.stock;
+                  return sizeAcc;
+                }, {} as Record<string, number>) || {},
+                metaTitle: variant.metaTitle,
+                metaDescription: variant.metaDescription,
+                images: variant.images?.map(img => img.url) || [],
+                primaryImage: variant.images?.find(img => img.isPrimary)?.url,
+                videos: variant.videoUrl ? [variant.videoUrl] : []
+              };
+            }
           }
         } catch (error) {
           console.error('Error fetching color variants:', error);
-          product.colorVariants = [];
+          product.colorVariants = {};
         }
         
         products.push(product);

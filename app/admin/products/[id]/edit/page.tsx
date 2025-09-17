@@ -5,8 +5,19 @@ import { useRouter, useParams } from 'next/navigation'
 import { productService, categoryService, Category, storage } from '@/lib/firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import SuccessMessage from '@/app/components/SuccessMessage'
+import GoogleDrivePicker from '@/app/components/GoogleDrivePicker'
 import Image from 'next/image'
-import { ArrowLeftIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { 
+  ArrowLeftIcon, 
+  TrashIcon, 
+  PlusIcon, 
+  StarIcon,
+  VideoCameraIcon,
+  PhotoIcon,
+  CloudIcon,
+  ChevronUpIcon,
+  ChevronDownIcon
+} from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 
 interface ProductFormData {
@@ -17,6 +28,7 @@ interface ProductFormData {
   descriptionHe: string;
   featured: boolean;
   images: string[];
+  video?: string;
   nameEn: string;
   nameHe: string;
   new: boolean;
@@ -53,6 +65,27 @@ interface ImageFile {
   uploading: boolean;
   uploaded: boolean;
   url?: string;
+  isPrimary?: boolean;
+  order?: number;
+}
+
+interface VideoFile {
+  file?: File;
+  preview?: string;
+  uploading: boolean;
+  uploaded: boolean;
+  url?: string;
+  name?: string;
+}
+
+interface GoogleDriveFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size?: string;
+  webViewLink?: string;
+  thumbnailLink?: string;
+  parents?: string[];
 }
 
 const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
@@ -68,8 +101,14 @@ function EditProductPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [imageFiles, setImageFiles] = useState<ImageFile[]>([])
+  const [videoFile, setVideoFile] = useState<VideoFile>({
+    uploading: false,
+    uploaded: false
+  })
   const [isDragOver, setIsDragOver] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [showGoogleDrivePicker, setShowGoogleDrivePicker] = useState(false)
+  const [isImagePicker, setIsImagePicker] = useState(true)
 
   const [formData, setFormData] = useState<ProductFormData>({
     brand: '',
@@ -79,6 +118,7 @@ function EditProductPage() {
     descriptionHe: '',
     featured: false,
     images: [],
+    video: '',
     nameEn: '',
     nameHe: '',
     new: false,
@@ -107,36 +147,49 @@ function EditProductPage() {
           setFormData({
             brand: (product as any).brand || '',
             category: product.categoryId || '',
-            colors: product.colorVariants?.map(v => v.colorName) || [],
+            colors: product.colorVariants ? Object.values(product.colorVariants).map(v => v.colorSlug) : [],
             descriptionEn: product.description?.en || '',
             descriptionHe: product.description?.he || '',
             featured: product.featured || false,
-            images: product.colorVariants?.[0]?.images?.map(img => img.url) || [],
+            images: product.colorVariants ? Object.values(product.colorVariants)[0]?.images || [] : [],
+            video: (product as any).video || '',
             nameEn: product.name?.en || '',
             nameHe: product.name?.he || '',
             new: product.isNew || false,
-            price: product.colorVariants?.[0]?.price || 0,
-            saleEndDate: product.colorVariants?.[0]?.saleEndDate ? new Date(product.colorVariants[0].saleEndDate).toISOString().split('T')[0] : '',
-            salePrice: product.colorVariants?.[0]?.salePrice || 0,
-            saleStartDate: product.colorVariants?.[0]?.saleStartDate ? new Date(product.colorVariants[0].saleStartDate).toISOString().split('T')[0] : '',
-            sizes: product.colorVariants?.[0]?.sizes?.map(s => s.size) || [],
+            price: product.price || 0,
+            saleEndDate: '',
+            salePrice: product.salePrice || 0,
+            saleStartDate: '',
+            sizes: product.colorVariants ? Object.keys(Object.values(product.colorVariants)[0]?.stockBySize || {}) : [],
             sku: product.sku || product.baseSku || '',
-            stock: product.colorVariants?.[0]?.stock || 0,
-            stockBySize: product.colorVariants?.[0]?.sizes?.reduce((acc, s) => ({ ...acc, [s.size]: s.stock }), {}) || {},
+            stock: product.colorVariants ? Object.values(Object.values(product.colorVariants)[0]?.stockBySize || {}).reduce((sum, stock) => sum + stock, 0) : 0,
+            stockBySize: product.colorVariants ? Object.values(product.colorVariants)[0]?.stockBySize || {} : {},
             subcategory: (product as any).subcategory || '',
             currency: (product as any).currency || 'ILS'
           })
           
-          // Set existing images as uploaded
+          // Set existing images as uploaded with primary image marking
           if (product.colorVariants?.[0]?.images && product.colorVariants[0].images.length > 0) {
-            const existingImages: ImageFile[] = product.colorVariants[0].images.map(img => ({
+            const existingImages: ImageFile[] = product.colorVariants[0].images.map((img, index) => ({
               file: new File([], 'existing-image'),
-              preview: img.url,
+              preview: img,
               uploading: false,
               uploaded: true,
-              url: img.url
+              url: img,
+              isPrimary: index === 0,
+              order: index
             }))
             setImageFiles(existingImages)
+          }
+
+          // Set existing video if available
+          if ((product as any).video) {
+            setVideoFile({
+              uploading: false,
+              uploaded: true,
+              url: (product as any).video,
+              name: 'Existing Video'
+            })
           }
         }
       } catch (error) {
@@ -251,10 +304,110 @@ function EditProductPage() {
   }
 
   const removeImage = (index: number) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index))
+    setImageFiles(prev => {
+      const newImages = prev.filter((_, i) => i !== index)
+      // If we removed the primary image, make the first remaining image primary
+      if (prev[index]?.isPrimary && newImages.length > 0) {
+        newImages[0].isPrimary = true
+      }
+      return newImages
+    })
+  }
+
+  const setPrimaryImage = (index: number) => {
+    setImageFiles(prev => prev.map((img, i) => ({
+      ...img,
+      isPrimary: i === index
+    })))
+  }
+
+  const moveImageUp = (index: number) => {
+    if (index > 0) {
+      setImageFiles(prev => {
+        const newImages = [...prev]
+        const temp = newImages[index]
+        newImages[index] = newImages[index - 1]
+        newImages[index - 1] = temp
+        return newImages
+      })
+    }
+  }
+
+  const moveImageDown = (index: number) => {
+    setImageFiles(prev => {
+      if (index < prev.length - 1) {
+        const newImages = [...prev]
+        const temp = newImages[index]
+        newImages[index] = newImages[index + 1]
+        newImages[index + 1] = temp
+        return newImages
+      }
+      return prev
+    })
+  }
+
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setVideoFile({
+        file,
+        preview: URL.createObjectURL(file),
+        uploading: false,
+        uploaded: false,
+        name: file.name
+      })
+    }
+  }
+
+  const removeVideo = () => {
+    setVideoFile({
+      uploading: false,
+      uploaded: false
+    })
+    setFormData(prev => ({ ...prev, video: '' }))
+  }
+
+  const handleGoogleDriveSelect = (files: GoogleDriveFile[]) => {
+    if (isImagePicker) {
+      // Handle image selection
+      const newImageFiles: ImageFile[] = files.map(file => ({
+        file: new File([], file.name),
+        preview: `https://drive.google.com/thumbnail?id=${file.id}&sz=w400-h400`,
+        uploading: false,
+        uploaded: false,
+        url: `https://drive.google.com/thumbnail?id=${file.id}&sz=w2000-h2000`,
+        isPrimary: false,
+        order: imageFiles.length
+      }))
+      setImageFiles(prev => [...prev, ...newImageFiles])
+    } else {
+      // Handle video selection
+      const videoFile = files[0] // Only one video allowed
+      if (videoFile) {
+        setVideoFile({
+          file: new File([], videoFile.name),
+          preview: `https://drive.google.com/thumbnail?id=${videoFile.id}&sz=w400-h400`,
+          uploading: false,
+          uploaded: false,
+          url: `https://drive.google.com/thumbnail?id=${videoFile.id}&sz=w2000-h2000`,
+          name: videoFile.name
+        })
+      }
+    }
+    setShowGoogleDrivePicker(false)
+  }
+
+  const openGoogleDrivePicker = (forImages: boolean) => {
+    setIsImagePicker(forImages)
+    setShowGoogleDrivePicker(true)
   }
 
   const uploadImageToFirebase = async (imageFile: ImageFile): Promise<string> => {
+    // If it's already uploaded (from Google Drive), return the URL
+    if (imageFile.uploaded && imageFile.url) {
+      return imageFile.url
+    }
+    
     console.log('Uploading image:', imageFile.file.name)
     const timestamp = Date.now();
     const fileName = `${timestamp}_${imageFile.file.name}`;
@@ -264,6 +417,28 @@ function EditProductPage() {
     const downloadURL = await getDownloadURL(snapshot.ref);
     
     console.log('Download URL obtained:', downloadURL)
+    return downloadURL;
+  }
+
+  const uploadVideoToFirebase = async (videoFile: VideoFile): Promise<string> => {
+    // If it's already uploaded (from Google Drive), return the URL
+    if (videoFile.uploaded && videoFile.url) {
+      return videoFile.url
+    }
+    
+    if (!videoFile.file) {
+      throw new Error('No video file to upload')
+    }
+    
+    console.log('Uploading video:', videoFile.file.name)
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${videoFile.file.name}`;
+    const storageRef = ref(storage, `products/videos/${fileName}`);
+    
+    const snapshot = await uploadBytes(storageRef, videoFile.file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    
+    console.log('Video download URL obtained:', downloadURL)
     return downloadURL;
   }
 
@@ -367,6 +542,14 @@ function EditProductPage() {
       const uploadedImageUrls = await uploadAllImages()
       console.log('Images uploaded successfully:', uploadedImageUrls)
 
+      // Upload video if present
+      let videoUrl = ''
+      if (videoFile.file || videoFile.uploaded) {
+        console.log('Uploading video...')
+        videoUrl = await uploadVideoToFirebase(videoFile)
+        console.log('Video uploaded successfully:', videoUrl)
+      }
+
       // Prepare product data for API
       const productData = {
         name: {
@@ -396,15 +579,16 @@ function EditProductPage() {
           const selectedCategoryObj = categories.find(cat => cat.id === formData.category);
           return selectedCategoryObj?.path || '';
         })(),
-        images: uploadedImageUrls.map((url, index) => ({
-          url,
+        images: imageFiles.map((imageFile, index) => ({
+          url: uploadedImageUrls[index] || imageFile.url,
           alt: {
             en: `${formData.nameEn} - Image ${index + 1}`,
             he: `${formData.nameHe} - תמונה ${index + 1}`
           },
-          isPrimary: index === 0,
+          isPrimary: imageFile.isPrimary || false,
           order: index
         })),
+        video: videoUrl || formData.video,
         variants: formData.sizes.flatMap(size =>
           formData.colors.map(color => ({
             size,
@@ -764,7 +948,19 @@ function EditProductPage() {
 
           {/* Images */}
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Product Images</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-medium text-gray-900">Product Images</h2>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => openGoogleDrivePicker(true)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <CloudIcon className="h-4 w-4 mr-2" />
+                  From Google Drive
+                </button>
+              </div>
+            </div>
             
             <div
               className={`border-2 border-dashed rounded-lg p-6 text-center ${
@@ -787,9 +983,7 @@ function EditProductPage() {
                 className="cursor-pointer block"
               >
                 <div className="text-gray-600">
-                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
                   <p className="mt-2">Click to upload or drag and drop</p>
                   <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB each</p>
                 </div>
@@ -813,14 +1007,57 @@ function EditProductPage() {
                           height={200}
                           className="w-full h-full object-cover"
                         />
+                        {imageFile.isPrimary && (
+                          <div className="absolute top-2 left-2 bg-yellow-500 text-white rounded-full p-1">
+                            <StarIcon className="h-4 w-4" />
+                          </div>
+                        )}
+                        
+                        {/* Always visible delete button */}
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-lg opacity-80 hover:opacity-100 transition-opacity"
+                          title="Remove image"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
+                      
+                      {/* Action buttons */}
+                      <div className="absolute top-2 right-10 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => setPrimaryImage(index)}
+                          className="bg-yellow-500 text-white rounded-full p-1 hover:bg-yellow-600 shadow-lg"
+                          title="Set as primary"
+                        >
+                          <StarIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      {/* Move buttons */}
+                      <div className="absolute bottom-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          onClick={() => moveImageUp(index)}
+                          disabled={index === 0}
+                          className="bg-gray-600 text-white rounded-full p-1 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Move up"
+                        >
+                          <ChevronUpIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveImageDown(index)}
+                          disabled={index === imageFiles.length - 1}
+                          className="bg-gray-600 text-white rounded-full p-1 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Move down"
+                        >
+                          <ChevronDownIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+
                       {imageFile.uploading && (
                         <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
@@ -829,6 +1066,72 @@ function EditProductPage() {
                     </div>
                   ))}
                 </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Click the red trash icon to delete images, the star icon to set primary image, and arrow buttons to reorder images.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Video */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-lg font-medium text-gray-900">Product Video</h2>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={() => openGoogleDrivePicker(false)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <CloudIcon className="h-4 w-4 mr-2" />
+                  From Google Drive
+                </button>
+              </div>
+            </div>
+            
+            {!videoFile.url ? (
+              <div className="border-2 border-dashed rounded-lg p-6 text-center border-gray-300">
+                <input
+                  type="file"
+                  accept="video/*"
+                  onChange={handleVideoUpload}
+                  className="hidden"
+                  id="video-upload"
+                />
+                <label
+                  htmlFor="video-upload"
+                  className="cursor-pointer block"
+                >
+                  <div className="text-gray-600">
+                    <VideoCameraIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <p className="mt-2">Click to upload video</p>
+                    <p className="text-sm text-gray-500">MP4, MOV, AVI up to 100MB</p>
+                  </div>
+                </label>
+              </div>
+            ) : (
+              <div className="relative group">
+                <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
+                  <video
+                    src={videoFile.preview || videoFile.url}
+                    controls
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={removeVideo}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-lg opacity-80 hover:opacity-100 transition-opacity"
+                  title="Remove video"
+                >
+                  <TrashIcon className="h-4 w-4" />
+                </button>
+                {videoFile.uploading && (
+                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                  </div>
+                )}
+                <p className="mt-2 text-sm text-gray-600">{videoFile.name}</p>
               </div>
             )}
           </div>
@@ -878,6 +1181,14 @@ function EditProductPage() {
             </button>
           </div>
         </form>
+
+        {/* Google Drive Picker Modal */}
+        <GoogleDrivePicker
+          isOpen={showGoogleDrivePicker}
+          onClose={() => setShowGoogleDrivePicker(false)}
+          onSelectFiles={handleGoogleDriveSelect}
+          multiple={isImagePicker}
+        />
       </div>
     </div>
   )

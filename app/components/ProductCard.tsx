@@ -20,7 +20,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
   const { isFavorite, toggleFavorite } = useFavorites()
   
   // Get the first active color variant for display
-  const defaultVariant = product.colorVariants?.find(v => v.isActive) || product.colorVariants?.[0]
+  const defaultVariant = product.colorVariants ? Object.values(product.colorVariants)[0] : null
   const activeVariant = selectedVariant || defaultVariant
   
   if (!activeVariant) {
@@ -29,13 +29,8 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
 
   // Get current price (variant price takes precedence)
   const getCurrentPrice = () => {
-    const now = new Date()
-    const isSaleActive = activeVariant.salePrice && 
-      (!activeVariant.saleStartDate || now >= activeVariant.saleStartDate) &&
-      (!activeVariant.saleEndDate || now <= activeVariant.saleEndDate)
-    
-    if (isSaleActive) return activeVariant.salePrice!
-    if (activeVariant.price) return activeVariant.price
+    if (activeVariant.salePrice) return activeVariant.salePrice
+    if ('priceOverride' in activeVariant && activeVariant.priceOverride) return activeVariant.priceOverride
     return product.price
   }
 
@@ -43,13 +38,13 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
   const productName = product.name?.[language] || product.name?.en || 'Unnamed Product'
   
   // Get primary image from the active variant
-  const primaryImage = activeVariant.images?.find(img => img.isPrimary) || activeVariant.images?.[0]
+  const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
   
   // Get available sizes for the active variant (only sizes with stock > 0)
-  const availableSizes = activeVariant.sizes?.filter(size => size.stock > 0) || []
+  const availableSizes = 'stockBySize' in activeVariant ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => size) : []
   
   // Handle color variant selection - just change the display
-  const handleVariantSelect = (variant: ColorVariant) => {
+  const handleVariantSelect = (variant: any) => {
     setSelectedVariant(variant)
   }
   
@@ -81,8 +76,8 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
       >
         {primaryImage ? (
           <Image
-            src={primaryImage.url}
-            alt={primaryImage.alt || `${productName} - ${activeVariant.colorName}`}
+            src={typeof primaryImage === 'string' ? primaryImage : primaryImage?.url || ''}
+            alt={`${productName} - ${activeVariant.colorSlug}`}
             width={500}
             height={500}
             priority={true}
@@ -164,26 +159,26 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
       </div>
       
       {/* Color Variants Section */}
-      {product.colorVariants && product.colorVariants.length > 1 && (
+      {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
         <div className="mt-0 bg-gray-100 p-3 pt-1">
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {product.colorVariants.map((variant) => {
-              const variantImage = variant.images?.find(img => img.isPrimary) || variant.images?.[0]
-              const isSelected = variant.id === activeVariant.id
+            {Object.values(product.colorVariants).map((variant) => {
+              const variantImage = variant.primaryImage || variant.images?.[0]
+              const isSelected = variant.colorSlug === activeVariant.colorSlug
               
               return (
                 <button
-                  key={variant.id}
+                  key={variant.colorSlug}
                   onClick={() => handleVariantSelect(variant)}
                   className="flex-shrink-0 relative group"
-                  title={variant.colorName}
+                  title={variant.colorSlug}
                 >
                   {/* Product image */}
                   {variantImage && (
                     <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-transparent">
                       <Image
-                        src={variantImage.url}
-                        alt={variant.colorName}
+                        src={variantImage}
+                        alt={variant.colorSlug}
                         width={32}
                         height={32}
                         className="w-full h-full object-cover"

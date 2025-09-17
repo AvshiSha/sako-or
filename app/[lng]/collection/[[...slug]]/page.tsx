@@ -294,16 +294,16 @@ export default function CollectionSlugPage() {
     })
     .filter((product) => {
       if (selectedColors.length === 0) return true;
-      const hasMatchingVariantColor = product.colorVariants?.some((variant) => 
-        selectedColors.includes(variant.colorName || "")
-      );
+      const hasMatchingVariantColor = product.colorVariants ? Object.values(product.colorVariants).some((variant) => 
+        selectedColors.includes(variant.colorSlug || "")
+      ) : false;
       return hasMatchingVariantColor;
     })
     .filter((product) => {
       if (selectedSizes.length === 0) return true;
-      const hasMatchingVariantSize = product.colorVariants?.some((variant) => 
-        variant.sizes?.some((sizeObj) => selectedSizes.includes(sizeObj.size || ""))
-      );
+      const hasMatchingVariantSize = product.colorVariants ? Object.values(product.colorVariants).some((variant) => 
+        Object.keys(variant.stockBySize || {}).some((size) => selectedSizes.includes(size))
+      ) : false;
       return hasMatchingVariantSize;
     });
 
@@ -370,13 +370,13 @@ export default function CollectionSlugPage() {
 
   const allColors = [
     ...new Set([
-      ...products.flatMap((p) => p.colorVariants?.map((v) => v.colorName).filter(Boolean) || [])
+      ...products.flatMap((p) => p.colorVariants ? Object.values(p.colorVariants).map((v) => v.colorSlug).filter(Boolean) : [])
     ]),
   ] as string[];
 
   const allSizes = [
     ...new Set([
-      ...products.flatMap((p) => p.colorVariants?.flatMap((v) => v.sizes?.map((s) => s.size).filter(Boolean) || []) || []),
+      ...products.flatMap((p) => p.colorVariants ? Object.values(p.colorVariants).flatMap((v) => Object.keys(v.stockBySize || {})) : []),
       // Add any additional sizes you want to always show
       "35", "35.5", "36", "36.5", "37", "37.5", "38", "38.5", "39", "39.5", "40", "40.5", "41", "41.5", "42", "42.5", "43", "43.5", "44", "44.5", "45"
     ]),

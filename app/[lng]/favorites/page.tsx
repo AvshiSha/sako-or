@@ -115,29 +115,39 @@ export default function FavoritesPage() {
               
               if (product) {
                 console.log('📦 Favorites page: Product data:', {
-                  name: product.name?.en,
+                  name: product.title_en,
                   baseSku: product.baseSku,
                   sku: product.sku,
                   hasColorVariants: !!product.colorVariants,
-                  colorVariantsCount: product.colorVariants?.length || 0,
-                  firstVariantImages: product.colorVariants?.[0]?.images?.length || 0
+                  colorVariantsCount: product.colorVariants ? Object.keys(product.colorVariants).length : 0,
+                  firstVariantImages: product.colorVariants ? Object.values(product.colorVariants)[0]?.images?.length || 0 : 0
                 })
                 favoriteProducts.push(product)
               } else {
                 // Product not found - mark as unavailable
                 favoriteProducts.push({
                   sku,
-                  baseSku: sku, // Use sku as baseSku for backward compatibility
-                  slug: { en: 'unavailable', he: 'לא-זמין' },
-                  name: { en: 'Unavailable Product', he: 'מוצר לא זמין' },
-                  description: { en: 'This product is no longer available', he: 'המוצר הזה כבר לא זמין' },
+                  title_en: 'Unavailable Product',
+                  title_he: 'מוצר לא זמין',
+                  description_en: 'This product is no longer available',
+                  description_he: 'המוצר הזה כבר לא זמין',
+                  category: '',
+                  subCategory: '',
+                  subSubCategory: '',
+                  categories_path: [],
+                  categories_path_id: [],
+                  brand: '',
                   price: 0,
-                  stock: 0,
-                  featured: false,
-                  isNew: false,
-                  isActive: false,
-                  categoryId: '',
-                  colorVariants: [], // Add empty colorVariants array
+                  salePrice: 0,
+                  currency: 'USD',
+                  colorVariants: {},
+                  isEnabled: false,
+                  isDeleted: true,
+                  newProduct: false,
+                  featuredProduct: false,
+                  materialCare: {},
+                  seo: {},
+                  searchKeywords: [],
                   tags: [],
                   createdAt: new Date(),
                   updatedAt: new Date(),
@@ -273,10 +283,10 @@ export default function FavoritesPage() {
                       <ExclamationTriangleIcon className="h-12 w-12 text-gray-400" />
                     </div>
                   ) : (
-                    <Link href={`/${lng}/product/${product.baseSku || product.sku}/${product.colorVariants?.[0]?.colorSlug || 'default'}`}>
+                    <Link href={`/${lng}/product/${product.sku}/${product.colorVariants ? Object.values(product.colorVariants)[0]?.colorSlug || 'default' : 'default'}`}>
                       <Image
-                        src={product.colorVariants?.[0]?.images?.[0]?.url || '/images/placeholder.svg'}
-                        alt={product.name?.[lng as 'en' | 'he'] || 'Product'}
+                        src={product.colorVariants ? Object.values(product.colorVariants)[0]?.images?.[0] || '/images/placeholder.svg' : '/images/placeholder.svg'}
+                        alt={lng === 'he' ? product.title_he : product.title_en || 'Product'}
                         fill
                         className="object-cover hover:scale-105 transition-transform duration-200"
                       />
@@ -314,7 +324,7 @@ export default function FavoritesPage() {
                     <>
                       <Link href={`/${lng}/product/${product.sku}`}>
                         <h3 className="font-medium text-gray-900 mb-2 hover:text-indigo-600 line-clamp-2">
-                          {product.name?.[lng as 'en' | 'he']}
+                          {lng === 'he' ? product.title_he : product.title_en}
                         </h3>
                       </Link>
                       
@@ -322,9 +332,9 @@ export default function FavoritesPage() {
                         <span className="text-lg font-bold text-gray-900">
                         ₪{product.price.toFixed(2)}
                         </span>
-                        {(!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => {
+                        {(!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                           // Check if this color variant has any stock across all sizes
-                          const totalStock = v.sizes?.reduce((total, size) => total + size.stock, 0) || 0;
+                          const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
                           return totalStock <= 0;
                         })) && (
                           <span className="text-sm text-red-600 font-medium">
@@ -338,15 +348,15 @@ export default function FavoritesPage() {
                           setSelectedProduct(product)
                           setIsQuickBuyOpen(true)
                         }}
-                        disabled={!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => {
+                        disabled={!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                           // Check if this color variant has any stock across all sizes
-                          const totalStock = v.sizes?.reduce((total, size) => total + size.stock, 0) || 0;
+                          const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
                           return totalStock <= 0;
                         })}
                         className={`w-full py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center ${
-                          (!product.colorVariants || product.colorVariants.length === 0 || product.colorVariants.every(v => {
+                          (!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                             // Check if this color variant has any stock across all sizes
-                            const totalStock = v.sizes?.reduce((total, size) => total + size.stock, 0) || 0;
+                            const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
                             return totalStock <= 0;
                           }))
                             ? 'bg-gray-300 text-gray-500 cursor-not-allowed'

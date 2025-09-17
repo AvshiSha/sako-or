@@ -223,7 +223,7 @@ function ProductsPageContent() {
                               {product.colorVariants?.[0]?.images && product.colorVariants[0].images.length > 0 ? (
                                 <Image
                                   className="rounded-lg object-cover"
-                                  src={product.colorVariants[0].images.find(img => img.isPrimary)?.url || product.colorVariants[0].images[0].url}
+                                  src={product.colorVariants[0].primaryImage || product.colorVariants[0].images[0]}
                                   alt={productHelpers.getField(product, 'name', 'en')}
                                   fill
                                   sizes="40px"
@@ -248,11 +248,11 @@ function ProductsPageContent() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.category?.name ? (typeof product.category.name === 'object' ? product.category.name.en : product.category.name) : 'No category'}
+                          {product.category || 'No category'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                          ₪{product.colorVariants?.[0]?.price?.toFixed(2) || product.price.toFixed(2)}
+                          ₪{typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'}
                           </div>
                           {product.colorVariants?.[0]?.salePrice && (
                             <div className="text-sm text-red-600">
@@ -262,13 +262,13 @@ function ProductsPageContent() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            (product.colorVariants?.reduce((total, variant) => total + variant.stock, 0) || 0) > 10 
+                            (product.colorVariants ? Object.values(product.colorVariants).reduce((total, variant) => total + Object.values(variant.stockBySize).reduce((sum, stock) => sum + stock, 0), 0) : 0) > 10 
                               ? 'bg-green-100 text-green-800'
-                              : (product.colorVariants?.reduce((total, variant) => total + variant.stock, 0) || 0) > 0
+                              : (product.colorVariants ? Object.values(product.colorVariants).reduce((total, variant) => total + Object.values(variant.stockBySize).reduce((sum, stock) => sum + stock, 0), 0) : 0) > 0
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-red-100 text-red-800'
                           }`}>
-                            {product.colorVariants?.reduce((total, variant) => total + variant.stock, 0) || 0} in stock
+                            {product.colorVariants ? Object.values(product.colorVariants).reduce((total, variant) => total + Object.values(variant.stockBySize).reduce((sum, stock) => sum + stock, 0), 0) : 0} in stock
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

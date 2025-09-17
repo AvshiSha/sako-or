@@ -97,6 +97,7 @@ export interface Product {
   createdAt: Date;
   updatedAt: Date;
   currency?: string;
+  videoUrl?: string;
 }
 
 export interface Category {
@@ -140,6 +141,9 @@ export interface ColorVariant {
   // Stock and availability
   stock: number;
   isActive: boolean;
+  
+  // Video
+  videoUrl?: string; // Video URL for this color variant
   
   // SEO
   metaTitle?: string;

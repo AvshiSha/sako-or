@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { productService, categoryService, colorVariantService, Category, storage } from '@/lib/firebase'
+import { productService, categoryService, colorVariantService, Category, storage, Product } from '@/lib/firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import Image from 'next/image'
@@ -10,6 +10,13 @@ import Image from 'next/image'
 interface ImageFile {
   file: File;
   preview: string;
+  uploading: boolean;
+  uploaded: boolean;
+  url?: string;
+}
+
+interface VideoFile {
+  file: File;
   uploading: boolean;
   uploaded: boolean;
   url?: string;
@@ -27,6 +34,7 @@ interface ColorVariantData {
   stock: number;
   isActive: boolean;
   images: ImageFile[];
+  video: VideoFile | null;
   sizes: string[];
   stockBySize: Record<string, number>;
   metaTitle?: string;
@@ -300,6 +308,7 @@ export default function NewProductPage() {
           stock: 0,
           isActive: true,
           images: [],
+          video: null,
           sizes: [...commonSizes],
           stockBySize: {}
         }
@@ -369,6 +378,39 @@ export default function NewProductPage() {
     updateColorVariant(variantId, { images: updatedImages });
   };
 
+  // Handle variant video selection
+  const handleVariantVideoSelect = (variantId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    
+    // Validate file type
+    if (!file.type.startsWith('video/mp4')) {
+      alert('Please select an MP4 video file');
+      return;
+    }
+    
+    // Validate file size (2.5MB = 2.5 * 1024 * 1024 bytes)
+    const maxSize = 2.5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('Video file size must not exceed 2.5MB');
+      return;
+    }
+    
+    const videoFile: VideoFile = {
+      file,
+      uploading: false,
+      uploaded: false
+    };
+    
+    updateColorVariant(variantId, { video: videoFile });
+  };
+
+  // Remove variant video
+  const removeVariantVideo = (variantId: string) => {
+    updateColorVariant(variantId, { video: null });
+  };
+
   // Upload variant images
   const uploadVariantImages = async (variantId: string): Promise<string[]> => {
     const variant = formData.colorVariants.find(v => v.id === variantId);
@@ -417,6 +459,44 @@ export default function NewProductPage() {
     }
 
     return uploadedUrls;
+  };
+
+  // Upload variant video
+  const uploadVariantVideo = async (variantId: string): Promise<string | null> => {
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    if (!variant || !variant.video) return null;
+    
+    const videoFile = variant.video;
+    if (videoFile.uploaded && videoFile.url) {
+      return videoFile.url;
+    }
+
+    try {
+      // Mark as uploading
+      updateColorVariant(variantId, {
+        video: { ...videoFile, uploading: true }
+      });
+
+      // Upload to Firebase Storage
+      const fileName = `products/${formData.baseSku}/${variant.colorSlug}/video/${Date.now()}-${videoFile.file.name}`;
+      const storageRef = ref(storage, fileName);
+      const snapshot = await uploadBytes(storageRef, videoFile.file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      // Mark as uploaded
+      updateColorVariant(variantId, {
+        video: { ...videoFile, uploading: false, uploaded: true, url: downloadURL }
+      });
+
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading variant video:', error);
+      // Mark as failed
+      updateColorVariant(variantId, {
+        video: { ...videoFile, uploading: false }
+      });
+      return null;
+    }
   };
 
   const validateForm = (): boolean => {
@@ -547,33 +627,45 @@ export default function NewProductPage() {
         subcategory: formData.subcategory, // Add subcategory
         currency: formData.currency,
         
-        // Material & Care fields
-        upperMaterial: formData.upperMaterialEn || formData.upperMaterialHe ? {
-          en: formData.upperMaterialEn,
-          he: formData.upperMaterialHe
-        } : undefined,
-        materialInnerSole: formData.materialInnerSoleEn || formData.materialInnerSoleHe ? {
-          en: formData.materialInnerSoleEn,
-          he: formData.materialInnerSoleHe
-        } : undefined,
-        lining: formData.liningEn || formData.liningHe ? {
-          en: formData.liningEn,
-          he: formData.liningHe
-        } : undefined,
-        sole: formData.soleEn || formData.soleHe ? {
-          en: formData.soleEn,
-          he: formData.soleHe
-        } : undefined,
-        heelHeight: formData.heelHeightEn || formData.heelHeightHe ? {
-          en: formData.heelHeightEn,
-          he: formData.heelHeightHe
-        } : undefined,
+        // Material & Care fields (only include if they have values)
+        ...(formData.upperMaterialEn || formData.upperMaterialHe ? {
+          upperMaterial: {
+            en: formData.upperMaterialEn,
+            he: formData.upperMaterialHe
+          }
+        } : {}),
+        ...(formData.materialInnerSoleEn || formData.materialInnerSoleHe ? {
+          materialInnerSole: {
+            en: formData.materialInnerSoleEn,
+            he: formData.materialInnerSoleHe
+          }
+        } : {}),
+        ...(formData.liningEn || formData.liningHe ? {
+          lining: {
+            en: formData.liningEn,
+            he: formData.liningHe
+          }
+        } : {}),
+        ...(formData.soleEn || formData.soleHe ? {
+          sole: {
+            en: formData.soleEn,
+            he: formData.soleHe
+          }
+        } : {}),
+        ...(formData.heelHeightEn || formData.heelHeightHe ? {
+          heelHeight: {
+            en: formData.heelHeightEn,
+            he: formData.heelHeightHe
+          }
+        } : {}),
         
-        // Shipping & Returns field
-        shippingReturns: formData.shippingReturnsEn || formData.shippingReturnsHe ? {
-          en: formData.shippingReturnsEn,
-          he: formData.shippingReturnsHe
-        } : undefined
+        // Shipping & Returns field (only include if it has values)
+        ...(formData.shippingReturnsEn || formData.shippingReturnsHe ? {
+          shippingReturns: {
+            en: formData.shippingReturnsEn,
+            he: formData.shippingReturnsHe
+          }
+        } : {})
       }
 
       // Only add optional fields if they have valid values
@@ -607,6 +699,13 @@ export default function NewProductPage() {
           // Upload variant images
           const variantImageUrls = await uploadVariantImages(variantData.id)
           
+          // Upload variant video if present
+          let videoUrl: string | null = null;
+          if (variantData.video) {
+            console.log(`Uploading video for ${variantData.colorName} variant...`)
+            videoUrl = await uploadVariantVideo(variantData.id)
+          }
+          
           // Create color variant
           const colorVariantData: any = {
             productId: createdProductId,
@@ -620,20 +719,25 @@ export default function NewProductPage() {
             updatedAt: new Date()
           }
 
+          // Only add videoUrl if it has a value
+          if (videoUrl) {
+            colorVariantData.videoUrl = videoUrl
+          }
+
           // Only add optional fields if they have values
-          if (variantData.salePrice) {
+          if (variantData.salePrice && variantData.salePrice > 0) {
             colorVariantData.salePrice = variantData.salePrice
           }
-          if (variantData.saleStartDate) {
+          if (variantData.saleStartDate && variantData.saleStartDate.trim()) {
             colorVariantData.saleStartDate = new Date(variantData.saleStartDate)
           }
-          if (variantData.saleEndDate) {
+          if (variantData.saleEndDate && variantData.saleEndDate.trim()) {
             colorVariantData.saleEndDate = new Date(variantData.saleEndDate)
           }
-          if (variantData.metaTitle) {
+          if (variantData.metaTitle && variantData.metaTitle.trim()) {
             colorVariantData.metaTitle = variantData.metaTitle
           }
-          if (variantData.metaDescription) {
+          if (variantData.metaDescription && variantData.metaDescription.trim()) {
             colorVariantData.metaDescription = variantData.metaDescription
           }
           
@@ -952,6 +1056,7 @@ export default function NewProductPage() {
                   </p>
                   {errors.baseSku && <p className="mt-1 text-sm text-red-600">{errors.baseSku}</p>}
                 </div>
+
               </div>
             </div>
 
@@ -1364,6 +1469,70 @@ export default function NewProductPage() {
                                   )}
                                 </div>
                               ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Color Variant Video */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          {variant.colorName} Video (Optional)
+                        </label>
+                        <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                          {!variant.video ? (
+                            <div className="text-center">
+                              <input
+                                type="file"
+                                accept="video/mp4"
+                                onChange={(e) => handleVariantVideoSelect(variant.id, e.target.files)}
+                                className="hidden"
+                                id={`variant-video-${variant.id}`}
+                              />
+                              <label
+                                htmlFor={`variant-video-${variant.id}`}
+                                className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
+                              >
+                                Upload {variant.colorName} Video
+                              </label>
+                              <p className="mt-2 text-sm text-gray-500">
+                                Upload a short video showcasing this color variant (MP4, max 2.5MB)
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-3">
+                                <div className="flex-shrink-0">
+                                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {variant.video.file.name}
+                                  </p>
+                                  <p className="text-sm text-gray-500">
+                                    {(variant.video.file.size / (1024 * 1024)).toFixed(2)} MB
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                {variant.video.uploading && (
+                                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                                )}
+                                {variant.video.uploaded && (
+                                  <span className="text-sm text-green-600 font-medium">Uploaded</span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => removeVariantVideo(variant.id)}
+                                  className="text-red-600 hover:text-red-800 text-sm font-medium"
+                                >
+                                  Remove
+                                </button>
+                              </div>
                             </div>
                           )}
                         </div>

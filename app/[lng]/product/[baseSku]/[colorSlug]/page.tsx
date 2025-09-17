@@ -94,6 +94,9 @@ export default function ProductColorPage() {
           setSelectedSize(variant.sizes[0].size)
         }
 
+        // Reset image selection to 0 (video will be shown if available)
+        setSelectedImageIndex(0)
+
         // Fire Product View analytics event
         if (analytics && productData && typeof analytics.logEvent === 'function') {
           try {
@@ -424,11 +427,24 @@ export default function ProductColorPage() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Product Images */}
+            {/* Product Images and Video */}
             <div className="space-y-4">
-              {/* Main Image */}
+              {/* Main Media (Image or Video) */}
               <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg">
-                {currentVariant.images && currentVariant.images.length > 0 ? (
+                {currentVariant.videoUrl && selectedImageIndex === (currentVariant.images?.length || 0) ? (
+                  // Show video as the last "image"
+                  <video
+                    src={currentVariant.videoUrl}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="h-full w-full object-cover object-center"
+                    poster={currentVariant.images?.[0]?.url} // Use first image as poster
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                ) : currentVariant.images && currentVariant.images.length > 0 ? (
                   <Image
                     src={currentVariant.images[selectedImageIndex]?.url}
                     alt={currentVariant.images[selectedImageIndex]?.alt || `${productName} - ${currentVariant.colorName}`}
@@ -446,10 +462,11 @@ export default function ProductColorPage() {
                 )}
               </div>
 
-              {/* Thumbnail Images */}
-              {currentVariant.images && currentVariant.images.length > 1 && (
+              {/* Thumbnail Images and Video */}
+              {(currentVariant.videoUrl || (currentVariant.images && currentVariant.images.length > 0)) && (
                 <div className="grid grid-cols-4 gap-2">
-                  {currentVariant.images.map((image, index) => (
+                  {/* Image thumbnails */}
+                  {currentVariant.images && currentVariant.images.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImageIndex(index)}
@@ -467,6 +484,35 @@ export default function ProductColorPage() {
                       />
                     </button>
                   ))}
+                  
+                  {/* Video thumbnail (always last if video exists) */}
+                  {currentVariant.videoUrl && (
+                    <button
+                      onClick={() => setSelectedImageIndex(currentVariant.images?.length || 0)}
+                      className={`aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border-2 relative ${
+                        selectedImageIndex === (currentVariant.images?.length || 0) ? 'border-indigo-600' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="relative h-full w-full">
+                        <Image
+                          src={currentVariant.images?.[0]?.url || '/placeholder.svg'}
+                          alt={`${productName} - ${currentVariant.colorName} video`}
+                          width={150}
+                          height={150}
+                          className="h-full w-full object-cover object-center"
+                          loading="lazy"
+                        />
+                        {/* Video play icon overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+                          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-gray-800 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M8 5v14l11-7z"/>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  )}
                 </div>
               )}
             </div>

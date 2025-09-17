@@ -4,5 +4,14 @@ service firebase.storage {
     match /{allPaths=**} {
       allow read, write: if true;
     }
+    
+    // Specific rules for product images and videos
+    match /products/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+                   request.resource.size < 10 * 1024 * 1024 && // 10MB max for images
+                   (request.resource.contentType.matches('image/.*') || 
+                    request.resource.contentType.matches('video/mp4'));
+    }
   }
 }

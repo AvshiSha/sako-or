@@ -19,6 +19,7 @@ interface ImageFile {
 
 interface VideoFile {
   file: File;
+  preview: string;
   uploading: boolean;
   uploaded: boolean;
   url?: string;
@@ -96,7 +97,7 @@ interface FormErrors {
 
 
 const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL','34','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
-const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver'];
+const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'light Brown', 'Dark Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver', 'Off White', 'Light Blue', 'Dark Blue', 'Bordeaux', 'Black nail polish', 'Olive', 'Multicolor', 'Black & White', 'Transparent'];
 
 // Color hex mapping
 const colorHexMap: Record<string, string> = {
@@ -109,12 +110,23 @@ const colorHexMap: Record<string, string> = {
   'Purple': '#800080',
   'Pink': '#FFC0CB',
   'Orange': '#FFA500',
-  'Brown': '#964B00',
+  'light Brown': '#b5651d',
+  'Dark Brown': '#654321',
   'Gray': '#808080',
   'Navy': '#000080',
   'Beige': '#F5F5DC',
   'Gold': '#FFD700',
-  'Silver': '#C0C0C0'
+  'Silver': '#C0C0C0',
+  'Off White': '#f5f5f5',
+  'Light Blue': '#ADD8E6',
+  'Dark Blue': '#000080',
+  'Bordeaux': '#800020',
+  'Black nail polish': '#000000',
+  'Olive': '#808000',
+  'Multicolor': '#FF0000',
+  'Black & White': '#000000',
+  'Transparent': '#FFFFFF'
+  
 };
 
 export default function NewProductPage() {
@@ -128,6 +140,8 @@ export default function NewProductPage() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [showGoogleDrivePicker, setShowGoogleDrivePicker] = useState(false)
   const [currentVariantForGoogleDrive, setCurrentVariantForGoogleDrive] = useState<string | null>(null)
+  const [showGoogleDriveVideoPicker, setShowGoogleDriveVideoPicker] = useState(false)
+  const [currentVariantForGoogleDriveVideo, setCurrentVariantForGoogleDriveVideo] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
     brand: '',
@@ -415,6 +429,7 @@ export default function NewProductPage() {
     
     const videoFile: VideoFile = {
       file,
+      preview: URL.createObjectURL(file),
       uploading: false,
       uploaded: false
     };
@@ -531,10 +546,128 @@ export default function NewProductPage() {
     }
   };
 
+  // Handle Google Drive video selection
+  const handleGoogleDriveVideoSelect = async (files: any[]) => {
+    if (!currentVariantForGoogleDriveVideo) return;
+
+    try {
+      if (files.length === 0) {
+        alert('Please select a video to import.');
+        return;
+      }
+
+      if (files.length > 1) {
+        alert('Please select only one video file.');
+        return;
+      }
+
+      const file = files[0];
+      
+      // Check if it's a video file
+      if (!file.mimeType.startsWith('video/')) {
+        alert('Please select a video file.');
+        return;
+      }
+
+      // Check file size (2.5MB limit)
+      if (file.size > 2.5 * 1024 * 1024) {
+        alert('Video file size must not exceed 2.5MB');
+        return;
+      }
+
+      // Show loading state
+      const loadingVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDriveVideo);
+      if (loadingVariant) {
+        updateColorVariant(currentVariantForGoogleDriveVideo, {
+          video: { 
+            file: new File([], 'loading'), 
+            preview: '', 
+            uploading: true, 
+            uploaded: false 
+          }
+        });
+      }
+
+      // Download file from Google Drive
+      const response = await fetch('/api/google-drive/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileIds: [file.id]
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data.files || data.files.length === 0) {
+        throw new Error('Video file was not downloaded successfully');
+      }
+
+      // Convert base64 content to File object
+      const videoData = data.files[0];
+      try {
+        // Convert base64 to blob
+        const byteCharacters = atob(videoData.content);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: videoData.mimeType });
+        
+        // Create File object
+        const videoFile = new File([blob], videoData.name, { type: videoData.mimeType });
+        
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(videoFile);
+
+        // Update the variant with the new video
+        const videoFileData: VideoFile = {
+          file: videoFile,
+          preview: previewUrl,
+          uploading: false,
+          uploaded: false
+        };
+
+        updateColorVariant(currentVariantForGoogleDriveVideo, { video: videoFileData });
+
+        // Close the picker
+        setShowGoogleDriveVideoPicker(false);
+        setCurrentVariantForGoogleDriveVideo(null);
+
+        alert('Video imported successfully from Google Drive!');
+      } catch (conversionError) {
+        console.error('Error converting video file:', conversionError);
+        throw new Error('Failed to process video file');
+      }
+    } catch (error) {
+      console.error('Error importing video from Google Drive:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to import video from Google Drive: ${errorMessage}`);
+      
+      // Reset video state on error
+      if (currentVariantForGoogleDriveVideo) {
+        updateColorVariant(currentVariantForGoogleDriveVideo, { video: null });
+      }
+    }
+  };
+
   // Open Google Drive picker for a specific variant
   const openGoogleDrivePicker = (variantId: string) => {
     setCurrentVariantForGoogleDrive(variantId);
     setShowGoogleDrivePicker(true);
+  };
+
+  // Open Google Drive video picker for a specific variant
+  const openGoogleDriveVideoPicker = (variantId: string) => {
+    setCurrentVariantForGoogleDriveVideo(variantId);
+    setShowGoogleDriveVideoPicker(true);
   };
 
   // Set primary image for a variant
@@ -1679,19 +1812,31 @@ export default function NewProductPage() {
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
                           {!variant.video ? (
                             <div className="text-center">
-                              <input
-                                type="file"
-                                accept="video/mp4"
-                                onChange={(e) => handleVariantVideoSelect(variant.id, e.target.files)}
-                                className="hidden"
-                                id={`variant-video-${variant.id}`}
-                              />
-                              <label
-                                htmlFor={`variant-video-${variant.id}`}
-                                className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
-                              >
-                                Upload {variant.colorName} Video
-                              </label>
+                              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                                <input
+                                  type="file"
+                                  accept="video/mp4"
+                                  onChange={(e) => handleVariantVideoSelect(variant.id, e.target.files)}
+                                  className="hidden"
+                                  id={`variant-video-${variant.id}`}
+                                />
+                                <label
+                                  htmlFor={`variant-video-${variant.id}`}
+                                  className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
+                                >
+                                  Upload {variant.colorName} Video
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => openGoogleDriveVideoPicker(variant.id)}
+                                  className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                >
+                                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10" />
+                                  </svg>
+                                  Import from Google Drive
+                                </button>
+                              </div>
                               <p className="mt-2 text-sm text-gray-500">
                                 Upload a short video showcasing this color variant (MP4, max 2.5MB)
                               </p>
@@ -1798,6 +1943,16 @@ export default function NewProductPage() {
         }}
         onSelectFiles={handleGoogleDriveSelect}
         multiple={true}
+      />
+      
+      <GoogleDrivePicker
+        isOpen={showGoogleDriveVideoPicker}
+        onClose={() => {
+          setShowGoogleDriveVideoPicker(false)
+          setCurrentVariantForGoogleDriveVideo(null)
+        }}
+        onSelectFiles={handleGoogleDriveVideoSelect}
+        multiple={false}
       />
     </div>
   )

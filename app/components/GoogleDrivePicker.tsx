@@ -147,17 +147,17 @@ export default function GoogleDrivePicker({
       }
 
       // Separate files and folders
-      const imageFiles = data.files.filter((file: GoogleDriveFile) => 
-        file.mimeType.startsWith('image/')
+      const mediaFiles = data.files.filter((file: GoogleDriveFile) => 
+        file.mimeType.startsWith('image/') || file.mimeType.startsWith('video/')
       )
       const folderFiles = data.files.filter((file: GoogleDriveFile) => 
         file.mimeType === 'application/vnd.google-apps.folder'
       )
 
-      console.log('Google Drive Picker - Found images:', imageFiles.length)
+      console.log('Google Drive Picker - Found media files:', mediaFiles.length)
       console.log('Google Drive Picker - Found folders:', folderFiles.length)
 
-      setFiles(imageFiles)
+      setFiles(mediaFiles)
       setFolders(folderFiles)
     } catch (error) {
       console.error('Error loading files:', error)
@@ -238,11 +238,11 @@ export default function GoogleDrivePicker({
         throw new Error(data.error)
       }
 
-      const imageFiles = data.files.filter((file: GoogleDriveFile) => 
-        file.mimeType.startsWith('image/')
+      const mediaFiles = data.files.filter((file: GoogleDriveFile) => 
+        file.mimeType.startsWith('image/') || file.mimeType.startsWith('video/')
       )
 
-      setFiles(imageFiles)
+      setFiles(mediaFiles)
       setFolders([]) // Clear folders when searching
     } catch (error) {
       console.error('Error searching files:', error)
@@ -465,6 +465,12 @@ export default function GoogleDrivePicker({
                               {/* Try to show thumbnail for images */}
                               {file.mimeType.startsWith('image/') ? (
                                 <ThumbnailImage file={file} />
+                              ) : file.mimeType.startsWith('video/') ? (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
                               ) : (
                                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                                   <PhotoIcon className="h-8 w-8 text-gray-400" />
@@ -483,9 +489,21 @@ export default function GoogleDrivePicker({
                               <p className="text-xs text-gray-700 truncate" title={file.name}>
                                 {file.name}
                               </p>
-                              <p className="text-xs text-gray-500">
-                                {formatFileSize(file.size)}
-                              </p>
+                              <div className="flex justify-between items-center">
+                                <p className="text-xs text-gray-500">
+                                  {formatFileSize(file.size)}
+                                </p>
+                                <span className={`text-xs px-1 py-0.5 rounded ${
+                                  file.mimeType.startsWith('image/') 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : file.mimeType.startsWith('video/')
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {file.mimeType.startsWith('image/') ? 'IMG' : 
+                                   file.mimeType.startsWith('video/') ? 'VID' : 'FILE'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         ))}

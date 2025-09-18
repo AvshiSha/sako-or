@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Product, ColorVariant } from '@/lib/firebase'
 import { HeartIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
@@ -41,7 +41,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
   const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
   
   // Get available sizes for the active variant (only sizes with stock > 0)
-  const availableSizes = 'stockBySize' in activeVariant ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => size) : []
+  // const availableSizes = 'stockBySize' in activeVariant ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => size) : []
   
   // Handle color variant selection - just change the display
   const handleVariantSelect = (variant: any) => {

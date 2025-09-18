@@ -244,13 +244,7 @@ export default function CollectionSlugPage() {
    }
    
 
-  // Filtering logic
-  const subcategoryObj = categories.find(
-    (cat) => {
-      const catSlug = typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '';
-      return catSlug.toLowerCase() === (selectedSubcategory || '').toLowerCase();
-    }
-  );
+  // Filtering logic - subcategoryObj removed as it's no longer needed with new product structure
   
   const filteredProducts = products
     .filter((product) => {

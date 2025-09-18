@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -69,6 +69,15 @@ export default function ProductColorPage() {
   const [quantity, setQuantity] = useState(1)
   const [isClient, setIsClient] = useState(false)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
+  
+  // Swipe functionality state
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [showSwipeHint, setShowSwipeHint] = useState(true)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const carouselRef = useRef<HTMLDivElement>(null)
   
   // Favorites hook
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -188,6 +197,114 @@ export default function ProductColorPage() {
     console.log('Available variants:', product?.colorVariants ? Object.values(product.colorVariants).map(v => ({ colorSlug: v.colorSlug, stock: Object.values(v.stockBySize).reduce((sum, stock) => sum + stock, 0) })) : [])
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
   }
+
+  // Swipe functionality
+  const getTotalMediaCount = useCallback(() => {
+    if (!currentVariant) return 0
+    const imageCount = currentVariant.images?.length || 0
+    const videoCount = currentVariant.videos?.length || 0
+    return imageCount + videoCount
+  }, [currentVariant])
+
+  // Auto-hide swipe hint after 3 seconds
+  useEffect(() => {
+    if (showSwipeHint && getTotalMediaCount() > 1) {
+      const timer = setTimeout(() => {
+        setShowSwipeHint(false)
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSwipeHint, getTotalMediaCount])
+
+  const handleSwipeNavigation = useCallback((direction: 'left' | 'right') => {
+    if (isTransitioning) return
+    
+    const totalMedia = getTotalMediaCount()
+    if (totalMedia <= 1) return
+
+    setIsTransitioning(true)
+    
+    if (direction === 'left') {
+      // Swipe left - go to next image/video
+      setSelectedImageIndex(prev => {
+        const nextIndex = prev + 1
+        return nextIndex >= totalMedia ? 0 : nextIndex
+      })
+    } else {
+      // Swipe right - go to previous image/video
+      setSelectedImageIndex(prev => {
+        const prevIndex = prev - 1
+        return prevIndex < 0 ? totalMedia - 1 : prevIndex
+      })
+    }
+
+    // Reset transition state after animation
+    setTimeout(() => {
+      setIsTransitioning(false)
+    }, 300)
+  }, [isTransitioning, getTotalMediaCount])
+
+  // Enhanced touch end handler with momentum
+  const handleTouchEndEnhanced = () => {
+    if (!touchStart || !touchEnd || !isDragging) {
+      setIsDragging(false)
+      setDragOffset(0)
+      return
+    }
+    
+    const distance = touchStart - touchEnd
+    const velocity = Math.abs(distance)
+    const threshold = velocity > 100 ? 30 : 50 // Lower threshold for fast swipes
+    
+    const isLeftSwipe = distance > threshold
+    const isRightSwipe = distance < -threshold
+
+    // Add bounce effect for edge cases
+    if (isLeftSwipe || isRightSwipe) {
+      setIsDragging(false)
+      setDragOffset(0)
+      
+      if (isLeftSwipe) {
+        handleSwipeNavigation('left')
+      } else if (isRightSwipe) {
+        handleSwipeNavigation('right')
+      }
+    } else {
+      // Bounce back to original position
+      setIsDragging(false)
+      setTimeout(() => {
+        setDragOffset(0)
+      }, 50)
+    }
+  }
+
+  // Touch event handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+    setIsDragging(true)
+    setDragOffset(0)
+    // Hide swipe hint after first interaction
+    if (showSwipeHint) {
+      setShowSwipeHint(false)
+    }
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStart || !isDragging) return
+    
+    const currentTouch = e.targetTouches[0].clientX
+    const distance = touchStart - currentTouch
+    
+    // Limit drag offset to prevent over-scrolling
+    const maxDrag = carouselRef.current ? carouselRef.current.offsetWidth * 0.3 : 100
+    const clampedDistance = Math.max(-maxDrag, Math.min(maxDrag, distance))
+    
+    setDragOffset(clampedDistance)
+    setTouchEnd(currentTouch)
+  }
+
+  const handleTouchEnd = handleTouchEndEnhanced
 
   // Show loading until client-side hydration is complete
   if (!isClient) {
@@ -458,37 +575,86 @@ export default function ProductColorPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Product Images and Video */}
             <div className="space-y-4">
-              {/* Main Media (Image or Video) */}
-              <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg">
-                {currentVariant.videos && currentVariant.videos.length > 0 && selectedImageIndex === (currentVariant.images?.length || 0) ? (
-                  // Show video as the last "image"
-                  <video
-                    src={currentVariant.videos[0]}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    className="h-full w-full object-cover object-center"
-                    poster={currentVariant.images?.[0]} // Use first image as poster
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                ) : currentVariant.images && currentVariant.images.length > 0 ? (
-                  <Image
-                    src={currentVariant.images[selectedImageIndex]}
-                    alt={`${productName} - ${currentVariant.colorSlug}`}
-                    width={600}
-                    height={600}
-                    className="h-full w-full object-cover object-center"
-                    priority
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gray-200">
-                    <span className="text-gray-400">
-                      {lng === 'he' ? 'אין תמונה זמינה' : 'No image available'}
-                    </span>
+              {/* Main Media Carousel */}
+              <div 
+                className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg relative select-none"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                style={{ touchAction: 'pan-y pinch-zoom' }}
+              >
+                {/* Swipe indicator dots for mobile */}
+                {getTotalMediaCount() > 1 && (
+                  <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex space-x-2">
+                    {Array.from({ length: getTotalMediaCount() }).map((_, index) => (
+                      <div
+                        key={index}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                          selectedImageIndex === index ? 'bg-white' : 'bg-white/50'
+                        }`}
+                      />
+                    ))}
                   </div>
                 )}
+                
+                {/* Swipe hint for mobile */}
+                {getTotalMediaCount() > 1 && showSwipeHint && (
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 animate-pulse">
+                    <div className="bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                      {lng === 'he' ? 'החלק לצדדים' : 'Swipe to navigate'}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sliding Media Container */}
+                <div 
+                  ref={carouselRef}
+                  className="flex h-full w-full transition-transform duration-300 ease-out"
+                  style={{
+                    transform: `translateX(${-selectedImageIndex * 100 + (carouselRef.current ? (dragOffset / carouselRef.current.offsetWidth) * 100 : 0)}%)`,
+                    transition: isDragging ? 'none' : 'transform 300ms ease-out'
+                  }}
+                >
+                  {/* Images */}
+                  {currentVariant.images && currentVariant.images.map((image, index) => (
+                    <div key={`image-${index}`} className="w-full h-full flex-shrink-0">
+                      <Image
+                        src={image}
+                        alt={`${productName} - ${currentVariant.colorSlug}`}
+                        width={600}
+                        height={600}
+                        className="h-full w-full object-cover object-center"
+                        priority={index === 0}
+                      />
+                    </div>
+                  ))}
+                  
+                  {/* Videos */}
+                  {currentVariant.videos && currentVariant.videos.map((video, index) => (
+                    <div key={`video-${index}`} className="w-full h-full flex-shrink-0">
+                      <video
+                        src={video}
+                        autoPlay={selectedImageIndex === (currentVariant.images?.length || 0) + index}
+                        loop
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover object-center"
+                        poster={currentVariant.images?.[0]}
+                      >
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  ))}
+                  
+                  {/* Fallback for no media */}
+                  {(!currentVariant.images || currentVariant.images.length === 0) && (!currentVariant.videos || currentVariant.videos.length === 0) && (
+                    <div className="w-full h-full flex-shrink-0 flex items-center justify-center bg-gray-200">
+                      <span className="text-gray-400">
+                        {lng === 'he' ? 'אין תמונה זמינה' : 'No image available'}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Thumbnail Images and Video */}
@@ -498,9 +664,13 @@ export default function ProductColorPage() {
                   {currentVariant.images && currentVariant.images.map((image, index) => (
                     <button
                       key={index}
-                      onClick={() => setSelectedImageIndex(index)}
-                      className={`aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border-2 ${
-                        selectedImageIndex === index ? 'border-indigo-600' : 'border-gray-200'
+                      onClick={() => {
+                        setIsTransitioning(true)
+                        setSelectedImageIndex(index)
+                        setTimeout(() => setIsTransitioning(false), 300)
+                      }}
+                      className={`aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border-2 transition-all duration-200 ${
+                        selectedImageIndex === index ? 'border-indigo-600 scale-105' : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <Image
@@ -514,27 +684,41 @@ export default function ProductColorPage() {
                     </button>
                   ))}
                   
-                  {/* Video thumbnail (always last if video exists) */}
-                  {currentVariant.videos && currentVariant.videos.length > 0 && (
-                    <button
-                      onClick={() => setSelectedImageIndex(currentVariant.images?.length || 0)}
-                      className={`aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border-2 relative ${
-                        selectedImageIndex === (currentVariant.images?.length || 0) ? 'border-indigo-600' : 'border-gray-200'
-                      }`}
-                    >
-                      <video
-                        src={currentVariant.videos[0]}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="h-full w-full object-cover object-center"
-                        poster={currentVariant.images?.[0]}
+                  {/* Video thumbnails */}
+                  {currentVariant.videos && currentVariant.videos.map((video, index) => {
+                    const videoIndex = (currentVariant.images?.length || 0) + index
+                    return (
+                      <button
+                        key={`video-thumb-${index}`}
+                        onClick={() => {
+                          setIsTransitioning(true)
+                          setSelectedImageIndex(videoIndex)
+                          setTimeout(() => setIsTransitioning(false), 300)
+                        }}
+                        className={`aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border-2 relative transition-all duration-200 ${
+                          selectedImageIndex === videoIndex ? 'border-indigo-600 scale-105' : 'border-gray-200 hover:border-gray-300'
+                        }`}
                       >
-                        Your browser does not support the video tag.
-                      </video>
-                    </button>
-                  )}
+                        <video
+                          src={video}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          className="h-full w-full object-cover object-center"
+                          poster={currentVariant.images?.[0]}
+                        >
+                          Your browser does not support the video tag.
+                        </video>
+                        {/* Video play icon overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-6 h-6 bg-white/80 rounded-full flex items-center justify-center">
+                            <div className="w-0 h-0 border-l-[6px] border-l-gray-700 border-y-[4px] border-y-transparent ml-0.5"></div>
+                          </div>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>

@@ -782,7 +782,7 @@ export default function ProductColorPage() {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                   {lng === 'he' ? 'תיאור' : 'Description'}
                 </h3>
-                <p className="text-gray-600 leading-relaxed">{productDescription}</p>
+                <p className="text-gray-600 leading-relaxed">{lng === 'he' ? product.description_he : product.description_en}</p>
               </div>
 
               {/* Color Selection */}

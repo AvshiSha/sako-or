@@ -1053,6 +1053,19 @@ function EditProductPage() {
           videoUrl = await uploadVariantVideo(variant.id)
         }
         
+        // Find the primary image from the uploaded images
+        const primaryImageIndex = variant.images.findIndex(img => img.isPrimary)
+        const primaryImageUrl = primaryImageIndex >= 0 && uploadedImages[primaryImageIndex] 
+          ? uploadedImages[primaryImageIndex] 
+          : uploadedImages[0] || null
+        
+        console.log(`Primary image for ${variant.colorName}:`, {
+          primaryImageIndex,
+          primaryImageUrl,
+          totalImages: uploadedImages.length,
+          variantImages: variant.images.map((img, idx) => ({ index: idx, isPrimary: img.isPrimary, url: img.url }))
+        })
+
         colorVariants[variant.colorSlug] = {
           colorSlug: variant.colorSlug,
           priceOverride: variant.price || null,
@@ -1061,7 +1074,7 @@ function EditProductPage() {
           metaTitle: variant.metaTitle || '',
           metaDescription: variant.metaDescription || '',
           images: uploadedImages,
-          primaryImage: uploadedImages[0] || null,
+          primaryImage: primaryImageUrl,
           videos: videoUrl ? [videoUrl] : []
         }
       }

@@ -244,7 +244,7 @@ export default function ProductColorPage() {
     }, 300)
   }, [isTransitioning, getTotalMediaCount])
 
-  // Enhanced touch end handler with momentum
+  // Enhanced touch end handler with momentum and RTL support
   const handleTouchEndEnhanced = () => {
     if (!touchStart || !touchEnd || !isDragging) {
       setIsDragging(false)
@@ -256,8 +256,9 @@ export default function ProductColorPage() {
     const velocity = Math.abs(distance)
     const threshold = velocity > 100 ? 30 : 50 // Lower threshold for fast swipes
     
-    const isLeftSwipe = distance > threshold
-    const isRightSwipe = distance < -threshold
+    // In RTL (Hebrew), invert the swipe directions
+    const isLeftSwipe = lng === 'he' ? distance < -threshold : distance > threshold
+    const isRightSwipe = lng === 'he' ? distance > threshold : distance < -threshold
 
     // Add bounce effect for edge cases
     if (isLeftSwipe || isRightSwipe) {
@@ -564,7 +565,7 @@ export default function ProductColorPage() {
                   </div>
                 </li>
                 <li>
-                  <span className="text-gray-600 font-medium">{currentVariant.colorSlug}</span>
+                  <span className="text-gray-600 font-medium">{product.sku} {currentVariant.colorSlug}</span>
                 </li>
               </ol>
             </nav>
@@ -601,7 +602,7 @@ export default function ProductColorPage() {
                 {getTotalMediaCount() > 1 && showSwipeHint && (
                   <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 animate-pulse">
                     <div className="bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                      {lng === 'he' ? 'החלק לצדדים' : 'Swipe to navigate'}
+                      {lng === 'he' ? 'החלק ימינה ושמאלה' : 'Swipe to navigate'}
                     </div>
                   </div>
                 )}
@@ -611,7 +612,7 @@ export default function ProductColorPage() {
                   ref={carouselRef}
                   className="flex h-full w-full transition-transform duration-300 ease-out"
                   style={{
-                    transform: `translateX(${-selectedImageIndex * 100 + (carouselRef.current ? (dragOffset / carouselRef.current.offsetWidth) * 100 : 0)}%)`,
+                    transform: `translateX(${-selectedImageIndex * 100 + (carouselRef.current ? ((lng === 'he' ? -dragOffset : dragOffset) / carouselRef.current.offsetWidth) * 100 : 0)}%)`,
                     transition: isDragging ? 'none' : 'transform 300ms ease-out'
                   }}
                 >
@@ -979,7 +980,7 @@ export default function ProductColorPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>
-                        <span>{product.category}</span>
+                        <span>{product.categories_path[0]}</span>
                       </div>
                     </div>
                   </div>

@@ -53,11 +53,26 @@ export function useCart(): CartHook {
     if (!loading) {
       try {
         localStorage.setItem('cart', JSON.stringify(items))
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new CustomEvent('cartUpdated', { detail: items }))
       } catch (error) {
         console.error('Error saving cart:', error)
       }
     }
   }, [items, loading])
+
+  // Listen for cart updates from other components
+  useEffect(() => {
+    const handleCartUpdate = (event: CustomEvent) => {
+      setItems(event.detail)
+    }
+
+    window.addEventListener('cartUpdated', handleCartUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('cartUpdated', handleCartUpdate as EventListener)
+    }
+  }, [])
 
   const addToCart = useCallback((newItem: Omit<CartItem, 'quantity'>) => {
     setItems(prevItems => {

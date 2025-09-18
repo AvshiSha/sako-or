@@ -34,11 +34,26 @@ export function useFavorites(): FavoritesHook {
     if (!loading) {
       try {
         localStorage.setItem('favorites', JSON.stringify(favorites))
+        // Dispatch custom event to notify other components
+        window.dispatchEvent(new CustomEvent('favoritesUpdated', { detail: favorites }))
       } catch (error) {
         console.error('Error saving favorites:', error)
       }
     }
   }, [favorites, loading])
+
+  // Listen for favorites updates from other components
+  useEffect(() => {
+    const handleFavoritesUpdate = (event: CustomEvent) => {
+      setFavorites(event.detail)
+    }
+
+    window.addEventListener('favoritesUpdated', handleFavoritesUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('favoritesUpdated', handleFavoritesUpdate as EventListener)
+    }
+  }, [])
 
   const isFavorite = useCallback((sku: string): boolean => {
     return favorites.includes(sku)

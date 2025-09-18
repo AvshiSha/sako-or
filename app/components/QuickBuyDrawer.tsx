@@ -7,9 +7,11 @@ import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Product, ColorVariant } from '@/lib/firebase'
+import { useRouter } from 'next/navigation'
+import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
+import Toast, { useToast } from '@/app/components/Toast'
 
 interface QuickBuyDrawerProps {
   isOpen: boolean
@@ -21,8 +23,12 @@ interface QuickBuyDrawerProps {
 export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en' }: QuickBuyDrawerProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('')
+  const [quantity, setQuantity] = useState(1)
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const router = useRouter()
   const { isFavorite, toggleFavorite } = useFavorites()
   const { addToCart } = useCart()
+  const { toast, showToast, hideToast } = useToast()
   
   // Get the first active color variant for display
   const defaultVariant = product.colorVariants ? Object.values(product.colorVariants)[0] : null
@@ -40,7 +46,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   }
 
   const currentPrice = getCurrentPrice()
-  const productName = product.name?.[language] || product.name?.en || 'Unnamed Product'
+  const productName = productHelpers.getField(product, 'name', language)
   
   // Get primary image from the active variant
   const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
@@ -59,6 +65,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   // Handle size selection
   const handleSizeSelect = (size: string) => {
     setSelectedSize(size)
+    setQuantity(1) // Reset quantity when size changes
   }
   
   // Handle wishlist toggle
@@ -70,26 +77,79 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   }
   
   // Handle add to cart
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
+    if (isAddingToCart) return
+    
+    console.log('Add to cart clicked', { 
+      selectedSize, 
+      quantity, 
+      availableSizes: availableSizes.length,
+      activeVariant: activeVariant?.colorSlug,
+      product: product.baseSku || product.sku
+    })
+    
     const sku = product.baseSku || product.sku || ''
-    if (sku && product.name) {
+    if (!sku) {
+      console.error('No SKU found for product')
+      return
+    }
+    
+    // Check if size is required but not selected
+    if (availableSizes.length > 0 && !selectedSize) {
+      console.log('Size required but not selected')
+      return
+    }
+    
+    setIsAddingToCart(true)
+    
+    try {
       // Get stock for selected size, or total stock if no size selected
       const maxStock = selectedSize 
         ? ('stockBySize' in activeVariant ? activeVariant.stockBySize[selectedSize] || 0 : 0)
         : ('stockBySize' in activeVariant ? Object.values(activeVariant.stockBySize).reduce((total, stock) => total + stock, 0) : 0)
       
-      addToCart({
-        sku: sku,
-        name: product.name,
-        price: currentPrice,
-        salePrice: activeVariant.salePrice,
-        currency: 'ILS',
-        image: typeof primaryImage === 'string' ? primaryImage : primaryImage?.url,
-        color: activeVariant.colorSlug,
-        size: selectedSize || undefined,
-        maxStock: maxStock
-      })
+      console.log('Adding to cart:', { sku, quantity, maxStock, selectedSize })
+      
+      // Add multiple items based on quantity
+      for (let i = 0; i < quantity; i++) {
+        addToCart({
+          sku: sku,
+          name: {
+            en: productHelpers.getField(product, 'name', 'en'),
+            he: productHelpers.getField(product, 'name', 'he')
+          },
+          price: currentPrice,
+          salePrice: activeVariant.salePrice,
+          currency: 'ILS',
+          image: typeof primaryImage === 'string' ? primaryImage : primaryImage?.url,
+          color: activeVariant.colorSlug,
+          size: selectedSize || undefined,
+          maxStock: maxStock
+        })
+      }
+      
+      console.log('Items added to cart, closing drawer')
+      
+      // Show success toast
+      const successMessage = language === 'he' 
+        ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה` 
+        : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
+      showToast(successMessage, 'success')
+      
+      // Close the drawer
       onClose()
+      
+      // Navigate to the category page
+      if (product.categories_path && product.categories_path.length > 0) {
+        router.push(`/${language}/collection/${product.categories_path[0]}`)
+      } else {
+        // Fallback to main collection page if no category path
+        router.push(`/${language}/collection`)
+      }
+    } catch (error) {
+      console.error('Error adding to cart:', error)
+    } finally {
+      setIsAddingToCart(false)
     }
   }
 
@@ -124,7 +184,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                   <div className="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
                     {/* Header */}
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                      <h2 className="text-lg font-semibold text-gray-900">{productName}</h2>
+                      <h2 className="text-lg font-semibold text-gray-900">{language === 'he' ? product.title_he : product.title_en}</h2>
                       <div className="flex items-center gap-3">
                         {/* Heart Icon */}
                         <button
@@ -154,8 +214,16 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                       {/* Price */}
                       <div className="mb-6">
                         <div className="text-2xl font-bold text-gray-900">
-                          ₪{currentPrice.toFixed(2)}
+                          ₪{(currentPrice * quantity).toFixed(2)}
                         </div>
+                        {quantity > 1 && (
+                          <div className="text-sm text-gray-500 mt-1">
+                            {language === 'he' 
+                              ? `${quantity} × ₪${currentPrice.toFixed(2)} = ₪${(currentPrice * quantity).toFixed(2)}`
+                              : `${quantity} × ₪${currentPrice.toFixed(2)} = ₪${(currentPrice * quantity).toFixed(2)}`
+                            }
+                          </div>
+                        )}
                         {activeVariant.salePrice && currentPrice === activeVariant.salePrice && (
                           <div className="text-sm text-red-600 mt-1">
                             {language === 'he' ? 'מבצע' : 'Sale'}
@@ -240,19 +308,66 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                         </div>
                       )}
 
+                      {/* Quantity Selection based on the size the user chose*/}
+                      {selectedSize && availableSizes.length > 0 && (
+                        <div className="mb-8">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-medium text-gray-900">
+                              {language === 'he' ? 'כמות' : 'Quantity'}
+                            </h3>
+                            <span className="text-xs text-gray-500">
+                              {language === 'he' 
+                                ? `מקסימום ${availableSizes.find(s => s.size === selectedSize)?.stock || 0} יחידות`
+                                : `Max ${availableSizes.find(s => s.size === selectedSize)?.stock || 0} units`
+                              }
+                            </span>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <button
+                              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                              disabled={quantity <= 1}
+                              className="p-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                              </svg>
+                            </button>
+                            <span className="text-lg font-medium min-w-[2rem] text-center text-gray-900">{quantity}</span>
+                            <button
+                              onClick={() => {
+                                const maxStock = availableSizes.find(s => s.size === selectedSize)?.stock || 0
+                                setQuantity(Math.min(quantity + 1, maxStock))
+                              }}
+                              disabled={quantity >= (availableSizes.find(s => s.size === selectedSize)?.stock || 0)}
+                              className="p-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Action Buttons */}
                       <div className="space-y-3">
                         {/* Add to Shopping Cart Button */}
                         <button
                           onClick={handleAddToCart}
-                          disabled={availableSizes.length > 0 && !selectedSize}
+                          disabled={availableSizes.length > 0 && !selectedSize || isAddingToCart}
                           className={`w-full font-medium py-3 px-4 transition-colors duration-200 ${
-                            availableSizes.length > 0 && !selectedSize
+                            availableSizes.length > 0 && !selectedSize || isAddingToCart
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                               : 'bg-black text-white hover:bg-gray-800'
                           }`}
                         >
-                          {language === 'he' ? 'הוסף לעגלת הקניות' : 'Add to Shopping Cart'}
+                          {isAddingToCart ? (
+                            language === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
+                          ) : (
+                            language === 'he' 
+                              ? `הוסף ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`
+                              : `Add ${quantity} ${quantity === 1 ? 'Item' : 'Items'} to Cart`
+                          )}
                         </button>
                         
                         {/* More Details Button */}
@@ -272,6 +387,15 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
           </div>
         </div>
       </Dialog>
+      
+      {/* Toast Notification */}
+      <Toast
+        message={toast.message}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+        duration={5000}
+        type={toast.type}
+      />
     </Transition.Root>
   )
 }

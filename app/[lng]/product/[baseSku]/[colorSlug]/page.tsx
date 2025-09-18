@@ -70,14 +70,8 @@ export default function ProductColorPage() {
   const [isClient, setIsClient] = useState(false)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   
-  // Swipe functionality state
-  const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+  // Image navigation state
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const [showSwipeHint, setShowSwipeHint] = useState(true)
-  const [dragOffset, setDragOffset] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const carouselRef = useRef<HTMLDivElement>(null)
   
   // Favorites hook
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -211,114 +205,13 @@ export default function ProductColorPage() {
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
   }
 
-  // Swipe functionality
+  // Get total media count for navigation
   const getTotalMediaCount = useCallback(() => {
     if (!currentVariant) return 0
     const imageCount = currentVariant.images?.length || 0
     const videoCount = currentVariant.videos?.length || 0
     return imageCount + videoCount
   }, [currentVariant])
-
-  // Auto-hide swipe hint after 3 seconds
-  useEffect(() => {
-    if (showSwipeHint && getTotalMediaCount() > 1) {
-      const timer = setTimeout(() => {
-        setShowSwipeHint(false)
-      }, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [showSwipeHint, getTotalMediaCount])
-
-  const handleSwipeNavigation = useCallback((direction: 'left' | 'right') => {
-    if (isTransitioning) return
-    
-    const totalMedia = getTotalMediaCount()
-    if (totalMedia <= 1) return
-
-    setIsTransitioning(true)
-    
-    if (direction === 'left') {
-      // Swipe left - go to next image/video
-      setSelectedImageIndex(prev => {
-        const nextIndex = prev + 1
-        return nextIndex >= totalMedia ? 0 : nextIndex
-      })
-    } else {
-      // Swipe right - go to previous image/video
-      setSelectedImageIndex(prev => {
-        const prevIndex = prev - 1
-        return prevIndex < 0 ? totalMedia - 1 : prevIndex
-      })
-    }
-
-    // Reset transition state after animation
-    setTimeout(() => {
-      setIsTransitioning(false)
-    }, 300)
-  }, [isTransitioning, getTotalMediaCount])
-
-  // Enhanced touch end handler with momentum and RTL support
-  const handleTouchEndEnhanced = () => {
-    if (!touchStart || !touchEnd || !isDragging) {
-      setIsDragging(false)
-      setDragOffset(0)
-      return
-    }
-    
-    const distance = touchStart - touchEnd
-    const velocity = Math.abs(distance)
-    const threshold = velocity > 100 ? 30 : 50 // Lower threshold for fast swipes
-    
-    // In RTL (Hebrew), invert the swipe directions
-    const isLeftSwipe = lng === 'he' ? distance < -threshold : distance > threshold
-    const isRightSwipe = lng === 'he' ? distance > threshold : distance < -threshold
-
-    // Add bounce effect for edge cases
-    if (isLeftSwipe || isRightSwipe) {
-      setIsDragging(false)
-      setDragOffset(0)
-      
-      if (isLeftSwipe) {
-        handleSwipeNavigation('left')
-      } else if (isRightSwipe) {
-        handleSwipeNavigation('right')
-      }
-    } else {
-      // Bounce back to original position
-      setIsDragging(false)
-      setTimeout(() => {
-        setDragOffset(0)
-      }, 50)
-    }
-  }
-
-  // Touch event handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
-    setIsDragging(true)
-    setDragOffset(0)
-    // Hide swipe hint after first interaction
-    if (showSwipeHint) {
-      setShowSwipeHint(false)
-    }
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStart || !isDragging) return
-    
-    const currentTouch = e.targetTouches[0].clientX
-    const distance = touchStart - currentTouch
-    
-    // Limit drag offset to prevent over-scrolling
-    const maxDrag = carouselRef.current ? carouselRef.current.offsetWidth * 0.3 : 100
-    const clampedDistance = Math.max(-maxDrag, Math.min(maxDrag, distance))
-    
-    setDragOffset(clampedDistance)
-    setTouchEnd(currentTouch)
-  }
-
-  const handleTouchEnd = handleTouchEndEnhanced
 
   // Show loading until client-side hydration is complete
   if (!isClient) {
@@ -590,14 +483,8 @@ export default function ProductColorPage() {
             {/* Product Images and Video */}
             <div className="space-y-4">
               {/* Main Media Carousel */}
-              <div 
-                className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg relative select-none"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                style={{ touchAction: 'pan-y pinch-zoom' }}
-              >
-                {/* Swipe indicator dots for mobile */}
+              <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg relative">
+                {/* Media indicator dots */}
                 {getTotalMediaCount() > 1 && (
                   <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex space-x-2">
                     {Array.from({ length: getTotalMediaCount() }).map((_, index) => (
@@ -610,23 +497,12 @@ export default function ProductColorPage() {
                     ))}
                   </div>
                 )}
-                
-                {/* Swipe hint for mobile */}
-                {getTotalMediaCount() > 1 && showSwipeHint && (
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 animate-pulse">
-                    <div className="bg-black/50 text-white text-xs px-2 py-1 rounded-full">
-                      {lng === 'he' ? 'החלק ימינה ושמאלה' : 'Swipe to navigate'}
-                    </div>
-                  </div>
-                )}
 
-                {/* Sliding Media Container */}
+                {/* Media Container */}
                 <div 
-                  ref={carouselRef}
                   className="flex h-full w-full transition-transform duration-300 ease-out"
                   style={{
-                    transform: `translateX(${-selectedImageIndex * 100 + (carouselRef.current ? (dragOffset / carouselRef.current.offsetWidth) * 100 : 0)}%)`,
-                    transition: isDragging ? 'none' : 'transform 300ms ease-out'
+                    transform: `translateX(-${selectedImageIndex * 100}%)`
                   }}
                 >
                   {/* Images */}
@@ -648,12 +524,6 @@ export default function ProductColorPage() {
                           }
                         }}
                       />
-                      {/* Fallback for Hebrew debugging */}
-                      {lng === 'he' && index === selectedImageIndex && (
-                        <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                          {index + 1}/{getTotalMediaCount()}
-                        </div>
-                      )}
                     </div>
                   ))}
                   

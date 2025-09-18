@@ -25,7 +25,6 @@ export default function FavoritesPage() {
   const lng = params?.lng as string || 'en'
   const isRTL = lng === 'he'
   
-  console.log('🚀 Favorites page: Component loaded, language:', lng)
   
   const [favorites, setFavorites] = useState<FavoriteProduct[]>([])
   const [loading, setLoading] = useState(true)
@@ -72,7 +71,6 @@ export default function FavoritesPage() {
   }, [])
 
   useEffect(() => {
-    console.log('🔄 Favorites page: isClient changed to:', isClient)
     if (isClient) {
       const loadFavorites = async () => {
         if (!isClient) return
@@ -82,7 +80,6 @@ export default function FavoritesPage() {
           
           // Get favorite SKUs from localStorage
           const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
-          console.log('🔍 Favorites page: Found SKUs in localStorage:', favoriteSkus)
           
           if (favoriteSkus.length === 0) {
             setFavorites([])
@@ -95,33 +92,21 @@ export default function FavoritesPage() {
           
           for (const sku of favoriteSkus) {
             try {
-              console.log('🔍 Favorites page: Fetching product for SKU:', sku)
-              // Try to get product with color variants first (new system using baseSku)
-              let product = await productService.getProductWithColorVariants(sku)
-              console.log('📦 Favorites page: Product with variants found:', product ? 'YES' : 'NO')
+              // Get product directly (color variants are already in the document)
+              let product = await productService.getProductByBaseSku(sku)
               
               // If not found, try legacy method (using sku field)
               if (!product) {
                 product = await productService.getProductBySku(sku)
-                console.log('📦 Favorites page: Legacy product found:', product ? 'YES' : 'NO')
               }
               
               // If still not found, try searching by baseSku in legacy products
               if (!product) {
                 const allProducts = await productService.getAllProducts()
                 product = allProducts.find(p => p.baseSku === sku) || null
-                console.log('📦 Favorites page: Found by baseSku search:', product ? 'YES' : 'NO')
               }
               
               if (product) {
-                console.log('📦 Favorites page: Product data:', {
-                  name: product.title_en,
-                  baseSku: product.baseSku,
-                  sku: product.sku,
-                  hasColorVariants: !!product.colorVariants,
-                  colorVariantsCount: product.colorVariants ? Object.keys(product.colorVariants).length : 0,
-                  firstVariantImages: product.colorVariants ? Object.values(product.colorVariants)[0]?.images?.length || 0 : 0
-                })
                 favoriteProducts.push(product)
               } else {
                 // Product not found - mark as unavailable
@@ -159,7 +144,6 @@ export default function FavoritesPage() {
             }
           }
           
-          console.log('✅ Favorites page: Final products loaded:', favoriteProducts.length)
           setFavorites(favoriteProducts)
         } catch (error) {
           console.error('❌ Error loading favorites:', error)
@@ -274,19 +258,39 @@ export default function FavoritesPage() {
         ) : (
           /* Favorites Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {favorites.map((product) => (
+            {favorites.map((product) => {
+              const firstVariant = product.colorVariants && Object.keys(product.colorVariants).length > 0 ? Object.values(product.colorVariants)[0] : null
+              const imageSrc = firstVariant?.primaryImage || firstVariant?.images?.[0] || (product as any).primaryImage || (product as any).images?.[0] || '/images/placeholder.svg'
+              
+              // Check if this is a product with no images (needs color variants)
+              const hasNoImages = !firstVariant?.primaryImage && !firstVariant?.images?.length && !(product as any).primaryImage && !(product as any).images?.length
+              
+              
+              return (
               <div key={product.sku} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                 {/* Product Image */}
                 <div className="relative aspect-square">
-                  {product.isUnavailable ? (
+                  {!product.isEnabled ? (
                     <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                       <ExclamationTriangleIcon className="h-12 w-12 text-gray-400" />
                     </div>
+                  ) : hasNoImages ? (
+                    <div className="w-full h-full bg-gray-100 flex flex-col items-center justify-center text-gray-500">
+                      <svg className="w-12 h-12 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-xs text-center px-2">
+                        {lng === 'he' ? 'אין תמונות זמינות' : 'No images available'}
+                      </span>
+                      <span className="text-xs text-center px-2 mt-1 text-gray-400">
+                        {lng === 'he' ? 'צור קשר עם מנהל המערכת' : 'Contact admin to add images'}
+                      </span>
+                    </div>
                   ) : (
-                    <Link href={`/${lng}/product/${product.sku}/${product.colorVariants ? Object.values(product.colorVariants)[0]?.colorSlug || 'default' : 'default'}`}>
+                    <Link href={`/${lng}/product/${product.sku}/${firstVariant?.colorSlug || 'default'}`}>
                       <Image
-                        src={product.colorVariants ? Object.values(product.colorVariants)[0]?.images?.[0] || '/images/placeholder.svg' : '/images/placeholder.svg'}
-                        alt={lng === 'he' ? product.title_he : product.title_en || 'Product'}
+                        src={imageSrc}
+                        alt={firstVariant?.colorSlug || 'default'}
                         fill
                         className="object-cover hover:scale-105 transition-transform duration-200"
                       />
@@ -295,7 +299,7 @@ export default function FavoritesPage() {
                   
                   {/* Favorite Button */}
                   <button
-                    onClick={() => toggleFavorite(product.sku!)}
+                    onClick={() => toggleFavorite(product.baseSku || product.sku!)}
                     className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
                   >
                     <HeartSolidIcon className="h-5 w-5 text-red-500" />
@@ -304,7 +308,7 @@ export default function FavoritesPage() {
 
                 {/* Product Info */}
                 <div className="p-4">
-                  {product.isUnavailable ? (
+                  {!product.isEnabled ? (
                     /* Unavailable Product */
                     <div>
                       <div className="flex items-center text-red-600 mb-2">
@@ -312,7 +316,7 @@ export default function FavoritesPage() {
                         <span className="text-sm font-medium">{t.productUnavailable}</span>
                       </div>
                       <button
-                        onClick={() => removeFromFavorites(product.sku!)}
+                        onClick={() => removeFromFavorites(product.baseSku || product.sku!)}
                         className="text-sm text-gray-500 hover:text-red-600 flex items-center"
                       >
                         <TrashIcon className="h-4 w-4 mr-1" />
@@ -322,7 +326,7 @@ export default function FavoritesPage() {
                   ) : (
                     /* Available Product */
                     <>
-                      <Link href={`/${lng}/product/${product.sku}`}>
+                      <Link href={`/${lng}/product/${product.baseSku || product.sku}`}>
                         <h3 className="font-medium text-gray-900 mb-2 hover:text-indigo-600 line-clamp-2">
                           {lng === 'he' ? product.title_he : product.title_en}
                         </h3>
@@ -334,6 +338,7 @@ export default function FavoritesPage() {
                         </span>
                         {(!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                           // Check if this color variant has any stock across all sizes
+                          if (!v.stockBySize) return true;
                           const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
                           return totalStock <= 0;
                         })) && (
@@ -350,12 +355,14 @@ export default function FavoritesPage() {
                         }}
                         disabled={!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                           // Check if this color variant has any stock across all sizes
+                          if (!v.stockBySize) return true;
                           const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
                           return totalStock <= 0;
                         })}
                         className={`w-full py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center ${
                           (!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                             // Check if this color variant has any stock across all sizes
+                            if (!v.stockBySize) return true;
                             const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
                             return totalStock <= 0;
                           }))
@@ -370,7 +377,8 @@ export default function FavoritesPage() {
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

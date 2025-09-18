@@ -5,6 +5,7 @@ import { Menu, X, Heart, ShoppingBag, ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import { useCart } from '@/app/hooks/useCart'
+import { useFavorites } from '@/app/hooks/useFavorites'
 import { categoryService } from '@/lib/firebase'
 
 
@@ -46,6 +47,7 @@ export default function Navigation({ lng }: { lng: string }) {
   const [selectedMobileCategory, setSelectedMobileCategory] = useState<{id: string, slug: string, name: string, subChildren?: Array<{id: string, slug: string, name: string}>} | null>(null)
   
   const { items } = useCart()
+  const { favorites } = useFavorites()
 
   // Helper functions to check if categories exist
   const hasWomenCategory = () => {
@@ -446,22 +448,27 @@ export default function Navigation({ lng }: { lng: string }) {
           <div className="flex items-center space-x-4">
             <Link 
               href={`/${lng}/favorites`} 
-              className="text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+              className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
             >
               <Heart className="h-5 w-5" />
+              {favorites.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
+                  {favorites.length}
+                </span>
+              )}
             </Link>
             
-              <Link
-                href={`/${lng}/cart`}
+            <Link
+              href={`/${lng}/cart`}
               className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-              >
-                <ShoppingBag className="h-5 w-5" />
+            >
+              <ShoppingBag className="h-5 w-5" />
               {items.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
                   {items.length}
-                  </span>
-                )}
-              </Link>
+                </span>
+              )}
+            </Link>
             
             <DropdownLanguageSwitcher currentLanguage={lng} />
             
@@ -674,6 +681,37 @@ export default function Navigation({ lng }: { lng: string }) {
                     ))}
                   </>
                 )}
+                
+                {/* Mobile Cart and Favorites Icons */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
+                  <div className="flex items-center justify-center space-x-8">
+                    <Link 
+                      href={`/${lng}/favorites`} 
+                      onClick={closeMobileMenu}
+                      className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-3 rounded-md hover:bg-gray-50"
+                    >
+                      <Heart className="h-6 w-6" />
+                      {favorites.length > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
+                          {favorites.length}
+                        </span>
+                      )}
+                    </Link>
+                    
+                    <Link
+                      href={`/${lng}/cart`}
+                      onClick={closeMobileMenu}
+                      className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-3 rounded-md hover:bg-gray-50"
+                    >
+                      <ShoppingBag className="h-6 w-6" />
+                      {items.length > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
+                          {items.length}
+                        </span>
+                      )}
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

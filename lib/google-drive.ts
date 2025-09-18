@@ -37,6 +37,11 @@ export class GoogleDriveService {
       ? 'https://sako-or.vercel.app/api/google-drive/callback'
       : 'http://localhost:3000/api/google-drive/callback';
 
+    console.log('Google Drive Auth - Environment:', process.env.NODE_ENV);
+    console.log('Google Drive Auth - Redirect URI:', redirectUri);
+    console.log('Google Drive Auth - Client ID exists:', !!process.env.GOOGLE_CLIENT_ID);
+    console.log('Google Drive Auth - Client Secret exists:', !!process.env.GOOGLE_CLIENT_SECRET);
+
     // Initialize OAuth2 client
     this.auth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -49,11 +54,20 @@ export class GoogleDriveService {
 
   // Get authorization URL for OAuth flow
   getAuthUrl(): string {
-    return this.auth.generateAuthUrl({
-      access_type: 'offline',
-      scope: GOOGLE_DRIVE_SCOPES,
-      prompt: 'consent'
-    });
+    try {
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        throw new Error('Google OAuth credentials not configured. Please check your environment variables.');
+      }
+
+      return this.auth.generateAuthUrl({
+        access_type: 'offline',
+        scope: GOOGLE_DRIVE_SCOPES,
+        prompt: 'consent'
+      });
+    } catch (error) {
+      console.error('Error generating auth URL:', error);
+      throw new Error('Failed to generate Google Drive authentication URL. Please check your configuration.');
+    }
   }
 
   // Exchange authorization code for tokens

@@ -8,8 +8,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ authUrl })
   } catch (error) {
     console.error('Error generating auth URL:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate authentication URL'
+    
     return NextResponse.json(
-      { error: 'Failed to generate authentication URL' },
+      { 
+        error: errorMessage,
+        details: 'Please check your Google OAuth configuration and environment variables'
+      },
       { status: 500 }
     )
   }

@@ -74,7 +74,6 @@ docs/
 
 # Configuration files (keep private)
 cors.json
-eslint.config.mjs
 firebase.js
 firebase.json
 firestore.indexes.json

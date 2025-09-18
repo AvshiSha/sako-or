@@ -130,23 +130,24 @@ function CategoriesPage() {
         isEnabled: true,
         sortOrder: 1
       },
-      {
-        name: {
-          en: 'Men',
-          he: 'גברים'
-        },
-        slug: {
-          en: 'men',
-          he: 'גברים'
-        },
-        description: {
-          en: 'Men\'s collection',
-          he: 'קולקציית גברים'
-        },
-        level: 0,
-        isEnabled: true,
-        sortOrder: 2
-      },
+      // Men category removed - will not be auto-created
+      // {
+      //   name: {
+      //     en: 'Men',
+      //     he: 'גברים'
+      //   },
+      //   slug: {
+      //     en: 'men',
+      //     he: 'גברים'
+      //   },
+      //   description: {
+      //     en: 'Men\'s collection',
+      //     he: 'קולקציית גברים'
+      //   },
+      //   level: 0,
+      //   isEnabled: true,
+      //   sortOrder: 2
+      // },
       {
         name: {
           en: 'About',
@@ -162,7 +163,7 @@ function CategoriesPage() {
         },
         level: 0,
         isEnabled: true,
-        sortOrder: 3
+        sortOrder: 2
       },
       {
         name: {
@@ -179,7 +180,7 @@ function CategoriesPage() {
         },
         level: 0,
         isEnabled: true,
-        sortOrder: 4
+        sortOrder: 3
       }
     ]
 

@@ -7,6 +7,7 @@ import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import { useCart } from '@/app/hooks/useCart'
 import { categoryService } from '@/lib/firebase'
 
+
 // Hardcoded translations for build-time rendering
 const translations = {
   en: {
@@ -35,6 +36,7 @@ export default function Navigation({ lng }: { lng: string }) {
   const [menSubcategories, setMenSubcategories] = useState<Array<{id: string, slug: string, name: string, subChildren?: Array<{id: string, slug: string, name: string}>}>>([])
   const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
   const [isMenDropdownOpen, setIsMenDropdownOpen] = useState(false)
+  const [availableCategories, setAvailableCategories] = useState<Array<{id: string, slug: string, name: string, level: number}>>([])
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const [openTimeout, setOpenTimeout] = useState<NodeJS.Timeout | null>(null)
   const drawerRef = useRef<HTMLDivElement>(null)
@@ -45,75 +47,108 @@ export default function Navigation({ lng }: { lng: string }) {
   
   const { items } = useCart()
 
+  // Helper functions to check if categories exist
+  const hasWomenCategory = () => {
+    return availableCategories.some(cat => 
+      cat.level === 0 && cat.slug.toLowerCase() === 'women'
+    )
+  }
+
+  const hasMenCategory = () => {
+    return availableCategories.some(cat => 
+      cat.level === 0 && cat.slug.toLowerCase() === 'men'
+    )
+  }
+
+  // Function to refresh navigation categories
+  const refreshNavigation = async () => {
+    try {
+      const navCategories = await categoryService.getNavigationCategories()
+      
+      // Store available categories for dynamic rendering
+      setAvailableCategories(navCategories.map(cat => ({
+        id: cat.id!,
+        slug: typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '',
+        name: typeof cat.name === 'string' ? cat.name : cat.name?.en || '',
+        level: cat.level
+      })))
+      
+      
+      // Find Women and Men categories and fetch their subcategories
+      const womenCategory = navCategories.find(cat => 
+        cat.level === 0 && 
+        (typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '').toLowerCase() === 'women'
+      )
+      
+      const menCategory = navCategories.find(cat => 
+        cat.level === 0 && 
+        (typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '').toLowerCase() === 'men'
+      )
+      
+      // Fetch subcategories for Women and Men
+      if (womenCategory?.id) {
+        const womenSubs = await categoryService.getSubCategories(womenCategory.id)
+        
+        // Fetch sub-sub-categories for each subcategory
+        const womenSubsWithChildren = await Promise.all(womenSubs.map(async (sub) => {
+          const subChildren = await categoryService.getSubCategories(sub.id!)
+          return {
+            id: sub.id!,
+            slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
+            name: typeof sub.name === 'string' ? sub.name : (lng === 'he' ? sub.name?.he : sub.name?.en) || '',
+            subChildren: subChildren.map(child => ({
+              id: child.id!,
+              slug: typeof child.slug === 'string' ? child.slug : child.slug?.en || '',
+              name: typeof child.name === 'string' ? child.name : (lng === 'he' ? child.name?.he : child.name?.en) || ''
+            }))
+          }
+        }))
+        
+        setWomenSubcategories(womenSubsWithChildren)
+      }
+      
+      if (menCategory?.id) {
+        const menSubs = await categoryService.getSubCategories(menCategory.id)
+        
+        // Fetch sub-sub-categories for each subcategory
+        const menSubsWithChildren = await Promise.all(menSubs.map(async (sub) => {
+          const subChildren = await categoryService.getSubCategories(sub.id!)
+          return {
+            id: sub.id!,
+            slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
+            name: typeof sub.name === 'string' ? sub.name : (lng === 'he' ? sub.name?.he : sub.name?.en) || '',
+            subChildren: subChildren.map(child => ({
+              id: child.id!,
+              slug: typeof child.slug === 'string' ? child.slug : child.slug?.en || '',
+              name: typeof child.name === 'string' ? child.name : (lng === 'he' ? child.name?.he : child.name?.en) || ''
+            }))
+          }
+        }))
+        
+        setMenSubcategories(menSubsWithChildren)
+      }
+    } catch (error) {
+      console.error('Error refreshing navigation categories:', error)
+    }
+  }
+
   // Fetch navigation categories and subcategories on mount
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const navCategories = await categoryService.getNavigationCategories()
-        console.log('Navigation - Fetched navigation categories:', navCategories)
-        
-        // Find Women and Men categories and fetch their subcategories
-        const womenCategory = navCategories.find(cat => 
-          cat.level === 0 && 
-          (typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '').toLowerCase() === 'women'
-        )
-        
-        const menCategory = navCategories.find(cat => 
-          cat.level === 0 && 
-          (typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '').toLowerCase() === 'men'
-        )
-        
-        // Fetch subcategories for Women and Men
-        if (womenCategory?.id) {
-          const womenSubs = await categoryService.getSubCategories(womenCategory.id)
-          console.log('Navigation - Fetched women subcategories:', womenSubs)
-          
-          // Fetch sub-sub-categories for each subcategory
-          const womenSubsWithChildren = await Promise.all(womenSubs.map(async (sub) => {
-            const subChildren = await categoryService.getSubCategories(sub.id!)
-            return {
-              id: sub.id!,
-              slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
-              name: typeof sub.name === 'string' ? sub.name : (lng === 'he' ? sub.name?.he : sub.name?.en) || '',
-              subChildren: subChildren.map(child => ({
-                id: child.id!,
-                slug: typeof child.slug === 'string' ? child.slug : child.slug?.en || '',
-                name: typeof child.name === 'string' ? child.name : (lng === 'he' ? child.name?.he : child.name?.en) || ''
-              }))
-            }
-          }))
-          
-          setWomenSubcategories(womenSubsWithChildren)
-        }
-        
-        if (menCategory?.id) {
-          const menSubs = await categoryService.getSubCategories(menCategory.id)
-          console.log('Navigation - Fetched men subcategories:', menSubs)
-          
-          // Fetch sub-sub-categories for each subcategory
-          const menSubsWithChildren = await Promise.all(menSubs.map(async (sub) => {
-            const subChildren = await categoryService.getSubCategories(sub.id!)
-            return {
-              id: sub.id!,
-              slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
-              name: typeof sub.name === 'string' ? sub.name : (lng === 'he' ? sub.name?.he : sub.name?.en) || '',
-              subChildren: subChildren.map(child => ({
-                id: child.id!,
-                slug: typeof child.slug === 'string' ? child.slug : child.slug?.en || '',
-                name: typeof child.name === 'string' ? child.name : (lng === 'he' ? child.name?.he : child.name?.en) || ''
-              }))
-            }
-          }))
-          
-          setMenSubcategories(menSubsWithChildren)
-        }
-      } catch (error) {
-        console.error('Error fetching categories:', error)
+    refreshNavigation()
+  }, [lng])
+
+  // Add listener for page visibility changes to refresh navigation when user returns
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // Page became visible, refresh navigation
+        refreshNavigation()
       }
     }
-    
-    fetchCategories()
-  }, [lng])
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -256,9 +291,6 @@ export default function Navigation({ lng }: { lng: string }) {
   }
 
 
-  // Debug logging
-  console.log('Navigation - Women subcategories:', womenSubcategories)
-  console.log('Navigation - Men subcategories:', menSubcategories)
 
   return (
     <nav className="bg-white shadow-lg fixed w-full top-0 z-50">
@@ -338,60 +370,62 @@ export default function Navigation({ lng }: { lng: string }) {
               )}
                   </div>
 
-            {/* Men Dropdown */}
-            <div className="relative" data-dropdown>
-              <button
-                onMouseEnter={() => handleMouseEnter('men')}
-                onMouseLeave={() => handleMouseLeave('men')}
-                className={`flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50 ${isMenDropdownOpen ? 'bg-gray-50' : ''}`}
-              >
-                {translations[lng as keyof typeof translations].men}
-                <ChevronDown className="ml-1 h-4 w-4" />
-              </button>
-              
-              {isMenDropdownOpen && (
-                <div 
-                  className="absolute top-full left-0 mt-1 w-64 bg-white shadow-lg border border-gray-200 rounded-md py-3 z-50"
-                  onMouseEnter={handleDropdownMouseEnter}
+            {/* Men Dropdown - Only show if Men category exists */}
+            {hasMenCategory() && (
+              <div className="relative" data-dropdown>
+                <button
+                  onMouseEnter={() => handleMouseEnter('men')}
                   onMouseLeave={() => handleMouseLeave('men')}
+                  className={`flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50 ${isMenDropdownOpen ? 'bg-gray-50' : ''}`}
                 >
-                  {/* All Men Link */}
-                  <Link 
-                    href={`/${lng}/collection/men`}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150 border-b border-gray-100 mb-3"
+                  {translations[lng as keyof typeof translations].men}
+                  <ChevronDown className="ml-1 h-4 w-4" />
+                </button>
+                
+                {isMenDropdownOpen && (
+                  <div 
+                    className="absolute top-full left-0 mt-1 w-64 bg-white shadow-lg border border-gray-200 rounded-md py-3 z-50"
+                    onMouseEnter={handleDropdownMouseEnter}
+                    onMouseLeave={() => handleMouseLeave('men')}
                   >
-                    {translations[lng as keyof typeof translations].allMen}
-                  </Link>
-                  
-                  {/* Subcategories */}
-                  {menSubcategories.map((subcategory) => (
-                    <div key={subcategory.id} className="mb-2">
-                      <Link
-                        href={`/${lng}/collection/men/${subcategory.slug}`}
-                        className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
-                      >
-                        {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
-                      </Link>
-                      
-                      {/* Sub-sub-categories */}
-                      {subcategory.subChildren && subcategory.subChildren.length > 0 && (
-                        <div className="pl-6 space-y-1">
-                          {subcategory.subChildren.map((subSubCategory) => (
-                    <Link
-                              key={subSubCategory.id}
-                              href={`/${lng}/collection/men/${subcategory.slug}/${subSubCategory.slug}`}
-                              className="block px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
-                            >
-                              {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
+                    {/* All Men Link */}
+                    <Link 
+                      href={`/${lng}/collection/men`}
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150 border-b border-gray-100 mb-3"
+                    >
+                      {translations[lng as keyof typeof translations].allMen}
                     </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    
+                    {/* Subcategories */}
+                    {menSubcategories.map((subcategory) => (
+                      <div key={subcategory.id} className="mb-2">
+                        <Link
+                          href={`/${lng}/collection/men/${subcategory.slug}`}
+                          className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
+                        >
+                          {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
+                        </Link>
+                        
+                        {/* Sub-sub-categories */}
+                        {subcategory.subChildren && subcategory.subChildren.length > 0 && (
+                          <div className="pl-6 space-y-1">
+                            {subcategory.subChildren.map((subSubCategory) => (
+                      <Link
+                                key={subSubCategory.id}
+                                href={`/${lng}/collection/men/${subcategory.slug}/${subSubCategory.slug}`}
+                                className="block px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
+                              >
+                                {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
+                      </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
                 </div>
-              )}
-              </div>
+            )}
 
               <Link
                 href={`/${lng}/about`}
@@ -505,15 +539,17 @@ export default function Navigation({ lng }: { lng: string }) {
                       </svg>
                 </button>
                     
-                    <button
-                      onClick={() => navigateToLevel('men')}
-                      className="block w-full text-left py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
-                    >
-                      {translations[lng as keyof typeof translations].men}
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
+                    {hasMenCategory() && (
+                      <button
+                        onClick={() => navigateToLevel('men')}
+                        className="block w-full text-left py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
+                      >
+                        {translations[lng as keyof typeof translations].men}
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    )}
                     
                     <Link 
                       href={`/${lng}/about`} 
@@ -570,8 +606,8 @@ export default function Navigation({ lng }: { lng: string }) {
                   </>
                 )}
 
-                {/* Men Level */}
-                {mobileNavLevel === 'men' && (
+                {/* Men Level - Only show if Men category exists */}
+                {mobileNavLevel === 'men' && hasMenCategory() && (
                   <>
                     <Link 
                       href={`/${lng}/collection/men`}
@@ -623,8 +659,8 @@ export default function Navigation({ lng }: { lng: string }) {
                   </>
                 )}
 
-                {/* Men Sub-sub-categories Level */}
-                {mobileNavLevel === 'men-sub' && selectedMobileCategory && (
+                {/* Men Sub-sub-categories Level - Only show if Men category exists */}
+                {mobileNavLevel === 'men-sub' && selectedMobileCategory && hasMenCategory() && (
                   <>
                     {selectedMobileCategory.subChildren?.map((subSubCategory) => (
                       <Link

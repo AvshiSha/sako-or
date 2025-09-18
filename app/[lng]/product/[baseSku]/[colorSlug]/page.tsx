@@ -128,6 +128,19 @@ export default function ProductColorPage() {
         setProduct(productData)
         setCurrentVariant(variant)
         
+        // Debug: Log product structure to help identify data format
+        console.log('🔍 Product data structure:', {
+          hasMaterialCare: !!productData.materialCare,
+          materialCareKeys: productData.materialCare ? Object.keys(productData.materialCare) : [],
+          hasLegacyFields: {
+            upperMaterial: !!productData.upperMaterial,
+            materialInnerSole: !!productData.materialInnerSole,
+            lining: !!productData.lining,
+            sole: !!productData.sole,
+            heelHeight: !!productData.heelHeight
+          }
+        })
+        
         // Set default size from first available
         const availableSizes = Object.keys(variant.stockBySize).filter(size => variant.stockBySize[size] > 0)
         if (availableSizes.length > 0) {
@@ -612,13 +625,13 @@ export default function ProductColorPage() {
                   ref={carouselRef}
                   className="flex h-full w-full transition-transform duration-300 ease-out"
                   style={{
-                    transform: `translateX(${-selectedImageIndex * 100 + (carouselRef.current ? ((lng === 'he' ? -dragOffset : dragOffset) / carouselRef.current.offsetWidth) * 100 : 0)}%)`,
+                    transform: `translateX(${-selectedImageIndex * 100 + (carouselRef.current ? (dragOffset / carouselRef.current.offsetWidth) * 100 : 0)}%)`,
                     transition: isDragging ? 'none' : 'transform 300ms ease-out'
                   }}
                 >
                   {/* Images */}
                   {currentVariant.images && currentVariant.images.map((image, index) => (
-                    <div key={`image-${index}`} className="w-full h-full flex-shrink-0">
+                    <div key={`image-${index}`} className="w-full h-full flex-shrink-0 relative">
                       <Image
                         src={image}
                         alt={`${productName} - ${currentVariant.colorSlug}`}
@@ -626,7 +639,21 @@ export default function ProductColorPage() {
                         height={600}
                         className="h-full w-full object-cover object-center"
                         priority={index === 0}
+                        onError={(e) => {
+                          console.error('Image failed to load:', image, 'Index:', index, 'Language:', lng)
+                        }}
+                        onLoad={() => {
+                          if (lng === 'he' && index === selectedImageIndex) {
+                            console.log('Hebrew image loaded successfully:', image, 'Index:', index)
+                          }
+                        }}
                       />
+                      {/* Fallback for Hebrew debugging */}
+                      {lng === 'he' && index === selectedImageIndex && (
+                        <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                          {index + 1}/{getTotalMediaCount()}
+                        </div>
+                      )}
                     </div>
                   ))}
                   
@@ -991,56 +1018,77 @@ export default function ProductColorPage() {
               <div className="border-t border-gray-200 pt-6">
                 <div className="space-y-4">
                   {/* Material & Care Section */}
-                  {(product.upperMaterial || product.materialInnerSole || product.lining || product.sole || product.heelHeight) && (
+                  {(product.materialCare?.upperMaterial_en || product.materialCare?.upperMaterial_he || 
+                    product.materialCare?.materialInnerSole_en || product.materialCare?.materialInnerSole_he ||
+                    product.materialCare?.lining_en || product.materialCare?.lining_he ||
+                    product.materialCare?.sole_en || product.materialCare?.sole_he ||
+                    product.materialCare?.heelHeight_en || product.materialCare?.heelHeight_he ||
+                    // Legacy structure support
+                    product.upperMaterial || product.materialInnerSole || product.lining || product.sole || product.heelHeight) && (
                     <Accordion title={lng === 'he' ? 'מפרט טכני' : 'Material & Care'}>
                       <div className="space-y-3">
-                        {product.upperMaterial && (
+                        {((product.materialCare?.upperMaterial_en || product.materialCare?.upperMaterial_he) || product.upperMaterial) && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'חומר עליון:' : 'Upper Material:'}
                             </span>
                             <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.upperMaterial.he : product.upperMaterial.en}
+                              {product.materialCare?.upperMaterial_en || product.materialCare?.upperMaterial_he 
+                                ? (lng === 'he' ? product.materialCare?.upperMaterial_he : product.materialCare?.upperMaterial_en)
+                                : (lng === 'he' ? product.upperMaterial?.he : product.upperMaterial?.en)
+                              }
                             </span>
                           </div>
                         )}
-                        {product.materialInnerSole && (
+                        {((product.materialCare?.materialInnerSole_en || product.materialCare?.materialInnerSole_he) || product.materialInnerSole) && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'חומר סוליה פנימית:' : 'Material Inner Sole:'}
                             </span>
                             <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialInnerSole.he : product.materialInnerSole.en}
+                              {product.materialCare?.materialInnerSole_en || product.materialCare?.materialInnerSole_he 
+                                ? (lng === 'he' ? product.materialCare?.materialInnerSole_he : product.materialCare?.materialInnerSole_en)
+                                : (lng === 'he' ? product.materialInnerSole?.he : product.materialInnerSole?.en)
+                              }
                             </span>
                           </div>
                         )}
-                        {product.lining && (
+                        {((product.materialCare?.lining_en || product.materialCare?.lining_he) || product.lining) && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'בטנה:' : 'Lining:'}
                             </span>
                             <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.lining.he : product.lining.en}
+                              {product.materialCare?.lining_en || product.materialCare?.lining_he 
+                                ? (lng === 'he' ? product.materialCare?.lining_he : product.materialCare?.lining_en)
+                                : (lng === 'he' ? product.lining?.he : product.lining?.en)
+                              }
                             </span>
                           </div>
                         )}
-                        {product.sole && (
+                        {((product.materialCare?.sole_en || product.materialCare?.sole_he) || product.sole) && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'סוליה:' : 'Sole:'}
                             </span>
                             <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.sole.he : product.sole.en}
+                              {product.materialCare?.sole_en || product.materialCare?.sole_he 
+                                ? (lng === 'he' ? product.materialCare?.sole_he : product.materialCare?.sole_en)
+                                : (lng === 'he' ? product.sole?.he : product.sole?.en)
+                              }
                             </span>
                           </div>
                         )}
-                        {product.heelHeight && (
+                        {((product.materialCare?.heelHeight_en || product.materialCare?.heelHeight_he) || product.heelHeight) && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'גובה עקב:' : 'Heel Height:'}
                             </span>
                             <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.heelHeight.he : product.heelHeight.en}
+                              {product.materialCare?.heelHeight_en || product.materialCare?.heelHeight_he 
+                                ? (lng === 'he' ? product.materialCare?.heelHeight_he : product.materialCare?.heelHeight_en)
+                                : (lng === 'he' ? product.heelHeight?.he : product.heelHeight?.en)
+                              }
                             </span>
                           </div>
                         )}

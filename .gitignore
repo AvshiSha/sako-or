@@ -90,3 +90,8 @@ tsconfig.json
 package.json
 package-lock.json
 middleware.ts
+
+# Additional internal files
+IMPLEMENTATION_SUMMARY.md
+VERCEL_OAUTH_TROUBLESHOOTING.md
+products-template.csv

@@ -86,9 +86,6 @@ GOOGLE_OAUTH_FIX.md
 
 # Additional configuration files (keep private)
 storage.rules
-tsconfig.json
-package.json
-package-lock.json
 middleware.ts
 
 # Additional internal files

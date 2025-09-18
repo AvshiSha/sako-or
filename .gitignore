@@ -68,3 +68,18 @@ coverage/
 
 # Local development
 .local/
+
+# Documentation folder (keep private)
+docs/
+
+# Configuration files (keep private)
+cors.json
+eslint.config.mjs
+firebase.js
+firebase.json
+firestore.indexes.json
+firestore.rules
+image-url-mappings.json
+
+# Additional internal documentation
+GOOGLE_OAUTH_FIX.md

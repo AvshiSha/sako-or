@@ -9,9 +9,10 @@ interface ProductCarouselProps {
   products: Product[]
   title: string
   language?: 'en' | 'he'
+  returnUrl?: string
 }
 
-export default function ProductCarousel({ products, title, language = 'en' }: ProductCarouselProps) {
+export default function ProductCarousel({ products, title, language = 'en', returnUrl }: ProductCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const itemsPerPage = 4
 
@@ -60,7 +61,7 @@ export default function ProductCarousel({ products, title, language = 'en' }: Pr
               className="w-1/4 px-4"
               style={{ flex: `0 0 ${100 / itemsPerPage}%` }}
             >
-              <ProductCard product={product} language={language} />
+              <ProductCard product={product} language={language} returnUrl={returnUrl} />
             </div>
           ))}
         </div>

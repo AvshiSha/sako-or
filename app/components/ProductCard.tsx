@@ -12,9 +12,10 @@ import QuickBuyDrawer from './QuickBuyDrawer'
 interface ProductCardProps {
   product: Product
   language?: 'en' | 'he'
+  returnUrl?: string
 }
 
-export default function ProductCard({ product, language = 'en' }: ProductCardProps) {
+export default function ProductCard({ product, language = 'en', returnUrl }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -207,6 +208,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
         onClose={() => setIsQuickBuyOpen(false)}
         product={product}
         language={language}
+        returnUrl={returnUrl}
       />
     </div>
   )

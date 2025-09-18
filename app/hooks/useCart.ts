@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { flushSync } from 'react-dom'
 
 export interface CartItem {
   sku: string
@@ -75,31 +76,34 @@ export function useCart(): CartHook {
   }, [])
 
   const addToCart = useCallback((newItem: Omit<CartItem, 'quantity'>) => {
-    setItems(prevItems => {
-      const existingItemIndex = prevItems.findIndex(item => 
-        item.sku === newItem.sku && 
-        item.size === newItem.size && 
-        item.color === newItem.color
-      )
+    flushSync(() => {
+      setItems(prevItems => {
+        const existingItemIndex = prevItems.findIndex(item => 
+          item.sku === newItem.sku && 
+          item.size === newItem.size && 
+          item.color === newItem.color
+        )
 
-      if (existingItemIndex >= 0) {
-        // Item exists, update quantity
-        const updatedItems = [...prevItems]
-        const existingItem = updatedItems[existingItemIndex]
-        const newQuantity = existingItem.quantity + 1
-        
-        // Don't exceed max stock
-        if (newQuantity <= existingItem.maxStock) {
-          updatedItems[existingItemIndex] = {
-            ...existingItem,
-            quantity: newQuantity
+        if (existingItemIndex >= 0) {
+          // Item exists, update quantity
+          const updatedItems = [...prevItems]
+          const existingItem = updatedItems[existingItemIndex]
+          const newQuantity = existingItem.quantity + 1
+          
+          // Don't exceed max stock
+          if (newQuantity <= existingItem.maxStock) {
+            updatedItems[existingItemIndex] = {
+              ...existingItem,
+              quantity: newQuantity
+            }
           }
+          return updatedItems
+        } else {
+          // New item, add with quantity 1
+          const newItems = [...prevItems, { ...newItem, quantity: 1 }]
+          return newItems
         }
-        return updatedItems
-      } else {
-        // New item, add with quantity 1
-        return [...prevItems, { ...newItem, quantity: 1 }]
-      }
+      })
     })
   }, [])
 

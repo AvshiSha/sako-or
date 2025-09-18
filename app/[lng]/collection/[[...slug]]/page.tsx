@@ -104,6 +104,9 @@ export default function CollectionSlugPage() {
   // Get language from params
   const lng = params?.lng as string || 'en';
   const t = translations[lng as keyof typeof translations] || translations.en;
+  
+  // Construct current collection URL for return navigation
+  const currentUrl = `/${lng}/collection${params?.slug ? `/${(params.slug as string[]).join('/')}` : ''}`;
 
   // Helper function to get translated category/subcategory name
   const getTranslatedName = (category: string, subcategory?: string | null) => {
@@ -502,7 +505,7 @@ export default function CollectionSlugPage() {
                   whileHover={{ y: -4 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <ProductCard product={product} language={lng as 'en' | 'he'} />
+                  <ProductCard product={product} language={lng as 'en' | 'he'} returnUrl={currentUrl} />
                 </motion.div>
               ))}
             </div>

@@ -18,16 +18,17 @@ interface QuickBuyDrawerProps {
   onClose: () => void
   product: Product
   language?: 'en' | 'he'
+  returnUrl?: string
 }
 
-export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en' }: QuickBuyDrawerProps) {
+export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en', returnUrl }: QuickBuyDrawerProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const router = useRouter()
   const { isFavorite, toggleFavorite } = useFavorites()
-  const { addToCart } = useCart()
+  const { addToCart, items } = useCart()
   const { toast, showToast, hideToast } = useToast()
   
   // Get the first active color variant for display
@@ -80,14 +81,6 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   const handleAddToCart = async () => {
     if (isAddingToCart) return
     
-    console.log('Add to cart clicked', { 
-      selectedSize, 
-      quantity, 
-      availableSizes: availableSizes.length,
-      activeVariant: activeVariant?.colorSlug,
-      product: product.baseSku || product.sku
-    })
-    
     const sku = product.baseSku || product.sku || ''
     if (!sku) {
       console.error('No SKU found for product')
@@ -96,7 +89,6 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     
     // Check if size is required but not selected
     if (availableSizes.length > 0 && !selectedSize) {
-      console.log('Size required but not selected')
       return
     }
     
@@ -108,27 +100,22 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         ? ('stockBySize' in activeVariant ? activeVariant.stockBySize[selectedSize] || 0 : 0)
         : ('stockBySize' in activeVariant ? Object.values(activeVariant.stockBySize).reduce((total, stock) => total + stock, 0) : 0)
       
-      console.log('Adding to cart:', { sku, quantity, maxStock, selectedSize })
-      
-      // Add multiple items based on quantity
-      for (let i = 0; i < quantity; i++) {
-        addToCart({
-          sku: sku,
-          name: {
-            en: productHelpers.getField(product, 'name', 'en'),
-            he: productHelpers.getField(product, 'name', 'he')
-          },
-          price: currentPrice,
-          salePrice: activeVariant.salePrice,
-          currency: 'ILS',
-          image: typeof primaryImage === 'string' ? primaryImage : primaryImage?.url,
-          color: activeVariant.colorSlug,
-          size: selectedSize || undefined,
-          maxStock: maxStock
-        })
+      const cartItem = {
+        sku: sku,
+        name: {
+          en: productHelpers.getField(product, 'name', 'en') || product.title_en || '',
+          he: productHelpers.getField(product, 'name', 'he') || product.title_he || ''
+        },
+        price: currentPrice,
+        salePrice: activeVariant.salePrice,
+        currency: 'ILS',
+        image: typeof primaryImage === 'string' ? primaryImage : primaryImage?.url,
+        color: activeVariant.colorSlug,
+        size: selectedSize || undefined,
+        maxStock: maxStock
       }
       
-      console.log('Items added to cart, closing drawer')
+      addToCart(cartItem)
       
       // Show success toast
       const successMessage = language === 'he' 
@@ -139,8 +126,12 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
       // Close the drawer
       onClose()
       
-      // Navigate to the category page
-      if (product.categories_path && product.categories_path.length > 0) {
+      // Navigate based on context
+      if (returnUrl) {
+        // Use the provided return URL (e.g., from favorites page)
+        router.push(returnUrl)
+      } else if (product.categories_path && product.categories_path.length > 0) {
+        // Navigate to the category page (default behavior)
         router.push(`/${language}/collection/${product.categories_path[0]}`)
       } else {
         // Fallback to main collection page if no category path

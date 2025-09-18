@@ -20,43 +20,84 @@ import {
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 
-interface ProductFormData {
-  brand: string;
-  category: string;
-  colors: string[];
-  descriptionEn: string;
-  descriptionHe: string;
-  featured: boolean;
-  images: string[];
-  video?: string;
-  nameEn: string;
-  nameHe: string;
-  new: boolean;
-  price: number;
-  saleEndDate: string;
-  salePrice: number;
-  saleStartDate: string;
-  sizes: string[];
-  sku: string;
+interface ColorVariantData {
+  id: string;
+  colorName: string;
+  colorSlug: string;
+  colorHex: string;
+  price?: number;
+  salePrice?: number;
+  saleStartDate?: string;
+  saleEndDate?: string;
   stock: number;
+  isActive: boolean;
+  images: ImageFile[];
+  video: VideoFile | null;
+  sizes: string[];
   stockBySize: Record<string, number>;
-  subcategory: string;
+  metaTitle?: string;
+  metaDescription?: string;
+}
+
+interface ProductFormData {
+  sku: string;
+  title_en: string;
+  title_he: string;
+  description_en: string;
+  description_he: string;
+  category: string; // Level 1 category ID
+  subCategory: string; // Level 2 category ID
+  subSubCategory: string; // Level 3 category ID
+  categories_path: string[];
+  categories_path_id: string[];
+  brand: string;
+  price: number;
+  salePrice: number;
   currency: string;
+  colorVariants: ColorVariantData[];
+  isEnabled: boolean;
+  isDeleted: boolean;
+  newProduct: boolean;
+  featuredProduct: boolean;
+  
+  // Material & Care fields
+  materialCare: {
+    upperMaterial_en: string;
+    upperMaterial_he: string;
+    materialInnerSole_en: string;
+    materialInnerSole_he: string;
+    lining_en: string;
+    lining_he: string;
+    sole_en: string;
+    sole_he: string;
+    heelHeight_en: string;
+    heelHeight_he: string;
+  };
+  
+  // SEO fields
+  seo: {
+    title_en: string;
+    title_he: string;
+    description_en: string;
+    description_he: string;
+    slug: string;
+  };
+  
+  searchKeywords: string[];
 }
 
 interface FormErrors {
-  nameEn?: string;
-  nameHe?: string;
-  descriptionEn?: string;
-  descriptionHe?: string;
+  sku?: string;
+  title_en?: string;
+  title_he?: string;
+  description_en?: string;
+  description_he?: string;
   price?: string;
   brand?: string;
   category?: string;
-  colors?: string;
-  sizes?: string;
-  stock?: string;
-  images?: string;
-  sku?: string;
+  subCategory?: string;
+  subSubCategory?: string;
+  colorVariants?: string;
 }
 
 interface ImageFile {
@@ -88,8 +129,37 @@ interface GoogleDriveFile {
   parents?: string[];
 }
 
-const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
-const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver'];
+const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL','34','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
+const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'light Brown', 'Dark Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver', 'Off White', 'Light Blue', 'Dark Blue', 'Bordeaux', 'Black nail polish', 'Olive', 'Multicolor', 'Black & White', 'Transparent'];
+
+// Color hex mapping
+const colorHexMap: Record<string, string> = {
+  'Black': '#000000',
+  'White': '#FFFFFF',
+  'Red': '#FF0000',
+  'Blue': '#0000FF',
+  'Green': '#008000',
+  'Yellow': '#FFFF00',
+  'Purple': '#800080',
+  'Pink': '#FFC0CB',
+  'Orange': '#FFA500',
+  'light Brown': '#b5651d',
+  'Dark Brown': '#654321',
+  'Gray': '#808080',
+  'Navy': '#000080',
+  'Beige': '#F5F5DC',
+  'Gold': '#FFD700',
+  'Silver': '#C0C0C0',
+  'Off White': '#f5f5f5',
+  'Light Blue': '#ADD8E6',
+  'Dark Blue': '#000080',
+  'Bordeaux': '#800020',
+  'Black nail polish': '#000000',
+  'Olive': '#808000',
+  'Multicolor': '#FF0000',
+  'Black & White': '#000000',
+  'Transparent': '#FFFFFF'
+};
 
 function EditProductPage() {
   const router = useRouter()
@@ -97,41 +167,63 @@ function EditProductPage() {
   const productId = params?.id as string
   
   const [categories, setCategories] = useState<Category[]>([])
+  const [mainCategories, setMainCategories] = useState<Category[]>([])
+  const [subCategories, setSubCategories] = useState<Category[]>([])
+  const [subSubCategories, setSubSubCategories] = useState<Category[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
-  const [imageFiles, setImageFiles] = useState<ImageFile[]>([])
-  const [videoFile, setVideoFile] = useState<VideoFile>({
-    uploading: false,
-    uploaded: false
-  })
-  const [isDragOver, setIsDragOver] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showGoogleDrivePicker, setShowGoogleDrivePicker] = useState(false)
-  const [isImagePicker, setIsImagePicker] = useState(true)
+  const [currentVariantForGoogleDrive, setCurrentVariantForGoogleDrive] = useState<string | null>(null)
+  const [showGoogleDriveVideoPicker, setShowGoogleDriveVideoPicker] = useState(false)
+  const [currentVariantForGoogleDriveVideo, setCurrentVariantForGoogleDriveVideo] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
-    brand: '',
-    category: '',
-    colors: [],
-    descriptionEn: '',
-    descriptionHe: '',
-    featured: false,
-    images: [],
-    video: '',
-    nameEn: '',
-    nameHe: '',
-    new: false,
-    price: 0,
-    saleEndDate: '',
-    salePrice: 0,
-    saleStartDate: '',
-    sizes: [],
     sku: '',
-    stock: 0,
-    stockBySize: {},
-    subcategory: '',
-    currency: 'ILS'
+    title_en: '',
+    title_he: '',
+    description_en: '',
+    description_he: '',
+    category: '',
+    subCategory: '',
+    subSubCategory: '',
+    categories_path: [],
+    categories_path_id: [],
+    brand: '',
+    price: 0,
+    salePrice: 0,
+    currency: 'ILS',
+    colorVariants: [],
+    isEnabled: true,
+    isDeleted: false,
+    newProduct: false,
+    featuredProduct: false,
+    
+    // Material & Care fields
+    materialCare: {
+      upperMaterial_en: '',
+      upperMaterial_he: '',
+      materialInnerSole_en: '',
+      materialInnerSole_he: '',
+      lining_en: '',
+      lining_he: '',
+      sole_en: '',
+      sole_he: '',
+      heelHeight_en: '',
+      heelHeight_he: ''
+    },
+    
+    // SEO fields
+    seo: {
+      title_en: '',
+      title_he: '',
+      description_en: '',
+      description_he: '',
+      slug: ''
+    },
+    
+    searchKeywords: []
   })
 
   useEffect(() => {
@@ -141,55 +233,112 @@ function EditProductPage() {
         const cats = await categoryService.getAllCategories()
         setCategories(cats)
         
+        // Filter main categories (level 0) that are enabled
+        const mainCats = cats.filter(cat => cat.level === 0 && cat.isEnabled)
+        setMainCategories(mainCats)
+        
         // Fetch product data
         const product = await productService.getProductById(productId)
         if (product) {
-          setFormData({
-            brand: (product as any).brand || '',
-            category: product.categoryId || '',
-            colors: product.colorVariants ? Object.values(product.colorVariants).map(v => v.colorSlug) : [],
-            descriptionEn: product.description?.en || '',
-            descriptionHe: product.description?.he || '',
-            featured: product.featured || false,
-            images: product.colorVariants ? Object.values(product.colorVariants)[0]?.images || [] : [],
-            video: (product as any).video || '',
-            nameEn: product.name?.en || '',
-            nameHe: product.name?.he || '',
-            new: product.isNew || false,
-            price: product.price || 0,
-            saleEndDate: '',
-            salePrice: product.salePrice || 0,
-            saleStartDate: '',
-            sizes: product.colorVariants ? Object.keys(Object.values(product.colorVariants)[0]?.stockBySize || {}) : [],
-            sku: product.sku || product.baseSku || '',
-            stock: product.colorVariants ? Object.values(Object.values(product.colorVariants)[0]?.stockBySize || {}).reduce((sum, stock) => sum + stock, 0) : 0,
-            stockBySize: product.colorVariants ? Object.values(product.colorVariants)[0]?.stockBySize || {} : {},
-            subcategory: (product as any).subcategory || '',
-            currency: (product as any).currency || 'ILS'
-          })
+          console.log('Fetched product data:', product) // Debug log
+          console.log('Color variants:', product.colorVariants) // Debug color variants
           
-          // Set existing images as uploaded with primary image marking
-          if (product.colorVariants?.[0]?.images && product.colorVariants[0].images.length > 0) {
-            const existingImages: ImageFile[] = product.colorVariants[0].images.map((img, index) => ({
+          // Convert color variants to the new format
+          const colorVariants: ColorVariantData[] = product.colorVariants ? Object.values(product.colorVariants).map((variant, index) => ({
+            id: `existing-${index}`,
+            colorName: variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1).replace(/-/g, ' '),
+            colorSlug: variant.colorSlug,
+            colorHex: colorHexMap[variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1).replace(/-/g, ' ')] || '#000000',
+            price: variant.priceOverride,
+            salePrice: variant.salePrice,
+            stock: Object.values(variant.stockBySize || {}).reduce((sum, stock) => sum + stock, 0),
+            isActive: true,
+            images: (variant.images || []).map((img, imgIndex) => ({
               file: new File([], 'existing-image'),
               preview: img,
               uploading: false,
               uploaded: true,
               url: img,
-              isPrimary: index === 0,
-              order: index
-            }))
-            setImageFiles(existingImages)
-          }
-
-          // Set existing video if available
-          if ((product as any).video) {
-            setVideoFile({
+              isPrimary: imgIndex === 0,
+              order: imgIndex
+            })),
+            video: variant.videos && variant.videos.length > 0 ? {
+              file: new File([], 'existing-video'),
+              preview: variant.videos[0],
               uploading: false,
               uploaded: true,
-              url: (product as any).video,
+              url: variant.videos[0],
               name: 'Existing Video'
-            })
+            } : null,
+            sizes: Object.keys(variant.stockBySize || {}),
+            stockBySize: variant.stockBySize || {},
+            metaTitle: variant.metaTitle || '',
+            metaDescription: variant.metaDescription || ''
+          })) : []
+          
+          setFormData({
+            sku: product.sku || product.baseSku || '',
+            title_en: product.title_en || product.name?.en || '',
+            title_he: product.title_he || product.name?.he || '',
+            description_en: product.description_en || product.description?.en || '',
+            description_he: product.description_he || product.description?.he || '',
+            category: product.categoryId || product.category || '',
+            subCategory: product.subCategory || '',
+            subSubCategory: product.subSubCategory || '',
+            categories_path: product.categories_path || [],
+            categories_path_id: product.categories_path_id || [],
+            brand: product.brand || '',
+            price: product.price || 0,
+            salePrice: product.salePrice || 0,
+            currency: product.currency || 'ILS',
+            colorVariants: colorVariants,
+            isEnabled: product.isEnabled !== false,
+            isDeleted: product.isDeleted || false,
+            newProduct: product.isNew || product.newProduct || false,
+            featuredProduct: product.featured || product.featuredProduct || false,
+            
+            // Material & Care fields
+            materialCare: {
+              upperMaterial_en: product.upperMaterial?.en || '',
+              upperMaterial_he: product.upperMaterial?.he || '',
+              materialInnerSole_en: product.materialInnerSole?.en || '',
+              materialInnerSole_he: product.materialInnerSole?.he || '',
+              lining_en: product.lining?.en || '',
+              lining_he: product.lining?.he || '',
+              sole_en: product.sole?.en || '',
+              sole_he: product.sole?.he || '',
+              heelHeight_en: product.heelHeight?.en || '',
+              heelHeight_he: product.heelHeight?.he || ''
+            },
+            
+            // SEO fields
+            seo: {
+              title_en: product.seo?.title_en || '',
+              title_he: product.seo?.title_he || '',
+              description_en: product.seo?.description_en || '',
+              description_he: product.seo?.description_he || '',
+              slug: product.seo?.slug || ''
+            },
+            
+            searchKeywords: product.searchKeywords || []
+          })
+          
+          // Load subcategories if main category is selected
+          if (product.categoryId || product.category) {
+            try {
+              const subCats = await categoryService.getSubCategories(product.categoryId || product.category)
+              const enabledSubCats = subCats.filter(cat => cat.isEnabled)
+              setSubCategories(enabledSubCats)
+              
+              // Load sub-subcategories if subcategory is selected
+              if (product.subCategory) {
+                const subSubCats = await categoryService.getSubCategories(product.subCategory)
+                const enabledSubSubCats = subSubCats.filter(cat => cat.isEnabled)
+                setSubSubCategories(enabledSubSubCats)
+              }
+            } catch (error) {
+              console.error('Error loading subcategories:', error)
+            }
           }
         }
       } catch (error) {
@@ -218,189 +367,454 @@ function EditProductPage() {
     }
   }
 
-  const handleSizeChange = (size: string, isSelected: boolean) => {
-    setFormData(prev => {
-      let newSizes = [...prev.sizes]
-      const newStockBySize = { ...prev.stockBySize }
-      
-      if (isSelected) {
-        if (!newSizes.includes(size)) {
-          newSizes.push(size)
-          newStockBySize[size] = 0
-        }
-      } else {
-        newSizes = newSizes.filter(s => s !== size)
-        delete newStockBySize[size]
-      }
-      
-      return {
-        ...prev,
-        sizes: newSizes,
-        stockBySize: newStockBySize
-      }
-    })
-  }
-
-  const handleStockBySizeChange = (size: string, stock: number) => {
+  const handleCategoryChange = async (categoryId: string) => {
     setFormData(prev => ({
       ...prev,
+      category: categoryId,
+      subCategory: '', // Reset subcategory
+      subSubCategory: '' // Reset sub-subcategory
+    }))
+    
+    // Clear subcategory and sub-subcategory selections
+    setSubCategories([])
+    setSubSubCategories([])
+    
+    // Clear errors
+    setErrors(prev => ({
+      ...prev,
+      category: undefined,
+      subCategory: undefined,
+      subSubCategory: undefined
+    }))
+    
+    if (categoryId) {
+      try {
+        // Fetch subcategories for the selected main category
+        const subCats = await categoryService.getSubCategories(categoryId)
+        const enabledSubCats = subCats.filter(cat => cat.isEnabled)
+        setSubCategories(enabledSubCats)
+      } catch (error) {
+        console.error('Error fetching subcategories:', error)
+      }
+    }
+  }
+
+  const handleSubCategoryChange = async (subCategoryId: string) => {
+    setFormData(prev => ({
+        ...prev,
+      subCategory: subCategoryId,
+      subSubCategory: '' // Reset sub-subcategory
+    }))
+    
+    // Clear sub-subcategory selections
+    setSubSubCategories([])
+    
+    // Clear errors
+    setErrors(prev => ({
+      ...prev,
+      subCategory: undefined,
+      subSubCategory: undefined
+    }))
+    
+    if (subCategoryId) {
+      try {
+        // Fetch sub-subcategories for the selected subcategory
+        const subSubCats = await categoryService.getSubCategories(subCategoryId)
+        const enabledSubSubCats = subSubCats.filter(cat => cat.isEnabled)
+        setSubSubCategories(enabledSubSubCats)
+      } catch (error) {
+        console.error('Error fetching sub-subcategories:', error)
+      }
+    }
+  }
+
+  const handleSubSubCategoryChange = (subSubCategoryId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      subSubCategory: subSubCategoryId
+    }))
+    
+    // Clear error
+    setErrors(prev => ({
+      ...prev,
+      subSubCategory: undefined
+    }))
+  }
+
+
+  // Generate color slug from color name
+  const generateColorSlug = (colorName: string): string => {
+    return colorName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+  }
+
+  // Handle color selection - create/update color variants
+  const handleColorSelection = (colorName: string, isSelected: boolean) => {
+    if (isSelected) {
+      // Create color variant if it doesn't exist
+      const existingVariant = formData.colorVariants.find(v => v.colorName === colorName)
+      if (!existingVariant) {
+        const newVariant: ColorVariantData = {
+          id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          colorName,
+          colorSlug: generateColorSlug(colorName),
+          colorHex: colorHexMap[colorName] || '#000000',
+          stock: 0,
+          isActive: true,
+          images: [],
+          video: null,
+          sizes: [...commonSizes],
+          stockBySize: {}
+        }
+        
+      setFormData(prev => ({
+        ...prev,
+          colorVariants: [...prev.colorVariants, newVariant]
+      }))
+      }
+    } else {
+      // Remove color variant
+      setFormData(prev => ({
+        ...prev,
+        colorVariants: prev.colorVariants.filter(v => v.colorName !== colorName)
+      }))
+    }
+  }
+
+  // Update color variant data
+  const updateColorVariant = (variantId: string, updates: Partial<ColorVariantData>) => {
+    setFormData(prev => ({
+      ...prev,
+      colorVariants: prev.colorVariants.map(variant => 
+        variant.id === variantId ? { ...variant, ...updates } : variant
+      )
+    }))
+  }
+
+  // Handle variant size stock change
+  const handleVariantSizeStockChange = (variantId: string, size: string, stock: number) => {
+    updateColorVariant(variantId, {
       stockBySize: {
-        ...prev.stockBySize,
+        ...formData.colorVariants.find(v => v.id === variantId)?.stockBySize,
         [size]: stock
       }
-    }))
+    })
   }
 
-  const handleArrayChange = (field: 'colors' | 'sizes', value: string) => {
-    const currentArray = formData[field]
-    if (currentArray.includes(value)) {
-      setFormData(prev => ({
-        ...prev,
-        [field]: currentArray.filter(item => item !== value)
-      }))
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: [...currentArray, value]
-      }))
+  // Handle variant image selection
+  const handleVariantImageSelect = (variantId: string, files: FileList | null) => {
+    if (!files) return;
+    
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    const existingImages = variant?.images || [];
+    const hasExistingImages = existingImages.length > 0;
+    
+    const newImages: ImageFile[] = Array.from(files).map((file, index) => ({
+      file,
+      preview: URL.createObjectURL(file),
+      uploading: false,
+      uploaded: false,
+      isPrimary: !hasExistingImages && index === 0 // Set first new image as primary if no existing images
+    }));
+    
+    updateColorVariant(variantId, {
+      images: [...existingImages, ...newImages]
+    });
+  };
+
+  // Remove variant image
+  const removeVariantImage = (variantId: string, index: number) => {
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    if (!variant) return;
+
+    const imageToRemove = variant.images[index];
+    const updatedImages = variant.images.filter((_, i) => i !== index);
+    
+    // If we removed the primary image, set the first remaining image as primary
+    if (imageToRemove.isPrimary && updatedImages.length > 0) {
+      updatedImages[0].isPrimary = true;
     }
-  }
+    
+    updateColorVariant(variantId, { images: updatedImages });
+  };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || [])
-    const newImageFiles: ImageFile[] = files.map(file => ({
+  // Handle variant video selection
+  const handleVariantVideoSelect = (variantId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    
+    const file = files[0];
+    
+    // Validate file type
+    if (!file.type.startsWith('video/mp4')) {
+      alert('Please select an MP4 video file');
+      return;
+    }
+    
+    // Validate file size (2.5MB = 2.5 * 1024 * 1024 bytes)
+    const maxSize = 2.5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      alert('Video file size must not exceed 2.5MB');
+      return;
+    }
+    
+    const videoFile: VideoFile = {
       file,
       preview: URL.createObjectURL(file),
       uploading: false,
       uploaded: false
-    }))
+    };
     
-    setImageFiles(prev => [...prev, ...newImageFiles])
-  }
+    updateColorVariant(variantId, { video: videoFile });
+  };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(true)
-  }
+  // Remove variant video
+  const removeVariantVideo = (variantId: string) => {
+    updateColorVariant(variantId, { video: null });
+  };
 
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-  }
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragOver(false)
-    
-    const files = Array.from(e.dataTransfer.files)
-    const newImageFiles: ImageFile[] = files.map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      uploading: false,
-      uploaded: false
-    }))
-    
-    setImageFiles(prev => [...prev, ...newImageFiles])
-  }
 
-  const removeImage = (index: number) => {
-    setImageFiles(prev => {
-      const newImages = prev.filter((_, i) => i !== index)
-      // If we removed the primary image, make the first remaining image primary
-      if (prev[index]?.isPrimary && newImages.length > 0) {
-        newImages[0].isPrimary = true
+
+  // Handle Google Drive file selection for variants
+  const handleGoogleDriveSelect = async (files: any[]) => {
+    if (!currentVariantForGoogleDrive) return;
+
+    try {
+      if (files.length === 0) {
+        alert('Please select at least one image to import.');
+        return;
       }
-      return newImages
-    })
-  }
 
-  const setPrimaryImage = (index: number) => {
-    setImageFiles(prev => prev.map((img, i) => ({
-      ...img,
-      isPrimary: i === index
-    })))
-  }
-
-  const moveImageUp = (index: number) => {
-    if (index > 0) {
-      setImageFiles(prev => {
-        const newImages = [...prev]
-        const temp = newImages[index]
-        newImages[index] = newImages[index - 1]
-        newImages[index - 1] = temp
-        return newImages
-      })
-    }
-  }
-
-  const moveImageDown = (index: number) => {
-    setImageFiles(prev => {
-      if (index < prev.length - 1) {
-        const newImages = [...prev]
-        const temp = newImages[index]
-        newImages[index] = newImages[index + 1]
-        newImages[index + 1] = temp
-        return newImages
+      // Show loading state
+      const loadingVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive);
+      if (loadingVariant) {
+        updateColorVariant(currentVariantForGoogleDrive, {
+          images: loadingVariant.images.map(img => ({ ...img, uploading: true }))
+        });
       }
-      return prev
-    })
-  }
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      setVideoFile({
-        file,
-        preview: URL.createObjectURL(file),
-        uploading: false,
-        uploaded: false,
-        name: file.name
-      })
-    }
-  }
-
-  const removeVideo = () => {
-    setVideoFile({
-      uploading: false,
-      uploaded: false
-    })
-    setFormData(prev => ({ ...prev, video: '' }))
-  }
-
-  const handleGoogleDriveSelect = (files: GoogleDriveFile[]) => {
-    if (isImagePicker) {
-      // Handle image selection
-      const newImageFiles: ImageFile[] = files.map(file => ({
-        file: new File([], file.name),
-        preview: `https://drive.google.com/thumbnail?id=${file.id}&sz=w400-h400`,
-        uploading: false,
-        uploaded: false,
-        url: `https://drive.google.com/thumbnail?id=${file.id}&sz=w2000-h2000`,
-        isPrimary: false,
-        order: imageFiles.length
-      }))
-      setImageFiles(prev => [...prev, ...newImageFiles])
-    } else {
-      // Handle video selection
-      const videoFile = files[0] // Only one video allowed
-      if (videoFile) {
-        setVideoFile({
-          file: new File([], videoFile.name),
-          preview: `https://drive.google.com/thumbnail?id=${videoFile.id}&sz=w400-h400`,
-          uploading: false,
-          uploaded: false,
-          url: `https://drive.google.com/thumbnail?id=${videoFile.id}&sz=w2000-h2000`,
-          name: videoFile.name
+      // Download files from Google Drive
+      const response = await fetch('/api/google-drive/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileIds: files.map(file => file.id)
         })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data.files || data.files.length === 0) {
+        throw new Error('No files were downloaded successfully');
+      }
+
+      // Convert base64 content to File objects
+      const importingVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive);
+      const existingImages = importingVariant?.images || [];
+      const hasExistingImages = existingImages.length > 0;
+      
+      const newImages: ImageFile[] = data.files.map((file: any, index: number) => {
+        try {
+          // Convert base64 to blob
+          const byteCharacters = atob(file.content);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: file.mimeType });
+          
+          // Create File object
+          const fileObj = new File([blob], file.name, { type: file.mimeType });
+          
+          return {
+            file: fileObj,
+            preview: URL.createObjectURL(blob),
+            uploading: false,
+            uploaded: false,
+            isPrimary: !hasExistingImages && index === 0 // Set first new image as primary if no existing images
+          };
+        } catch (error) {
+          console.error(`Error processing file ${file.name}:`, error);
+          return null;
+        }
+      }).filter(Boolean) as ImageFile[];
+
+      if (newImages.length === 0) {
+        throw new Error('No valid images could be processed');
+      }
+
+      // Add images to the current variant
+      updateColorVariant(currentVariantForGoogleDrive, {
+        images: [
+          ...formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive)?.images || [],
+          ...newImages
+        ]
+      });
+
+      setShowGoogleDrivePicker(false);
+      setCurrentVariantForGoogleDrive(null);
+
+      // Show success message
+      alert(`Successfully imported ${newImages.length} image(s) from Google Drive!`);
+    } catch (error) {
+      console.error('Error importing from Google Drive:', error);
+      
+      // Reset uploading state
+      const errorVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive);
+      if (errorVariant) {
+        updateColorVariant(currentVariantForGoogleDrive, {
+          images: errorVariant.images.map(img => ({ ...img, uploading: false }))
+        });
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to import images from Google Drive: ${errorMessage}`);
+    }
+  };
+
+  // Handle Google Drive video selection for variants
+  const handleGoogleDriveVideoSelect = async (files: any[]) => {
+    if (!currentVariantForGoogleDriveVideo) return;
+
+    try {
+      if (files.length === 0) {
+        alert('Please select a video to import.');
+        return;
+      }
+
+      if (files.length > 1) {
+        alert('Please select only one video file.');
+        return;
+      }
+
+      const file = files[0];
+      
+      // Check if it's a video file
+      if (!file.mimeType.startsWith('video/')) {
+        alert('Please select a video file.');
+        return;
+      }
+
+      // Check file size (2.5MB limit)
+      if (file.size > 2.5 * 1024 * 1024) {
+        alert('Video file size must not exceed 2.5MB');
+        return;
+      }
+
+      // Show loading state
+      const loadingVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDriveVideo);
+      if (loadingVariant) {
+        updateColorVariant(currentVariantForGoogleDriveVideo, {
+          video: { 
+            file: new File([], 'loading'), 
+            preview: '', 
+            uploading: true, 
+      uploaded: false
+          }
+        });
+      }
+
+      // Download file from Google Drive
+      const response = await fetch('/api/google-drive/download', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileIds: [file.id]
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      if (!data.files || data.files.length === 0) {
+        throw new Error('Video file was not downloaded successfully');
+      }
+
+      // Convert base64 content to File object
+      const videoData = data.files[0];
+      try {
+        // Convert base64 to blob
+        const byteCharacters = atob(videoData.content);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: videoData.mimeType });
+        
+        // Create File object
+        const videoFile = new File([blob], videoData.name, { type: videoData.mimeType });
+        
+        // Create preview URL
+        const previewUrl = URL.createObjectURL(videoFile);
+
+        // Update the variant with the new video
+        const videoFileData: VideoFile = {
+          file: videoFile,
+          preview: previewUrl,
+          uploading: false,
+          uploaded: false
+        };
+
+        updateColorVariant(currentVariantForGoogleDriveVideo, { video: videoFileData });
+
+        // Close the picker
+        setShowGoogleDriveVideoPicker(false);
+        setCurrentVariantForGoogleDriveVideo(null);
+
+        alert('Video imported successfully from Google Drive!');
+      } catch (conversionError) {
+        console.error('Error converting video file:', conversionError);
+        throw new Error('Failed to process video file');
+      }
+    } catch (error) {
+      console.error('Error importing video from Google Drive:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to import video from Google Drive: ${errorMessage}`);
+      
+      // Reset video state on error
+      if (currentVariantForGoogleDriveVideo) {
+        updateColorVariant(currentVariantForGoogleDriveVideo, { video: null });
       }
     }
-    setShowGoogleDrivePicker(false)
-  }
+  };
 
-  const openGoogleDrivePicker = (forImages: boolean) => {
-    setIsImagePicker(forImages)
-    setShowGoogleDrivePicker(true)
-  }
+  // Open Google Drive picker for a specific variant
+  const openGoogleDrivePicker = (variantId: string) => {
+    setCurrentVariantForGoogleDrive(variantId);
+    setShowGoogleDrivePicker(true);
+  };
+
+  // Open Google Drive video picker for a specific variant
+  const openGoogleDriveVideoPicker = (variantId: string) => {
+    setCurrentVariantForGoogleDriveVideo(variantId);
+    setShowGoogleDriveVideoPicker(true);
+  };
+
+  // Set primary image for a variant
+  const setPrimaryImage = (variantId: string, imageIndex: number) => {
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    if (!variant) return;
+
+    // Update all images to set isPrimary correctly
+    const updatedImages = variant.images.map((img, index) => ({
+      ...img,
+      isPrimary: index === imageIndex
+    }));
+
+    updateColorVariant(variantId, { images: updatedImages });
+  };
 
   const uploadImageToFirebase = async (imageFile: ImageFile): Promise<string> => {
     // If it's already uploaded (from Google Drive), return the URL
@@ -442,52 +856,111 @@ function EditProductPage() {
     return downloadURL;
   }
 
-  const uploadAllImages = async (): Promise<string[]> => {
-    console.log('Starting upload of', imageFiles.length, 'images')
-    const uploadPromises = imageFiles.map(async (imageFile, index) => {
-      if (imageFile.uploaded && imageFile.url) {
-        return imageFile.url
-      }
-      
-      setImageFiles(prev => prev.map((img, i) => 
-        i === index ? { ...img, uploading: true } : img
-      ));
-      
-      try {
-        console.log(`Uploading image ${index + 1}/${imageFiles.length}`)
-        const url = await uploadImageToFirebase(imageFile);
-        
-        setImageFiles(prev => prev.map((img, i) => 
-          i === index ? { ...img, uploading: false, uploaded: true, url } : img
-        ));
-        
-        return url;
-      } catch (error) {
-        console.error(`Error uploading image ${index + 1}:`, error);
-        setImageFiles(prev => prev.map((img, i) => 
-          i === index ? { ...img, uploading: false } : img
-        ));
-        throw error;
-      }
-    });
+  // Upload variant images
+  const uploadVariantImages = async (variantId: string): Promise<string[]> => {
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    if (!variant) return [];
 
-    return Promise.all(uploadPromises);
-  }
+    const uploadedUrls: string[] = [];
+    
+    for (let i = 0; i < variant.images.length; i++) {
+      const imageFile = variant.images[i];
+      if (imageFile.uploaded && imageFile.url) {
+        uploadedUrls.push(imageFile.url);
+        continue;
+      }
+
+      try {
+        // Mark as uploading
+        updateColorVariant(variantId, {
+          images: variant.images.map((img, idx) => 
+            idx === i ? { ...img, uploading: true } : img
+          )
+        });
+
+        // Upload to Firebase Storage
+        const fileName = `products/${formData.sku}/${variant.colorSlug}/${Date.now()}-${i}-${imageFile.file.name}`;
+        const storageRef = ref(storage, fileName);
+        const snapshot = await uploadBytes(storageRef, imageFile.file);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+
+        // Mark as uploaded
+        updateColorVariant(variantId, {
+          images: variant.images.map((img, idx) => 
+            idx === i ? { ...img, uploading: false, uploaded: true, url: downloadURL } : img
+          )
+        });
+
+        uploadedUrls.push(downloadURL);
+      } catch (error) {
+        console.error('Error uploading variant image:', error);
+        // Mark as failed
+        updateColorVariant(variantId, {
+          images: variant.images.map((img, idx) => 
+            idx === i ? { ...img, uploading: false } : img
+          )
+        });
+      }
+    }
+
+    return uploadedUrls;
+  };
+
+  // Upload variant video
+  const uploadVariantVideo = async (variantId: string): Promise<string | null> => {
+    const variant = formData.colorVariants.find(v => v.id === variantId);
+    if (!variant || !variant.video) return null;
+    
+    const videoFile = variant.video;
+    if (videoFile.uploaded && videoFile.url) {
+      return videoFile.url;
+    }
+
+    try {
+      // Mark as uploading
+      updateColorVariant(variantId, {
+        video: { ...videoFile, uploading: true }
+      });
+
+      // Upload to Firebase Storage
+      const fileName = `products/${formData.sku}/${variant.colorSlug}/video/${Date.now()}-${videoFile.file?.name || 'video'}`;
+      const storageRef = ref(storage, fileName);
+      const snapshot = await uploadBytes(storageRef, videoFile.file!);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      // Mark as uploaded
+      updateColorVariant(variantId, {
+        video: { ...videoFile, uploading: false, uploaded: true, url: downloadURL }
+      });
+
+      return downloadURL;
+    } catch (error) {
+      console.error('Error uploading variant video:', error);
+      // Mark as failed
+      updateColorVariant(variantId, {
+        video: { ...videoFile, uploading: false }
+      });
+      return null;
+    }
+  };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
-    if (!formData.nameEn.trim()) {
-      newErrors.nameEn = 'English name is required'
+    if (!formData.sku.trim()) {
+      newErrors.sku = 'SKU is required'
     }
-    if (!formData.nameHe.trim()) {
-      newErrors.nameHe = 'Hebrew name is required'
+    if (!formData.title_en.trim()) {
+      newErrors.title_en = 'English title is required'
     }
-    if (!formData.descriptionEn.trim()) {
-      newErrors.descriptionEn = 'English description is required'
+    if (!formData.title_he.trim()) {
+      newErrors.title_he = 'Hebrew title is required'
     }
-    if (!formData.descriptionHe.trim()) {
-      newErrors.descriptionHe = 'Hebrew description is required'
+    if (!formData.description_en.trim()) {
+      newErrors.description_en = 'English description is required'
+    }
+    if (!formData.description_he.trim()) {
+      newErrors.description_he = 'Hebrew description is required'
     }
     if (formData.price <= 0) {
       newErrors.price = 'Price must be greater than 0'
@@ -496,19 +969,10 @@ function EditProductPage() {
       newErrors.brand = 'Brand is required'
     }
     if (!formData.category.trim()) {
-      newErrors.category = 'Category is required'
+      newErrors.category = 'Main category is required'
     }
-    if (formData.colors.length === 0) {
-      newErrors.colors = 'At least one color is required'
-    }
-    if (formData.sizes.length === 0) {
-      newErrors.sizes = 'At least one size is required'
-    }
-    if (imageFiles.length === 0) {
-      newErrors.images = 'At least one image is required'
-    }
-    if (!formData.sku.trim()) {
-      newErrors.sku = 'SKU is required'
+    if (formData.colorVariants.length === 0) {
+      newErrors.colorVariants = 'At least one color variant is required'
     }
 
     setErrors(newErrors)
@@ -537,104 +1001,113 @@ function EditProductPage() {
     setIsSubmitting(true)
 
     try {
-      // Upload all images
-      console.log('Uploading images...')
-      const uploadedImageUrls = await uploadAllImages()
-      console.log('Images uploaded successfully:', uploadedImageUrls)
-
-      // Upload video if present
-      let videoUrl = ''
-      if (videoFile.file || videoFile.uploaded) {
-        console.log('Uploading video...')
-        videoUrl = await uploadVideoToFirebase(videoFile)
-        console.log('Video uploaded successfully:', videoUrl)
+      console.log('Preparing product data...')
+      
+      // Build categories path and IDs
+      const categoriesPath: string[] = []
+      const categoriesPathId: string[] = []
+      
+      const mainCategory = categories.find(cat => cat.id === formData.category)
+      if (mainCategory) {
+        const mainSlug = typeof mainCategory.slug === 'object' ? mainCategory.slug.en : mainCategory.slug
+        if (mainSlug) {
+          categoriesPath.push(mainSlug)
+          if (mainCategory.id) {
+            categoriesPathId.push(mainCategory.id)
+          }
+        }
+        
+        if (formData.subCategory) {
+          const subCategory = categories.find(cat => cat.id === formData.subCategory)
+          if (subCategory) {
+            const subSlug = typeof subCategory.slug === 'object' ? subCategory.slug.en : subCategory.slug
+            if (subSlug) {
+              categoriesPath.push(subSlug)
+              if (subCategory.id) {
+                categoriesPathId.push(subCategory.id)
+              }
+            }
+            
+            if (formData.subSubCategory) {
+              const subSubCategory = categories.find(cat => cat.id === formData.subSubCategory)
+              if (subSubCategory) {
+                const subSubSlug = typeof subSubCategory.slug === 'object' ? subSubCategory.slug.en : subSubCategory.slug
+                if (subSubSlug) {
+                  categoriesPath.push(subSubSlug)
+                  if (subSubCategory.id) {
+                    categoriesPathId.push(subSubCategory.id)
+                  }
+                }
+              }
+            }
+          }
+        }
       }
 
-      // Prepare product data for API
-      const productData = {
-        name: {
-          en: formData.nameEn,
-          he: formData.nameHe
-        },
-        slug: {
-          en: formData.nameEn.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-          he: formData.nameHe.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || formData.nameEn.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        },
-        description: {
-          en: formData.descriptionEn,
-          he: formData.descriptionHe
-        },
+      // Convert color variants to the new format
+      const colorVariants: Record<string, any> = {}
+      for (const variant of formData.colorVariants) {
+        const uploadedImages = await uploadVariantImages(variant.id)
+        let videoUrl: string | null = null
+        if (variant.video) {
+          videoUrl = await uploadVariantVideo(variant.id)
+        }
+        
+        colorVariants[variant.colorSlug] = {
+          colorSlug: variant.colorSlug,
+          priceOverride: variant.price || null,
+          salePrice: variant.salePrice || null,
+          stockBySize: variant.stockBySize,
+          metaTitle: variant.metaTitle || '',
+          metaDescription: variant.metaDescription || '',
+          images: uploadedImages,
+          primaryImage: uploadedImages[0] || null,
+          videos: videoUrl ? [videoUrl] : []
+        }
+      }
+
+      const productData: any = {
+        sku: formData.sku,
+        title_en: formData.title_en,
+        title_he: formData.title_he,
+        description_en: formData.description_en,
+        description_he: formData.description_he,
+        category: formData.category,
+        subCategory: formData.subCategory,
+        subSubCategory: formData.subSubCategory,
+        categories_path: categoriesPath,
+        categories_path_id: categoriesPathId,
+        brand: formData.brand,
         price: formData.price,
         salePrice: formData.salePrice > 0 ? formData.salePrice : null,
-        saleStartDate: formData.saleStartDate ? new Date(formData.saleStartDate).toISOString() : null,
-        saleEndDate: formData.saleEndDate ? new Date(formData.saleEndDate).toISOString() : null,
-        sku: formData.sku,
-        stock: formData.stock,
-        featured: formData.featured,
-        isNew: formData.new,
-        isActive: true,
-        categoryId: formData.category,
-        categoryPath: (() => {
-          // Build category path from the selected category
-          const selectedCategoryObj = categories.find(cat => cat.id === formData.category);
-          return selectedCategoryObj?.path || '';
-        })(),
-        images: imageFiles.map((imageFile, index) => ({
-          url: uploadedImageUrls[index] || imageFile.url,
-          alt: {
-            en: `${formData.nameEn} - Image ${index + 1}`,
-            he: `${formData.nameHe} - תמונה ${index + 1}`
-          },
-          isPrimary: imageFile.isPrimary || false,
-          order: index
-        })),
-        video: videoUrl || formData.video,
-        variants: formData.sizes.flatMap(size =>
-          formData.colors.map(color => ({
-            size,
-            color,
-            stock: formData.stockBySize[size] || 0,
-            sku: `${formData.sku}-${size}-${color}`,
-            price: formData.price
-          }))
-        ),
-        tags: [],
-        colors: formData.colors,
-        sizes: formData.sizes,
-        stockBySize: formData.stockBySize,
-        brand: formData.brand,
-        subcategory: formData.subcategory,
-        currency: formData.currency
+        currency: formData.currency,
+        colorVariants: colorVariants,
+        isEnabled: formData.isEnabled,
+        isDeleted: formData.isDeleted,
+        newProduct: formData.newProduct,
+        featuredProduct: formData.featuredProduct,
+        materialCare: formData.materialCare,
+        seo: formData.seo,
+        searchKeywords: formData.searchKeywords,
+        updatedAt: new Date()
       }
 
-      console.log('Sending product data to API:', productData)
-
-      // Update product via API
-      const response = await fetch(`/api/products/${productId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(productData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update product')
-      }
-
-      console.log('Product updated successfully')
-      setShowSuccess(true)
+      console.log('Product data prepared:', productData)
+      console.log('Calling productService.updateProduct...')
       
-      // Redirect to products list after success
+      await productService.updateProduct(productId, productData)
+      console.log('Product updated successfully')
+      
+      setShowSuccess(true)
       setTimeout(() => {
         router.push('/admin/products')
       }, 2000)
-
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error updating product:', error)
-      alert(`Failed to update product: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      alert(`Error updating product: ${errorMessage}`)
     } finally {
+      console.log('Setting isSubmitting to false')
       setIsSubmitting(false)
     }
   }
@@ -684,34 +1157,34 @@ function EditProductPage() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  English Name *
+                  English Title *
                 </label>
                 <input
                   type="text"
-                  value={formData.nameEn}
-                  onChange={(e) => handleInputChange('nameEn', e.target.value)}
+                  value={formData.title_en}
+                  onChange={(e) => handleInputChange('title_en', e.target.value)}
                   className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.nameEn ? 'border-red-300' : 'border-gray-300'
+                    errors.title_en ? 'border-red-300' : 'border-gray-300'
                   }`}
-                  placeholder="Enter product name in English"
+                  placeholder="Enter product title in English"
                 />
-                {errors.nameEn && <p className="mt-1 text-sm text-red-600">{errors.nameEn}</p>}
+                {errors.title_en && <p className="mt-1 text-sm text-red-600">{errors.title_en}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hebrew Name *
+                  Hebrew Title *
                 </label>
                 <input
                   type="text"
-                  value={formData.nameHe}
-                  onChange={(e) => handleInputChange('nameHe', e.target.value)}
+                  value={formData.title_he}
+                  onChange={(e) => handleInputChange('title_he', e.target.value)}
                   className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.nameHe ? 'border-red-300' : 'border-gray-300'
+                    errors.title_he ? 'border-red-300' : 'border-gray-300'
                   }`}
-                  placeholder="Enter product name in Hebrew"
+                  placeholder="Enter product title in Hebrew"
                 />
-                {errors.nameHe && <p className="mt-1 text-sm text-red-600">{errors.nameHe}</p>}
+                {errors.title_he && <p className="mt-1 text-sm text-red-600">{errors.title_he}</p>}
               </div>
             </div>
 
@@ -721,15 +1194,15 @@ function EditProductPage() {
                   English Description *
                 </label>
                 <textarea
-                  value={formData.descriptionEn}
-                  onChange={(e) => handleInputChange('descriptionEn', e.target.value)}
+                  value={formData.description_en}
+                  onChange={(e) => handleInputChange('description_en', e.target.value)}
                   rows={4}
                   className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.descriptionEn ? 'border-red-300' : 'border-gray-300'
+                    errors.description_en ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter product description in English"
                 />
-                {errors.descriptionEn && <p className="mt-1 text-sm text-red-600">{errors.descriptionEn}</p>}
+                {errors.description_en && <p className="mt-1 text-sm text-red-600">{errors.description_en}</p>}
               </div>
 
               <div>
@@ -737,15 +1210,15 @@ function EditProductPage() {
                   Hebrew Description *
                 </label>
                 <textarea
-                  value={formData.descriptionHe}
-                  onChange={(e) => handleInputChange('descriptionHe', e.target.value)}
+                  value={formData.description_he}
+                  onChange={(e) => handleInputChange('description_he', e.target.value)}
                   rows={4}
                   className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.descriptionHe ? 'border-red-300' : 'border-gray-300'
+                    errors.description_he ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Enter product description in Hebrew"
                 />
-                {errors.descriptionHe && <p className="mt-1 text-sm text-red-600">{errors.descriptionHe}</p>}
+                {errors.description_he && <p className="mt-1 text-sm text-red-600">{errors.description_he}</p>}
               </div>
             </div>
           </div>
@@ -757,35 +1230,63 @@ function EditProductPage() {
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Price (₪) *
+                  Price *
                 </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-700 sm:text-sm">₪</span>
+                  </div>
                 <input
                   type="number"
                   step="0.01"
-                  value={formData.price}
+                  min="0"
+                  value={formData.price.toString()}
                   onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)}
-                  className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                    className={`block text-gray-700 w-full pl-7 border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     errors.price ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="0.00"
                 />
+                </div>
                 {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sale Price (₪)
+                  Sale Price
                 </label>
+                <div className="relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 sm:text-sm">₪</span>
+                  </div>
                 <input
                   type="number"
                   step="0.01"
-                  value={formData.salePrice}
+                  min="0"
+                  value={formData.salePrice.toString()}
                   onChange={(e) => handleInputChange('salePrice', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="block text-gray-700 w-full pl-7 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="0.00"
                 />
+                </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Currency
+                </label>
+                <select
+                  value={formData.currency}
+                  onChange={(e) => handleInputChange('currency', e.target.value)}
+                  className="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-900"
+                >
+                  <option value="ILS">ILS</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   SKU *
@@ -797,69 +1298,87 @@ function EditProductPage() {
                   className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     errors.sku ? 'border-red-300' : 'border-gray-300'
                   }`}
-                  placeholder="Product SKU"
+                  placeholder="Product SKU (e.g., 0000-0000)"
                 />
+                <p className="mt-1 text-sm text-gray-500">
+                  This will be used to generate URLs like /product/{formData.sku || '0000-0000'}/black
+                </p>
                 {errors.sku && <p className="mt-1 text-sm text-red-600">{errors.sku}</p>}
+              </div>
               </div>
             </div>
 
-            <div className="mt-6">
-              <p className="text-sm text-gray-600 mb-4">
-                Leave sale dates empty for unlimited sale period, or set specific dates to limit the sale duration.
-              </p>
+          {/* Categories */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Categories</h2>
+            
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sale Start Date (Optional)
+                  Main Category *
                   </label>
-                  <input
-                    type="date"
-                    value={formData.saleStartDate}
-                    onChange={(e) => handleInputChange('saleStartDate', e.target.value)}
-                    className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sale End Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.saleEndDate}
-                    onChange={(e) => handleInputChange('saleEndDate', e.target.value)}
-                    className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Category and Brand */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Category & Brand</h2>
-            
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Category *
-                </label>
                 <select
                   value={formData.category}
-                  onChange={(e) => handleInputChange('category', e.target.value)}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
                   className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
                     errors.category ? 'border-red-300' : 'border-gray-300'
                   }`}
                 >
-                  <option value="">Select a category</option>
-                  {categories.map((category) => (
+                  <option value="">Select a main category</option>
+                  {mainCategories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {typeof category.name === 'object' ? category.name.en : category.name}
                     </option>
                   ))}
                 </select>
                 {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
+                </div>
+
+              {formData.category && subCategories.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sub Category
+                  </label>
+                  <select
+                    value={formData.subCategory}
+                    onChange={(e) => handleSubCategoryChange(e.target.value)}
+                    className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select a sub category (optional)</option>
+                    {subCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {typeof category.name === 'object' ? category.name.en : category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {formData.subCategory && subSubCategories.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sub-Sub Category
+                </label>
+                <select
+                      value={formData.subSubCategory}
+                      onChange={(e) => handleSubSubCategoryChange(e.target.value)}
+                      className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                    <option value="">Select a sub-sub category (optional)</option>
+                    {subSubCategories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {typeof category.name === 'object' ? category.name.en : category.name}
+                    </option>
+                  ))}
+                </select>
+                </div>
+              )}
+            </div>
               </div>
+
+          {/* Brand */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Brand</h2>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -875,266 +1394,379 @@ function EditProductPage() {
                   placeholder="Enter brand name"
                 />
                 {errors.brand && <p className="mt-1 text-sm text-red-600">{errors.brand}</p>}
-              </div>
             </div>
           </div>
 
-          {/* Sizes and Colors */}
+          {/* Colors */}
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Sizes & Colors</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Available Sizes *
-                </label>
-                <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
-                  {commonSizes.map((size) => (
-                    <label key={size} className="flex items-center">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Color Variants *</h2>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              {commonColors.map((color) => (
+                <label key={color} className="flex items-center space-x-2 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={formData.sizes.includes(size)}
-                        onChange={(e) => handleSizeChange(size, e.target.checked)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">{size}</span>
+                    checked={formData.colorVariants.some(v => v.colorName === color)}
+                    onChange={(e) => handleColorSelection(color, e.target.checked)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div className="flex items-center space-x-2">
+                    <div 
+                      className="w-4 h-4 rounded border border-gray-300"
+                      style={{ backgroundColor: colorHexMap[color] || '#000000' }}
+                    />
+                    <span className="text-sm text-gray-700">{color}</span>
+                  </div>
                     </label>
                   ))}
                 </div>
-                {errors.sizes && <p className="mt-2 text-sm text-red-600">{errors.sizes}</p>}
+            {errors.colorVariants && <p className="mt-2 text-sm text-red-600">{errors.colorVariants}</p>}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Available Colors *
-                </label>
-                <div className="grid grid-cols-4 gap-3 sm:grid-cols-6">
-                  {commonColors.map((color) => (
-                    <label key={color} className="flex items-center">
+          {/* Color Variants */}
+          {formData.colorVariants.length > 0 && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-6">Color Variants</h2>
+              <div className="space-y-6">
+                {formData.colorVariants.map((variant) => (
+                  <div key={variant.id} className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div 
+                          className="w-6 h-6 rounded border border-gray-300"
+                          style={{ backgroundColor: variant.colorHex }}
+                        />
+                        <h3 className="text-lg font-medium text-gray-900">{variant.colorName}</h3>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        checked={formData.colors.includes(color)}
-                        onChange={(e) => handleArrayChange('colors', color)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">{color}</span>
+                            checked={variant.isActive}
+                            onChange={(e) => updateColorVariant(variant.id, { isActive: e.target.checked })}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <span className="text-sm text-gray-700">Active</span>
                     </label>
-                  ))}
                 </div>
-                {errors.colors && <p className="mt-2 text-sm text-red-600">{errors.colors}</p>}
               </div>
+                    
+                    {/* URL Preview */}
+                    <div className="mb-4 p-3 bg-white border border-gray-200 rounded-md">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Preview URL
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <code className="text-sm bg-gray-400 text-white px-2 py-1 rounded">
+                          /product/{formData.sku || 'sku'}/{variant.colorSlug}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => window.open(`/product/${formData.sku}/${variant.colorSlug}`, '_blank')}
+                          className="text-sm text-indigo-600 hover:text-indigo-800"
+                          disabled={!formData.sku}
+                        >
+                          Preview
+                        </button>
             </div>
           </div>
 
-          {/* Stock Management */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Stock Management</h2>
-            
-            <div className="space-y-4">
-              {formData.sizes.map((size) => (
-                <div key={size} className="flex items-center space-x-4">
-                  <label className="w-16 text-sm font-medium text-gray-700">{size}:</label>
+                    {/* Color Slug */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Color Slug
+                      </label>
+                      <input
+                        type="text"
+                        value={variant.colorSlug}
+                        onChange={(e) => updateColorVariant(variant.id, { colorSlug: e.target.value })}
+                        className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="URL-friendly slug"
+                      />
+                    </div>
+
+                    {/* Pricing */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Price Override (optional)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={variant.price ? variant.price.toString() : ''}
+                          onChange={(e) => updateColorVariant(variant.id, { price: e.target.value ? parseFloat(e.target.value) : undefined })}
+                          className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="Leave empty to use base price"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Sale Price (optional)
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={variant.salePrice ? variant.salePrice.toString() : ''}
+                          onChange={(e) => updateColorVariant(variant.id, { salePrice: e.target.value ? parseFloat(e.target.value) : undefined })}
+                          className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="Sale price for this color"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Stock by Size */}
+                    {variant.sizes.length > 0 && (
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Stock by Size
+                        </label>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                          {variant.sizes.map((size: string) => (
+                            <div key={size} className="text-center">
+                              <label className="block text-xs text-gray-600 mb-1">{size}</label>
                   <input
                     type="number"
                     min="0"
-                    value={formData.stockBySize[size] || 0}
-                    onChange={(e) => handleStockBySizeChange(size, parseInt(e.target.value) || 0)}
-                    className="w-24 px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={variant.stockBySize[size] || 0}
+                                onChange={(e) => handleVariantSizeStockChange(variant.id, size, parseInt(e.target.value) || 0)}
+                                className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   />
                 </div>
               ))}
             </div>
           </div>
+                    )}
 
-          {/* Images */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-medium text-gray-900">Product Images</h2>
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => openGoogleDrivePicker(true)}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <CloudIcon className="h-4 w-4 mr-2" />
-                  From Google Drive
-                </button>
+                    {/* SEO Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Meta Title (optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={variant.metaTitle || ''}
+                          onChange={(e) => updateColorVariant(variant.id, { metaTitle: e.target.value })}
+                          className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="SEO title for this color"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Meta Description (optional)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={variant.metaDescription || ''}
+                          onChange={(e) => updateColorVariant(variant.id, { metaDescription: e.target.value })}
+                          className="mt-1 block text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="SEO description for this color"
+                        />
               </div>
             </div>
             
-            <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center ${
-                isDragOver ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
-              }`}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-            >
+                    {/* Color Variant Images */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {variant.colorName} Images
+                      </label>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        <div className="text-center">
+                          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
               <input
                 type="file"
                 multiple
                 accept="image/*"
-                onChange={handleImageUpload}
+                              onChange={(e) => handleVariantImageSelect(variant.id, e.target.files)}
                 className="hidden"
-                id="image-upload"
+                              id={`variant-images-${variant.id}`}
               />
               <label
-                htmlFor="image-upload"
-                className="cursor-pointer block"
-              >
-                <div className="text-gray-600">
-                  <PhotoIcon className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2">Click to upload or drag and drop</p>
-                  <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB each</p>
-                </div>
+                              htmlFor={`variant-images-${variant.id}`}
+                              className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+                            >
+                              Upload {variant.colorName} Images
               </label>
+                            
+                            <button
+                              type="button"
+                              onClick={() => openGoogleDrivePicker(variant.id)}
+                              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                            >
+                              <CloudIcon className="w-4 h-4 mr-2" />
+                              Import from Google Drive
+                            </button>
+                          </div>
+                          <p className="mt-2 text-sm text-gray-500">
+                            Upload images from your computer or import from Google Drive
+                          </p>
             </div>
 
-            {errors.images && <p className="mt-2 text-sm text-red-600">{errors.images}</p>}
-
-            {/* Image Previews */}
-            {imageFiles.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Uploaded Images</h3>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {imageFiles.map((imageFile, index) => (
+                        {/* Variant Image Preview */}
+                        {variant.images.length > 0 && (
+                          <div className="mt-4">
+                            <div className="mb-3">
+                              <h4 className="text-sm font-medium text-gray-700 mb-2">
+                                Images ({variant.images.length})
+                              </h4>
+                              <p className="text-xs text-gray-500">
+                                Click on any image to set it as the primary image (shown on product page)
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                              {variant.images.map((image, index) => (
                     <div key={index} className="relative group">
-                      <div className="aspect-square rounded-lg overflow-hidden bg-gray-100">
+                                  <div 
+                                    className={`aspect-square relative overflow-hidden rounded-lg bg-gray-100 cursor-pointer transition-all duration-200 ${
+                                      image.isPrimary 
+                                        ? 'ring-2 ring-indigo-500 ring-offset-2' 
+                                        : 'hover:ring-2 hover:ring-gray-300'
+                                    }`}
+                                    onClick={() => setPrimaryImage(variant.id, index)}
+                                    title={image.isPrimary ? 'Primary image (click to change)' : 'Click to set as primary image'}
+                                  >
+                                    {image.uploading ? (
+                                      <div className="flex items-center justify-center h-full">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                      </div>
+                                    ) : image.uploaded ? (
                         <Image
-                          src={imageFile.preview}
-                          alt={`Preview ${index + 1}`}
-                          width={200}
-                          height={200}
-                          className="w-full h-full object-cover"
-                        />
-                        {imageFile.isPrimary && (
-                          <div className="absolute top-2 left-2 bg-yellow-500 text-white rounded-full p-1">
-                            <StarIcon className="h-4 w-4" />
-                          </div>
-                        )}
-                        
-                        {/* Always visible delete button */}
+                                        src={image.url || image.preview}
+                                        alt={`${variant.colorName} - Image ${index + 1}`}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    ) : (
+                                      <Image
+                                        src={image.preview}
+                                        alt={`${variant.colorName} - Image ${index + 1}`}
+                                        fill
+                                        className="object-cover"
+                                      />
+                                    )}
+                                  </div>
+                                  
+                                  {/* Remove button */}
                         <button
                           type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-lg opacity-80 hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      removeVariantImage(variant.id, index);
+                                    }}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
                           title="Remove image"
                         >
-                          <TrashIcon className="h-4 w-4" />
+                                    ×
                         </button>
+                                  
+                                  {/* Primary image indicator */}
+                                  {image.isPrimary && (
+                                    <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded font-medium">
+                                      Primary
                       </div>
-                      
-                      {/* Action buttons */}
-                      <div className="absolute top-2 right-10 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          type="button"
-                          onClick={() => setPrimaryImage(index)}
-                          className="bg-yellow-500 text-white rounded-full p-1 hover:bg-yellow-600 shadow-lg"
-                          title="Set as primary"
-                        >
-                          <StarIcon className="h-4 w-4" />
-                        </button>
-                      </div>
+                                  )}
 
-                      {/* Move buttons */}
-                      <div className="absolute bottom-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {/* Set as primary button for non-primary images */}
+                                  {!image.isPrimary && (
+                                    <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           type="button"
-                          onClick={() => moveImageUp(index)}
-                          disabled={index === 0}
-                          className="bg-gray-600 text-white rounded-full p-1 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move up"
-                        >
-                          <ChevronUpIcon className="h-4 w-4" />
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setPrimaryImage(variant.id, index);
+                                        }}
+                                        className="w-full bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700 transition-colors"
+                                      >
+                                        Set as Primary
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => moveImageDown(index)}
-                          disabled={index === imageFiles.length - 1}
-                          className="bg-gray-600 text-white rounded-full p-1 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="Move down"
-                        >
-                          <ChevronDownIcon className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      {imageFile.uploading && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-gray-500">
-                  Click the red trash icon to delete images, the star icon to set primary image, and arrow buttons to reorder images.
-                </p>
               </div>
             )}
-          </div>
-
-          {/* Video */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-medium text-gray-900">Product Video</h2>
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={() => openGoogleDrivePicker(false)}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  <CloudIcon className="h-4 w-4 mr-2" />
-                  From Google Drive
-                </button>
               </div>
             </div>
             
-            {!videoFile.url ? (
-              <div className="border-2 border-dashed rounded-lg p-6 text-center border-gray-300">
+                    {/* Color Variant Video */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        {variant.colorName} Video (Optional)
+                      </label>
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                        {!variant.video ? (
+                          <div className="text-center">
+                            <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <input
                   type="file"
-                  accept="video/*"
-                  onChange={handleVideoUpload}
+                                accept="video/mp4"
+                                onChange={(e) => handleVariantVideoSelect(variant.id, e.target.files)}
                   className="hidden"
-                  id="video-upload"
+                                id={`variant-video-${variant.id}`}
                 />
                 <label
-                  htmlFor="video-upload"
-                  className="cursor-pointer block"
-                >
-                  <div className="text-gray-600">
-                    <VideoCameraIcon className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2">Click to upload video</p>
-                    <p className="text-sm text-gray-500">MP4, MOV, AVI up to 100MB</p>
-                  </div>
+                                htmlFor={`variant-video-${variant.id}`}
+                                className="cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
+                              >
+                                Upload {variant.colorName} Video
                 </label>
+                              <button
+                                type="button"
+                                onClick={() => openGoogleDriveVideoPicker(variant.id)}
+                                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                              >
+                                <CloudIcon className="w-4 h-4 mr-2" />
+                                Import from Google Drive
+                              </button>
+                            </div>
+                            <p className="mt-2 text-sm text-gray-500">
+                              Upload a short video showcasing this color variant (MP4, max 2.5MB)
+                            </p>
               </div>
             ) : (
-              <div className="relative group">
-                <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                  <video
-                    src={videoFile.preview || videoFile.url}
-                    controls
-                    className="w-full h-full object-cover"
-                  />
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-shrink-0">
+                                <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                                  <VideoCameraIcon className="w-6 h-6 text-red-600" />
                 </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {variant.video.file?.name || 'Video file'}
+                                </p>
+                                <p className="text-sm text-gray-500">
+                                  {variant.video.file?.size ? `${(variant.video.file.size / (1024 * 1024)).toFixed(2)} MB` : 'Unknown size'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {variant.video.uploading && (
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                              )}
+                              {variant.video.uploaded && (
+                                <span className="text-sm text-green-600 font-medium">Uploaded</span>
+                              )}
                 <button
                   type="button"
-                  onClick={removeVideo}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-lg opacity-80 hover:opacity-100 transition-opacity"
-                  title="Remove video"
+                                onClick={() => removeVariantVideo(variant.id)}
+                                className="text-red-600 hover:text-red-800 text-sm font-medium"
                 >
-                  <TrashIcon className="h-4 w-4" />
+                                Remove
                 </button>
-                {videoFile.uploading && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
                   </div>
-                )}
-                <p className="mt-2 text-sm text-gray-600">{videoFile.name}</p>
               </div>
             )}
           </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Product Status */}
           <div className="bg-white shadow rounded-lg p-6">
@@ -1144,8 +1776,8 @@ function EditProductPage() {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.featured}
-                  onChange={(e) => handleInputChange('featured', e.target.checked)}
+                  checked={formData.featuredProduct}
+                  onChange={(e) => handleInputChange('featuredProduct', e.target.checked)}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">Featured Product</span>
@@ -1154,11 +1786,21 @@ function EditProductPage() {
               <label className="flex items-center">
                 <input
                   type="checkbox"
-                  checked={formData.new}
-                  onChange={(e) => handleInputChange('new', e.target.checked)}
+                  checked={formData.newProduct}
+                  onChange={(e) => handleInputChange('newProduct', e.target.checked)}
                   className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">New Product</span>
+              </label>
+
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.isEnabled}
+                  onChange={(e) => handleInputChange('isEnabled', e.target.checked)}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-700">Enabled</span>
               </label>
             </div>
           </div>
@@ -1185,9 +1827,22 @@ function EditProductPage() {
         {/* Google Drive Picker Modal */}
         <GoogleDrivePicker
           isOpen={showGoogleDrivePicker}
-          onClose={() => setShowGoogleDrivePicker(false)}
+          onClose={() => {
+            setShowGoogleDrivePicker(false)
+            setCurrentVariantForGoogleDrive(null)
+          }}
           onSelectFiles={handleGoogleDriveSelect}
-          multiple={isImagePicker}
+          multiple={true}
+        />
+        
+        <GoogleDrivePicker
+          isOpen={showGoogleDriveVideoPicker}
+          onClose={() => {
+            setShowGoogleDriveVideoPicker(false)
+            setCurrentVariantForGoogleDriveVideo(null)
+          }}
+          onSelectFiles={handleGoogleDriveVideoSelect}
+          multiple={false}
         />
       </div>
     </div>

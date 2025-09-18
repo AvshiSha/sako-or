@@ -242,6 +242,7 @@ export default function CollectionSlugPage() {
      }
      
    }
+   
 
   // Filtering logic
   const subcategoryObj = categories.find(
@@ -257,10 +258,10 @@ export default function CollectionSlugPage() {
       if (selectedCategory === "All Products") return true;
       
       
-      // Handle hierarchical category filtering using categoryPath
-      if (product.categoryPath && selectedCategoryPath) {
+      // Handle hierarchical category filtering using categories_path
+      if (product.categories_path && selectedCategoryPath) {
         const requestedPath = selectedCategoryPath.toLowerCase();
-        const productPath = product.categoryPath.toLowerCase();
+        const productPath = product.categories_path.join('/').toLowerCase();
         
         // Exact match: product should appear in its exact category path
         if (productPath === requestedPath) {
@@ -282,15 +283,8 @@ export default function CollectionSlugPage() {
         return false;
       }
       
-      // Fallback to old logic for backward compatibility
-      if (selectedSubcategory && subcategoryObj) {
-        return product.categoryId === subcategoryObj.id;
-      }
-      
-      if (!product.categorySlug) {
-        return false;
-      }
-      return product.categorySlug.toLowerCase() === selectedCategory.toLowerCase();
+      // No fallback needed - new products use categories_path
+      return false;
     })
     .filter((product) => {
       if (selectedColors.length === 0) return true;

@@ -332,7 +332,7 @@ export const productService = {
         constraints.push(where('isNew', '==', filters.isNew));
       }
       if (filters?.isActive !== undefined) {
-        constraints.push(where('isActive', '==', filters.isActive));
+        constraints.push(where('isEnabled', '==', filters.isActive));
       }
       
       constraints.push(orderBy('createdAt', 'desc'));
@@ -424,7 +424,7 @@ export const productService = {
   async getProductByBaseSku(baseSku: string): Promise<Product | null> {
     try {
       console.log('🔍 Firebase: Searching for base SKU:', baseSku);
-      const q = query(collection(db, 'products'), where('baseSku', '==', baseSku), limit(1));
+      const q = query(collection(db, 'products'), where('sku', '==', baseSku), limit(1));
       const querySnapshot = await getDocs(q);
       
       console.log('📊 Firebase: Query returned', querySnapshot.docs.length, 'documents');
@@ -432,7 +432,7 @@ export const productService = {
       if (!querySnapshot.empty) {
         const docSnapshot = querySnapshot.docs[0];
         const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
-        console.log('✅ Firebase: Product found:', product.name?.en);
+        console.log('✅ Firebase: Product found:', product.title_en);
         
         // Fetch category data
         if (product.categoryId) {
@@ -631,7 +631,7 @@ export const productService = {
       constraints.push(where('isNew', '==', filters.isNew));
     }
     if (filters?.isActive !== undefined) {
-      constraints.push(where('isActive', '==', filters.isActive));
+      constraints.push(where('isEnabled', '==', filters.isActive));
     }
     
     constraints.push(orderBy('createdAt', 'desc'));
@@ -651,14 +651,16 @@ export const productService = {
           }
         }
         
-        // Fetch color variants data
-        try {
-          const colorVariantsQuery = query(
-            collection(db, 'colorVariants'),
-            where('productId', '==', product.id),
-            where('isActive', '==', true)
-          );
-          const colorVariantsSnapshot = await getDocs(colorVariantsQuery);
+        // Handle color variants - new products have them embedded, old products need separate fetch
+        if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
+          // Old product structure - fetch from separate collection
+          try {
+            const colorVariantsQuery = query(
+              collection(db, 'colorVariants'),
+              where('productId', '==', product.id),
+              where('isActive', '==', true)
+            );
+            const colorVariantsSnapshot = await getDocs(colorVariantsQuery);
           
           product.colorVariants = {};
           for (const variantDoc of colorVariantsSnapshot.docs) {
@@ -705,9 +707,12 @@ export const productService = {
               };
             }
           }
-        } catch (error) {
-          console.error('Error fetching color variants:', error);
-          product.colorVariants = {};
+          } catch (error) {
+            console.error('Error fetching color variants:', error);
+            product.colorVariants = {};
+          }
+        } else {
+          // New product structure - color variants are already embedded
         }
         
         products.push(product);

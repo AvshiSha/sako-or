@@ -13,12 +13,13 @@ import {
   CubeIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
-import { productService, Product, productHelpers } from '@/lib/firebase'
+import { productService, Product, productHelpers, categoryService, Category } from '@/lib/firebase'
 import SuccessMessage from '@/app/components/SuccessMessage'
 
 function ProductsPageContent() {
   const searchParams = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filter, setFilter] = useState('all')
@@ -27,6 +28,7 @@ function ProductsPageContent() {
 
   useEffect(() => {
     fetchProducts()
+    fetchCategories()
     
     // Check for success message in URL
     if (searchParams) {
@@ -49,6 +51,32 @@ function ProductsPageContent() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const fetchCategories = async () => {
+    try {
+      const categoriesData = await categoryService.getAllCategories()
+      setCategories(categoriesData)
+    } catch (error) {
+      console.error('Error fetching categories:', error)
+    }
+  }
+
+  const getCategoryPath = (product: Product): string => {
+    if (!product.categories_path_id || product.categories_path_id.length === 0) {
+      return 'No category'
+    }
+
+    const categoryNames: string[] = []
+    
+    for (const categoryId of product.categories_path_id) {
+      const category = categories.find(cat => cat.id === categoryId)
+      if (category && category.name && typeof category.name === 'object') {
+        categoryNames.push(category.name.en)
+      }
+    }
+    
+    return categoryNames.length > 0 ? categoryNames.join(' → ') : 'No category'
   }
 
   const handleDelete = async (productId: string) => {
@@ -220,10 +248,10 @@ function ProductsPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="flex-shrink-0 h-10 w-10 relative">
-                              {product.colorVariants?.[0]?.images && product.colorVariants[0].images.length > 0 ? (
+                              {product.colorVariants?.[0]?.images?.length > 0 || product.colorVariants?.[0]?.primaryImage ? (
                                 <Image
                                   className="rounded-lg object-cover"
-                                  src={product.colorVariants[0].primaryImage || product.colorVariants[0].images[0]}
+                                  src={product.colorVariants[0].images?.[0] || product.colorVariants[0].primaryImage || '/placeholder-image.jpg'}
                                   alt={productHelpers.getField(product, 'name', 'en')}
                                   fill
                                   sizes="40px"
@@ -236,19 +264,19 @@ function ProductsPageContent() {
                             </div>
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
-                                {productHelpers.getField(product, 'name', 'en')}
+                                {product.title_en || productHelpers.getField(product, 'name', 'en')}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {productHelpers.getField(product, 'slug', 'en')}
+                                {product.sku}
                               </div>
                               <div className="text-xs text-gray-400">
-                                HE: {productHelpers.getField(product, 'name', 'he')}
+                                HE: {product.title_he || productHelpers.getField(product, 'name', 'he')}
                               </div>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.category || 'No category'}
+                          {getCategoryPath(product)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
@@ -274,11 +302,11 @@ function ProductsPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex flex-col space-y-1">
                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                              product.isActive 
+                              product.isEnabled 
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
                             }`}>
-                              {product.isActive ? 'Active' : 'Inactive'}
+                              {product.isEnabled ? 'Active' : 'Inactive'}
                             </span>
                             {product.featured && (
                               <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -295,7 +323,7 @@ function ProductsPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <Link
-                              href={`/en/product/${product.baseSku || product.sku}/${product.colorVariants?.[0]?.colorSlug || 'default'}`}
+                              href={`/en/product/${product.sku}/${product.colorVariants ? Object.values(product.colorVariants)[0]?.colorSlug || 'default' : 'default'}`}
                               className="text-indigo-600 hover:text-indigo-900"
                               title="View"
                             >

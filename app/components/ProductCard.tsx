@@ -35,7 +35,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
   }
 
   const currentPrice = getCurrentPrice()
-  const productName = product.name?.[language] || product.name?.en || 'Unnamed Product'
+  const productName = language === 'he' ? (product.title_he || product.title_en) : (product.title_en || product.title_he) || 'Unnamed Product'
   
   // Get primary image from the active variant
   const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
@@ -54,7 +54,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
     e.stopPropagation()
     
     // Use the base SKU for favorites (consistent across all color variants)
-    const sku = product.baseSku || product.sku || ''
+    const sku = product.sku || ''
     if (sku) {
       toggleFavorite(sku)
     }
@@ -71,7 +71,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
     <div className="group relative bg-gray-100">
       {/* Main Product Image Section - Clickable to go to selected variant */}
       <Link 
-        href={`/${language}/product/${product.baseSku}/${activeVariant.colorSlug}`}
+        href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
         className="relative aspect-square overflow-hidden bg-gray-50 block"
       >
         {primaryImage ? (
@@ -96,7 +96,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
                         onClick={handleWishlistToggle}
                         className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
                       >
-                        {isFavorite(product.baseSku || product.sku || '') ? (
+                        {isFavorite(product.sku || '') ? (
                           <HeartSolidIcon className="h-4 w-4 text-red-500" />
                         ) : (
                           <HeartIcon className="h-4 w-4 text-gray-600" />
@@ -117,7 +117,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
                       onClick={handleWishlistToggle}
                       className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"
                     >
-                      {isFavorite(product.baseSku || product.sku || '') ? (
+                      {isFavorite(product.sku || '') ? (
                         <HeartSolidIcon className="h-4 w-4 text-red-500" />
                       ) : (
                         <HeartIcon className="h-4 w-4 text-gray-600" />
@@ -146,7 +146,7 @@ export default function ProductCard({ product, language = 'en' }: ProductCardPro
       <div className="mt-0 bg-gray-100 p-3 pb-1">
         <div className="flex items-center gap-2 mb-1">
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{productName}</h3>
-          {product.isNew && (
+          {product.newProduct && (
             <span className="bg-black text-white text-xs font-medium px-2 py-0.5 uppercase">
               {language === 'he' ? 'חדש' : 'NEW'}
             </span>

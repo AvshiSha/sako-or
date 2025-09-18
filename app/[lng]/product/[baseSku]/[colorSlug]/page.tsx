@@ -99,7 +99,7 @@ export default function ProductColorPage() {
         setError(null)
         
         // Get product with all color variants
-        const productData = await productService.getProductWithColorVariants(baseSku)
+        const productData = await productService.getProductByBaseSku(baseSku)
         
         if (!productData) {
           setError('Product not found')
@@ -434,7 +434,12 @@ export default function ProductColorPage() {
                   </div>
                 </li>
                 <li>
-                  <span className="text-gray-900 font-medium">{productName}</span>
+                <Link 
+                    href={`/${lng}/collection/${product.categories_path[0]}`} 
+                    className="text-gray-500 hover:text-gray-700 transition-colors duration-200 font-medium"
+                  >
+                    {product.categories_path[0]}
+                  </Link>
                 </li>
                 <li>
                   <div className="flex items-center">

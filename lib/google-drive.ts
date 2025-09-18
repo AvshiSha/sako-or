@@ -26,12 +26,17 @@ export interface GoogleDriveFolder {
 export class GoogleDriveService {
   private auth: any;
   private drive: any;
+  private initialized: boolean = false;
 
   constructor() {
-    this.initializeAuth();
+    // Don't initialize immediately - wait until first use
   }
 
   private initializeAuth() {
+    if (this.initialized) {
+      return;
+    }
+
     // Determine the correct redirect URI based on environment
     const redirectUri = process.env.NODE_ENV === 'production' 
       ? 'https://sako-or.vercel.app/api/google-drive/callback'
@@ -42,6 +47,11 @@ export class GoogleDriveService {
     console.log('Google Drive Auth - Client ID exists:', !!process.env.GOOGLE_CLIENT_ID);
     console.log('Google Drive Auth - Client Secret exists:', !!process.env.GOOGLE_CLIENT_SECRET);
 
+    // Check if environment variables are available
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+      throw new Error('Google OAuth credentials not configured. Please check your environment variables.');
+    }
+
     // Initialize OAuth2 client
     this.auth = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
@@ -50,14 +60,14 @@ export class GoogleDriveService {
     );
 
     this.drive = google.drive({ version: 'v3', auth: this.auth });
+    this.initialized = true;
   }
 
   // Get authorization URL for OAuth flow
   getAuthUrl(): string {
     try {
-      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-        throw new Error('Google OAuth credentials not configured. Please check your environment variables.');
-      }
+      // Initialize auth if not already done
+      this.initializeAuth();
 
       return this.auth.generateAuthUrl({
         access_type: 'offline',
@@ -72,6 +82,9 @@ export class GoogleDriveService {
 
   // Exchange authorization code for tokens
   async getTokens(code: string) {
+    // Initialize auth if not already done
+    this.initializeAuth();
+    
     const { tokens } = await this.auth.getToken(code);
     this.auth.setCredentials(tokens);
     return tokens;
@@ -79,12 +92,17 @@ export class GoogleDriveService {
 
   // Set credentials (for when tokens are already available)
   setCredentials(tokens: any) {
+    // Initialize auth if not already done
+    this.initializeAuth();
     this.auth.setCredentials(tokens);
   }
 
   // List files in a folder
   async listFiles(folderId?: string, pageToken?: string): Promise<{ files: GoogleDriveFile[], nextPageToken?: string }> {
     try {
+      // Initialize auth if not already done
+      this.initializeAuth();
+      
       console.log('Google Drive Service - listFiles called with folderId:', folderId);
       
       const response = await this.drive.files.list({

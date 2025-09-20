@@ -502,7 +502,9 @@ export default function ProductColorPage() {
                 <div 
                   className="flex h-full w-full transition-transform duration-300 ease-out"
                   style={{
-                    transform: `translateX(-${selectedImageIndex * 100}%)`
+                    transform: isRTL 
+                      ? `translateX(${selectedImageIndex * 100}%)` 
+                      : `translateX(-${selectedImageIndex * 100}%)`
                   }}
                 >
                   {/* Images */}
@@ -515,13 +517,12 @@ export default function ProductColorPage() {
                         height={600}
                         className="h-full w-full object-cover object-center"
                         priority={index === 0}
+                        unoptimized={true}
                         onError={(e) => {
                           console.error('Image failed to load:', image, 'Index:', index, 'Language:', lng)
                         }}
                         onLoad={() => {
-                          if (lng === 'he' && index === selectedImageIndex) {
-                            console.log('Hebrew image loaded successfully:', image, 'Index:', index)
-                          }
+                          console.log('Image loaded successfully:', image, 'Index:', index, 'Language:', lng)
                         }}
                       />
                     </div>

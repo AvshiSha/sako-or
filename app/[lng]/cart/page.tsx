@@ -11,7 +11,7 @@ import {
   PlusIcon
 } from '@heroicons/react/24/outline'
 import { useCart } from '@/app/hooks/useCart'
-import PaymentButton from '@/app/components/PaymentButton'
+import CheckoutModal from '@/app/components/CheckoutModal'
 
 export default function CartPage() {
   const params = useParams()
@@ -28,7 +28,30 @@ export default function CartPage() {
     loading 
   } = useCart()
 
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
+
   const [isClient, setIsClient] = useState(false)
+
+  // Generate product name from cart items
+  const getProductName = () => {
+    if (items.length === 0) return 'Sako Order'
+    
+    if (items.length === 1) {
+      const item = items[0]
+      return `${item.name[lng as 'en' | 'he']}${item.color ? ` - ${item.color}` : ''}`
+    }
+    
+    if (items.length === 2) {
+      const item1 = items[0]
+      const item2 = items[1]
+      return `${item1.name[lng as 'en' | 'he']}${item1.color ? ` - ${item1.color}` : ''} + ${item2.name[lng as 'en' | 'he']}${item2.color ? ` - ${item2.color}` : ''}`
+    }
+    
+    // For 3+ items, show first item + count
+    const firstItem = items[0]
+    const remainingCount = items.length - 1
+    return `${firstItem.name[lng as 'en' | 'he']}${firstItem.color ? ` - ${firstItem.color}` : ''} + ${remainingCount} ${isRTL ? 'עוד פריטים' : 'more items'}`
+  }
 
   // Localized content
   const content = {
@@ -267,28 +290,12 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <PaymentButton
-                  orderId={`ORDER-${Date.now()}`}
-                  amount={totalPrice}
-                  currency="ILS"
-                  productName="Sako Order"
-                  createToken={true}
-                  createDocument={true}
-                  onSuccess={(result) => {
-                    console.log('Payment successful:', result)
-                    // Clear cart after successful payment
-                    clearCart()
-                    // Redirect to success page
-                    window.location.href = '/Success?orderId=' + result.orderId
-                  }}
-                  onError={(error) => {
-                    console.error('Payment failed:', error)
-                    alert(lng === 'he' ? 'התשלום נכשל: ' + error : 'Payment failed: ' + error)
-                  }}
-                  className="w-full mt-6"
+                <button
+                  onClick={() => setIsCheckoutModalOpen(true)}
+                  className="w-full mt-6 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   {t.checkout}
-                </PaymentButton>
+                </button>
 
                 <Link
                   href={`/${lng}`}
@@ -301,6 +308,17 @@ export default function CartPage() {
           </div>
         )}
       </div>
+
+      {/* Checkout Modal */}
+      <CheckoutModal
+        isOpen={isCheckoutModalOpen}
+        onClose={() => setIsCheckoutModalOpen(false)}
+        orderId={`ORDER-${Date.now()}`}
+        amount={totalPrice}
+        currency="ILS"
+        productName={getProductName()}
+        language={lng as 'he' | 'en'}
+      />
     </div>
   )
 }

@@ -20,6 +20,17 @@ function SuccessPageContent() {
     const amount = searchParams?.get('amount');
     const currency = searchParams?.get('currency');
 
+    // Send postMessage to parent if in iframe
+    if (window.parent && window.parent !== window) {
+      const message = {
+        type: 'CARD_PAYMENT_REDIRECT',
+        status: 'success' as const,
+        lpid: lpid || '',
+        orderId: orderId || undefined
+      };
+      window.parent.postMessage(message, window.location.origin);
+    }
+
     if (lpid) {
       // Verify payment status with your backend
       verifyPaymentStatus(lpid, orderId);

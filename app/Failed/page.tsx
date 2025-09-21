@@ -20,6 +20,17 @@ function FailedPageContent() {
     const errorCode = searchParams?.get('errorCode');
     const errorMessage = searchParams?.get('errorMessage');
 
+    // Send postMessage to parent if in iframe
+    if (window.parent && window.parent !== window) {
+      const message = {
+        type: 'CARD_PAYMENT_REDIRECT',
+        status: 'failed' as const,
+        lpid: lpid || '',
+        orderId: orderId || undefined
+      };
+      window.parent.postMessage(message, window.location.origin);
+    }
+
     setErrorInfo({
       orderId: orderId || undefined,
       errorCode: errorCode || undefined,

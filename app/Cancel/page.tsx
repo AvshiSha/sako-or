@@ -16,6 +16,17 @@ function CancelPageContent() {
     const lpid = searchParams?.get('lpid'); // Low Profile ID
     const orderId = searchParams?.get('orderId');
 
+    // Send postMessage to parent if in iframe
+    if (window.parent && window.parent !== window) {
+      const message = {
+        type: 'CARD_PAYMENT_REDIRECT',
+        status: 'cancelled' as const,
+        lpid: lpid || '',
+        orderId: orderId || undefined
+      };
+      window.parent.postMessage(message, window.location.origin);
+    }
+
     setOrderInfo({
       orderId: orderId || undefined,
     });

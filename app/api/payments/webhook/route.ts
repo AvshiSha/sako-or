@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cardcomAPI } from '../../../../lib/cardcom';
+import { CardComAPI } from '../../../../lib/cardcom';
 import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
 import { stringifyPaymentData } from '../../../../lib/orders';
@@ -10,9 +10,12 @@ export async function POST(request: NextRequest) {
     
     // Validate webhook signature if configured
     const signature = request.headers.get('x-cardcom-signature');
-    if (signature && !cardcomAPI.validateWebhookSignature(JSON.stringify(body), signature)) {
-      console.error('Invalid webhook signature');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    if (signature) {
+      const cardcomAPI = new CardComAPI();
+      if (!cardcomAPI.validateWebhookSignature(JSON.stringify(body), signature)) {
+        console.error('Invalid webhook signature');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
     }
 
     // Log the webhook for debugging

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { cardcomAPI, createPaymentSessionRequest } from '../../../../lib/cardcom';
+import { CardComAPI, createPaymentSessionRequest } from '../../../../lib/cardcom';
 import { CreateLowProfileRequest } from '../../../../app/types/checkout';
 import { createOrder, generateOrderNumber } from '../../../../lib/orders';
 import { prisma } from '../../../../lib/prisma';
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Call CardCom API
     console.log('CardCom request being sent:', JSON.stringify(cardcomRequest, null, 2));
+    const cardcomAPI = new CardComAPI();
     const cardcomResponse = await cardcomAPI.createLowProfile(cardcomRequest);
 
     // Update order with CardCom Low Profile ID

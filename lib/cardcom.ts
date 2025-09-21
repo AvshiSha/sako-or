@@ -122,8 +122,7 @@ export class CardComAPI {
   }
 }
 
-// Export singleton instance
-export const cardcomAPI = new CardComAPI();
+// Note: CardComAPI should be instantiated at runtime, not at module level
 
 // Helper function to create a payment session request
 export function createPaymentSessionRequest(
@@ -141,15 +140,21 @@ export function createPaymentSessionRequest(
     returnUrl?: string;
   } = {}
 ): CreateLowProfileRequest {
-  const { getRedirectUrls } = cardcomAPI;
-  const redirectUrls = getRedirectUrls(options.returnUrl);
+  // Generate redirect URLs without instantiating CardComAPI
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const redirectUrls = {
+    success: `${baseUrl}/Success`,
+    failure: `${baseUrl}/Failed`,
+    cancel: `${baseUrl}/Cancel`,
+    webhook: `${baseUrl}/api/payments/webhook`,
+  };
 
   const request: CreateLowProfileRequest = {
     TerminalNumber: parseInt(CARDCOM_TERMINAL_NUMBER!),
     ApiName: CARDCOM_API_NAME!,
     Amount: amount,
     SuccessRedirectUrl: redirectUrls.success,
-    FailedRedirectUrl: redirectUrls.failed,
+    FailedRedirectUrl: redirectUrls.failure,
     CancelRedirectUrl: redirectUrls.cancel,
     WebHookUrl: redirectUrls.webhook,
     ReturnValue: orderId,

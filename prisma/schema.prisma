@@ -1,12 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -15,7 +12,7 @@ model User {
   email     String   @unique
   name      String?
   password  String
-  role      String   @default("USER") // USER or ADMIN
+  role      String   @default("USER")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -23,112 +20,87 @@ model User {
 }
 
 model Category {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  slug        String   @unique
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
   description String?
   image       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  products Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
 
   @@map("categories")
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  // Base product information (shared across all colors)
-  name        String
-  slug        String   @unique
-  description String
-  baseSku     String   @unique // Base SKU for the product family (e.g., "0000-0000")
-  featured    Boolean  @default(false)
-  isNew       Boolean  @default(false)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Material & Care information
-  upperMaterial     String? // Upper Material in JSON format for EN/HE
-  materialInnerSole String? // Material Inner Sole in JSON format for EN/HE
-  lining            String? // Lining in JSON format for EN/HE
-  sole              String? // Sole in JSON format for EN/HE
-  heelHeight        String? // Heel Height in JSON format for EN/HE
-
-  // Shipping & Returns information
-  shippingReturns String? // Shipping & Returns in JSON format for EN/HE
-
-  categoryId String
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  // Relations
-  colorVariants ColorVariant[]
-  tags          ProductTag[]
+  id                String         @id @default(cuid())
+  name              String
+  slug              String         @unique
+  description       String
+  baseSku           String         @unique
+  featured          Boolean        @default(false)
+  isNew             Boolean        @default(false)
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  upperMaterial     String?
+  materialInnerSole String?
+  lining            String?
+  sole              String?
+  heelHeight        String?
+  shippingReturns   String?
+  categoryId        String
+  colorVariants     ColorVariant[]
+  tags              ProductTag[]
+  category          Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("products")
 }
 
-// Color-specific variant with its own images, pricing, and stock
 model ColorVariant {
-  id        String  @id @default(cuid())
-  // Color information
-  colorName String // Display name (e.g., "Black", "Red")
-  colorSlug String // URL slug (e.g., "black", "red")
-  colorHex  String? // Hex color code for swatches
-
-  // Pricing (can override base product pricing)
-  price         Float? // Override price for this color
-  salePrice     Float? // Sale price for this color
-  saleStartDate DateTime?
-  saleEndDate   DateTime?
-
-  // Stock and availability
-  stock    Int     @default(0)
-  isActive Boolean @default(true)
-
-  // SEO
+  id              String              @id @default(cuid())
+  colorName       String
+  colorSlug       String
+  colorHex        String?
+  price           Float?
+  salePrice       Float?
+  saleStartDate   DateTime?
+  saleEndDate     DateTime?
+  stock           Int                 @default(0)
+  isActive        Boolean             @default(true)
   metaTitle       String?
   metaDescription String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  // Relations
-  images ColorVariantImage[]
-  sizes  ColorVariantSize[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  productId       String
+  images          ColorVariantImage[]
+  sizes           ColorVariantSize[]
+  product         Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@unique([productId, colorSlug])
   @@map("color_variants")
 }
 
-// Images specific to each color variant
 model ColorVariantImage {
-  id        String   @id @default(cuid())
-  url       String
-  alt       String?
-  isPrimary Boolean  @default(false)
-  order     Int      @default(0)
-  createdAt DateTime @default(now())
-
+  id             String       @id @default(cuid())
+  url            String
+  alt            String?
+  isPrimary      Boolean      @default(false)
+  order          Int          @default(0)
+  createdAt      DateTime     @default(now())
   colorVariantId String
   colorVariant   ColorVariant @relation(fields: [colorVariantId], references: [id], onDelete: Cascade)
 
   @@map("color_variant_images")
 }
 
-// Size and stock information per color variant
 model ColorVariantSize {
-  id        String   @id @default(cuid())
-  size      String // Size value (e.g., "S", "M", "L", "36", "37")
-  stock     Int      @default(0)
-  sku       String?  @unique // Full SKU for this size/color combination
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  id             String       @id @default(cuid())
+  size           String
+  stock          Int          @default(0)
+  sku            String?      @unique
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   colorVariantId String
   colorVariant   ColorVariant @relation(fields: [colorVariantId], references: [id], onDelete: Cascade)
 
@@ -137,125 +109,97 @@ model ColorVariantSize {
 }
 
 model Tag {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  slug      String   @unique
-  createdAt DateTime @default(now())
-
-  products ProductTag[]
+  id        String       @id @default(cuid())
+  name      String       @unique
+  slug      String       @unique
+  createdAt DateTime     @default(now())
+  products  ProductTag[]
 
   @@map("tags")
 }
 
 model ProductTag {
-  id String @id @default(cuid())
-
+  id        String  @id @default(cuid())
   productId String
+  tagId     String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  tagId String
-  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([productId, tagId])
   @@map("product_tags")
 }
 
-// Payment and Order models for CardCom integration
 model Order {
-  id          String @id @default(cuid())
-  orderNumber String @unique // Human-readable order number
-  status      String @default("pending") // pending, processing, completed, failed, cancelled
-  total       Float
-  currency    String @default("ILS")
-
-  // Customer information
-  customerName  String?
-  customerEmail String?
-  customerPhone String?
-
-  // Payment information
-  paymentStatus String  @default("pending") // pending, processing, completed, failed, refunded
-  paymentMethod String? // cardcom, etc.
-  paymentData   String? // Store CardCom response data as JSON string
-
-  // CardCom specific fields
+  id                   String      @id @default(cuid())
+  orderNumber          String      @unique
+  status               String      @default("pending")
+  total                Float
+  currency             String      @default("ILS")
+  customerName         String?
+  customerEmail        String?
+  customerPhone        String?
+  paymentStatus        String      @default("pending")
+  paymentMethod        String?
+  paymentData          String?
   cardcomLowProfileId  String?
   cardcomTransactionId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  orderItems OrderItem[]
-  payments   Payment[]
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  orderItems           OrderItem[]
+  payments             Payment[]
 
   @@map("orders")
 }
 
 model OrderItem {
-  id       String @id @default(cuid())
-  quantity Int
-  price    Float // Price at time of order
-  total    Float // quantity * price
-
-  // Product information (snapshot at time of order)
+  id          String   @id @default(cuid())
+  quantity    Int
+  price       Float
+  total       Float
   productName String
   productSku  String
   colorName   String?
   size        String?
-
-  createdAt DateTime @default(now())
-
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
 }
 
 model Payment {
-  id       String @id @default(cuid())
-  amount   Float
-  currency String @default("ILS")
-  status   String @default("pending") // pending, processing, completed, failed, refunded
-
-  // CardCom specific fields
+  id                   String   @id @default(cuid())
+  amount               Float
+  currency             String   @default("ILS")
+  status               String   @default("pending")
   cardcomLowProfileId  String?
   cardcomTransactionId String?
   cardcomResponseCode  Int?
   cardcomDescription   String?
-
-  // Payment method details
-  paymentMethod String? // cardcom
-  last4Digits   String?
-  cardBrand     String?
-
-  // Token information (if saved)
-  tokenId     String?
-  tokenExpiry String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  paymentMethod        String?
+  last4Digits          String?
+  cardBrand            String?
+  tokenId              String?
+  tokenExpiry          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  orderId              String
+  order                Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
 
 model PaymentToken {
-  id          String  @id @default(cuid())
-  token       String  @unique // CardCom token
-  last4Digits String?
-  cardBrand   String?
-  cardExpiry  String? // MM/YY format
-  isActive    Boolean @default(true)
-
-  // Customer information
+  id            String   @id @default(cuid())
+  token         String   @unique
+  last4Digits   String?
+  cardBrand     String?
+  cardExpiry    String?
+  isActive      Boolean  @default(true)
   customerEmail String?
   customerName  String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("payment_tokens")
 }

@@ -11,6 +11,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
+    "db:setup:prod": "node scripts/setup-production-db.js",
     "seed:categories": "node scripts/seed-categories.js"
   },
   "dependencies": {

@@ -1,0 +1,175 @@
+import { CreateLowProfileRequest, CreateLowProfileResponse, LowProfileResult } from '../app/types/cardcom';
+
+// CardCom API Configuration
+const CARDCOM_BASE_URL = 'https://secure.cardcom.solutions';
+const CARDCOM_API_VERSION = 'v11';
+
+// Environment variables (add these to your .env.local)
+const CARDCOM_TERMINAL_NUMBER = process.env.CARDCOM_TERMINAL_NUMBER;
+const CARDCOM_API_NAME = process.env.CARDCOM_API_NAME;
+const CARDCOM_API_PASSWORD = process.env.CARDCOM_API_PASSWORD; // For refunds
+const CARDCOM_WEBHOOK_SECRET = process.env.CARDCOM_WEBHOOK_SECRET; // Optional webhook validation
+
+if (!CARDCOM_TERMINAL_NUMBER || !CARDCOM_API_NAME) {
+  throw new Error('Missing required CardCom environment variables: CARDCOM_TERMINAL_NUMBER, CARDCOM_API_NAME');
+}
+
+export class CardComAPI {
+  private baseUrl: string;
+  private terminalNumber: number;
+  private apiName: string;
+  private apiPassword?: string;
+
+  constructor() {
+    this.baseUrl = CARDCOM_BASE_URL;
+    this.terminalNumber = parseInt(CARDCOM_TERMINAL_NUMBER!);
+    this.apiName = CARDCOM_API_NAME!;
+    this.apiPassword = CARDCOM_API_PASSWORD;
+  }
+
+  /**
+   * Create a low profile payment session
+   */
+  async createLowProfile(request: CreateLowProfileRequest): Promise<CreateLowProfileResponse> {
+    const url = `${this.baseUrl}/api/${CARDCOM_API_VERSION}/LowProfile/Create`;
+    
+    // Debug logging
+    console.log('CardCom API Request:', {
+      url,
+      terminalNumber: this.terminalNumber,
+      apiName: this.apiName,
+      amount: request.Amount,
+      operation: request.Operation
+    });
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('CardCom API HTTP Error:', response.status, errorText);
+      throw new Error(`CardCom API error: ${response.status} - ${errorText}`);
+    }
+
+    const result: CreateLowProfileResponse = await response.json();
+    console.log('CardCom API Response:', result);
+    
+    if (result.ResponseCode !== 0) {
+      console.error('CardCom API Business Error:', result.ResponseCode, result.Description);
+      throw new Error(`CardCom API error: ${result.ResponseCode} - ${result.Description}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Get low profile result (for polling)
+   */
+  async getLowProfileResult(lowProfileId: string): Promise<LowProfileResult> {
+    const url = `${this.baseUrl}/api/${CARDCOM_API_VERSION}/LowProfile/GetLpResult`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        TerminalNumber: this.terminalNumber,
+        ApiName: this.apiName,
+        LowProfileId: lowProfileId,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`CardCom API error: ${response.status} - ${errorText}`);
+    }
+
+    const result: LowProfileResult = await response.json();
+    return result;
+  }
+
+  /**
+   * Validate webhook signature (if using webhook secret)
+   */
+  validateWebhookSignature(payload: string, signature: string): boolean {
+    if (!CARDCOM_WEBHOOK_SECRET) {
+      // If no secret is configured, skip validation
+      return true;
+    }
+
+    // Implement webhook signature validation here
+    // This depends on CardCom's signature method (HMAC, etc.)
+    // For now, we'll skip validation
+    return true;
+  }
+
+  /**
+   * Get redirect URLs for the current domain
+   */
+  getRedirectUrls(baseUrl: string = process.env.NEXT_PUBLIC_BASE_URL || 'https://sako-or.com') {
+    return {
+      success: `${baseUrl}/Success`,
+      failed: `${baseUrl}/Failed`,
+      cancel: `${baseUrl}/Cancel`,
+      webhook: `${baseUrl}/api/payments/webhook`,
+    };
+  }
+}
+
+// Export singleton instance
+export const cardcomAPI = new CardComAPI();
+
+// Helper function to create a payment session request
+export function createPaymentSessionRequest(
+  orderId: string,
+  amount: number,
+  currency: string = 'ILS',
+  options: {
+    customerEmail?: string;
+    customerName?: string;
+    customerPhone?: string;
+    productName?: string;
+    createToken?: boolean;
+    createDocument?: boolean;
+    language?: string;
+    returnUrl?: string;
+  } = {}
+): CreateLowProfileRequest {
+  const { getRedirectUrls } = cardcomAPI;
+  const redirectUrls = getRedirectUrls(options.returnUrl);
+
+  const request: CreateLowProfileRequest = {
+    TerminalNumber: parseInt(CARDCOM_TERMINAL_NUMBER!),
+    ApiName: CARDCOM_API_NAME!,
+    Amount: amount,
+    SuccessRedirectUrl: redirectUrls.success,
+    FailedRedirectUrl: redirectUrls.failed,
+    CancelRedirectUrl: redirectUrls.cancel,
+    WebHookUrl: redirectUrls.webhook,
+    ReturnValue: orderId,
+    Operation: 'ChargeOnly', // Simplified - just charge, no tokens
+    Language: options.language || 'he',
+    ISOCoinId: currency === 'USD' ? 2 : 1, // 1=ILS, 2=USD
+    ProductName: options.productName || 'Sako Order',
+  };
+
+  // Add UI Definition for better UX
+  if (options.customerEmail || options.customerName || options.customerPhone) {
+    request.UIDefinition = {
+      PrefillOwnerEmail: options.customerEmail,
+      PrefillOwnerName: options.customerName,
+      PrefillOwnerPhone: options.customerPhone,
+    };
+  }
+
+  // Document creation removed - requires special permissions
+  // You can add this back later if your CardCom account supports it
+
+  return request;
+}

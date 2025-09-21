@@ -23,13 +23,13 @@ model User {
 }
 
 model Category {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  slug        String    @unique
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
   description String?
   image       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   products Product[]
 
@@ -52,54 +52,54 @@ model Product {
   // Material & Care information
   upperMaterial     String? // Upper Material in JSON format for EN/HE
   materialInnerSole String? // Material Inner Sole in JSON format for EN/HE
-  lining           String? // Lining in JSON format for EN/HE
-  sole             String? // Sole in JSON format for EN/HE
-  heelHeight       String? // Heel Height in JSON format for EN/HE
-  
-  // Shipping & Returns information
-  shippingReturns  String? // Shipping & Returns in JSON format for EN/HE
+  lining            String? // Lining in JSON format for EN/HE
+  sole              String? // Sole in JSON format for EN/HE
+  heelHeight        String? // Heel Height in JSON format for EN/HE
 
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  
+  // Shipping & Returns information
+  shippingReturns String? // Shipping & Returns in JSON format for EN/HE
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
   // Relations
   colorVariants ColorVariant[]
-  tags        ProductTag[]
+  tags          ProductTag[]
 
   @@map("products")
 }
 
 // Color-specific variant with its own images, pricing, and stock
 model ColorVariant {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   // Color information
-  colorName String   // Display name (e.g., "Black", "Red")
-  colorSlug String   // URL slug (e.g., "black", "red")
-  colorHex  String?  // Hex color code for swatches
-  
+  colorName String // Display name (e.g., "Black", "Red")
+  colorSlug String // URL slug (e.g., "black", "red")
+  colorHex  String? // Hex color code for swatches
+
   // Pricing (can override base product pricing)
-  price     Float?   // Override price for this color
-  salePrice Float?   // Sale price for this color
+  price         Float? // Override price for this color
+  salePrice     Float? // Sale price for this color
   saleStartDate DateTime?
   saleEndDate   DateTime?
-  
+
   // Stock and availability
-  stock     Int      @default(0)
-  isActive  Boolean  @default(true)
-  
+  stock    Int     @default(0)
+  isActive Boolean @default(true)
+
   // SEO
   metaTitle       String?
   metaDescription String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   // Relations
-  images    ColorVariantImage[]
-  sizes     ColorVariantSize[]
+  images ColorVariantImage[]
+  sizes  ColorVariantSize[]
 
   @@unique([productId, colorSlug])
   @@map("color_variants")
@@ -123,7 +123,7 @@ model ColorVariantImage {
 // Size and stock information per color variant
 model ColorVariantSize {
   id        String   @id @default(cuid())
-  size      String   // Size value (e.g., "S", "M", "L", "36", "37")
+  size      String // Size value (e.g., "S", "M", "L", "36", "37")
   stock     Int      @default(0)
   sku       String?  @unique // Full SKU for this size/color combination
   createdAt DateTime @default(now())
@@ -142,20 +142,120 @@ model Tag {
   slug      String   @unique
   createdAt DateTime @default(now())
 
-  products  ProductTag[]
+  products ProductTag[]
 
   @@map("tags")
 }
 
 model ProductTag {
-  id        String   @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  
-  tagId     String
-  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  tagId String
+  tag   Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([productId, tagId])
   @@map("product_tags")
-} 
+}
+
+// Payment and Order models for CardCom integration
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique // Human-readable order number
+  status      String @default("pending") // pending, processing, completed, failed, cancelled
+  total       Float
+  currency    String @default("ILS")
+
+  // Customer information
+  customerName  String?
+  customerEmail String?
+  customerPhone String?
+
+  // Payment information
+  paymentStatus String  @default("pending") // pending, processing, completed, failed, refunded
+  paymentMethod String? // cardcom, etc.
+  paymentData   String? // Store CardCom response data as JSON string
+
+  // CardCom specific fields
+  cardcomLowProfileId  String?
+  cardcomTransactionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  orderItems OrderItem[]
+  payments   Payment[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id       String @id @default(cuid())
+  quantity Int
+  price    Float // Price at time of order
+  total    Float // quantity * price
+
+  // Product information (snapshot at time of order)
+  productName String
+  productSku  String
+  colorName   String?
+  size        String?
+
+  createdAt DateTime @default(now())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Payment {
+  id       String @id @default(cuid())
+  amount   Float
+  currency String @default("ILS")
+  status   String @default("pending") // pending, processing, completed, failed, refunded
+
+  // CardCom specific fields
+  cardcomLowProfileId  String?
+  cardcomTransactionId String?
+  cardcomResponseCode  Int?
+  cardcomDescription   String?
+
+  // Payment method details
+  paymentMethod String? // cardcom
+  last4Digits   String?
+  cardBrand     String?
+
+  // Token information (if saved)
+  tokenId     String?
+  tokenExpiry String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model PaymentToken {
+  id          String  @id @default(cuid())
+  token       String  @unique // CardCom token
+  last4Digits String?
+  cardBrand   String?
+  cardExpiry  String? // MM/YY format
+  isActive    Boolean @default(true)
+
+  // Customer information
+  customerEmail String?
+  customerName  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payment_tokens")
+}

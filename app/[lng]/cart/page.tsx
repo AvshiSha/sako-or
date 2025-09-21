@@ -11,6 +11,7 @@ import {
   PlusIcon
 } from '@heroicons/react/24/outline'
 import { useCart } from '@/app/hooks/useCart'
+import PaymentButton from '@/app/components/PaymentButton'
 
 export default function CartPage() {
   const params = useParams()
@@ -23,6 +24,7 @@ export default function CartPage() {
     updateQuantity, 
     getTotalPrice, 
     getTotalItems,
+    clearCart,
     loading 
   } = useCart()
 
@@ -265,15 +267,28 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => {
-                    // TODO: Implement checkout functionality
-                    console.log('Proceed to checkout')
+                <PaymentButton
+                  orderId={`ORDER-${Date.now()}`}
+                  amount={totalPrice}
+                  currency="ILS"
+                  productName="Sako Order"
+                  createToken={true}
+                  createDocument={true}
+                  onSuccess={(result) => {
+                    console.log('Payment successful:', result)
+                    // Clear cart after successful payment
+                    clearCart()
+                    // Redirect to success page
+                    window.location.href = '/Success?orderId=' + result.orderId
                   }}
-                  className="w-full mt-6 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  onError={(error) => {
+                    console.error('Payment failed:', error)
+                    alert(lng === 'he' ? 'התשלום נכשל: ' + error : 'Payment failed: ' + error)
+                  }}
+                  className="w-full mt-6"
                 >
                   {t.checkout}
-                </button>
+                </PaymentButton>
 
                 <Link
                   href={`/${lng}`}

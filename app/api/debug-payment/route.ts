@@ -24,7 +24,7 @@ export async function GET() {
     }
 
     // Test 3: CardCom API Initialization
-    let cardcomCheck = { status: 'Unknown', error: null };
+    let cardcomCheck: { status: string; error: string | null } = { status: 'Unknown', error: null };
     try {
       const cardcomAPI = new CardComAPI();
       cardcomCheck = { status: 'Initialized', error: null };
@@ -33,7 +33,7 @@ export async function GET() {
     }
 
     // Test 4: Order Creation Test
-    let orderTest = { status: 'Unknown', error: null, orderId: null };
+    let orderTest: { status: string; error: string | null; orderId: string | null } = { status: 'Unknown', error: null, orderId: null };
     try {
       const testOrder = await prisma.order.create({
         data: {

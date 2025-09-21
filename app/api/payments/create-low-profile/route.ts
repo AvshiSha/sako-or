@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cardcomAPI, createPaymentSessionRequest } from '../../../../lib/cardcom';
-import { CreatePaymentRequest } from '../../../../app/types/cardcom';
+import { CreateLowProfileRequest } from '../../../../app/types/checkout';
 import { createOrder, generateOrderNumber } from '../../../../lib/orders';
 import { prisma } from '../../../../lib/prisma';
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CreatePaymentRequest = await request.json();
-    console.log('Payment request received:', body);
+    const body: CreateLowProfileRequest = await request.json();
+    console.log('Payment request received:', JSON.stringify(body, null, 2));
     
     // Debug environment variables
     console.log('Environment variables:', {
@@ -24,6 +24,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!body.customer.firstName || !body.customer.lastName || !body.customer.email || !body.customer.mobile) {
+      return NextResponse.json(
+        { error: 'Missing required customer information' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.deliveryAddress.city || !body.deliveryAddress.streetName || !body.deliveryAddress.streetNumber) {
+      return NextResponse.json(
+        { error: 'Missing required delivery address information' },
+        { status: 400 }
+      );
+    }
+
     // Generate order number if not provided
     const orderNumber = body.orderId || generateOrderNumber();
 
@@ -31,11 +45,11 @@ export async function POST(request: NextRequest) {
     const order = await createOrder({
       orderNumber,
       total: body.amount,
-      currency: body.currency || 'ILS',
-      customerName: body.customerName,
-      customerEmail: body.customerEmail,
-      customerPhone: body.customerPhone,
-      items: body.items || [{
+      currency: body.currencyIso === 2 ? 'USD' : 'ILS',
+      customerName: `${body.customer.firstName} ${body.customer.lastName}`,
+      customerEmail: body.customer.email,
+      customerPhone: body.customer.mobile,
+      items: [{
         productName: body.productName || 'Sako Order',
         productSku: 'UNKNOWN',
         quantity: 1,
@@ -47,16 +61,15 @@ export async function POST(request: NextRequest) {
     const cardcomRequest = createPaymentSessionRequest(
       orderNumber,
       body.amount,
-      body.currency || 'ILS',
+      body.currencyIso === 2 ? 'USD' : 'ILS',
       {
-        customerEmail: body.customerEmail,
-        customerName: body.customerName,
-        customerPhone: body.customerPhone,
+        customerEmail: body.customer.email,
+        customerName: `${body.customer.firstName} ${body.customer.lastName}`,
+        customerPhone: body.customer.mobile,
         productName: body.productName,
-        createToken: body.createToken || false,
-        createDocument: body.createDocument || false,
-        language: 'he', // Default to Hebrew
-        returnUrl: body.returnUrl,
+        createToken: false,
+        createDocument: false,
+        language: body.language || 'he',
       }
     );
 
@@ -82,7 +95,7 @@ export async function POST(request: NextRequest) {
       orderId: orderNumber,
       orderDbId: order.id,
       amount: body.amount,
-      currency: body.currency || 'ILS',
+      currency: body.currencyIso === 2 ? 'USD' : 'ILS',
     });
 
   } catch (error) {

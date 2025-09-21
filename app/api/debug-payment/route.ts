@@ -14,7 +14,7 @@ export async function GET() {
     };
 
     // Test 2: Database Connection
-    let dbCheck = { status: 'Unknown', error: null };
+    let dbCheck: { status: string; error: string | null; userCount?: number } = { status: 'Unknown', error: null };
     try {
       await prisma.$connect();
       const userCount = await prisma.user.count();

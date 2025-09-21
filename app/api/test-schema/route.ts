@@ -9,7 +9,7 @@ export async function GET() {
     const schemaContent = fs.readFileSync(schemaPath, 'utf8');
     
     // Extract the datasource section
-    const datasourceMatch = schemaContent.match(/datasource db \{[^}]*\}/s);
+    const datasourceMatch = schemaContent.match(/datasource db \{[\s\S]*?\}/);
     const datasourceSection = datasourceMatch ? datasourceMatch[0] : 'Not found';
     
     return NextResponse.json({

@@ -10,10 +10,6 @@ const CARDCOM_API_NAME = process.env.CARDCOM_API_NAME;
 const CARDCOM_API_PASSWORD = process.env.CARDCOM_API_PASSWORD; // For refunds
 const CARDCOM_WEBHOOK_SECRET = process.env.CARDCOM_WEBHOOK_SECRET; // Optional webhook validation
 
-if (!CARDCOM_TERMINAL_NUMBER || !CARDCOM_API_NAME) {
-  throw new Error('Missing required CardCom environment variables: CARDCOM_TERMINAL_NUMBER, CARDCOM_API_NAME');
-}
-
 export class CardComAPI {
   private baseUrl: string;
   private terminalNumber: number;
@@ -21,9 +17,13 @@ export class CardComAPI {
   private apiPassword?: string;
 
   constructor() {
+    if (!CARDCOM_TERMINAL_NUMBER || !CARDCOM_API_NAME) {
+      throw new Error('Missing required CardCom environment variables: CARDCOM_TERMINAL_NUMBER, CARDCOM_API_NAME');
+    }
+    
     this.baseUrl = CARDCOM_BASE_URL;
-    this.terminalNumber = parseInt(CARDCOM_TERMINAL_NUMBER!);
-    this.apiName = CARDCOM_API_NAME!;
+    this.terminalNumber = parseInt(CARDCOM_TERMINAL_NUMBER);
+    this.apiName = CARDCOM_API_NAME;
     this.apiPassword = CARDCOM_API_PASSWORD;
   }
 

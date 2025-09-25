@@ -120,6 +120,13 @@ export class CardComAPI {
       webhook: `${baseUrl}/api/payments/webhook`,
     };
   }
+
+  /**
+   * Get Low Profile status
+   */
+  async getLowProfileStatus(lowProfileId: string): Promise<any> {
+    return getLowProfileStatus(lowProfileId);
+  }
 }
 
 // Note: CardComAPI should be instantiated at runtime, not at module level
@@ -177,4 +184,42 @@ export function createPaymentSessionRequest(
   // You can add this back later if your CardCom account supports it
 
   return request;
+}
+
+/**
+ * Get Low Profile status from CardCom
+ */
+export async function getLowProfileStatus(lowProfileId: string): Promise<any> {
+  const CARDCOM_TERMINAL_NUMBER = process.env.CARDCOM_TERMINAL_NUMBER;
+  const CARDCOM_API_NAME = process.env.CARDCOM_API_NAME;
+  const CARDCOM_API_PASSWORD = process.env.CARDCOM_API_PASSWORD;
+
+  if (!CARDCOM_TERMINAL_NUMBER || !CARDCOM_API_NAME || !CARDCOM_API_PASSWORD) {
+    throw new Error('Missing required CardCom environment variables');
+  }
+
+  const requestBody = {
+    TerminalNumber: parseInt(CARDCOM_TERMINAL_NUMBER),
+    ApiName: CARDCOM_API_NAME,
+    LowProfileId: lowProfileId,
+  };
+
+  console.log('Checking Low Profile status:', requestBody);
+
+  const response = await fetch('https://secure.cardcom.solutions/api/v11/LowProfile/GetLowProfileStatus', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    throw new Error(`CardCom API error: ${response.status} ${response.statusText}`);
+  }
+
+  const result = await response.json();
+  console.log('CardCom status response:', result);
+
+  return result;
 }

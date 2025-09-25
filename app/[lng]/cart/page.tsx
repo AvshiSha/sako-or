@@ -317,6 +317,8 @@ export default function CartPage() {
         amount={totalPrice}
         currency="ILS"
         productName={getProductName()}
+        productSku={items.length > 0 ? items[0].sku : 'UNKNOWN'}
+        quantity={totalItems}
         language={lng as 'he' | 'en'}
       />
     </div>

@@ -13,6 +13,8 @@ interface CheckoutModalProps {
   amount: number;
   currency?: string;
   productName?: string;
+  productSku?: string;
+  quantity?: number;
   language?: 'he' | 'en';
 }
 
@@ -23,6 +25,8 @@ export default function CheckoutModal({
   amount,
   currency = 'ILS',
   productName = 'Sako Order',
+  productSku = 'UNKNOWN',
+  quantity = 1,
   language = 'he'
 }: CheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>('IDLE');
@@ -99,6 +103,8 @@ export default function CheckoutModal({
       currencyIso: currency === 'USD' ? 2 : 1, // 1=ILS, 2=USD
       language: isHebrew ? 'he' : 'en',
       productName,
+      productSku,
+      quantity,
       customer: formData.payer,
       deliveryAddress: formData.deliveryAddress,
       notes: formData.notes,

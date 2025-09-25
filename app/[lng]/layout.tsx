@@ -1,6 +1,7 @@
 import { languages, getLanguageDirection } from '../../i18n/settings'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
+import { Analytics } from '@vercel/analytics/next';
 
 export async function generateStaticParams() {
   return languages.map((lng) => ({ lng }))
@@ -37,3 +38,4 @@ export default async function LanguageLayout({
     </div>
   )
 }
+

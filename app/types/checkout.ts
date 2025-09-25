@@ -41,6 +41,8 @@ export interface CreateLowProfileRequest {
   currencyIso: number; // 1=ILS, 2=USD
   language: string;
   productName: string;
+  productSku: string;
+  quantity: number;
   customer: PayerDetails;
   deliveryAddress: DeliveryAddress;
   notes?: string;

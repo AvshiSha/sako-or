@@ -12,6 +12,7 @@ interface GoogleSheetProduct {
   stock?: number // Legacy field
   stockBySize?: string // New field for size-specific stock
   sku: string // Required unique identifier
+  brand?: string
   featured?: boolean
   new?: boolean
   salePrice?: number

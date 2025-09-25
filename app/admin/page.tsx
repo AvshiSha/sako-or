@@ -78,6 +78,12 @@ function AdminDashboard() {
       description: 'Organize your product categories'
     },
     {
+      name: 'Sync Newsletter',
+      href: '/admin/newsletter/sync',
+      icon: UserGroupIcon,
+      description: 'Synchronize newsletter emails with Neon DB'
+    },
+    {
       name: 'View Analytics',
       href: '/admin/analytics',
       icon: ChartBarIcon,

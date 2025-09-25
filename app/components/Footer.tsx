@@ -84,11 +84,24 @@ export default function Footer({ lng }: { lng: string }) {
     setIsSubmitting(true)
     
     try {
-      await newsletterService.subscribeToNewsletter(email.trim())
-      setSubscribedEmail(email.trim())
-      setShowSuccessModal(true)
-      setEmail('') // Clear the form
-      setEmailError('') // Clear any errors
+      const response = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email.trim() }),
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        setSubscribedEmail(email.trim())
+        setShowSuccessModal(true)
+        setEmail('') // Clear the form
+        setEmailError('') // Clear any errors
+      } else {
+        setEmailError(data.error || t.subscriptionError || 'Failed to subscribe. Please try again.')
+      }
     } catch (error) {
       console.error('Error subscribing to newsletter:', error)
       setEmailError(t.subscriptionError || 'Failed to subscribe. Please try again.')

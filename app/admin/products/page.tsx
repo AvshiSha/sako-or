@@ -10,7 +10,8 @@ import {
   TrashIcon,
   EyeIcon,
   MagnifyingGlassIcon,
-  CubeIcon
+  CubeIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { productService, Product, productHelpers, categoryService, Category } from '@/lib/firebase'
@@ -144,13 +145,22 @@ function ProductsPageContent() {
                 Manage your product catalog
               </p>
             </div>
-            <Link
-              href="/admin/products/new"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              <PlusIcon className="h-4 w-4 mr-2" />
-              Add Product
-            </Link>
+            <div className="flex space-x-3">
+              <Link
+                href="/admin/products/sync"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <ArrowPathIcon className="h-4 w-4 mr-2" />
+                Sync with Neon DB
+              </Link>
+              <Link
+                href="/admin/products/new"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Product
+              </Link>
+            </div>
           </div>
         </div>
       </div>

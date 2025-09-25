@@ -1545,6 +1545,9 @@ export const newsletterService = {
           isActive: true,
           subscribedAt: new Date()
         });
+        
+        // Note: Neon DB sync is handled by the API endpoint
+        
         return existingDoc.id;
       } else {
         // Create new subscription
@@ -1555,6 +1558,9 @@ export const newsletterService = {
         };
         
         const docRef = await addDoc(collection(db, 'NewsletterEmails'), emailData);
+        
+        // Note: Neon DB sync is handled by the API endpoint
+        
         return docRef.id;
       }
     } catch (error) {
@@ -1574,6 +1580,8 @@ export const newsletterService = {
         await updateDoc(docRef, {
           isActive: false
         });
+        
+        // Note: Neon DB sync is handled by the API endpoint
       }
     } catch (error) {
       console.error('Error unsubscribing from newsletter:', error);
@@ -1595,5 +1603,10 @@ export const newsletterService = {
       console.error('Error fetching newsletter subscribers:', error);
       throw error;
     }
+  },
+
+  // Alias for sync compatibility
+  async getAllNewsletterEmails(): Promise<NewsletterEmail[]> {
+    return this.getAllSubscribers();
   }
 }; 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { categoryService } from '@/lib/firebase'
+import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
 // Validation schema for creating/updating categories
@@ -60,6 +61,28 @@ export async function POST(request: NextRequest) {
     }
 
     const categoryId = await categoryService.createCategory(categoryData)
+
+    // Also create the category in Neon DB for synchronization
+    try {
+      await prisma.category.create({
+        data: {
+          name_en: validatedData.name.en,
+          name_he: validatedData.name.he,
+          slug_en: validatedData.slug.en,
+          slug_he: validatedData.slug.he,
+          description: validatedData.description?.en || null,
+          image: validatedData.image || null,
+          isEnabled: validatedData.isEnabled,
+          sortOrder: validatedData.sortOrder,
+          level: validatedData.level,
+          parentId: validatedData.parentId || null,
+        }
+      })
+      console.log(`Category "${validatedData.name.en}" created in both Firebase and Neon DB`)
+    } catch (prismaError) {
+      console.error('Failed to create category in Neon DB:', prismaError)
+      // Don't fail the request if Neon DB creation fails, just log it
+    }
 
     // Get the created category
     const categories = await categoryService.getAllCategories()

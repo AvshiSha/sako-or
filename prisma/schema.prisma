@@ -20,40 +20,89 @@ model User {
   @@map("users")
 }
 
+model NewsletterEmails {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  isActive  Boolean  @default(true)
+
+  @@map("newsletter_emails")
+}
+
 model Category {
-  id          String    @id @default(cuid())
-  name        String    @unique
-  slug        String    @unique
+  id          String     @id @default(cuid())
+  name_en     String     @unique
+  name_he     String     @unique
+  slug_en     String     @unique
+  slug_he     String     @unique
   description String?
   image       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  products    Product[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  products    Product[]  @relation("CategoryProducts")
+  isEnabled   Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  level       Int        @default(0)
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children    Category[] @relation("CategoryHierarchy")
 
   @@map("categories")
 }
 
 model Product {
-  id                String         @id @default(cuid())
-  name              String
-  slug              String         @unique
-  description       String
-  baseSku           String         @unique
-  featured          Boolean        @default(false)
-  isNew             Boolean        @default(false)
-  isActive          Boolean        @default(true)
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
-  upperMaterial     String?
-  materialInnerSole String?
-  lining            String?
-  sole              String?
-  heelHeight        String?
-  shippingReturns   String?
-  categoryId        String
-  colorVariants     ColorVariant[]
-  tags              ProductTag[]
-  category          Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  id                   String         @id @default(cuid())
+  // Bilingual fields
+  title_en             String
+  title_he             String
+  description_en       String
+  description_he       String
+  // Core product fields
+  sku                  String         @unique
+  brand                String
+  price                Float
+  salePrice            Float?
+  currency             String         @default("ILS")
+  // Category and path
+  category             String
+  subCategory          String?
+  subSubCategory       String?
+  categories_path      String[]
+  categories_path_id   String[]
+  categoryId           String
+  // Status flags
+  isEnabled            Boolean        @default(true)
+  isDeleted            Boolean        @default(false)
+  featured             Boolean        @default(false)
+  isNew                Boolean        @default(false)
+  isActive             Boolean        @default(true)
+  // SEO fields
+  seo_title_en         String?
+  seo_title_he         String?
+  seo_description_en   String?
+  seo_description_he   String?
+  seo_slug             String?
+  searchKeywords       String[]
+  // Material & Care (bilingual)
+  upperMaterial_en     String?
+  upperMaterial_he     String?
+  materialInnerSole_en String?
+  materialInnerSole_he String?
+  lining_en            String?
+  lining_he            String?
+  sole_en              String?
+  sole_he              String?
+  heelHeight_en        String?
+  heelHeight_he        String?
+  shippingReturns_en   String?
+  shippingReturns_he   String?
+  // Timestamps
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  // Relations
+  colorVariants        ColorVariant[]
+  tags                 ProductTag[]
+  categoryRelation     Category       @relation("CategoryProducts", fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("products")
 }

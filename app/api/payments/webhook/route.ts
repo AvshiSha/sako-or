@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
     
     // Always return 200 to CardCom to prevent retries
     // Log the error for debugging
+    console.error('Webhook error details:', error);
     return NextResponse.json({ success: true });
   }
 }

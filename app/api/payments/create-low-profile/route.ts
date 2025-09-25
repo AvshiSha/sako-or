@@ -51,8 +51,8 @@ export async function POST(request: NextRequest) {
       customerPhone: body.customer.mobile,
       items: [{
         productName: body.productName || 'Sako Order',
-        productSku: 'UNKNOWN',
-        quantity: 1,
+        productSku: body.productSku,
+        quantity: body.quantity || 1,
         price: body.amount,
       }],
     });

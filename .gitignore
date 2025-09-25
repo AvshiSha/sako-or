@@ -91,3 +91,5 @@ middleware.ts
 IMPLEMENTATION_SUMMARY.md
 VERCEL_OAUTH_TROUBLESHOOTING.md
 products-template.csv
+
+.vercel

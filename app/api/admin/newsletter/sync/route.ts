@@ -51,9 +51,9 @@ export async function POST(request: NextRequest) {
         if (firebaseEmail.subscribedAt) {
           if (firebaseEmail.subscribedAt instanceof Date) {
             createdAt = firebaseEmail.subscribedAt
-          } else if (typeof firebaseEmail.subscribedAt === 'object' && firebaseEmail.subscribedAt.seconds) {
+          } else if (typeof firebaseEmail.subscribedAt === 'object' && (firebaseEmail.subscribedAt as any).seconds) {
             // Firebase timestamp object
-            createdAt = new Date(firebaseEmail.subscribedAt.seconds * 1000)
+            createdAt = new Date((firebaseEmail.subscribedAt as any).seconds * 1000)
           }
         }
 

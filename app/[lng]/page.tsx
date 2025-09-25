@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl } from '@/lib/image-urls'
-import { newsletterService } from '@/lib/firebase'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
 
 const collections = [

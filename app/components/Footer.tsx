@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { FaFacebook, FaInstagram, FaPinterest } from 'react-icons/fa';
 import { useState } from 'react';
-import { newsletterService } from '@/lib/firebase';
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal';
 
 // Hardcoded translations for build-time rendering

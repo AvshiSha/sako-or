@@ -30,19 +30,18 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
     try {
       // Create or find category
       const category = await prisma.category.upsert({
-        where: { name: row.category },
+        where: { name_en: row.category },
         update: {},
         create: {
-          name: row.category,
-          slug: row.category.toLowerCase().replace(/\s+/g, '-'),
+          name_en: row.category,
+          name_he: row.category, // Default to same as English
+          slug_en: row.category.toLowerCase().replace(/\s+/g, '-'),
+          slug_he: row.category.toLowerCase().replace(/\s+/g, '-'), // Default to same as English
           description: `${row.category} products`
         }
       })
 
-      // Create product slug
-      const slug = row.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-
-             // Check if product already exists by SKU
+      // Check if product already exists by SKU
        if (!row.sku || row.sku.trim() === '') {
          results.errors++
          results.errorsList.push(`Product "${row.name}" is missing required SKU`)
@@ -50,23 +49,12 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
        }
 
        const existingProductBySku = await prisma.product.findFirst({
-         where: { name: row.name }
+         where: { sku: row.sku }
        })
 
        if (existingProductBySku) {
          results.errors++
          results.errorsList.push(`Product with SKU "${row.sku}" already exists`)
-         continue
-       }
-
-       // Check if product already exists by slug (additional check)
-       const existingProduct = await prisma.product.findUnique({
-         where: { slug }
-       })
-
-       if (existingProduct) {
-         results.errors++
-         results.errorsList.push(`Product "${row.name}" already exists with slug "${slug}"`)
          continue
        }
 
@@ -107,14 +95,23 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
       // Create product
       await prisma.product.create({
         data: {
-          name: row.name,
-          slug,
-          description: row.description,
-          baseSku: row.sku,
+          title_en: row.name,
+          title_he: row.name, // Default to same as English
+          description_en: row.description,
+          description_he: row.description, // Default to same as English
+          sku: row.sku,
+          brand: row.brand || '',
+          price: parseFloat(row.price) || 0,
+          currency: 'ILS',
+          category: row.category,
+          categories_path: [row.category],
+          categories_path_id: [category.id],
+          categoryId: category.id,
           featured: row.featured || false,
           isNew: row.new || false,
           isActive: true,
-          categoryId: category.id
+          isEnabled: true,
+          isDeleted: false
         }
       })
 

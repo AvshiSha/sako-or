@@ -102,7 +102,7 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
           description_he: row.description, // Default to same as English
           sku: row.sku,
           brand: row.brand || '',
-          price: parseFloat(row.price) || 0,
+          price: row.price || 0,
           currency: 'ILS',
           category: row.category,
           categories_path: [row.category],
@@ -129,17 +129,16 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
 export async function exportToGoogleSheets() {
   const products = await prisma.product.findMany({
     include: {
-      category: true
+      categoryRelation: true
     }
   })
 
   return products.map(product => {
     return {
       id: product.id,
-      name: product.name,
-      slug: product.slug,
-      description: product.description,
-      category: product.category.name,
+      name: product.title_en,
+      description: product.description_en,
+      category: product.categoryRelation.name_en,
       featured: product.featured,
       new: product.isNew,
       active: product.isActive,

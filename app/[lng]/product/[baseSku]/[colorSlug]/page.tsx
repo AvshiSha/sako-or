@@ -627,7 +627,7 @@ export default function ProductColorPage() {
               {/* Product Header */}
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  {productName}
+                  {lng === 'he' ? product.title_he : product.title_en}
                 </h1>
               </div>
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
-// TODO: Import Resend email function
+import { sendOrderConfirmationEmail } from '../../../../lib/email';
 import { stringifyPaymentData } from '../../../../lib/orders';
 
 export async function POST(request: NextRequest) {
@@ -239,8 +239,22 @@ async function handlePostPaymentActions(orderId: string, transactionData: any) {
     // Determine language flag from transaction (fallback to Hebrew if not provided)
     const if_he = transactionData?.uiValues?.Language === 'he' || false;
 
-        // TODO: Send email with Resend
-        console.log('TODO: Send confirmation email with Resend for order:', order.orderNumber);
+        // Send confirmation email with Resend
+        const emailResult = await sendOrderConfirmationEmail({
+          customerEmail: order.customerEmail,
+          customerName: order.customerName || '',
+          orderNumber: order.orderNumber,
+          orderDate: new Date(order.createdAt).toLocaleDateString(),
+          items: items,
+          total: order.total,
+          isHebrew: if_he,
+        });
+
+        if (emailResult.success) {
+          console.log('Confirmation email sent successfully for order:', order.orderNumber);
+        } else {
+          console.error('Failed to send confirmation email:', emailResult.error);
+        }
     
   } catch (error) {
     console.error('Failed to handle post-payment actions:', error);

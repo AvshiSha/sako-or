@@ -7,11 +7,30 @@ import { stringifyPaymentData } from '../../../../lib/orders';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== WEBHOOK CALLED ===');
-    console.log('Headers:', Object.fromEntries(request.headers.entries()));
+    // Verify this is actually from CardCom
+    const userAgent = request.headers.get('user-agent') || '';
+    const forwardedFor = request.headers.get('x-forwarded-for') || '';
     
+    // Check for bypass secret in header or URL parameter
+    const bypassSecretHeader = request.headers.get('x-vercel-protection-bypass');
+    const url = new URL(request.url);
+    const bypassSecretParam = url.searchParams.get('bypass');
+    const bypassSecret = bypassSecretHeader || bypassSecretParam;
+    const expectedBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    
+    // Verify bypass secret if provided
+    if (bypassSecret && expectedBypassSecret && bypassSecret !== expectedBypassSecret) {
+      console.log('Invalid bypass secret provided');
+      return NextResponse.json({ error: 'Invalid bypass secret' }, { status: 401 });
+    }
+    
+    // Basic security check - CardCom should have specific user agent or IP ranges
+    if (!userAgent.includes('CardCom') && !forwardedFor.includes('cardcom')) {
+      console.log('Suspicious webhook call:', { userAgent, forwardedFor });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body: LowProfileResult = await request.json();
-    console.log('Webhook body:', JSON.stringify(body, null, 2));
     
     // Validate webhook signature if configured
     const signature = request.headers.get('x-cardcom-signature');
@@ -73,26 +92,13 @@ export async function POST(request: NextRequest) {
       await savePaymentToken(orderId, body.TokenInfo);
     }
 
-    // If document was created, log the document info
-    if (body.DocumentInfo) {
-      console.log('Document created:', {
-        orderId,
-        documentId: body.DocumentInfo.DocumentId,
-        documentUrl: body.DocumentInfo.DocumentUrl,
-      });
-    }
-
-    // Send confirmation email or other post-payment actions
+    // Send confirmation email
     await handlePostPaymentActions(orderId, transactionData);
 
     return NextResponse.json({ success: true });
 
   } catch (error) {
     console.error('Webhook processing error:', error);
-    
-    // Always return 200 to CardCom to prevent retries
-    // Log the error for debugging
-    console.error('Webhook error details:', error);
     return NextResponse.json({ success: true });
   }
 }
@@ -122,11 +128,11 @@ async function updateOrderStatus(
     
     // Update order status and payment data
     await prisma.order.update({
-      where: { orderNumber: orderId }, // Using orderNumber as the identifier
+      where: { orderNumber: orderId },
       data: {
         status,
         paymentStatus: status === 'completed' ? 'completed' : status === 'failed' ? 'failed' : 'pending',
-        paymentData: stringifyPaymentData(data), // Store as JSON string for SQLite
+        paymentData: stringifyPaymentData(data),
         cardcomLowProfileId: data?.lowProfileId,
         cardcomTransactionId: data?.transactionId,
         updatedAt: new Date(),
@@ -189,7 +195,6 @@ async function savePaymentToken(orderId: string, tokenInfo: any) {
     
   } catch (error) {
     console.error('Failed to save payment token:', error);
-    // Don't throw - this is not critical for the payment flow
   }
 }
 
@@ -239,6 +244,5 @@ async function handlePostPaymentActions(orderId: string, transactionData: any) {
     
   } catch (error) {
     console.error('Failed to handle post-payment actions:', error);
-    // Don't throw - this is not critical for the payment flow
   }
 }

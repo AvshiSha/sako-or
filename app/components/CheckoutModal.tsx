@@ -95,6 +95,25 @@ export default function CheckoutModal({
     setIsFormValid(isValid);
   };
 
+  // Save checkout information first
+  const saveCheckoutInfo = async (): Promise<string> => {
+    const response = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(formData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save checkout information');
+    }
+
+    const result = await response.json();
+    return result.checkoutId;
+  };
+
   // Create Low Profile payment session
   const createPaymentSession = async (): Promise<CreateLowProfileResponse> => {
     const payload: CreateLowProfileRequest = {
@@ -119,7 +138,6 @@ export default function CheckoutModal({
         maxNumOfPayments: 1
       }
     };
-
 
     const response = await fetch('/api/payments/create-low-profile', {
       method: 'POST',
@@ -146,6 +164,13 @@ export default function CheckoutModal({
     setError(null);
 
     try {
+      // First save checkout information to database
+      console.log('Saving checkout information...');
+      const checkoutId = await saveCheckoutInfo();
+      console.log('Checkout saved with ID:', checkoutId);
+      
+      // Then create payment session
+      console.log('Creating payment session...');
       const result = await createPaymentSession();
       
       if (result.success) {
@@ -296,7 +321,7 @@ export default function CheckoutModal({
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
                   <p className="text-gray-600">
-                    {isHebrew ? 'יוצר הפעלת תשלום...' : 'Creating payment session...'}
+                    {isHebrew ? 'שומר פרטים ויוצר הפעלת תשלום...' : 'Saving details and creating payment session...'}
                   </p>
                 </div>
               </div>

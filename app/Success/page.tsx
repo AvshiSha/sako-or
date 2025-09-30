@@ -15,10 +15,19 @@ function SuccessPageContent() {
 
   useEffect(() => {
     // Extract parameters from URL
-    const lpid = searchParams?.get('lpid'); // Low Profile ID
-    const orderId = searchParams?.get('orderId');
+    const lpid = searchParams?.get('lpid') || searchParams?.get('lowprofilecode'); // Low Profile ID
+    const orderId = searchParams?.get('orderId') || searchParams?.get('ReturnValue'); // CardCom uses ReturnValue
     const amount = searchParams?.get('amount');
     const currency = searchParams?.get('currency');
+    
+    // Debug: log all URL parameters
+    console.log('Success page URL parameters:', {
+      lpid,
+      orderId,
+      amount,
+      currency,
+      allParams: Object.fromEntries(searchParams?.entries() || [])
+    });
 
     // Send postMessage to parent if in iframe
     if (window.parent && window.parent !== window) {
@@ -47,17 +56,28 @@ function SuccessPageContent() {
 
   const verifyPaymentStatus = async (lpid: string, orderId?: string | null) => {
     try {
-      // TODO: Call your backend to verify the payment status
-      // This ensures the payment was actually successful
       console.log('Verifying payment status:', { lpid, orderId });
       
-      // Example implementation:
-      // const response = await fetch(`/api/payments/verify/${lpid}`);
-      // const result = await response.json();
-      // if (!result.success) {
-      //   // Redirect to failed page if verification fails
-      //   window.location.href = '/Failed?lpid=' + lpid;
-      // }
+      if (orderId) {
+        // Send confirmation email when user reaches success page
+        console.log('Sending confirmation email for order:', orderId);
+        
+        const response = await fetch('/api/test-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ orderId }),
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+          console.log('Confirmation email sent successfully:', result);
+        } else {
+          console.error('Failed to send confirmation email:', result);
+        }
+      }
       
     } catch (error) {
       console.error('Failed to verify payment:', error);
@@ -96,12 +116,12 @@ function SuccessPageContent() {
         </div>
 
         {/* Success Message */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          התשלום בוצע בהצלחה!
+        <h1 className="text-2xl font-bold text-gray-900 mb-4"> 
+          !התשלום בוצע בהצלחה
         </h1>
         
         <p className="text-gray-600 mb-6">
-          תודה על רכישתך. התשלום אושר ותוכל לקבל את ההזמנה שלך בקרוב.
+          תודה על רכישתך. התשלום אושר ותוכל לקבל את ההזמנה שלך בקרוב
         </p>
 
         {/* Order Details */}
@@ -121,12 +141,12 @@ function SuccessPageContent() {
 
         {/* Action Buttons */}
         <div className="space-y-3">
-          <Link
+          {/* <Link
             href="/dashboard"
             className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors inline-block"
           >
             צפה בהזמנות שלי
-          </Link>
+          </Link> */}
           
           <Link
             href="/"
@@ -138,8 +158,8 @@ function SuccessPageContent() {
 
         {/* Additional Info */}
         <div className="mt-6 text-xs text-gray-500">
-          <p>תקבל אישור במייל עם פרטי ההזמנה.</p>
-          <p>אם יש לך שאלות, אנא צור קשר עם התמיכה.</p>
+          <p>תקבל אישור במייל עם פרטי ההזמנה</p>
+          <p>אם יש לך שאלות, אנא צור קשר עם התמיכה</p>
         </div>
       </div>
     </div>

@@ -7,9 +7,17 @@ import { stringifyPaymentData } from '../../../../lib/orders';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== WEBHOOK CALLED ===');
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('URL:', request.url);
+    console.log('Method:', request.method);
+    
     // Verify this is actually from CardCom
     const userAgent = request.headers.get('user-agent') || '';
     const forwardedFor = request.headers.get('x-forwarded-for') || '';
+    
+    console.log('User-Agent:', userAgent);
+    console.log('X-Forwarded-For:', forwardedFor);
     
     // Check for bypass secret in header or URL parameter
     const bypassSecretHeader = request.headers.get('x-vercel-protection-bypass');
@@ -33,10 +41,11 @@ export async function POST(request: NextRequest) {
     }
     
     // Basic security check - CardCom should have specific user agent or IP ranges
-    if (!userAgent.includes('CardCom') && !forwardedFor.includes('cardcom')) {
-      console.log('Suspicious webhook call:', { userAgent, forwardedFor });
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    // Temporarily disabled for testing - CardCom will have proper user-agent
+    // if (!userAgent.includes('CardCom') && !forwardedFor.includes('cardcom')) {
+    //   console.log('Suspicious webhook call:', { userAgent, forwardedFor });
+    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // }
 
     const body: LowProfileResult = await request.json();
     

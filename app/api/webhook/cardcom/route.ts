@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
-import { sendOrderConfirmationEmail } from '@/lib/sendgrid';
+// TODO: Import Resend email function
 import { stringifyPaymentData } from '../../../../lib/orders';
 
 export async function POST(request: NextRequest) {
@@ -17,6 +17,14 @@ export async function POST(request: NextRequest) {
     const bypassSecretParam = url.searchParams.get('bypass');
     const bypassSecret = bypassSecretHeader || bypassSecretParam;
     const expectedBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    
+    console.log('Webhook Debug Info:', {
+      bypassSecretHeader,
+      bypassSecretParam,
+      bypassSecret,
+      expectedBypassSecret: expectedBypassSecret ? 'SET' : 'NOT SET',
+      url: request.url
+    });
     
     // Verify bypass secret if provided
     if (bypassSecret && expectedBypassSecret && bypassSecret !== expectedBypassSecret) {
@@ -231,16 +239,8 @@ async function handlePostPaymentActions(orderId: string, transactionData: any) {
     // Determine language flag from transaction (fallback to Hebrew if not provided)
     const if_he = transactionData?.uiValues?.Language === 'he' || false;
 
-    await sendOrderConfirmationEmail(order.customerEmail, {
-      orderId: order.orderNumber,
-      customerName: order.customerName || '',
-      totalAmount: order.total,
-      items,
-      if_he,
-      orderDate: new Date(order.createdAt).toLocaleDateString(),
-      paymentMethod: 'cardcom',
-      total: order.total,
-    });
+        // TODO: Send email with Resend
+        console.log('TODO: Send confirmation email with Resend for order:', order.orderNumber);
     
   } catch (error) {
     console.error('Failed to handle post-payment actions:', error);

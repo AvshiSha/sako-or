@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const apiKey = request.headers.get('x-api-key');
   
   // Check for valid API key or auth token
-  const validApiKey = process.env.ADMIN_API_KEY || 'your-secure-admin-key';
+  const validApiKey = process.env.ADMIN_API_KEY;
   
   if (apiKey === validApiKey || authHeader?.includes('Bearer')) {
     return NextResponse.json({ authenticated: true });

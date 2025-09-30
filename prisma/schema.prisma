@@ -253,3 +253,25 @@ model PaymentToken {
 
   @@map("payment_tokens")
 }
+
+model Checkout {
+  id                    String   @id @default(cuid())
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  customerEmail         String
+  customerFirstName     String
+  customerLastName      String
+  customerPhone         String
+  customerStreetName    String
+  customerStreetNumber  String
+  customerFloor         String?
+  customerApartment     String?
+  customerCity          String
+  customerState         String
+  customerZip           String?
+  customerCountry       String
+  customerID            String?
+  customerDeliveryNotes String?
+
+  @@map("checkouts")
+}

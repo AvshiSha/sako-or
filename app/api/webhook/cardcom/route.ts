@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const url = new URL(request.url);
     const bypassSecretParam = url.searchParams.get('bypass');
     const bypassSecret = bypassSecretHeader || bypassSecretParam;
-    const expectedBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    const expectedBypassSecret = process.env.RESEND_API_KEY;
     
     console.log('Webhook Debug Info:', {
       bypassSecretHeader,

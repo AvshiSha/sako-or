@@ -40,12 +40,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid bypass secret' }, { status: 401 });
     }
     
-    // Basic security check - CardCom should have specific user agent or IP ranges
-    // Temporarily disabled for testing - CardCom will have proper user-agent
-    // if (!userAgent.includes('CardCom') && !forwardedFor.includes('cardcom')) {
-    //   console.log('Suspicious webhook call:', { userAgent, forwardedFor });
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    // Basic security check - CardCom should have specific user agent
+    if (!userAgent.includes('CardCom')) {
+      console.log('Suspicious webhook call - invalid user agent:', { userAgent, forwardedFor });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // Additional security: Check if bypass secret is provided
+    if (!bypassSecret) {
+      console.log('Webhook called without bypass secret');
+      return NextResponse.json({ error: 'Missing bypass secret' }, { status: 401 });
+    }
 
     const body: LowProfileResult = await request.json();
     
@@ -151,7 +156,7 @@ async function updateOrderStatus(
         paymentStatus: status === 'completed' ? 'completed' : status === 'failed' ? 'failed' : 'pending',
         paymentData: stringifyPaymentData(data),
         cardcomLowProfileId: data?.lowProfileId,
-        cardcomTransactionId: data?.transactionId,
+        cardcomTransactionId: data?.transactionId?.toString(),
         updatedAt: new Date(),
       },
     });
@@ -168,7 +173,7 @@ async function updateOrderStatus(
           status: 'completed',
           paymentMethod: 'cardcom',
           cardcomLowProfileId: data.lowProfileId,
-          cardcomTransactionId: data.transactionId,
+          cardcomTransactionId: data.transactionId?.toString(),
           cardcomResponseCode: data.transactionInfo.ResponseCode || 0,
           last4Digits: data.transactionInfo.Last4Digits,
           cardBrand: data.transactionInfo.Brand,

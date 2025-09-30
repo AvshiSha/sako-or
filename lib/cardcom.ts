@@ -149,11 +149,17 @@ export function createPaymentSessionRequest(
 ): CreateLowProfileRequest {
   // Generate redirect URLs without instantiating CardComAPI
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const bypassSecret = process.env.RESEND_API_KEY;
+  
+  if (!bypassSecret) {
+    throw new Error('RESEND_API_KEY environment variable is not set');
+  }
+  
   const redirectUrls = {
     success: `${baseUrl}/Success`,
     failure: `${baseUrl}/Failed`,
     cancel: `${baseUrl}/Cancel`,
-    webhook: `${baseUrl}/api/webhook/cardcom`,
+    webhook: `${baseUrl}/api/webhook/cardcom?bypass=${bypassSecret}`,
   };
 
   const request: CreateLowProfileRequest = {

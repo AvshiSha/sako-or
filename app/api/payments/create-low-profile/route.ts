@@ -78,12 +78,13 @@ export async function POST(request: NextRequest) {
         customerMobile: body.customer.mobile,
         documentComments: `Order: ${orderNumber}`,
         departmentId: "", // You'll provide this value later
-        products: [{
-          productId: body.productSku || 'SAKO-PRODUCT',
-          description: body.productName || 'Sako Order',
-          quantity: body.quantity || 1,
-          unitCost: body.amount,
-          totalLineCost: body.amount * (body.quantity || 1)
+        Products: [{
+          ProductID: body.productSku || 'SAKO-PRODUCT',
+          Description: body.productName || 'Sako Order',
+          Quantity: body.quantity || 1,
+          UnitCost: body.amount,
+          TotalLineCost: body.amount * (body.quantity || 1),
+          IsVatFree: false
         }]
       }
     );

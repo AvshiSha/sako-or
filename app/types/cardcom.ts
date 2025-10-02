@@ -15,7 +15,7 @@ export interface CreateLowProfileRequest {
   ISOCoinId?: number; // 1=ILS, 2=USD (default: 1)
   UIDefinition?: UIDefinition;
   AdvancedDefinition?: AdvancedLPDefinition;
-  Document?: DocumentLP;
+  Document?: Document;
   DocumentDefinition?: DocumentDefinition;
 }
 
@@ -144,12 +144,25 @@ export interface AdvancedLPDefinition {
   ExternalPageFlag?: boolean;
 }
 
-// Document for invoice/receipt generation
-export interface DocumentLP {
-  DocumentType: 'TaxInvoiceAndReceipt' | 'Receipt' | 'Order' | 'Invoice';
-  CustomerDetails: CustomerDetails;
-  Products: Product[];
+// Document for invoice/receipt generation (CardCom format)
+export interface Document {
+  DocumentTypeToCreate: 'TaxInvoiceAndReceipt' | 'Receipt' | 'Order' | 'Invoice';
+  Name: string;
+  TaxId?: string;
+  Email: string;
+  IsSendByEmail?: boolean;
+  AddressLine1?: string;
+  AddressLine2?: string;
+  City?: string;
+  Mobile?: string;
+  Phone?: string;
   Comments?: string;
+  IsVatFree?: boolean;
+  DepartmentId?: string;
+  Products: CardComProduct[];
+  IsAllowEditDocument?: boolean;
+  IsShowOnlyDocument?: boolean;
+  Language?: string;
 }
 
 export interface CustomerDetails {
@@ -169,6 +182,16 @@ export interface Product {
   Price: number;
   VAT?: number;
   Discount?: number;
+}
+
+// CardCom specific product format for documents
+export interface CardComProduct {
+  ProductID: string;
+  Description: string;
+  Quantity: number;
+  UnitCost: number;
+  TotalLineCost: number;
+  IsVatFree: boolean;
 }
 
 // Error response

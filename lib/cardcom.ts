@@ -145,6 +145,7 @@ export function createPaymentSessionRequest(
     language?: string;
     returnUrl?: string;
     // Document/Receipt options
+    createDocument?: boolean;
     customerTaxId?: string;
     customerAddress?: string;
     customerAddress2?: string;
@@ -152,12 +153,13 @@ export function createPaymentSessionRequest(
     customerMobile?: string;
     documentComments?: string;
     departmentId?: string;
-    products?: Array<{
-      productId: string;
-      description: string;
-      quantity: number;
-      unitCost: number;
-      totalLineCost: number;
+    Products?: Array<{
+      ProductID: string;
+      Description: string;
+      Quantity: number;
+      UnitCost: number;
+      TotalLineCost: number;
+      IsVatFree: boolean;
     }>;
   } = {}
 ): CreateLowProfileRequest {
@@ -201,9 +203,9 @@ export function createPaymentSessionRequest(
   }
 
   // Add Document/Receipt creation if requested
-  if (options.customerEmail && options.customerName) {
-    request.DocumentDefinition = {
-      TypeToCreate: "TaxInvoiceAndReceipt",
+  if (options.createDocument && options.customerEmail && options.customerName) {
+    request.Document = {
+      DocumentTypeToCreate: "TaxInvoiceAndReceipt",
       Name: options.customerName,
       TaxId: options.customerTaxId || "",
       Email: options.customerEmail,
@@ -216,12 +218,12 @@ export function createPaymentSessionRequest(
       Comments: options.documentComments || "",
       IsVatFree: false,
       DepartmentId: options.departmentId || "", // You'll provide this value later
-      Products: options.products?.map(product => ({
-        ProductID: product.productId,
-        Description: product.description,
-        Quantity: product.quantity,
-        UnitCost: product.unitCost,
-        TotalLineCost: product.totalLineCost,
+      Products: options.Products?.map(product => ({
+        ProductID: product.ProductID,
+        Description: product.Description,
+        Quantity: product.Quantity,
+        UnitCost: product.UnitCost,
+        TotalLineCost: product.TotalLineCost,
         IsVatFree: false
       })) || [],
       IsAllowEditDocument: false,

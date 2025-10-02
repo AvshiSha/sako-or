@@ -16,6 +16,7 @@ export interface CreateLowProfileRequest {
   UIDefinition?: UIDefinition;
   AdvancedDefinition?: AdvancedLPDefinition;
   Document?: DocumentLP;
+  DocumentDefinition?: DocumentDefinition;
 }
 
 export interface CreateLowProfileResponse {
@@ -211,4 +212,34 @@ export interface CreatePaymentRequest {
     quantity: number;
     price: number;
   }[];
+}
+
+// Document Definition for receipt/invoice creation
+export interface DocumentDefinition {
+  TypeToCreate: "TaxInvoiceAndReceipt" | "Receipt" | "Order" | "Invoice";
+  Name: string;
+  TaxId?: string;
+  Email: string;
+  IsSendByEmail: boolean;
+  AddressLine1?: string;
+  AddressLine2?: string;
+  City?: string;
+  Mobile?: string;
+  Phone?: string;
+  Comments?: string;
+  IsVatFree: boolean;
+  DepartmentId?: string;
+  Products: DocumentProduct[];
+  IsAllowEditDocument: boolean;
+  IsShowOnlyDocument: boolean;
+  Language: string;
+}
+
+export interface DocumentProduct {
+  ProductID: string;
+  Description: string;
+  Quantity: number;
+  UnitCost: number;
+  TotalLineCost: number;
+  IsVatFree: boolean;
 }

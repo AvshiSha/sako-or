@@ -7,11 +7,7 @@ import { stringifyPaymentData } from '../../../../lib/orders';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== WEBHOOK CALLED ===');
-    console.log('Headers:', Object.fromEntries(request.headers.entries()));
-    
     const body: LowProfileResult = await request.json();
-    console.log('Webhook body:', JSON.stringify(body, null, 2));
     
     // Validate webhook signature if configured
     const signature = request.headers.get('x-cardcom-signature');
@@ -23,22 +19,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Log the webhook for debugging
-    console.log('CardCom webhook received:', {
-      lowProfileId: body.LowProfileId,
-      responseCode: body.ResponseCode,
-      orderId: body.ReturnValue,
-      operation: body.Operation,
-    });
 
     // Check if the transaction was successful
     if (body.ResponseCode !== 0) {
-      console.error('CardCom transaction failed:', {
-        responseCode: body.ResponseCode,
-        description: body.Description,
-        orderId: body.ReturnValue,
-      });
-      
       // Update order status to failed
       if (body.ReturnValue) {
         await updateOrderStatus(body.ReturnValue, 'failed', 'failed');
@@ -50,7 +33,6 @@ export async function POST(request: NextRequest) {
     // Process successful transaction
     const orderId = body.ReturnValue;
     if (!orderId) {
-      console.error('No order ID in webhook');
       return NextResponse.json({ error: 'No order ID' }, { status: 400 });
     }
 
@@ -73,14 +55,6 @@ export async function POST(request: NextRequest) {
       await savePaymentToken(orderId, body.TokenInfo);
     }
 
-    // If document was created, log the document info
-    if (body.DocumentInfo) {
-      console.log('Document created:', {
-        orderId,
-        documentId: body.DocumentInfo.DocumentId,
-        documentUrl: body.DocumentInfo.DocumentUrl,
-      });
-    }
 
     // Send confirmation email or other post-payment actions
     await handlePostPaymentActions(orderId, transactionData, request.url);
@@ -118,7 +92,6 @@ async function updateOrderStatus(
   data?: any
 ) {
   try {
-    console.log(`Updating order ${orderId} to status: ${status}`, data);
     
     // Update order status and payment data
     await prisma.order.update({
@@ -164,11 +137,6 @@ async function updateOrderStatus(
  */
 async function savePaymentToken(orderId: string, tokenInfo: any) {
   try {
-    console.log(`Saving payment token for order ${orderId}:`, {
-      token: tokenInfo.Token,
-      cardLast4: tokenInfo.CardLast4Digits,
-      expiry: `${tokenInfo.CardMonth}/${tokenInfo.CardYear}`,
-    });
     
     // Get customer info from the order
     const order = await prisma.order.findUnique({
@@ -198,7 +166,6 @@ async function savePaymentToken(orderId: string, tokenInfo: any) {
  */
 async function handlePostPaymentActions(orderId: string, transactionData: any, requestUrl: string) {
   try {
-    console.log(`Handling post-payment actions for order ${orderId}`);
 
     // Fetch order with items
     const order = await prisma.order.findUnique({
@@ -206,13 +173,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       include: { orderItems: true },
     });
 
-    if (!order) {
-      console.error('Order not found for email sending:', orderId);
-      return;
-    }
-
-    if (!order.customerEmail) {
-      console.error('Order missing customerEmail; skipping confirmation email');
+    if (!order || !order.customerEmail) {
       return;
     }
 
@@ -223,18 +184,10 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       price: item.price,
     }));
 
-    // Extract language from webhook URL parameters (more reliable than transaction data)
-    console.log('=== LANGUAGE DETECTION DEBUG ===');
+    // Extract language from webhook URL parameters
     const url = new URL(requestUrl);
     const langParam = url.searchParams.get('lang');
-    console.log('Language from URL parameter:', langParam);
-    console.log('Full webhook URL:', requestUrl);
-    
-    // Determine if Hebrew based on URL parameter (fallback to Hebrew if not provided)
     const if_he = langParam === 'he' || !langParam;
-    console.log('Final if_he value:', if_he);
-    console.log('Language detection method: URL parameter');
-    console.log('=== END LANGUAGE DETECTION DEBUG ===');
 
     // Send confirmation email with Resend
     const emailResult = await sendOrderConfirmationEmail({
@@ -247,9 +200,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       isHebrew: if_he,
     });
 
-    if (emailResult.success) {
-      console.log('Confirmation email sent successfully for order:', order.orderNumber);
-    } else {
+    if (!emailResult.success) {
       console.error('Failed to send confirmation email:', emailResult.error);
     }
     

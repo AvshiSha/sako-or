@@ -71,9 +71,9 @@ export async function POST(request: NextRequest) {
         createDocument: true,
         language: body.language || 'he',
         // Receipt/Document options
-        customerTaxId: body.customer.taxId || body.customer.identityNumber,
+        customerTaxId: "",
         customerAddress: `${body.deliveryAddress.streetName} ${body.deliveryAddress.streetNumber}`,
-        customerAddress2: body.deliveryAddress.apartment || "",
+        customerAddress2: "",
         customerCity: body.deliveryAddress.city,
         customerMobile: body.customer.mobile,
         documentComments: `Order: ${orderNumber}`,

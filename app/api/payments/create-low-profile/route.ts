@@ -70,6 +70,21 @@ export async function POST(request: NextRequest) {
         createToken: false,
         createDocument: true,
         language: body.language || 'he',
+        // Receipt/Document options
+        customerTaxId: body.customer.taxId || body.customer.identityNumber,
+        customerAddress: `${body.deliveryAddress.streetName} ${body.deliveryAddress.streetNumber}`,
+        customerAddress2: body.deliveryAddress.apartment || "",
+        customerCity: body.deliveryAddress.city,
+        customerMobile: body.customer.mobile,
+        documentComments: `Order: ${orderNumber}`,
+        departmentId: "", // You'll provide this value later
+        products: [{
+          productId: body.productSku || 'SAKO-PRODUCT',
+          description: body.productName || 'Sako Order',
+          quantity: body.quantity || 1,
+          unitCost: body.amount,
+          totalLineCost: body.amount * (body.quantity || 1)
+        }]
       }
     );
 

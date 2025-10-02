@@ -145,6 +145,21 @@ export function createPaymentSessionRequest(
     createDocument?: boolean;
     language?: string;
     returnUrl?: string;
+    // Document/Receipt options
+    customerTaxId?: string;
+    customerAddress?: string;
+    customerAddress2?: string;
+    customerCity?: string;
+    customerMobile?: string;
+    documentComments?: string;
+    departmentId?: string;
+    products?: Array<{
+      productId: string;
+      description: string;
+      quantity: number;
+      unitCost: number;
+      totalLineCost: number;
+    }>;
   } = {}
 ): CreateLowProfileRequest {
   // Generate redirect URLs without instantiating CardComAPI
@@ -186,8 +201,35 @@ export function createPaymentSessionRequest(
     };
   }
 
-  // Document creation removed - requires special permissions
-  // You can add this back later if your CardCom account supports it
+  // Add Document/Receipt creation if requested
+  if (options.createDocument && options.customerEmail && options.customerName) {
+    request.DocumentDefinition = {
+      TypeToCreate: "TaxInvoiceAndReceipt",
+      Name: options.customerName,
+      TaxId: options.customerTaxId || "",
+      Email: options.customerEmail,
+      IsSendByEmail: true,
+      AddressLine1: options.customerAddress || "",
+      AddressLine2: options.customerAddress2 || "",
+      City: options.customerCity || "",
+      Mobile: options.customerMobile || "",
+      Phone: options.customerPhone || "",
+      Comments: options.documentComments || "",
+      IsVatFree: false,
+      DepartmentId: options.departmentId || "", // You'll provide this value later
+      Products: options.products?.map(product => ({
+        ProductID: product.productId,
+        Description: product.description,
+        Quantity: product.quantity,
+        UnitCost: product.unitCost,
+        TotalLineCost: product.totalLineCost,
+        IsVatFree: false
+      })) || [],
+      IsAllowEditDocument: false,
+      IsShowOnlyDocument: false,
+      Language: options.language || 'he'
+    };
+  }
 
   return request;
 }

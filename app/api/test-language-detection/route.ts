@@ -9,8 +9,15 @@ export async function POST(request: NextRequest) {
     console.log('=== TESTING LANGUAGE DETECTION ===');
     console.log('Input language:', language);
     
-    // Simulate the language detection logic from webhook
-    const if_he = language === 'he' || true; // Same logic as webhook
+    // Test both methods: URL parameter (new) and body parameter (for testing)
+    const url = new URL(request.url);
+    const langParam = url.searchParams.get('lang');
+    console.log('Language from URL parameter:', langParam);
+    
+    // Use URL parameter if available, otherwise use body parameter for testing
+    const effectiveLanguage = langParam || language;
+    const if_he = effectiveLanguage === 'he' || !effectiveLanguage;
+    console.log('Effective language:', effectiveLanguage);
     console.log('Detected if_he:', if_he);
     
     // Test email sending with detected language
@@ -36,7 +43,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       inputLanguage: language,
+      urlLanguage: langParam,
+      effectiveLanguage: effectiveLanguage,
       detectedHebrew: if_he,
+      detectionMethod: 'URL parameter',
       emailSent: emailResult.success,
       emailResult: emailResult,
     });

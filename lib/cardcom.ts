@@ -159,7 +159,7 @@ export function createPaymentSessionRequest(
     success: `${baseUrl}/Success`,
     failure: `${baseUrl}/Failed`,
     cancel: `${baseUrl}/Cancel`,
-    webhook: `${baseUrl}/api/webhook/cardcom?bypass=${bypassSecret}`,
+    webhook: `${baseUrl}/api/webhook/cardcom?bypass=${bypassSecret}&lang=${options.language || 'he'}`,
   };
 
   const request: CreateLowProfileRequest = {

@@ -29,7 +29,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData) {
 
     const { data: emailData, error } = await resend.emails.send({
       from: 'Sako Or <info@sako-or.com>',
-      to: [data.customerEmail],
+      to: [data.customerEmail, 'moshe@sako-or.com', 'avshi@sako-or.com'],
       subject: subject,
       react: OrderConfirmationEmail({
         customerName: data.customerName,

@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send confirmation email or other post-payment actions
-    await handlePostPaymentActions(orderId, transactionData);
+    await handlePostPaymentActions(orderId, transactionData, request.url);
 
     return NextResponse.json({ success: true });
 
@@ -196,7 +196,7 @@ async function savePaymentToken(orderId: string, tokenInfo: any) {
 /**
  * Handle post-payment actions (emails, notifications, etc.)
  */
-async function handlePostPaymentActions(orderId: string, transactionData: any) {
+async function handlePostPaymentActions(orderId: string, transactionData: any, requestUrl: string) {
   try {
     console.log(`Handling post-payment actions for order ${orderId}`);
 
@@ -223,15 +223,17 @@ async function handlePostPaymentActions(orderId: string, transactionData: any) {
       price: item.price,
     }));
 
-    // Determine language flag from transaction (fallback to Hebrew if not provided)
+    // Extract language from webhook URL parameters (more reliable than transaction data)
     console.log('=== LANGUAGE DETECTION DEBUG ===');
-    console.log('Full transactionData:', JSON.stringify(transactionData, null, 2));
-    console.log('transactionData?.uiValues:', JSON.stringify(transactionData?.uiValues, null, 2));
-    console.log('transactionData?.uiValues?.Language:', transactionData?.uiValues?.Language);
-    console.log('Language comparison result:', transactionData?.uiValues?.Language === 'he');
+    const url = new URL(requestUrl);
+    const langParam = url.searchParams.get('lang');
+    console.log('Language from URL parameter:', langParam);
+    console.log('Full webhook URL:', requestUrl);
     
-    const if_he = transactionData?.uiValues?.Language === 'he' || true;
+    // Determine if Hebrew based on URL parameter (fallback to Hebrew if not provided)
+    const if_he = langParam === 'he' || !langParam;
     console.log('Final if_he value:', if_he);
+    console.log('Language detection method: URL parameter');
     console.log('=== END LANGUAGE DETECTION DEBUG ===');
 
     // Send confirmation email with Resend

@@ -164,7 +164,7 @@ export function createPaymentSessionRequest(
   } = {}
 ): CreateLowProfileRequest {
   // Generate redirect URLs without instantiating CardComAPI
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const baseUrl = "https://sako-or.com";
   const bypassSecret = process.env.RESEND_API_KEY;
   
   if (!bypassSecret) {

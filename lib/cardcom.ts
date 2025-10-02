@@ -142,7 +142,6 @@ export function createPaymentSessionRequest(
     customerPhone?: string;
     productName?: string;
     createToken?: boolean;
-    createDocument?: boolean;
     language?: string;
     returnUrl?: string;
     // Document/Receipt options
@@ -202,7 +201,7 @@ export function createPaymentSessionRequest(
   }
 
   // Add Document/Receipt creation if requested
-  if (options.createDocument && options.customerEmail && options.customerName) {
+  if (options.customerEmail && options.customerName) {
     request.DocumentDefinition = {
       TypeToCreate: "TaxInvoiceAndReceipt",
       Name: options.customerName,

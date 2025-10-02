@@ -224,7 +224,15 @@ async function handlePostPaymentActions(orderId: string, transactionData: any) {
     }));
 
     // Determine language flag from transaction (fallback to Hebrew if not provided)
-    const if_he = transactionData?.uiValues?.Language === 'he' || false;
+    console.log('=== LANGUAGE DETECTION DEBUG ===');
+    console.log('Full transactionData:', JSON.stringify(transactionData, null, 2));
+    console.log('transactionData?.uiValues:', JSON.stringify(transactionData?.uiValues, null, 2));
+    console.log('transactionData?.uiValues?.Language:', transactionData?.uiValues?.Language);
+    console.log('Language comparison result:', transactionData?.uiValues?.Language === 'he');
+    
+    const if_he = transactionData?.uiValues?.Language === 'he' || true;
+    console.log('Final if_he value:', if_he);
+    console.log('=== END LANGUAGE DETECTION DEBUG ===');
 
     // Send confirmation email with Resend
     const emailResult = await sendOrderConfirmationEmail({

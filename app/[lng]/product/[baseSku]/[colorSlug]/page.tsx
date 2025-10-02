@@ -873,7 +873,7 @@ export default function ProductColorPage() {
                         <span>{baseSku}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>{lng === 'he' ? 'צבע' : 'Color'}:</span> // TODO: fix this
+                        <span>{lng === 'he' ? 'צבע' : 'Color'}:</span> {/* TODO: fix this */}
                         <span>{currentVariant.colorSlug}</span>
                       </div>
                       <div className="flex justify-between">

@@ -869,11 +869,11 @@ export default function ProductColorPage() {
                     </h4>
                     <div className="mt-2 space-y-2 text-sm text-gray-600">
                       <div className="flex justify-between">
-                        <span>SKU:</span>
+                        <span>{lng === 'he' ? 'מספר דגם' : 'SKU'}:</span>
                         <span>{baseSku}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>{lng === 'he' ? 'צבע' : 'Color'}:</span>
+                        <span>{lng === 'he' ? 'צבע' : 'Color'}:</span> // TODO: fix this
                         <span>{currentVariant.colorSlug}</span>
                       </div>
                       <div className="flex justify-between">
@@ -977,36 +977,38 @@ export default function ProductColorPage() {
                         // Default shipping returns content
                         lng === 'he' ? (
                           <div className="space-y-3">
-                            <p><strong>משלוחים:</strong></p>
+                            <p><strong>🚚 משלוחים:</strong></p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
-                              <li>משלוח חינם על הזמנות מעל 300 ₪</li>
-                              <li>משלוח מהיר תוך 1-2 ימי עסקים</li>
-                              <li>משלוח לכל הארץ</li>
-                              <li>מעקב אחר המשלוח במייל</li>
+                              <li>משלוח חינם בקנייה מעל 300 ₪</li>
+                              <li>בהזמנה מתחת ל־300 ₪ – משלוח עם שליח עד הבית בעלות 45 ₪</li>
+                              <li>משלוח מהיר: 3–5 ימי עסקים</li>
                             </ul>
-                            <p><strong>החזרות:</strong></p>
+                        
+                            <p><strong>🔄 החזרות והחלפות:</strong></p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
-                              <li>זכות החזרה תוך 30 יום</li>
-                              <li>החזרה חינמית</li>
-                              <li>המוצר חייב להיות במצב מקורי</li>
-                              <li>החזר כספי תוך 3-5 ימי עסקים</li>
+                              <li>החזרה בחינם דרך החנות תוך 14 יום</li>
+                              <li>החזרה עם שליח – בעלות של 30 ₪</li>
+                              <li>החלפה ראשונה ללא עלות</li>
+                              <li>המוצר המוחזר חייב להיות חדש, ללא שימוש ובאריזתו המקורית</li>
+                              <li>החזר כספי מיידי עם הגעת המוצר אלינו</li>
                             </ul>
                           </div>
-                        ) : (
+                        ) :   (
                           <div className="space-y-3">
-                            <p><strong>Shipping:</strong></p>
+                            <p><strong>🚚 Shipping:</strong></p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
                               <li>Free shipping on orders over ₪300</li>
-                              <li>Fast shipping within 1-2 business days</li>
-                              <li>Nationwide delivery</li>
-                              <li>Email tracking updates</li>
+                              <li>Orders under ₪300 – home delivery for ₪45</li>
+                              <li>Fast delivery: 3–5 business days</li>
                             </ul>
-                            <p><strong>Returns:</strong></p>
+                        
+                            <p><strong>🔄 Returns & Exchanges:</strong></p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
-                              <li>30-day return policy</li>
-                              <li>Free returns</li>
-                              <li>Items must be in original condition</li>
-                              <li>Refund processed within 3-5 business days</li>
+                              <li>Free in-store returns within 14 days</li>
+                              <li>Return via courier – ₪30</li>
+                              <li>First exchange free of charge</li>
+                              <li>Items must be unused and in original packaging</li>
+                              <li>Instant refund once the item arrives at our company</li>
                             </ul>
                           </div>
                         )

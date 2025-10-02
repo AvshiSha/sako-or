@@ -265,12 +265,6 @@ export default function PaymentResult({
           </button>
         )}
         
-        <Link
-          href="/cart"
-          className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-        >
-          {isHebrew ? 'חזור לעגלה' : 'Back to Cart'}
-        </Link>
       </div>
 
       {/* Support Information */}
@@ -283,8 +277,8 @@ export default function PaymentResult({
         </p>
         <p>
           {isHebrew 
-            ? 'אימייל: support@sako-or.com | טלפון: 03-1234567'
-            : 'Email: support@sako-or.com | Phone: 03-1234567'
+            ? 'אימייל: info@sako-or.com | טלפון: 08-9408848'
+            : 'Email: info@sako-or.com | Phone: 08-9408848'
           }
         </p>
       </div>

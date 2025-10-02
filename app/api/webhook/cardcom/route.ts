@@ -7,18 +7,6 @@ import { stringifyPaymentData } from '../../../../lib/orders';
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('=== WEBHOOK CALLED ===');
-    console.log('Timestamp:', new Date().toISOString());
-    console.log('URL:', request.url);
-    console.log('Method:', request.method);
-    
-    // Verify this is actually from CardCom
-    const userAgent = request.headers.get('user-agent') || '';
-    const forwardedFor = request.headers.get('x-forwarded-for') || '';
-    
-    console.log('User-Agent:', userAgent);
-    console.log('X-Forwarded-For:', forwardedFor);
-    
     // Check for bypass secret in header or URL parameter
     const bypassSecretHeader = request.headers.get('x-vercel-protection-bypass');
     const url = new URL(request.url);
@@ -26,29 +14,13 @@ export async function POST(request: NextRequest) {
     const bypassSecret = bypassSecretHeader || bypassSecretParam;
     const expectedBypassSecret = process.env.RESEND_API_KEY;
     
-    console.log('Webhook Debug Info:', {
-      bypassSecretHeader,
-      bypassSecretParam,
-      bypassSecret,
-      expectedBypassSecret: expectedBypassSecret ? 'SET' : 'NOT SET',
-      url: request.url
-    });
-    
     // Verify bypass secret if provided
     if (bypassSecret && expectedBypassSecret && bypassSecret !== expectedBypassSecret) {
-      console.log('Invalid bypass secret provided');
       return NextResponse.json({ error: 'Invalid bypass secret' }, { status: 401 });
-    }
-    
-    // Basic security check - CardCom should have specific user agent
-    if (!userAgent.includes('CardCom')) {
-      console.log('Suspicious webhook call - invalid user agent:', { userAgent, forwardedFor });
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
     // Additional security: Check if bypass secret is provided
     if (!bypassSecret) {
-      console.log('Webhook called without bypass secret');
       return NextResponse.json({ error: 'Missing bypass secret' }, { status: 401 });
     }
 
@@ -64,22 +36,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Log the webhook for debugging
-    console.log('CardCom webhook received:', {
-      lowProfileId: body.LowProfileId,
-      responseCode: body.ResponseCode,
-      orderId: body.ReturnValue,
-      operation: body.Operation,
-    });
 
     // Check if the transaction was successful
     if (body.ResponseCode !== 0) {
-      console.error('CardCom transaction failed:', {
-        responseCode: body.ResponseCode,
-        description: body.Description,
-        orderId: body.ReturnValue,
-      });
-      
       // Update order status to failed
       if (body.ReturnValue) {
         await updateOrderStatus(body.ReturnValue, 'failed', 'failed');
@@ -91,7 +50,6 @@ export async function POST(request: NextRequest) {
     // Process successful transaction
     const orderId = body.ReturnValue;
     if (!orderId) {
-      console.error('No order ID in webhook');
       return NextResponse.json({ error: 'No order ID' }, { status: 400 });
     }
 
@@ -146,7 +104,6 @@ async function updateOrderStatus(
   data?: any
 ) {
   try {
-    console.log(`Updating order ${orderId} to status: ${status}`, data);
     
     // Update order status and payment data
     await prisma.order.update({
@@ -192,11 +149,6 @@ async function updateOrderStatus(
  */
 async function savePaymentToken(orderId: string, tokenInfo: any) {
   try {
-    console.log(`Saving payment token for order ${orderId}:`, {
-      token: tokenInfo.Token,
-      cardLast4: tokenInfo.CardLast4Digits,
-      expiry: `${tokenInfo.CardMonth}/${tokenInfo.CardYear}`,
-    });
     
     // Get customer info from the order
     const order = await prisma.order.findUnique({
@@ -225,7 +177,6 @@ async function savePaymentToken(orderId: string, tokenInfo: any) {
  */
 async function handlePostPaymentActions(orderId: string, transactionData: any, requestUrl: string) {
   try {
-    console.log(`Handling post-payment actions for order ${orderId}`);
 
     // Fetch order with items
     const order = await prisma.order.findUnique({
@@ -233,13 +184,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       include: { orderItems: true },
     });
 
-    if (!order) {
-      console.error('Order not found for email sending:', orderId);
-      return;
-    }
-
-    if (!order.customerEmail) {
-      console.error('Order missing customerEmail; skipping confirmation email');
+    if (!order || !order.customerEmail) {
       return;
     }
 
@@ -250,18 +195,10 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       price: item.price,
     }));
 
-    // Extract language from webhook URL parameters (more reliable than transaction data)
-    console.log('=== LANGUAGE DETECTION DEBUG ===');
+    // Extract language from webhook URL parameters
     const url = new URL(requestUrl);
     const langParam = url.searchParams.get('lang');
-    console.log('Language from URL parameter:', langParam);
-    console.log('Full webhook URL:', requestUrl);
-    
-    // Determine if Hebrew based on URL parameter (fallback to Hebrew if not provided)
     const if_he = langParam === 'he' || !langParam;
-    console.log('Final if_he value:', if_he);
-    console.log('Language detection method: URL parameter');
-    console.log('=== END LANGUAGE DETECTION DEBUG ===');
 
         // Send confirmation email with Resend
         const emailResult = await sendOrderConfirmationEmail({
@@ -274,9 +211,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
           isHebrew: if_he,
         });
 
-        if (emailResult.success) {
-          console.log('Confirmation email sent successfully for order:', order.orderNumber);
-        } else {
+        if (!emailResult.success) {
           console.error('Failed to send confirmation email:', emailResult.error);
         }
     

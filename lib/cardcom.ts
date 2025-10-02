@@ -33,14 +33,6 @@ export class CardComAPI {
   async createLowProfile(request: CreateLowProfileRequest): Promise<CreateLowProfileResponse> {
     const url = `${this.baseUrl}/api/${CARDCOM_API_VERSION}/LowProfile/Create`;
     
-    // Debug logging
-    console.log('CardCom API Request:', {
-      url,
-      terminalNumber: this.terminalNumber,
-      apiName: this.apiName,
-      amount: request.Amount,
-      operation: request.Operation
-    });
     
     const response = await fetch(url, {
       method: 'POST',
@@ -57,10 +49,8 @@ export class CardComAPI {
     }
 
     const result: CreateLowProfileResponse = await response.json();
-    console.log('CardCom API Response:', result);
     
     if (result.ResponseCode !== 0) {
-      console.error('CardCom API Business Error:', result.ResponseCode, result.Description);
       throw new Error(`CardCom API error: ${result.ResponseCode} - ${result.Description}`);
     }
 
@@ -253,8 +243,6 @@ export async function getLowProfileStatus(lowProfileId: string): Promise<any> {
     LowProfileId: lowProfileId,
   };
 
-  console.log('Checking Low Profile status:', requestBody);
-
   const response = await fetch('https://secure.cardcom.solutions/api/v11/LowProfile/GetLowProfileStatus', {
     method: 'POST',
     headers: {
@@ -268,7 +256,6 @@ export async function getLowProfileStatus(lowProfileId: string): Promise<any> {
   }
 
   const result = await response.json();
-  console.log('CardCom status response:', result);
 
   return result;
 }

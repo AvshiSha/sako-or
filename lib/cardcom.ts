@@ -112,7 +112,7 @@ export class CardComAPI {
   /**
    * Get redirect URLs for the current domain
    */
-  getRedirectUrls(baseUrl: string = process.env.NEXT_PUBLIC_BASE_URL || 'https://sako-8p25ox5sv-sako-or.vercel.app') {
+  getRedirectUrls(baseUrl: string = "https://sako-or.com") {
     return {
       success: `${baseUrl}/Success`,
       failed: `${baseUrl}/Failed`,

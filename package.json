@@ -13,7 +13,7 @@
     "db:studio": "prisma studio",
     "db:setup:prod": "node scripts/setup-production-db.js",
     "seed:categories": "node scripts/seed-categories.js",
-    "email": "cross-env NODE_OPTIONS=\"-r ./polyfill-simple.js\" npx email dev --dir app/emails"
+    "email": "npx email dev --dir app/emails"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.1",

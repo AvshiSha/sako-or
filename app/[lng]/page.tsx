@@ -220,7 +220,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   }
 
   return (
-    <div className={`bg-white pt-16 ${isRTL ? 'text-right' : 'text-left'}`}>
+    <div className={`pt-16 ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
       <div className="relative h-screen">
         <div className="absolute inset-0">
@@ -329,7 +329,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       </div>
 
       {/* Newsletter Section */}
-      <div className="bg-white">
+      <div style={{ backgroundColor: '#f6f3ed' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="max-w-xl mx-auto text-center">
             <h2 className="text-3xl font-light text-gray-900 mb-4">{t.newsletterTitle}</h2>

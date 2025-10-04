@@ -220,7 +220,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   }
 
   return (
-    <div className={`pt-16 ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
+    <div className={`pt-16 ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#F6F3ED' }}>
       {/* Hero section */}
       <div className="relative h-screen">
         <div className="absolute inset-0">

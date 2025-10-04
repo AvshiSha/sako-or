@@ -15,6 +15,11 @@ export default async function LanguageLayout({
 }) {
   const { lng } = await params
   
+  // Skip socket.io and other non-language routes
+  if (lng === 'socket.io' || lng.startsWith('socket.io')) {
+    return null
+  }
+  
   // Validate language parameter
   if (!languages.includes(lng as any)) {
     throw new Error(`Unsupported language: ${lng}`)

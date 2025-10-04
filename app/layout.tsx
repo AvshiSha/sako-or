@@ -1,9 +1,9 @@
 import './globals.css'
-import { Assistant } from 'next/font/google'  
+import { Inter } from 'next/font/google'  
 import ClientAuthProvider from './components/ClientAuthProvider'
 import { Analytics } from '@vercel/analytics/next'
 
-const assistant = Assistant({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'] })
 
 export default function RootLayout({
   children
@@ -39,7 +39,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         />
         {/* End Google tag (gtag.js) */}
       </head>
-      <body className={assistant.className} suppressHydrationWarning={true}>
+      <body className={inter.className} suppressHydrationWarning={true}>
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe 

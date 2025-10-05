@@ -28,6 +28,8 @@ export interface CartHook {
   getTotalPrice: () => number
   getTotalItems: () => number
   getItemQuantity: (sku: string, size?: string, color?: string) => number
+  getDeliveryFee: () => number
+  getTotalWithDelivery: () => number
   loading: boolean
 }
 
@@ -155,6 +157,15 @@ export function useCart(): CartHook {
     return item ? item.quantity : 0
   }, [items])
 
+  const getDeliveryFee = useCallback(() => {
+    const total = getTotalPrice()
+    return total < 300 ? 45 : 0
+  }, [getTotalPrice])
+
+  const getTotalWithDelivery = useCallback(() => {
+    return getTotalPrice() + getDeliveryFee()
+  }, [getTotalPrice, getDeliveryFee])
+
   return {
     items,
     addToCart,
@@ -164,6 +175,8 @@ export function useCart(): CartHook {
     getTotalPrice,
     getTotalItems,
     getItemQuantity,
+    getDeliveryFee,
+    getTotalWithDelivery,
     loading
   }
 }

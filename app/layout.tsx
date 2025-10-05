@@ -94,8 +94,9 @@ function getCurrentAccessibilityLanguagePage() {
 
 // Wait for React hydration to complete before initializing accessibility
 function initializeAccessibility() {
-	// Initialize accessibility with dynamic language
-	window.args = {
+	try {
+		// Initialize accessibility with dynamic language
+		window.args = {
 		sitekey   : '${process.env.ACCESSIBILITY_KEY}',
 		position  : 'Right',
 		language : getCurrentLanguage(),
@@ -162,10 +163,23 @@ function initializeAccessibility() {
 		
 		body? body.appendChild(embed) : head.appendChild(embed);
 	})(document, document.head, document.body);
+	
+	} catch (error) {
+		console.warn('Accessibility widget initialization failed:', error.message);
+	}
 }
 
+// Add comprehensive error handling for accessibility widget
+window.addEventListener('error', function(e) {
+	if (e.message && (e.message.includes('focus') || e.message.includes('accessibility') || e.message.includes('vee'))) {
+		console.warn('Accessibility widget error caught and handled:', e.message);
+		e.preventDefault();
+		return false;
+	}
+});
+
 // Delay initialization to prevent hydration conflicts
-setTimeout(initializeAccessibility, 1000);
+setTimeout(initializeAccessibility, 2000);
             `
           }}
         />

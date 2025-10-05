@@ -57,86 +57,88 @@ export function OrderConfirmationEmailHebrew({
   isHebrew = true,
 }: OrderConfirmationEmailProps) {
   const t = {
-    title: isHebrew ? 'אישור הזמנה' : 'Order Confirmation',
-    greeting: isHebrew ? `שלום ${customerName},` : `Hello ${customerName},`,
-    thankYou: isHebrew 
-      ? 'תודה רבה על הרכישה שלך! הזמנתך התקבלה בהצלחה.' 
-      : 'Thank you for your purchase! Your order has been received successfully.',
-    orderNumber: isHebrew ? 'מספר הזמנה' : 'Order Number',
-    orderDate: isHebrew ? 'תאריך הזמנה' : 'Order Date',
-    items: isHebrew ? 'פריטים' : 'Items',
-    quantity: isHebrew ? 'כמות' : 'Quantity',
-    price: isHebrew ? 'מחיר' : 'Price',
-    total: isHebrew ? 'סה"כ' : 'Total',
-    customerDetails: isHebrew ? 'פרטי לקוח' : 'Customer Details',
-    firstName: isHebrew ? 'שם פרטי' : 'First Name',
-    lastName: isHebrew ? 'שם משפחה' : 'Last Name',
-    email: isHebrew ? 'אימייל' : 'Email',
-    mobile: isHebrew ? 'טלפון נייד' : 'Mobile Phone',
-    idNumber: isHebrew ? 'מספר זהות' : 'ID Number',
-    deliveryAddress: isHebrew ? 'כתובת משלוח' : 'Delivery Address',
-    city: isHebrew ? 'עיר' : 'City',
-    street: isHebrew ? 'רחוב' : 'Street',
-    streetNumber: isHebrew ? 'מספר בית' : 'House Number',
-    floor: isHebrew ? 'קומה' : 'Floor',
-    apartment: isHebrew ? 'דירה' : 'Apartment',
-    zipCode: isHebrew ? 'מיקוד' : 'ZIP Code',
-    notes: isHebrew ? 'הערות' : 'Notes',
-    footer: isHebrew 
-      ? 'אם יש לך שאלות, אנא צור איתנו קשר.' 
-      : 'If you have any questions, please contact us.',
-    contact: isHebrew ? 'צור קשר' : 'Contact Us',
+    title: 'אישור הזמנה',
+    greeting: `שלום ${customerName},`,
+    thankYou: 'תודה רבה על הרכישה שלך! הזמנתך התקבלה בהצלחה.',
+    orderNumber: 'מספר הזמנה',
+    orderDate: 'תאריך הזמנה',
+    items: 'פריטים',
+    quantity: 'כמות',
+    price: 'מחיר',
+    total: 'סה"כ',
+    customerDetails: 'פרטי לקוח',
+    firstName: 'שם פרטי',
+    lastName: 'שם משפחה',
+    email: 'אימייל',
+    mobile: 'טלפון נייד',
+    idNumber: 'מספר זהות',
+    deliveryAddress: 'כתובת משלוח',
+    city: 'עיר',
+    street: 'רחוב',
+    streetNumber: 'מספר בית',
+    floor: 'קומה',
+    apartment: 'דירה',
+    zipCode: 'מיקוד',
+    notes: 'הערות',
+    footer: 'אם יש לך שאלות, אנא צור איתנו קשר.',
+    contact: 'צור קשר',
   };
 
   return (
-    <Html dir={isHebrew ? 'rtl' : 'ltr'}>
+    <Html dir="rtl" lang="he">
       <Head />
       <Preview>{t.title} - {orderNumber}</Preview>
-      <Body style={main}>
-        <Container style={container}>
+      <Body
+        dir="rtl"
+        style={{ ...main, direction: 'rtl' }}
+      >
+        <Container
+          dir="rtl"
+          style={{ ...container, direction: 'rtl' }}
+        >
           <Section style={header}>
-            <Heading style={h1}>{t.title}</Heading>
+            <Heading style={h1(isHebrew)}>{t.title}</Heading>
           </Section>
           
           <Section style={content}>
-            <Text style={text}>{t.greeting}</Text>
-            <Text style={text}>{t.thankYou}</Text>
+            <Text style={text(isHebrew)}>{t.greeting}</Text>
+            <Text style={text(isHebrew)}>{t.thankYou}</Text>
             
-            <Section style={orderInfo}>
+            <Section dir="rtl" style={orderInfo}>
               <Row>
-                <Column style={orderLabel}>{t.orderNumber}:</Column>
-                <Column style={orderValue}>{orderNumber}</Column>
+                <Column align="right" style={orderLabel(isHebrew)}>{t.orderNumber}:</Column>
+                <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{orderNumber}</span></Column>
               </Row>
               <Row>
-                <Column style={orderLabel}>{t.orderDate}:</Column>
-                <Column style={orderValue}>{orderDate}</Column>
+                <Column align="right" style={orderLabel(isHebrew)}>{t.orderDate}:</Column>
+                <Column align="left" style={orderValue(isHebrew)}>{orderDate}</Column>
               </Row>
             </Section>
 
             <Hr style={hr} />
 
             <Section style={detailsSection}>
-              <Heading style={h2}>{t.customerDetails}</Heading>
-              <Section style={detailsInfo}>
+              <Heading style={h2(isHebrew)}>{t.customerDetails}</Heading>
+              <Section dir="rtl" style={detailsInfo}>
                 <Row>
-                  <Column style={orderLabel}>{t.firstName}:</Column>
-                  <Column style={orderValue}>{payer.firstName}</Column>
+                  <Column align="right" style={orderLabel(isHebrew)}>{t.firstName}:</Column>
+                  <Column align="left" style={orderValue(isHebrew)}>{payer.firstName}</Column>
                 </Row>
                 <Row>
-                  <Column style={orderLabel}>{t.lastName}:</Column>
-                  <Column style={orderValue}>{payer.lastName}</Column>
+                  <Column align="right" style={orderLabel(isHebrew)}>{t.lastName}:</Column>
+                  <Column align="left" style={orderValue(isHebrew)}>{payer.lastName}</Column>
                 </Row>
                 <Row>
-                  <Column style={orderLabel}>{t.email}:</Column>
-                  <Column style={orderValue}>{payer.email}</Column>
+                  <Column align="right" style={orderLabel(isHebrew)}>{t.email}:</Column>
+                  <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{payer.email}</span></Column>
                 </Row>
                 <Row>
-                  <Column style={orderLabel}>{t.mobile}:</Column>
-                  <Column style={orderValue}>{payer.mobile}</Column>
+                  <Column align="right" style={orderLabel(isHebrew)}>{t.mobile}:</Column>
+                  <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{payer.mobile}</span></Column>
                 </Row>
                 <Row>
-                  <Column style={orderLabel}>{t.idNumber}:</Column>
-                  <Column style={orderValue}>{payer.idNumber}</Column>
+                  <Column align="right" style={orderLabel(isHebrew)}>{t.idNumber}:</Column>
+                  <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{payer.idNumber}</span></Column>
                 </Row>
               </Section>
             </Section>
@@ -144,20 +146,20 @@ export function OrderConfirmationEmailHebrew({
             <Hr style={hr} />
 
             <Section style={detailsSection}>
-              <Heading style={h2}>{t.deliveryAddress}</Heading>
-              <Section style={detailsInfo}>
+              <Heading style={h2(isHebrew)}>{t.deliveryAddress}</Heading>
+              <Section dir="rtl" style={detailsInfo}>
                 <Row>
-                  <Column style={orderLabel}>{t.city}:</Column>
-                  <Column style={orderValue}>{deliveryAddress.city}</Column>
+                  <Column align="right" style={orderLabel(isHebrew)}>{t.city}:</Column>
+                  <Column align="left" style={orderValue(isHebrew)}>{deliveryAddress.city}</Column>
                 </Row>
                 <Row>
-                  <Column style={orderLabel}>{t.street}:</Column>
-                  <Column style={orderValue}>{deliveryAddress.streetName} {deliveryAddress.streetNumber}</Column>
+                  <Column align="right" style={orderLabel(isHebrew)}>{t.street}:</Column>
+                  <Column align="left" style={orderValue(isHebrew)}>{deliveryAddress.streetName} {deliveryAddress.streetNumber}</Column>
                 </Row>
                 {(deliveryAddress.floor || deliveryAddress.apartmentNumber) && (
                   <Row>
-                    <Column style={orderLabel}>{t.floor}/{t.apartment}:</Column>
-                    <Column style={orderValue}>
+                    <Column align="right" style={orderLabel(isHebrew)}>{t.floor}/{t.apartment}:</Column>
+                    <Column align="left" style={orderValue(isHebrew)}>
                       {deliveryAddress.floor && `${t.floor}: ${deliveryAddress.floor}`}
                       {deliveryAddress.floor && deliveryAddress.apartmentNumber && ', '}
                       {deliveryAddress.apartmentNumber && `${t.apartment}: ${deliveryAddress.apartmentNumber}`}
@@ -165,8 +167,8 @@ export function OrderConfirmationEmailHebrew({
                   </Row>
                 )}
                 <Row>
-                  <Column style={orderLabel}>{t.zipCode}:</Column>
-                  <Column style={orderValue}>{deliveryAddress.zipCode}</Column>
+                  <Column align="right" style={orderLabel(isHebrew)}>{t.zipCode}:</Column>
+                  <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{deliveryAddress.zipCode}</span></Column>
                 </Row>
               </Section>
             </Section>
@@ -175,31 +177,31 @@ export function OrderConfirmationEmailHebrew({
               <>
                 <Hr style={hr} />
                 <Section style={detailsSection}>
-                  <Heading style={h2}>{t.notes}</Heading>
-                  <Text style={text}>{notes}</Text>
+                  <Heading style={h2(isHebrew)}>{t.notes}</Heading>
+                  <Text style={text(isHebrew)}>{notes}</Text>
                 </Section>
               </>
             )}
 
             <Hr style={hr} />
 
-            <Section style={itemsSection}>
-              <Heading style={h2}>{t.items}</Heading>
+            <Section dir="rtl" style={itemsSection}>
+              <Heading style={h2(isHebrew)}>{t.items}</Heading>
               {items.map((item, index) => (
                 <Row key={index} style={itemRow}>
-                  <Column style={itemName}>{item.name}</Column>
-                  <Column style={itemQuantity}>{item.quantity}</Column>
-                  <Column style={itemPrice}>₪{item.price.toFixed(2)}</Column>
+                  <Column align="right" style={itemName(isHebrew)}>{item.name}</Column>
+                  <Column align="center" style={itemQuantity}>{item.quantity}</Column>
+                  <Column align="left" style={itemPrice(isHebrew)}><span dir="ltr">₪{item.price.toFixed(2)}</span></Column>
                 </Row>
               ))}
             </Section>
 
             <Hr style={hr} />
 
-            <Section style={totalSection}>
+            <Section dir="rtl" style={totalSection}>
               <Row>
-                <Column style={totalLabel}>{t.total}:</Column>
-                <Column style={totalValue}>₪{total.toFixed(2)}</Column>
+                <Column align="right" style={totalLabel(isHebrew)}>{t.total}:</Column>
+                <Column align="left" style={totalValue(isHebrew)}><span dir="ltr">₪{total.toFixed(2)}</span></Column>
               </Row>
             </Section>
           </Section>
@@ -218,18 +220,18 @@ export function OrderConfirmationEmailHebrew({
 
 // Preview props for React Email dashboard
 OrderConfirmationEmailHebrew.PreviewProps = {
-  customerName: 'יוחנן כהן',
-  orderNumber: 'ORD-2024-001',
+  customerName: 'אבשלום שהרבני',
+  orderNumber: 'ORDER-2024-001',
   orderDate: '15 בינואר 2024',
   items: [
-    { name: 'נעלי עור פרימיום', quantity: 1, price: 299.99 },
+    { name: 'נעליים מעור איכותיות', quantity: 1, price: 299.99 },
     { name: 'גרבי כותנה', quantity: 2, price: 15.50 },
   ],
   total: 330.99,
   payer: {
-    firstName: 'יוחנן',
-    lastName: 'כהן',
-    email: 'yochanan.cohen@example.com',
+    firstName: 'אבשלום',
+    lastName: 'שהרבני',
+    email: 'avshi@sako-or.com',
     mobile: '+972-50-123-4567',
     idNumber: '123456789'
   },
@@ -241,7 +243,7 @@ OrderConfirmationEmailHebrew.PreviewProps = {
     apartmentNumber: '12',
     zipCode: '66881'
   },
-  notes: 'אנא למסור אחרי השעה 17:00',
+  notes: 'אנא משלוח אחרי השעה 17:00',
   isHebrew: true,
 } as OrderConfirmationEmailProps;
 
@@ -265,24 +267,26 @@ const header = {
   textAlign: 'center' as const,
 };
 
-const h1 = {
+const h1 = (isHebrew: boolean) => ({
   color: '#333',
   fontSize: '24px',
   fontWeight: 'bold',
   margin: '0',
   padding: '0',
-};
+  textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
+});
 
 const content = {
   padding: '24px',
 };
 
-const text = {
+const text = (isHebrew: boolean) => ({
   color: '#333',
   fontSize: '16px',
   lineHeight: '26px',
   margin: '0 0 16px 0',
-};
+  textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
+});
 
 const orderInfo = {
   backgroundColor: '#f8f9fa',
@@ -302,18 +306,20 @@ const detailsInfo = {
   margin: '16px 0',
 };
 
-const orderLabel = {
+const orderLabel = (isHebrew: boolean) => ({
   color: '#666',
   fontSize: '14px',
   fontWeight: 'bold',
   width: '40%',
-};
+  textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
+});
 
-const orderValue = {
+const orderValue = (isHebrew: boolean) => ({
   color: '#333',
   fontSize: '14px',
   width: '60%',
-};
+  textAlign: (isHebrew ? 'left' : 'right') as 'left' | 'right',
+});
 
 const hr = {
   borderColor: '#e6ebf1',
@@ -324,23 +330,25 @@ const itemsSection = {
   margin: '24px 0',
 };
 
-const h2 = {
+const h2 = (isHebrew: boolean) => ({
   color: '#333',
   fontSize: '18px',
   fontWeight: 'bold',
   margin: '0 0 16px 0',
-};
+  textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
+});
 
 const itemRow = {
   padding: '8px 0',
   borderBottom: '1px solid #f0f0f0',
 };
 
-const itemName = {
+const itemName = (isHebrew: boolean) => ({
   color: '#333',
   fontSize: '14px',
   width: '50%',
-};
+  textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
+});
 
 const itemQuantity = {
   color: '#666',
@@ -349,12 +357,12 @@ const itemQuantity = {
   textAlign: 'center' as const,
 };
 
-const itemPrice = {
+const itemPrice = (isHebrew: boolean) => ({
   color: '#333',
   fontSize: '14px',
   width: '25%',
-  textAlign: 'right' as const,
-};
+  textAlign: (isHebrew ? 'left' : 'right') as 'left' | 'right',
+});
 
 const totalSection = {
   backgroundColor: '#f8f9fa',
@@ -363,20 +371,21 @@ const totalSection = {
   margin: '16px 0',
 };
 
-const totalLabel = {
+const totalLabel = (isHebrew: boolean) => ({
   color: '#333',
   fontSize: '16px',
   fontWeight: 'bold',
   width: '50%',
-};
+  textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
+});
 
-const totalValue = {
+const totalValue = (isHebrew: boolean) => ({
   color: '#333',
   fontSize: '18px',
   fontWeight: 'bold',
   width: '50%',
-  textAlign: 'right' as const,
-};
+  textAlign: (isHebrew ? 'left' : 'right') as 'left' | 'right',
+});
 
 const footer = {
   padding: '24px',

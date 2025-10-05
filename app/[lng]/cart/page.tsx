@@ -24,6 +24,8 @@ export default function CartPage() {
     updateQuantity, 
     getTotalPrice, 
     getTotalItems,
+    getDeliveryFee,
+    getTotalWithDelivery,
     clearCart,
     loading 
   } = useCart()
@@ -63,11 +65,13 @@ export default function CartPage() {
       quantity: 'Quantity',
       remove: 'Remove',
       subtotal: 'Subtotal',
+      delivery: 'Delivery Fee',
       total: 'Total',
       checkout: 'Proceed to Checkout',
       clearCart: 'Clear Cart',
       items: 'items',
-      item: 'item'
+      item: 'item',
+      freeDelivery: 'Free delivery on orders over ₪300'
     },
     he: {
       title: 'עגלת קניות',
@@ -77,11 +81,13 @@ export default function CartPage() {
       quantity: 'כמות',
       remove: 'הסר',
       subtotal: 'סכום ביניים',
+      delivery: 'דמי משלוח',
       total: 'סה"כ',
       checkout: 'המשך לתשלום',
       clearCart: 'נקה עגלה',
       items: 'פריטים',
-      item: 'פריט'
+      item: 'פריט',
+      freeDelivery: 'משלוח חינם בהזמנות מעל ₪300'
     }
   }
 
@@ -118,6 +124,8 @@ export default function CartPage() {
 
   const totalItems = getTotalItems()
   const totalPrice = getTotalPrice()
+  const deliveryFee = getDeliveryFee()
+  const totalWithDelivery = getTotalWithDelivery()
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -283,10 +291,26 @@ export default function CartPage() {
                   ))}
                 </div>
 
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <div className="flex justify-between text-lg font-bold text-gray-700">
-                    <span>{t.total}</span>
+                <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>{t.subtotal}</span>
                     <span>₪{totalPrice.toFixed(2)}</span>
+                  </div>
+                  
+                  {deliveryFee > 0 ? (
+                    <div className="flex justify-between text-sm text-gray-600">
+                      <span>{t.delivery}</span>
+                      <span>₪{deliveryFee.toFixed(2)}</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-green-600 font-medium">
+                      {t.freeDelivery}
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between text-lg font-bold text-gray-700 border-t border-gray-200 pt-2">
+                    <span>{t.total}</span>
+                    <span>₪{totalWithDelivery.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -314,7 +338,7 @@ export default function CartPage() {
         isOpen={isCheckoutModalOpen}
         onClose={() => setIsCheckoutModalOpen(false)}
         orderId={`ORDER-${Date.now()}`}
-        amount={totalPrice}
+        amount={totalWithDelivery}
         currency="ILS"
         productName={getProductName()}
         productSku={items.length > 0 ? items[0].sku : 'UNKNOWN'}

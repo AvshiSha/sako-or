@@ -177,6 +177,12 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       return;
     }
 
+    // Fetch checkout data separately using customer email
+    const checkout = await prisma.checkout.findFirst({
+      where: { customerEmail: order.customerEmail },
+      orderBy: { createdAt: 'desc' },
+    });
+
     // Build items for template
     const items = order.orderItems.map((item: any) => ({
       name: item.productName,
@@ -189,6 +195,37 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
     const langParam = url.searchParams.get('lang');
     const if_he = langParam === 'he' || !langParam;
 
+    // Extract customer and delivery data from checkout
+    const payer = checkout ? {
+      firstName: checkout.customerFirstName,
+      lastName: checkout.customerLastName,
+      email: checkout.customerEmail,
+      mobile: checkout.customerPhone,
+      idNumber: checkout.customerID || ''
+    } : {
+      firstName: '',
+      lastName: '',
+      email: order.customerEmail,
+      mobile: '',
+      idNumber: ''
+    };
+
+    const deliveryAddress = checkout ? {
+      city: checkout.customerCity,
+      streetName: checkout.customerStreetName,
+      streetNumber: checkout.customerStreetNumber,
+      floor: checkout.customerFloor || '',
+      apartmentNumber: checkout.customerApartment || '',
+      zipCode: checkout.customerZip || ''
+    } : {
+      city: '',
+      streetName: '',
+      streetNumber: '',
+      floor: '',
+      apartmentNumber: '',
+      zipCode: ''
+    };
+
     // Send confirmation email with Resend
     const emailResult = await sendOrderConfirmationEmail({
       customerEmail: order.customerEmail,
@@ -197,6 +234,9 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       orderDate: new Date(order.createdAt).toLocaleDateString(),
       items: items,
       total: order.total,
+      payer: payer,
+      deliveryAddress: deliveryAddress,
+      notes: checkout?.customerDeliveryNotes || undefined,
       isHebrew: if_he,
     });
 

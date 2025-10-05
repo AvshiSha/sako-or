@@ -2,8 +2,14 @@ import './globals.css'
 import { Assistant } from 'next/font/google'  
 import ClientAuthProvider from './components/ClientAuthProvider'
 import { Analytics } from '@vercel/analytics/next'
+import type { Metadata } from 'next'
 
 const assistant = Assistant({ subsets: ['latin'] })
+
+export const metadata: Metadata = {
+  title: "Sako Or",
+  description: "Sako Or",
+}
 
 export default function RootLayout({
   children

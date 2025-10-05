@@ -67,9 +67,9 @@ export function getCollectionImageUrl(collectionName: string): string {
  */
 export function getProductImageUrl(productName: string): string {
   const productMap: Record<string, string> = {
-    "Italian Leather Stilettos": "/images/products/downtown-2.jpg",
-    "Crystal Embellished Pumps": "/images/products/americas-cup-2.jpg",
-    "Suede Chelsea Boots": "/images/products/suede-chelsea-boots.jpg"
+    "Tan Suede Chunky Sneakers": "/images/products/4912-2169.webp",
+    "Chic Ankle Boots": "/images/products/4926-2356.webp",
+    "Suede Cowboy Boots": "/images/products/4925-2901.webp"
   };
   
   const localPath = productMap[productName];

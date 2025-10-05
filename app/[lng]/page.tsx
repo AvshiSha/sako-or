@@ -49,64 +49,55 @@ const featuredProducts = [
   {
     id: 1,
     name: {
-      en: 'Italian Leather Stilettos',
-      he: 'נעלי סטילטו עור איטלקי'
+      en: 'Tan Suede Chunky Sneakers',
+      he: 'סניקרס זמש חומות'
     },
-    href: '/collection/high-heels/italian-stilettos',
-    imageSrc: getProductImageUrl('Italian Leather Stilettos'),
+    href: `/product/4912-2169/dark-brown`,
+    imageSrc: getProductImageUrl('Tan Suede Chunky Sneakers'),
     imageAlt: {
-      en: 'Handcrafted Italian leather stilettos',
-      he: 'נעלי סטילטו עור איטלקי בעבודת יד'
+      en: 'Tan Suede Chunky Sneakers',
+      he: 'סניקרס זמש חומות'
     },
-    price: {
-      en: '$395',
-      he: '1099₪'
-    },
+    price: 990,
     description: {
-      en: 'Handcrafted in Italy with premium leather',
-      he: 'עשויות בעבודת יד באיטליה מעור פרימיום'
+      en: 'Step up your style with these premium suede sneakers.<br />A perfect mix of comfort, elegance, and modern edge.',
+      he: 'תקחי את הסטייל שלך צעד אחד קדימה עם סניקרס איטלקיות'
     },
   },
   {
     id: 2,
     name: {
-      en: 'Crystal Embellished Pumps',
-      he: 'נעלי עקב מעוטרות קריסטלים'
+      en: 'Chic Ankle Boots',
+      he: 'מגפוני שיק'
     },
-    href: '/collection/high-heels/crystal-pumps',
-    imageSrc: getProductImageUrl('Crystal Embellished Pumps'),
+    href: '/product/4926-2356/off-white',
+    imageSrc: getProductImageUrl('Chic Ankle Boots'),
     imageAlt: {
-      en: 'Elegant pumps with crystal embellishments',
-      he: 'נעלי עקב אלגנטיות עם עיטורי קריסטל'
+      en: 'Chic Ankle Boots',
+      he: 'מגפוני שיק'
     },
-    price: {
-      en: '$450',
-      he: '1199₪'
-    },
+    price: 790,
     description: {
-      en: 'Adorned with Swarovski crystals',
-      he: 'מעוטרות בקריסטלי סברובסקי'
+      en: 'Turn heads with these chic white ankle boots.<br />Sleek, modern, and effortlessly elegant for any occasion.',
+      he: 'תסובבי ראשים עם מגפוני עקב יוקרתיות'
     },
   },
   {
     id: 3,
     name: {
-      en: 'Suede Chelsea Boots',
-      he: 'מגפי צ\'לסי אופנתיות'
+      en: 'Suede Cowboy Boots',
+      he: 'מגפוני בוקרים זמש'
     },
-    href: '/collection/boots/suede-chelsea',
-    imageSrc: getProductImageUrl('Suede Chelsea Boots'),
+    href: '/product/4925-2901/dark-brown',
+    imageSrc: getProductImageUrl('Suede Cowboy Boots'),
     imageAlt: {
-      en: 'Premium suede chelsea boots',
-      he:  'מגפי צ\'לסי אופנתיות'
+      en: 'Suede Cowboy Boots',
+      he:  'מגפוני בוקרים זמש'
     },
-    price: {
-      en:'$375',
-      he: '999₪'
-    },
+    price: 599,
     description: {
-      en: 'Luxurious suede with artisanal craftsmanship',
-      he: 'מגפי צ\'לסי באיכות עוצרת נשימה'
+      en: 'Add a bold western touch to your look with these rich brown suede cowboy boots.',
+      he: 'הוסיפי טאץ\' מערבי נועז למראה שלך עם המגפוני בוקרים שלנו'
     },
   },
 ]
@@ -318,10 +309,13 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
                   <div className="absolute inset-0 bg-gray-900/5 group-hover:bg-gray-900/10 transition-colors duration-300" />
                 </div>
                 <h3 className="text-lg font-light text-gray-900 mb-1">
-                  <Link href={`/${lng}${product.href}`}>{product.name[lng as keyof typeof product.name]}</Link>
+                  <Link href={`/${lng}/${product.href}`}>{product.name[lng as keyof typeof product.name]}</Link>
                 </h3>
-                <p className="text-sm text-gray-500 mb-2">{product.description[lng as keyof typeof product.description]}</p>
-                <p className="text-lg text-gray-900">{product.price[lng as keyof typeof product.price]}</p>
+                <p 
+                  className="text-sm text-gray-500 mb-2"
+                  dangerouslySetInnerHTML={{ __html: product.description[lng as keyof typeof product.description] }}
+                />
+                <p className="text-lg text-gray-900">{product.price}₪</p>
               </div>
             ))}
           </div>

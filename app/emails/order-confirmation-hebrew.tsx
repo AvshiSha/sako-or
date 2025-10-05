@@ -26,6 +26,22 @@ interface OrderConfirmationEmailProps {
     price: number;
   }>;
   total: number;
+  payer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    mobile: string;
+    idNumber: string;
+  };
+  deliveryAddress: {
+    city: string;
+    streetName: string;
+    streetNumber: string;
+    floor: string;
+    apartmentNumber: string;
+    zipCode: string;
+  };
+  notes?: string;
   isHebrew?: boolean;
 }
 
@@ -35,6 +51,9 @@ export function OrderConfirmationEmailHebrew({
   orderDate,
   items,
   total,
+  payer,
+  deliveryAddress,
+  notes,
   isHebrew = true,
 }: OrderConfirmationEmailProps) {
   const t = {
@@ -49,6 +68,20 @@ export function OrderConfirmationEmailHebrew({
     quantity: isHebrew ? 'כמות' : 'Quantity',
     price: isHebrew ? 'מחיר' : 'Price',
     total: isHebrew ? 'סה"כ' : 'Total',
+    customerDetails: isHebrew ? 'פרטי לקוח' : 'Customer Details',
+    firstName: isHebrew ? 'שם פרטי' : 'First Name',
+    lastName: isHebrew ? 'שם משפחה' : 'Last Name',
+    email: isHebrew ? 'אימייל' : 'Email',
+    mobile: isHebrew ? 'טלפון נייד' : 'Mobile Phone',
+    idNumber: isHebrew ? 'מספר זהות' : 'ID Number',
+    deliveryAddress: isHebrew ? 'כתובת משלוח' : 'Delivery Address',
+    city: isHebrew ? 'עיר' : 'City',
+    street: isHebrew ? 'רחוב' : 'Street',
+    streetNumber: isHebrew ? 'מספר בית' : 'House Number',
+    floor: isHebrew ? 'קומה' : 'Floor',
+    apartment: isHebrew ? 'דירה' : 'Apartment',
+    zipCode: isHebrew ? 'מיקוד' : 'ZIP Code',
+    notes: isHebrew ? 'הערות' : 'Notes',
     footer: isHebrew 
       ? 'אם יש לך שאלות, אנא צור איתנו קשר.' 
       : 'If you have any questions, please contact us.',
@@ -79,6 +112,74 @@ export function OrderConfirmationEmailHebrew({
                 <Column style={orderValue}>{orderDate}</Column>
               </Row>
             </Section>
+
+            <Hr style={hr} />
+
+            <Section style={detailsSection}>
+              <Heading style={h2}>{t.customerDetails}</Heading>
+              <Section style={detailsInfo}>
+                <Row>
+                  <Column style={orderLabel}>{t.firstName}:</Column>
+                  <Column style={orderValue}>{payer.firstName}</Column>
+                </Row>
+                <Row>
+                  <Column style={orderLabel}>{t.lastName}:</Column>
+                  <Column style={orderValue}>{payer.lastName}</Column>
+                </Row>
+                <Row>
+                  <Column style={orderLabel}>{t.email}:</Column>
+                  <Column style={orderValue}>{payer.email}</Column>
+                </Row>
+                <Row>
+                  <Column style={orderLabel}>{t.mobile}:</Column>
+                  <Column style={orderValue}>{payer.mobile}</Column>
+                </Row>
+                <Row>
+                  <Column style={orderLabel}>{t.idNumber}:</Column>
+                  <Column style={orderValue}>{payer.idNumber}</Column>
+                </Row>
+              </Section>
+            </Section>
+
+            <Hr style={hr} />
+
+            <Section style={detailsSection}>
+              <Heading style={h2}>{t.deliveryAddress}</Heading>
+              <Section style={detailsInfo}>
+                <Row>
+                  <Column style={orderLabel}>{t.city}:</Column>
+                  <Column style={orderValue}>{deliveryAddress.city}</Column>
+                </Row>
+                <Row>
+                  <Column style={orderLabel}>{t.street}:</Column>
+                  <Column style={orderValue}>{deliveryAddress.streetName} {deliveryAddress.streetNumber}</Column>
+                </Row>
+                {(deliveryAddress.floor || deliveryAddress.apartmentNumber) && (
+                  <Row>
+                    <Column style={orderLabel}>{t.floor}/{t.apartment}:</Column>
+                    <Column style={orderValue}>
+                      {deliveryAddress.floor && `${t.floor}: ${deliveryAddress.floor}`}
+                      {deliveryAddress.floor && deliveryAddress.apartmentNumber && ', '}
+                      {deliveryAddress.apartmentNumber && `${t.apartment}: ${deliveryAddress.apartmentNumber}`}
+                    </Column>
+                  </Row>
+                )}
+                <Row>
+                  <Column style={orderLabel}>{t.zipCode}:</Column>
+                  <Column style={orderValue}>{deliveryAddress.zipCode}</Column>
+                </Row>
+              </Section>
+            </Section>
+
+            {notes && (
+              <>
+                <Hr style={hr} />
+                <Section style={detailsSection}>
+                  <Heading style={h2}>{t.notes}</Heading>
+                  <Text style={text}>{notes}</Text>
+                </Section>
+              </>
+            )}
 
             <Hr style={hr} />
 
@@ -125,6 +226,22 @@ OrderConfirmationEmailHebrew.PreviewProps = {
     { name: 'גרבי כותנה', quantity: 2, price: 15.50 },
   ],
   total: 330.99,
+  payer: {
+    firstName: 'יוחנן',
+    lastName: 'כהן',
+    email: 'yochanan.cohen@example.com',
+    mobile: '+972-50-123-4567',
+    idNumber: '123456789'
+  },
+  deliveryAddress: {
+    city: 'תל אביב',
+    streetName: 'שדרות רוטשילד',
+    streetNumber: '15',
+    floor: '3',
+    apartmentNumber: '12',
+    zipCode: '66881'
+  },
+  notes: 'אנא למסור אחרי השעה 17:00',
   isHebrew: true,
 } as OrderConfirmationEmailProps;
 
@@ -168,6 +285,17 @@ const text = {
 };
 
 const orderInfo = {
+  backgroundColor: '#f8f9fa',
+  padding: '16px',
+  borderRadius: '8px',
+  margin: '16px 0',
+};
+
+const detailsSection = {
+  margin: '24px 0',
+};
+
+const detailsInfo = {
   backgroundColor: '#f8f9fa',
   padding: '16px',
   borderRadius: '8px',

@@ -178,7 +178,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
     }
 
     // Build items for template
-    const items = order.orderItems.map(item => ({
+    const items = order.orderItems.map((item: any) => ({
       name: item.productName,
       quantity: item.quantity,
       price: item.price,

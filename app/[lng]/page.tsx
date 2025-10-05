@@ -16,7 +16,7 @@ const collections = [
       en: 'Elevate your style with our curated collection of designer heels',
       he: 'העלאת הסגנון שלך עם אוסף מוקפד של עיצובים'
     },
-    href: '/collection/high-heels',
+    href: '/collection/women/shoes/pumps',
     imageSrc: getCollectionImageUrl('Luxury Heels'),
   },
   {
@@ -28,7 +28,7 @@ const collections = [
       en: 'Sophisticated boots for the modern fashion connoisseur',
       he: 'מגפיים יוקרתיים בעלי עיצוב מורכב'
     },
-    href: '/collection/boots',
+    href: '/collection/women/shoes/low-boots',
     imageSrc: getCollectionImageUrl('Designer Boots'),
   },
   {
@@ -40,7 +40,7 @@ const collections = [
       en: 'Timeless elegance meets contemporary design',
       he: 'נעלי אוקספורד יוקרתיות בעלות עיצוב מורכב'
     },
-    href: '/collection/oxford',
+    href: '/collection/women/shoes/oxford',
     imageSrc: getCollectionImageUrl('Classic Oxford'),
   },
 ]

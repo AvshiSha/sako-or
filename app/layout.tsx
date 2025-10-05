@@ -1,9 +1,9 @@
 import './globals.css'
-import { Inter } from 'next/font/google'  
+import { Assistant } from 'next/font/google'  
 import ClientAuthProvider from './components/ClientAuthProvider'
 import { Analytics } from '@vercel/analytics/next'
 
-const inter = Inter({ subsets: ['latin'] })
+const assistant = Assistant({ subsets: ['latin'] })
 
 export default function RootLayout({
   children
@@ -139,7 +139,7 @@ window.args = {
         />
         {/* End Accessibility */}
       </head>
-      <body className={inter.className} suppressHydrationWarning={true}>
+      <body className={assistant.className} suppressHydrationWarning={true}>
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe 

@@ -18,6 +18,22 @@ export async function POST(request: Request) {
         }
       ],
       total: body.total || 100.00,
+      payer: body.payer || {
+        firstName: 'Test',
+        lastName: 'Customer',
+        email: body.email || 'avshi@sako-or.com',
+        mobile: '+972-50-123-4567',
+        idNumber: '123456789'
+      },
+      deliveryAddress: body.deliveryAddress || {
+        city: 'Tel Aviv',
+        streetName: 'Herzl Street',
+        streetNumber: '1',
+        floor: '2',
+        apartmentNumber: '10',
+        zipCode: '66881'
+      },
+      notes: body.notes || 'Test order',
       isHebrew: body.isHebrew || false,
     };
 

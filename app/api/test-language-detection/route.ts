@@ -34,6 +34,22 @@ export async function POST(request: NextRequest) {
         }
       ],
       total: 100.00,
+      payer: {
+        firstName: 'Test',
+        lastName: 'User',
+        email: customerEmail,
+        mobile: '+972-50-123-4567',
+        idNumber: '123456789'
+      },
+      deliveryAddress: {
+        city: if_he ? 'תל אביב' : 'Tel Aviv',
+        streetName: if_he ? 'רחוב הרצל' : 'Herzl Street',
+        streetNumber: '1',
+        floor: '2',
+        apartmentNumber: '10',
+        zipCode: '66881'
+      },
+      notes: if_he ? 'בדיקת מערכת' : 'System test',
       isHebrew: if_he,
     });
     

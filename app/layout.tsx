@@ -97,7 +97,7 @@ function initializeAccessibility() {
 	// Initialize accessibility with dynamic language
 	window.args = {
 		sitekey   : '${process.env.ACCESSIBILITY_KEY}',
-		position  : 'Left',
+		position  : 'Right',
 		language : getCurrentLanguage(),
 		container : '',
 		icon : '',

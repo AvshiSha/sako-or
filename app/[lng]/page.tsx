@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl } from '@/lib/image-urls'
@@ -233,6 +234,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
               {t.heroDescription}
             </p>
             <Link
+              onClick={() => track('explore_collections_hero_button')}
               href={`/${lng}/collection`}
               className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
             >
@@ -270,6 +272,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
                   <h3 className="text-2xl font-light text-white mb-2">{collection.name[lng as keyof typeof collection.name]}</h3>
                   <p className="text-white/80 mb-4">{collection.description[lng as keyof typeof collection.description]}</p>
                   <Link
+                    onClick={() => track('view_collections_button')}
                     href={`/${lng}${collection.href}`}
                     className="text-white text-sm tracking-wider hover:underline"
                   >
@@ -309,7 +312,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
                   <div className="absolute inset-0 bg-gray-900/5 group-hover:bg-gray-900/10 transition-colors duration-300" />
                 </div>
                 <h3 className="text-lg font-light text-gray-900 mb-1">
-                  <Link href={`/${lng}/${product.href}`}>{product.name[lng as keyof typeof product.name]}</Link>
+                  <Link onClick={() => track('view_featured_product_button')} href={`/${lng}/${product.href}`}>{product.name[lng as keyof typeof product.name]}</Link>
                 </h3>
                 <p 
                   className="text-sm text-gray-500 mb-2"
@@ -347,6 +350,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
                   }`}
                 />
                 <button
+                  onClick={() => track('subscribe_to_newsletter_button')}
                   type="submit"
                   disabled={isSubmitting || !email.trim()}
                   className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"

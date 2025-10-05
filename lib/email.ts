@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
-import { OrderConfirmationEmail } from '../app/components/email-template';
+import { OrderConfirmationEmail } from '../app/emails/order-confirmation';
+import { OrderConfirmationEmailHebrew } from '../app/emails/order-confirmation-hebrew';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -14,6 +15,22 @@ export interface OrderEmailData {
     price: number;
   }>;
   total: number;
+  payer: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    mobile: string;
+    idNumber: string;
+  };
+  deliveryAddress: {
+    city: string;
+    streetName: string;
+    streetNumber: string;
+    floor: string;
+    apartmentNumber: string;
+    zipCode: string;
+  };
+  notes?: string;
   isHebrew?: boolean;
 }
 
@@ -27,16 +44,22 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData) {
       ? `אישור הזמנה - ${data.orderNumber}`
       : `Order Confirmation - ${data.orderNumber}`;
 
+    // Choose the appropriate email template based on language
+    const EmailTemplate = data.isHebrew ? OrderConfirmationEmailHebrew : OrderConfirmationEmail;
+
     const { data: emailData, error } = await resend.emails.send({
       from: 'Sako Or <info@sako-or.com>',
       to: [data.customerEmail, 'moshe@sako-or.com', 'avshi@sako-or.com'],
       subject: subject,
-      react: OrderConfirmationEmail({
+      react: EmailTemplate({
         customerName: data.customerName,
         orderNumber: data.orderNumber,
         orderDate: data.orderDate,
         items: data.items,
         total: data.total,
+        payer: data.payer,
+        deliveryAddress: data.deliveryAddress,
+        notes: data.notes,
         isHebrew: data.isHebrew,
       }),
     });

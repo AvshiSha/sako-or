@@ -240,12 +240,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
     };
 
     // Send confirmation email with Resend (idempotent)
-    console.log(`[WEBHOOK] Sending confirmation email for order ${orderId}`, {
-      orderNumber: order.orderNumber,
-      customerEmail: order.customerEmail,
-      timestamp: new Date().toISOString(),
-      endpoint: 'webhook/cardcom'
-    });
+    console.log(`[WEBHOOK] Processing order ${orderId} confirmation`);
 
     const emailResult = await sendOrderConfirmationEmailIdempotent({
       customerEmail: order.customerEmail,
@@ -261,9 +256,11 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
     }, orderId);
 
     if (!emailResult.success) {
-      console.error('Failed to send confirmation email:', 'error' in emailResult ? emailResult.error : 'Unknown error');
+      console.error(`[WEBHOOK] Failed to send email for order ${orderId}:`, 'error' in emailResult ? emailResult.error : 'Unknown error');
     } else if ('skipped' in emailResult && emailResult.skipped) {
-      console.log('Email send skipped - already sent:', emailResult.reason);
+      console.log(`[WEBHOOK] Email skipped for order ${orderId} - already sent`);
+    } else {
+      console.log(`[WEBHOOK] Order ${orderId} confirmation processed successfully`);
     }
     
   } catch (error) {

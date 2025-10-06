@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
-import { sendOrderConfirmationEmail } from '../../../../lib/email';
+import { sendOrderConfirmationEmailIdempotent } from '../../../../lib/email';
 import { stringifyPaymentData } from '../../../../lib/orders';
 
 export async function POST(request: NextRequest) {
@@ -239,8 +239,15 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       zipCode: ''
     };
 
-    // Send confirmation email with Resend
-    const emailResult = await sendOrderConfirmationEmail({
+    // Send confirmation email with Resend (idempotent)
+    console.log(`[WEBHOOK] Sending confirmation email for order ${orderId}`, {
+      orderNumber: order.orderNumber,
+      customerEmail: order.customerEmail,
+      timestamp: new Date().toISOString(),
+      endpoint: 'webhook/cardcom'
+    });
+
+    const emailResult = await sendOrderConfirmationEmailIdempotent({
       customerEmail: order.customerEmail,
       customerName: order.customerName || '',
       orderNumber: order.orderNumber,
@@ -251,11 +258,13 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       deliveryAddress: deliveryAddress,
       notes: checkout?.customerDeliveryNotes || undefined,
       isHebrew: if_he,
-    });
+    }, orderId);
 
-        if (!emailResult.success) {
-          console.error('Failed to send confirmation email:', emailResult.error);
-        }
+    if (!emailResult.success) {
+      console.error('Failed to send confirmation email:', 'error' in emailResult ? emailResult.error : 'Unknown error');
+    } else if ('skipped' in emailResult && emailResult.skipped) {
+      console.log('Email send skipped - already sent:', emailResult.reason);
+    }
     
   } catch (error) {
     console.error('Failed to handle post-payment actions:', error);

@@ -22,6 +22,8 @@ interface OrderConfirmationEmailProps {
   orderDate: string;
   items: Array<{
     name: string;
+    sku?: string;
+    size?: string;
     quantity: number;
     price: number;
   }>;
@@ -189,7 +191,18 @@ export function OrderConfirmationEmailHebrew({
               <Heading style={h2(isHebrew)}>{t.items}</Heading>
               {items.map((item, index) => (
                 <Row key={index} style={itemRow}>
-                  <Column align="right" style={itemName(isHebrew)}>{item.name}</Column>
+                  <Column align="right" style={itemName(isHebrew)}>
+                    <div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{item.name}</div>
+                      {(item.size || item.sku) && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                          {item.size && <span>מידה: {item.size}</span>}
+                          {item.size && item.sku && <span> • </span>}
+                          {item.sku && <span>SKU: {item.sku}</span>}
+                        </div>
+                      )}
+                    </div>
+                  </Column>
                   <Column align="center" style={itemQuantity}>{item.quantity}</Column>
                   <Column align="left" style={itemPrice(isHebrew)}><span dir="ltr">₪{item.price.toFixed(2)}</span></Column>
                 </Row>

@@ -196,15 +196,13 @@ export function OrderConfirmationEmail({
               {items.map((item, index) => (
                 <Row key={index} style={itemRow}>
                   <Column align={isHebrew ? 'right' : 'left'} style={itemName(isHebrew)}>
-                    <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{item.name}</div>
-                      {(item.size || item.sku) && (
-                        <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
-                          {item.size && <span>Size: {item.size}</span>}
-                          {item.size && item.sku && <span> • </span>}
-                          {item.sku && <span>SKU: {item.sku}</span>}
-                        </div>
-                      )}
+                  <div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.name}</div>
+                      <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                        <span>Size: {item.size}</span>
+                        <br />
+                        <span>SKU: {item.sku}</span>
+                      </div>
                     </div>
                   </Column>
                   <Column align="center" style={itemQuantity}>{item.quantity}</Column>
@@ -241,8 +239,8 @@ OrderConfirmationEmail.PreviewProps = {
   orderNumber: 'ORD-2024-001',
   orderDate: 'January 15, 2024',
   items: [
-    { name: 'Premium Leather Shoes', quantity: 1, price: 299.99 },
-    { name: 'Cotton Socks', quantity: 2, price: 15.50 },
+    { name: 'Premium Leather Shoes', quantity: 1, price: 299.99,size: '36', sku: '0000-0000' },
+    { name: 'Cotton Socks', quantity: 2, price: 15.50,size: '35', sku: '0000-0001' },
   ],
   total: 330.99,
   payer: {

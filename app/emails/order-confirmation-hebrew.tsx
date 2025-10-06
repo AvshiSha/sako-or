@@ -193,14 +193,12 @@ export function OrderConfirmationEmailHebrew({
                 <Row key={index} style={itemRow}>
                   <Column align="right" style={itemName(isHebrew)}>
                     <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>{item.name}</div>
-                      {(item.size || item.sku) && (
-                        <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
-                          {item.size && <span>מידה: {item.size}</span>}
-                          {item.size && item.sku && <span> • </span>}
-                          {item.sku && <span>SKU: {item.sku}</span>}
-                        </div>
-                      )}
+                      <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.name}</div>
+                      <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                        <span>מידה: {item.size}</span>
+                        <br />
+                        <span>מספר דגם: {item.sku}</span>
+                      </div>
                     </div>
                   </Column>
                   <Column align="center" style={itemQuantity}>{item.quantity}</Column>
@@ -237,8 +235,8 @@ OrderConfirmationEmailHebrew.PreviewProps = {
   orderNumber: 'ORDER-2024-001',
   orderDate: '15 בינואר 2024',
   items: [
-    { name: 'נעליים מעור איכותיות', quantity: 1, price: 299.99 },
-    { name: 'גרבי כותנה', quantity: 2, price: 15.50 },
+    { name: 'נעליים מעור איכותיות', quantity: 1, size: '36', sku: '0000-0000', price: 299.99 },
+    { name: 'גרבי כותנה', quantity: 2, size: '35', sku: '0000-0001', price: 15.50 },
   ],
   total: 330.99,
   payer: {

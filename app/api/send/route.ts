@@ -7,7 +7,8 @@ export async function POST(request: Request) {
     const result = await sendOrderConfirmationEmailIdempotent(body);
     
     if (!result.success) {
-      return Response.json({ error: result.error }, { status: 500 });
+      const error = 'error' in result ? result.error : 'Unknown error';
+      return Response.json({ error }, { status: 500 });
     }
 
     return Response.json({ success: true, messageId: result.messageId });

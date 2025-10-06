@@ -193,6 +193,8 @@ model Order {
   paymentData          String?
   cardcomLowProfileId  String?
   cardcomTransactionId String?
+  emailSentAt          DateTime? // Track when confirmation email was sent
+  emailMessageId       String? // Store Resend message ID for tracking
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
   orderItems           OrderItem[]

@@ -1,4 +1,4 @@
-import { sendOrderConfirmationEmail } from '../../../lib/email';
+import { sendOrderConfirmationEmailIdempotent } from '../../../lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +13,8 @@ export async function POST(request: Request) {
       items: body.items || [
         {
           name: 'Test Product',
+          sku: 'SKU-TEST-123',
+          size: 'M',
           quantity: 1,
           price: 100.00
         }
@@ -37,10 +39,10 @@ export async function POST(request: Request) {
       isHebrew: body.isHebrew || false,
     };
 
-    const result = await sendOrderConfirmationEmail(emailData);
+    const result = await sendOrderConfirmationEmailIdempotent(emailData);
     
     if (!result.success) {
-      return Response.json({ error: result.error }, { status: 500 });
+      return Response.json({ error: 'error' in result ? result.error : 'Unknown error' }, { status: 500 });
     }
 
     return Response.json({ 

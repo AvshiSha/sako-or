@@ -1,10 +1,10 @@
-import { sendOrderConfirmationEmail, OrderEmailData } from '../../../lib/email';
+import { sendOrderConfirmationEmailIdempotent, OrderEmailData } from '../../../lib/email';
 
 export async function POST(request: Request) {
   try {
     const body: OrderEmailData = await request.json();
     
-    const result = await sendOrderConfirmationEmail(body);
+    const result = await sendOrderConfirmationEmailIdempotent(body);
     
     if (!result.success) {
       return Response.json({ error: result.error }, { status: 500 });

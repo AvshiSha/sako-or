@@ -59,24 +59,10 @@ function SuccessPageContent() {
       console.log('Verifying payment status:', { lpid, orderId });
       
       if (orderId) {
-        // Send confirmation email when user reaches success page
-        console.log('Sending confirmation email for order:', orderId);
-        
-        const response = await fetch('/api/test-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ orderId }),
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-          console.log('Confirmation email sent successfully:', result);
-        } else {
-          console.error('Failed to send confirmation email:', result);
-        }
+        // Note: Email is already sent by webhook when payment completes
+        // This page is just for user confirmation - no need to send email again
+        console.log('Success page reached for order:', orderId);
+        console.log('Email should already be sent via webhook');
       }
       
     } catch (error) {

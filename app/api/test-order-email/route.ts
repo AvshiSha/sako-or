@@ -2,13 +2,34 @@ import { sendOrderConfirmationEmailIdempotent } from '../../../lib/email';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    // Handle both JSON body and URL parameters
+    let body: any = {};
+    
+    // Always check URL parameters first
+    const url = new URL(request.url);
+    const urlParams = {
+      orderNumber: url.searchParams.get('orderNumber'),
+      email: url.searchParams.get('email'),
+      customerName: url.searchParams.get('customerName'),
+      isHebrew: url.searchParams.get('isHebrew') === 'true',
+      mock: url.searchParams.get('mock') === 'true'
+    };
+    
+    try {
+      const jsonBody = await request.json();
+      // Merge JSON body with URL parameters (URL params take precedence)
+      body = { ...jsonBody, ...urlParams };
+    } catch (jsonError) {
+      // If JSON parsing fails, use URL parameters only
+      body = urlParams;
+    }
     
     // Test email data
+    const orderNumber = body.orderNumber || 'ORDER-TEST-' + Date.now();
     const emailData = {
       customerEmail: body.email || 'avshi@sako-or.com',
       customerName: body.customerName || 'Test Customer',
-      orderNumber: body.orderNumber || 'ORDER-TEST-' + Date.now(),
+      orderNumber: orderNumber,
       orderDate: new Date().toLocaleDateString(),
       items: body.items || [
         {
@@ -39,7 +60,24 @@ export async function POST(request: Request) {
       isHebrew: body.isHebrew || false,
     };
 
-    const result = await sendOrderConfirmationEmailIdempotent(emailData);
+    // Check if this is a mock test (no real email sending)
+    const isMock = body.mock === 'true' || body.mock === true;
+    
+    // Production: minimal logging
+    
+    let result;
+    if (isMock) {
+      // Mock response for faster testing
+      result = {
+        success: true,
+        messageId: 'mock-message-id-' + Date.now(),
+        skipped: false,
+        mock: true
+      };
+      console.log('[MOCK] Email test completed without sending real email');
+    } else {
+      result = await sendOrderConfirmationEmailIdempotent(emailData, orderNumber);
+    }
     
     if (!result.success) {
       return Response.json({ error: 'error' in result ? result.error : 'Unknown error' }, { status: 500 });

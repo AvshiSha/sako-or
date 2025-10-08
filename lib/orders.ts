@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { parseSku } from './sku-parser';
 
 export interface CreateOrderData {
   orderNumber: string;
@@ -28,15 +29,27 @@ export async function createOrder(data: CreateOrderData) {
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,
         orderItems: {
-          create: data.items.map(item => ({
-            quantity: item.quantity,
-            price: item.price,
-            total: item.quantity * item.price,
-            productName: item.productName,
-            productSku: item.productSku,
-            colorName: item.colorName,
-            size: item.size,
-          })),
+          create: data.items.map(item => {
+            // Parse the SKU to extract base SKU, color, and size
+            const parsedSku = parseSku(item.productSku);
+            
+            // Use parsed values if not explicitly provided
+            const baseSku = parsedSku.baseSku || item.productSku;
+            const colorName = item.colorName || parsedSku.colorName;
+            const size = item.size || parsedSku.size;
+
+            console.log(`[ORDER] Parsing SKU: ${item.productSku} -> Base: ${baseSku}, Color: ${colorName}, Size: ${size}`);
+
+            return {
+              quantity: item.quantity,
+              price: item.price,
+              total: item.quantity * item.price,
+              productName: item.productName,
+              productSku: baseSku, // Store only the base SKU
+              colorName: colorName,
+              size: size,
+            };
+          }),
         },
       },
       include: {

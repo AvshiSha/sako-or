@@ -29,7 +29,7 @@ const translations = {
     contactInfo: {
       title: 'Contact Information',
       address: '51 Rothchild Street, Rishon-Lezion, Israel',
-      phone: '+972-50-123-4567',
+      phone: '08-9408848',
       email: 'info@sako-or.com',
       hours: 'Sunday - Thursday: 9:00 AM - 20:00 PM\nFriday: 9:00 AM - 15:00 PM\nSaturday: Closed',
       Address: 'Address',

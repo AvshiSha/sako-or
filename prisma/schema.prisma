@@ -279,12 +279,13 @@ model Checkout {
 }
 
 model ContactMessage {
-  id        String   @id @default(cuid())
-  fullName  String
-  email     String
-  subject   String
-  message   String   @db.Text
-  createdAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  fullName       String
+  email          String
+  subject        String
+  message        String   @db.Text
+  idempotencyKey String?  @unique
+  createdAt      DateTime @default(now())
 
   @@map("contact_messages")
 }

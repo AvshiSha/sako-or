@@ -198,8 +198,8 @@ export default async function handler(req, res) {
 
           // 1. Send email to team (notification)
           const teamEmailResult = await resend.emails.send({
-            from: 'Sako Or Contact Form <noreply@sako-or.com>',
-            to: ['avshi@sako-or.com', 'moshe@sako-or.com', 'info@sako-or.com'],
+            from: 'Sako Or Contact Form <info@sako-or.com>',
+            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
             replyTo: email.trim().toLowerCase(),
             subject: `New Contact Message: ${subject.trim()}`,
             react: ContactMessageEmail(emailData),
@@ -216,7 +216,7 @@ export default async function handler(req, res) {
 
           // 2. Send confirmation email to customer
           const customerEmailResult = await resend.emails.send({
-            from: 'Sako Or <noreply@sako-or.com>',
+            from: 'Sako Or <info@sako-or.com>',
             to: [email.trim().toLowerCase()],
             subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
             react: ContactMessageEmail({

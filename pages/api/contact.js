@@ -6,7 +6,8 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 🔐 Verify Cloudflare Turnstile token
 async function validateTurnstile(token, remoteip) {
-  const formData = new FormData();
+  // Use URLSearchParams instead of FormData for better Node.js compatibility
+  const formData = new URLSearchParams();
   formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
   formData.append('response', token);
   formData.append('remoteip', remoteip);
@@ -16,9 +17,13 @@ async function validateTurnstile(token, remoteip) {
     
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
-      body: formData
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData.toString()
     });
-    console.log('[TURNSTILE] Response:', response);
+    
+    console.log('[TURNSTILE] Response status:', response.status);
     const result = await response.json();
     console.log('[TURNSTILE] Verification result:', result.success);
     return result;

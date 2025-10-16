@@ -11,7 +11,6 @@ async function validateTurnstile(token, remoteip) {
   formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
   formData.append('response', token);
   formData.append('remoteip', remoteip);
-  console.log(formData)
 
   try {
     console.log('[TURNSTILE] Starting verification...');
@@ -29,24 +28,14 @@ async function validateTurnstile(token, remoteip) {
     
     // Don't log response object - it consumes the stream!
     console.log('[TURNSTILE] Response received, status:', response.status);
-    console.log(response)
-    if (!response.ok) {
-      console.error('[TURNSTILE] HTTP error:', response.status);
-      return { success: false, 'error-codes': ['http-error'] };
-    }
-    
     const result = await response.json();
     console.log('[TURNSTILE] Verification result:', result);
     return result;
 
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error('[TURNSTILE] Timeout after 10 seconds');
-      return { success: false, 'error-codes': ['timeout'] };
+  } catch(error) {
+      console.error('validation error:', error);
+      return { success: false, 'error-codes': ['http-error'] };
     }
-    console.error('[TURNSTILE] Validation error:', error);
-    return { success: false, 'error-codes': ['internal-error'] };
-  }
 }
 
 // Contact form API - Production ready with full Turnstile verification

@@ -15,31 +15,36 @@ async function validateTurnstile(token, remoteip) {
   try {
     console.log('[TURNSTILE] Starting verification...');
     
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
     const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept-Encoding': 'gzip, deflate', // Avoid Brotli compression
       },
-      body: formData.toString()
+      body: formData.toString(),
+      signal: controller.signal
     });
     
+    clearTimeout(timeoutId);
     console.log('[TURNSTILE] Response status:', response.status);
-    console.log('[TURNSTILE] Response ok:', response.ok);
-    console.log('[TURNSTILE] Response headers:', Object.fromEntries(response.headers.entries()));
     
-    // Try to read the response text first to debug
-    const text = await response.text();
-    console.log('[TURNSTILE] Response text:', text);
-    
-    try {
-      const result = JSON.parse(text);
-      console.log('[TURNSTILE] Verification result:', result.success);
-      return result;
-    } catch (parseError) {
-      console.error('[TURNSTILE] Failed to parse JSON:', parseError);
-      return { success: false, 'error-codes': ['json-parse-error'] };
+    if (!response.ok) {
+      console.error('[TURNSTILE] HTTP error:', response.status);
+      return { success: false, 'error-codes': ['http-error'] };
     }
+    
+    const result = await response.json();
+    console.log('[TURNSTILE] Verification result:', result);
+    return result;
   } catch (error) {
+    if (error.name === 'AbortError') {
+      console.error('[TURNSTILE] Timeout after 10 seconds');
+      return { success: false, 'error-codes': ['timeout'] };
+    }
     console.error('[TURNSTILE] Validation error:', error);
     return { success: false, 'error-codes': ['internal-error'] };
   }

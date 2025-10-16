@@ -59,7 +59,87 @@ function containsSpam(text: string): boolean {
     /[^\w\s\u0590-\u05FF.,!?@()-]{5,}/, // Too many special characters
   ];
 
+  // Check for random letter strings (bot-generated content)
+  if (isRandomLetterString(text)) {
+    return true;
+  }
+
   return spamPatterns.some(pattern => pattern.test(text));
+}
+
+// Helper function to detect random letter strings (bot spam)
+function isRandomLetterString(text: string): boolean {
+  // Check if text contains Hebrew characters
+  const hasHebrew = /[\u0590-\u05FF]/.test(text);
+  const hasLatin = /[a-zA-Z]/.test(text);
+  
+  // If text contains Hebrew, don't apply Latin spam detection
+  // Hebrew text should be validated separately
+  if (hasHebrew && !hasLatin) {
+    return false; // Let Hebrew text pass through
+  }
+  
+  // If text is mixed Hebrew + Latin, only check the Latin parts
+  if (hasHebrew && hasLatin) {
+    // Extract only Latin characters for spam detection
+    const latinOnly = text.replace(/[\u0590-\u05FF\s]/g, '');
+    if (latinOnly.length < 8) return false; // Too short to be spam
+    
+    // Apply spam detection only to Latin parts
+    return isRandomLetterString(latinOnly);
+  }
+  
+  // Pure Latin text - apply full spam detection
+  const cleanText = text.replace(/\s/g, '').toLowerCase();
+  
+  // Must be at least 8 characters to avoid false positives
+  if (cleanText.length < 8) return false;
+  
+  // Check if it's mostly letters (at least 80%)
+  const letterCount = (cleanText.match(/[a-z]/g) || []).length;
+  const letterRatio = letterCount / cleanText.length;
+  
+  if (letterRatio < 0.8) return false;
+  
+  // Check for patterns that indicate random generation
+  // 1. Very few vowels (less than 20% of letters - bot spam has almost no vowels)
+  const vowelCount = (cleanText.match(/[aeiou]/g) || []).length;
+  const vowelRatio = vowelCount / letterCount;
+  
+  // 2. Check for alternating case pattern (mixed case spam like WYPHoqRKkPJbPgcA)
+  const hasAlternatingCase = /[a-z][A-Z]|[A-Z][a-z]/.test(text);
+  
+  // 3. Check for excessive consonants in a row (4+ consonants)
+  const hasExcessiveConsonants = /[bcdfghjklmnpqrstvwxyz]{4,}/i.test(cleanText);
+  
+  // 4. Check for common word patterns (legitimate text has these)
+  const hasCommonPatterns = /(ing|tion|ness|ment|able|ible|hello|world|product|inquiry|help|question|support)/i.test(cleanText);
+  
+  // 5. Check for dictionary words (English and Hebrew)
+  const hasEnglishWords = /(hello|world|product|inquiry|help|question|support|about|contact|information|service|order|buy|purchase|price|cost|delivery|shipping|return|refund)/i.test(cleanText);
+  const hasHebrewWords = /(שלום|מוצר|שאלה|עזרה|תמיכה|מידע|שירות|הזמנה|קנייה|מחיר|משלוח|החזר|צור|קשר)/i.test(text);
+  const hasDictionaryWords = hasEnglishWords || hasHebrewWords;
+  
+  // Flag as spam if ANY of these patterns match:
+  // Pattern 1: Very few vowels + alternating case + no dictionary words
+  const pattern1 = (vowelRatio < 0.2) && hasAlternatingCase && !hasDictionaryWords;
+  
+  // Pattern 2: Very few vowels + no dictionary words + excessive consonants
+  const pattern2 = (vowelRatio < 0.2) && !hasDictionaryWords && hasExcessiveConsonants;
+  
+  // Pattern 3: Very few vowels + all uppercase + no dictionary words
+  const isAllUppercase = /^[A-Z\s]+$/.test(text) && text.length >= 8;
+  const pattern3 = (vowelRatio < 0.2) && isAllUppercase && !hasDictionaryWords;
+  
+  // Pattern 4: Random letter string with no dictionary words (catches oMOSIggooBo type spam)
+  // - Has alternating case OR all uppercase
+  // - No dictionary words
+  // - No common word endings (ing, tion, etc.)
+  const hasCommonEndings = /(ing|tion|ness|ment|able|ible|ly|ed|er|est)$/i.test(cleanText);
+  const hasAlternatingOrUpper = hasAlternatingCase || isAllUppercase;
+  const pattern4 = hasAlternatingOrUpper && !hasDictionaryWords && !hasCommonEndings && cleanText.length >= 10;
+  
+  return pattern1 || pattern2 || pattern3 || pattern4;
 }
 
 // Helper function to generate idempotency key

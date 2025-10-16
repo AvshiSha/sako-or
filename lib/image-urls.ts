@@ -53,9 +53,9 @@ export function getLogoUrl(): string {
  */
 export function getCollectionImageUrl(collectionName: string): string {
   const collectionMap: Record<string, string> = {
-    "Luxury Heels": "/images/collections/luxury-heels.jpg",
-    "Designer Boots": "/images/collections/designer-boots.jpg",
-    "Classic Oxford": "/images/collections/classic-oxford.jpg"
+    "Luxury Heels": "/images/collections/pumps-collection.webp",
+    "Designer Boots": "/images/collections/low-boots-collection.webp",
+    "Classic Oxford": "/images/collections/oxford-collection.webp"
   };
   
   const localPath = collectionMap[collectionName];

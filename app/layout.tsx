@@ -45,6 +45,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         />
         {/* End Google tag (gtag.js) */}
         
+        {/* Cloudflare Turnstile */}
+        <script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+          async
+          defer
+        ></script>
+        {/* End Cloudflare Turnstile */}
+        
       </head>
       <body className={assistant.className} suppressHydrationWarning={true}>
         {/* Google Tag Manager (noscript) */}

@@ -24,9 +24,21 @@ async function validateTurnstile(token, remoteip) {
     });
     
     console.log('[TURNSTILE] Response status:', response.status);
-    const result = await response.json();
-    console.log('[TURNSTILE] Verification result:', result.success);
-    return result;
+    console.log('[TURNSTILE] Response ok:', response.ok);
+    console.log('[TURNSTILE] Response headers:', Object.fromEntries(response.headers.entries()));
+    
+    // Try to read the response text first to debug
+    const text = await response.text();
+    console.log('[TURNSTILE] Response text:', text);
+    
+    try {
+      const result = JSON.parse(text);
+      console.log('[TURNSTILE] Verification result:', result.success);
+      return result;
+    } catch (parseError) {
+      console.error('[TURNSTILE] Failed to parse JSON:', parseError);
+      return { success: false, 'error-codes': ['json-parse-error'] };
+    }
   } catch (error) {
     console.error('[TURNSTILE] Validation error:', error);
     return { success: false, 'error-codes': ['internal-error'] };

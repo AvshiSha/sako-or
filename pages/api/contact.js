@@ -4,54 +4,27 @@ import { ContactMessageEmail } from '../../app/emails/contact-message';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 🔐 Verify Cloudflare Turnstile token with proper error handling
-async function verifyTurnstileToken(token, ip) {
-  const verifyEndpoint = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-  
+// 🔐 Verify Cloudflare Turnstile token
+async function validateTurnstile(token, remoteip) {
+  const formData = new FormData();
+  formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
+  formData.append('response', token);
+  formData.append('remoteip', remoteip);
+
   try {
     console.log('[TURNSTILE] Starting verification...');
     
-    // Create form data for Cloudflare API
-    const formData = new URLSearchParams();
-    formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
-    formData.append('response', token);
-    formData.append('remoteip', ip);
-
-    // Make request with very short timeout for production
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.log('[TURNSTILE] Timeout reached, aborting...');
-      controller.abort();
-    }, 1500); // 1.5 second timeout for production
-    
-    const response = await fetch(verifyEndpoint, {
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData,
-      signal: controller.signal
+      body: formData
     });
-
-    clearTimeout(timeoutId);
-    console.log('[TURNSTILE] Response received:', response.status);
-
-    if (!response.ok) {
-      console.error('[TURNSTILE] HTTP error:', response.status);
-      return false; // Don't throw, just return false
-    }
 
     const result = await response.json();
     console.log('[TURNSTILE] Verification result:', result.success);
-    return result.success === true;
-    
+    return result;
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error('[TURNSTILE] Verification timeout after 3 seconds');
-      return false;
-    }
-    console.error('[TURNSTILE] Verification error:', error.message);
-    return false;
+    console.error('[TURNSTILE] Validation error:', error);
+    return { success: false, 'error-codes': ['internal-error'] };
   }
 }
 
@@ -94,26 +67,22 @@ export default async function handler(req, res) {
       });
     }
 
-    // 🔐 TURNSTILE VERIFICATION (with fallback)
+    // 🔐 TURNSTILE VERIFICATION
     console.log('[CONTACT API] Attempting Turnstile verification...');
-    let isTurnstileValid = false;
+    const validation = await validateTurnstile(turnstileToken, ip);
     
-    try {
-      // Try Turnstile verification with a very short timeout
-      const verificationPromise = verifyTurnstileToken(turnstileToken, ip);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Turnstile timeout')), 2000)
-      );
-      
-      isTurnstileValid = await Promise.race([verificationPromise, timeoutPromise]);
-      console.log('[CONTACT API] Turnstile verification result:', isTurnstileValid);
-    } catch (error) {
-      console.warn('[CONTACT API] Turnstile verification failed or timed out:', error.message);
-      console.log('[CONTACT API] Continuing with basic validation only');
+    if (validation.success) {
+      // Token is valid - proceed with form processing
+      console.log('[CONTACT API] ✅ Turnstile validation successful from:', validation.hostname);
+    } else {
+      // Token is invalid - reject the submission
+      console.error('[CONTACT API] ❌ Invalid Turnstile token:', validation['error-codes']);
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid verification. Please try again.',
+        errorCodes: validation['error-codes']
+      });
     }
-    
-    // For production, we'll be more lenient with Turnstile failures
-    // since it's causing timeout issues
 
     // ✅ BASIC VALIDATION
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -340,6 +309,92 @@ export default async function handler(req, res) {
         duration: `${Date.now() - startTime}ms`,
         timestamp: new Date().toISOString(),
       });
+
+      // Still send emails even if database fails
+      console.log('[CONTACT API] Database failed, but sending emails anyway...');
+      
+      // Send emails in background without blocking response
+      (async () => {
+        try {
+          // Format timestamp in readable format
+          const now = new Date();
+          const formattedTimestamp = language === 'he'
+            ? now.toLocaleString('he-IL', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+              })
+            : now.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              });
+
+          // Send email to team (notification)
+          await resend.emails.send({
+            from: 'Sako Or Contact Form <info@sako-or.com>',
+            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
+            replyTo: email.trim().toLowerCase(),
+            subject: `New Contact Message: ${subject.trim()}`,
+            html: `
+              <!DOCTYPE html>
+              <html dir="${language === 'he' ? 'rtl' : 'ltr'}" lang="${language === 'he' ? 'he' : 'en'}">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                </head>
+                <body style="font-family: Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px; direction: ${language === 'he' ? 'rtl' : 'ltr'};">
+                  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+                    <div style="background-color: #4F46E5; padding: 20px; text-align: ${language === 'he' ? 'right' : 'left'};">
+                      <h1 style="color: #ffffff; margin: 0; font-size: 24px;">${language === 'he' ? 'הודעת צור קשר חדשה' : 'New Contact Message'}</h1>
+                    </div>
+                    <div style="padding: 30px;">
+                      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                          <tr>
+                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'מאת' : 'From'}:</td>
+                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${fullName.trim()}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'אימייל' : 'Email'}:</td>
+                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};"><span dir="ltr">${email.trim().toLowerCase()}</span></td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'נושא' : 'Subject'}:</td>
+                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${subject.trim()}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'זמן' : 'Time'}:</td>
+                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${formattedTimestamp}</td>
+                          </tr>
+                        </table>
+                      </div>
+                      <div>
+                        <h2 style="color: #333; font-size: 18px; margin-bottom: 10px; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'הודעה' : 'Message'}:</h2>
+                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; white-space: pre-wrap; text-align: ${language === 'he' ? 'right' : 'left'};">${message.trim()}</div>
+                      </div>
+                    </div>
+                    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e6ebf1;">
+                      <p style="color: #666; font-size: 12px; margin: 0;">${language === 'he' ? 'הודעה זו נשלחה דרך טופס יצירת הקשר באתר Sako Or' : 'This message was sent via the Sako Or website contact form'}</p>
+                      <p style="color: #e53e3e; font-size: 11px; margin: 5px 0 0 0;">⚠️ Database was unavailable - message not saved to database</p>
+                    </div>
+                  </div>
+                </body>
+              </html>
+            `,
+          });
+
+          console.log('[CONTACT API] ✅ Fallback email sent to team (DB failed)');
+        } catch (emailError) {
+          console.error('[CONTACT API] ❌ Fallback email also failed:', emailError.message);
+        }
+      })();
 
       return res.status(500).json({
         success: false,

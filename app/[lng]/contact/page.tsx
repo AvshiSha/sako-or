@@ -82,12 +82,13 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
     name: '',
     email: '',
     subject: '',
-    message: '',
-    honeypot: '' // Hidden field for bot detection
+    message: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [emailError, setEmailError] = useState('')
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const [isMounted, setIsMounted] = useState(false)
   
   // Initialize language from params
   React.useEffect(() => {
@@ -98,6 +99,51 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
   
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
+
+  // Client-side mount detection
+  React.useEffect(() => {
+    setIsMounted(true)
+    console.log('[Contact Form] Component mounted on client')
+  }, [])
+
+  // Turnstile - explicit render when script loads
+  React.useEffect(() => {
+    if (!isMounted) return
+
+    const renderTurnstile = () => {
+      const container = document.querySelector('.cf-turnstile')
+      if (!container || (window as any).turnstileRendered) return
+      
+      if ((window as any).turnstile) {
+        try {
+          (window as any).turnstile.render('.cf-turnstile', {
+            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+            theme: 'light',
+            size: 'normal',
+            callback: (token: string) => {
+              setTurnstileToken(token)
+            },
+            'error-callback': () => {
+              console.error('Turnstile verification failed')
+            }
+          })
+          ;(window as any).turnstileRendered = true
+        } catch (error) {
+          console.error('Turnstile render error:', error)
+        }
+      } else {
+        // Retry after 500ms if script not loaded yet
+        setTimeout(renderTurnstile, 500)
+      }
+    }
+
+    // Start trying to render
+    renderTurnstile()
+    
+    return () => {
+      ;(window as any).turnstileRendered = false
+    }
+  }, [isMounted])
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -132,6 +178,13 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
       return
     }
     
+    // Check for Turnstile token
+    if (!turnstileToken) {
+      setSubmitStatus('error')
+      console.error('Turnstile verification required')
+      return
+    }
+    
     setIsSubmitting(true)
     setSubmitStatus('idle')
     setEmailError('')
@@ -149,21 +202,58 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
           subject: formData.subject,
           message: formData.message,
           language: lng,
+          turnstileToken: turnstileToken,
         }),
       })
 
-      const data = await response.json()
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        console.error('Failed to parse response JSON:', jsonError)
+        console.error('Response status:', response.status)
+        console.error('Response headers:', response.headers)
+        
+        // Try to get response text for debugging
+        try {
+          const responseText = await response.text()
+          console.error('Response text:', responseText)
+        } catch (textError) {
+          console.error('Could not read response text:', textError)
+        }
+        
+        setSubmitStatus('error')
+        return
+      }
 
       if (response.ok && data.success) {
         setSubmitStatus('success')
-        setFormData({ name: '', email: '', subject: '', message: '', honeypot: '' })
+        setFormData({ name: '', email: '', subject: '', message: '' })
+        setTurnstileToken('')
+        
+        // Reset Turnstile widget
+        if ((window as any).turnstile) {
+          (window as any).turnstile.reset()
+        }
       } else {
         console.error('Contact form submission failed:', data.error)
         setSubmitStatus('error')
+        
+        // Reset Turnstile widget on error
+        if ((window as any).turnstile) {
+          (window as any).turnstile.reset()
+        }
+        setTurnstileToken('')
       }
     } catch (error) {
       console.error('Contact form submission error:', error)
       setSubmitStatus('error')
+      
+      // Reset Turnstile widget on error
+      if ((window as any).turnstile) {
+        (window as any).turnstile.reset()
+      }
+      setTurnstileToken('')
     } finally {
       setIsSubmitting(false)
     }
@@ -199,24 +289,6 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
           {/* Contact Form */}
           <div>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Honeypot field - hidden from users, bots will fill it */}
-              <input
-                type="text"
-                name="honeypot"
-                value={formData.honeypot}
-                onChange={handleInputChange}
-                tabIndex={-1}
-                autoComplete="off"
-                style={{
-                  position: 'absolute',
-                  left: '-9999px',
-                  width: '1px',
-                  height: '1px',
-                  opacity: 0,
-                  pointerEvents: 'none'
-                }}
-                aria-hidden="true"
-              />
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                   {t.form.name}
@@ -292,9 +364,25 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                 />
               </div>
 
+              {/* Cloudflare Turnstile Widget */}
+              {isMounted && (
+                <div className="flex justify-center">
+                  <div className="cf-turnstile"></div>
+                </div>
+              )}
+
+              {/* Show message if Turnstile is not ready */}
+              {isMounted && !turnstileToken && (
+                <div className="text-center">
+                  <p className="text-sm text-gray-500">
+                    {lng === 'he' ? 'נא להשלים את האימות למעלה' : 'Please complete the verification above'}
+                  </p>
+                </div>
+              )}
+
               <button
                 type="submit"
-                disabled={isSubmitting || !!emailError}
+                disabled={isSubmitting || !!emailError || !turnstileToken}
                 className="w-full bg-gray-900 text-white py-3 px-6 rounded-md hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? t.form.submitting : t.form.submit}

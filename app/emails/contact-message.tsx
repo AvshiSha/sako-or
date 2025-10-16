@@ -21,6 +21,7 @@ interface ContactMessageEmailProps {
   message: string;
   timestamp: string;
   isHebrew?: boolean;
+  isCustomerConfirmation?: boolean;
 }
 
 export function ContactMessageEmail({
@@ -30,8 +31,23 @@ export function ContactMessageEmail({
   message,
   timestamp,
   isHebrew = false,
+  isCustomerConfirmation = false,
 }: ContactMessageEmailProps) {
-  const t = {
+  const t = isCustomerConfirmation ? {
+    // Customer confirmation email
+    title: isHebrew ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
+    greeting: isHebrew ? `שלום ${fullName}` : `Dear ${fullName}`,
+    message: isHebrew 
+      ? 'תודה רבה על פנייתך אלינו! קיבלנו את הודעתך ונחזור אליך בהקדם האפשרי.' 
+      : 'Thank you for reaching out to us! We have received your message and will get back to you as soon as possible.',
+    details: isHebrew ? 'פרטי ההודעה שלך:' : 'Your message details:',
+    subjectLabel: isHebrew ? 'נושא:' : 'Subject:',
+    messageLabel: isHebrew ? 'הודעה:' : 'Message:',
+    footer: isHebrew 
+      ? 'בברכה, הצוות של Sako Or' 
+      : 'Best regards, The Sako Or Team',
+  } : {
+    // Team notification email
     title: isHebrew ? 'הודעת צור קשר חדשה' : 'New Contact Message',
     from: isHebrew ? 'מאת' : 'From',
     emailLabel: isHebrew ? 'אימייל' : 'Email',
@@ -60,33 +76,58 @@ export function ContactMessageEmail({
           </Section>
           
           <Section style={content}>
-            <Section dir={isHebrew ? 'rtl' : 'ltr'} style={infoBox}>
-              <Row>
-                <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.from}:</Column>
-                <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>{fullName}</Column>
-              </Row>
-              <Row>
-                <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.emailLabel}:</Column>
-                <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>
-                  <span dir="ltr">{email}</span>
-                </Column>
-              </Row>
-              <Row>
-                <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.subjectLabel}:</Column>
-                <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>{subject}</Column>
-              </Row>
-              <Row>
-                <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.timeLabel}:</Column>
-                <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>{timestamp}</Column>
-              </Row>
-            </Section>
+            {isCustomerConfirmation ? (
+              // Customer confirmation email content
+              <>
+                <Text style={messageText(isHebrew)}>{t.greeting},</Text>
+                <Text style={messageText(isHebrew)}>{t.message}</Text>
+                
+                <Hr style={hr} />
+                
+                <Heading style={h2(isHebrew)}>{t.details}</Heading>
+                <Section dir={isHebrew ? 'rtl' : 'ltr'} style={infoBox}>
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.subjectLabel}</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>{subject}</Column>
+                  </Row>
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.messageLabel}</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>{message}</Column>
+                  </Row>
+                </Section>
+              </>
+            ) : (
+              // Team notification email content
+              <>
+                <Section dir={isHebrew ? 'rtl' : 'ltr'} style={infoBox}>
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.from}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>{fullName}</Column>
+                  </Row>
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.emailLabel}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>
+                      <span dir="ltr">{email}</span>
+                    </Column>
+                  </Row>
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.subjectLabel}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>{subject}</Column>
+                  </Row>
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={label(isHebrew)}>{t.timeLabel}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={value(isHebrew)}>{timestamp}</Column>
+                  </Row>
+                </Section>
 
-            <Hr style={hr} />
+                <Hr style={hr} />
 
-            <Section style={messageSection}>
-              <Heading style={h2(isHebrew)}>{t.messageLabel}</Heading>
-              <Text style={messageText(isHebrew)}>{message}</Text>
-            </Section>
+                <Section style={messageSection}>
+                  <Heading style={h2(isHebrew)}>{t.messageLabel}</Heading>
+                  <Text style={messageText(isHebrew)}>{message}</Text>
+                </Section>
+              </>
+            )}
           </Section>
 
           <Section style={footer}>

@@ -192,6 +192,8 @@ export default async function handler(req, res) {
             to: ['avshi@sako-or.com', 'moshe@sako-or.com', 'info@sako-or.com'],
             from: 'Sako Or Contact Form <noreply@sako-or.com>',
             subject: `New Contact Message: ${subject.trim()}`,
+            hasResendKey: !!process.env.RESEND_API_KEY,
+            resendKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 7) + '...',
           });
 
           // 1. Send email to team (notification)
@@ -208,7 +210,8 @@ export default async function handler(req, res) {
           
           console.log('[CONTACT API] ✅ Team notification email sent successfully:', {
             id: teamEmailResult.data?.id,
-            error: teamEmailResult.error
+            error: teamEmailResult.error,
+            fullResult: teamEmailResult
           });
 
           // 2. Send confirmation email to customer

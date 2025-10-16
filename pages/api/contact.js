@@ -7,10 +7,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // 🔐 Verify Cloudflare Turnstile token
 async function validateTurnstile(token, remoteip) {
   // Use URLSearchParams instead of FormData for better Node.js compatibility
-  const formData = new URLSearchParams();
+  const formData = new FormData();
   formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
   formData.append('response', token);
   formData.append('remoteip', remoteip);
+  console.log(formData)
 
   try {
     console.log('[TURNSTILE] Starting verification...');
@@ -19,31 +20,25 @@ async function validateTurnstile(token, remoteip) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
-    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { 
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept-Encoding': 'gzip, deflate', // Avoid Brotli compression
-      },
-      body: formData.toString(),
-      signal: controller.signal
+      body: formData
     });
-    
+    //console.log(response.json())
     clearTimeout(timeoutId);
-    console.log('[TURNSTILE] Response status:', response.status);
     
+    // Don't log response object - it consumes the stream!
+    console.log('[TURNSTILE] Response received, status:', response.status);
+    console.log(response)
     if (!response.ok) {
       console.error('[TURNSTILE] HTTP error:', response.status);
       return { success: false, 'error-codes': ['http-error'] };
     }
-    try {
-      const result = await response.json();
-      console.log('[TURNSTILE] Verification result:', result);
-      return result;
-    } catch (error) {
-      console.error('[TURNSTILE] JSON parsing error:', error);
-      return { success: false, 'error-codes': ['json-error'] };
-    }
+    
+    const result = await response.json();
+    console.log('[TURNSTILE] Verification result:', result);
+    return result;
+
   } catch (error) {
     if (error.name === 'AbortError') {
       console.error('[TURNSTILE] Timeout after 10 seconds');
@@ -68,6 +63,8 @@ export default async function handler(req, res) {
 
   try {
     const { fullName, email, subject, message, language, turnstileToken } = req.body;
+
+    console.log('req.body', req.body);
 
     console.log('[CONTACT API] Request received:', {
       ip,

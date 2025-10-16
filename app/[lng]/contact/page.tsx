@@ -117,7 +117,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
       if ((window as any).turnstile) {
         try {
           (window as any).turnstile.render('.cf-turnstile', {
-            sitekey:  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ,//'1x00000000000000000000AA',// process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY 
+            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
             theme: 'light',
             size: 'normal',
             callback: (token: string) => {

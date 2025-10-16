@@ -18,7 +18,7 @@ async function validateTurnstile(token, remoteip) {
       method: 'POST',
       body: formData
     });
-
+    console.log('[TURNSTILE] Response:', response);
     const result = await response.json();
     console.log('[TURNSTILE] Verification result:', result.success);
     return result;

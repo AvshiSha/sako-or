@@ -38,6 +38,7 @@ async function validateTurnstile(token, remoteip) {
     }
 }
 
+
 // Contact form API - Production ready with full Turnstile verification
 export default async function handler(req, res) {
   const startTime = Date.now();

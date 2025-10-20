@@ -153,6 +153,8 @@ export default function ProductCard({ product, language = 'en', returnUrl }: Pro
             </span>
           )}
         </div>
+
+        <div className="text-sm font-medium text-gray-900">{product.sku}</div>
         
         <div className="text-sm font-medium text-gray-900">
           ₪{currentPrice.toFixed(2)}

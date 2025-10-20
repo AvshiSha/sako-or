@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Menu, X, Heart, ShoppingBag, ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
+import SearchBar from './SearchBar'
 import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { categoryService } from '@/lib/firebase'
@@ -444,20 +445,13 @@ export default function Navigation({ lng }: { lng: string }) {
               </Link>
           </div>
 
+
+            {/* Search Bar next to cart and favorites
+            <SearchBar language={lng} /> */}
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
-            <Link 
-              href={`/${lng}/favorites`} 
-              className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-            >
-              <Heart className="h-5 w-5" />
-              {favorites.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
-                  {favorites.length}
-                </span>
-              )}
-            </Link>
-            
+            {/* Search Bar next to cart and favorites */}
+            <SearchBar language={lng} />
             <Link
               href={`/${lng}/cart`}
               className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
@@ -466,6 +460,18 @@ export default function Navigation({ lng }: { lng: string }) {
               {items.length > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
                   {items.length}
+                </span>
+              )}
+            </Link>
+            
+            <Link 
+              href={`/${lng}/favorites`} 
+              className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+            >
+              <Heart className="h-5 w-5" />
+              {favorites.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
+                  {favorites.length}
                 </span>
               )}
             </Link>

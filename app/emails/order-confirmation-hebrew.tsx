@@ -1,5 +1,5 @@
 import * as React from 'react';
-import 'web-streams-polyfill/polyfill';
+//import 'web-streams-polyfill/polyfill';
 import {
   Body,
   Container,

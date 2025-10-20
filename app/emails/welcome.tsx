@@ -1,6 +1,6 @@
 import { Button, Html, Body } from "@react-email/components";
 import * as React from "react";
-import 'web-streams-polyfill/polyfill';
+//import 'web-streams-polyfill/polyfill';
 
 export default function Welcome() {
   return (

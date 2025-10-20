@@ -304,7 +304,7 @@ export default function Navigation({ lng }: { lng: string }) {
         >
           {/* Logo */}
           <div className="flex items-center">
-              <Link href={`/${lng}`} className="text-2xl font-bold text-gray-900">
+              <Link href={`/${lng}`} className="text-1xl font-bold text-gray-900">
               SAKO OR
               </Link>
             </div>
@@ -446,8 +446,6 @@ export default function Navigation({ lng }: { lng: string }) {
           </div>
 
 
-            {/* Search Bar next to cart and favorites
-            <SearchBar language={lng} /> */}
           {/* Right side icons */}
           <div className="flex items-center space-x-4">
             {/* Search Bar next to cart and favorites */}

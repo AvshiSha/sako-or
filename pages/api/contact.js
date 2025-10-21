@@ -185,26 +185,54 @@ export default async function handler(req, res) {
 
           // 2. Send email to team (notification)
           console.log('[CONTACT API] Sending team email via Resend...');
-          const teamEmailResult = await resend.emails.send({
-            from: 'Sako Or Contact Form <info@sako-or.com>',
-            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
-            replyTo: email.trim().toLowerCase(),
-            subject: `New Contact Message: ${subject.trim()}`,
-            html: teamEmailHtml,
-            headers: {
-              'X-Entity-Ref-ID': new Date().getTime().toString(),
-            },
-          });
+          
+          let teamEmailResult;
+          try {
+            // Add timeout to prevent hanging
+            const teamEmailPromise = resend.emails.send({
+              from: 'Sako Or Contact Form <info@sako-or.com>',
+              to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
+              replyTo: email.trim().toLowerCase(),
+              subject: `New Contact Message: ${subject.trim()}`,
+              html: teamEmailHtml,
+              headers: {
+                'X-Entity-Ref-ID': new Date().getTime().toString(),
+              },
+            }).then(result => {
+              console.log('[CONTACT API] Resend API response received:', { 
+                hasData: !!result.data, 
+                hasError: !!result.error,
+                result 
+              });
+              return result;
+            }).catch(err => {
+              console.error('[CONTACT API] Resend API threw error:', err);
+              throw err;
+            });
 
-          console.log('[CONTACT API] ✅ Team notification email sent successfully:', {
-            id: teamEmailResult.data?.id,
-            error: teamEmailResult.error,
-            fullResult: teamEmailResult
-          });
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Team email send timeout after 30s')), 30000)
+            );
 
-          // Check if team email had errors
-          if (teamEmailResult.error) {
-            console.error('[CONTACT API] ⚠️ Team email had errors but continuing:', teamEmailResult.error);
+            teamEmailResult = await Promise.race([teamEmailPromise, timeoutPromise]);
+
+            console.log('[CONTACT API] ✅ Team notification email sent successfully:', {
+              id: teamEmailResult.data?.id,
+              error: teamEmailResult.error,
+              fullResult: teamEmailResult
+            });
+
+            // Check if team email had errors
+            if (teamEmailResult.error) {
+              console.error('[CONTACT API] ⚠️ Team email had errors but continuing:', teamEmailResult.error);
+            }
+          } catch (teamEmailError) {
+            console.error('[CONTACT API] ❌ Team email send failed:', {
+              message: teamEmailError.message,
+              error: teamEmailError,
+              stack: teamEmailError.stack
+            });
+            // Continue to try customer email even if team email fails
           }
 
           // 3. Send confirmation email to customer

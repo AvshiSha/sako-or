@@ -1,46 +1,36 @@
-import { Resend } from 'resend';
-import { prisma } from '../../lib/prisma';
-import { ContactMessageEmail } from '../../app/emails/contact-message';
+
+const { Resend } = require('resend');
+const { prisma } = require('../../lib/prisma');
+const axios = require('axios');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // 🔐 Verify Cloudflare Turnstile token
 async function validateTurnstile(token, remoteip) {
-  // Use URLSearchParams instead of FormData for better Node.js compatibility
-  const formData = new FormData();
-  formData.append('secret', process.env.TURNSTILE_SECRET_KEY);
-  formData.append('response', token);
-  formData.append('remoteip', remoteip);
+  const params = new URLSearchParams();
+  params.append('secret', process.env.TURNSTILE_SECRET_KEY);
+  params.append('response', token);
+  if (remoteip) params.append('remoteip', remoteip);
 
   try {
-    console.log('[TURNSTILE] Starting verification...');
-    
-    // Add timeout to prevent hanging
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    
-    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { 
-      method: 'POST',
-      body: formData
-    });
-    //console.log(response.json())
-    clearTimeout(timeoutId);
-    
-    // Don't log response object - it consumes the stream!
-    console.log('[TURNSTILE] Response received, status:', response.status);
-    const result = await response.json();
-    console.log('[TURNSTILE] Verification result:', result);
-    return result;
-
-  } catch(error) {
-      console.error('validation error:', error);
-      return { success: false, 'error-codes': ['http-error'] };
-    }
+    const resp = await axios.post('https://challenges.cloudflare.com/turnstile/v0/siteverify',
+      params.toString(),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
+    const data = resp.data;
+    return data;
+  } catch (err) {
+    const detail = (axios.isAxiosError(err) && err.response?.data) || null;
+    return { success: false, 'error-codes': ['http-error'], detail };
+  }
 }
 
-
 // Contact form API - Production ready with full Turnstile verification
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const startTime = Date.now();
 
   if (req.method !== 'POST') {
@@ -53,8 +43,6 @@ export default async function handler(req, res) {
 
   try {
     const { fullName, email, subject, message, language, turnstileToken } = req.body;
-
-    console.log('req.body', req.body);
 
     console.log('[CONTACT API] Request received:', {
       ip,
@@ -81,9 +69,8 @@ export default async function handler(req, res) {
     }
 
     // 🔐 TURNSTILE VERIFICATION
-    console.log('[CONTACT API] Attempting Turnstile verification...');
     const validation = await validateTurnstile(turnstileToken, ip);
-    
+
     if (validation.success) {
       // Token is valid - proceed with form processing
       console.log('[CONTACT API] ✅ Turnstile validation successful from:', validation.hostname);
@@ -100,6 +87,7 @@ export default async function handler(req, res) {
     // ✅ BASIC VALIDATION
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      console.log('[CONTACT API] Invalid email format:', email);
       return res.status(400).json({
         success: false,
         error: 'Invalid email address'
@@ -107,16 +95,18 @@ export default async function handler(req, res) {
     }
 
     if (subject.trim().length < 2 || subject.trim().length > 120) {
+      console.log('[CONTACT API] Subject length invalid:', subject.length);
       return res.status(400).json({
         success: false,
         error: 'Subject must be between 2 and 120 characters'
       });
     }
 
-    if (message.trim().length < 3 || message.trim().length > 2000) {
+    if (message.trim().length < 2 || message.trim().length > 2000) {
+      console.log('[CONTACT API] Message length invalid:', message.length);
       return res.status(400).json({
         success: false,
-        error: 'Message must be between 3 and 2000 characters'
+        error: 'Message must be between 2 and 2000 characters'
       });
     }
 
@@ -137,7 +127,7 @@ export default async function handler(req, res) {
 
       // 📧 SEND EMAILS IN BACKGROUND (non-blocking)
       console.log('[CONTACT API] Sending emails in background...');
-      
+
       // Send emails in background without blocking response
       (async () => {
         try {
@@ -145,21 +135,21 @@ export default async function handler(req, res) {
           const now = new Date();
           const formattedTimestamp = language === 'he'
             ? now.toLocaleString('he-IL', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-              })
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            })
             : now.toLocaleString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              });
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
 
           const emailData = {
             fullName: fullName.trim(),
@@ -181,7 +171,7 @@ export default async function handler(req, res) {
           // 1. Send email to team (notification)
           const teamEmailResult = await resend.emails.send({
             from: 'Sako Or Contact Form <info@sako-or.com>',
-            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
+            to: ['avshi@sako-or.com', 'moshe@sako-or.com', 'info@sako-or.com'],
             replyTo: email.trim().toLowerCase(),
             subject: `New Contact Message: ${subject.trim()}`,
             html: `
@@ -233,7 +223,7 @@ export default async function handler(req, res) {
               'X-Entity-Ref-ID': new Date().getTime().toString(),
             },
           });
-          
+
           console.log('[CONTACT API] ✅ Team notification email sent successfully:', {
             id: teamEmailResult.data?.id,
             error: teamEmailResult.error,
@@ -292,12 +282,12 @@ export default async function handler(req, res) {
               'X-Entity-Ref-ID': (new Date().getTime() + 1).toString(),
             },
           });
-          
+
           console.log('[CONTACT API] ✅ Customer confirmation email sent successfully:', {
             id: customerEmailResult.data?.id,
             error: customerEmailResult.error
           });
-          
+
         } catch (emailError) {
           console.error('[CONTACT API] ❌ Email send failed (non-critical):', {
             message: emailError.message,
@@ -325,7 +315,7 @@ export default async function handler(req, res) {
 
       // Still send emails even if database fails
       console.log('[CONTACT API] Database failed, but sending emails anyway...');
-      
+
       // Send emails in background without blocking response
       (async () => {
         try {
@@ -333,21 +323,21 @@ export default async function handler(req, res) {
           const now = new Date();
           const formattedTimestamp = language === 'he'
             ? now.toLocaleString('he-IL', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-              })
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            })
             : now.toLocaleString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              });
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            });
 
           // Send email to team (notification)
           await resend.emails.send({

@@ -2,6 +2,8 @@
 import { Resend } from 'resend';
 import { prisma } from '../../lib/prisma';
 import axios from 'axios';
+import { render } from '@react-email/components';
+import { ContactMessageEmail } from '../../app/emails/contact-message';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -161,7 +163,7 @@ export default async function handler(req, res) {
           };
 
           console.log('[CONTACT API] Attempting to send team notification email...', {
-            to: ['avshi@sako-or.com', 'moshe@sako-or.com', 'info@sako-or.com'],
+            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
             from: 'Sako Or Contact Form <noreply@sako-or.com>',
             subject: `New Contact Message: ${subject.trim()}`,
             hasResendKey: !!process.env.RESEND_API_KEY,
@@ -171,54 +173,18 @@ export default async function handler(req, res) {
           // 1. Send email to team (notification)
           const teamEmailResult = await resend.emails.send({
             from: 'Sako Or Contact Form <info@sako-or.com>',
-            to: ['avshi@sako-or.com', 'moshe@sako-or.com', 'info@sako-or.com'],
+            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
             replyTo: email.trim().toLowerCase(),
             subject: `New Contact Message: ${subject.trim()}`,
-            html: `
-              <!DOCTYPE html>
-              <html dir="${language === 'he' ? 'rtl' : 'ltr'}" lang="${language === 'he' ? 'he' : 'en'}">
-                <head>
-                  <meta charset="UTF-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                </head>
-                <body style="font-family: Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px; direction: ${language === 'he' ? 'rtl' : 'ltr'};">
-                  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #4F46E5; padding: 20px; text-align: ${language === 'he' ? 'right' : 'left'};">
-                      <h1 style="color: #ffffff; margin: 0; font-size: 24px;">${language === 'he' ? 'הודעת צור קשר חדשה' : 'New Contact Message'}</h1>
-                    </div>
-                    <div style="padding: 30px;">
-                      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'מאת' : 'From'}:</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${fullName.trim()}</td>
-                          </tr>
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'אימייל' : 'Email'}:</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};"><span dir="ltr">${email.trim().toLowerCase()}</span></td>
-                          </tr>
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'נושא' : 'Subject'}:</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${subject.trim()}</td>
-                          </tr>
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'זמן' : 'Time'}:</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${formattedTimestamp}</td>
-                          </tr>
-                        </table>
-                      </div>
-                      <div>
-                        <h2 style="color: #333; font-size: 18px; margin-bottom: 10px; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'הודעה' : 'Message'}:</h2>
-                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; white-space: pre-wrap; text-align: ${language === 'he' ? 'right' : 'left'};">${message.trim()}</div>
-                      </div>
-                    </div>
-                    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e6ebf1;">
-                      <p style="color: #666; font-size: 12px; margin: 0;">${language === 'he' ? 'הודעה זו נשלחה דרך טופס יצירת הקשר באתר Sako Or' : 'This message was sent via the Sako Or website contact form'}</p>
-                    </div>
-                  </div>
-                </body>
-              </html>
-            `,
+            html: render(ContactMessageEmail({
+              fullName: emailData.fullName,
+              email: emailData.email,
+              subject: emailData.subject,
+              message: emailData.message,
+              timestamp: emailData.timestamp,
+              isHebrew: emailData.isHebrew,
+              isCustomerConfirmation: false,
+            })),
             headers: {
               'X-Entity-Ref-ID': new Date().getTime().toString(),
             },
@@ -235,49 +201,15 @@ export default async function handler(req, res) {
             from: 'Sako Or <info@sako-or.com>',
             to: [email.trim().toLowerCase()],
             subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
-            html: `
-              <!DOCTYPE html>
-              <html dir="${language === 'he' ? 'rtl' : 'ltr'}" lang="${language === 'he' ? 'he' : 'en'}">
-                <head>
-                  <meta charset="UTF-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                </head>
-                <body style="font-family: Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px; direction: ${language === 'he' ? 'rtl' : 'ltr'};">
-                  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #4F46E5; padding: 20px; text-align: ${language === 'he' ? 'right' : 'left'};">
-                      <h1 style="color: #ffffff; margin: 0; font-size: 24px;">${language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or'}</h1>
-                    </div>
-                    <div style="padding: 30px;">
-                      <p style="color: #333; font-size: 16px; line-height: 24px; text-align: ${language === 'he' ? 'right' : 'left'};">
-                        ${language === 'he' ? `שלום ${fullName.trim()}` : `Dear ${fullName.trim()}`},
-                      </p>
-                      <p style="color: #333; font-size: 16px; line-height: 24px; text-align: ${language === 'he' ? 'right' : 'left'};">
-                        ${language === 'he' ? 'תודה רבה על פנייתך אלינו! קיבלנו את הודעתך ונחזור אליך בהקדם האפשרי.' : 'Thank you for reaching out to us! We have received your message and will get back to you as soon as possible.'}
-                      </p>
-                      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                        <h2 style="color: #333; font-size: 18px; margin: 0 0 15px 0; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'פרטי ההודעה שלך:' : 'Your message details:'}</h2>
-                        <table style="width: 100%; border-collapse: collapse;">
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'נושא:' : 'Subject:'}</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${subject.trim()}</td>
-                          </tr>
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; vertical-align: top; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'הודעה:' : 'Message:'}</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'}; white-space: pre-wrap;">${message.trim()}</td>
-                          </tr>
-                        </table>
-                      </div>
-                      <p style="color: #333; font-size: 16px; line-height: 24px; text-align: ${language === 'he' ? 'right' : 'left'};">
-                        ${language === 'he' ? 'בברכה, הצוות של Sako Or' : 'Best regards, The Sako Or Team'}
-                      </p>
-                    </div>
-                    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e6ebf1;">
-                      <p style="color: #666; font-size: 12px; margin: 0;">Sako Or | Premium Footwear & Accessories</p>
-                    </div>
-                  </div>
-                </body>
-              </html>
-            `,
+            html: render(ContactMessageEmail({
+              fullName: emailData.fullName,
+              email: emailData.email,
+              subject: emailData.subject,
+              message: emailData.message,
+              timestamp: emailData.timestamp,
+              isHebrew: emailData.isHebrew,
+              isCustomerConfirmation: true,
+            })),
             headers: {
               'X-Entity-Ref-ID': (new Date().getTime() + 1).toString(),
             },
@@ -345,52 +277,15 @@ export default async function handler(req, res) {
             to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
             replyTo: email.trim().toLowerCase(),
             subject: `New Contact Message: ${subject.trim()}`,
-            html: `
-              <!DOCTYPE html>
-              <html dir="${language === 'he' ? 'rtl' : 'ltr'}" lang="${language === 'he' ? 'he' : 'en'}">
-                <head>
-                  <meta charset="UTF-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                </head>
-                <body style="font-family: Arial, sans-serif; background-color: #f6f9fc; margin: 0; padding: 20px; direction: ${language === 'he' ? 'rtl' : 'ltr'};">
-                  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #4F46E5; padding: 20px; text-align: ${language === 'he' ? 'right' : 'left'};">
-                      <h1 style="color: #ffffff; margin: 0; font-size: 24px;">${language === 'he' ? 'הודעת צור קשר חדשה' : 'New Contact Message'}</h1>
-                    </div>
-                    <div style="padding: 30px;">
-                      <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'מאת' : 'From'}:</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${fullName.trim()}</td>
-                          </tr>
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'אימייל' : 'Email'}:</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};"><span dir="ltr">${email.trim().toLowerCase()}</span></td>
-                          </tr>
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'נושא' : 'Subject'}:</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${subject.trim()}</td>
-                          </tr>
-                          <tr>
-                            <td style="padding: 8px 0; color: #666; font-weight: bold; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'זמן' : 'Time'}:</td>
-                            <td style="padding: 8px 0; color: #333; text-align: ${language === 'he' ? 'left' : 'right'};">${formattedTimestamp}</td>
-                          </tr>
-                        </table>
-                      </div>
-                      <div>
-                        <h2 style="color: #333; font-size: 18px; margin-bottom: 10px; text-align: ${language === 'he' ? 'right' : 'left'};">${language === 'he' ? 'הודעה' : 'Message'}:</h2>
-                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; white-space: pre-wrap; text-align: ${language === 'he' ? 'right' : 'left'};">${message.trim()}</div>
-                      </div>
-                    </div>
-                    <div style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e6ebf1;">
-                      <p style="color: #666; font-size: 12px; margin: 0;">${language === 'he' ? 'הודעה זו נשלחה דרך טופס יצירת הקשר באתר Sako Or' : 'This message was sent via the Sako Or website contact form'}</p>
-                      <p style="color: #e53e3e; font-size: 11px; margin: 5px 0 0 0;">⚠️ Database was unavailable - message not saved to database</p>
-                    </div>
-                  </div>
-                </body>
-              </html>
-            `,
+            html: render(ContactMessageEmail({
+              fullName: fullName.trim(),
+              email: email.trim().toLowerCase(),
+              subject: subject.trim(),
+              message: message.trim() + '\n\n⚠️ Database was unavailable - message not saved to database',
+              timestamp: formattedTimestamp,
+              isHebrew: language === 'he',
+              isCustomerConfirmation: false,
+            })),
           });
 
           console.log('[CONTACT API] ✅ Fallback email sent to team (DB failed)');

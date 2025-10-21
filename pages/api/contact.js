@@ -176,7 +176,7 @@ export default async function handler(req, res) {
             to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
             replyTo: email.trim().toLowerCase(),
             subject: `New Contact Message: ${subject.trim()}`,
-            html: render(ContactMessageEmail({
+            html: await render(ContactMessageEmail({
               fullName: emailData.fullName,
               email: emailData.email,
               subject: emailData.subject,
@@ -201,7 +201,7 @@ export default async function handler(req, res) {
             from: 'Sako Or <info@sako-or.com>',
             to: [email.trim().toLowerCase()],
             subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
-            html: render(ContactMessageEmail({
+            html: await render(ContactMessageEmail({
               fullName: emailData.fullName,
               email: emailData.email,
               subject: emailData.subject,
@@ -277,7 +277,7 @@ export default async function handler(req, res) {
             to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
             replyTo: email.trim().toLowerCase(),
             subject: `New Contact Message: ${subject.trim()}`,
-            html: render(ContactMessageEmail({
+            html: await render(ContactMessageEmail({
               fullName: fullName.trim(),
               email: email.trim().toLowerCase(),
               subject: subject.trim(),

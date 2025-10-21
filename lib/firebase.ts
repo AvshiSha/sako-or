@@ -439,8 +439,6 @@ export const productService = {
           ...productData,
           colorVariants: productData.colorVariants || {}
         } as Product;
-        console.log('✅ Firebase: Product found:', product.title_en);
-        console.log('🎨 Firebase: Color variants:', Object.keys(product.colorVariants || {}));
         
         // Fetch category data
         if (product.categoryId) {
@@ -462,33 +460,19 @@ export const productService = {
 
   // Get product by base SKU with real-time listener
   onProductByBaseSku: (baseSku: string, callback: (product: Product | null) => void): Unsubscribe => {
-    console.log('🔍 Firebase: Setting up real-time listener for base SKU:', baseSku);
-    
     const q = query(collection(db, 'products'), where('sku', '==', baseSku), limit(1));
     
     return onSnapshot(q, 
       (querySnapshot) => {
-        console.log('📊 Firebase: Real-time update received for', baseSku);
-        
         if (!querySnapshot.empty) {
           const docSnapshot = querySnapshot.docs[0];
           const productData = docSnapshot.data();
-          
-          // Check if this is cached data
-          console.log('🔍 Firebase: Real-time metadata:', {
-            fromCache: docSnapshot.metadata?.fromCache,
-            hasPendingWrites: docSnapshot.metadata?.hasPendingWrites,
-            timestamp: new Date().toISOString()
-          });
           
           const product = { 
             id: docSnapshot.id, 
             ...productData,
             colorVariants: productData.colorVariants || {}
           } as Product;
-          
-          console.log('✅ Firebase: Real-time product update:', product.title_en);
-          console.log('🎨 Firebase: Real-time color variants:', Object.keys(product.colorVariants || {}));
           
           // Fetch category data
           if (product.categoryId) {
@@ -504,12 +488,11 @@ export const productService = {
             callback(product);
           }
         } else {
-          console.log('❌ Firebase: No product found with base SKU:', baseSku);
           callback(null);
         }
       },
       (error) => {
-        console.error('❌ Firebase: Real-time listener error:', error);
+        console.error('Firebase real-time listener error:', error);
         callback(null);
       }
     );

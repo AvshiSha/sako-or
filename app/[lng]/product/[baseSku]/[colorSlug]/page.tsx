@@ -96,7 +96,6 @@ export default function ProductColorPage() {
   useEffect(() => {
     if (!baseSku || !colorSlug || !isClient) return
 
-    console.log('🔍 Setting up real-time listener for product:', baseSku)
     setLoading(true)
     setError(null)
 
@@ -109,14 +108,6 @@ export default function ProductColorPage() {
           return
         }
 
-        // Debug: Log the product data structure
-        console.log('🔍 Real-time product data received:', {
-          sku: productData.sku,
-          title: productData.title_en,
-          colorVariants: productData.colorVariants,
-          colorVariantsKeys: Object.keys(productData.colorVariants || {}),
-          colorVariantsType: typeof productData.colorVariants
-        })
 
         // Find the specific color variant
         const variant = Object.values(productData.colorVariants || {}).find(v => v.colorSlug === colorSlug)
@@ -127,13 +118,6 @@ export default function ProductColorPage() {
           return
         }
 
-        // Debug: Log the variant data
-        console.log('🎨 Real-time color variant found:', {
-          colorSlug: variant.colorSlug,
-          stockBySize: variant.stockBySize,
-          stockBySizeKeys: Object.keys(variant.stockBySize || {}),
-          stockBySizeEntries: Object.entries(variant.stockBySize || {})
-        })
 
         setProduct(productData)
         setCurrentVariant(variant)
@@ -176,7 +160,6 @@ export default function ProductColorPage() {
 
     // Cleanup listener on unmount or dependency change
     return () => {
-      console.log('🧹 Cleaning up real-time listener for product:', baseSku)
       unsubscribe()
     }
   }, [baseSku, colorSlug, lng, isClient])
@@ -208,8 +191,6 @@ export default function ProductColorPage() {
 
   // Handle color change - navigate to new URL
   const handleColorChange = (newColorSlug: string) => {
-    console.log('Color change requested:', { newColorSlug, baseSku, lng })
-    console.log('Available variants:', product?.colorVariants ? Object.values(product.colorVariants).map(v => ({ colorSlug: v.colorSlug, stock: Object.values(v.stockBySize).reduce((sum, stock) => sum + stock, 0) })) : [])
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
   }
 

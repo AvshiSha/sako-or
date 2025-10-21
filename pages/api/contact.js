@@ -127,164 +127,172 @@ export default async function handler(req, res) {
 
       console.log('[CONTACT API] Message saved to PostgreSQL:', dbMessage.id);
 
-      // 📧 SEND EMAILS IN BACKGROUND (non-blocking)
-      console.log('[CONTACT API] Sending emails in background...');
+      // 📧 SEND EMAILS (synchronously to ensure they complete before response)
+      console.log('[CONTACT API] Sending emails...');
 
-      // Send emails in background without blocking response
-      (async () => {
+      try {
+        // Format timestamp in readable format
+        const now = new Date();
+        const formattedTimestamp = language === 'he'
+          ? now.toLocaleString('he-IL', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          })
+          : now.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+        });
+
+        const emailData = {
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          subject: subject.trim(),
+          message: message.trim(),
+          isHebrew: language === 'he',
+          timestamp: formattedTimestamp,
+        };
+
+        console.log('[CONTACT API] Attempting to send team notification email...', {
+          to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
+          from: 'Sako Or Contact Form <noreply@sako-or.com>',
+          subject: `New Contact Message: ${subject.trim()}`,
+          hasResendKey: !!process.env.RESEND_API_KEY,
+          resendKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 7) + '...',
+        });
+
+        // 1. Render team email HTML
+        console.log('[CONTACT API] Rendering team email HTML...');
+        const teamEmailHtml = await render(ContactMessageEmail({
+          fullName: emailData.fullName,
+          email: emailData.email,
+          subject: emailData.subject,
+          message: emailData.message,
+          timestamp: emailData.timestamp,
+          isHebrew: emailData.isHebrew,
+          isCustomerConfirmation: false,
+        }));
+        console.log('[CONTACT API] Team email HTML rendered successfully, length:', teamEmailHtml.length);
+
+        // 2. Send email to team (notification)
+        console.log('[CONTACT API] Sending team email via Resend...');
+        console.log('[CONTACT API] Email payload:', {
+          from: 'Sako Or Contact Form <info@sako-or.com>',
+          to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
+          replyTo: email.trim().toLowerCase(),
+          subject: `New Contact Message: ${subject.trim()}`,
+          htmlLength: teamEmailHtml.length,
+          htmlPreview: teamEmailHtml.substring(0, 200)
+        });
+        
+        let teamEmailResult;
         try {
-          // Format timestamp in readable format
-          const now = new Date();
-          const formattedTimestamp = language === 'he'
-            ? now.toLocaleString('he-IL', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            })
-            : now.toLocaleString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            });
-
-          const emailData = {
-            fullName: fullName.trim(),
-            email: email.trim().toLowerCase(),
-            subject: subject.trim(),
-            message: message.trim(),
-            isHebrew: language === 'he',
-            timestamp: formattedTimestamp,
-          };
-
-          console.log('[CONTACT API] Attempting to send team notification email...', {
+          // First test with simple HTML to see if it's the content
+          console.log('[CONTACT API] Testing simple email first...');
+          const testResult = await resend.emails.send({
+            from: 'Sako Or Contact Form <info@sako-or.com>',
+            to: ['avshi@sako-or.com'],
+            subject: 'Test Email',
+            html: '<p>This is a test</p>',
+          });
+          console.log('[CONTACT API] Test email result:', testResult);
+          
+          // Now try with the actual rendered HTML
+          console.log('[CONTACT API] Sending actual email with rendered HTML...');
+          teamEmailResult = await resend.emails.send({
+            from: 'Sako Or Contact Form <info@sako-or.com>',
             to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
-            from: 'Sako Or Contact Form <noreply@sako-or.com>',
+            replyTo: email.trim().toLowerCase(),
             subject: `New Contact Message: ${subject.trim()}`,
-            hasResendKey: !!process.env.RESEND_API_KEY,
-            resendKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 7) + '...',
+            html: teamEmailHtml,
+          });
+          
+          console.log('[CONTACT API] Resend API response received:', { 
+            hasData: !!teamEmailResult.data, 
+            hasError: !!teamEmailResult.error,
+            data: teamEmailResult.data,
+            error: teamEmailResult.error
           });
 
-          // 1. Render team email HTML
-          console.log('[CONTACT API] Rendering team email HTML...');
-          const teamEmailHtml = await render(ContactMessageEmail({
+          console.log('[CONTACT API] ✅ Team notification email sent successfully:', {
+            id: teamEmailResult.data?.id,
+            error: teamEmailResult.error,
+            fullResult: teamEmailResult
+          });
+
+          // Check if team email had errors
+          if (teamEmailResult.error) {
+            console.error('[CONTACT API] ⚠️ Team email had errors but continuing:', teamEmailResult.error);
+          }
+        } catch (teamEmailError) {
+          console.error('[CONTACT API] ❌ Team email send failed:', {
+            message: teamEmailError.message,
+            error: teamEmailError,
+            stack: teamEmailError.stack
+          });
+          // Continue to try customer email even if team email fails
+        }
+
+        // 3. Send confirmation email to customer
+        console.log('[CONTACT API] Attempting to send customer confirmation email...', {
+          to: email.trim().toLowerCase(),
+          subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
+          emailData
+        });
+
+        try {
+          console.log('[CONTACT API] Rendering customer email HTML...');
+          const customerEmailHtml = await render(ContactMessageEmail({
             fullName: emailData.fullName,
             email: emailData.email,
             subject: emailData.subject,
             message: emailData.message,
             timestamp: emailData.timestamp,
             isHebrew: emailData.isHebrew,
-            isCustomerConfirmation: false,
+            isCustomerConfirmation: true,
           }));
-          console.log('[CONTACT API] Team email HTML rendered successfully, length:', teamEmailHtml.length);
+          console.log('[CONTACT API] Customer email HTML rendered successfully, length:', customerEmailHtml.length);
 
-          // 2. Send email to team (notification)
-          console.log('[CONTACT API] Sending team email via Resend...');
-          console.log('[CONTACT API] Email payload:', {
-            from: 'Sako Or Contact Form <info@sako-or.com>',
-            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
-            replyTo: email.trim().toLowerCase(),
-            subject: `New Contact Message: ${subject.trim()}`,
-            htmlLength: teamEmailHtml.length,
-            htmlPreview: teamEmailHtml.substring(0, 200)
-          });
-          
-          let teamEmailResult;
-          try {
-            // Try sending without the promise race first to see the actual error
-            teamEmailResult = await resend.emails.send({
-              from: 'Sako Or Contact Form <info@sako-or.com>',
-              to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
-              replyTo: email.trim().toLowerCase(),
-              subject: `New Contact Message: ${subject.trim()}`,
-              html: teamEmailHtml,
-            });
-            
-            console.log('[CONTACT API] Resend API response received:', { 
-              hasData: !!teamEmailResult.data, 
-              hasError: !!teamEmailResult.error,
-              data: teamEmailResult.data,
-              error: teamEmailResult.error
-            });
-
-            console.log('[CONTACT API] ✅ Team notification email sent successfully:', {
-              id: teamEmailResult.data?.id,
-              error: teamEmailResult.error,
-              fullResult: teamEmailResult
-            });
-
-            // Check if team email had errors
-            if (teamEmailResult.error) {
-              console.error('[CONTACT API] ⚠️ Team email had errors but continuing:', teamEmailResult.error);
-            }
-          } catch (teamEmailError) {
-            console.error('[CONTACT API] ❌ Team email send failed:', {
-              message: teamEmailError.message,
-              error: teamEmailError,
-              stack: teamEmailError.stack
-            });
-            // Continue to try customer email even if team email fails
-          }
-
-          // 3. Send confirmation email to customer
-          console.log('[CONTACT API] Attempting to send customer confirmation email...', {
-            to: email.trim().toLowerCase(),
+          console.log('[CONTACT API] Sending customer email via Resend...');
+          const customerEmailResult = await resend.emails.send({
+            from: 'Sako Or <info@sako-or.com>',
+            to: [email.trim().toLowerCase()],
             subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
-            emailData
+            html: customerEmailHtml,
+            headers: {
+              'X-Entity-Ref-ID': (new Date().getTime() + 1).toString(),
+            },
           });
 
-          try {
-            console.log('[CONTACT API] Rendering customer email HTML...');
-            const customerEmailHtml = await render(ContactMessageEmail({
-              fullName: emailData.fullName,
-              email: emailData.email,
-              subject: emailData.subject,
-              message: emailData.message,
-              timestamp: emailData.timestamp,
-              isHebrew: emailData.isHebrew,
-              isCustomerConfirmation: true,
-            }));
-            console.log('[CONTACT API] Customer email HTML rendered successfully, length:', customerEmailHtml.length);
-
-            console.log('[CONTACT API] Sending customer email via Resend...');
-            const customerEmailResult = await resend.emails.send({
-              from: 'Sako Or <info@sako-or.com>',
-              to: [email.trim().toLowerCase()],
-              subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
-              html: customerEmailHtml,
-              headers: {
-                'X-Entity-Ref-ID': (new Date().getTime() + 1).toString(),
-              },
-            });
-
-            console.log('[CONTACT API] ✅ Customer confirmation email sent successfully:', {
-              id: customerEmailResult.data?.id,
-              error: customerEmailResult.error
-            });
-          } catch (customerEmailError) {
-            console.error('[CONTACT API] ❌ Customer email failed:', {
-              message: customerEmailError.message,
-              error: customerEmailError,
-              stack: customerEmailError.stack
-            });
-            // Continue even if customer email fails - team was notified
-          }
-
-        } catch (emailError) {
-          console.error('[CONTACT API] ❌ Email send failed (non-critical):', {
-            message: emailError.message,
-            error: emailError,
-            stack: emailError.stack
+          console.log('[CONTACT API] ✅ Customer confirmation email sent successfully:', {
+            id: customerEmailResult.data?.id,
+            error: customerEmailResult.error
           });
+        } catch (customerEmailError) {
+          console.error('[CONTACT API] ❌ Customer email failed:', {
+            message: customerEmailError.message,
+            error: customerEmailError,
+            stack: customerEmailError.stack
+          });
+          // Continue even if customer email fails - team was notified
         }
-      })();
 
-      // ✅ RETURN SUCCESS IMMEDIATELY
+      } catch (emailError) {
+        console.error('[CONTACT API] ❌ Email send failed (non-critical):', {
+          message: emailError.message,
+          error: emailError,
+          stack: emailError.stack
+        });
+      }
+
+      // ✅ RETURN SUCCESS AFTER EMAILS ARE SENT
       return res.status(200).json({
         success: true,
         message: 'Message sent successfully! Thank you for contacting us.',

@@ -194,18 +194,7 @@ export default async function handler(req, res) {
         
         let teamEmailResult;
         try {
-          // First test with simple HTML to see if it's the content
-          console.log('[CONTACT API] Testing simple email first...');
-          const testResult = await resend.emails.send({
-            from: 'Sako Or Contact Form <info@sako-or.com>',
-            to: ['avshi@sako-or.com'],
-            subject: 'Test Email',
-            html: '<p>This is a test</p>',
-          });
-          console.log('[CONTACT API] Test email result:', testResult);
-          
-          // Now try with the actual rendered HTML
-          console.log('[CONTACT API] Sending actual email with rendered HTML...');
+          // Send team notification email
           teamEmailResult = await resend.emails.send({
             from: 'Sako Or Contact Form <info@sako-or.com>',
             to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
@@ -241,6 +230,10 @@ export default async function handler(req, res) {
         }
 
         // 3. Send confirmation email to customer
+        // Wait 600ms to avoid Resend rate limit (2 requests per second)
+        console.log('[CONTACT API] Waiting 600ms before sending customer email (rate limit)...');
+        await new Promise(resolve => setTimeout(resolve, 600));
+        
         console.log('[CONTACT API] Attempting to send customer confirmation email...', {
           to: email.trim().toLowerCase(),
           subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',

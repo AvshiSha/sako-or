@@ -46,13 +46,6 @@ export default async function handler(req, res) {
   try {
     const { fullName, email, subject, message, language, turnstileToken } = req.body;
 
-    console.log('[CONTACT API] Request received:', {
-      ip,
-      userAgent,
-      timestamp: new Date().toISOString(),
-      language,
-    });
-
     // ✅ VALIDATE REQUIRED FIELDS
     if (!fullName || !email || !subject || !message) {
       return res.status(400).json({
@@ -73,12 +66,8 @@ export default async function handler(req, res) {
     // 🔐 TURNSTILE VERIFICATION
     const validation = await validateTurnstile(turnstileToken, ip);
 
-    if (validation.success) {
-      // Token is valid - proceed with form processing
-      console.log('[CONTACT API] ✅ Turnstile validation successful from:', validation.hostname);
-    } else {
-      // Token is invalid - reject the submission
-      console.error('[CONTACT API] ❌ Invalid Turnstile token:', validation['error-codes']);
+    if (!validation.success) {
+      console.error('[CONTACT API] Invalid Turnstile token:', validation['error-codes']);
       return res.status(400).json({
         success: false,
         error: 'Invalid verification. Please try again.',
@@ -89,7 +78,6 @@ export default async function handler(req, res) {
     // ✅ BASIC VALIDATION
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      console.log('[CONTACT API] Invalid email format:', email);
       return res.status(400).json({
         success: false,
         error: 'Invalid email address'
@@ -97,7 +85,6 @@ export default async function handler(req, res) {
     }
 
     if (subject.trim().length < 2 || subject.trim().length > 120) {
-      console.log('[CONTACT API] Subject length invalid:', subject.length);
       return res.status(400).json({
         success: false,
         error: 'Subject must be between 2 and 120 characters'
@@ -105,14 +92,11 @@ export default async function handler(req, res) {
     }
 
     if (message.trim().length < 2 || message.trim().length > 2000) {
-      console.log('[CONTACT API] Message length invalid:', message.length);
       return res.status(400).json({
         success: false,
         error: 'Message must be between 2 and 2000 characters'
       });
     }
-
-    console.log('[CONTACT API] Validation passed - saving to database');
 
     // 💾 SAVE TO DATABASE
     try {
@@ -125,11 +109,7 @@ export default async function handler(req, res) {
         },
       });
 
-      console.log('[CONTACT API] Message saved to PostgreSQL:', dbMessage.id);
-
       // 📧 SEND EMAILS (synchronously to ensure they complete before response)
-      console.log('[CONTACT API] Sending emails...');
-
       try {
         // Format timestamp in readable format
         const now = new Date();
@@ -160,16 +140,7 @@ export default async function handler(req, res) {
           timestamp: formattedTimestamp,
         };
 
-        console.log('[CONTACT API] Attempting to send team notification email...', {
-          to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
-          from: 'Sako Or Contact Form <noreply@sako-or.com>',
-          subject: `New Contact Message: ${subject.trim()}`,
-          hasResendKey: !!process.env.RESEND_API_KEY,
-          resendKeyPrefix: process.env.RESEND_API_KEY?.substring(0, 7) + '...',
-        });
-
-        // 1. Render team email HTML
-        console.log('[CONTACT API] Rendering team email HTML...');
+        // 1. Render and send team notification email
         const teamEmailHtml = await render(ContactMessageEmail({
           fullName: emailData.fullName,
           email: emailData.email,
@@ -179,69 +150,24 @@ export default async function handler(req, res) {
           isHebrew: emailData.isHebrew,
           isCustomerConfirmation: false,
         }));
-        console.log('[CONTACT API] Team email HTML rendered successfully, length:', teamEmailHtml.length);
 
-        // 2. Send email to team (notification)
-        console.log('[CONTACT API] Sending team email via Resend...');
-        console.log('[CONTACT API] Email payload:', {
-          from: 'Sako Or Contact Form <info@sako-or.com>',
-          to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
-          replyTo: email.trim().toLowerCase(),
-          subject: `New Contact Message: ${subject.trim()}`,
-          htmlLength: teamEmailHtml.length,
-          htmlPreview: teamEmailHtml.substring(0, 200)
-        });
-        
-        let teamEmailResult;
         try {
-          // Send team notification email
-          teamEmailResult = await resend.emails.send({
+          await resend.emails.send({
             from: 'Sako Or Contact Form <info@sako-or.com>',
             to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
             replyTo: email.trim().toLowerCase(),
             subject: `New Contact Message: ${subject.trim()}`,
             html: teamEmailHtml,
           });
-          
-          console.log('[CONTACT API] Resend API response received:', { 
-            hasData: !!teamEmailResult.data, 
-            hasError: !!teamEmailResult.error,
-            data: teamEmailResult.data,
-            error: teamEmailResult.error
-          });
-
-          console.log('[CONTACT API] ✅ Team notification email sent successfully:', {
-            id: teamEmailResult.data?.id,
-            error: teamEmailResult.error,
-            fullResult: teamEmailResult
-          });
-
-          // Check if team email had errors
-          if (teamEmailResult.error) {
-            console.error('[CONTACT API] ⚠️ Team email had errors but continuing:', teamEmailResult.error);
-          }
         } catch (teamEmailError) {
-          console.error('[CONTACT API] ❌ Team email send failed:', {
-            message: teamEmailError.message,
-            error: teamEmailError,
-            stack: teamEmailError.stack
-          });
-          // Continue to try customer email even if team email fails
+          console.error('[CONTACT API] Team email failed:', teamEmailError.message);
         }
 
-        // 3. Send confirmation email to customer
-        // Wait 600ms to avoid Resend rate limit (2 requests per second)
-        console.log('[CONTACT API] Waiting 600ms before sending customer email (rate limit)...');
+        // 2. Wait 600ms to avoid Resend rate limit (2 requests per second)
         await new Promise(resolve => setTimeout(resolve, 600));
-        
-        console.log('[CONTACT API] Attempting to send customer confirmation email...', {
-          to: email.trim().toLowerCase(),
-          subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
-          emailData
-        });
 
+        // 3. Render and send customer confirmation email
         try {
-          console.log('[CONTACT API] Rendering customer email HTML...');
           const customerEmailHtml = await render(ContactMessageEmail({
             fullName: emailData.fullName,
             email: emailData.email,
@@ -251,38 +177,19 @@ export default async function handler(req, res) {
             isHebrew: emailData.isHebrew,
             isCustomerConfirmation: true,
           }));
-          console.log('[CONTACT API] Customer email HTML rendered successfully, length:', customerEmailHtml.length);
 
-          console.log('[CONTACT API] Sending customer email via Resend...');
-          const customerEmailResult = await resend.emails.send({
+          await resend.emails.send({
             from: 'Sako Or <info@sako-or.com>',
             to: [email.trim().toLowerCase()],
             subject: language === 'he' ? 'תודה על פנייתך - Sako Or' : 'Thank you for contacting Sako Or',
             html: customerEmailHtml,
-            headers: {
-              'X-Entity-Ref-ID': (new Date().getTime() + 1).toString(),
-            },
-          });
-
-          console.log('[CONTACT API] ✅ Customer confirmation email sent successfully:', {
-            id: customerEmailResult.data?.id,
-            error: customerEmailResult.error
           });
         } catch (customerEmailError) {
-          console.error('[CONTACT API] ❌ Customer email failed:', {
-            message: customerEmailError.message,
-            error: customerEmailError,
-            stack: customerEmailError.stack
-          });
-          // Continue even if customer email fails - team was notified
+          console.error('[CONTACT API] Customer email failed:', customerEmailError.message);
         }
 
       } catch (emailError) {
-        console.error('[CONTACT API] ❌ Email send failed (non-critical):', {
-          message: emailError.message,
-          error: emailError,
-          stack: emailError.stack
-        });
+        console.error('[CONTACT API] Email send failed:', emailError.message);
       }
 
       // ✅ RETURN SUCCESS AFTER EMAILS ARE SENT
@@ -301,54 +208,47 @@ export default async function handler(req, res) {
         timestamp: new Date().toISOString(),
       });
 
-      // Still send emails even if database fails
-      console.log('[CONTACT API] Database failed, but sending emails anyway...');
-
-      // Send emails in background without blocking response
-      (async () => {
-        try {
-          // Format timestamp in readable format
-          const now = new Date();
-          const formattedTimestamp = language === 'he'
-            ? now.toLocaleString('he-IL', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            })
-            : now.toLocaleString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            });
-
-          // Send email to team (notification)
-          await resend.emails.send({
-            from: 'Sako Or Contact Form <info@sako-or.com>',
-            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
-            replyTo: email.trim().toLowerCase(),
-            subject: `New Contact Message: ${subject.trim()}`,
-            html: await render(ContactMessageEmail({
-              fullName: fullName.trim(),
-              email: email.trim().toLowerCase(),
-              subject: subject.trim(),
-              message: message.trim() + '\n\n⚠️ Database was unavailable - message not saved to database',
-              timestamp: formattedTimestamp,
-              isHebrew: language === 'he',
-              isCustomerConfirmation: false,
-            })),
+      // Still send email to team even if database fails
+      try {
+        const now = new Date();
+        const formattedTimestamp = language === 'he'
+          ? now.toLocaleString('he-IL', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          })
+          : now.toLocaleString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
           });
 
-          console.log('[CONTACT API] ✅ Fallback email sent to team (DB failed)');
-        } catch (emailError) {
-          console.error('[CONTACT API] ❌ Fallback email also failed:', emailError.message);
-        }
-      })();
+        const fallbackEmailHtml = await render(ContactMessageEmail({
+          fullName: fullName.trim(),
+          email: email.trim().toLowerCase(),
+          subject: subject.trim(),
+          message: message.trim() + '\n\n⚠️ Database was unavailable - message not saved to database',
+          timestamp: formattedTimestamp,
+          isHebrew: language === 'he',
+          isCustomerConfirmation: false,
+        }));
+
+        await resend.emails.send({
+          from: 'Sako Or Contact Form <info@sako-or.com>',
+          to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
+          replyTo: email.trim().toLowerCase(),
+          subject: `New Contact Message: ${subject.trim()}`,
+          html: fallbackEmailHtml,
+        });
+      } catch (emailError) {
+        console.error('[CONTACT API] Fallback email failed:', emailError.message);
+      }
 
       return res.status(500).json({
         success: false,

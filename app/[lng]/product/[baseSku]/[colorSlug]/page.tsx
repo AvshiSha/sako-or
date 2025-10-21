@@ -92,26 +92,34 @@ export default function ProductColorPage() {
     setIsClient(true)
   }, [])
 
-  // Fetch product data by baseSku and colorSlug
+  // Set up real-time listener for product data
   useEffect(() => {
     if (!baseSku || !colorSlug || !isClient) return
 
-    const fetchProduct = async () => {
+    console.log('🔍 Setting up real-time listener for product:', baseSku)
+    setLoading(true)
+    setError(null)
+
+    // Set up real-time listener
+    const unsubscribe = productService.onProductByBaseSku(baseSku, (productData) => {
       try {
-        setLoading(true)
-        setError(null)
-        
-        // Get product with all color variants
-        const productData = await productService.getProductByBaseSku(baseSku)
-        
         if (!productData) {
           setError('Product not found')
           setLoading(false)
           return
         }
 
+        // Debug: Log the product data structure
+        console.log('🔍 Real-time product data received:', {
+          sku: productData.sku,
+          title: productData.title_en,
+          colorVariants: productData.colorVariants,
+          colorVariantsKeys: Object.keys(productData.colorVariants || {}),
+          colorVariantsType: typeof productData.colorVariants
+        })
+
         // Find the specific color variant
-        const variant = Object.values(productData.colorVariants).find(v => v.colorSlug === colorSlug)
+        const variant = Object.values(productData.colorVariants || {}).find(v => v.colorSlug === colorSlug)
         
         if (!variant) {
           setError('Color variant not found')
@@ -119,21 +127,16 @@ export default function ProductColorPage() {
           return
         }
 
+        // Debug: Log the variant data
+        console.log('🎨 Real-time color variant found:', {
+          colorSlug: variant.colorSlug,
+          stockBySize: variant.stockBySize,
+          stockBySizeKeys: Object.keys(variant.stockBySize || {}),
+          stockBySizeEntries: Object.entries(variant.stockBySize || {})
+        })
+
         setProduct(productData)
         setCurrentVariant(variant)
-        
-        // Debug: Log product structure to help identify data format
-        console.log('🔍 Product data structure:', {
-          hasMaterialCare: !!productData.materialCare,
-          materialCareKeys: productData.materialCare ? Object.keys(productData.materialCare) : [],
-          hasLegacyFields: {
-            upperMaterial: !!productData.upperMaterial,
-            materialInnerSole: !!productData.materialInnerSole,
-            lining: !!productData.lining,
-            sole: !!productData.sole,
-            heelHeight: !!productData.heelHeight
-          }
-        })
         
         // Set default size from first available
         const availableSizes = Object.keys(variant.stockBySize).filter(size => variant.stockBySize[size] > 0)
@@ -162,15 +165,20 @@ export default function ProductColorPage() {
             console.warn('Analytics error:', analyticsError)
           }
         }
+        
+        setLoading(false)
       } catch (error) {
-        console.error('Error fetching product:', error)
-        setError('Failed to load product')
-      } finally {
+        console.error('Error processing real-time product data:', error)
+        setError('Failed to process product data')
         setLoading(false)
       }
-    }
+    })
 
-    fetchProduct()
+    // Cleanup listener on unmount or dependency change
+    return () => {
+      console.log('🧹 Cleaning up real-time listener for product:', baseSku)
+      unsubscribe()
+    }
   }, [baseSku, colorSlug, lng, isClient])
 
   // Get current price (variant price takes precedence)
@@ -204,6 +212,7 @@ export default function ProductColorPage() {
     console.log('Available variants:', product?.colorVariants ? Object.values(product.colorVariants).map(v => ({ colorSlug: v.colorSlug, stock: Object.values(v.stockBySize).reduce((sum, stock) => sum + stock, 0) })) : [])
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
   }
+
 
   // Get total media count for navigation
   const getTotalMediaCount = useCallback(() => {

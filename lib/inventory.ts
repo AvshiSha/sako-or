@@ -204,6 +204,19 @@ export async function updateInventoryFromCsv(
   // Parse all SKUs first
   const parsedRows = rows.map((row) => {
     const parsed = parseInventorySku(row.sku);
+    
+    // Debug: Log parsed SKU details
+    if (parsed.isValid) {
+      console.log(`✓ Parsed SKU ${row.sku}:`, {
+        product: parsed.productSku,
+        colorCode: parsed.colorCode,
+        colorSlug: parsed.colorSlug,
+        size: parsed.size
+      });
+    } else {
+      console.log(`✗ Failed to parse SKU ${row.sku}:`, parsed.error);
+    }
+    
     return {
       ...row,
       parsed,
@@ -272,7 +285,7 @@ async function updateFirebaseInventory(
 ): Promise<void> {
   try {
     // Query Firestore for the product with this SKU
-    const { query, collection, where, getDocs } = await import('firebase/firestore');
+    const { query, collection, where, getDocs, getDoc } = await import('firebase/firestore');
     const productsRef = collection(db, 'products');
     const q = query(productsRef, where('sku', '==', productSku));
     const querySnapshot = await getDocs(q);
@@ -291,10 +304,15 @@ async function updateFirebaseInventory(
     for (const row of rows) {
       const { colorSlug, size } = row.parsed!;
       
+      // Debug: Log what we're looking for
+      console.log(`Looking for color "${colorSlug}" in product ${productSku}`);
+      console.log('Available colors:', Object.keys(colorVariants).join(', ') || 'none');
+      
       // Initialize color variant if it doesn't exist
       if (!colorVariants[colorSlug]) {
+        const availableColors = Object.keys(colorVariants).join(', ') || 'none';
         throw new Error(
-          `Color variant "${colorSlug}" not found for product ${productSku}`
+          `Color variant "${colorSlug}" not found for product ${productSku}. Available colors: ${availableColors}`
         );
       }
 
@@ -307,6 +325,9 @@ async function updateFirebaseInventory(
       colorVariants[colorSlug].stockBySize[size] = row.quantity;
     }
 
+    // Debug: Log the final colorVariants before update
+    console.log('🔄 Firebase: Final colorVariants before update:', JSON.stringify(colorVariants, null, 2));
+
     // Update the product document
     const productRef = doc(db, 'products', productDoc.id);
     await updateDoc(productRef, {
@@ -315,6 +336,11 @@ async function updateFirebaseInventory(
     });
 
     console.log(`✅ Firebase: Updated product ${productSku} with ${rows.length} inventory changes`);
+    
+    // Verify the update by reading back the document
+    const verifyDoc = await getDoc(productRef);
+    const verifyData = verifyDoc.data();
+    console.log('🔍 Firebase: Verification - updated colorVariants:', JSON.stringify(verifyData?.colorVariants, null, 2));
   } catch (error) {
     console.error(`❌ Firebase: Failed to update product ${productSku}:`, error);
     throw error;
@@ -350,10 +376,15 @@ async function updateNeonInventory(
     for (const row of rows) {
       const { colorSlug, size } = row.parsed!;
 
-      // Check if color variant exists
+      // Debug: Log what we're looking for
+      console.log(`Neon: Looking for color "${colorSlug}" in product ${productSku}`);
+      console.log('Neon: Available colors:', Object.keys(colorVariants).join(', ') || 'none');
+
+      // Check if color variant exists, create if it doesn't
       if (!colorVariants[colorSlug]) {
+        const availableColors = Object.keys(colorVariants).join(', ') || 'none';
         throw new Error(
-          `Color variant "${colorSlug}" not found in Neon for product ${productSku}`
+          `Color variant "${colorSlug}" not found in Neon for product ${productSku}. Available colors: ${availableColors}`
         );
       }
 

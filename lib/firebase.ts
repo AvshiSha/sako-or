@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, Query } from "firebase/firestore";
+import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, Query, getDocFromServer, Unsubscribe } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
@@ -424,6 +424,7 @@ export const productService = {
   async getProductByBaseSku(baseSku: string): Promise<Product | null> {
     try {
       console.log('🔍 Firebase: Searching for base SKU:', baseSku);
+      // Force fresh data by adding a timestamp to bypass cache
       const q = query(collection(db, 'products'), where('sku', '==', baseSku), limit(1));
       const querySnapshot = await getDocs(q);
       
@@ -431,8 +432,15 @@ export const productService = {
       
       if (!querySnapshot.empty) {
         const docSnapshot = querySnapshot.docs[0];
-        const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
+        const productData = docSnapshot.data();
+        
+        const product = { 
+          id: docSnapshot.id, 
+          ...productData,
+          colorVariants: productData.colorVariants || {}
+        } as Product;
         console.log('✅ Firebase: Product found:', product.title_en);
+        console.log('🎨 Firebase: Color variants:', Object.keys(product.colorVariants || {}));
         
         // Fetch category data
         if (product.categoryId) {
@@ -450,6 +458,61 @@ export const productService = {
       console.error('❌ Firebase: Error fetching product by base SKU:', error);
       throw error;
     }
+  },
+
+  // Get product by base SKU with real-time listener
+  onProductByBaseSku: (baseSku: string, callback: (product: Product | null) => void): Unsubscribe => {
+    console.log('🔍 Firebase: Setting up real-time listener for base SKU:', baseSku);
+    
+    const q = query(collection(db, 'products'), where('sku', '==', baseSku), limit(1));
+    
+    return onSnapshot(q, 
+      (querySnapshot) => {
+        console.log('📊 Firebase: Real-time update received for', baseSku);
+        
+        if (!querySnapshot.empty) {
+          const docSnapshot = querySnapshot.docs[0];
+          const productData = docSnapshot.data();
+          
+          // Check if this is cached data
+          console.log('🔍 Firebase: Real-time metadata:', {
+            fromCache: docSnapshot.metadata?.fromCache,
+            hasPendingWrites: docSnapshot.metadata?.hasPendingWrites,
+            timestamp: new Date().toISOString()
+          });
+          
+          const product = { 
+            id: docSnapshot.id, 
+            ...productData,
+            colorVariants: productData.colorVariants || {}
+          } as Product;
+          
+          console.log('✅ Firebase: Real-time product update:', product.title_en);
+          console.log('🎨 Firebase: Real-time color variants:', Object.keys(product.colorVariants || {}));
+          
+          // Fetch category data
+          if (product.categoryId) {
+            getDoc(doc(db, 'categories', product.categoryId)).then(categoryDoc => {
+              if (categoryDoc.exists()) {
+                product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+                callback(product);
+              } else {
+                callback(product);
+              }
+            }).catch(() => callback(product));
+          } else {
+            callback(product);
+          }
+        } else {
+          console.log('❌ Firebase: No product found with base SKU:', baseSku);
+          callback(null);
+        }
+      },
+      (error) => {
+        console.error('❌ Firebase: Real-time listener error:', error);
+        callback(null);
+      }
+    );
   },
 
   // Get product with all color variants

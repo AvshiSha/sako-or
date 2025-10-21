@@ -185,36 +185,32 @@ export default async function handler(req, res) {
 
           // 2. Send email to team (notification)
           console.log('[CONTACT API] Sending team email via Resend...');
+          console.log('[CONTACT API] Email payload:', {
+            from: 'Sako Or Contact Form <info@sako-or.com>',
+            to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
+            replyTo: email.trim().toLowerCase(),
+            subject: `New Contact Message: ${subject.trim()}`,
+            htmlLength: teamEmailHtml.length,
+            htmlPreview: teamEmailHtml.substring(0, 200)
+          });
           
           let teamEmailResult;
           try {
-            // Add timeout to prevent hanging
-            const teamEmailPromise = resend.emails.send({
+            // Try sending without the promise race first to see the actual error
+            teamEmailResult = await resend.emails.send({
               from: 'Sako Or Contact Form <info@sako-or.com>',
               to: ['avshi@sako-or.com', 'moshe@sako-or.com'],
               replyTo: email.trim().toLowerCase(),
               subject: `New Contact Message: ${subject.trim()}`,
               html: teamEmailHtml,
-              headers: {
-                'X-Entity-Ref-ID': new Date().getTime().toString(),
-              },
-            }).then(result => {
-              console.log('[CONTACT API] Resend API response received:', { 
-                hasData: !!result.data, 
-                hasError: !!result.error,
-                result 
-              });
-              return result;
-            }).catch(err => {
-              console.error('[CONTACT API] Resend API threw error:', err);
-              throw err;
             });
-
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Team email send timeout after 30s')), 30000)
-            );
-
-            teamEmailResult = await Promise.race([teamEmailPromise, timeoutPromise]);
+            
+            console.log('[CONTACT API] Resend API response received:', { 
+              hasData: !!teamEmailResult.data, 
+              hasError: !!teamEmailResult.error,
+              data: teamEmailResult.data,
+              error: teamEmailResult.error
+            });
 
             console.log('[CONTACT API] ✅ Team notification email sent successfully:', {
               id: teamEmailResult.data?.id,

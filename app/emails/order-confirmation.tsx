@@ -1,5 +1,5 @@
 import * as React from 'react';
-//import 'web-streams-polyfill/polyfill';
+import 'web-streams-polyfill/polyfill';
 import {
   Body,
   Container,
@@ -26,6 +26,7 @@ interface OrderConfirmationEmailProps {
     size?: string;
     quantity: number;
     price: number;
+    image?: string;
   }>;
   total: number;
   payer: {
@@ -195,7 +196,18 @@ export function OrderConfirmationEmail({
               <Heading style={h2(isHebrew)}>{t.items}</Heading>
               {items.map((item, index) => (
                 <Row key={index} style={itemRow}>
-                  <Column align={isHebrew ? 'right' : 'left'} style={itemName(isHebrew)}>
+                  {item.image && (
+                    <Column style={itemImageColumn}>
+                      <Img
+                        src={item.image}
+                        alt={item.name}
+                        width="80"
+                        height="80"
+                        style={itemImage}
+                      />
+                    </Column>
+                  )}
+                  <Column align={isHebrew ? 'right' : 'left'} style={itemName(isHebrew, !!item.image)}>
                   <div>
                       <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.name}</div>
                       <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
@@ -239,8 +251,8 @@ OrderConfirmationEmail.PreviewProps = {
   orderNumber: 'ORD-2024-001',
   orderDate: 'January 15, 2024',
   items: [
-    { name: 'Premium Leather Shoes', quantity: 1, price: 299.99,size: '36', sku: '0000-0000' },
-    { name: 'Cotton Socks', quantity: 2, price: 15.50,size: '35', sku: '0000-0001' },
+    { name: 'Premium Leather Shoes', quantity: 1, price: 299.99, size: '36', sku: '0000-0000', image: 'https://via.placeholder.com/80' },
+    { name: 'Cotton Socks', quantity: 2, price: 15.50, size: '35', sku: '0000-0001', image: 'https://via.placeholder.com/80' },
   ],
   total: 330.99,
   payer: {
@@ -358,10 +370,20 @@ const itemRow = {
   borderBottom: '1px solid #f0f0f0',
 };
 
-const itemName = (isHebrew: boolean) => ({
+const itemImageColumn = {
+  width: '80px',
+  padding: '8px',
+};
+
+const itemImage = {
+  borderRadius: '4px',
+  objectFit: 'cover' as const,
+};
+
+const itemName = (isHebrew: boolean, hasImage: boolean = false) => ({
   color: '#333',
   fontSize: '14px',
-  width: '50%',
+  width: hasImage ? '40%' : '50%',
   textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
 });
 

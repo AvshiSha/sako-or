@@ -304,7 +304,7 @@ export default function Navigation({ lng }: { lng: string }) {
         >
           {/* Logo */}
           <div className="flex items-center">
-              <Link href={`/${lng}`} className="text-1xl font-bold text-gray-900">
+              <Link href={`/${lng}`} className="text-xl font-bold text-gray-900">
               SAKO OR
               </Link>
             </div>

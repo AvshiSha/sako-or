@@ -1,7 +1,7 @@
 
-const { Resend } = require('resend');
-const { prisma } = require('../../lib/prisma');
-const axios = require('axios');
+import { Resend } from 'resend';
+import { prisma } from '../../lib/prisma';
+import axios from 'axios';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -30,7 +30,7 @@ async function validateTurnstile(token, remoteip) {
 }
 
 // Contact form API - Production ready with full Turnstile verification
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   const startTime = Date.now();
 
   if (req.method !== 'POST') {

@@ -11,7 +11,8 @@ import {
   PlusIcon,
   ArrowUpTrayIcon,
   ExclamationTriangleIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  ArchiveBoxIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -70,6 +71,12 @@ function AdminDashboard() {
       href: '/admin/import',
       icon: ArrowUpTrayIcon,
       description: 'Import products from Google Sheets'
+    },
+    {
+      name: 'Update Inventory',
+      href: '/admin/inventory',
+      icon: ArchiveBoxIcon,
+      description: 'Update stock levels from CSV'
     },
     {
       name: 'Manage Categories',
@@ -228,7 +235,7 @@ function AdminDashboard() {
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
               Quick Actions
             </h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {quickActions.map((action) => (
                 <Link
                   key={action.name}

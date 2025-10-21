@@ -51,18 +51,18 @@ model Category {
 }
 
 model Product {
-  id                   String         @id @default(cuid())
+  id                   String       @id @default(cuid())
   // Bilingual fields
   title_en             String
   title_he             String
   description_en       String
   description_he       String
   // Core product fields
-  sku                  String         @unique
+  sku                  String       @unique
   brand                String
   price                Float
   salePrice            Float?
-  currency             String         @default("ILS")
+  currency             String       @default("ILS")
   // Category and path
   category             String
   subCategory          String?
@@ -71,11 +71,11 @@ model Product {
   categories_path_id   String[]
   categoryId           String
   // Status flags
-  isEnabled            Boolean        @default(true)
-  isDeleted            Boolean        @default(false)
-  featured             Boolean        @default(false)
-  isNew                Boolean        @default(false)
-  isActive             Boolean        @default(true)
+  isEnabled            Boolean      @default(true)
+  isDeleted            Boolean      @default(false)
+  featured             Boolean      @default(false)
+  isNew                Boolean      @default(false)
+  isActive             Boolean      @default(true)
   // SEO fields
   seo_title_en         String?
   seo_title_he         String?
@@ -97,65 +97,15 @@ model Product {
   shippingReturns_en   String?
   shippingReturns_he   String?
   // Timestamps
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  // Color variants as embedded JSON (from Firebase)
+  colorVariants        Json?        @default("{}")
   // Relations
-  colorVariants        ColorVariant[]
   tags                 ProductTag[]
-  categoryRelation     Category       @relation("CategoryProducts", fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryRelation     Category     @relation("CategoryProducts", fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("products")
-}
-
-model ColorVariant {
-  id              String              @id @default(cuid())
-  colorName       String
-  colorSlug       String
-  colorHex        String?
-  price           Float?
-  salePrice       Float?
-  saleStartDate   DateTime?
-  saleEndDate     DateTime?
-  stock           Int                 @default(0)
-  isActive        Boolean             @default(true)
-  metaTitle       String?
-  metaDescription String?
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
-  productId       String
-  images          ColorVariantImage[]
-  sizes           ColorVariantSize[]
-  product         Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@unique([productId, colorSlug])
-  @@map("color_variants")
-}
-
-model ColorVariantImage {
-  id             String       @id @default(cuid())
-  url            String
-  alt            String?
-  isPrimary      Boolean      @default(false)
-  order          Int          @default(0)
-  createdAt      DateTime     @default(now())
-  colorVariantId String
-  colorVariant   ColorVariant @relation(fields: [colorVariantId], references: [id], onDelete: Cascade)
-
-  @@map("color_variant_images")
-}
-
-model ColorVariantSize {
-  id             String       @id @default(cuid())
-  size           String
-  stock          Int          @default(0)
-  sku            String?      @unique
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  colorVariantId String
-  colorVariant   ColorVariant @relation(fields: [colorVariantId], references: [id], onDelete: Cascade)
-
-  @@unique([colorVariantId, size])
-  @@map("color_variant_sizes")
 }
 
 model Tag {

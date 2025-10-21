@@ -10,7 +10,7 @@ const translations = {
     title: 'Contact Us',
     subtitle: 'Get in touch with our team',
     description: 'We\'d love to hear from you. Send us a message and we\'ll respond as soon as possible.',
-    
+
     form: {
       name: 'Full Name',
       namePlaceholder: 'Enter your full name',
@@ -25,7 +25,7 @@ const translations = {
       success: 'Thank you! Your message has been sent successfully.',
       error: 'Sorry, there was an error sending your message. Please try again.'
     },
-    
+
     contactInfo: {
       title: 'Contact Information',
       address: '51 Rothchild Street, Rishon-Lezion, Israel',
@@ -37,14 +37,14 @@ const translations = {
       Email: 'Email',
       BuisnessHours: 'Buisness Hours'
     },
-    
+
     backToHome: 'Back to Home'
   },
   he: {
     title: 'צור קשר',
     subtitle: 'צרו קשר עם הצוות שלנו',
     description: 'נשמח לשמוע מכם. שלחו לנו הודעה ונחזור אליכם בהקדם האפשרי.',
-    
+
     form: {
       name: 'שם מלא',
       namePlaceholder: 'הזן את שמך המלא',
@@ -59,7 +59,7 @@ const translations = {
       success: 'תודה! ההודעה שלכם נשלחה בהצלחה.',
       error: 'מצטערים, הייתה שגיאה בשליחת ההודעה. אנא נסו שוב.'
     },
-    
+
     contactInfo: {
       title: 'פרטי יצירת קשר',
       address: 'רחוב רוטשילד 51, ראשון לציון, ישראל',
@@ -71,7 +71,7 @@ const translations = {
       Email: 'אימייל',
       BuisnessHours: 'שעות פעילות'
     },
-    
+
     backToHome: 'חזרה לעמוד הבית'
   }
 }
@@ -89,14 +89,14 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
   const [emailError, setEmailError] = useState('')
   const [turnstileToken, setTurnstileToken] = useState<string>('')
   const [isMounted, setIsMounted] = useState(false)
-  
+
   // Initialize language from params
   React.useEffect(() => {
     params.then(({ lng: language }) => {
       setLng(language)
     })
   }, [params])
-  
+
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
 
@@ -113,7 +113,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
     const renderTurnstile = () => {
       const container = document.querySelector('.cf-turnstile')
       if (!container || (window as any).turnstileRendered) return
-      
+
       if ((window as any).turnstile) {
         try {
           (window as any).turnstile.render('.cf-turnstile', {
@@ -122,12 +122,13 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
             size: 'normal',
             callback: (token: string) => {
               setTurnstileToken(token)
+              console.log('[Contact Form] Turnstile token received:', token)
             },
             'error-callback': () => {
               console.error('Turnstile verification failed')
             }
           })
-          ;(window as any).turnstileRendered = true
+            ; (window as any).turnstileRendered = true
         } catch (error) {
           console.error('Turnstile render error:', error)
         }
@@ -139,9 +140,9 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
 
     // Start trying to render
     renderTurnstile()
-    
+
     return () => {
-      ;(window as any).turnstileRendered = false
+      ; (window as any).turnstileRendered = false
     }
   }, [isMounted])
 
@@ -171,24 +172,24 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Validate email before submission
     if (!validateEmail(formData.email)) {
       setEmailError(lng === 'he' ? 'כתובת אימייל לא תקינה' : 'Invalid email address')
       return
     }
-    
+
     // Check for Turnstile token
     if (!turnstileToken) {
       setSubmitStatus('error')
       console.error('Turnstile verification required')
       return
     }
-    
+
     setIsSubmitting(true)
     setSubmitStatus('idle')
     setEmailError('')
-    
+
     try {
       // Send contact form data to API
       const response = await fetch('/api/contact', {
@@ -206,6 +207,18 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
         }),
       })
 
+      console.log('[CONTACT API] Response received:', response)
+
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error(`Server returned non-JSON (${response.status})`)
+        console.error('First part of response:', text.slice(0, 200))
+        setSubmitStatus('error')
+        setIsSubmitting(false)
+        return
+      }
+
       let data
       try {
         data = await response.json()
@@ -213,7 +226,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
         console.error('Failed to parse response JSON:', jsonError)
         console.error('Response status:', response.status)
         console.error('Response headers:', response.headers)
-        
+
         // Try to get response text for debugging
         try {
           const responseText = await response.text()
@@ -221,7 +234,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
         } catch (textError) {
           console.error('Could not read response text:', textError)
         }
-        
+
         setSubmitStatus('error')
         return
       }
@@ -230,7 +243,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
         setSubmitStatus('success')
         setFormData({ name: '', email: '', subject: '', message: '' })
         setTurnstileToken('')
-        
+
         // Reset Turnstile widget
         if ((window as any).turnstile) {
           (window as any).turnstile.reset()
@@ -238,7 +251,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
       } else {
         console.error('Contact form submission failed:', data.error)
         setSubmitStatus('error')
-        
+
         // Reset Turnstile widget on error
         if ((window as any).turnstile) {
           (window as any).turnstile.reset()
@@ -248,7 +261,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
     } catch (error) {
       console.error('Contact form submission error:', error)
       setSubmitStatus('error')
-      
+
       // Reset Turnstile widget on error
       if ((window as any).turnstile) {
         (window as any).turnstile.reset()
@@ -264,7 +277,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="mb-12">
-          <Link 
+          <Link
             href={`/${lng}`}
             className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors duration-200"
           >
@@ -273,7 +286,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
             </svg>
             {t.backToHome}
           </Link>
-          
+
           <h1 className="text-4xl font-light text-gray-900 mb-4">
             {t.title}
           </h1>
@@ -319,9 +332,8 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                   placeholder={t.form.emailPlaceholder}
                   required
                   disabled={isSubmitting}
-                  className={`w-full px-4 py-3 border text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400 ${
-                    emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
+                    }`}
                 />
                 {emailError && (
                   <p className="mt-1 text-sm text-red-600">
@@ -343,6 +355,8 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                   placeholder={t.form.subjectPlaceholder}
                   required
                   disabled={isSubmitting}
+                  minLength={2}
+                  maxLength={120}
                   className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400"
                 />
               </div>
@@ -360,6 +374,8 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                   required
                   disabled={isSubmitting}
                   rows={6}
+                  minLength={2}
+                  maxLength={2000}
                   className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-vertical placeholder-gray-400"
                 />
               </div>
@@ -434,7 +450,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Phone}</h3>
-                  <a 
+                  <a
                     href={`tel:${t.contactInfo.phone}`}
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
                   >
@@ -450,7 +466,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
                 </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Email}</h3>
-                  <a 
+                  <a
                     href={`mailto:${t.contactInfo.email}`}
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
                   >

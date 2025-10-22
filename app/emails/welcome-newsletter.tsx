@@ -57,9 +57,9 @@ export function WelcomeNewsletter({
           {/* Header with Logo and Navigation */}
           <Section style={header}>
             <Img
-              src="https://via.placeholder.com/120x40/8B4513/FFFFFF?text=SAKO+OR"
+              src="https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Flogo%2Fsako-logo.png?alt=media&token=d4d75075-0ad6-4d79-80ce-6542b6465cd3"
               width="120"
-              height="40"
+              height="120"
               alt="SAKO OR"
               style={logo}
             />
@@ -68,16 +68,17 @@ export function WelcomeNewsletter({
                 <Link href="https://sako-or.com/about" style={navLink}>ABOUT US</Link>
               </Column>
               <Column style={navColumn}>
-                <Link href="https://sako-or.com/{lng}/men" style={navLink}>SHOP MEN</Link>
+                <Link href="https://sako-or.com/en/men" style={navLink}>SHOP MEN</Link>
               </Column>
               <Column style={navColumn}>
-                <Link href="https://sako-or.com/{lng}/women" style={navLink}>SHOP WOMEN</Link>
+                <Link href="https://sako-or.com/en/women" style={navLink}>SHOP WOMEN</Link>
               </Column>
               <Column style={navColumn}>
-                <Link href="https://sako-or.com/{lng}/bags" style={navLink}>SHOP BAGS</Link>
+                <Link href="https://sako-or.com/en/bags" style={navLink}>SHOP BAGS</Link>
               </Column>
             </Row>
           </Section>
+          <Hr style={hr} className="my-[16px] border-gray-300 border-t-[6px] border-solid" />
 
           {/* Main Hero Section */}
           <Section style={heroSection}>
@@ -216,11 +217,11 @@ const header = {
 };
 
 const logo = {
-  margin: '0 auto 20px',
+  margin: '0 auto 8px',
 };
 
 const navRow = {
-  marginTop: '20px',
+  marginTop: '10px',
 };
 
 const navColumn = {

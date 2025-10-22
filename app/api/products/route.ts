@@ -20,6 +20,7 @@ const productSchema = z.object({
   currency: z.string().default('ILS'),
   colorVariants: z.record(z.string(), z.object({
     colorSlug: z.string(),
+    isActive: z.boolean().optional().default(true),
     priceOverride: z.coerce.number().positive().optional(),
     salePrice: z.coerce.number().positive().optional(),
     stockBySize: z.record(z.string(), z.coerce.number().int().min(0)),

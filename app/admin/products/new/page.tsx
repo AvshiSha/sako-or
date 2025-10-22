@@ -894,6 +894,7 @@ export default function NewProductPage() {
         
         colorVariants[variant.colorSlug] = {
           colorSlug: variant.colorSlug,
+          isActive: variant.isActive !== false, // Default to true if not specified
           priceOverride: variant.price || null,
           salePrice: variant.salePrice || null,
           stockBySize: variant.stockBySize,

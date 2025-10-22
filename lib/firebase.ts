@@ -56,6 +56,7 @@ export interface Product {
   currency: string;
   colorVariants: Record<string, {
     colorSlug: string;
+    isActive?: boolean;
     priceOverride?: number;
     salePrice?: number;
     stockBySize: Record<string, number>;

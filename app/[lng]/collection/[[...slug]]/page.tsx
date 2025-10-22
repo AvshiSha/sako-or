@@ -301,14 +301,18 @@ export default function CollectionSlugPage() {
     })
     .filter((product) => {
       if (selectedColors.length === 0) return true;
-      const hasMatchingVariantColor = product.colorVariants ? Object.values(product.colorVariants).some((variant) => 
+      const hasMatchingVariantColor = product.colorVariants ? Object.values(product.colorVariants)
+        .filter(variant => variant.isActive !== false) // Filter out inactive variants
+        .some((variant) => 
         selectedColors.includes(variant.colorSlug || "")
       ) : false;
       return hasMatchingVariantColor;
     })
     .filter((product) => {
       if (selectedSizes.length === 0) return true;
-      const hasMatchingVariantSize = product.colorVariants ? Object.values(product.colorVariants).some((variant) => 
+      const hasMatchingVariantSize = product.colorVariants ? Object.values(product.colorVariants)
+        .filter(variant => variant.isActive !== false) // Filter out inactive variants
+        .some((variant) => 
         Object.keys(variant.stockBySize || {}).some((size) => selectedSizes.includes(size))
       ) : false;
       return hasMatchingVariantSize;

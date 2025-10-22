@@ -118,6 +118,13 @@ export default function ProductColorPage() {
           return
         }
 
+        // Check if the variant is active
+        if (variant.isActive === false) {
+          setError('Color variant is not available')
+          setLoading(false)
+          return
+        }
+
 
         setProduct(productData)
         setCurrentVariant(variant)
@@ -653,7 +660,9 @@ export default function ProductColorPage() {
                     {lng === 'he' ? 'צבע' : 'Color'}
                   </h3>
                   <div className="flex gap-2 overflow-x-auto pb-2">
-                    {Object.values(product.colorVariants).map((variant) => {
+                    {Object.values(product.colorVariants)
+                      .filter(variant => variant.isActive !== false) // Filter out inactive variants
+                      .map((variant) => {
                       const isCurrentVariant = variant.colorSlug === colorSlug
                       // Check if variant has any available sizes (stock > 0)
                       const isVariantOutOfStock = Object.values(variant.stockBySize).every(stock => stock <= 0)

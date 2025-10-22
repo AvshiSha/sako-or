@@ -15,7 +15,7 @@ interface QuickViewModalProps {
 
 export default function QuickViewModal({ isOpen, onClose, product, language = 'en' }: QuickViewModalProps) {
   // Extract unique colors and sizes from color variants
-  const colors = product.colorVariants ? [...new Set(Object.values(product.colorVariants).map(v => v.colorSlug).filter(Boolean))] as string[] : []
+  const colors = product.colorVariants ? [...new Set(Object.values(product.colorVariants).filter(v => v.isActive !== false).map(v => v.colorSlug).filter(Boolean))] as string[] : []
   const sizes = product.colorVariants ? [...new Set(Object.values(product.colorVariants).flatMap(v => Object.keys(v.stockBySize || {})))] as string[] : []
   
   // Get language-specific product data

@@ -21,7 +21,7 @@ export default function ProductCard({ product, language = 'en', returnUrl }: Pro
   const { isFavorite, toggleFavorite } = useFavorites()
   
   // Get the first active color variant for display
-  const defaultVariant = product.colorVariants ? Object.values(product.colorVariants)[0] : null
+  const defaultVariant = product.colorVariants ? Object.values(product.colorVariants).find(variant => variant.isActive !== false) : null
   const activeVariant = selectedVariant || defaultVariant
   
   if (!activeVariant) {
@@ -165,7 +165,9 @@ export default function ProductCard({ product, language = 'en', returnUrl }: Pro
       {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
         <div className="mt-0 bg-gray-100 p-3 pt-1">
           <div className="flex gap-2 overflow-x-auto pb-2">
-            {Object.values(product.colorVariants).map((variant) => {
+            {Object.values(product.colorVariants)
+              .filter(variant => variant.isActive !== false) // Filter out inactive variants
+              .map((variant) => {
               const variantImage = variant.primaryImage || variant.images?.[0]
               const isSelected = variant.colorSlug === activeVariant.colorSlug
               

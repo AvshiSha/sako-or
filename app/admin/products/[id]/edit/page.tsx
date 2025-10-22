@@ -252,7 +252,7 @@ function EditProductPage() {
             price: variant.priceOverride,
             salePrice: variant.salePrice,
             stock: Object.values(variant.stockBySize || {}).reduce((sum, stock) => sum + stock, 0),
-            isActive: true,
+            isActive: variant.isActive !== false, // Load the isActive flag, default to true if not specified
             images: (variant.images || []).map((img, imgIndex) => ({
               file: new File([], 'existing-image'),
               preview: img,
@@ -1068,6 +1068,7 @@ function EditProductPage() {
 
         colorVariants[variant.colorSlug] = {
           colorSlug: variant.colorSlug,
+          isActive: variant.isActive !== false, // Default to true if not specified
           priceOverride: variant.price || null,
           salePrice: variant.salePrice || null,
           stockBySize: variant.stockBySize,

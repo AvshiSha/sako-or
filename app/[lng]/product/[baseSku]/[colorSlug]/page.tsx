@@ -777,14 +777,14 @@ export default function ProductColorPage() {
                   </button>
                 </div>
                 {/* Stock Info */}
-                {selectedSize && currentStock > 0 && (
+                {/* {selectedSize && currentStock > 0 && (
                   <div className="mt-2 text-sm text-gray-600">
                     {lng === 'he' 
                       ? `מקסימום ${currentStock} יחידות זמינות` 
                       : `Maximum ${currentStock} units available`
                     }
                   </div>
-                )}
+                )} */}
                 {!selectedSize && Object.keys(currentVariant.stockBySize).length > 0 && (
                   <div className="mt-2 text-sm text-gray-500">
                     {lng === 'he' 

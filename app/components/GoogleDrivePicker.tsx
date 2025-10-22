@@ -85,6 +85,7 @@ export default function GoogleDrivePicker({
 }: GoogleDrivePickerProps) {
   const [files, setFiles] = useState<GoogleDriveFile[]>([])
   const [folders, setFolders] = useState<GoogleDriveFile[]>([])
+  const [shortcuts, setShortcuts] = useState<GoogleDriveFile[]>([])
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
   const [currentFolderId, setCurrentFolderId] = useState<string | undefined>(folderId)
   const [currentPath, setCurrentPath] = useState<string[]>(['My Drive'])
@@ -93,6 +94,8 @@ export default function GoogleDrivePicker({
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [nextPageToken, setNextPageToken] = useState<string | undefined>(undefined)
+  const [hasMoreFiles, setHasMoreFiles] = useState(false)
 
   // Check authentication status
   useEffect(() => {
@@ -110,55 +113,62 @@ export default function GoogleDrivePicker({
   }
 
   // Load files and folders
-  const loadFiles = useCallback(async (folderId?: string) => {
+  const loadFiles = useCallback(async (folderId?: string, pageToken?: string, appendResults = false) => {
     if (!isAuthenticated) return
 
     setLoading(true)
     setError(null)
 
     try {
-      console.log('Google Drive Picker - Loading files for folderId:', folderId)
-      
-      const response = await fetch(`/api/google-drive/files?folderId=${folderId || ''}`)
-      
-      console.log('Google Drive Picker - Response status:', response.status)
-      console.log('Google Drive Picker - Response headers:', Object.fromEntries(response.headers.entries()))
+      const url = `/api/google-drive/files?folderId=${folderId || ''}${pageToken ? `&pageToken=${pageToken}` : ''}`
+      const response = await fetch(url)
       
       // Check if response is HTML (error page)
       const contentType = response.headers.get('content-type')
       if (contentType && contentType.includes('text/html')) {
         const htmlText = await response.text()
-        console.error('Google Drive Picker - Received HTML instead of JSON:', htmlText.substring(0, 200))
         throw new Error('Server returned HTML page instead of JSON. This usually indicates a server error.')
       }
 
       // Check if response is not ok
       if (!response.ok) {
         const errorText = await response.text()
-        console.error('Google Drive Picker - API error response:', response.status, errorText)
         throw new Error(`API request failed with status ${response.status}`)
       }
       
       const data = await response.json()
-      console.log('Google Drive Picker - Response data:', data)
 
       if (data.error) {
         throw new Error(data.error)
       }
 
-      // Separate files and folders
+
+      // Separate files, folders, and shortcuts
       const mediaFiles = data.files.filter((file: GoogleDriveFile) => 
         file.mimeType.startsWith('image/') || file.mimeType.startsWith('video/')
       )
       const folderFiles = data.files.filter((file: GoogleDriveFile) => 
         file.mimeType === 'application/vnd.google-apps.folder'
       )
+      const shortcutFiles = data.files.filter((file: GoogleDriveFile) => 
+        file.mimeType === 'application/vnd.google-apps.shortcut'
+      )
 
-      console.log('Google Drive Picker - Found media files:', mediaFiles.length)
-      console.log('Google Drive Picker - Found folders:', folderFiles.length)
 
-      setFiles(mediaFiles)
-      setFolders(folderFiles)
+      // Set pagination state
+      setNextPageToken(data.nextPageToken)
+      setHasMoreFiles(!!data.nextPageToken)
+
+      // Either replace or append results
+      if (appendResults) {
+        setFiles(prev => [...prev, ...mediaFiles])
+        setFolders(prev => [...prev, ...folderFiles])
+        setShortcuts(prev => [...prev, ...shortcutFiles])
+      } else {
+        setFiles(mediaFiles)
+        setFolders(folderFiles)
+        setShortcuts(shortcutFiles)
+      }
     } catch (error) {
       console.error('Error loading files:', error)
       setError(error instanceof Error ? error.message : 'Failed to load files')
@@ -166,6 +176,13 @@ export default function GoogleDrivePicker({
       setLoading(false)
     }
   }, [isAuthenticated])
+  
+  // Load more files (pagination)
+  const loadMoreFiles = useCallback(async () => {
+    if (nextPageToken && !loading) {
+      await loadFiles(currentFolderId, nextPageToken, true)
+    }
+  }, [nextPageToken, loading, currentFolderId, loadFiles])
 
   // Load files when component opens or folder changes
   useEffect(() => {
@@ -180,6 +197,23 @@ export default function GoogleDrivePicker({
     setCurrentPath(prev => [...prev, folder.name])
     setFolderHistory(prev => [...prev, currentFolderId || 'root'])
     setSelectedFiles(new Set())
+    setNextPageToken(undefined)
+    setHasMoreFiles(false)
+  }
+
+  // Handle shortcut navigation
+  const handleShortcutClick = async (shortcut: GoogleDriveFile) => {
+    try {
+      // For shortcuts, we need to get the target file/folder
+      // We'll try to navigate to the shortcut's target
+      // Note: This is a simplified approach - in practice, you might need to resolve the shortcut first
+      
+      // For now, let's show an alert and suggest the user navigate manually
+      alert(`Shortcut: ${shortcut.name}\n\nTo access the content of this shortcut, please navigate to the original file/folder in Google Drive.`)
+      
+    } catch (error) {
+      console.error('Error handling shortcut click:', error)
+    }
   }
 
   // Handle back navigation
@@ -194,12 +228,12 @@ export default function GoogleDrivePicker({
     setFolderHistory(newHistory)
 
     if (newPath.length === 1) {
-      // Going back to root (My Drive)
-      setCurrentFolderId(undefined)
+      // Going back to the original folder (not root)
+      setCurrentFolderId(folderId) // Use the original folderId prop
     } else {
       // Go back to the previous folder
       const previousFolderId = newHistory[newHistory.length - 1]
-      setCurrentFolderId(previousFolderId === 'root' ? undefined : previousFolderId)
+      setCurrentFolderId(previousFolderId === 'root' ? folderId : previousFolderId)
     }
   }
 
@@ -444,6 +478,28 @@ export default function GoogleDrivePicker({
                     </div>
                   )}
 
+                  {/* Shortcuts */}
+                  {shortcuts.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Shortcuts ({shortcuts.length})</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                        {shortcuts.map((shortcut) => (
+                          <button
+                            key={shortcut.id}
+                            onClick={() => handleShortcutClick(shortcut)}
+                            className="flex flex-col items-center p-3 border border-gray-200 rounded-lg bg-yellow-50 hover:bg-yellow-100 transition-colors cursor-pointer"
+                          >
+                            <svg className="h-8 w-8 text-yellow-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                            </svg>
+                            <span className="text-xs text-gray-700 truncate w-full text-center">{shortcut.name}</span>
+                            <span className="text-xs text-yellow-600 mt-1">Shortcut</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Images */}
                   {files.length > 0 && (
                     <div>
@@ -511,10 +567,22 @@ export default function GoogleDrivePicker({
                     </div>
                   )}
 
-                  {files.length === 0 && folders.length === 0 && !loading && (
+                  {files.length === 0 && folders.length === 0 && shortcuts.length === 0 && !loading && (
                     <div className="text-center py-8">
                       <PhotoIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                       <p className="text-gray-500">No images found in this folder</p>
+                    </div>
+                  )}
+
+                  {/* Load More Button */}
+                  {hasMoreFiles && !loading && (
+                    <div className="text-center py-4">
+                      <button
+                        onClick={loadMoreFiles}
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                      >
+                        Load More Files ({files.length} loaded so far)
+                      </button>
                     </div>
                   )}
                 </div>

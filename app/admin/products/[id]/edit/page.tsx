@@ -1846,6 +1846,7 @@ function EditProductPage() {
           }}
           onSelectFiles={handleGoogleDriveSelect}
           multiple={true}
+          folderId="157YeZrSzQ7G5wtvL7ovwdTh_va7lMHag"
         />
         
         <GoogleDrivePicker
@@ -1856,6 +1857,7 @@ function EditProductPage() {
           }}
           onSelectFiles={handleGoogleDriveVideoSelect}
           multiple={false}
+          folderId="157YeZrSzQ7G5wtvL7ovwdTh_va7lMHag"
         />
       </div>
     </div>

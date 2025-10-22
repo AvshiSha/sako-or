@@ -455,6 +455,7 @@ export default function NewProductPage() {
     if (!currentVariantForGoogleDrive) return;
 
     try {
+      
       if (files.length === 0) {
         alert('Please select at least one image to import.');
         return;
@@ -468,6 +469,7 @@ export default function NewProductPage() {
         });
       }
 
+      
       // Download files from Google Drive
       const response = await fetch('/api/google-drive/download', {
         method: 'POST',
@@ -489,6 +491,7 @@ export default function NewProductPage() {
         throw new Error('No files were downloaded successfully');
       }
 
+      
       // Convert base64 content to File objects
       const importingVariant = formData.colorVariants.find(v => v.id === currentVariantForGoogleDrive);
       const existingImages = importingVariant?.images || [];
@@ -496,6 +499,7 @@ export default function NewProductPage() {
       
       const newImages: ImageFile[] = data.files.map((file: any, index: number) => {
         try {
+          
           // Convert base64 to blob
           const byteCharacters = atob(file.content);
           const byteNumbers = new Array(byteCharacters.length);
@@ -505,8 +509,10 @@ export default function NewProductPage() {
           const byteArray = new Uint8Array(byteNumbers);
           const blob = new Blob([byteArray], { type: file.mimeType });
           
+          
           // Create File object
           const fileObj = new File([blob], file.name, { type: file.mimeType });
+          
           
           return {
             file: fileObj,
@@ -521,6 +527,7 @@ export default function NewProductPage() {
         }
       }).filter(Boolean) as ImageFile[];
 
+
       if (newImages.length === 0) {
         throw new Error('No valid images could be processed');
       }
@@ -533,6 +540,7 @@ export default function NewProductPage() {
         ]
       });
 
+      
       setShowGoogleDrivePicker(false);
       setCurrentVariantForGoogleDrive(null);
 
@@ -1908,6 +1916,7 @@ export default function NewProductPage() {
         }}
         onSelectFiles={handleGoogleDriveSelect}
         multiple={true}
+        folderId="157YeZrSzQ7G5wtvL7ovwdTh_va7lMHag"
       />
       
       <GoogleDrivePicker
@@ -1918,6 +1927,7 @@ export default function NewProductPage() {
         }}
         onSelectFiles={handleGoogleDriveVideoSelect}
         multiple={false}
+        folderId="157YeZrSzQ7G5wtvL7ovwdTh_va7lMHag"
       />
     </div>
   )

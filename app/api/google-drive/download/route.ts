@@ -32,18 +32,20 @@ export async function POST(request: NextRequest) {
 
     // Download files and convert to base64 for easy handling
     const downloadedFiles = await Promise.all(
-      fileIds.map(async (fileId: string) => {
+      fileIds.map(async (fileId: string, index: number) => {
         try {
           const fileData = await googleDriveService.getFile(fileId)
           const fileContent = await googleDriveService.downloadFile(fileId)
           
-          return {
+          const result = {
             id: fileId,
             name: fileData.name,
             mimeType: fileData.mimeType,
             content: fileContent.toString('base64'),
             size: fileContent.length
           }
+          
+          return result
         } catch (error) {
           console.error(`Error downloading file ${fileId}:`, error)
           return null
@@ -60,6 +62,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error downloading Google Drive files:', error)
+    
     return NextResponse.json(
       { error: 'Failed to download files from Google Drive' },
       { status: 500 }

@@ -107,7 +107,7 @@ interface FormErrors {
 
 
 const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL','34','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
-const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'light Brown', 'Dark Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver', 'Off White', 'Light Blue', 'Dark Blue', 'Bordeaux', 'Black nail polish', 'Olive', 'Multicolor', 'Black & White', 'Transparent'];
+const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'light Brown', 'Dark Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver', 'Off White', 'Light Blue', 'Dark Blue', 'Bordeaux', 'Black nail polish', 'Olive', 'Multicolor', 'Black & White', 'Transparent', 'camel'];
 
 // Color hex mapping
 const colorHexMap: Record<string, string> = {
@@ -135,8 +135,8 @@ const colorHexMap: Record<string, string> = {
   'Olive': '#808000',
   'Multicolor': '#FF0000',
   'Black & White': '#000000',
-  'Transparent': '#FFFFFF'
-  
+  'Transparent': '#FFFFFF',
+  'camel': '#C19A6B'
 };
 
 export default function NewProductPage() {

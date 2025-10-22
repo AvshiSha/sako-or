@@ -1495,27 +1495,25 @@ export default function NewProductPage() {
                       </div>
 
                       {/* Stock by Size */}
-                      {variant.sizes.length > 0 && (
-                        <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Stock by Size
-                          </label>
-                          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                            {variant.sizes.map((size: string) => (
-                              <div key={size} className="text-center">
-                                <label className="block text-xs text-gray-600 mb-1">{size}</label>
-                                <input
-                                  type="number"
-                            min="0"
-                                  value={variant.stockBySize[size] || 0}
-                                  onChange={(e) => handleVariantSizeStockChange(variant.id, size, parseInt(e.target.value) || 0)}
-                                  className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                          />
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Stock by Size
+                        </label>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                          {commonSizes.map((size: string) => (
+                            <div key={size} className="text-center">
+                              <label className="block text-xs text-gray-600 mb-1">{size}</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={variant.stockBySize[size] || 0}
+                                onChange={(e) => handleVariantSizeStockChange(variant.id, size, parseInt(e.target.value) || 0)}
+                                className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                              />
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                      </div>
 
                       {/* SEO Fields */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

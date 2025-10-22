@@ -158,7 +158,8 @@ const colorHexMap: Record<string, string> = {
   'Olive': '#808000',
   'Multicolor': '#FF0000',
   'Black & White': '#000000',
-  'Transparent': '#FFFFFF'
+  'Transparent': '#FFFFFF',
+  'camel': '#C19A6B'
 };
 
 function EditProductPage() {

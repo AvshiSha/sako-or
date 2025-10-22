@@ -59,6 +59,12 @@ export default function ProductColorPage() {
     priceOverride?: number;
     salePrice?: number;
     stockBySize: Record<string, number>;
+    dimensions?: {
+      heightCm: number | null;
+      widthCm: number | null;
+      depthCm: number | null;
+      quantity?: number;
+    };
     metaTitle?: string;
     metaDescription?: string;
     images: string[];
@@ -133,9 +139,14 @@ export default function ProductColorPage() {
         setCurrentVariant(variant)
         
         // Set default size from first available
-        const availableSizes = Object.keys(variant.stockBySize).filter(size => variant.stockBySize[size] > 0)
-        if (availableSizes.length > 0) {
-          setSelectedSize(availableSizes[0])
+        // Prioritize dimensions if available and in stock
+        if (variant.dimensions?.heightCm && variant.dimensions?.widthCm && variant.dimensions?.depthCm && (variant.dimensions?.quantity || 0) > 0) {
+          setSelectedSize('dimensions')
+        } else {
+          const availableSizes = Object.keys(variant.stockBySize).filter(size => variant.stockBySize[size] > 0)
+          if (availableSizes.length > 0) {
+            setSelectedSize(availableSizes[0])
+          }
         }
 
         // Reset image selection to 0 (video will be shown if available)
@@ -186,6 +197,10 @@ export default function ProductColorPage() {
   // Get stock for selected size
   const getSizeStock = useCallback((size: string) => {
     if (!currentVariant) return 0
+    if (size === 'dimensions') {
+      // For dimensions, use the quantity from dimensions or default to 0
+      return currentVariant.dimensions?.quantity || 0
+    }
     return currentVariant.stockBySize[size] || 0
   }, [currentVariant])
 
@@ -202,6 +217,17 @@ export default function ProductColorPage() {
   // Handle color change - navigate to new URL
   const handleColorChange = (newColorSlug: string) => {
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
+  }
+
+  // Format dimensions for display
+  const formatDimensions = (dimensions: { heightCm: number | null; widthCm: number | null; depthCm: number | null }) => {
+    if (!dimensions.heightCm || !dimensions.widthCm || !dimensions.depthCm) return ''
+    
+    const formatNumber = (num: number) => {
+      return num % 1 === 0 ? num.toString() : num.toFixed(1)
+    }
+    
+    return `${formatNumber(dimensions.heightCm)}×${formatNumber(dimensions.widthCm)}×${formatNumber(dimensions.depthCm)} ${lng === 'he' ? 'ס"מ' : 'cm'}`
   }
 
 
@@ -278,6 +304,9 @@ export default function ProductColorPage() {
     if (analytics) {
       try {
         const sku = `${baseSku}-${colorSlug}-${selectedSize}`
+        const sizeLabel = selectedSize === 'dimensions' && currentVariant.dimensions 
+          ? formatDimensions(currentVariant.dimensions)
+          : selectedSize
         analytics.logEvent('add_to_cart', {
           currency: 'USD',
           value: currentPrice * quantity,
@@ -285,7 +314,7 @@ export default function ProductColorPage() {
             item_id: sku,
             item_name: `${productName} - ${currentVariant.colorSlug}`,
             item_category: product.category || 'Unknown',
-            item_variant: `${selectedSize}-${currentVariant.colorSlug}`,
+            item_variant: `${sizeLabel}-${currentVariant.colorSlug}`,
             price: currentPrice,
             quantity: quantity
           }]
@@ -297,6 +326,9 @@ export default function ProductColorPage() {
 
     // Add to cart
     const sku = `${baseSku}-${colorSlug}-${selectedSize}`
+    const sizeLabel = selectedSize === 'dimensions' && currentVariant.dimensions 
+      ? formatDimensions(currentVariant.dimensions)
+      : selectedSize
     addToCart({
       sku: sku,
       name: {
@@ -307,7 +339,7 @@ export default function ProductColorPage() {
       salePrice: currentVariant.salePrice,
       currency: 'USD',
       image: currentVariant.images?.[0],
-      size: selectedSize,
+      size: sizeLabel,
       color: currentVariant.colorSlug,
       maxStock: currentStock
     })
@@ -324,7 +356,7 @@ export default function ProductColorPage() {
         salePrice: currentVariant.salePrice,
         currency: 'USD',
         image: currentVariant.images?.[0],
-        size: selectedSize,
+        size: sizeLabel,
         color: currentVariant.colorSlug,
         maxStock: currentStock
       })
@@ -727,13 +759,29 @@ export default function ProductColorPage() {
               )}
 
               {/* Size Selection */}
-              {Object.keys(currentVariant.stockBySize).length > 0 && (
+              {(Object.keys(currentVariant.stockBySize).length > 0 || currentVariant.dimensions) && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     {lng === 'he' ? 'מידה' : 'Size'}
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(currentVariant.stockBySize)
+                    {/* Show dimensions if available and valid with stock */}
+                    {currentVariant.dimensions?.heightCm && currentVariant.dimensions?.widthCm && currentVariant.dimensions?.depthCm && (currentVariant.dimensions?.quantity || 0) > 0 && (
+                      <button
+                        key="dimensions"
+                        onClick={() => setSelectedSize('dimensions')}
+                        className={`px-4 py-2 border rounded-md text-sm font-medium ${
+                          selectedSize === 'dimensions'
+                            ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                            : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        {formatDimensions(currentVariant.dimensions)}
+                      </button>
+                    )}
+                    
+                    {/* Show regular sizes only if dimensions are not present */}
+                    {!currentVariant.dimensions?.heightCm && Object.entries(currentVariant.stockBySize)
                       .filter(([size, stock]) => stock > 0) // Only show available sizes
                       .map(([size, stock]) => {
                         return (

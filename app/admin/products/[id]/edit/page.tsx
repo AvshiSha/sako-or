@@ -35,6 +35,12 @@ interface ColorVariantData {
   video: VideoFile | null;
   sizes: string[];
   stockBySize: Record<string, number>;
+  dimensions?: {
+    heightCm: number | null;
+    widthCm: number | null;
+    depthCm: number | null;
+    quantity?: number;
+  };
   metaTitle?: string;
   metaDescription?: string;
 }
@@ -273,6 +279,7 @@ function EditProductPage() {
             } : null,
             sizes: Object.keys(variant.stockBySize || {}),
             stockBySize: variant.stockBySize || {},
+            dimensions: variant.dimensions || undefined,
             metaTitle: variant.metaTitle || '',
             metaDescription: variant.metaDescription || ''
           })) : []
@@ -499,6 +506,30 @@ function EditProductPage() {
         [size]: stock
       }
     })
+  }
+
+  // Handle variant dimensions change
+  const handleVariantDimensionsChange = (variantId: string, dimension: 'heightCm' | 'widthCm' | 'depthCm' | 'quantity', value: number | null) => {
+    const currentVariant = formData.colorVariants.find(v => v.id === variantId)
+    const currentDimensions = currentVariant?.dimensions || { heightCm: null, widthCm: null, depthCm: null, quantity: undefined }
+    
+    updateColorVariant(variantId, {
+      dimensions: {
+        ...currentDimensions,
+        [dimension]: value
+      }
+    })
+  }
+
+  // Format dimensions for display
+  const formatDimensions = (dimensions: { heightCm: number | null; widthCm: number | null; depthCm: number | null }) => {
+    if (!dimensions.heightCm || !dimensions.widthCm || !dimensions.depthCm) return ''
+    
+    const formatNumber = (num: number) => {
+      return num % 1 === 0 ? num.toString() : num.toFixed(1)
+    }
+    
+    return `${formatNumber(dimensions.heightCm)}×${formatNumber(dimensions.widthCm)}×${formatNumber(dimensions.depthCm)} cm`
   }
 
   // Handle variant image selection
@@ -1073,6 +1104,7 @@ function EditProductPage() {
           priceOverride: variant.price || null,
           salePrice: variant.salePrice || null,
           stockBySize: variant.stockBySize,
+          dimensions: variant.dimensions || undefined,
           metaTitle: variant.metaTitle || '',
           metaDescription: variant.metaDescription || '',
           images: uploadedImages,
@@ -1550,6 +1582,71 @@ function EditProductPage() {
                           </div>
                         ))}
                       </div>
+                    </div>
+
+                    {/* Dimensions (cm) */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dimensions (cm)
+                      </label>
+                      <div className="grid grid-cols-4 gap-4">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Height (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variant.dimensions?.heightCm || ''}
+                            onChange={(e) => handleVariantDimensionsChange(variant.id, 'heightCm', e.target.value ? parseFloat(e.target.value) : null)}
+                            className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Width (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variant.dimensions?.widthCm || ''}
+                            onChange={(e) => handleVariantDimensionsChange(variant.id, 'widthCm', e.target.value ? parseFloat(e.target.value) : null)}
+                            className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Depth (cm)</label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={variant.dimensions?.depthCm || ''}
+                            onChange={(e) => handleVariantDimensionsChange(variant.id, 'depthCm', e.target.value ? parseFloat(e.target.value) : null)}
+                            className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Quantity</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={variant.dimensions?.quantity || ''}
+                            onChange={(e) => handleVariantDimensionsChange(variant.id, 'quantity', e.target.value ? parseInt(e.target.value) : null)}
+                            className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                      {/* Preview */}
+                      {variant.dimensions?.heightCm && variant.dimensions?.widthCm && variant.dimensions?.depthCm && (
+                        <div className="mt-2 text-sm text-gray-600">
+                          Preview: {formatDimensions(variant.dimensions)}
+                          {variant.dimensions?.quantity && (
+                            <span className="ml-2 text-gray-500">(Stock: {variant.dimensions.quantity})</span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* SEO Fields */}

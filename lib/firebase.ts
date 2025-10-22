@@ -60,6 +60,12 @@ export interface Product {
     priceOverride?: number;
     salePrice?: number;
     stockBySize: Record<string, number>;
+    dimensions?: {
+      heightCm: number | null;
+      widthCm: number | null;
+      depthCm: number | null;
+      quantity?: number;
+    };
     metaTitle?: string;
     metaDescription?: string;
     images: string[];

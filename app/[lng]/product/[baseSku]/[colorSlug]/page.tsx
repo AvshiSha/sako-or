@@ -25,6 +25,7 @@ import Accordion from '@/app/components/Accordion'
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
     colorSlug: string;
+    isActive?: boolean;
     priceOverride?: number;
     salePrice?: number;
     stockBySize: Record<string, number>;
@@ -36,6 +37,7 @@ interface ProductWithVariants extends Product {
   }>
   defaultColorVariant?: {
     colorSlug: string;
+    isActive?: boolean;
     priceOverride?: number;
     salePrice?: number;
     stockBySize: Record<string, number>;
@@ -53,6 +55,7 @@ export default function ProductColorPage() {
   const [product, setProduct] = useState<ProductWithVariants | null>(null)
   const [currentVariant, setCurrentVariant] = useState<{
     colorSlug: string;
+    isActive?: boolean;
     priceOverride?: number;
     salePrice?: number;
     stockBySize: Record<string, number>;

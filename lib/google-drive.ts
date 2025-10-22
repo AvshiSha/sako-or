@@ -42,11 +42,6 @@ export class GoogleDriveService {
       ? 'https://sako-or.vercel.app/api/google-drive/callback'
       : 'http://localhost:3000/api/google-drive/callback';
 
-    console.log('Google Drive Auth - Environment:', process.env.NODE_ENV);
-    console.log('Google Drive Auth - Redirect URI:', redirectUri);
-    console.log('Google Drive Auth - Client ID exists:', !!process.env.GOOGLE_CLIENT_ID);
-    console.log('Google Drive Auth - Client Secret exists:', !!process.env.GOOGLE_CLIENT_SECRET);
-
     // Check if environment variables are available
     if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
       throw new Error('Google OAuth credentials not configured. Please check your environment variables.');

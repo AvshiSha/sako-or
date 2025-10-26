@@ -189,9 +189,36 @@ export default function ProductColorPage() {
   const getCurrentPrice = useCallback(() => {
     if (!currentVariant) return 0
     
-    // Check if sale is active
+    // First check for variant-specific sale price
     if (currentVariant.salePrice) return currentVariant.salePrice
+    // Then check for product-level sale price
+    if (product?.salePrice) return product.salePrice
+    // Then check for variant price override
+    if ('price' in currentVariant && typeof currentVariant.price === 'number' && currentVariant.price) {
+      return currentVariant.price
+    }
     return product?.price || 0
+  }, [currentVariant, product])
+
+  // Get original price (without any sale price)
+  const getOriginalPrice = useCallback(() => {
+    if (!currentVariant) return product?.price || 0
+    
+    // Check for variant price override first
+    if ('price' in currentVariant && typeof currentVariant.price === 'number' && currentVariant.price) {
+      return currentVariant.price
+    }
+    return product?.price || 0
+  }, [currentVariant, product])
+
+  // Check if there's any sale price (variant or product level)
+  const hasSalePrice = useCallback(() => {
+    return currentVariant?.salePrice || product?.salePrice
+  }, [currentVariant, product])
+
+  // Get the sale price (variant takes precedence over product)
+  const getSalePrice = useCallback(() => {
+    return currentVariant?.salePrice || product?.salePrice
   }, [currentVariant, product])
 
   // Get stock for selected size
@@ -665,18 +692,22 @@ export default function ProductColorPage() {
 
               {/* Price */}
               <div className="flex items-center space-x-4">
-                <span className="text-3xl font-bold text-gray-900">
-                  ₪{currentPrice.toFixed(2)}
-                </span>
-                {currentVariant.salePrice && currentPrice === currentVariant.salePrice && (
+                {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
                   <>
+                    <span className="text-3xl font-bold text-red-600">
+                      ₪{getSalePrice()!.toFixed(2)}
+                    </span>
                     <span className="text-xl text-gray-500 line-through">
-                      ₪{product.price.toFixed(2)}
+                      ₪{getOriginalPrice().toFixed(2)}
                     </span>
                     <span className="bg-red-100 text-red-800 text-sm font-medium px-2.5 py-0.5 rounded">
-                      {lng === 'he' ? 'מבצע' : 'Sale'}
+                      {Math.round((getOriginalPrice() - getSalePrice()!) / getOriginalPrice() * 100)}% {lng === 'he' ? 'הנחה' : 'OFF'}
                     </span>
                   </>
+                ) : (
+                  <span className="text-3xl font-bold text-gray-900">
+                    ₪{currentPrice.toFixed(2)}
+                  </span>
                 )}
               </div>
 

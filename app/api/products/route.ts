@@ -152,8 +152,8 @@ export async function POST(request: NextRequest) {
     const cleanedColorVariants: any = {};
     for (const [colorKey, variant] of Object.entries(validatedData.colorVariants)) {
       cleanedColorVariants[colorKey] = {
-        ...variant,
-        dimensions: cleanDimensions(variant.dimensions)
+        ...(variant as any),
+        dimensions: cleanDimensions((variant as any).dimensions)
       };
     }
 

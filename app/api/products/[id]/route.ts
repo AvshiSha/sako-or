@@ -186,8 +186,8 @@ export async function PUT(
     const cleanedColorVariants: any = {};
     for (const [colorKey, variant] of Object.entries(productData.colorVariants)) {
       cleanedColorVariants[colorKey] = {
-        ...variant,
-        dimensions: cleanDimensions(variant.dimensions)
+        ...(variant as any),
+        dimensions: cleanDimensions((variant as any).dimensions)
       };
     }
     

@@ -60,17 +60,17 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
        }
 
       // Parse images (assuming comma-separated URLs)
-      const imageUrls = row.images.split(',').map(url => url.trim()).filter(Boolean)
+      const _imageUrls = row.images.split(',').map(url => url.trim()).filter(Boolean)
       
       // Parse sizes (assuming comma-separated)
       const sizes = row.sizes.split(',').map(size => size.trim()).filter(Boolean)
       
       // Parse colors (assuming comma-separated)
-      const colors = row.colors.split(',').map(color => color.trim()).filter(Boolean)
+      const _colors = row.colors.split(',').map(color => color.trim()).filter(Boolean)
 
       // Parse stock by size
       let stockBySize: Record<string, number> = {};
-      let totalStock = 0;
+      let _totalStock = 0;
       
       if (row.stockBySize) {
         // New format: "36:10,37:15,38:20,39:15,40:10"
@@ -81,7 +81,7 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
           const [size, quantity] = entry.split(':').map(s => s.trim());
           if (size && quantity && !isNaN(parseInt(quantity))) {
             stockBySize[size] = parseInt(quantity);
-            totalStock += parseInt(quantity);
+            _totalStock += parseInt(quantity);
           }
         }
       } else if (row.stock) {
@@ -89,7 +89,7 @@ export async function importFromGoogleSheets(sheetData: GoogleSheetProduct[]) {
         const stockPerSize = Math.floor(parseInt(row.stock.toString()) / sizes.length);
         sizes.forEach(size => {
           stockBySize[size] = stockPerSize;
-          totalStock += stockPerSize;
+            _totalStock += stockPerSize;
         });
       }
 

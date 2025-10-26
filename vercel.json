@@ -21,6 +21,13 @@
           "value": "Content-Type, x-cardcom-signature"
         }
       ]
+    },
+    {
+      "source": "/.well-known/apple-developer-merchantid-domain-association",
+      "headers": [
+        { "key": "Content-Type", "value": "text/plain" },
+        { "key": "Content-Disposition", "value": "inline" }
+      ]
     }
   ],
   "rewrites": [

@@ -235,7 +235,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
             </p>
             <Link
               onClick={() => track('explore_collections_hero_button')}
-              href={`/${lng}/collection`}
+              href={`/${lng}/collection/women/shoes`}
               className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
             >
               {t.exploreCollections}

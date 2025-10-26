@@ -1104,7 +1104,7 @@ function EditProductPage() {
           priceOverride: variant.price || null,
           salePrice: variant.salePrice || null,
           stockBySize: variant.stockBySize,
-          dimensions: variant.dimensions || undefined,
+          dimensions: variant.dimensions && (variant.dimensions.heightCm || variant.dimensions.widthCm || variant.dimensions.depthCm) ? variant.dimensions : null,
           metaTitle: variant.metaTitle || '',
           metaDescription: variant.metaDescription || '',
           images: uploadedImages,

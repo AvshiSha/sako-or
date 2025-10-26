@@ -30,12 +30,34 @@ export default function ProductCard({ product, language = 'en', returnUrl }: Pro
 
   // Get current price (variant price takes precedence)
   const getCurrentPrice = () => {
+    // First check for variant-specific sale price
     if (activeVariant.salePrice) return activeVariant.salePrice
+    // Then check for product-level sale price
+    if (product.salePrice) return product.salePrice
+    // Then check for variant price override
     if ('priceOverride' in activeVariant && activeVariant.priceOverride) return activeVariant.priceOverride
     return product.price
   }
 
+  // Get original price (without any sale price)
+  const getOriginalPrice = () => {
+    if ('priceOverride' in activeVariant && activeVariant.priceOverride) return activeVariant.priceOverride
+    return product.price
+  }
+
+  // Check if there's any sale price (variant or product level)
+  const hasSalePrice = () => {
+    return activeVariant.salePrice || product.salePrice
+  }
+
+  // Get the sale price (variant takes precedence over product)
+  const getSalePrice = () => {
+    return activeVariant.salePrice || product.salePrice
+  }
+
   const currentPrice = getCurrentPrice()
+  const originalPrice = getOriginalPrice()
+  const salePrice = getSalePrice()
   const productName = language === 'he' ? (product.title_he || product.title_en) : (product.title_en || product.title_he) || 'Unnamed Product'
   
   // Get primary image from the active variant
@@ -157,7 +179,18 @@ export default function ProductCard({ product, language = 'en', returnUrl }: Pro
         <div className="text-sm font-medium text-gray-900">{product.sku}</div>
         
         <div className="text-sm font-medium text-gray-900">
-          ₪{currentPrice.toFixed(2)}
+          {hasSalePrice() && salePrice && salePrice < originalPrice ? (
+            <div className="flex items-center gap-2">
+              <span className="text-gray-500 line-through">
+                ₪{originalPrice.toFixed(2)}
+              </span>
+              <span className="text-red-600 font-bold">
+                ₪{salePrice.toFixed(2)}
+              </span>
+            </div>
+          ) : (
+            <span>₪{currentPrice.toFixed(2)}</span>
+          )}
         </div>
       </div>
       

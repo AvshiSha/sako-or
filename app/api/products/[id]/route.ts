@@ -23,6 +23,12 @@ const productUpdateSchema = z.object({
     priceOverride: z.coerce.number().positive().optional(),
     salePrice: z.coerce.number().positive().optional(),
     stockBySize: z.record(z.string(), z.coerce.number().int().min(0)),
+    dimensions: z.object({
+      heightCm: z.coerce.number().nullable().optional(),
+      widthCm: z.coerce.number().nullable().optional(),
+      depthCm: z.coerce.number().nullable().optional(),
+      quantity: z.coerce.number().int().min(0).optional()
+    }).optional(),
     metaTitle: z.string().optional(),
     metaDescription: z.string().optional(),
     images: z.array(z.string()),
@@ -142,10 +148,53 @@ export async function PUT(
       productData.salePrice = validatedData.salePrice
     }
 
+    // Clean dimensions data - remove undefined values from nested objects
+    const cleanDimensions = (dimensions: any) => {
+      if (!dimensions) return null;
+      
+      const cleaned = {
+        heightCm: dimensions.heightCm ?? null,
+        widthCm: dimensions.widthCm ?? null,
+        depthCm: dimensions.depthCm ?? null,
+        quantity: dimensions.quantity ?? undefined
+      };
+      
+      // If all dimension values are null/undefined, return null
+      if (cleaned.heightCm === null && cleaned.widthCm === null && cleaned.depthCm === null) {
+        return null;
+      }
+      
+      return cleaned;
+    };
+
+    // Deep clean function to remove undefined values recursively
+    const deepClean = (obj: any): any => {
+      if (obj === null || obj === undefined) return null;
+      if (typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(deepClean);
+      
+      const cleaned: any = {};
+      for (const [key, value] of Object.entries(obj)) {
+        if (value !== undefined) {
+          cleaned[key] = deepClean(value);
+        }
+      }
+      return cleaned;
+    };
+
+    // Clean colorVariants data
+    const cleanedColorVariants: any = {};
+    for (const [colorKey, variant] of Object.entries(productData.colorVariants)) {
+      cleanedColorVariants[colorKey] = {
+        ...variant,
+        dimensions: cleanDimensions(variant.dimensions)
+      };
+    }
+    
+    productData.colorVariants = cleanedColorVariants;
+
     // Remove any undefined values before sending to Firebase
-    const cleanProductData = Object.fromEntries(
-      Object.entries(productData).filter(([_, value]) => value !== undefined)
-    )
+    const cleanProductData = deepClean(productData)
 
     // Log the data being sent to Firebase for debugging
     console.log('Data being sent to Firebase:', JSON.stringify(cleanProductData, null, 2))

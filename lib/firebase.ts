@@ -623,13 +623,63 @@ export const productService = {
           categorySlug = typeof categoryData.slug === 'string' ? categoryData.slug : categoryData.slug?.en || '';
         }
       }
+
+      // Deep clean function to remove undefined values recursively
+      const deepClean = (obj: any): any => {
+        if (obj === null || obj === undefined) return null;
+        if (typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) return obj.map(deepClean);
+        
+        const cleaned: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) {
+            cleaned[key] = deepClean(value);
+          }
+        }
+        return cleaned;
+      };
+
+      // Clean dimensions data - remove undefined values from nested objects
+      const cleanDimensions = (dimensions: any) => {
+        if (!dimensions) return null;
+        
+        const cleaned = {
+          heightCm: dimensions.heightCm ?? null,
+          widthCm: dimensions.widthCm ?? null,
+          depthCm: dimensions.depthCm ?? null,
+          quantity: dimensions.quantity ?? undefined
+        };
+        
+        // If all dimension values are null/undefined, return null
+        if (cleaned.heightCm === null && cleaned.widthCm === null && cleaned.depthCm === null) {
+          return null;
+        }
+        
+        return cleaned;
+      };
+
+      // Clean colorVariants data if present
+      let cleanedProductData = { ...productData };
+      if (cleanedProductData.colorVariants) {
+        const cleanedColorVariants: any = {};
+        for (const [colorKey, variant] of Object.entries(cleanedProductData.colorVariants)) {
+          cleanedColorVariants[colorKey] = {
+            ...variant,
+            dimensions: cleanDimensions((variant as any).dimensions)
+          };
+        }
+        cleanedProductData.colorVariants = cleanedColorVariants;
+      }
+
+      // Apply deep cleaning to the entire product data
+      const finalCleanedData = deepClean(cleanedProductData);
+
       const product = {
-        ...productData,
+        ...finalCleanedData,
         categorySlug: categorySlug || '',
         createdAt: now,
         updatedAt: now
       };
-      
       
       const docRef = await addDoc(collection(db, 'products'), product);
       return docRef.id;
@@ -642,9 +692,59 @@ export const productService = {
   // Update product
   async updateProduct(id: string, productData: Partial<Product>): Promise<void> {
     try {
+      // Deep clean function to remove undefined values recursively
+      const deepClean = (obj: any): any => {
+        if (obj === null || obj === undefined) return null;
+        if (typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) return obj.map(deepClean);
+        
+        const cleaned: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          if (value !== undefined) {
+            cleaned[key] = deepClean(value);
+          }
+        }
+        return cleaned;
+      };
+
+      // Clean dimensions data - remove undefined values from nested objects
+      const cleanDimensions = (dimensions: any) => {
+        if (!dimensions) return null;
+        
+        const cleaned = {
+          heightCm: dimensions.heightCm ?? null,
+          widthCm: dimensions.widthCm ?? null,
+          depthCm: dimensions.depthCm ?? null,
+          quantity: dimensions.quantity ?? undefined
+        };
+        
+        // If all dimension values are null/undefined, return null
+        if (cleaned.heightCm === null && cleaned.widthCm === null && cleaned.depthCm === null) {
+          return null;
+        }
+        
+        return cleaned;
+      };
+
+      // Clean colorVariants data if present
+      let cleanedProductData = { ...productData };
+      if (cleanedProductData.colorVariants) {
+        const cleanedColorVariants: any = {};
+        for (const [colorKey, variant] of Object.entries(cleanedProductData.colorVariants)) {
+          cleanedColorVariants[colorKey] = {
+            ...variant,
+            dimensions: cleanDimensions((variant as any).dimensions)
+          };
+        }
+        cleanedProductData.colorVariants = cleanedColorVariants;
+      }
+
+      // Apply deep cleaning to the entire product data
+      const finalCleanedData = deepClean(cleanedProductData);
+
       const docRef = doc(db, 'products', id);
       await updateDoc(docRef, {
-        ...productData,
+        ...finalCleanedData,
         updatedAt: new Date()
       });
     } catch (error) {

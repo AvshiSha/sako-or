@@ -41,12 +41,34 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
 
   // Get current price (variant price takes precedence)
   const getCurrentPrice = () => {
+    // First check for variant-specific sale price
     if (activeVariant.salePrice) return activeVariant.salePrice
+    // Then check for product-level sale price
+    if (product.salePrice) return product.salePrice
+    // Then check for variant price override
     if ('priceOverride' in activeVariant && activeVariant.priceOverride) return activeVariant.priceOverride
     return product.price
   }
 
+  // Get original price (without any sale price)
+  const getOriginalPrice = () => {
+    if ('priceOverride' in activeVariant && activeVariant.priceOverride) return activeVariant.priceOverride
+    return product.price
+  }
+
+  // Check if there's any sale price (variant or product level)
+  const hasSalePrice = () => {
+    return activeVariant.salePrice || product.salePrice
+  }
+
+  // Get the sale price (variant takes precedence over product)
+  const getSalePrice = () => {
+    return activeVariant.salePrice || product.salePrice
+  }
+
   const currentPrice = getCurrentPrice()
+  const originalPrice = getOriginalPrice()
+  const salePrice = getSalePrice()
   const productName = productHelpers.getField(product, 'name', language)
   
   // Get primary image from the active variant
@@ -204,20 +226,36 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                     <div className="flex-1 px-6 py-6">
                       {/* Price */}
                       <div className="mb-6">
-                        <div className="text-2xl font-bold text-gray-900">
-                          ₪{(currentPrice * quantity).toFixed(2)}
-                        </div>
-                        {quantity > 1 && (
-                          <div className="text-sm text-gray-500 mt-1">
-                            {language === 'he' 
-                              ? `${quantity} × ₪${currentPrice.toFixed(2)} = ₪${(currentPrice * quantity).toFixed(2)}`
-                              : `${quantity} × ₪${currentPrice.toFixed(2)} = ₪${(currentPrice * quantity).toFixed(2)}`
-                            }
+                        {hasSalePrice() && salePrice && salePrice < originalPrice ? (
+                          <div>
+                            <div className="text-2xl font-bold text-red-600">
+                              ₪{(salePrice * quantity).toFixed(2)}
+                            </div>
+                            <div className="text-lg text-gray-500 line-through">
+                              ₪{(originalPrice * quantity).toFixed(2)}
+                            </div>
+                            {quantity > 1 && (
+                              <div className="text-sm text-gray-500 mt-1">
+                                {language === 'he' 
+                                  ? `${quantity} × ₪${salePrice.toFixed(2)} = ₪${(salePrice * quantity).toFixed(2)}`
+                                  : `${quantity} × ₪${salePrice.toFixed(2)} = ₪${(salePrice * quantity).toFixed(2)}`
+                                }
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {activeVariant.salePrice && currentPrice === activeVariant.salePrice && (
-                          <div className="text-sm text-red-600 mt-1">
-                            {language === 'he' ? 'מבצע' : 'Sale'}
+                        ) : (
+                          <div>
+                            <div className="text-2xl font-bold text-gray-900">
+                              ₪{(currentPrice * quantity).toFixed(2)}
+                            </div>
+                            {quantity > 1 && (
+                              <div className="text-sm text-gray-500 mt-1">
+                                {language === 'he' 
+                                  ? `${quantity} × ₪${currentPrice.toFixed(2)} = ₪${(currentPrice * quantity).toFixed(2)}`
+                                  : `${quantity} × ₪${currentPrice.toFixed(2)} = ₪${(currentPrice * quantity).toFixed(2)}`
+                                }
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

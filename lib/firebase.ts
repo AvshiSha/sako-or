@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, Query, getDocFromServer, Unsubscribe } from "firebase/firestore";
+import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, Query, Unsubscribe } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
@@ -254,7 +254,7 @@ export const productHelpers = {
   },
 
   // Get product image alt text in specific language
-  getImageAlt: (image: ColorVariantImage, language: 'en' | 'he'): string => {
+  getImageAlt: (image: ColorVariantImage, _language: 'en' | 'he'): string => {
     return image.alt || '';
   },
 
@@ -659,7 +659,7 @@ export const productService = {
       };
 
       // Clean colorVariants data if present
-      let cleanedProductData = { ...productData };
+      const cleanedProductData = { ...productData };
       if (cleanedProductData.colorVariants) {
         const cleanedColorVariants: any = {};
         for (const [colorKey, variant] of Object.entries(cleanedProductData.colorVariants)) {
@@ -727,7 +727,7 @@ export const productService = {
       };
 
       // Clean colorVariants data if present
-      let cleanedProductData = { ...productData };
+      const cleanedProductData = { ...productData };
       if (cleanedProductData.colorVariants) {
         const cleanedColorVariants: any = {};
         for (const [colorKey, variant] of Object.entries(cleanedProductData.colorVariants)) {

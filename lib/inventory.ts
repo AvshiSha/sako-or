@@ -15,7 +15,7 @@
  */
 
 import { db } from './firebase';
-import { doc, getDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { prisma } from './prisma';
 
 // Color code to slug mapping
@@ -274,7 +274,7 @@ async function updateFirebaseInventory(
 ): Promise<void> {
   try {
     // Query Firestore for the product with this SKU
-    const { query, collection, where, getDocs, getDoc } = await import('firebase/firestore');
+    const { query, collection, where, getDocs } = await import('firebase/firestore');
     const productsRef = collection(db, 'products');
     const q = query(productsRef, where('sku', '==', productSku));
     const querySnapshot = await getDocs(q);

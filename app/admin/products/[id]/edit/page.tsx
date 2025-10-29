@@ -1197,34 +1197,28 @@ function EditProductPage() {
 
       // Material & Care: include only keys that changed and are not empty strings
       if (originalFormData) {
-        const mcUpdates: any = {}
         const mcKeys = Object.keys(formData.materialCare) as (keyof typeof formData.materialCare)[]
         mcKeys.forEach((k) => {
           const curr = formData.materialCare[k]
           const orig = originalFormData.materialCare[k]
           if (curr !== orig && curr !== '') {
-            mcUpdates[k] = curr
+            // Use dot-path to update nested fields without overwriting the whole object
+            ;(productData as any)[`materialCare.${k}`] = curr
           }
         })
-        if (Object.keys(mcUpdates).length > 0) {
-          productData.materialCare = mcUpdates
-        }
       }
 
       // SEO: include only changed keys; avoid empty-string overwrites
       if (originalFormData) {
-        const seoUpdates: any = {}
         const seoKeys = Object.keys(formData.seo) as (keyof typeof formData.seo)[]
         seoKeys.forEach((k) => {
           const curr = formData.seo[k]
           const orig = originalFormData.seo[k]
           if (curr !== orig && curr !== '') {
-            seoUpdates[k] = curr
+            // Use dot-path to update nested fields without overwriting the whole object
+            ;(productData as any)[`seo.${k}`] = curr
           }
         })
-        if (Object.keys(seoUpdates).length > 0) {
-          productData.seo = seoUpdates
-        }
       }
 
       // Search keywords

@@ -60,12 +60,6 @@ export interface Product {
     priceOverride?: number;
     salePrice?: number;
     stockBySize: Record<string, number>;
-    dimensions?: {
-      heightCm: number | null;
-      widthCm: number | null;
-      depthCm: number | null;
-      quantity?: number;
-    };
     metaTitle?: string;
     metaDescription?: string;
     images: string[];
@@ -87,6 +81,12 @@ export interface Product {
     sole_he?: string;
     heelHeight_en?: string;
     heelHeight_he?: string;
+    height_en?: string;
+    height_he?: string;
+    depth_en?: string;
+    depth_he?: string;
+    width_en?: string;
+    width_he?: string;
   };
   seo?: {
     title_en?: string;

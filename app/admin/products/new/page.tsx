@@ -40,12 +40,6 @@ interface ColorVariantData {
   video: VideoFile | null;
   sizes: string[];
   stockBySize: Record<string, number>;
-  dimensions?: {
-    heightCm: number | null;
-    widthCm: number | null;
-    depthCm: number | null;
-    quantity?: number;
-  };
   metaTitle?: string;
   metaDescription?: string;
 }
@@ -83,6 +77,12 @@ interface ProductFormData {
     sole_he: string;
     heelHeight_en: string;
     heelHeight_he: string;
+    height_en: string;
+    height_he: string;
+    depth_en: string;
+    depth_he: string;
+    width_en: string;
+    width_he: string;
   };
   
   // SEO fields
@@ -112,7 +112,7 @@ interface FormErrors {
 }
 
 
-const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL','34','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
+const commonSizes = ['One size', 'XS', 'S', 'M', 'L', 'XL', 'XXL','34','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'light Brown', 'Dark Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver', 'Off White', 'Light Blue', 'Dark Blue', 'Bordeaux', 'Black nail polish', 'Olive', 'Multicolor', 'Black & White', 'Transparent', 'camel'];
 
 // Color hex mapping
@@ -191,7 +191,13 @@ export default function NewProductPage() {
       sole_en: '',
       sole_he: '',
       heelHeight_en: '',
-      heelHeight_he: ''
+      heelHeight_he: '',
+      height_en: '',
+      height_he: '',
+      depth_en: '',
+      depth_he: '',
+      width_en: '',
+      width_he: ''
     },
     
     // SEO fields
@@ -385,29 +391,6 @@ export default function NewProductPage() {
     })
   }
 
-  // Handle variant dimensions change
-  const handleVariantDimensionsChange = (variantId: string, dimension: 'heightCm' | 'widthCm' | 'depthCm' | 'quantity', value: number | null) => {
-    const currentVariant = formData.colorVariants.find(v => v.id === variantId)
-    const currentDimensions = currentVariant?.dimensions || { heightCm: null, widthCm: null, depthCm: null, quantity: undefined }
-    
-    updateColorVariant(variantId, {
-      dimensions: {
-        ...currentDimensions,
-        [dimension]: value
-      }
-    })
-  }
-
-  // Format dimensions for display
-  const formatDimensions = (dimensions: { heightCm: number | null; widthCm: number | null; depthCm: number | null }) => {
-    if (!dimensions.heightCm || !dimensions.widthCm || !dimensions.depthCm) return ''
-    
-    const formatNumber = (num: number) => {
-      return num % 1 === 0 ? num.toString() : num.toFixed(1)
-    }
-    
-    return `${formatNumber(dimensions.heightCm)}×${formatNumber(dimensions.widthCm)}×${formatNumber(dimensions.depthCm)} cm`
-  }
 
   // Handle variant image selection
   const handleVariantImageSelect = (variantId: string, files: FileList | null) => {
@@ -930,7 +913,6 @@ export default function NewProductPage() {
           priceOverride: variant.price || null,
           salePrice: variant.salePrice || null,
           stockBySize: variant.stockBySize,
-          dimensions: variant.dimensions || null,
           metaTitle: variant.metaTitle || '',
           metaDescription: variant.metaDescription || '',
           images: uploadedImages,
@@ -1218,6 +1200,90 @@ export default function NewProductPage() {
                         onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, heelHeight_he: e.target.value })}
                         className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
                         placeholder="לדוגמה: 5 ס״מ"
+                      />
+                    </div>
+
+                    {/* Height */}
+                    <div>
+                      <label htmlFor="height_en" className="block text-sm font-medium text-gray-700">
+                        Height (English)
+                      </label>
+                      <input
+                        type="text"
+                        id="height_en"
+                        value={formData.materialCare.height_en}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, height_en: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="e.g., 25cm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="height_he" className="block text-sm font-medium text-gray-700">
+                        Height (Hebrew)
+                      </label>
+                      <input
+                        type="text"
+                        id="height_he"
+                        value={formData.materialCare.height_he}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, height_he: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="לדוגמה: 25 ס״מ"
+                      />
+                    </div>
+
+                    {/* Depth */}
+                    <div>
+                      <label htmlFor="depth_en" className="block text-sm font-medium text-gray-700">
+                        Depth (English)
+                      </label>
+                      <input
+                        type="text"
+                        id="depth_en"
+                        value={formData.materialCare.depth_en}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, depth_en: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="e.g., 15cm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="depth_he" className="block text-sm font-medium text-gray-700">
+                        Depth (Hebrew)
+                      </label>
+                      <input
+                        type="text"
+                        id="depth_he"
+                        value={formData.materialCare.depth_he}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, depth_he: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="לדוגמה: 15 ס״מ"
+                      />
+                    </div>
+
+                    {/* Width */}
+                    <div>
+                      <label htmlFor="width_en" className="block text-sm font-medium text-gray-700">
+                        Width (English)
+                      </label>
+                      <input
+                        type="text"
+                        id="width_en"
+                        value={formData.materialCare.width_en}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, width_en: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="e.g., 10cm"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="width_he" className="block text-sm font-medium text-gray-700">
+                        Width (Hebrew)
+                      </label>
+                      <input
+                        type="text"
+                        id="width_he"
+                        value={formData.materialCare.width_he}
+                        onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, width_he: e.target.value })}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                        placeholder="לדוגמה: 10 ס״מ"
                       />
                     </div>
                   </div>
@@ -1548,70 +1614,6 @@ export default function NewProductPage() {
                         </div>
                       </div>
 
-                      {/* Dimensions (cm) */}
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Dimensions (cm)
-                        </label>
-                        <div className="grid grid-cols-4 gap-4">
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Height (cm)</label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              value={variant.dimensions?.heightCm || ''}
-                              onChange={(e) => handleVariantDimensionsChange(variant.id, 'heightCm', e.target.value ? parseFloat(e.target.value) : null)}
-                              className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              placeholder="0"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Width (cm)</label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              value={variant.dimensions?.widthCm || ''}
-                              onChange={(e) => handleVariantDimensionsChange(variant.id, 'widthCm', e.target.value ? parseFloat(e.target.value) : null)}
-                              className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              placeholder="0"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Depth (cm)</label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              value={variant.dimensions?.depthCm || ''}
-                              onChange={(e) => handleVariantDimensionsChange(variant.id, 'depthCm', e.target.value ? parseFloat(e.target.value) : null)}
-                              className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              placeholder="0"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Quantity</label>
-                            <input
-                              type="number"
-                              min="0"
-                              value={variant.dimensions?.quantity || ''}
-                              onChange={(e) => handleVariantDimensionsChange(variant.id, 'quantity', e.target.value ? parseInt(e.target.value) : null)}
-                              className="w-full text-gray-500 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                              placeholder="0"
-                            />
-                          </div>
-                        </div>
-                        {/* Preview */}
-                        {variant.dimensions?.heightCm && variant.dimensions?.widthCm && variant.dimensions?.depthCm && (
-                          <div className="mt-2 text-sm text-gray-600">
-                            Preview: {formatDimensions(variant.dimensions)}
-                            {variant.dimensions?.quantity && (
-                              <span className="ml-2 text-gray-500">(Stock: {variant.dimensions.quantity})</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
 
                       {/* SEO Fields */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">

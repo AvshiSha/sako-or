@@ -59,12 +59,6 @@ export default function ProductColorPage() {
     priceOverride?: number;
     salePrice?: number;
     stockBySize: Record<string, number>;
-    dimensions?: {
-      heightCm: number | null;
-      widthCm: number | null;
-      depthCm: number | null;
-      quantity?: number;
-    };
     metaTitle?: string;
     metaDescription?: string;
     images: string[];
@@ -139,14 +133,9 @@ export default function ProductColorPage() {
         setCurrentVariant(variant)
         
         // Set default size from first available
-        // Prioritize dimensions if available and in stock
-        if (variant.dimensions?.heightCm && variant.dimensions?.widthCm && variant.dimensions?.depthCm && (variant.dimensions?.quantity || 0) > 0) {
-          setSelectedSize('dimensions')
-        } else {
-          const availableSizes = Object.keys(variant.stockBySize).filter(size => variant.stockBySize[size] > 0)
-          if (availableSizes.length > 0) {
-            setSelectedSize(availableSizes[0])
-          }
+        const availableSizes = Object.keys(variant.stockBySize).filter(size => variant.stockBySize[size] > 0)
+        if (availableSizes.length > 0) {
+          setSelectedSize(availableSizes[0])
         }
 
         // Reset image selection to 0 (video will be shown if available)
@@ -224,10 +213,6 @@ export default function ProductColorPage() {
   // Get stock for selected size
   const getSizeStock = useCallback((size: string) => {
     if (!currentVariant) return 0
-    if (size === 'dimensions') {
-      // For dimensions, use the quantity from dimensions or default to 0
-      return currentVariant.dimensions?.quantity || 0
-    }
     return currentVariant.stockBySize[size] || 0
   }, [currentVariant])
 
@@ -244,17 +229,6 @@ export default function ProductColorPage() {
   // Handle color change - navigate to new URL
   const handleColorChange = (newColorSlug: string) => {
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
-  }
-
-  // Format dimensions for display
-  const formatDimensions = (dimensions: { heightCm: number | null; widthCm: number | null; depthCm: number | null }) => {
-    if (!dimensions.heightCm || !dimensions.widthCm || !dimensions.depthCm) return ''
-    
-    const formatNumber = (num: number) => {
-      return num % 1 === 0 ? num.toString() : num.toFixed(1)
-    }
-    
-    return `${formatNumber(dimensions.heightCm)}×${formatNumber(dimensions.widthCm)}×${formatNumber(dimensions.depthCm)} ${lng === 'he' ? 'ס"מ' : 'cm'}`
   }
 
 
@@ -331,9 +305,7 @@ export default function ProductColorPage() {
     if (analytics) {
       try {
         const sku = `${baseSku}-${colorSlug}-${selectedSize}`
-        const sizeLabel = selectedSize === 'dimensions' && currentVariant.dimensions 
-          ? formatDimensions(currentVariant.dimensions)
-          : selectedSize
+        const sizeLabel = selectedSize
         analytics.logEvent('add_to_cart', {
           currency: 'USD',
           value: currentPrice * quantity,
@@ -353,9 +325,7 @@ export default function ProductColorPage() {
 
     // Add to cart
     const sku = `${baseSku}-${colorSlug}-${selectedSize}`
-    const sizeLabel = selectedSize === 'dimensions' && currentVariant.dimensions 
-      ? formatDimensions(currentVariant.dimensions)
-      : selectedSize
+    const sizeLabel = selectedSize
     addToCart({
       sku: sku,
       name: {
@@ -790,29 +760,13 @@ export default function ProductColorPage() {
               )}
 
               {/* Size Selection */}
-              {(Object.keys(currentVariant.stockBySize).length > 0 || currentVariant.dimensions) && (
+              {Object.keys(currentVariant.stockBySize).length > 0 && (
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">
                     {lng === 'he' ? 'מידה' : 'Size'}
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {/* Show dimensions if available and valid with stock */}
-                    {currentVariant.dimensions?.heightCm && currentVariant.dimensions?.widthCm && currentVariant.dimensions?.depthCm && (currentVariant.dimensions?.quantity || 0) > 0 && (
-                      <button
-                        key="dimensions"
-                        onClick={() => setSelectedSize('dimensions')}
-                        className={`px-4 py-2 border rounded-md text-sm font-medium ${
-                          selectedSize === 'dimensions'
-                            ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
-                            : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                        }`}
-                      >
-                        {formatDimensions(currentVariant.dimensions)}
-                      </button>
-                    )}
-                    
-                    {/* Show regular sizes only if dimensions are not present */}
-                    {!currentVariant.dimensions?.heightCm && Object.entries(currentVariant.stockBySize)
+                    {Object.entries(currentVariant.stockBySize)
                       .filter(([size, stock]) => stock > 0) // Only show available sizes
                       .map(([size, stock]) => {
                         return (
@@ -979,6 +933,9 @@ export default function ProductColorPage() {
                     product.materialCare?.lining_en || product.materialCare?.lining_he ||
                     product.materialCare?.sole_en || product.materialCare?.sole_he ||
                     product.materialCare?.heelHeight_en || product.materialCare?.heelHeight_he ||
+                    product.materialCare?.height_en || product.materialCare?.height_he ||
+                    product.materialCare?.depth_en || product.materialCare?.depth_he ||
+                    product.materialCare?.width_en || product.materialCare?.width_he ||
                     // Legacy structure support
                     product.upperMaterial || product.materialInnerSole || product.lining || product.sole || product.heelHeight) && (
                     <Accordion title={lng === 'he' ? 'מפרט טכני' : 'Material & Care'}>
@@ -1045,6 +1002,36 @@ export default function ProductColorPage() {
                                 ? (lng === 'he' ? product.materialCare?.heelHeight_he : product.materialCare?.heelHeight_en)
                                 : (lng === 'he' ? product.heelHeight?.he : product.heelHeight?.en)
                               }
+                            </span>
+                          </div>
+                        )}
+                        {(product.materialCare?.height_en || product.materialCare?.height_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'גובה:' : 'Height:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialCare?.height_he : product.materialCare?.height_en}
+                            </span>
+                          </div>
+                        )}
+                        {(product.materialCare?.depth_en || product.materialCare?.depth_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'עומק:' : 'Depth:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialCare?.depth_he : product.materialCare?.depth_en}
+                            </span>
+                          </div>
+                        )}
+                        {(product.materialCare?.width_en || product.materialCare?.width_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'רוחב:' : 'Width:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialCare?.width_he : product.materialCare?.width_en}
                             </span>
                           </div>
                         )}

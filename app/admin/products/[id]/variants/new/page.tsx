@@ -62,7 +62,7 @@ export default function NewColorVariantPage() {
       if (productData) {
         setProduct(productData)
         // Initialize with common sizes for the variant
-        const commonSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45']
+        const commonSizes = ['One size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45']
         setSizes(commonSizes.map(size => ({
           size,
           stock: 0,

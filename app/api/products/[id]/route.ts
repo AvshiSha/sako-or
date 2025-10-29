@@ -23,12 +23,6 @@ const productUpdateSchema = z.object({
     priceOverride: z.coerce.number().positive().optional(),
     salePrice: z.coerce.number().positive().optional(),
     stockBySize: z.record(z.string(), z.coerce.number().int().min(0)),
-    dimensions: z.object({
-      heightCm: z.coerce.number().nullable().optional(),
-      widthCm: z.coerce.number().nullable().optional(),
-      depthCm: z.coerce.number().nullable().optional(),
-      quantity: z.coerce.number().int().min(0).optional()
-    }).optional(),
     metaTitle: z.string().optional(),
     metaDescription: z.string().optional(),
     images: z.array(z.string()),
@@ -49,7 +43,13 @@ const productUpdateSchema = z.object({
     sole_en: z.string().optional(),
     sole_he: z.string().optional(),
     heelHeight_en: z.string().optional(),
-    heelHeight_he: z.string().optional()
+    heelHeight_he: z.string().optional(),
+    height_en: z.string().optional(),
+    height_he: z.string().optional(),
+    depth_en: z.string().optional(),
+    depth_he: z.string().optional(),
+    width_en: z.string().optional(),
+    width_he: z.string().optional()
   }).optional(),
   seo: z.object({
     title_en: z.string().optional(),
@@ -148,25 +148,6 @@ export async function PUT(
       productData.salePrice = validatedData.salePrice
     }
 
-    // Clean dimensions data - remove undefined values from nested objects
-    const cleanDimensions = (dimensions: any) => {
-      if (!dimensions) return null;
-      
-      const cleaned = {
-        heightCm: dimensions.heightCm ?? null,
-        widthCm: dimensions.widthCm ?? null,
-        depthCm: dimensions.depthCm ?? null,
-        quantity: dimensions.quantity ?? undefined
-      };
-      
-      // If all dimension values are null/undefined, return null
-      if (cleaned.heightCm === null && cleaned.widthCm === null && cleaned.depthCm === null) {
-        return null;
-      }
-      
-      return cleaned;
-    };
-
     // Deep clean function to remove undefined values recursively
     const deepClean = (obj: any): any => {
       if (obj === null || obj === undefined) return null;
@@ -181,17 +162,6 @@ export async function PUT(
       }
       return cleaned;
     };
-
-    // Clean colorVariants data
-    const cleanedColorVariants: any = {};
-    for (const [colorKey, variant] of Object.entries(productData.colorVariants)) {
-      cleanedColorVariants[colorKey] = {
-        ...(variant as any),
-        dimensions: cleanDimensions((variant as any).dimensions)
-      };
-    }
-    
-    productData.colorVariants = cleanedColorVariants;
 
     // Remove any undefined values before sending to Firebase
     const cleanProductData = deepClean(productData)

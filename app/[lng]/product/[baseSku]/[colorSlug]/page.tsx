@@ -961,6 +961,10 @@ export default function ProductColorPage() {
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>
                         <span>{product.categories_path[0]}</span>
                       </div>
+                      <div className="flex justify-between">
+                        <span>{lng === 'he' ? 'מותג' : 'Brand'}:</span>
+                        <span>{product.brand}</span>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -185,6 +185,7 @@ function EditProductPage() {
   const [currentVariantForGoogleDrive, setCurrentVariantForGoogleDrive] = useState<string | null>(null)
   const [showGoogleDriveVideoPicker, setShowGoogleDriveVideoPicker] = useState(false)
   const [currentVariantForGoogleDriveVideo, setCurrentVariantForGoogleDriveVideo] = useState<string | null>(null)
+  const [originalFormData, setOriginalFormData] = useState<ProductFormData | null>(null)
 
   const [formData, setFormData] = useState<ProductFormData>({
     sku: '',
@@ -266,7 +267,7 @@ function EditProductPage() {
               uploading: false,
               uploaded: true,
               url: img,
-              isPrimary: imgIndex === 0,
+              isPrimary: variant.primaryImage === img,
               order: imgIndex
             })),
             video: variant.videos && variant.videos.length > 0 ? {
@@ -284,6 +285,7 @@ function EditProductPage() {
             metaDescription: variant.metaDescription || ''
           })) : []
           
+          const loadedMaterialCare = product.materialCare || {}
           setFormData({
             sku: product.sku || product.baseSku || '',
             title_en: product.title_en || product.name?.en || '',
@@ -305,18 +307,18 @@ function EditProductPage() {
             newProduct: product.isNew || product.newProduct || false,
             featuredProduct: product.featured || product.featuredProduct || false,
             
-            // Material & Care fields
+            // Material & Care fields (prefer new structure, fallback to legacy)
             materialCare: {
-              upperMaterial_en: product.upperMaterial?.en || '',
-              upperMaterial_he: product.upperMaterial?.he || '',
-              materialInnerSole_en: product.materialInnerSole?.en || '',
-              materialInnerSole_he: product.materialInnerSole?.he || '',
-              lining_en: product.lining?.en || '',
-              lining_he: product.lining?.he || '',
-              sole_en: product.sole?.en || '',
-              sole_he: product.sole?.he || '',
-              heelHeight_en: product.heelHeight?.en || '',
-              heelHeight_he: product.heelHeight?.he || ''
+              upperMaterial_en: loadedMaterialCare.upperMaterial_en || product.upperMaterial?.en || '',
+              upperMaterial_he: loadedMaterialCare.upperMaterial_he || product.upperMaterial?.he || '',
+              materialInnerSole_en: loadedMaterialCare.materialInnerSole_en || product.materialInnerSole?.en || '',
+              materialInnerSole_he: loadedMaterialCare.materialInnerSole_he || product.materialInnerSole?.he || '',
+              lining_en: loadedMaterialCare.lining_en || product.lining?.en || '',
+              lining_he: loadedMaterialCare.lining_he || product.lining?.he || '',
+              sole_en: loadedMaterialCare.sole_en || product.sole?.en || '',
+              sole_he: loadedMaterialCare.sole_he || product.sole?.he || '',
+              heelHeight_en: loadedMaterialCare.heelHeight_en || product.heelHeight?.en || '',
+              heelHeight_he: loadedMaterialCare.heelHeight_he || product.heelHeight?.he || ''
             },
             
             // SEO fields
@@ -328,6 +330,48 @@ function EditProductPage() {
               slug: product.seo?.slug || ''
             },
             
+            searchKeywords: product.searchKeywords || []
+          })
+          // Keep a copy to compare on submit so we update only changed fields
+          setOriginalFormData({
+            sku: product.sku || product.baseSku || '',
+            title_en: product.title_en || product.name?.en || '',
+            title_he: product.title_he || product.name?.he || '',
+            description_en: product.description_en || product.description?.en || '',
+            description_he: product.description_he || product.description?.he || '',
+            category: product.categoryId || product.category || '',
+            subCategory: product.subCategory || '',
+            subSubCategory: product.subSubCategory || '',
+            categories_path: product.categories_path || [],
+            categories_path_id: product.categories_path_id || [],
+            brand: product.brand || '',
+            price: product.price || 0,
+            salePrice: product.salePrice || 0,
+            currency: product.currency || 'ILS',
+            colorVariants: colorVariants,
+            isEnabled: product.isEnabled !== false,
+            isDeleted: product.isDeleted || false,
+            newProduct: product.isNew || product.newProduct || false,
+            featuredProduct: product.featured || product.featuredProduct || false,
+            materialCare: {
+              upperMaterial_en: loadedMaterialCare.upperMaterial_en || product.upperMaterial?.en || '',
+              upperMaterial_he: loadedMaterialCare.upperMaterial_he || product.upperMaterial?.he || '',
+              materialInnerSole_en: loadedMaterialCare.materialInnerSole_en || product.materialInnerSole?.en || '',
+              materialInnerSole_he: loadedMaterialCare.materialInnerSole_he || product.materialInnerSole?.he || '',
+              lining_en: loadedMaterialCare.lining_en || product.lining?.en || '',
+              lining_he: loadedMaterialCare.lining_he || product.lining?.he || '',
+              sole_en: loadedMaterialCare.sole_en || product.sole?.en || '',
+              sole_he: loadedMaterialCare.sole_he || product.sole?.he || '',
+              heelHeight_en: loadedMaterialCare.heelHeight_en || product.heelHeight?.en || '',
+              heelHeight_he: loadedMaterialCare.heelHeight_he || product.heelHeight?.he || ''
+            },
+            seo: {
+              title_en: product.seo?.title_en || '',
+              title_he: product.seo?.title_he || '',
+              description_en: product.seo?.description_en || '',
+              description_he: product.seo?.description_he || '',
+              slug: product.seo?.slug || ''
+            },
             searchKeywords: product.searchKeywords || []
           })
           
@@ -1113,31 +1157,83 @@ function EditProductPage() {
         }
       }
 
-      const productData: any = {
-        sku: formData.sku,
-        title_en: formData.title_en,
-        title_he: formData.title_he,
-        description_en: formData.description_en,
-        description_he: formData.description_he,
-        category: formData.category,
-        subCategory: formData.subCategory,
-        subSubCategory: formData.subSubCategory,
-        categories_path: categoriesPath,
-        categories_path_id: categoriesPathId,
-        brand: formData.brand,
-        price: formData.price,
-        salePrice: formData.salePrice > 0 ? formData.salePrice : null,
-        currency: formData.currency,
-        colorVariants: colorVariants,
-        isEnabled: formData.isEnabled,
-        isDeleted: formData.isDeleted,
-        newProduct: formData.newProduct,
-        featuredProduct: formData.featuredProduct,
-        materialCare: formData.materialCare,
-        seo: formData.seo,
-        searchKeywords: formData.searchKeywords,
-        updatedAt: new Date()
+      // Build updates object: include only fields that changed; avoid clearing existing data
+      const productData: any = {}
+
+      const addIfChanged = (key: keyof ProductFormData, transform?: (v: any) => any) => {
+        const current = (formData as any)[key]
+        const original = (originalFormData as any)?.[key]
+        const value = transform ? transform(current) : current
+        if (JSON.stringify(current) !== JSON.stringify(original)) {
+          productData[key] = value
+        }
       }
+
+      addIfChanged('sku')
+      addIfChanged('title_en')
+      addIfChanged('title_he')
+      addIfChanged('description_en')
+      addIfChanged('description_he')
+      addIfChanged('category')
+      addIfChanged('subCategory')
+      addIfChanged('subSubCategory')
+      addIfChanged('categories_path', () => categoriesPath)
+      addIfChanged('categories_path_id', () => categoriesPathId)
+      addIfChanged('brand')
+      addIfChanged('price')
+      // Treat salePrice 0 as null, but only if changed
+      addIfChanged('salePrice', (v) => (v > 0 ? v : null))
+      addIfChanged('currency')
+
+      // Always include colorVariants if any were edited (uploads cause differences)
+      if (originalFormData && JSON.stringify(formData.colorVariants) !== JSON.stringify(originalFormData.colorVariants)) {
+        productData.colorVariants = colorVariants
+      }
+
+      addIfChanged('isEnabled')
+      addIfChanged('isDeleted')
+      addIfChanged('newProduct')
+      addIfChanged('featuredProduct')
+
+      // Material & Care: include only keys that changed and are not empty strings
+      if (originalFormData) {
+        const mcUpdates: any = {}
+        const mcKeys = Object.keys(formData.materialCare) as (keyof typeof formData.materialCare)[]
+        mcKeys.forEach((k) => {
+          const curr = formData.materialCare[k]
+          const orig = originalFormData.materialCare[k]
+          if (curr !== orig && curr !== '') {
+            mcUpdates[k] = curr
+          }
+        })
+        if (Object.keys(mcUpdates).length > 0) {
+          productData.materialCare = mcUpdates
+        }
+      }
+
+      // SEO: include only changed keys; avoid empty-string overwrites
+      if (originalFormData) {
+        const seoUpdates: any = {}
+        const seoKeys = Object.keys(formData.seo) as (keyof typeof formData.seo)[]
+        seoKeys.forEach((k) => {
+          const curr = formData.seo[k]
+          const orig = originalFormData.seo[k]
+          if (curr !== orig && curr !== '') {
+            seoUpdates[k] = curr
+          }
+        })
+        if (Object.keys(seoUpdates).length > 0) {
+          productData.seo = seoUpdates
+        }
+      }
+
+      // Search keywords
+      if (originalFormData && JSON.stringify(formData.searchKeywords) !== JSON.stringify(originalFormData.searchKeywords)) {
+        productData.searchKeywords = formData.searchKeywords
+      }
+
+      // Always set updatedAt on the server; here just for completeness
+      productData.updatedAt = new Date()
 
       console.log('Product data prepared:', productData)
       console.log('Calling productService.updateProduct...')
@@ -1877,6 +1973,143 @@ function EditProductPage() {
               </div>
             </div>
           )}
+
+          {/* Material & Care */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Material & Care</h2>
+            
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {/* Upper Material */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upper Material (English)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.upperMaterial_en}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, upperMaterial_en: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., Leather Combination"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upper Material (Hebrew)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.upperMaterial_he}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, upperMaterial_he: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="לדוגמה: שילוב עור"
+                />
+              </div>
+
+              {/* Material Inner Sole */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Material Inner Sole (English)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.materialInnerSole_en}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, materialInnerSole_en: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., Leather"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Material Inner Sole (Hebrew)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.materialInnerSole_he}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, materialInnerSole_he: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="לדוגמה: עור"
+                />
+              </div>
+
+              {/* Lining */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lining (English)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.lining_en}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, lining_en: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., 100% Textile"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lining (Hebrew)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.lining_he}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, lining_he: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="לדוגמה: 100% טקסטיל"
+                />
+              </div>
+
+              {/* Sole */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sole (English)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.sole_en}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, sole_en: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., Rubber Sole"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Sole (Hebrew)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.sole_he}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, sole_he: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="לדוגמה: סוליה מגומי"
+                />
+              </div>
+
+              {/* Heel Height */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Heel Height (English)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.heelHeight_en}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, heelHeight_en: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., 5cm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Heel Height (Hebrew)
+                </label>
+                <input
+                  type="text"
+                  value={formData.materialCare.heelHeight_he}
+                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, heelHeight_he: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="לדוגמה: 5 ס״מ"
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Product Status */}
           <div className="bg-white shadow rounded-lg p-6">

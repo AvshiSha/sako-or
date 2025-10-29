@@ -417,12 +417,14 @@ export default function NewProductPage() {
     const existingImages = variant?.images || [];
     const hasExistingImages = existingImages.length > 0;
     
+    // Set only the first image as primary if there are no existing images
+    const hasPrimaryImage = existingImages.some(img => img.isPrimary);
     const newImages: ImageFile[] = Array.from(files).map((file, index) => ({
       file,
       preview: URL.createObjectURL(file),
       uploading: false,
       uploaded: false,
-      isPrimary: !hasExistingImages && index === 0 // Set first new image as primary if no existing images
+      isPrimary: !hasExistingImages && !hasPrimaryImage && index === 0 // Only set first image as primary if no existing images or primary
     }));
     
     updateColorVariant(variantId, {

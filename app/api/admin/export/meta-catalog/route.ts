@@ -3,13 +3,18 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const origin = request.nextUrl.origin
   const apiKey = process.env.ADMIN_API_KEY
+  const vercelBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET
   if (!apiKey) {
     return new NextResponse('Server not configured', { status: 500 })
   }
 
+  const cookieHeader = request.headers.get('cookie') || undefined
+
   const upstream = await fetch(`${origin}/api/export/meta-catalog`, {
     headers: {
-      'x-api-key': apiKey
+      'x-api-key': apiKey,
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      ...(vercelBypass ? { 'x-vercel-protection-bypass': vercelBypass } : {})
     },
     cache: 'no-store'
   })

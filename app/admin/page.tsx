@@ -10,6 +10,7 @@ import {
   CogIcon,
   PlusIcon,
   ArrowUpTrayIcon,
+  ArrowDownTrayIcon,
   ExclamationTriangleIcon,
   UserGroupIcon,
   ArchiveBoxIcon
@@ -77,6 +78,12 @@ function AdminDashboard() {
       href: '/admin/inventory',
       icon: ArchiveBoxIcon,
       description: 'Update stock levels from CSV'
+    },
+    {
+      name: 'Export Meta Catalog',
+      href: '/admin/export',
+      icon: ArrowDownTrayIcon,
+      description: 'Download catalog CSV for Meta'
     },
     {
       name: 'Manage Categories',

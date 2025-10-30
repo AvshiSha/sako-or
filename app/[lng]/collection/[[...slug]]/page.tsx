@@ -342,11 +342,13 @@ export default function CollectionSlugPage() {
 
   // Apply sorting to filtered products
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    const priceA = (a.salePrice && a.salePrice > 0) ? a.salePrice : a.price
+    const priceB = (b.salePrice && b.salePrice > 0) ? b.salePrice : b.price
     switch (sortBy) {
       case "price-low":
-        return a.price - b.price; // Ascending price
+        return priceA - priceB; // Ascending by effective price
       case "price-high":
-        return b.price - a.price; // Descending price
+        return priceB - priceA; // Descending by effective price
       case "newest":
         // Sort by creation date (newest first) - assuming products have a createdAt field
         if (a.createdAt && b.createdAt) {
@@ -376,6 +378,37 @@ export default function CollectionSlugPage() {
       ...products.flatMap((p) => p.colorVariants ? Object.values(p.colorVariants).flatMap((v) => Object.keys(v.stockBySize || {})) : []),
     ]),
   ] as string[];
+
+  // Map color slugs to hex for proper swatch rendering
+  const colorSlugToHex: Record<string, string> = {
+    'Black': '#000000',
+  'White': '#FFFFFF',
+  'Red': '#FF0000',
+  'Blue': '#0000FF',
+  'Green': '#008000',
+  'Yellow': '#FFFF00',
+  'Purple': '#800080',
+  'Pink': '#FFC0CB',
+  'Orange': '#FFA500',
+  'light Brown': '#b5651d',
+  'Dark Brown': '#654321',
+  'Gray': '#808080',
+  'Navy': '#000080',
+  'Beige': '#F5F5DC',
+  'Gold': '#FFD700',
+  'Silver': '#C0C0C0',
+  'off-white': '#f5f5f5',
+  'Light Blue': '#ADD8E6',
+  'Dark Blue': '#000080',
+  'bordeaux': '#800020',
+  'Black nail polish': '#000000',
+  'Olive': '#808000',
+  'Multicolor': '#FF0000',
+  'black-white': '#000000',
+  'Transparent': '#FFFFFF',
+  'camel': '#C19A6B',
+  'light-pink': '#FFB6C1'
+  }
 
   // Separate numeric sizes (shoes) from alpha sizes (clothing)
   const numericSizes = allSizes.filter(size => /^\d+(\.\d+)?$/.test(size)).sort((a, b) => parseFloat(a) - parseFloat(b));
@@ -640,7 +673,7 @@ export default function CollectionSlugPage() {
                       >
                         <div
                           className="w-6 h-6 rounded-full border border-gray-200"
-                          style={{ backgroundColor: color.toLowerCase() }}
+                          style={{ backgroundColor: colorSlugToHex[color] || color.toLowerCase() }}
                         />
                         <span className="text-sm font-light text-black">{color}</span>
                       </button>

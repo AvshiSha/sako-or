@@ -22,7 +22,7 @@ const translations = {
       },
       rightToCancel: {
         title: 'Right to Cancel Transaction – Without Cause ("Regret")',
-        content: `– When the transaction is performed at the place of business (not remote sale) – regulations determine that a consumer with a purchase above ₪50 has the right to cancel the transaction within 14 days from the date of receiving the product (in cases of a product), provided the product was not used and not damaged.\n\n– When the transaction is performed remotely (on the internet, by phone, etc.) – the right to cancel is within 14 days from the date of receiving the product or from the date of receiving the written agreement details, whichever is later.`
+        content: `– When the transaction is performed at the place of business (not remote sale) – regulations determine that a consumer with a purchase above ₪50 has the right to cancel the transaction within 14 days from the date of receiving the product (in cases of a product), provided the product was not used and not damaged.\n\n– When the transaction is performed remotely (on the internet, by phone, etc.)\n\n – the right to cancel is within 14 days from the date of receiving the product or from the date of receiving the written agreement details, whichever is later.`
       },
       returnConditions: {
         title: 'Conditions for Return or Cancellation',
@@ -30,7 +30,7 @@ const translations = {
       },
       refundMethod: {
         title: 'Refund and Credit Method',
-        content: `– When the consumer requests cancellation or return in accordance with their rights under the law or this policy, we will return the full payment paid using the same payment method in which the transfer was made, within 14 days from the date of receiving the cancellation notice or receiving the product back.\n\n– If it is a continuous service and part of it has already been provided – proportional payment is required for the portion provided, and the refund will be given for what was not used.\n\n– In cases where the consumer simply chose to cancel without a defect or other reason, the merchant may charge a cancellation fee at a rate of up to 5% of the transaction price or ₪100, whichever is lower.`
+        content: `– When the consumer requests cancellation or return in accordance with their rights under the law or this policy, we will return the full payment paid using the same payment method in which the transfer was made, within 14 days within business days from the date of receiving the cancellation notice or receiving the product back. Online transactions are subject to 14 business days from the date of receiving the cancellation notice or receiving the product back. Physical transactions are subject to 2 business days from the date of receiving the cancellation notice or receiving the product back.\n\n– If it is a continuous service and part of it has already been provided – proportional payment is required for the portion provided, and the refund will be given for what was not used.\n\n– In cases where the consumer simply chose to cancel without a defect or other reason, the merchant may charge a cancellation fee at a rate of up to 5% of the transaction price or ₪100, whichever is lower.`
       },
       returnToMerchant: {
         title: 'Returning the Product to the Merchant',
@@ -85,7 +85,7 @@ const translations = {
       },
       refundMethod: {
         title: 'אופן ההחזר והזיכוי',
-        content: '– כאשר הצרכן מבקש ביטול או החזרה בהתאם לזכויותיו לפי החוק או לפי מדיניות זו, אנו נפעל להשיב לו את מלוא התמורה ששילם באותו אמצעי תשלום בו בוצעה ההעברה, בתוך 14 ימים מיום קבלת הודעת הביטול או קבלת המוצר בחזרה.\n\n– אם מדובר בשירות מתמשך והושקה עליו כבר חלקית – נדרש חיוב בתשלום יחסי בגין החלק שניתן, וההחזר יינתן בגין מה שלא נוצל.\n\n– במקרים בהם הצרכן פשוט בחר לבטל ללא פגם או סיבה אחרת, רשאי העוסק לגבות דמי ביטול בשיעור של עד 5% ממחיר העסקה או ₪100, לפי הנמוך מביניהם.'
+        content: '– כאשר הצרכן מבקש ביטול או החזרה בהתאם לזכויותיו לפי החוק או לפי מדיניות זו, אנו נפעל להשיב לו את מלוא התמורה ששילם באותו אמצעי תשלום בו בוצעה ההעברה, בתוך 14 ימי עסקים בזמנה מהאינטרנט, ותוך 2 ימי עסקים מהזמנה בחנות הפיזית מיום קבלת הודעת הביטול או קבלת המוצר בחזרה.\n\n– אם מדובר בשירות מתמשך והושקה עליו כבר חלקית – נדרש חיוב בתשלום יחסי בגין החלק שניתן, וההחזר יינתן בגין מה שלא נוצל.\n\n– במקרים בהם הצרכן פשוט בחר לבטל ללא פגם או סיבה אחרת, רשאי העוסק לגבות דמי ביטול בשיעור של עד 5% ממחיר העסקה או ₪100, לפי הנמוך מביניהם.'
       },
       returnToMerchant: {
         title: 'החזרת המוצר לעוסק',

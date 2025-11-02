@@ -25,7 +25,8 @@ const translations = {
     emailInvalid: 'Please enter a valid email address',
     subscriptionError: 'Failed to subscribe. Please try again.',
     privacyPolicy: 'Privacy Policy',
-    termsOfService: 'Terms of Service'
+    termsOfService: 'Terms of Service',
+    termsReturns: 'Terms & Returns'
   },
   he: {
     brand: 'סכו עור',
@@ -45,7 +46,8 @@ const translations = {
     emailInvalid: 'אנא הזן כתובת אימייל תקינה',
     subscriptionError: 'ההרשמה נכשלה. אנא נסה שוב.',
     privacyPolicy: 'מדיניות פרטיות',
-    termsOfService: 'תנאי שימוש'
+    termsOfService: 'תנאי שימוש',
+    termsReturns: 'מדיניות החזרות'
   }
 }
 
@@ -234,6 +236,9 @@ export default function Footer({ lng }: { lng: string }) {
               </Link>
               <Link href={`/${lng}/terms`} className="text-gray-400 hover:text-white text-sm">
                 {t.termsOfService}
+              </Link>
+              <Link href={`/${lng}/terms-returns`} className="text-gray-400 hover:text-white text-sm">
+                {t.termsReturns}
               </Link>
             </div>
           </div>

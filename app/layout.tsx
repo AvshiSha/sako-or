@@ -9,6 +9,11 @@ const assistant = Assistant({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: "Sako Or",
   description: "Sako Or",
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/favicon.ico',
+    shortcut: '/favicon.ico',
+  }
 }
 
 export default function RootLayout({

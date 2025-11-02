@@ -1163,6 +1163,12 @@ function EditProductPage() {
         }
       }
 
+      // Check if any category fields changed
+      const categoryChanged = 
+        formData.category !== originalFormData?.category ||
+        formData.subCategory !== originalFormData?.subCategory ||
+        formData.subSubCategory !== originalFormData?.subSubCategory
+
       addIfChanged('sku')
       addIfChanged('title_en')
       addIfChanged('title_he')
@@ -1171,8 +1177,17 @@ function EditProductPage() {
       addIfChanged('category')
       addIfChanged('subCategory')
       addIfChanged('subSubCategory')
-      addIfChanged('categories_path', () => categoriesPath)
-      addIfChanged('categories_path_id', () => categoriesPathId)
+      
+      // Always update categories_path and categories_path_id if any category field changed
+      if (categoryChanged) {
+        productData.categories_path = categoriesPath
+        productData.categories_path_id = categoriesPathId
+        // Also update categoryId to match the main category
+        if (formData.category) {
+          productData.categoryId = formData.category
+        }
+      }
+      
       addIfChanged('brand')
       addIfChanged('price')
       // Treat salePrice 0 as null, but only if changed

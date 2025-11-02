@@ -51,6 +51,25 @@ function SuccessPageContent() {
       currency: currency || 'ILS',
     });
 
+    // Track Google Ads conversion event
+    // TODO: Replace 'AW-CONVERSION_ID/CONVERSION_LABEL' with your actual Google Ads conversion ID and label
+    // You can find this in your Google Ads account under Tools & Settings > Conversions
+    if (typeof window !== 'undefined' && window.gtag) {
+      window.gtag('event', 'conversion', {
+        send_to: 'AW-CONVERSION_ID/CONVERSION_LABEL',
+        value: amount ? parseFloat(amount) : undefined,
+        currency: currency || 'ILS',
+        transaction_id: orderId || undefined
+      });
+      
+      // Also send the purchase event for Google Analytics
+      window.gtag('event', 'purchase', {
+        transaction_id: orderId || undefined,
+        value: amount ? parseFloat(amount) : undefined,
+        currency: currency || 'ILS'
+      });
+    }
+
     setIsLoading(false);
   }, [searchParams]);
 

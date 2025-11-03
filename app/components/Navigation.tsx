@@ -518,7 +518,7 @@ export default function Navigation({ lng }: { lng: string }) {
           <div className="fixed inset-0 bg-black/20 bg-opacity-50" onClick={closeMobileMenu} />
 
           <div className="fixed top-0 left-0 h-full w-80 bg-white shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b">
+            <div className="flex items-center justify-between p-2.5 border-b">
               <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
               <button
                 onClick={closeMobileMenu}
@@ -532,10 +532,10 @@ export default function Navigation({ lng }: { lng: string }) {
               ref={drawerRef}
               className="overflow-y-auto h-full pb-20"
             >
-              <div className="p-4">
+              <div className="p-1">
                 {/* Header with back button (if not on main level) */}
                 {mobileNavLevel !== 'main' && (
-                  <div className="flex items-center mb-6 pb-4 border-b border-gray-200">
+                  <div className="flex items-center mb-1 pb-1 border-b border-gray-200">
                     <button
                       onClick={navigateBack}
                       className="flex items-center text-gray-600 hover:text-gray-900 mr-3 p-2 rounded-md hover:bg-gray-50"
@@ -560,14 +560,14 @@ export default function Navigation({ lng }: { lng: string }) {
                     <Link
                       href={`/${lng}`}
                       onClick={closeMobileMenu}
-                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100"
+                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100"
                     >
                       {translations[lng as keyof typeof translations].home}
                     </Link>
 
                     <button
                       onClick={() => navigateToLevel('women')}
-                      className="block w-full text-left py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
+                      className="block w-full text-left py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
                     >
                       {translations[lng as keyof typeof translations].women}
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -579,7 +579,7 @@ export default function Navigation({ lng }: { lng: string }) {
                     {hasMenCategory() && (
                       <button
                         onClick={() => navigateToLevel('men')}
-                        className="block w-full text-left py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
+                        className="block w-full text-left py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
                       >
                         {translations[lng as keyof typeof translations].men}
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -591,7 +591,7 @@ export default function Navigation({ lng }: { lng: string }) {
                     <Link
                       href={`/${lng}/about`}
                       onClick={closeMobileMenu}
-                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100"
+                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100"
                     >
                       {translations[lng as keyof typeof translations].about}
                     </Link>
@@ -599,7 +599,7 @@ export default function Navigation({ lng }: { lng: string }) {
                     <Link
                       href={`/${lng}/contact`}
                       onClick={closeMobileMenu}
-                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100"
+                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100"
                     >
                       {translations[lng as keyof typeof translations].contact}
                     </Link>
@@ -612,7 +612,7 @@ export default function Navigation({ lng }: { lng: string }) {
                     <Link
                       href={`/${lng}/collection/women`}
                       onClick={closeMobileMenu}
-                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium"
+                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium"
                     >
                       {translations[lng as keyof typeof translations].allWomen}
                     </Link>
@@ -622,7 +622,7 @@ export default function Navigation({ lng }: { lng: string }) {
                         {subcategory.subChildren && subcategory.subChildren.length > 0 ? (
                           <button
                             onClick={() => navigateToLevel('women-sub', subcategory)}
-                            className="block w-full text-left py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
+                            className="block w-full text-left py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
                           >
                             {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -633,7 +633,7 @@ export default function Navigation({ lng }: { lng: string }) {
                           <Link
                             href={`/${lng}/collection/women/${subcategory.slug}`}
                             onClick={closeMobileMenu}
-                            className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
+                            className="block py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                           >
                             {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                           </Link>
@@ -649,7 +649,7 @@ export default function Navigation({ lng }: { lng: string }) {
                     <Link
                       href={`/${lng}/collection/men`}
                       onClick={closeMobileMenu}
-                      className="block py-3 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium"
+                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium"
                     >
                       {translations[lng as keyof typeof translations].allMen}
                     </Link>
@@ -659,7 +659,7 @@ export default function Navigation({ lng }: { lng: string }) {
                         {subcategory.subChildren && subcategory.subChildren.length > 0 ? (
                           <button
                             onClick={() => navigateToLevel('men-sub', subcategory)}
-                            className="block w-full text-left py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
+                            className="block w-full text-left py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
                           >
                             {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -670,7 +670,7 @@ export default function Navigation({ lng }: { lng: string }) {
                           <Link
                             href={`/${lng}/collection/men/${subcategory.slug}`}
                             onClick={closeMobileMenu}
-                            className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
+                            className="block py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                           >
                             {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
                           </Link>
@@ -683,12 +683,14 @@ export default function Navigation({ lng }: { lng: string }) {
                 {/* Women Sub-sub-categories Level */}
                 {mobileNavLevel === 'women-sub' && selectedMobileCategory && (
                   <>
+                    <Link href={`/${lng}/collection/women/${selectedMobileCategory.slug}`} onClick={closeMobileMenu} className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium">{translations[lng as keyof typeof translations].allProducts}</Link>
+
                     {selectedMobileCategory.subChildren?.map((subSubCategory) => (
                       <Link
                         key={subSubCategory.id}
                         href={`/${lng}/collection/women/${selectedMobileCategory.slug}/${subSubCategory.slug}`}
                         onClick={closeMobileMenu}
-                        className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
+                        className="block py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                       >
                         {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
                       </Link>
@@ -699,12 +701,14 @@ export default function Navigation({ lng }: { lng: string }) {
                 {/* Men Sub-sub-categories Level - Only show if Men category exists */}
                 {mobileNavLevel === 'men-sub' && selectedMobileCategory && hasMenCategory() && (
                   <>
+                    <Link href={`/${lng}/collection/men/${selectedMobileCategory.slug}`} onClick={closeMobileMenu} className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium">{translations[lng as keyof typeof translations].allProducts}</Link>
+
                     {selectedMobileCategory.subChildren?.map((subSubCategory) => (
                       <Link
                         key={subSubCategory.id}
                         href={`/${lng}/collection/men/${selectedMobileCategory.slug}/${subSubCategory.slug}`}
                         onClick={closeMobileMenu}
-                        className="block py-3 text-gray-600 hover:text-gray-900 border-b border-gray-100"
+                        className="block py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100"
                       >
                         {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
                       </Link>

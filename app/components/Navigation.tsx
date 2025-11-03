@@ -334,66 +334,6 @@ export default function Navigation({ lng }: { lng: string }) {
               </button>
             </div>
 
-            {/*{isWomenDropdownOpen && (
-                <div
-                  className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-white shadow-lg border border-gray-200 rounded-md py-6 px-6 z-50 grid grid-cols-3 gap-8 min-w-[700px]"
-                  onMouseEnter={handleDropdownMouseEnter}
-                  onMouseLeave={() => handleMouseLeave('women')}
-                >
-                  {// All Women Link }
-                  <Link
-                    href={`/${lng}/collection/women`}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 font-medium transition-colors duration-150 border-b border-gray-100 mb-3"
-                  >
-                    {translations[lng as keyof typeof translations].allWomen}
-                  </Link>
-
-                  {// Subcategories }
-                  {womenSubcategories.map((subcategory) => (
-                    <div key={subcategory.id}>
-                      <Link
-                        href={`/${lng}/collection/women/${subcategory.slug}`}
-                      //  className="block px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-150"
-                      className="block text-base font-semibold text-gray-900 mb-2 hover:text-gray-600"
-                      >
-                        {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
-                      </Link>
-
-                      {// Sub-sub-categories }
-                      {subcategory.subChildren && subcategory.subChildren.length > 0 && (
-                        /*<div className="pl-6 space-y-1">
-                          {subcategory.subChildren.map((subSubCategory) => (
-                            <Link
-                              key={subSubCategory.id}
-                              href={`/${lng}/collection/women/${subcategory.slug}/${subSubCategory.slug}`}
-                              className="block px-4 py-1.5 text-xs text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-colors duration-150"
-                            >
-                              {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
-                            </Link>
-                          ))}
-                        </div>*//*
-
-                        <ul className="pl-4 space-y-1">
-                          {subcategory.subChildren.map((subSubCategory) => (
-                            <li key={subSubCategory.id}>
-                              <Link
-                                href={`/${lng}/collection/women/${subcategory.slug}/${subSubCategory.slug}`}
-                                className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150"
-                              >
-                                {typeof subSubCategory.name === 'object'
-                                  ? (subSubCategory.name as any).en
-                                  : subSubCategory.name}
-                              </Link>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}*/}
-
-
             {isWomenDropdownOpen && (
               <div
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
@@ -404,7 +344,7 @@ export default function Navigation({ lng }: { lng: string }) {
                 onMouseLeave={() => handleMouseLeave('women')}
               >
                 <div
-                  className="w-full px-20 grid grid-flow-col auto-cols-min gap-x-20 justify-start"
+                  className="w-full px-20 grid grid-flow-col auto-cols-[minmax(150px,auto)] gap-x-20 justify-start"
 
                 >
                   <div>
@@ -466,7 +406,7 @@ export default function Navigation({ lng }: { lng: string }) {
                 onMouseLeave={() => handleMouseLeave('men')}
               >
                 <div
-                  className="w-full px-20 grid grid-flow-col auto-cols-min gap-x-20 justify-start"
+                  className="w-full px-20 grid grid-flow-col auto-cols-[minmax(150px,auto)] gap-x-20 justify-start"
 
                 >
                   <div>
@@ -494,8 +434,6 @@ export default function Navigation({ lng }: { lng: string }) {
                       >
                         {translations[lng as keyof typeof translations].allProducts}
                       </Link>
-
-
 
                       {subcategory.subChildren && subcategory.subChildren.length > 0 && (
                         <ul className="space-y-1">
@@ -636,6 +574,7 @@ export default function Navigation({ lng }: { lng: string }) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
+
 
                     {hasMenCategory() && (
                       <button

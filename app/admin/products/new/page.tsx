@@ -908,6 +908,13 @@ export default function NewProductPage() {
           videoUrl = await uploadVariantVideo(variant.id)
         }
         
+        // Find the primary image index in the variant's images array
+        const primaryImageIndex = variant.images.findIndex(img => img.isPrimary)
+        // Get the corresponding URL from uploadedImages (maintains same order)
+        const primaryImageUrl = primaryImageIndex >= 0 && primaryImageIndex < uploadedImages.length 
+          ? uploadedImages[primaryImageIndex] 
+          : uploadedImages[0] || null
+        
         colorVariants[variant.colorSlug] = {
           colorSlug: variant.colorSlug,
           isActive: variant.isActive !== false, // Default to true if not specified
@@ -917,7 +924,7 @@ export default function NewProductPage() {
           metaTitle: variant.metaTitle || '',
           metaDescription: variant.metaDescription || '',
           images: uploadedImages,
-          primaryImage: uploadedImages[0] || null,
+          primaryImage: primaryImageUrl,
           videos: videoUrl ? [videoUrl] : []
         }
       }

@@ -337,9 +337,10 @@ export default function Navigation({ lng }: { lng: string }) {
             {isWomenDropdownOpen && (
               <div
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
-                className={`absolute top-full left-0 w-full mt-2 bg-white shadow-lg border-t border-gray-200 py-10 z-50
+                style={{ left: 0, right: 0, width: '100vw' }}
+                className={`absolute top-[99%] left-0 right-0 w-screen bg-white shadow-lg border-t border-gray-200 py-10 z-50
                 ${lng === 'he' ? 'text-right' : 'text-left'}
-                before:content-[''] before:absolute before:top-[-15px] before:left-0 before:w-full before:h-[20px] before:bg-transparent`}
+                before:content-[''] before:absolute before:top-[-100px] before:left-0 before:w-full before:h-[20px] before:bg-transparent`}
                 onMouseEnter={handleDropdownMouseEnter}
                 onMouseLeave={() => handleMouseLeave('women')}
               >
@@ -399,9 +400,10 @@ export default function Navigation({ lng }: { lng: string }) {
             {hasMenCategory() && (
               <div
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
-                className={`absolute top-full left-0 w-full mt-2 bg-white shadow-lg border-t border-gray-200 py-10 z-50
+                style={{ left: 0, right: 0, width: '100vw' }}
+                className={`absolute top-[99%] left-0 right-0 w-screen bg-white shadow-lg border-t border-gray-200 py-10 z-50
                 ${lng === 'he' ? 'text-right' : 'text-left'}
-                before:content-[''] before:absolute before:top-[-15px] before:left-0 before:w-full before:h-[20px] before:bg-transparent`}
+                before:content-[''] before:absolute before:top-[-100px] before:left-0 before:w-full before:h-[20px] before:bg-transparent`}
                 onMouseEnter={handleDropdownMouseEnter}
                 onMouseLeave={() => handleMouseLeave('men')}
               >

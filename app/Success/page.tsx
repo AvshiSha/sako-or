@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { trackPurchase, PurchaseUserProperties } from '@/lib/dataLayer';
 
 function SuccessPageContent() {
   const searchParams = useSearchParams();
@@ -50,6 +51,92 @@ function SuccessPageContent() {
       amount: amount ? parseFloat(amount) : undefined,
       currency: currency || 'ILS',
     });
+
+    // Track purchase event for GA4 data layer
+    if (orderId && amount) {
+      try {
+        // Fetch order details from API
+        fetch(`/api/payments/by-low-profile-id?lpid=${lpid || ''}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.order && data.order.orderItems) {
+              const orderItems = data.order.orderItems.map((item: any) => ({
+                name: item.productName || 'Unknown Product',
+                id: item.productSku || 'unknown',
+                price: item.price || 0,
+                brand: undefined,
+                categories: undefined,
+                variant: item.size || undefined,
+                quantity: item.quantity || 1
+              }));
+
+              // Get user properties from checkout if available
+              const userProperties: PurchaseUserProperties = {
+                customer_email: data.order.customerEmail || undefined,
+                user_id: undefined,
+                customer_first_name: undefined,
+                customer_last_name: undefined,
+                customer_phone: undefined,
+                customer_city: undefined,
+                customer_zip: undefined,
+                customer_address_1: undefined,
+                customer_address_2: undefined,
+                customer_country: undefined,
+                customer_province: undefined
+              };
+
+              trackPurchase(
+                orderId,
+                orderItems,
+                {
+                  currency: currency || 'ILS',
+                  value: parseFloat(amount),
+                  tax: 0, // Can be enhanced if tax data is available
+                  shipping: 0, // Can be enhanced if shipping data is available
+                  affiliation: 'Sako Online Store',
+                  userProperties: userProperties
+                }
+              );
+            } else {
+              // Fallback: track purchase with minimal data
+              trackPurchase(
+                orderId,
+                [{
+                  name: 'Order',
+                  id: 'order',
+                  price: parseFloat(amount),
+                  quantity: 1
+                }],
+                {
+                  currency: currency || 'ILS',
+                  value: parseFloat(amount),
+                  affiliation: 'Sako Online Store'
+                }
+              );
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching order details for tracking:', err);
+            // Fallback: track purchase with minimal data
+            trackPurchase(
+              orderId,
+              [{
+                name: 'Order',
+                id: 'order',
+                price: parseFloat(amount),
+                quantity: 1
+              }],
+              {
+                currency: currency || 'ILS',
+                value: parseFloat(amount),
+                affiliation: 'Sako Online Store'
+              }
+            );
+          });
+      } catch (error) {
+        console.error('Error tracking purchase:', error);
+      }
+    }
 
     // Track Google Ads conversion event
     // TODO: Replace 'AW-CONVERSION_ID/CONVERSION_LABEL' with your actual Google Ads conversion ID and label

@@ -12,6 +12,7 @@ import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
+import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 
 interface QuickBuyDrawerProps {
   isOpen: boolean
@@ -135,6 +136,29 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         color: activeVariant.colorSlug,
         size: selectedSize || undefined,
         maxStock: maxStock
+      }
+      
+      // Track add_to_cart for GA4 data layer
+      try {
+        const itemName = productHelpers.getField(product, 'name', language as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product'
+        const itemId = sku
+        const categories = product.categories_path || [product.category || 'Unknown']
+        const variant = selectedSize ? `${selectedSize}-${activeVariant.colorSlug}` : activeVariant.colorSlug
+        
+        trackAddToCartEvent(
+          [{
+            name: itemName,
+            id: itemId,
+            price: currentPrice,
+            brand: product.brand,
+            categories: categories,
+            variant: variant,
+            quantity: quantity
+          }],
+          product.currency || 'ILS'
+        )
+      } catch (dataLayerError) {
+        console.warn('Data layer tracking error:', dataLayerError)
       }
       
       addToCart(cartItem)

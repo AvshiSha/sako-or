@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -10,8 +10,9 @@ import {
   XMarkIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
-import { productService, Product, categoryService, Category } from "@/lib/firebase";
+import { productService, Product, categoryService, Category, productHelpers } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
+import { trackViewItemList } from "@/lib/dataLayer";
 
 // Translations for the collection page
 const translations = {
@@ -215,6 +216,182 @@ export default function CollectionSlugPage() {
     }).catch(console.error);
   }, []);
 
+  // Compute derived values using useMemo (must be before early returns)
+  const { selectedCategory, selectedSubcategory, selectedCategoryPath, sortedProducts } = useMemo(() => {
+    if (!params) {
+      return {
+        selectedCategory: "All Products",
+        selectedSubcategory: null,
+        selectedCategoryPath: "",
+        sortedProducts: []
+      };
+    }
+
+    const slug = params.slug as string[] | undefined;
+    
+    // Determine category and subcategory from slug
+    let category = "All Products";
+    let subcategory: string | null = null;
+    let categoryPath = "";
+    
+    if (slug && slug.length > 0) {
+      // Build the full category path from the slug
+      categoryPath = slug.map(s => decodeURIComponent(s)).join('/');
+      
+      if (slug.length === 1) {
+        // URL: /en/collection/women
+        category = decodeURIComponent(slug[0]);
+      } else if (slug.length === 2) {
+        // URL: /en/collection/women/shoes
+        category = decodeURIComponent(slug[0]);
+        subcategory = decodeURIComponent(slug[1]);
+      } else if (slug.length === 3) {
+        // URL: /en/collection/women/shoes/boots
+        category = decodeURIComponent(slug[0]);
+        subcategory = decodeURIComponent(slug[2]); // The deepest category
+      } else {
+        // For deeper paths, use the full path
+        category = categoryPath;
+      }
+    }
+
+    // Filtering logic
+    const filtered = products
+      .filter((product) => {
+        // Show all products
+        if (category === "All Products") return true;
+        
+        // Handle hierarchical category filtering using categories_path
+        if (product.categories_path && categoryPath) {
+          const requestedPath = categoryPath.toLowerCase();
+          const productPath = product.categories_path.join('/').toLowerCase();
+          
+          // Exact match: product should appear in its exact category path
+          if (productPath === requestedPath) {
+            return true;
+          }
+          
+          // Parent match: product should appear in parent category paths
+          if (productPath.startsWith(requestedPath + '/')) {
+            return true;
+          }
+          
+          // Child match: if we're viewing a parent category, show products from child categories
+          if (requestedPath.startsWith(productPath + '/')) {
+            return true;
+          }
+          
+          return false;
+        }
+        
+        return false;
+      })
+      .filter((product) => {
+        if (selectedColors.length === 0) return true;
+        const hasMatchingVariantColor = product.colorVariants ? Object.values(product.colorVariants)
+          .filter(variant => variant.isActive !== false)
+          .some((variant) => 
+          selectedColors.includes(variant.colorSlug || "")
+        ) : false;
+        return hasMatchingVariantColor;
+      })
+      .filter((product) => {
+        if (selectedSizes.length === 0) return true;
+        const hasMatchingVariantSize = product.colorVariants ? Object.values(product.colorVariants)
+          .filter(variant => variant.isActive !== false)
+          .some((variant) => 
+          Object.keys(variant.stockBySize || {}).some((size) => selectedSizes.includes(size))
+        ) : false;
+        return hasMatchingVariantSize;
+      })
+      .filter((product) => {
+        // Price filtering
+        if (!priceRange.min && !priceRange.max) return true;
+        
+        const minPrice = priceRange.min ? parseFloat(priceRange.min) : 0;
+        const maxPrice = priceRange.max ? parseFloat(priceRange.max) : Infinity;
+        
+        // Check base price
+        if (product.price >= minPrice && product.price <= maxPrice) {
+          return true;
+        }
+        
+        // Check if any color variant price falls within range
+        if (product.colorVariants) {
+          return Object.values(product.colorVariants).some((variant) => {
+            const variantPrice = variant.priceOverride || product.price;
+            return variantPrice >= minPrice && variantPrice <= maxPrice;
+          });
+        }
+        
+        return false;
+      });
+
+    // Apply sorting to filtered products
+    const sorted = [...filtered].sort((a, b) => {
+      const priceA = (a.salePrice && a.salePrice > 0) ? a.salePrice : a.price
+      const priceB = (b.salePrice && b.salePrice > 0) ? b.salePrice : b.price
+      switch (sortBy) {
+        case "price-low":
+          return priceA - priceB;
+        case "price-high":
+          return priceB - priceA;
+        case "newest":
+          if (a.createdAt && b.createdAt) {
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          }
+          const aId = typeof a.id === 'string' ? parseInt(a.id) : (typeof a.id === 'number' ? a.id : 0);
+          const bId = typeof b.id === 'string' ? parseInt(b.id) : (typeof b.id === 'number' ? b.id : 0);
+          return bId - aId;
+        case "relevance":
+        default:
+          return 0;
+      }
+    });
+
+    return {
+      selectedCategory: category,
+      selectedSubcategory: subcategory,
+      selectedCategoryPath: categoryPath,
+      sortedProducts: sorted
+    };
+  }, [params, products, selectedColors, selectedSizes, priceRange, sortBy]);
+
+  // Track view_item_list when products are displayed
+  useEffect(() => {
+    if (!isClient || loading || sortedProducts.length === 0) return;
+
+    try {
+      const listName = selectedCategoryPath || selectedCategory || 'All Products';
+      const listId = selectedCategoryPath || selectedCategory || 'all_products';
+      
+      const items = sortedProducts.map((product, index) => {
+        // Get first active variant for price and variant info
+        const firstVariant = product.colorVariants 
+          ? Object.values(product.colorVariants).find(v => v.isActive !== false)
+          : null;
+        
+        const price = firstVariant?.salePrice || firstVariant?.priceOverride || product.salePrice || product.price;
+        const variant = firstVariant?.colorSlug || '';
+        const productName = productHelpers.getField(product, 'name', lng as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product';
+        const categories = product.categories_path || [product.category || 'Unknown'];
+        
+        return {
+          name: productName,
+          id: product.sku || product.id || '',
+          price: price,
+          brand: product.brand,
+          categories: categories,
+          variant: variant
+        };
+      });
+
+      trackViewItemList(items, listName, listId, 'ILS');
+    } catch (dataLayerError) {
+      console.warn('Data layer tracking error:', dataLayerError);
+    }
+  }, [isClient, loading, sortedProducts, selectedCategoryPath, selectedCategory, lng]);
+
   // Add null checking for params after all hooks
   if (!params) {
     return <div>Loading...</div>;
@@ -231,139 +408,6 @@ export default function CollectionSlugPage() {
       </div>
     );
   }
-  
-  const slug = params.slug as string[] | undefined;
-
-     // Determine category and subcategory from slug
-   let selectedCategory = "All Products";
-   let selectedSubcategory: string | null = null;
-   let selectedCategoryPath = "";
-   
-   if (slug && slug.length > 0) {
-     // Build the full category path from the slug
-     selectedCategoryPath = slug.map(s => decodeURIComponent(s)).join('/');
-     
-     
-     if (slug.length === 1) {
-       // URL: /en/collection/women
-       selectedCategory = decodeURIComponent(slug[0]);
-     } else if (slug.length === 2) {
-       // URL: /en/collection/women/shoes
-       selectedCategory = decodeURIComponent(slug[0]);
-       selectedSubcategory = decodeURIComponent(slug[1]);
-     } else if (slug.length === 3) {
-       // URL: /en/collection/women/shoes/boots
-       selectedCategory = decodeURIComponent(slug[0]);
-       selectedSubcategory = decodeURIComponent(slug[2]); // The deepest category
-     } else {
-       // For deeper paths, use the full path
-       selectedCategory = selectedCategoryPath;
-     }
-     
-   }
-   
-
-  // Filtering logic - subcategoryObj removed as it's no longer needed with new product structure
-  
-  const filteredProducts = products
-    .filter((product) => {
-      // Show all products
-      if (selectedCategory === "All Products") return true;
-      
-      
-      // Handle hierarchical category filtering using categories_path
-      if (product.categories_path && selectedCategoryPath) {
-        const requestedPath = selectedCategoryPath.toLowerCase();
-        const productPath = product.categories_path.join('/').toLowerCase();
-        
-        // Exact match: product should appear in its exact category path
-        if (productPath === requestedPath) {
-          return true;
-        }
-        
-        // Parent match: product should appear in parent category paths
-        // e.g., product with path "women/shoes/boots" should appear in "women" and "women/shoes"
-        if (productPath.startsWith(requestedPath + '/')) {
-          return true;
-        }
-        
-        // Child match: if we're viewing a parent category, show products from child categories
-        // e.g., when viewing "women", show products from "women/shoes" and "women/shoes/boots"
-        if (requestedPath.startsWith(productPath + '/')) {
-          return true;
-        }
-        
-        return false;
-      }
-      
-      // No fallback needed - new products use categories_path
-      return false;
-    })
-    .filter((product) => {
-      if (selectedColors.length === 0) return true;
-      const hasMatchingVariantColor = product.colorVariants ? Object.values(product.colorVariants)
-        .filter(variant => variant.isActive !== false) // Filter out inactive variants
-        .some((variant) => 
-        selectedColors.includes(variant.colorSlug || "")
-      ) : false;
-      return hasMatchingVariantColor;
-    })
-    .filter((product) => {
-      if (selectedSizes.length === 0) return true;
-      const hasMatchingVariantSize = product.colorVariants ? Object.values(product.colorVariants)
-        .filter(variant => variant.isActive !== false) // Filter out inactive variants
-        .some((variant) => 
-        Object.keys(variant.stockBySize || {}).some((size) => selectedSizes.includes(size))
-      ) : false;
-      return hasMatchingVariantSize;
-    })
-    .filter((product) => {
-      // Price filtering
-      if (!priceRange.min && !priceRange.max) return true;
-      
-      const minPrice = priceRange.min ? parseFloat(priceRange.min) : 0;
-      const maxPrice = priceRange.max ? parseFloat(priceRange.max) : Infinity;
-      
-      // Check base price
-      if (product.price >= minPrice && product.price <= maxPrice) {
-        return true;
-      }
-      
-      // Check if any color variant price falls within range
-      if (product.colorVariants) {
-        return Object.values(product.colorVariants).some((variant) => {
-          const variantPrice = variant.priceOverride || product.price;
-          return variantPrice >= minPrice && variantPrice <= maxPrice;
-        });
-      }
-      
-      return false;
-    });
-
-  // Apply sorting to filtered products
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    const priceA = (a.salePrice && a.salePrice > 0) ? a.salePrice : a.price
-    const priceB = (b.salePrice && b.salePrice > 0) ? b.salePrice : b.price
-    switch (sortBy) {
-      case "price-low":
-        return priceA - priceB; // Ascending by effective price
-      case "price-high":
-        return priceB - priceA; // Descending by effective price
-      case "newest":
-        // Sort by creation date (newest first) - assuming products have a createdAt field
-        if (a.createdAt && b.createdAt) {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-        // Fallback to id for newer products (assuming higher id = newer)
-        const aId = typeof a.id === 'string' ? parseInt(a.id) : (typeof a.id === 'number' ? a.id : 0);
-        const bId = typeof b.id === 'string' ? parseInt(b.id) : (typeof b.id === 'number' ? b.id : 0);
-        return bId - aId;
-      case "relevance":
-      default:
-        // Relevance sorting - keep original order from database
-        return 0;
-    }
-  });
 
   // Get all colors from products
   const allColors = [
@@ -413,8 +457,6 @@ export default function CollectionSlugPage() {
   // Separate numeric sizes (shoes) from alpha sizes (clothing)
   const numericSizes = allSizes.filter(size => /^\d+(\.\d+)?$/.test(size)).sort((a, b) => parseFloat(a) - parseFloat(b));
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
-
-
 
   if (loading) {
     return (

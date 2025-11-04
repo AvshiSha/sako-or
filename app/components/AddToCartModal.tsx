@@ -5,6 +5,7 @@ import { X, Plus, Minus, ShoppingBag } from 'lucide-react'
 import Image from 'next/image'
 import { useCart } from '../hooks/useCart'
 import { useToast } from './Toast'
+import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 
 interface Product {
   sku?: string
@@ -25,6 +26,9 @@ interface Product {
     color?: string
     stock: number
   }>
+  categories_path?: string[]
+  category?: string
+  brand?: string
 }
 
 interface AddToCartModalProps {
@@ -87,6 +91,30 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
     setIsAddingToCart(true)
 
     try {
+      // Track add_to_cart for GA4 data layer
+      try {
+        const itemName = product!.name?.[lng as 'en' | 'he'] || 'Unknown Product'
+        const itemId = product!.sku || 'unknown'
+        const price = product!.salePrice || product!.price
+        const categories = product!.categories_path || (product!.category ? [product!.category] : ['Unknown'])
+        const variant = [selectedSize, selectedColor].filter(Boolean).join('-') || undefined
+        
+        trackAddToCartEvent(
+          [{
+            name: itemName,
+            id: itemId,
+            price: price,
+            brand: product!.brand,
+            categories: categories,
+            variant: variant,
+            quantity: quantity
+          }],
+          product!.currency || 'ILS'
+        )
+      } catch (dataLayerError) {
+        console.warn('Data layer tracking error:', dataLayerError)
+      }
+
       // Add multiple items if quantity > 1
       for (let i = 0; i < quantity; i++) {
         addToCart({

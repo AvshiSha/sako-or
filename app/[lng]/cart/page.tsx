@@ -12,6 +12,8 @@ import {
 } from '@heroicons/react/24/outline'
 import { useCart } from '@/app/hooks/useCart'
 import CheckoutModal from '@/app/components/CheckoutModal'
+import { trackViewCart } from '@/lib/dataLayer'
+import { useEffect } from 'react'
 
 export default function CartPage() {
   const params = useParams()
@@ -96,6 +98,27 @@ export default function CartPage() {
   useEffect(() => {
     setIsClient(true)
   }, [])
+
+  // Track view_cart event
+  useEffect(() => {
+    if (!isClient || loading || items.length === 0) return
+
+    try {
+      const cartItems = items.map(item => ({
+        name: item.name[lng as 'en' | 'he'] || 'Unknown Product',
+        id: item.sku,
+        price: item.salePrice || item.price,
+        brand: undefined, // Cart items don't have brand info, can be enhanced later
+        categories: undefined, // Cart items don't have category info, can be enhanced later
+        variant: [item.size, item.color].filter(Boolean).join('-') || undefined,
+        quantity: item.quantity
+      }))
+
+      trackViewCart(cartItems, 'ILS')
+    } catch (dataLayerError) {
+      console.warn('Data layer tracking error:', dataLayerError)
+    }
+  }, [isClient, loading, items, lng])
 
   if (!isClient || loading) {
     return (
@@ -344,6 +367,7 @@ export default function CartPage() {
         productSku={items.length > 0 ? items[0].sku : 'UNKNOWN'}
         quantity={totalItems}
         language={lng as 'he' | 'en'}
+        items={items}
       />
     </div>
   )

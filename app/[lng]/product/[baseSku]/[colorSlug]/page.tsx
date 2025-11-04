@@ -21,6 +21,7 @@ import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
+import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
@@ -141,7 +142,7 @@ export default function ProductColorPage() {
         // Reset image selection to 0 (video will be shown if available)
         setSelectedImageIndex(0)
 
-        // Fire Product View analytics event
+        // Fire Product View analytics event (Firebase)
         if (analytics && productData && typeof analytics.logEvent === 'function') {
           try {
             analytics.logEvent('view_item', {
@@ -158,6 +159,29 @@ export default function ProductColorPage() {
           } catch (analyticsError) {
             console.warn('Analytics error:', analyticsError)
           }
+        }
+
+        // Track view_item for GA4 data layer
+        try {
+          const productName = productHelpers.getField(productData, 'name', lng as 'en' | 'he') || productData.title_en || productData.title_he || 'Unknown Product'
+          const itemId = `${baseSku}-${colorSlug}`
+          const price = variant.salePrice || variant.priceOverride || productData.price
+          const categories = productData.categories_path || [productData.category || 'Unknown']
+          
+          trackViewItem(
+            `${productName} - ${variant.colorSlug}`,
+            itemId,
+            price,
+            {
+              brand: productData.brand,
+              categories: categories,
+              variant: variant.colorSlug,
+              quantity: 1,
+              currency: productData.currency || 'ILS'
+            }
+          )
+        } catch (dataLayerError) {
+          console.warn('Data layer tracking error:', dataLayerError)
         }
         
         setLoading(false)
@@ -301,17 +325,21 @@ export default function ProductColorPage() {
 
     setIsAddingToCart(true)
 
-    // Fire Add to Cart analytics event
+    const sku = `${baseSku}-${colorSlug}-${selectedSize}`
+    const sizeLabel = selectedSize
+    const itemName = `${productName} - ${currentVariant.colorSlug}`
+    const itemId = `${baseSku}-${colorSlug}`
+    const categories = product.categories_path || [product.category || 'Unknown']
+
+    // Fire Add to Cart analytics event (Firebase)
     if (analytics) {
       try {
-        const sku = `${baseSku}-${colorSlug}-${selectedSize}`
-        const sizeLabel = selectedSize
         analytics.logEvent('add_to_cart', {
           currency: 'USD',
           value: currentPrice * quantity,
           items: [{
             item_id: sku,
-            item_name: `${productName} - ${currentVariant.colorSlug}`,
+            item_name: itemName,
             item_category: product.category || 'Unknown',
             item_variant: `${sizeLabel}-${currentVariant.colorSlug}`,
             price: currentPrice,
@@ -323,9 +351,25 @@ export default function ProductColorPage() {
       }
     }
 
+    // Track add_to_cart for GA4 data layer
+    try {
+      trackAddToCartEvent(
+        [{
+          name: itemName,
+          id: itemId,
+          price: currentPrice,
+          brand: product.brand,
+          categories: categories,
+          variant: `${sizeLabel}-${currentVariant.colorSlug}`,
+          quantity: quantity
+        }],
+        product.currency || 'ILS'
+      )
+    } catch (dataLayerError) {
+      console.warn('Data layer tracking error:', dataLayerError)
+    }
+
     // Add to cart
-    const sku = `${baseSku}-${colorSlug}-${selectedSize}`
-    const sizeLabel = selectedSize
     addToCart({
       sku: sku,
       name: {

@@ -5,6 +5,8 @@ import { CheckoutStep, CheckoutFormData, CreateLowProfileRequest, CreateLowProfi
 import PayerDetailsForm from './PayerDetailsForm';
 import PaymentIframe from './PaymentIframe';
 import PaymentResultComponent from './PaymentResult';
+import { trackBeginCheckout } from '@/lib/dataLayer';
+import { CartItem } from '../hooks/useCart';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -16,6 +18,7 @@ interface CheckoutModalProps {
   productSku?: string;
   quantity?: number;
   language?: 'he' | 'en';
+  items?: CartItem[]; // Cart items for tracking
 }
 
 export default function CheckoutModal({
@@ -27,7 +30,8 @@ export default function CheckoutModal({
   productName = 'Sako Order',
   productSku = 'UNKNOWN',
   quantity = 1,
-  language = 'he'
+  language = 'he',
+  items = []
 }: CheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>('IDLE');
   const [formData, setFormData] = useState<CheckoutFormData>({
@@ -158,6 +162,25 @@ export default function CheckoutModal({
   // Handle payment submission
   const handlePaymentSubmit = async () => {
     if (!isFormValid) return;
+
+    // Track begin_checkout event
+    try {
+      if (items.length > 0) {
+        const checkoutItems = items.map(item => ({
+          name: item.name[language as 'en' | 'he'] || 'Unknown Product',
+          id: item.sku,
+          price: item.salePrice || item.price,
+          brand: undefined, // Cart items don't have brand info
+          categories: undefined, // Cart items don't have category info
+          variant: [item.size, item.color].filter(Boolean).join('-') || undefined,
+          quantity: item.quantity
+        }));
+        
+        trackBeginCheckout(checkoutItems, currency);
+      }
+    } catch (dataLayerError) {
+      console.warn('Data layer tracking error:', dataLayerError);
+    }
 
     setStep('CREATING_LP');
     setIsLoading(true);

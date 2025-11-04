@@ -3,11 +3,12 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Product, ColorVariant } from '@/lib/firebase'
+import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
 import { HeartIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import QuickBuyDrawer from './QuickBuyDrawer'
+import { trackSelectItem } from '@/lib/dataLayer'
 
 interface ProductCardProps {
   product: Product
@@ -96,6 +97,34 @@ export default function ProductCard({ product, language = 'en', returnUrl }: Pro
       <Link 
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
         className="relative aspect-square overflow-hidden bg-gray-50 block"
+        onClick={() => {
+          // Track select_item when product is clicked
+          try {
+            const productName = productHelpers.getField(product, 'name', language as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product';
+            const itemId = `${product.sku}-${activeVariant.colorSlug}`;
+            const price = currentPrice;
+            const categories = product.categories_path || [product.category || 'Unknown'];
+            const listName = 'Product List'; // Could be enhanced to pass actual list name
+            const listId = 'product_list'; // Could be enhanced to pass actual list ID
+            
+            trackSelectItem(
+              productName,
+              itemId,
+              price,
+              {
+                brand: product.brand,
+                categories: categories,
+                variant: activeVariant.colorSlug,
+                listName: listName,
+                listId: listId,
+                index: undefined, // Index would need to be passed as prop
+                currency: product.currency || 'ILS'
+              }
+            );
+          } catch (dataLayerError) {
+            console.warn('Data layer tracking error:', dataLayerError);
+          }
+        }}
       >
         {primaryImage ? (
           <Image

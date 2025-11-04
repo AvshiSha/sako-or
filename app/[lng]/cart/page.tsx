@@ -13,7 +13,6 @@ import {
 import { useCart } from '@/app/hooks/useCart'
 import CheckoutModal from '@/app/components/CheckoutModal'
 import { trackViewCart } from '@/lib/dataLayer'
-import { useEffect } from 'react'
 
 export default function CartPage() {
   const params = useParams()

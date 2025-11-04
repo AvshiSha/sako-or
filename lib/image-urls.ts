@@ -1,10 +1,12 @@
 // Image URL mappings from local paths to Firebase Storage URLs
 const imageUrlMappings: Record<string, string> = {
+  "/images/about/dad.png": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fdad.png?alt=media&token=YOUR_TOKEN_HERE",
   "/images/about/craftsmanship.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fcraftsmanship.jpg?alt=media&token=7fa33bc1-0d6a-4956-b4cf-3223491beb22",
   "/images/about/heritage.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fheritage.jpg?alt=media&token=9dbdc603-e4ae-41bd-8a62-01659c431ec9",
   "/images/about/hero.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fhero.jpg?alt=media&token=007bce8d-fd7a-47f4-a4dd-e04846c8ccc5",
   "/images/about/team-1.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fteam-1.jpg?alt=media&token=09f1c831-4cfd-401c-a994-3574e2dff468",
   "/images/about/team-2.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fteam-2.jpg?alt=media&token=6b7ef6eb-2170-481d-83a9-8f45ccfde4e5",
+  "/images/about/crafting(2).webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fcrafting%282%29.webp?alt=media&token=YOUR_TOKEN_HERE",
   "/images/collections/classic-oxford.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollections%2Fclassic-oxford.jpg?alt=media&token=87b9b812-16f0-483e-8ff9-4e97cd89cce6",
   "/images/collections/classic-oxford.svg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollections%2Fclassic-oxford.svg?alt=media&token=2ae87b5b-4d53-4d7d-80cd-e287a6a6154d",
   "/images/collections/designer-boots.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollections%2Fdesigner-boots.jpg?alt=media&token=84e3a0cc-7fed-472e-80e1-eac78487694a",

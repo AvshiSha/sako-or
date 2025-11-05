@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useCart } from '@/app/hooks/useCart'
 import CheckoutModal from '@/app/components/CheckoutModal'
+import ShippingMethodSelector from '@/app/components/ShippingMethodSelector'
 import { trackViewCart } from '@/lib/dataLayer'
 
 export default function CartPage() {
@@ -27,6 +28,8 @@ export default function CartPage() {
     getTotalItems,
     getDeliveryFee,
     getTotalWithDelivery,
+    fulfillment,
+    setFulfillment,
     clearCart,
     loading 
   } = useCart()
@@ -72,7 +75,9 @@ export default function CartPage() {
       clearCart: 'Clear Cart',
       items: 'items',
       item: 'item',
-      freeDelivery: 'Free delivery on orders over ₪300'
+      freeDelivery: 'Free delivery on orders over ₪300',
+      etaDelivery: 'Estimated delivery: 3–5 business days',
+      etaPickup: 'Estimated pickup: ready in 1–2 business days'
     },
     he: {
       title: 'עגלת קניות',
@@ -88,7 +93,9 @@ export default function CartPage() {
       clearCart: 'נקה עגלה',
       items: 'פריטים',
       item: 'פריט',
-      freeDelivery: 'משלוח חינם בהזמנות מעל ₪300'
+      freeDelivery: 'משלוח חינם בהזמנות מעל ₪300',
+      etaDelivery: 'זמן אספקה משוער: 3–5 ימי עסקים',
+      etaPickup: 'איסוף משוער: מוכן תוך 1–2 ימי עסקים'
     }
   }
 
@@ -119,6 +126,58 @@ export default function CartPage() {
     }
   }, [isClient, loading, items, lng])
 
+  // State to force re-render when fulfillment changes
+  const [fulfillmentKey, setFulfillmentKey] = useState(0);
+
+  // Log fulfillment changes in cart page (must be before early return)
+  useEffect(() => {
+    console.log('[CartPage] Fulfillment changed to:', fulfillment);
+  }, [fulfillment]);
+
+  // Listen for fulfillment updates from useCart hook
+  useEffect(() => {
+    const handleFulfillmentUpdate = (event: CustomEvent) => {
+      console.log('[CartPage] Received fulfillmentUpdated event:', event.detail);
+      // Force re-render by updating state
+      setFulfillmentKey(prev => prev + 1);
+    };
+
+    window.addEventListener('fulfillmentUpdated', handleFulfillmentUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('fulfillmentUpdated', handleFulfillmentUpdate as EventListener);
+    };
+  }, []);
+
+  // Also update key when fulfillment changes directly (backup mechanism)
+  useEffect(() => {
+    setFulfillmentKey(prev => prev + 1);
+    console.log('[CartPage] Fulfillment key updated, forcing re-render');
+  }, [fulfillment]);
+
+  // Recalculate values when fulfillment or items change (must be before early return)
+  const totalItems = getTotalItems()
+  const totalPrice = getTotalPrice()
+  
+  // Use useMemo to ensure deliveryFee recalculates when fulfillment changes
+  const deliveryFee = useMemo(() => {
+    const fee = getDeliveryFee();
+    console.log('[CartPage] useMemo deliveryFee - fulfillment:', fulfillment, 'fee:', fee);
+    return fee;
+  }, [fulfillment, getDeliveryFee, totalPrice]);
+  
+  // Use useMemo to ensure total recalculates when fulfillment or deliveryFee changes
+  const totalWithDelivery = useMemo(() => {
+    const total = getTotalWithDelivery();
+    console.log('[CartPage] useMemo totalWithDelivery - fulfillment:', fulfillment, 'total:', total);
+    return total;
+  }, [fulfillment, getTotalWithDelivery, totalPrice, deliveryFee]);
+  
+  // Log calculated values (must be before early return)
+  useEffect(() => {
+    console.log('[CartPage] Calculated values - deliveryFee:', deliveryFee, 'totalWithDelivery:', totalWithDelivery, 'totalPrice:', totalPrice);
+  }, [deliveryFee, totalWithDelivery, totalPrice, fulfillment]);
+
   if (!isClient || loading) {
     return (
       <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -143,11 +202,6 @@ export default function CartPage() {
       </div>
     )
   }
-
-  const totalItems = getTotalItems()
-  const totalPrice = getTotalPrice()
-  const deliveryFee = getDeliveryFee()
-  const totalWithDelivery = getTotalWithDelivery()
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -313,22 +367,46 @@ export default function CartPage() {
                   ))}
                 </div>
 
-                <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
+                {/* Shipping Method Selector */}
+                <div className="border-t border-gray-200 pt-4 mt-4">
+                  <ShippingMethodSelector language={lng as 'he' | 'en'} />
+                </div>
+
+                <div key={`totals-${fulfillment}`} className="border-t border-gray-200 pt-4 mt-4 space-y-2">
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>{t.subtotal}</span>
                     <span>₪{totalPrice.toFixed(2)}</span>
                   </div>
                   
-                  {deliveryFee > 0 ? (
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>{t.delivery}</span>
-                      <span>₪{deliveryFee.toFixed(2)}</span>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-green-600 font-medium">
-                      {t.freeDelivery}
-                    </div>
-                  )}
+                  {/* Shipping information based on fulfillment method - key forces re-render when fulfillment changes */}
+                  {(() => {
+                    // Read fulfillment directly from hook to ensure we have latest value
+                    const currentFulfillment = fulfillment;
+                    console.log('[CartPage] Rendering shipping info - fulfillment:', currentFulfillment, 'deliveryFee:', deliveryFee);
+                    
+                    return (
+                      <div key={`shipping-info-${currentFulfillment}-${fulfillmentKey}`}>
+                        {currentFulfillment === 'delivery' ? (
+                          // Delivery method selected
+                          totalPrice < 300 ? (
+                            <div className="flex justify-between text-sm text-gray-600">
+                              <span>{t.delivery}</span>
+                              <span>₪{deliveryFee.toFixed(2)}</span>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-green-600 font-medium">
+                              {t.freeDelivery}
+                            </div>
+                          )
+                        ) : currentFulfillment === 'pickup' ? (
+                          // Pickup method selected
+                          <div className="text-sm text-green-600 font-medium">
+                            {t.etaPickup}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })()}
                   
                   <div className="flex justify-between text-lg font-bold text-gray-700 border-t border-gray-200 pt-2">
                     <span>{t.total}</span>
@@ -367,6 +445,8 @@ export default function CartPage() {
         quantity={totalItems}
         language={lng as 'he' | 'en'}
         items={items}
+        fulfillment={fulfillment}
+        key={`checkout-modal-${fulfillment}`}
       />
     </div>
   )

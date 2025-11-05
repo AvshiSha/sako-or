@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { flushSync } from 'react-dom'
+import { FulfillmentMethod, CartFulfillmentState } from '../types/fulfillment'
 
 export interface CartItem {
   sku: string
@@ -21,6 +22,8 @@ export interface CartItem {
 
 export interface CartHook {
   items: CartItem[]
+  fulfillment: FulfillmentMethod
+  setFulfillment: (method: FulfillmentMethod) => void
   addToCart: (item: Omit<CartItem, 'quantity'>) => void
   removeFromCart: (sku: string, size?: string, color?: string) => void
   updateQuantity: (sku: string, quantity: number, size?: string, color?: string) => void
@@ -35,14 +38,20 @@ export interface CartHook {
 
 export function useCart(): CartHook {
   const [items, setItems] = useState<CartItem[]>([])
+  const [fulfillment, setFulfillmentState] = useState<FulfillmentMethod>('delivery')
   const [loading, setLoading] = useState(true)
 
-  // Load cart from localStorage on mount
+  // Load cart and fulfillment from localStorage on mount
   useEffect(() => {
     try {
       const storedCart = localStorage.getItem('cart')
       if (storedCart) {
         setItems(JSON.parse(storedCart))
+      }
+      
+      const storedFulfillment = localStorage.getItem('cartFulfillment') as FulfillmentMethod | null
+      if (storedFulfillment === 'delivery' || storedFulfillment === 'pickup') {
+        setFulfillmentState(storedFulfillment)
       }
     } catch (error) {
       console.error('Error loading cart:', error)
@@ -51,18 +60,19 @@ export function useCart(): CartHook {
     }
   }, [])
 
-  // Save cart to localStorage whenever items change
+  // Save cart and fulfillment to localStorage whenever they change
   useEffect(() => {
     if (!loading) {
       try {
         localStorage.setItem('cart', JSON.stringify(items))
+        localStorage.setItem('cartFulfillment', fulfillment)
         // Dispatch custom event to notify other components
         window.dispatchEvent(new CustomEvent('cartUpdated', { detail: items }))
       } catch (error) {
         console.error('Error saving cart:', error)
       }
     }
-  }, [items, loading])
+  }, [items, fulfillment, loading])
 
   // Listen for cart updates from other components
   useEffect(() => {
@@ -157,10 +167,23 @@ export function useCart(): CartHook {
     return item ? item.quantity : 0
   }, [items])
 
+  const setFulfillment = useCallback((method: FulfillmentMethod) => {
+    console.log('[useCart] setFulfillment called with method:', method);
+    console.log('[useCart] Current fulfillment state before update:', fulfillment);
+    // Use flushSync to ensure synchronous state update
+    flushSync(() => {
+      setFulfillmentState(method)
+    })
+    // Dispatch custom event to notify components of fulfillment change
+    window.dispatchEvent(new CustomEvent('fulfillmentUpdated', { detail: method }))
+    console.log('[useCart] setFulfillmentState called with:', method, 'and event dispatched');
+  }, [fulfillment])
+
   const getDeliveryFee = useCallback(() => {
-    const total = getTotalPrice()
-    return total < 300 ? 45 : 0
-  }, [getTotalPrice])
+    const fee = fulfillment === 'pickup' ? 0 : (getTotalPrice() < 300 ? 45 : 0);
+    console.log('[useCart] getDeliveryFee called - fulfillment:', fulfillment, 'total:', getTotalPrice(), 'fee:', fee);
+    return fee;
+  }, [fulfillment, getTotalPrice])
 
   const getTotalWithDelivery = useCallback(() => {
     return getTotalPrice() + getDeliveryFee()
@@ -168,6 +191,8 @@ export function useCart(): CartHook {
 
   return {
     items,
+    fulfillment,
+    setFulfillment,
     addToCart,
     removeFromCart,
     updateQuantity,

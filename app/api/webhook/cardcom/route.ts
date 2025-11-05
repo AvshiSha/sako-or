@@ -244,6 +244,11 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
     // Send confirmation email with Resend (idempotent)
     console.log(`[WEBHOOK] Processing order ${orderId} confirmation`);
 
+    // Parse fulfillment data from order
+    const fulfillment = (order.fulfillment as 'delivery' | 'pickup') || 'delivery';
+    const deliveryEtaBusinessDays = order.deliveryEtaBusinessDays ? JSON.parse(JSON.stringify(order.deliveryEtaBusinessDays)) as [number, number] : undefined;
+    const pickupReadyWindowBusinessDays = order.pickupReadyWindowBusinessDays ? JSON.parse(JSON.stringify(order.pickupReadyWindowBusinessDays)) as [number, number] : undefined;
+
     const emailResult = await sendOrderConfirmationEmailIdempotent({
       customerEmail: order.customerEmail,
       customerName: order.customerName || '',
@@ -251,8 +256,14 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       orderDate: new Date(order.createdAt).toLocaleDateString(),
       items: items,
       total: order.total,
+      shippingCost: order.shippingCost ?? 0,
       payer: payer,
       deliveryAddress: deliveryAddress,
+      fulfillment: fulfillment,
+      pickupLocationName: order.pickupLocationName || undefined,
+      pickupAddress: order.pickupAddress || undefined,
+      deliveryEtaBusinessDays: deliveryEtaBusinessDays,
+      pickupReadyWindowBusinessDays: pickupReadyWindowBusinessDays,
       notes: checkout?.customerDeliveryNotes || undefined,
       isHebrew: if_he,
     }, orderId);

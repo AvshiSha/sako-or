@@ -33,6 +33,7 @@ export interface CheckoutFormData {
   payer: PayerDetails;
   deliveryAddress: DeliveryAddress;
   notes?: string;
+  fulfillment?: 'delivery' | 'pickup';
 }
 
 export interface CreateLowProfileRequest {
@@ -46,6 +47,7 @@ export interface CreateLowProfileRequest {
   customer: PayerDetails;
   deliveryAddress: DeliveryAddress;
   notes?: string;
+  fulfillment?: 'delivery' | 'pickup';
   ui?: {
     isCardOwnerPhoneRequired: boolean;
     cssUrl?: string;

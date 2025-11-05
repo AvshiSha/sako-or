@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CheckoutFormData, PayerDetails, DeliveryAddress } from '../types/checkout';
 
 interface PayerDetailsFormProps {
@@ -8,6 +8,7 @@ interface PayerDetailsFormProps {
   onFormChange: (newFormData: CheckoutFormData) => void;
   onValidationChange: (isValid: boolean) => void;
   language: 'he' | 'en';
+  fulfillment?: 'delivery' | 'pickup';
 }
 
 export default function PayerDetailsForm({
@@ -15,9 +16,14 @@ export default function PayerDetailsForm({
   onFormChange,
   onValidationChange,
   language,
+  fulfillment = 'delivery',
 }: PayerDetailsFormProps) {
   const isHebrew = language === 'he';
   const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
+  
+  // Use fulfillment prop as the ONLY source of truth (it comes from cart state)
+  // This ensures the form always reflects the current selection in the cart
+  const currentFulfillment = fulfillment ?? 'delivery';
 
   const t = {
     // Personal Details
@@ -116,14 +122,10 @@ export default function PayerDetailsForm({
     }));
   };
 
-  useEffect(() => {
-    // Validate form whenever formData changes
-    const isValid = validateForm(formData);
-    onValidationChange(isValid);
-  }, [formData, onValidationChange]);
-
-  const validateForm = (data: CheckoutFormData): boolean => {
+  const validateForm = useCallback((data: CheckoutFormData): boolean => {
     const { payer, deliveryAddress } = data;
+    // Use fulfillment prop directly - it's the source of truth from cart state
+    const currentFulfillment = fulfillment ?? 'delivery';
 
     // Personal details validation
     if (!payer.firstName || !payer.lastName || !payer.email || !payer.mobile) {
@@ -136,13 +138,21 @@ export default function PayerDetailsForm({
       return false;
     }
 
-    // Delivery address validation
-    if (!deliveryAddress.city || !deliveryAddress.streetName || !deliveryAddress.streetNumber) {
-      return false;
+    // Delivery address validation - only required for delivery
+    if (currentFulfillment === 'delivery') {
+      if (!deliveryAddress.city || !deliveryAddress.streetName || !deliveryAddress.streetNumber) {
+        return false;
+      }
     }
 
     return true;
-  };
+  }, [fulfillment]);
+
+  useEffect(() => {
+    // Validate form whenever formData or fulfillment changes
+    const isValid = validateForm(formData);
+    onValidationChange(isValid);
+  }, [formData, fulfillment, onValidationChange, validateForm]);
 
   const handlePayerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -294,117 +304,119 @@ export default function PayerDetailsForm({
         </div>
       </div>
 
-      {/* Delivery Address Section */}
-      <div className="space-y-6">
-        <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
-          {t.deliveryAddress}
-        </h3>
+      {/* Delivery Address Section - Only show for delivery */}
+      {currentFulfillment === 'delivery' && (
+        <div className="space-y-6">
+          <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">
+            {t.deliveryAddress}
+          </h3>
         
-        <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-6">
-          <div className="sm:col-span-2">
-            <label htmlFor="city" className="block text-sm font-medium text-gray-700">
-              {t.city} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="city"
-              id="city"
-              value={formData.deliveryAddress.city}
-              onChange={handleDeliveryAddressChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              required
-            />
+          <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-6">
+            <div className="sm:col-span-2">
+              <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                {t.city} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="city"
+                id="city"
+                value={formData.deliveryAddress.city}
+                onChange={handleDeliveryAddressChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                required
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="streetName" className="block text-sm font-medium text-gray-700">
+                {t.streetName} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="streetName"
+                id="streetName"
+                value={formData.deliveryAddress.streetName}
+                onChange={handleDeliveryAddressChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                required
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="streetNumber" className="block text-sm font-medium text-gray-700">
+                {t.streetNumber} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="streetNumber"
+                id="streetNumber"
+                value={formData.deliveryAddress.streetNumber}
+                onChange={handleDeliveryAddressChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                required
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="floor" className="block text-sm font-medium text-gray-700">
+                {t.floor}
+              </label>
+              <input
+                type="text"
+                name="floor"
+                id="floor"
+                value={formData.deliveryAddress.floor || ''}
+                onChange={handleDeliveryAddressChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="apartmentNumber" className="block text-sm font-medium text-gray-700">
+                {t.apartmentNumber}
+              </label>
+              <input
+                type="text"
+                name="apartmentNumber"
+                id="apartmentNumber"
+                value={formData.deliveryAddress.apartmentNumber || ''}
+                onChange={handleDeliveryAddressChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700">
+                {t.zipCode}
+              </label>
+              <input
+                type="text"
+                name="zipCode"
+                id="zipCode"
+                value={formData.deliveryAddress.zipCode || ''}
+                onChange={handleDeliveryAddressChange}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+            </div>
           </div>
           
+          {/* Delivery Notes */}
           <div>
-            <label htmlFor="streetName" className="block text-sm font-medium text-gray-700">
-              {t.streetName} <span className="text-red-500">*</span>
+            <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+              {t.notes}
             </label>
-            <input
-              type="text"
-              name="streetName"
-              id="streetName"
-              value={formData.deliveryAddress.streetName}
-              onChange={handleDeliveryAddressChange}
+            <textarea
+              name="notes"
+              id="notes"
+              rows={3}
+              value={formData.notes || ''}
+              onChange={handleNotesChange}
               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              required
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="streetNumber" className="block text-sm font-medium text-gray-700">
-              {t.streetNumber} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              name="streetNumber"
-              id="streetNumber"
-              value={formData.deliveryAddress.streetNumber}
-              onChange={handleDeliveryAddressChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              required
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="floor" className="block text-sm font-medium text-gray-700">
-              {t.floor}
-            </label>
-            <input
-              type="text"
-              name="floor"
-              id="floor"
-              value={formData.deliveryAddress.floor || ''}
-              onChange={handleDeliveryAddressChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="apartmentNumber" className="block text-sm font-medium text-gray-700">
-              {t.apartmentNumber}
-            </label>
-            <input
-              type="text"
-              name="apartmentNumber"
-              id="apartmentNumber"
-              value={formData.deliveryAddress.apartmentNumber || ''}
-              onChange={handleDeliveryAddressChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700">
-              {t.zipCode}
-            </label>
-            <input
-              type="text"
-              name="zipCode"
-              id="zipCode"
-              value={formData.deliveryAddress.zipCode || ''}
-              onChange={handleDeliveryAddressChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              placeholder={isHebrew ? 'הערות נוספות למשלוח...' : 'Additional delivery notes...'}
             />
           </div>
         </div>
-        
-        {/* Delivery Notes */}
-        <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-            {t.notes}
-          </label>
-          <textarea
-            name="notes"
-            id="notes"
-            rows={3}
-            value={formData.notes || ''}
-            onChange={handleNotesChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            placeholder={isHebrew ? 'הערות נוספות למשלוח...' : 'Additional delivery notes...'}
-          />
-        </div>
-      </div>
+      )}
 
     </div>
   );

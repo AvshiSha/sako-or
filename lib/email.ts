@@ -21,6 +21,7 @@ export interface OrderEmailData {
     price: number;
   }>;
   total: number;
+  shippingCost?: number;
   payer: {
     firstName: string;
     lastName: string;
@@ -36,6 +37,11 @@ export interface OrderEmailData {
     apartmentNumber: string;
     zipCode: string;
   };
+  fulfillment?: 'delivery' | 'pickup';
+  pickupLocationName?: string;
+  pickupAddress?: string;
+  deliveryEtaBusinessDays?: [number, number];
+  pickupReadyWindowBusinessDays?: [number, number];
   notes?: string;
   isHebrew?: boolean;
 }

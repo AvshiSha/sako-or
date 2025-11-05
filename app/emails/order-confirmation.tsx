@@ -28,6 +28,7 @@ interface OrderConfirmationEmailProps {
     price: number;
   }>;
   total: number;
+  shippingCost?: number;
   payer: {
     firstName: string;
     lastName: string;
@@ -43,6 +44,11 @@ interface OrderConfirmationEmailProps {
     apartmentNumber: string;
     zipCode: string;
   };
+  fulfillment?: 'delivery' | 'pickup';
+  pickupLocationName?: string;
+  pickupAddress?: string;
+  deliveryEtaBusinessDays?: [number, number];
+  pickupReadyWindowBusinessDays?: [number, number];
   notes?: string;
   isHebrew?: boolean;
 }
@@ -53,8 +59,14 @@ export function OrderConfirmationEmail({
   orderDate,
   items,
   total,
+  shippingCost = 0,
   payer,
   deliveryAddress,
+  fulfillment = 'delivery',
+  pickupLocationName,
+  pickupAddress,
+  deliveryEtaBusinessDays,
+  pickupReadyWindowBusinessDays,
   notes,
   isHebrew = false,
 }: OrderConfirmationEmailProps) {
@@ -77,6 +89,11 @@ export function OrderConfirmationEmail({
     mobile: isHebrew ? 'טלפון נייד' : 'Mobile Phone',
     idNumber: isHebrew ? 'מספר זהות' : 'ID Number',
     deliveryAddress: isHebrew ? 'כתובת משלוח' : 'Delivery Address',
+    pickupLocation: isHebrew ? 'נקודת איסוף' : 'Pickup Location',
+    shippingCost: isHebrew ? 'דמי משלוח' : 'Shipping Cost',
+    deliveryEta: isHebrew ? 'זמן אספקה משוער' : 'Estimated delivery',
+    pickupEta: isHebrew ? 'זמן איסוף משוער' : 'Estimated pickup',
+    businessDays: isHebrew ? 'ימי עסקים' : 'business days',
     city: isHebrew ? 'עיר' : 'City',
     street: isHebrew ? 'רחוב' : 'Street',
     streetNumber: isHebrew ? 'מספר בית' : 'House Number',
@@ -151,33 +168,70 @@ export function OrderConfirmationEmail({
 
             <Hr style={hr} />
 
-            <Section style={detailsSection}>
-              <Heading style={h2(isHebrew)}>{t.deliveryAddress}</Heading>
-              <Section dir={isHebrew ? 'rtl' : 'ltr'} style={detailsInfo}>
-                <Row>
-                  <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.city}:</Column>
-                  <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>{deliveryAddress.city}</Column>
-                </Row>
-                <Row>
-                  <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.street}:</Column>
-                  <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>{deliveryAddress.streetName} {deliveryAddress.streetNumber}</Column>
-                </Row>
-                {(deliveryAddress.floor || deliveryAddress.apartmentNumber) && (
+            {/* Fulfillment Information */}
+            {fulfillment === 'delivery' ? (
+              <Section style={detailsSection}>
+                <Heading style={h2(isHebrew)}>{t.deliveryAddress}</Heading>
+                {deliveryEtaBusinessDays && (
+                  <Text style={text(isHebrew)}>
+                    {t.deliveryEta}: {deliveryEtaBusinessDays[0]}-{deliveryEtaBusinessDays[1]} {t.businessDays}
+                  </Text>
+                )}
+                <Section dir={isHebrew ? 'rtl' : 'ltr'} style={detailsInfo}>
                   <Row>
-                    <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.floor}/{t.apartment}:</Column>
+                    <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.city}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>{deliveryAddress.city}</Column>
+                  </Row>
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.street}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>{deliveryAddress.streetName} {deliveryAddress.streetNumber}</Column>
+                  </Row>
+                  {(deliveryAddress.floor || deliveryAddress.apartmentNumber) && (
+                    <Row>
+                      <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.floor}/{t.apartment}:</Column>
+                      <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>
+                        {deliveryAddress.floor && `${t.floor}: ${deliveryAddress.floor}`}
+                        {deliveryAddress.floor && deliveryAddress.apartmentNumber && ', '}
+                        {deliveryAddress.apartmentNumber && `${t.apartment}: ${deliveryAddress.apartmentNumber}`}
+                      </Column>
+                    </Row>
+                  )}
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.zipCode}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}><span dir="ltr">{deliveryAddress.zipCode}</span></Column>
+                  </Row>
+                </Section>
+              </Section>
+            ) : (
+              <Section style={detailsSection}>
+                <Heading style={h2(isHebrew)}>{t.pickupLocation}</Heading>
+                {pickupReadyWindowBusinessDays && (
+                  <Text style={text(isHebrew)}>
+                    {t.pickupEta}: {isHebrew ? 'מוכן תוך' : 'Ready in'} {pickupReadyWindowBusinessDays[0]}-{pickupReadyWindowBusinessDays[1]} {t.businessDays}
+                  </Text>
+                )}
+                <Section dir={isHebrew ? 'rtl' : 'ltr'} style={detailsInfo}>
+                  {pickupLocationName && (
+                    <Row>
+                      <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{isHebrew ? 'חנות' : 'Store'}:</Column>
+                      <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>{pickupLocationName}</Column>
+                    </Row>
+                  )}
+                  {pickupAddress && (
+                    <Row>
+                      <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{isHebrew ? 'כתובת' : 'Address'}:</Column>
+                      <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>{pickupAddress}</Column>
+                    </Row>
+                  )}
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{isHebrew ? 'הוראות' : 'Instructions'}:</Column>
                     <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>
-                      {deliveryAddress.floor && `${t.floor}: ${deliveryAddress.floor}`}
-                      {deliveryAddress.floor && deliveryAddress.apartmentNumber && ', '}
-                      {deliveryAddress.apartmentNumber && `${t.apartment}: ${deliveryAddress.apartmentNumber}`}
+                      {isHebrew ? 'אנא הביאו תעודת זהות בעת האיסוף' : 'Please bring ID when collecting your order'}
                     </Column>
                   </Row>
-                )}
-                <Row>
-                  <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.zipCode}:</Column>
-                  <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}><span dir="ltr">{deliveryAddress.zipCode}</span></Column>
-                </Row>
+                </Section>
               </Section>
-            </Section>
+            )}
 
             {notes && (
               <>
@@ -214,6 +268,12 @@ export function OrderConfirmationEmail({
             <Hr style={hr} />
 
             <Section dir={isHebrew ? 'rtl' : 'ltr'} style={totalSection}>
+              {shippingCost > 0 && (
+                <Row>
+                  <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.shippingCost}:</Column>
+                  <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}><span dir="ltr">₪{shippingCost.toFixed(2)}</span></Column>
+                </Row>
+              )}
               <Row>
                 <Column align={isHebrew ? 'right' : 'left'} style={totalLabel(isHebrew)}>{t.total}:</Column>
                 <Column align={isHebrew ? 'left' : 'right'} style={totalValue(isHebrew)}><span dir="ltr">₪{total.toFixed(2)}</span></Column>

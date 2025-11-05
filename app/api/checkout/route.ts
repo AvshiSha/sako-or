@@ -15,11 +15,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.deliveryAddress?.city || !body.deliveryAddress?.streetName || !body.deliveryAddress?.streetNumber) {
-      return NextResponse.json(
-        { error: 'Missing required delivery address information (city, streetName, streetNumber)' },
-        { status: 400 }
-      );
+    // Only validate delivery address if fulfillment is delivery
+    const fulfillment = body.fulfillment || 'delivery';
+    if (fulfillment === 'delivery') {
+      if (!body.deliveryAddress?.city || !body.deliveryAddress?.streetName || !body.deliveryAddress?.streetNumber) {
+        return NextResponse.json(
+          { error: 'Missing required delivery address information (city, streetName, streetNumber)' },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate email format

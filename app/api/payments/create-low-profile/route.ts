@@ -41,6 +41,11 @@ export async function POST(request: NextRequest) {
     // Generate order number if not provided
     const orderNumber = body.orderId || generateOrderNumber();
 
+    // Calculate shipping cost based on fulfillment
+    const fulfillment = body.fulfillment || 'delivery';
+    const subtotal = body.amount; // This should be calculated from items, but for now using amount
+    const shippingCost = fulfillment === 'pickup' ? 0 : (subtotal < 300 ? 45 : 0);
+
     // Create order in database first
     const order = await createOrder({
       orderNumber,
@@ -49,6 +54,12 @@ export async function POST(request: NextRequest) {
       customerName: `${body.customer.firstName} ${body.customer.lastName}`,
       customerEmail: body.customer.email,
       customerPhone: body.customer.mobile,
+      fulfillment: fulfillment,
+      shippingCost: shippingCost,
+      deliveryEtaBusinessDays: fulfillment === 'delivery' ? [3, 5] : undefined,
+      pickupLocationName: fulfillment === 'pickup' ? 'Sako-Or, Rishon LeZion' : undefined,
+      pickupAddress: fulfillment === 'pickup' ? 'Rothchild 51, Rishon Lezion' : undefined,
+      pickupReadyWindowBusinessDays: fulfillment === 'pickup' ? [1, 2] : undefined,
       items: [{
         productName: body.productName || 'Sako Order',
         productSku: body.productSku || 'UNKNOWN',

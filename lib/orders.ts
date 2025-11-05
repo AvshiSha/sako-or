@@ -8,6 +8,12 @@ export interface CreateOrderData {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  fulfillment?: 'delivery' | 'pickup';
+  shippingCost?: number;
+  deliveryEtaBusinessDays?: [number, number];
+  pickupLocationName?: string;
+  pickupAddress?: string;
+  pickupReadyWindowBusinessDays?: [number, number];
   items: {
     productName: string;
     productSku: string;
@@ -28,6 +34,12 @@ export async function createOrder(data: CreateOrderData) {
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,
+        fulfillment: data.fulfillment || 'delivery',
+        shippingCost: data.shippingCost ?? (data.fulfillment === 'pickup' ? 0 : (data.total < 300 ? 45 : 0)),
+        deliveryEtaBusinessDays: data.deliveryEtaBusinessDays ? JSON.parse(JSON.stringify(data.deliveryEtaBusinessDays)) : null,
+        pickupLocationName: data.pickupLocationName || null,
+        pickupAddress: data.pickupAddress || null,
+        pickupReadyWindowBusinessDays: data.pickupReadyWindowBusinessDays ? JSON.parse(JSON.stringify(data.pickupReadyWindowBusinessDays)) : null,
         orderItems: {
           create: data.items.map(item => {
             // Parse the SKU to extract base SKU, color, and size

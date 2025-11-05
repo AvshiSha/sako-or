@@ -7,6 +7,7 @@ import PaymentIframe from './PaymentIframe';
 import PaymentResultComponent from './PaymentResult';
 import { trackBeginCheckout } from '@/lib/dataLayer';
 import { CartItem } from '../hooks/useCart';
+import { FulfillmentMethod } from '../types/fulfillment';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ interface CheckoutModalProps {
   quantity?: number;
   language?: 'he' | 'en';
   items?: CartItem[]; // Cart items for tracking
+  fulfillment?: FulfillmentMethod; // Fulfillment method from cart
 }
 
 export default function CheckoutModal({
@@ -31,7 +33,8 @@ export default function CheckoutModal({
   productSku = 'UNKNOWN',
   quantity = 1,
   language = 'he',
-  items = []
+  items = [],
+  fulfillment = 'delivery'
 }: CheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>('IDLE');
   const [formData, setFormData] = useState<CheckoutFormData>({
@@ -50,7 +53,8 @@ export default function CheckoutModal({
       apartmentNumber: '',
       zipCode: ''
     },
-    notes: ''
+    notes: '',
+    fulfillment: fulfillment
   });
   const [isFormValid, setIsFormValid] = useState(false);
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
@@ -60,10 +64,34 @@ export default function CheckoutModal({
 
   const isHebrew = language === 'he';
 
-  // Reset modal when opened
+  // Update fulfillment in formData when it changes (even when modal is open)
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      fulfillment: fulfillment
+    }));
+  }, [fulfillment]);
+
+  // Get the latest fulfillment from localStorage (source of truth)
+  const getLatestFulfillment = (): FulfillmentMethod => {
+    if (typeof window === 'undefined') return fulfillment;
+    try {
+      const storedFulfillment = localStorage.getItem('cartFulfillment') as FulfillmentMethod | null;
+      if (storedFulfillment === 'delivery' || storedFulfillment === 'pickup') {
+        return storedFulfillment;
+      }
+    } catch (error) {
+      console.warn('[CheckoutModal] Error reading fulfillment from localStorage:', error);
+    }
+    return fulfillment;
+  };
+
+  // Reset modal when opened - always use the latest fulfillment from localStorage
   useEffect(() => {
     if (isOpen) {
+      const latestFulfillment = getLatestFulfillment();
       setStep('DETAILS');
+      // Reset form with latest fulfillment value - read directly from localStorage to ensure we have the current value
       setFormData({
         payer: {
           firstName: '',
@@ -80,14 +108,15 @@ export default function CheckoutModal({
           apartmentNumber: '',
           zipCode: ''
         },
-        notes: ''
+        notes: '',
+        fulfillment: latestFulfillment // Read from localStorage to get the absolute latest value
       });
       setPaymentResult(null);
       setRedirectUrl('');
       setError(null);
       setIsLoading(false);
     }
-  }, [isOpen]);
+  }, [isOpen, fulfillment]);
 
   // Handle form data changes
   const handleFormChange = (newFormData: CheckoutFormData) => {
@@ -129,8 +158,17 @@ export default function CheckoutModal({
       productSku,
       quantity,
       customer: formData.payer,
-      deliveryAddress: formData.deliveryAddress,
+      deliveryAddress: fulfillment === 'pickup' ? {
+        // Use pickup location address for CardCom document
+        city: 'Rishon LeZion',
+        streetName: 'Rothchild',
+        streetNumber: '51',
+        floor: '',
+        apartmentNumber: '',
+        zipCode: ''
+      } : formData.deliveryAddress,
       notes: formData.notes,
+      fulfillment: fulfillment,
       ui: {
         isCardOwnerPhoneRequired: true,
         cssUrl: `${window.location.origin}/cardcom.css`
@@ -267,7 +305,8 @@ export default function CheckoutModal({
         apartmentNumber: '',
         zipCode: ''
       },
-      notes: ''
+      notes: '',
+      fulfillment: fulfillment
     });
   };
 
@@ -325,10 +364,12 @@ export default function CheckoutModal({
             {step === 'DETAILS' && (
               <div className="space-y-6 text-gray-900">
                 <PayerDetailsForm
+                  key={`fulfillment-${formData.fulfillment}`}
                   formData={formData}
                   onFormChange={handleFormChange}
                   onValidationChange={handleValidChange}
                   language={language}
+                  fulfillment={formData.fulfillment}
                 />
                 
                 {error && (

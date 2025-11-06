@@ -87,7 +87,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
         shippingCost: data.shippingCost,
         payer: data.payer,
         deliveryAddress: data.deliveryAddress,
-        fulfillment: data.fulfillment || 'delivery',
+        fulfillment: data.fulfillment || 'pickup',
         pickupLocationName: data.pickupLocationName,
         pickupAddress: data.pickupAddress,
         deliveryEtaBusinessDays: data.deliveryEtaBusinessDays,

@@ -115,16 +115,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set CORS headers
-    const origin = request.headers.get('origin');
-    const allowedOrigins = [
-      'https://sako-or.com',
-      'https://www.sako-or.com',
-      'https://sako-or-git-feature-pickstore-sako-or.vercel.app',
-      'http://localhost:3000',
-    ];
-    const allowedOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-
     // Return the payment URL to the client
     return NextResponse.json({
       success: true,
@@ -134,11 +124,6 @@ export async function POST(request: NextRequest) {
       orderDbId: order.id,
       amount: body.amount,
       currency: body.currencyIso === 2 ? 'USD' : 'ILS',
-    }, {
-      headers: {
-        'Access-Control-Allow-Origin': allowedOrigin,
-        'Access-Control-Allow-Credentials': 'true',
-      },
     });
 
   } catch (error) {
@@ -155,24 +140,13 @@ export async function POST(request: NextRequest) {
 }
 
 // Handle OPTIONS for CORS
-export async function OPTIONS(request: NextRequest) {
-  const origin = request.headers.get('origin');
-  const allowedOrigins = [
-    'https://sako-or.com',
-    'https://www.sako-or.com',
-    'https://sako-or-git-feature-pickstore-sako-or.vercel.app',
-    'http://localhost:3000',
-  ];
-  
-  const allowedOrigin = origin && allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
-  
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {
-      'Access-Control-Allow-Origin': allowedOrigin,
+      'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Allow-Credentials': 'true',
     },
   });
 }

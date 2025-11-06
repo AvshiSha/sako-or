@@ -29,7 +29,7 @@ export interface OrderEmailData {
     mobile: string;
     idNumber: string;
   };
-  deliveryAddress: {
+  deliveryAddress?: {
     city: string;
     streetName: string;
     streetNumber: string;
@@ -84,8 +84,14 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
         orderDate: data.orderDate,
         items: data.items,
         total: data.total,
+        shippingCost: data.shippingCost,
         payer: data.payer,
         deliveryAddress: data.deliveryAddress,
+        fulfillment: data.fulfillment || 'delivery',
+        pickupLocationName: data.pickupLocationName,
+        pickupAddress: data.pickupAddress,
+        deliveryEtaBusinessDays: data.deliveryEtaBusinessDays,
+        pickupReadyWindowBusinessDays: data.pickupReadyWindowBusinessDays,
         notes: data.notes,
         isHebrew: data.isHebrew,
       }),

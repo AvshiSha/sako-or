@@ -1,5 +1,5 @@
 import * as React from 'react';
-//import 'web-streams-polyfill/polyfill';
+// import 'web-streams-polyfill/polyfill';
 import {
   Body,
   Container,
@@ -36,7 +36,7 @@ interface OrderConfirmationEmailProps {
     mobile: string;
     idNumber: string;
   };
-  deliveryAddress: {
+  deliveryAddress?: {
     city: string;
     streetName: string;
     streetNumber: string;
@@ -44,7 +44,7 @@ interface OrderConfirmationEmailProps {
     apartmentNumber: string;
     zipCode: string;
   };
-  fulfillment?: 'delivery' | 'pickup';
+  fulfillment: 'delivery' | 'pickup';
   pickupLocationName?: string;
   pickupAddress?: string;
   deliveryEtaBusinessDays?: [number, number];
@@ -62,7 +62,7 @@ export function OrderConfirmationEmail({
   shippingCost = 0,
   payer,
   deliveryAddress,
-  fulfillment = 'delivery',
+  fulfillment,
   pickupLocationName,
   pickupAddress,
   deliveryEtaBusinessDays,
@@ -169,7 +169,7 @@ export function OrderConfirmationEmail({
             <Hr style={hr} />
 
             {/* Fulfillment Information */}
-            {fulfillment === 'delivery' ? (
+            {fulfillment === 'delivery' && deliveryAddress ? (
               <Section style={detailsSection}>
                 <Heading style={h2(isHebrew)}>{t.deliveryAddress}</Heading>
                 {deliveryEtaBusinessDays && (
@@ -202,7 +202,7 @@ export function OrderConfirmationEmail({
                   </Row>
                 </Section>
               </Section>
-            ) : (
+            ) : fulfillment === 'pickup' ? (
               <Section style={detailsSection}>
                 <Heading style={h2(isHebrew)}>{t.pickupLocation}</Heading>
                 {pickupReadyWindowBusinessDays && (
@@ -231,7 +231,7 @@ export function OrderConfirmationEmail({
                   </Row>
                 </Section>
               </Section>
-            )}
+            ) : null}
 
             {notes && (
               <>

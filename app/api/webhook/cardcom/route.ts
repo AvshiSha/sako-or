@@ -225,29 +225,30 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       idNumber: ''
     };
 
-    const deliveryAddress = checkout ? {
+    // Parse fulfillment data from order
+    const fulfillment = (order.fulfillment as 'delivery' | 'pickup') || 'delivery';
+    const deliveryEtaBusinessDays = order.deliveryEtaBusinessDays ? JSON.parse(JSON.stringify(order.deliveryEtaBusinessDays)) as [number, number] : undefined;
+    const pickupReadyWindowBusinessDays = order.pickupReadyWindowBusinessDays ? JSON.parse(JSON.stringify(order.pickupReadyWindowBusinessDays)) as [number, number] : undefined;
+
+    // Only include deliveryAddress if fulfillment is 'delivery'
+    const deliveryAddress = fulfillment === 'delivery' && checkout ? {
       city: checkout.customerCity,
       streetName: checkout.customerStreetName,
       streetNumber: checkout.customerStreetNumber,
       floor: checkout.customerFloor || '',
       apartmentNumber: checkout.customerApartment || '',
       zipCode: checkout.customerZip || ''
-    } : {
+    } : fulfillment === 'delivery' ? {
       city: '',
       streetName: '',
       streetNumber: '',
       floor: '',
       apartmentNumber: '',
       zipCode: ''
-    };
+    } : undefined;
 
     // Send confirmation email with Resend (idempotent)
     console.log(`[WEBHOOK] Processing order ${orderId} confirmation`);
-
-    // Parse fulfillment data from order
-    const fulfillment = (order.fulfillment as 'delivery' | 'pickup') || 'delivery';
-    const deliveryEtaBusinessDays = order.deliveryEtaBusinessDays ? JSON.parse(JSON.stringify(order.deliveryEtaBusinessDays)) as [number, number] : undefined;
-    const pickupReadyWindowBusinessDays = order.pickupReadyWindowBusinessDays ? JSON.parse(JSON.stringify(order.pickupReadyWindowBusinessDays)) as [number, number] : undefined;
 
     const emailResult = await sendOrderConfirmationEmailIdempotent({
       customerEmail: order.customerEmail,

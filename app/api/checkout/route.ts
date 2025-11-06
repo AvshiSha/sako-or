@@ -45,21 +45,21 @@ export async function POST(request: NextRequest) {
     }
 
     // Create checkout record in database
-    // Only include delivery address fields if fulfillment is 'delivery'
+    // For pickup orders, use empty strings for required address fields
     const checkout = await prisma.checkout.create({
       data: {
         customerEmail: body.payer.email,
         customerFirstName: body.payer.firstName,
         customerLastName: body.payer.lastName,
         customerPhone: body.payer.mobile,
-        customerStreetName: fulfillment === 'delivery' && body.deliveryAddress ? body.deliveryAddress.streetName : null,
-        customerStreetNumber: fulfillment === 'delivery' && body.deliveryAddress ? body.deliveryAddress.streetNumber : null,
+        customerStreetName: fulfillment === 'delivery' && body.deliveryAddress ? body.deliveryAddress.streetName : '',
+        customerStreetNumber: fulfillment === 'delivery' && body.deliveryAddress ? body.deliveryAddress.streetNumber : '',
         customerFloor: fulfillment === 'delivery' && body.deliveryAddress ? (body.deliveryAddress.floor || null) : null,
         customerApartment: fulfillment === 'delivery' && body.deliveryAddress ? (body.deliveryAddress.apartmentNumber || null) : null,
-        customerCity: fulfillment === 'delivery' && body.deliveryAddress ? body.deliveryAddress.city : null,
-        customerState: fulfillment === 'delivery' && body.deliveryAddress ? body.deliveryAddress.city : null, // Using city as state for now
+        customerCity: fulfillment === 'delivery' && body.deliveryAddress ? body.deliveryAddress.city : '',
+        customerState: fulfillment === 'delivery' && body.deliveryAddress ? body.deliveryAddress.city : '', // Using city as state for now
         customerZip: fulfillment === 'delivery' && body.deliveryAddress ? (body.deliveryAddress.zipCode || null) : null,
-        customerCountry: fulfillment === 'delivery' ? 'Israel' : null, // Default to Israel, can be made configurable
+        customerCountry: fulfillment === 'delivery' ? 'Israel' : '', // Default to Israel, can be made configurable
         customerID: body.payer.idNumber || null,
         customerDeliveryNotes: body.notes || null,
       },

@@ -211,18 +211,18 @@ export function OrderConfirmationEmail({
                   </Text>
                 )}
                 <Section dir={isHebrew ? 'rtl' : 'ltr'} style={detailsInfo}>
-                  {pickupLocationName && (
-                    <Row>
-                      <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{isHebrew ? 'חנות' : 'Store'}:</Column>
-                      <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>{pickupLocationName}</Column>
-                    </Row>
-                  )}
-                  {pickupAddress && (
-                    <Row>
-                      <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{isHebrew ? 'כתובת' : 'Address'}:</Column>
-                      <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>{pickupAddress}</Column>
-                    </Row>
-                  )}
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{isHebrew ? 'חנות' : 'Store'}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>
+                      {pickupLocationName || (isHebrew ? 'סכו עור, ראשון לציון' : 'Sako-Or, Rishon LeZion')}
+                    </Column>
+                  </Row>
+                  <Row>
+                    <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{isHebrew ? 'כתובת' : 'Address'}:</Column>
+                    <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>
+                      {pickupAddress || (isHebrew ? 'רחוב רוטשילד 51, ראשון לציון' : 'Rothchild 51, Rishon Lezion')}
+                    </Column>
+                  </Row>
                   <Row>
                     <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{isHebrew ? 'הוראות' : 'Instructions'}:</Column>
                     <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>

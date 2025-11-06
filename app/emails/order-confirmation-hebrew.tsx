@@ -207,18 +207,18 @@ export function OrderConfirmationEmailHebrew({
                   </Text>
                 )}
                 <Section dir="rtl" style={detailsInfo}>
-                  {pickupLocationName && (
-                    <Row>
-                      <Column align="right" style={orderLabel(isHebrew)}>חנות:</Column>
-                      <Column align="left" style={orderValue(isHebrew)}>{pickupLocationName}</Column>
-                    </Row>
-                  )}
-                  {pickupAddress && (
-                    <Row>
-                      <Column align="right" style={orderLabel(isHebrew)}>כתובת:</Column>
-                      <Column align="left" style={orderValue(isHebrew)}>{pickupAddress}</Column>
-                    </Row>
-                  )}
+                  <Row>
+                    <Column align="right" style={orderLabel(isHebrew)}>חנות:</Column>
+                    <Column align="left" style={orderValue(isHebrew)}>
+                      {pickupLocationName || 'סכו עור, ראשון לציון'}
+                    </Column>
+                  </Row>
+                  <Row>
+                    <Column align="right" style={orderLabel(isHebrew)}>כתובת:</Column>
+                    <Column align="left" style={orderValue(isHebrew)}>
+                      {pickupAddress || 'רחוב רוטשילד 51, ראשון לציון'}
+                    </Column>
+                  </Row>
                   <Row>
                     <Column align="right" style={orderLabel(isHebrew)}>הוראות:</Column>
                     <Column align="left" style={orderValue(isHebrew)}>

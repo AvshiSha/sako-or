@@ -69,8 +69,12 @@ export default function ShippingMethodSelector({ language = 'en' }: ShippingMeth
   const handleFulfillmentChange = (method: FulfillmentMethod) => {
     console.log('[ShippingMethodSelector] handleFulfillmentChange called with method:', method);
     console.log('[ShippingMethodSelector] Current fulfillment before change:', fulfillment);
+    console.log('[ShippingMethodSelector] Current shippingCost before change:', shippingCost);
     setFulfillment(method)
     console.log('[ShippingMethodSelector] setFulfillment called with:', method);
+    // Get the updated shipping cost after setting fulfillment
+    const updatedShippingCost = getDeliveryFee();
+    console.log('[ShippingMethodSelector] Updated shippingCost after setFulfillment:', updatedShippingCost);
     
     // Track analytics event
     try {
@@ -79,7 +83,7 @@ export default function ShippingMethodSelector({ language = 'en' }: ShippingMeth
         window.dataLayer.push({
           event: 'shipping_option_selected',
           method: method,
-          value: shippingCost,
+          value: updatedShippingCost,
           currency: 'ILS',
           cart_value: subtotal
         })

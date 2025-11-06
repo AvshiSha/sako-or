@@ -159,19 +159,12 @@ export default function CartPage() {
   const totalItems = getTotalItems()
   const totalPrice = getTotalPrice()
   
-  // Use useMemo to ensure deliveryFee recalculates when fulfillment changes
-  const deliveryFee = useMemo(() => {
-    const fee = getDeliveryFee();
-    console.log('[CartPage] useMemo deliveryFee - fulfillment:', fulfillment, 'fee:', fee);
-    return fee;
-  }, [fulfillment, getDeliveryFee, totalPrice]);
+  // Call getDeliveryFee directly in render to ensure we always get the latest value
+  // Don't use useMemo here as it can have stale closures
+  const deliveryFee = getDeliveryFee();
   
-  // Use useMemo to ensure total recalculates when fulfillment or deliveryFee changes
-  const totalWithDelivery = useMemo(() => {
-    const total = getTotalWithDelivery();
-    console.log('[CartPage] useMemo totalWithDelivery - fulfillment:', fulfillment, 'total:', total);
-    return total;
-  }, [fulfillment, getTotalWithDelivery, totalPrice, deliveryFee]);
+  // Call getTotalWithDelivery directly in render to ensure we always get the latest value
+  const totalWithDelivery = getTotalWithDelivery();
   
   // Log calculated values (must be before early return)
   useEffect(() => {
@@ -380,25 +373,27 @@ export default function CartPage() {
                   
                   {/* Shipping information based on fulfillment method - key forces re-render when fulfillment changes */}
                   {(() => {
-                    // Read fulfillment directly from hook to ensure we have latest value
-                    const currentFulfillment = fulfillment;
-                    console.log('[CartPage] Rendering shipping info - fulfillment:', currentFulfillment, 'deliveryFee:', deliveryFee);
+                    // Use fulfillment state directly from hook
+                    console.log('[CartPage] Current fulfillment:', fulfillment);
+                    // Call getDeliveryFee here to ensure we get the latest value based on current fulfillment
+                    const currentDeliveryFee = getDeliveryFee();
+                    console.log('[CartPage] Rendering shipping info - fulfillment:', fulfillment, 'deliveryFee:', currentDeliveryFee);
                     
                     return (
-                      <div key={`shipping-info-${currentFulfillment}-${fulfillmentKey}`}>
-                        {currentFulfillment === 'delivery' ? (
+                      <div key={`shipping-info-${fulfillment}-${fulfillmentKey}`}>
+                        {fulfillment === 'delivery' ? (
                           // Delivery method selected
                           totalPrice < 300 ? (
                             <div className="flex justify-between text-sm text-gray-600">
                               <span>{t.delivery}</span>
-                              <span>₪{deliveryFee.toFixed(2)}</span>
+                              <span>₪{currentDeliveryFee.toFixed(2)}</span>
                             </div>
                           ) : (
                             <div className="text-sm text-green-600 font-medium">
                               {t.freeDelivery}
                             </div>
                           )
-                        ) : currentFulfillment === 'pickup' ? (
+                        ) : fulfillment === 'pickup' ? (
                           // Pickup method selected
                           <div className="text-sm text-green-600 font-medium">
                             {t.etaPickup}

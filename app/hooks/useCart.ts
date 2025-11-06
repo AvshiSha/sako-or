@@ -24,6 +24,7 @@ export interface CartHook {
   items: CartItem[]
   fulfillment: FulfillmentMethod
   setFulfillment: (method: FulfillmentMethod) => void
+  getFulfillmentState: () => FulfillmentMethod
   addToCart: (item: Omit<CartItem, 'quantity'>) => void
   removeFromCart: (sku: string, size?: string, color?: string) => void
   updateQuantity: (sku: string, quantity: number, size?: string, color?: string) => void
@@ -84,6 +85,22 @@ export function useCart(): CartHook {
     
     return () => {
       window.removeEventListener('cartUpdated', handleCartUpdate as EventListener)
+    }
+  }, [])
+
+  // Listen for fulfillment updates from other components (to keep all hook instances in sync)
+  useEffect(() => {
+    const handleFulfillmentUpdate = (event: CustomEvent) => {
+      const method = event.detail as FulfillmentMethod
+      if (method === 'delivery' || method === 'pickup') {
+        setFulfillmentState(method)
+      }
+    }
+
+    window.addEventListener('fulfillmentUpdated', handleFulfillmentUpdate as EventListener)
+    
+    return () => {
+      window.removeEventListener('fulfillmentUpdated', handleFulfillmentUpdate as EventListener)
     }
   }, [])
 
@@ -168,26 +185,23 @@ export function useCart(): CartHook {
   }, [items])
 
   const setFulfillment = useCallback((method: FulfillmentMethod) => {
-    console.log('[useCart] setFulfillment called with method:', method);
-    console.log('[useCart] Current fulfillment state before update:', fulfillment);
-    // Use flushSync to ensure synchronous state update
-    flushSync(() => {
-      setFulfillmentState(method)
-    })
+    setFulfillmentState(method)
     // Dispatch custom event to notify components of fulfillment change
     window.dispatchEvent(new CustomEvent('fulfillmentUpdated', { detail: method }))
-    console.log('[useCart] setFulfillmentState called with:', method, 'and event dispatched');
-  }, [fulfillment])
+  }, [])
 
   const getDeliveryFee = useCallback(() => {
     const fee = fulfillment === 'pickup' ? 0 : (getTotalPrice() < 300 ? 45 : 0);
-    console.log('[useCart] getDeliveryFee called - fulfillment:', fulfillment, 'total:', getTotalPrice(), 'fee:', fee);
     return fee;
   }, [fulfillment, getTotalPrice])
 
   const getTotalWithDelivery = useCallback(() => {
     return getTotalPrice() + getDeliveryFee()
   }, [getTotalPrice, getDeliveryFee])
+
+  const getFulfillmentState = useCallback(() => {
+    return fulfillment;
+  }, [fulfillment])
 
   return {
     items,
@@ -202,6 +216,7 @@ export function useCart(): CartHook {
     getItemQuantity,
     getDeliveryFee,
     getTotalWithDelivery,
+    getFulfillmentState,
     loading
   }
 }

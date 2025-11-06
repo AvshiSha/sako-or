@@ -35,17 +35,13 @@ export async function GET(request: NextRequest) {
         mobile: '+972-50-123-4567',
         idNumber: '123456789'
       },
-      shippingCost: 45,
-      deliveryAddress: {
-        city: 'Tel Aviv',
-        streetName: 'Rothschild Boulevard',
-        streetNumber: '15',
-        floor: '3',
-        apartmentNumber: '12',
-        zipCode: '66881'
-      },
-      fulfillment: 'delivery' as const,
-      deliveryEtaBusinessDays: [3, 5] as [number, number],
+      shippingCost: 0,
+      deliveryAddress: undefined, // No delivery address for pickup
+      fulfillment: 'pickup' as const,
+      pickupLocationName: 'Sako-Or, Rishon LeZion',
+      pickupAddress: 'Rothchild 51, Rishon Lezion',
+      pickupReadyWindowBusinessDays: [1, 2] as [number, number],
+      deliveryEtaBusinessDays: undefined, // No delivery ETA for pickup
       notes: 'Please deliver after 5 PM',
       isHebrew: false,
     };

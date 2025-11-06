@@ -49,6 +49,8 @@ export async function POST(request: NextRequest) {
         apartmentNumber: '10',
         zipCode: '66881'
       },
+      fulfillment: 'delivery',
+      deliveryEtaBusinessDays: [3, 5],
       notes: if_he ? 'בדיקת מערכת' : 'System test',
       isHebrew: if_he,
     });

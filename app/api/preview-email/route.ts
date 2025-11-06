@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         mobile: '+972-50-123-4567',
         idNumber: '123456789'
       },
+      shippingCost: 45,
       deliveryAddress: {
         city: 'Tel Aviv',
         streetName: 'Rothschild Boulevard',
@@ -41,6 +42,8 @@ export async function GET(request: NextRequest) {
         apartmentNumber: '12',
         zipCode: '66881'
       },
+      fulfillment: 'delivery' as const,
+      deliveryEtaBusinessDays: [3, 5] as [number, number],
       notes: 'Please deliver after 5 PM',
       isHebrew: false,
     };

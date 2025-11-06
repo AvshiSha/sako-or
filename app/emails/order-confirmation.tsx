@@ -1,5 +1,7 @@
 import * as React from 'react';
-import 'web-streams-polyfill/polyfill';
+// Note: web-streams-polyfill can cause ReadableStream conflicts with Next.js API routes
+// Commented out to prevent issues with request.json() parsing
+// import 'web-streams-polyfill/polyfill';
 import {
   Body,
   Container,

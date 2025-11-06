@@ -203,6 +203,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       price: item.price,
       size: item.size,
       sku: item.productSku,
+      brand: 'Sako-Or', // Default brand, can be enhanced to fetch from product if needed
     }));
 
     // Extract language from webhook URL parameters

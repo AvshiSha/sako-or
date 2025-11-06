@@ -15,14 +15,16 @@ export async function GET(request: NextRequest) {
           sku: 'SHOES-001',
           size: 'L',
           quantity: 1, 
-          price: 299.99 
+          price: 299.99,
+          brand: 'Sako-Or'
         },
         { 
           name: 'Cotton Socks', 
           sku: 'SOCKS-002',
           size: 'M',
           quantity: 2, 
-          price: 15.50 
+          price: 15.50,
+          brand: 'Sako-Or'
         },
       ],
       total: 330.99,

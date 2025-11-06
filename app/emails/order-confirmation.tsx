@@ -1,5 +1,5 @@
 import * as React from 'react';
-// import 'web-streams-polyfill/polyfill';
+import 'web-streams-polyfill/polyfill';
 import {
   Body,
   Container,
@@ -26,6 +26,7 @@ interface OrderConfirmationEmailProps {
     size?: string;
     quantity: number;
     price: number;
+    brand: string;
   }>;
   total: number;
   shippingCost?: number;
@@ -251,7 +252,7 @@ export function OrderConfirmationEmail({
                 <Row key={index} style={itemRow}>
                   <Column align={isHebrew ? 'right' : 'left'} style={itemName(isHebrew)}>
                   <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.name}</div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.brand}</div>
                       <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
                         <span>Size: {item.size}</span>
                         <br />
@@ -299,8 +300,8 @@ OrderConfirmationEmail.PreviewProps = {
   orderNumber: 'ORD-2024-001',
   orderDate: 'January 15, 2024',
   items: [
-    { name: 'Premium Leather Shoes', quantity: 1, price: 299.99,size: '36', sku: '0000-0000' },
-    { name: 'Cotton Socks', quantity: 2, price: 15.50,size: '35', sku: '0000-0001' },
+    { name: 'Premium Leather Shoes', brand: 'Sako-Or', quantity: 1, price: 299.99,size: '36', sku: '0000-0000' },
+    { name: 'Cotton Socks', brand: 'Sako-Or', quantity: 2, price: 15.50,size: '35', sku: '0000-0001' },
   ],
   total: 330.99,
   payer: {
@@ -319,6 +320,7 @@ OrderConfirmationEmail.PreviewProps = {
     zipCode: '66881'
   },
   notes: 'Please deliver after 5 PM',
+  fulfillment: 'pickup',
   isHebrew: false,
 } as OrderConfirmationEmailProps;
 
@@ -407,7 +409,7 @@ const itemsSection = {
 
 const h2 = (isHebrew: boolean) => ({
   color: '#333',
-  fontSize: '18px',
+  fontSize: '20px',
   fontWeight: 'bold',
   margin: '0 0 16px 0',
   textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
@@ -420,14 +422,14 @@ const itemRow = {
 
 const itemName = (isHebrew: boolean) => ({
   color: '#333',
-  fontSize: '14px',
+  fontSize: '16px',
   width: '50%',
   textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
 });
 
 const itemQuantity = {
   color: '#666',
-  fontSize: '14px',
+  fontSize: '16px',
   width: '25%',
   textAlign: 'center' as const,
 };
@@ -456,7 +458,7 @@ const totalLabel = (isHebrew: boolean) => ({
 
 const totalValue = (isHebrew: boolean) => ({
   color: '#333',
-  fontSize: '18px',
+  fontSize: '20px',
   fontWeight: 'bold',
   width: '50%',
   textAlign: (isHebrew ? 'left' : 'right') as 'left' | 'right',

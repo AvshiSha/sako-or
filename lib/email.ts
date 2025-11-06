@@ -19,6 +19,7 @@ export interface OrderEmailData {
     size?: string;
     quantity: number;
     price: number;
+    brand: string;
   }>;
   total: number;
   shippingCost?: number;

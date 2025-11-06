@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
           name: if_he ? 'נעליים לבדיקה' : 'Test Shoes',
           quantity: 1,
           price: 100.00,
+          brand: 'Sako-Or',
         }
       ],
       total: 100.00,

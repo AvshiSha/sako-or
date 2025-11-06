@@ -318,7 +318,7 @@ export default function CartPage() {
                     <span>{t.subtotal}</span>
                     <span>₪{totalPrice.toFixed(2)}</span>
                   </div>
-                  
+      
                   {deliveryFee > 0 ? (
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>{t.delivery}</span>

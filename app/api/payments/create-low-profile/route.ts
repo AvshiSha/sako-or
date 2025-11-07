@@ -38,24 +38,76 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate order number if not provided
-    const orderNumber = body.orderId || generateOrderNumber();
+    // Generate order number - always use server-side generation for uniqueness
+    let orderNumber = generateOrderNumber();
+    
+    // Check if the provided order ID exists and handle accordingly
+    if (body.orderId) {
+      const existingOrder = await prisma.order.findUnique({
+        where: { orderNumber: body.orderId }
+      });
+      
+      if (existingOrder) {
+        // If order exists and is in a failed/cancelled state, we can reuse it
+        if (existingOrder.status === 'failed' || existingOrder.status === 'cancelled') {
+          console.log(`Reusing existing failed/cancelled order: ${body.orderId}`);
+          orderNumber = body.orderId;
+          
+          // Delete the old order to recreate it
+          await prisma.order.delete({
+            where: { orderNumber: body.orderId }
+          });
+        } else {
+          // Order exists and is pending/processing/completed - generate new order number
+          console.log(`Order ${body.orderId} already exists with status ${existingOrder.status}, generating new order number`);
+          orderNumber = generateOrderNumber();
+        }
+      } else {
+        // Order doesn't exist, we can use the provided ID
+        orderNumber = body.orderId;
+      }
+    }
 
-    // Create order in database first
-    const order = await createOrder({
-      orderNumber,
-      total: body.amount,
-      currency: body.currencyIso === 2 ? 'USD' : 'ILS',
-      customerName: `${body.customer.firstName} ${body.customer.lastName}`,
-      customerEmail: body.customer.email,
-      customerPhone: body.customer.mobile,
-      items: [{
-        productName: body.productName || 'Sako Order',
-        productSku: body.productSku || 'UNKNOWN',
-        quantity: body.quantity || 1,
-        price: body.amount,
-      }],
-    });
+    // Create order in database
+    let order;
+    try {
+      order = await createOrder({
+        orderNumber,
+        total: body.amount,
+        currency: body.currencyIso === 2 ? 'USD' : 'ILS',
+        customerName: `${body.customer.firstName} ${body.customer.lastName}`,
+        customerEmail: body.customer.email,
+        customerPhone: body.customer.mobile,
+        items: [{
+          productName: body.productName || 'Sako Order',
+          productSku: body.productSku || 'UNKNOWN',
+          quantity: body.quantity || 1,
+          price: body.amount,
+        }],
+      });
+    } catch (createError: any) {
+      // If we still get a unique constraint error, retry with a new order number
+      if (createError.code === 'P2002') {
+        console.log('Duplicate order number detected, generating new one');
+        orderNumber = generateOrderNumber();
+        order = await createOrder({
+          orderNumber,
+          total: body.amount,
+          currency: body.currencyIso === 2 ? 'USD' : 'ILS',
+          customerName: `${body.customer.firstName} ${body.customer.lastName}`,
+          customerEmail: body.customer.email,
+          customerPhone: body.customer.mobile,
+          items: [{
+            productName: body.productName || 'Sako Order',
+            productSku: body.productSku || 'UNKNOWN',
+            quantity: body.quantity || 1,
+            price: body.amount,
+          }],
+        });
+      } else {
+        throw createError;
+      }
+    }
 
     // Create CardCom payment session request
     const cardcomRequest = createPaymentSessionRequest(

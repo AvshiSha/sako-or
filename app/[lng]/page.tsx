@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
-import { getImageUrl, getCollectionImageUrl, getProductImageUrl } from '@/lib/image-urls'
+import { getImageUrl, getCollectionImageUrl, getProductImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
 
 const collections = [
@@ -60,6 +60,7 @@ const featuredProducts = [
       he: 'סניקרס זמש חומות'
     },
     price: 990,
+    //salePrice: 890,
     description: {
       en: 'Step up your style with these premium suede sneakers.<br />A perfect mix of comfort, elegance, and modern edge.',
       he: 'תקחי את הסטייל שלך צעד אחד קדימה עם סניקרס איטלקיות'
@@ -78,6 +79,7 @@ const featuredProducts = [
       he: 'מגפוני שיק'
     },
     price: 790,
+    //salePrice: 690,
     description: {
       en: 'Turn heads with these chic white ankle boots.<br />Sleek, modern, and effortlessly elegant for any occasion.',
       he: 'תסובבי ראשים עם מגפוני עקב יוקרתיות'
@@ -96,6 +98,7 @@ const featuredProducts = [
       he:  'מגפוני בוקרים זמש'
     },
     price: 599,
+    salePrice: 479,
     description: {
       en: 'Add a bold western touch to your look with these rich brown suede cowboy boots.',
       he: 'הוסיפי טאץ\' מערבי נועז למראה שלך עם המגפוני בוקרים שלנו'
@@ -114,6 +117,8 @@ const translations = {
     viewCollection: 'View Collection',
     featuredTitle: 'Featured Pieces',
     featuredDescription: 'Discover our most coveted designs, each telling a unique story of luxury and sophistication',
+    saleBadge: 'Sale',
+    salePriceLabel: 'Now',
     newsletterTitle: 'Join Our World',
     newsletterDescription: 'Subscribe to receive exclusive updates, early access to new collections, and personalized style recommendations.',
     emailPlaceholder: 'Enter your email',
@@ -124,15 +129,17 @@ const translations = {
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!
-    heroDescription: 'גלה את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
+    heroDescription: 'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
     exploreCollections: 'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
     collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
     viewCollection: 'צפה באוסף',
     featuredTitle: 'יצירות מובילות',
-    featuredDescription: 'גלה את העיצובים הנחשקים ביותר שלנו, כל אחד מספר סיפור ייחודי של יוקרה ותחכום',
-    newsletterTitle: 'הצטרף לעולמנו',
-    newsletterDescription: 'הירשם לקבלת עדכונים בלעדיים, גישה מוקדמת לאוספים חדשים והמלצות סגנון מותאמות אישית.',
+    featuredDescription: 'גלי את העיצובים הנחשקים ביותר שלנו, כל אחד מספר סיפור ייחודי של יוקרה ותחכום',
+    saleBadge: 'מבצע',
+    salePriceLabel: 'עכשיו',
+    newsletterTitle: 'הצטרפי לעולמנו',
+    newsletterDescription: 'הירשמי לקבלת עדכונים בלעדיים, גישה מוקדמת לאוספים חדשים והמלצות סגנון מותאמות אישית.',
     emailPlaceholder: 'הזן את האימייל שלך',
     subscribeButton: 'הירשם',
     emailRequired: 'נדרש אימייל',
@@ -160,6 +167,10 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   
   // Get translations for current language
   const t = translations[lng as keyof typeof translations]
+
+  const heroImageSrc = getImageUrl("/images/hero/main-hero.jpg")
+  const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
+  const heroMobileVideoSrc = getHeroMobileVideoUrl()
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -215,15 +226,32 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
     <div className={`pt-16 ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#F6F3ED' }}>
       {/* Hero section */}
       <div className="relative h-screen">
-        <div className="absolute inset-0">
-          <Image
-            src={getImageUrl("/images/hero/main-hero.jpg")}
-            alt="Luxury footwear collection"
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-neutral-900 opacity-60" />
+        <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
+          <video
+            className="hidden md:block h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            poster={heroImageSrc}
+            aria-hidden="true"
+          >
+            <source src={heroDesktopVideoSrc} type="video/mp4" />
+          </video>
+          <video
+            className="block md:hidden h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            //poster={heroImageSrc}
+            aria-hidden="true"
+          >
+            <source src={heroMobileVideoSrc} type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-neutral-900/60" aria-hidden="true" />
         </div>
         <div className="relative h-full flex items-center justify-center text-center">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -255,9 +283,11 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {collections.map((collection) => (
-            <div
+            <Link
               key={collection.name.en}
-              className="group relative h-96"
+              onClick={() => track('view_collections_button')}
+              href={`/${lng}${collection.href}`}
+              className="group relative h-96 block"
             >
               <Image
                 src={collection.imageSrc}
@@ -271,16 +301,12 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
                 <div>
                   <h3 className="text-2xl font-light text-white mb-2">{collection.name[lng as keyof typeof collection.name]}</h3>
                   <p className="text-white/80 mb-4">{collection.description[lng as keyof typeof collection.description]}</p>
-                  <Link
-                    onClick={() => track('view_collections_button')}
-                    href={`/${lng}${collection.href}`}
-                    className="text-white text-sm tracking-wider hover:underline"
-                  >
+                  <span className="text-white text-sm tracking-wider underline-offset-2 group-hover:underline">
                     {t.viewCollection} →
-                  </Link>
+                  </span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
@@ -296,31 +322,54 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {featuredProducts.map((product) => (
-              <div
-                key={product.id}
-                className="group"
-              >
-                <div className="relative aspect-square bg-gray-100 mb-4">
-                  <Image
-                    src={product.imageSrc}
-                    alt={product.imageAlt[lng as keyof typeof product.imageAlt]}
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            {featuredProducts.map((product) => {
+              const salePrice = product.salePrice;
+              const hasSale = typeof salePrice === 'number' && salePrice < product.price;
+
+              return (
+                <Link
+                  key={product.id}
+                  onClick={() => track('view_featured_product_button')}
+                  href={`/${lng}/${product.href}`}
+                  className="group block"
+                >
+                  <div className="relative aspect-square bg-gray-100 mb-4 overflow-hidden">
+                    <Image
+                      src={product.imageSrc}
+                      alt={product.imageAlt[lng as keyof typeof product.imageAlt]}
+                      fill
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                    <div className="absolute inset-0 bg-gray-900/5 group-hover:bg-gray-900/10 transition-colors duration-300" />
+                    {hasSale && (
+                      <div className="absolute top-3 left-3 bg-red-600 text-white text-xs uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+                        {t.saleBadge}
+                      </div>
+                    )}
+                  </div>
+                  <h3 className="text-lg font-light text-gray-900 mb-1">
+                    {product.name[lng as keyof typeof product.name]}
+                  </h3>
+                  <p
+                    className="text-sm text-gray-500 mb-2"
+                    dangerouslySetInnerHTML={{ __html: product.description[lng as keyof typeof product.description] }}
                   />
-                  <div className="absolute inset-0 bg-gray-900/5 group-hover:bg-gray-900/10 transition-colors duration-300" />
-                </div>
-                <h3 className="text-lg font-light text-gray-900 mb-1">
-                  <Link onClick={() => track('view_featured_product_button')} href={`/${lng}/${product.href}`}>{product.name[lng as keyof typeof product.name]}</Link>
-                </h3>
-                <p 
-                  className="text-sm text-gray-500 mb-2"
-                  dangerouslySetInnerHTML={{ __html: product.description[lng as keyof typeof product.description] }}
-                />
-                <p className="text-lg text-gray-900">{product.price}₪</p>
-              </div>
-            ))}
+                  {hasSale ? (
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-base text-gray-500 line-through" aria-label={`Original price ${product.price}₪`}>
+                        {product.price}₪
+                      </span>
+                      <span className="text-lg text-red-600 font-medium" aria-label={`${t.salePriceLabel} ${salePrice}₪`}>
+                        {salePrice}₪
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-lg text-gray-900">{product.price}₪</p>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -25,6 +25,11 @@ const imageUrlMappings: Record<string, string> = {
   "/images/products/suede-chelsea-boots.svg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fproducts%2Fsuede-chelsea-boots.svg?alt=media&token=3bf8c93a-4a5f-48e1-8485-474597a12759"
 };
 
+const videoUrlMappings: Record<string, string> = {
+  "/videos/hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2F9077-Reels-desktop.mp4?alt=media",
+  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2F9077-Reels-mobyle.mp4?alt=media",
+};
+
 /**
  * Get the Firebase Storage URL for a local image path
  * @param localPath - The local image path (e.g., "/images/hero/main-hero.jpg")
@@ -35,10 +40,33 @@ export function getImageUrl(localPath: string): string {
 }
 
 /**
+ * Get the Firebase Storage URL for a local video path
+ * @param localPath - The local video path (e.g., "/videos/hero-desktop.mp4")
+ * @returns The Firebase Storage URL or the original path if not found
+ */
+export function getVideoUrl(localPath: string): string {
+  return videoUrlMappings[localPath] || localPath;
+}
+
+/**
  * Get Firebase Storage URL for hero image
  */
 export function getHeroImageUrl(): string {
   return getImageUrl("/images/hero/main-hero.jpg");
+}
+
+/**
+ * Get Firebase Storage URL for the desktop hero video
+ */
+export function getHeroDesktopVideoUrl(): string {
+  return getVideoUrl("/videos/hero-desktop.mp4");
+}
+
+/**
+ * Get Firebase Storage URL for the mobile hero video
+ */
+export function getHeroMobileVideoUrl(): string {
+  return getVideoUrl("/videos/hero-mobile.mp4");
 }
 
 /**

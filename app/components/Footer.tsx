@@ -8,7 +8,7 @@ import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal';
 // Hardcoded translations for build-time rendering
 const translations = {
   en: {
-    brand: 'SAKO-OR',
+    brand: 'SAKO OR',
     description: 'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
     navigation: 'Navigation',
     newsletter: 'Newsletter',
@@ -29,8 +29,8 @@ const translations = {
     termsReturns: 'Terms & Returns'
   },
   he: {
-    brand: 'סכו עור',
-    description: 'גלה את הקולקציה שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
+    brand: 'Sako Or',
+    description: 'גלי את הקולקציה שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
     navigation: 'ניווט',
     newsletter: 'ניוזלטר',
     subscribe: 'הירשם',

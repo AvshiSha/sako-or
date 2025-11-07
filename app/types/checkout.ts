@@ -40,9 +40,17 @@ export interface CreateLowProfileRequest {
   amount: number;
   currencyIso: number; // 1=ILS, 2=USD
   language: string;
-  productName: string;
-  productSku: string;
-  quantity: number;
+  productName: string; // Legacy - for single product
+  productSku: string; // Legacy - for single product
+  quantity: number; // Legacy - for single product
+  items?: Array<{ // New - for multiple cart items
+    productName: string;
+    productSku: string;
+    quantity: number;
+    price: number; // Price per unit
+    color?: string;
+    size?: string;
+  }>;
   customer: PayerDetails;
   deliveryAddress: DeliveryAddress;
   notes?: string;

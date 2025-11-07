@@ -120,14 +120,27 @@ export default function CheckoutModal({
 
   // Create Low Profile payment session
   const createPaymentSession = async (): Promise<CreateLowProfileResponse> => {
+    // Prepare items array from cart items if available
+    const orderItems = items && items.length > 0
+      ? items.map(item => ({
+          productName: item.name[language as 'en' | 'he'] || productName,
+          productSku: item.sku,
+          quantity: item.quantity,
+          price: item.salePrice || item.price, // Price per unit
+          color: item.color,
+          size: item.size,
+        }))
+      : undefined;
+
     const payload: CreateLowProfileRequest = {
       orderId,
       amount,
       currencyIso: currency === 'USD' ? 2 : 1, // 1=ILS, 2=USD
       language: isHebrew ? 'he' : 'en',
-      productName,
-      productSku,
-      quantity,
+      productName, // Legacy fallback
+      productSku, // Legacy fallback
+      quantity, // Legacy fallback
+      items: orderItems, // New - send all cart items
       customer: formData.payer,
       deliveryAddress: formData.deliveryAddress,
       notes: formData.notes,

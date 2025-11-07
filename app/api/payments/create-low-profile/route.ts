@@ -68,6 +68,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Prepare order items - use items array if provided, otherwise fallback to single product
+    const orderItems = body.items && body.items.length > 0
+      ? body.items.map(item => ({
+          productName: item.productName,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          price: item.price, // Price per unit
+          colorName: item.color,
+          size: item.size,
+        }))
+      : [{
+          productName: body.productName || 'Sako Order',
+          productSku: body.productSku || 'UNKNOWN',
+          quantity: body.quantity || 1,
+          price: body.amount / (body.quantity || 1), // Calculate unit price from total
+        }];
+
     // Create order in database
     let order;
     try {
@@ -78,12 +95,7 @@ export async function POST(request: NextRequest) {
         customerName: `${body.customer.firstName} ${body.customer.lastName}`,
         customerEmail: body.customer.email,
         customerPhone: body.customer.mobile,
-        items: [{
-          productName: body.productName || 'Sako Order',
-          productSku: body.productSku || 'UNKNOWN',
-          quantity: body.quantity || 1,
-          price: body.amount,
-        }],
+        items: orderItems,
       });
     } catch (createError: any) {
       // If we still get a unique constraint error, retry with a new order number
@@ -97,15 +109,40 @@ export async function POST(request: NextRequest) {
           customerName: `${body.customer.firstName} ${body.customer.lastName}`,
           customerEmail: body.customer.email,
           customerPhone: body.customer.mobile,
-          items: [{
-            productName: body.productName || 'Sako Order',
-            productSku: body.productSku || 'UNKNOWN',
-            quantity: body.quantity || 1,
-            price: body.amount,
-          }],
+          items: orderItems,
         });
       } else {
         throw createError;
+      }
+    }
+
+    // Prepare Cardcom products - use items array if provided, otherwise fallback to single product
+    const cardcomProducts = body.items && body.items.length > 0
+      ? body.items.map(item => ({
+          ProductID: item.productSku,
+          Description: item.productName,
+          Quantity: item.quantity,
+          UnitCost: item.price, // Price per unit
+          TotalLineCost: item.price * item.quantity, // Total for this line
+          IsVatFree: false
+        }))
+      : [{
+          ProductID: body.productSku || 'SAKO-PRODUCT',
+          Description: body.productName || 'Sako Order',
+          Quantity: body.quantity || 1,
+          UnitCost: body.amount / (body.quantity || 1), // Calculate unit price
+          TotalLineCost: body.amount, // Total should match the charge amount
+          IsVatFree: false
+        }];
+
+    // Verify the total matches
+    const calculatedTotal = cardcomProducts.reduce((sum, product) => sum + product.TotalLineCost, 0);
+    if (Math.abs(calculatedTotal - body.amount) > 0.01) {
+      console.warn(`Total mismatch: calculated ${calculatedTotal} vs amount ${body.amount}`);
+      // Adjust the last product to match the total
+      if (cardcomProducts.length > 0) {
+        const difference = body.amount - calculatedTotal;
+        cardcomProducts[cardcomProducts.length - 1].TotalLineCost += difference;
       }
     }
 
@@ -118,7 +155,9 @@ export async function POST(request: NextRequest) {
         customerEmail: body.customer.email,
         customerName: `${body.customer.firstName} ${body.customer.lastName}`,
         customerPhone: body.customer.mobile,
-        productName: body.productName,
+        productName: body.items && body.items.length > 0
+          ? body.items.map(item => `${item.productName} x${item.quantity}`).join(', ')
+          : body.productName,
         createToken: false,
         createDocument: true,
         language: body.language || 'he',
@@ -129,15 +168,8 @@ export async function POST(request: NextRequest) {
         customerCity: body.deliveryAddress.city,
         customerMobile: body.customer.mobile,
         documentComments: `Order: ${orderNumber}`,
-        departmentId: "", // You'll provide this value later
-        Products: [{
-          ProductID: body.productSku || 'SAKO-PRODUCT',
-          Description: body.productName || 'Sako Order',
-          Quantity: body.quantity || 1,
-          UnitCost: body.amount,
-          TotalLineCost: body.amount * (body.quantity || 1),
-          IsVatFree: false
-        }]
+        departmentId: "",
+        Products: cardcomProducts
       }
     );
 

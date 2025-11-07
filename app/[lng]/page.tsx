@@ -234,7 +234,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
             loop
             playsInline
             preload="metadata"
-            poster={heroImageSrc}
+            // poster={heroImageSrc}
             aria-hidden="true"
           >
             <source src={heroDesktopVideoSrc} type="video/mp4" />

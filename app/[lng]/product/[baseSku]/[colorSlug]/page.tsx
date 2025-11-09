@@ -370,37 +370,26 @@ export default function ProductColorPage() {
     }
 
     // Add to cart
-    addToCart({
+    const resolvedSalePrice = getSalePrice()
+    const baseCartItem = {
       sku: sku,
       name: {
         en: `${product.title_en || ''} - ${currentVariant.colorSlug}`,
         he: `${product.title_he || ''} - ${currentVariant.colorSlug}`
       },
-      price: currentPrice,
-      salePrice: currentVariant.salePrice,
+      price: getOriginalPrice(),
+      salePrice: resolvedSalePrice && resolvedSalePrice > 0 && resolvedSalePrice < getOriginalPrice() ? resolvedSalePrice : undefined,
       currency: 'USD',
       image: currentVariant.images?.[0],
       size: sizeLabel,
       color: currentVariant.colorSlug,
       maxStock: currentStock
-    })
+    }
+    addToCart(baseCartItem)
     
     // Add multiple items if quantity > 1
     for (let i = 1; i < quantity; i++) {
-      addToCart({
-        sku: sku,
-        name: {
-          en: `${product.title_en || ''} - ${currentVariant.colorSlug}`,
-          he: `${product.title_he || ''} - ${currentVariant.colorSlug}`
-        },
-        price: currentPrice,
-        salePrice: currentVariant.salePrice,
-        currency: 'USD',
-        image: currentVariant.images?.[0],
-        size: sizeLabel,
-        color: currentVariant.colorSlug,
-        maxStock: currentStock
-      })
+      addToCart(baseCartItem)
     }
     
     // Show success toast

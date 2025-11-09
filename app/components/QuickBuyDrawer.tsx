@@ -123,14 +123,15 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         ? ('stockBySize' in activeVariant ? activeVariant.stockBySize[selectedSize] || 0 : 0)
         : ('stockBySize' in activeVariant ? Object.values(activeVariant.stockBySize).reduce((total, stock) => total + stock, 0) : 0)
       
+      const resolvedSalePrice = salePrice && salePrice > 0 ? salePrice : undefined
       const cartItem = {
         sku: sku,
         name: {
           en: productHelpers.getField(product, 'name', 'en') || product.title_en || '',
           he: productHelpers.getField(product, 'name', 'he') || product.title_he || ''
         },
-        price: currentPrice,
-        salePrice: activeVariant.salePrice,
+        price: originalPrice,
+        salePrice: resolvedSalePrice && resolvedSalePrice < originalPrice ? resolvedSalePrice : undefined,
         currency: 'ILS',
         image: typeof primaryImage === 'string' ? primaryImage : primaryImage?.url,
         color: activeVariant.colorSlug,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -51,7 +51,7 @@ const couponContent = {
 
 const COUPON_STORAGE_KEY = 'cart_coupons'
 
-export default function CartPage() {
+function CartPageContent() {
   const params = useParams()
   const lng = params?.lng as string || 'en'
   const isRTL = lng === 'he'
@@ -504,13 +504,33 @@ if (!isClient || loading) {
   )
 }
 
-const totalItems = getTotalItems()
-const subtotal = getTotalPrice()
-const deliveryFee = getDeliveryFee()
-const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
-const discountedSubtotal = Math.max(subtotal - totalDiscount, 0)
-const finalTotal = Math.max(discountedSubtotal + deliveryFee, 0)
-const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
+function CartPageFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 pt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-48" />
+          <div className="space-y-4">
+            {[...Array(2)].map((_, idx) => (
+              <div key={idx} className="bg-white rounded-lg shadow-sm p-6">
+                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+  const totalItems = getTotalItems()
+  const subtotal = getTotalPrice()
+  const deliveryFee = getDeliveryFee()
+  const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
+  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0)
+  const finalTotal = Math.max(discountedSubtotal + deliveryFee, 0)
+  const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -814,5 +834,33 @@ const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
         }))}
       />
     </div>
+  )
+}
+
+function CartPageFallback() {
+  return (
+    <div className="min-h-screen bg-gray-50 pt-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-48" />
+          <div className="space-y-4">
+            {[...Array(2)].map((_, idx) => (
+              <div key={idx} className="bg-white rounded-lg shadow-sm p-6">
+                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function CartPage() {
+  return (
+    <Suspense fallback={<CartPageFallback />}>
+      <CartPageContent />
+    </Suspense>
   )
 }

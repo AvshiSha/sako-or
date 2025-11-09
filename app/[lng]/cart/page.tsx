@@ -148,6 +148,7 @@ export default function CartPage() {
   const totalPrice = getTotalPrice()
   const deliveryFee = getDeliveryFee()
   const totalWithDelivery = getTotalWithDelivery()
+  const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -194,87 +195,96 @@ export default function CartPage() {
             <div className="lg:col-span-2">
               <div className="space-y-4">
                 {items.map((item, index) => (
-                  <div key={`${item.sku}-${item.size}-${item.color}-${index}`} className="bg-white rounded-lg shadow-sm p-6">
-                    <div className="flex items-center space-x-4">
-                      {/* Product Image */}
-                      <div className="flex-shrink-0">
-                        <Link href={`/${lng}/product/${item.sku}`}>
-                          <div className="relative h-20 w-20 rounded-md overflow-hidden">
-                            <Image
-                              src={item.image || '/images/placeholder.svg'}
-                              alt={item.name[lng as 'en' | 'he']}
-                              fill
-                              className="object-cover hover:scale-105 transition-transform duration-200"
-                            />
-                          </div>
-                        </Link>
-                      </div>
-
-                      {/* Product Details */}
-                      <div className="flex-1 min-w-0">
-                        <Link href={`/${lng}/product/${item.sku}`}>
-                          <h3 className="text-lg font-medium text-gray-900 hover:text-indigo-600 line-clamp-2">
+                  <div
+                    key={`${item.sku}-${item.size}-${item.color}-${index}`}
+                    className="bg-white border border-gray-200 rounded-[12px] shadow-sm p-4"
+                    style={{ fontFamily: cardFontFamily }}
+                  >
+                    <div className={`flex ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-start gap-4`}>
+                      <div className="flex-1 min-w-0 flex flex-col gap-1">
+                        <Link href={`/${lng}/product/${item.sku}`} className="block">
+                          <h3
+                            className="text-base font-semibold text-gray-900 hover:text-indigo-600 truncate"
+                            title={item.name[lng as 'en' | 'he']}
+                          >
                             {item.name[lng as 'en' | 'he']}
                           </h3>
                         </Link>
-                        
-                        <div className="mt-1 text-sm text-gray-500">
+
+                        <div className={`space-y-1 text-sm leading-6 ${isRTL ? 'text-right' : 'text-left'}`} style={{ color: '#555555' }}>
                           {item.size && (
-                            <span>{lng === 'he' ? 'מידה' : 'Size'}: {item.size}</span>
+                            <div>
+                              {lng === 'he' ? 'מידה' : 'Size'}: <span className="font-medium text-gray-700">{item.size}</span>
+                            </div>
                           )}
-                          {item.size && item.color && <span> • </span>}
                           {item.color && (
-                            <span>{lng === 'he' ? 'צבע' : 'Color'}: {item.color}</span>
+                            <div>
+                              {lng === 'he' ? 'צבע' : 'Color'}: <span className="font-medium text-gray-700 capitalize">{item.color}</span>
+                            </div>
                           )}
                         </div>
 
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-lg font-bold text-gray-900">
-                            ₪{(item.salePrice || item.price).toFixed(2)}
-                            </span>
-                            {item.salePrice && item.salePrice < item.price && (
-                              <span className="text-sm text-gray-500 line-through">
+                        <div className={`${isRTL ? 'text-right' : 'text-left'}`}>
+                          {item.salePrice && item.salePrice < item.price ? (
+                            <div className={`flex items-baseline gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
+                              <span className="text-sm line-through" style={{ color: '#888888' }}>
                                 ₪{item.price.toFixed(2)}
                               </span>
-                            )}
-                          </div>
+                              <span className="text-base font-bold" style={{ color: '#d32f2f' }}>
+                                ₪{item.salePrice.toFixed(2)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-base font-bold text-black">
+                              ₪{(item.salePrice || item.price).toFixed(2)}
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      {/* Quantity Controls */}
-                      <div className="flex-shrink-0">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center border border-gray-600 rounded-md">
-                            <button
-                              onClick={() => updateQuantity(item.sku, item.quantity - 1, item.size, item.color)}
-                              className="p-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700"
-                              disabled={item.quantity <= 1}
-                            >
-                              <MinusIcon className="h-4 w-4" />
-                            </button>
-                            <span className="px-3 py-2 text-sm font-medium min-w-[3rem] text-center text-gray-700">
-                              {item.quantity}
-                            </span>
-                            <button
-                              onClick={() => updateQuantity(item.sku, item.quantity + 1, item.size, item.color)}
-                              className="p-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700"
-                              disabled={item.quantity >= item.maxStock}
-                            >
-                              <PlusIcon className="h-4 w-4" />
-                            </button>
-                          </div>
-                          
-                          {/* Remove Button */}
-                          <button
-                            onClick={() => removeFromCart(item.sku, item.size, item.color)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                            title={t.remove}
-                          >
-                            <TrashIcon className="h-5 w-5" />
-                          </button>
+                      <Link href={`/${lng}/product/${item.sku}`} className="flex-shrink-0">
+                        <div className="relative h-20 w-20 rounded-lg overflow-hidden">
+                          <Image
+                            src={item.image || '/images/placeholder.svg'}
+                            alt={item.name[lng as 'en' | 'he']}
+                            fill
+                            className="object-cover"
+                          />
                         </div>
+                      </Link>
+                    </div>
+
+                    <div className={`mt-4 flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden">
+                        <button
+                          onClick={() => updateQuantity(item.sku, item.quantity - 1, item.size, item.color)}
+                          className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={item.quantity <= 1}
+                          aria-label={lng === 'he' ? 'הפחת כמות' : 'Decrease quantity'}
+                        >
+                          <MinusIcon className="h-4 w-4" />
+                        </button>
+                        <span className="px-4 text-sm font-medium text-gray-800 min-w-[3rem] text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => updateQuantity(item.sku, item.quantity + 1, item.size, item.color)}
+                          className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={item.quantity >= item.maxStock}
+                          aria-label={lng === 'he' ? 'הגדל כמות' : 'Increase quantity'}
+                        >
+                          <PlusIcon className="h-4 w-4" />
+                        </button>
                       </div>
+
+                      <button
+                        onClick={() => removeFromCart(item.sku, item.size, item.color)}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        title={t.remove}
+                        aria-label={t.remove}
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
                     </div>
                   </div>
                 ))}

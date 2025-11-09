@@ -202,7 +202,7 @@ export default function CartPage() {
                   >
                     <div className={`flex ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-start gap-4`}>
                       <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <Link href={`/${lng}/product/${item.sku}`} className="block">
+                        <Link href={`/${lng}/product/${item.sku}/${item.color}`} className="block">
                           <h3
                             className="text-base font-semibold text-gray-900 hover:text-indigo-600 truncate"
                             title={item.name[lng as 'en' | 'he']}
@@ -226,7 +226,7 @@ export default function CartPage() {
 
                         <div className={`${isRTL ? 'text-right' : 'text-left'}`}>
                           {item.salePrice && item.salePrice < item.price ? (
-                            <div className={`flex items-baseline gap-2 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <div className="flex items-baseline gap-2">
                               <span className="text-sm line-through" style={{ color: '#888888' }}>
                                 ₪{item.price.toFixed(2)}
                               </span>
@@ -242,7 +242,7 @@ export default function CartPage() {
                         </div>
                       </div>
 
-                      <Link href={`/${lng}/product/${item.sku}`} className="flex-shrink-0">
+                      <Link href={`/${lng}/product/${item.sku}${item.color ? `/${item.color}` : ''}`} className="flex-shrink-0">
                         <div className="relative h-20 w-20 rounded-lg overflow-hidden">
                           <Image
                             src={item.image || '/images/placeholder.svg'}

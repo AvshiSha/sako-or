@@ -332,11 +332,23 @@ export default function FavoritesPage() {
                         </h3>
                       </Link>
                       
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-lg font-bold text-gray-900">
-                        ₪{product.price.toFixed(2)}
-                        </span>
-                        {(!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
+                      <div className="mb-3">
+                        {product.salePrice && product.salePrice < product.price ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm line-through" style={{ color: '#888888' }}>
+                              ₪{product.price.toFixed(2)}
+                            </span>
+                            <span className="text-lg font-bold" style={{ color: '#d32f2f' }}>
+                              ₪{product.salePrice.toFixed(2)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-lg font-bold text-black">
+                            ₪{product.price.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      {(!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                           // Check if this color variant has any stock across all sizes
                           if (!v.stockBySize) return true;
                           const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
@@ -346,8 +358,6 @@ export default function FavoritesPage() {
                             {t.outOfStock}
                           </span>
                         )}
-                      </div>
-
                       <button
                         onClick={() => {
                           setSelectedProduct(product)

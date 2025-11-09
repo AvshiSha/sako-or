@@ -325,10 +325,10 @@ export default function ProductColorPage() {
 
     setIsAddingToCart(true)
 
-    const sku = `${baseSku}-${colorSlug}-${selectedSize}`
     const sizeLabel = selectedSize
+    const cartSku = baseSku
+    const variantItemId = `${baseSku}-${colorSlug}-${sizeLabel}`
     const itemName = `${productName} - ${currentVariant.colorSlug}`
-    const itemId = `${baseSku}-${colorSlug}`
     const categories = product.categories_path || [product.category || 'Unknown']
 
     // Fire Add to Cart analytics event (Firebase)
@@ -338,7 +338,7 @@ export default function ProductColorPage() {
           currency: 'USD',
           value: currentPrice * quantity,
           items: [{
-            item_id: sku,
+            item_id: variantItemId,
             item_name: itemName,
             item_category: product.category || 'Unknown',
             item_variant: `${sizeLabel}-${currentVariant.colorSlug}`,
@@ -356,7 +356,7 @@ export default function ProductColorPage() {
       trackAddToCartEvent(
         [{
           name: itemName,
-          id: itemId,
+          id: variantItemId,
           price: currentPrice,
           brand: product.brand,
           categories: categories,
@@ -371,11 +371,13 @@ export default function ProductColorPage() {
 
     // Add to cart
     const resolvedSalePrice = getSalePrice()
+    const baseNameEn = productHelpers.getField(product, 'name', 'en') || product.title_en || ''
+    const baseNameHe = productHelpers.getField(product, 'name', 'he') || product.title_he || ''
     const baseCartItem = {
-      sku: sku,
+      sku: cartSku,
       name: {
-        en: `${product.title_en || ''} - ${currentVariant.colorSlug}`,
-        he: `${product.title_he || ''} - ${currentVariant.colorSlug}`
+        en: baseNameEn,
+        he: baseNameHe
       },
       price: getOriginalPrice(),
       salePrice: resolvedSalePrice && resolvedSalePrice > 0 && resolvedSalePrice < getOriginalPrice() ? resolvedSalePrice : undefined,
@@ -389,7 +391,7 @@ export default function ProductColorPage() {
     
     // Add multiple items if quantity > 1
     for (let i = 1; i < quantity; i++) {
-      addToCart(baseCartItem)
+      addToCart({ ...baseCartItem })
     }
     
     // Show success toast
@@ -889,29 +891,29 @@ export default function ProductColorPage() {
                 <div className="flex space-x-4">
                   <button
                     onClick={() => {
-                      const sku = `${baseSku}-${colorSlug}-${selectedSize}`
-                      toggleFavorite(sku)
+                      const baseSkuKey = baseSku
+                      toggleFavorite(baseSkuKey)
                     }}
                     className={`flex-1 py-3 px-6 rounded-md font-medium border transition-colors duration-200 flex items-center justify-center ${
                       (() => {
-                        const sku = `${baseSku}-${colorSlug}-${selectedSize}`
-                        return isFavorite(sku)
+                        const baseSkuKey = baseSku
+                        return isFavorite(baseSkuKey)
                       })()
                         ? 'border-red-300 bg-red-50 text-red-600'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     {(() => {
-                      const sku = `${baseSku}-${colorSlug}-${selectedSize}`
-                      return isFavorite(sku)
+                      const baseSkuKey = baseSku
+                      return isFavorite(baseSkuKey)
                     })() ? (
                       <HeartSolidIcon className="h-5 w-5 mr-2" />
                     ) : (
                       <HeartIcon className="h-5 w-5 mr-2" />
                     )}
                     {(() => {
-                      const sku = `${baseSku}-${colorSlug}-${selectedSize}`
-                      return isFavorite(sku)
+                      const baseSkuKey = baseSku
+                      return isFavorite(baseSkuKey)
                     })()
                       ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
                       : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')

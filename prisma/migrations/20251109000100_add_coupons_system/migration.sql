@@ -1,3 +1,36 @@
+PS C:\Users\user\sako-or> npx prisma migrate deploy
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "public" at "ep-floral-breeze-adcmnto1-pooler.c-2.us-east-1.aws.neon.tech"
+
+8 migrations found in prisma/migrations
+
+Applying migration `20250930110000_add_order_email_fields`
+Error: P3018
+
+A migration failed to apply. New migrations cannot be applied before the error is recovered from. Read more about how to resolve migration issues in a production database: https://pris.ly/d/migrate-resolve
+
+Migration name: 20250930110000_add_order_email_fields
+
+Database error code: 42701
+
+Database error:
+ERROR: column "emailMessageId" of relation "orders" already exists
+
+DbError { severity: "ERROR", parsed_severity: Some(Error), code: SqlState(E42701), message: "column \"emailMessageId\" of relation \"orders\" already exists", detail: None, hint: None, position: None, where_: None, schema: None, table: None, column: None, datatype: None, constraint: None, file: Some("tablecmds.c"), line: Some(7478), routine: Some("check_for_column_name_collision") }
+
+
+PS C:\Users\user\sako-or> npx prisma migrate dev --name add_coupons_system
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": PostgreSQL database "neondb", schema "public" at "ep-floral-breeze-adcmnto1-pooler.c-2.us-east-1.aws.neon.tech"
+
+Error: P3006
+
+Migration `20241016000000_add_order_email_fields` failed to apply cleanly to the shadow database.
+Error code: P1014
+Error:
+The underlying table for model `orders` does not exist.
 -- CreateEnum
 CREATE TYPE "CouponDiscountType" AS ENUM ('percent_all', 'percent_specific', 'fixed', 'bogo');
 

@@ -92,7 +92,8 @@ function mapCouponToFormValues(data: CouponApiResponse['coupon']): CouponFormVal
 }
 
 function EditCouponPageContent() {
-  const { id } = useParams<{ id: string }>()
+  const params = useParams<{ id: string }>()
+  const id = params?.id
   const router = useRouter()
 
   const [loading, setLoading] = useState(true)
@@ -125,10 +126,16 @@ function EditCouponPageContent() {
       }
     }
 
-    loadCoupon()
+    if (id) {
+      loadCoupon()
+    }
   }, [id])
 
   const handleSubmit = async (values: CouponFormValues) => {
+    if (!id) {
+      throw new Error('Invalid coupon id')
+    }
+
     const payload = createPayload(values)
     const response = await fetch(`/api/admin/coupons/${id}`, {
       method: 'PUT',
@@ -168,6 +175,22 @@ function EditCouponPageContent() {
 
     setTestSampleCart(sampleCart)
     setTestModalOpen(true)
+  }
+
+  if (!id) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600">Invalid coupon ID.</p>
+          <button
+            onClick={() => router.push('/admin/coupons')}
+            className="mt-4 text-sm text-indigo-600 hover:text-indigo-800"
+          >
+            Back to coupons
+          </button>
+        </div>
+      </div>
+    )
   }
 
   if (loading) {

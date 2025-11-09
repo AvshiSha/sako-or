@@ -37,12 +37,67 @@ export function useCart(): CartHook {
   const [items, setItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
 
+  const normalizeCartItem = useCallback((item: CartItem): CartItem => {
+    if (!item?.sku) return item
+
+    let normalizedSku = item.sku
+
+    if (item.size) {
+      const sizeSuffix = `-${item.size}`
+      if (normalizedSku.endsWith(sizeSuffix)) {
+        normalizedSku = normalizedSku.slice(0, -sizeSuffix.length)
+      }
+    }
+
+    if (item.color) {
+      const colorSuffix = `-${item.color}`
+      if (normalizedSku.endsWith(colorSuffix)) {
+        normalizedSku = normalizedSku.slice(0, -colorSuffix.length)
+      }
+    }
+
+    if (normalizedSku === item.sku) {
+      return item
+    }
+
+    return {
+      ...item,
+      sku: normalizedSku
+    }
+  }, [])
+
+  const areItemArraysEqual = useCallback((a: CartItem[], b: CartItem[]) => {
+    if (a === b) return true
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) {
+      const itemA = a[i]
+      const itemB = b[i]
+      if (
+        itemA !== itemB &&
+        (
+          itemA.sku !== itemB.sku ||
+          itemA.size !== itemB.size ||
+          itemA.color !== itemB.color ||
+          itemA.quantity !== itemB.quantity ||
+          itemA.price !== itemB.price ||
+          itemA.salePrice !== itemB.salePrice ||
+          itemA.maxStock !== itemB.maxStock
+        )
+      ) {
+        return false
+      }
+    }
+    return true
+  }, [])
+
   // Load cart from localStorage on mount
   useEffect(() => {
     try {
       const storedCart = localStorage.getItem('cart')
       if (storedCart) {
-        setItems(JSON.parse(storedCart))
+        const parsedItems: CartItem[] = JSON.parse(storedCart)
+        const normalized = parsedItems.map(item => normalizeCartItem(item))
+        setItems(normalized)
       }
     } catch (error) {
       console.error('Error loading cart:', error)
@@ -55,19 +110,30 @@ export function useCart(): CartHook {
   useEffect(() => {
     if (!loading) {
       try {
-        localStorage.setItem('cart', JSON.stringify(items))
+        const normalizedItems = items.map(item => normalizeCartItem(item))
+        const itemsToPersist = areItemArraysEqual(normalizedItems, items) ? items : normalizedItems
+
+        localStorage.setItem('cart', JSON.stringify(itemsToPersist))
         // Dispatch custom event to notify other components
-        window.dispatchEvent(new CustomEvent('cartUpdated', { detail: items }))
+        window.dispatchEvent(new CustomEvent('cartUpdated', { detail: itemsToPersist }))
       } catch (error) {
         console.error('Error saving cart:', error)
       }
     }
-  }, [items, loading])
+  }, [items, loading, normalizeCartItem, areItemArraysEqual])
 
   // Listen for cart updates from other components
   useEffect(() => {
     const handleCartUpdate = (event: CustomEvent) => {
-      setItems(event.detail)
+      const updatedItems: CartItem[] = Array.isArray(event.detail) ? event.detail : []
+      const normalizedItems = updatedItems.map(item => normalizeCartItem(item))
+
+      setItems(prev => {
+        if (areItemArraysEqual(prev, normalizedItems)) {
+          return prev
+        }
+        return normalizedItems
+      })
     }
 
     window.addEventListener('cartUpdated', handleCartUpdate as EventListener)
@@ -75,7 +141,7 @@ export function useCart(): CartHook {
     return () => {
       window.removeEventListener('cartUpdated', handleCartUpdate as EventListener)
     }
-  }, [])
+  }, [areItemArraysEqual, normalizeCartItem])
 
   const addToCart = useCallback((newItem: Omit<CartItem, 'quantity'>) => {
     flushSync(() => {

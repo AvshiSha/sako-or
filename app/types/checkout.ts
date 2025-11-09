@@ -54,6 +54,16 @@ export interface CreateLowProfileRequest {
   customer: PayerDetails;
   deliveryAddress: DeliveryAddress;
   notes?: string;
+  subtotal?: number;
+  discountTotal?: number;
+  deliveryFee?: number;
+  coupons?: Array<{
+    code: string;
+    discountAmount: number;
+    discountType: 'percent_all' | 'percent_specific' | 'fixed' | 'bogo';
+    stackable: boolean;
+    description?: string;
+  }>;
   ui?: {
     isCardOwnerPhoneRequired: boolean;
     cssUrl?: string;

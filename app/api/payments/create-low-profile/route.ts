@@ -85,17 +85,47 @@ export async function POST(request: NextRequest) {
           price: body.amount / (body.quantity || 1), // Calculate unit price from total
         }];
 
+    const requestedCouponCodes = body.coupons?.map(coupon => coupon.code.toUpperCase()) ?? [];
+    const couponRecords = requestedCouponCodes.length > 0
+      ? await prisma.coupon.findMany({
+          where: {
+            code: {
+              in: requestedCouponCodes
+            }
+          }
+        })
+      : [];
+    const couponMap = new Map<string, string>();
+    couponRecords.forEach(record => {
+      couponMap.set(record.code.toUpperCase(), record.id);
+    });
+
+    const computedSubtotal = body.subtotal ?? orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const computedDeliveryFee = body.deliveryFee ?? Math.max(body.amount - (computedSubtotal - (body.discountTotal ?? 0)), 0);
+    const computedDiscountTotal = body.discountTotal ?? Math.max(computedSubtotal + computedDeliveryFee - body.amount, 0);
+
     // Create order in database
     let order;
     try {
       order = await createOrder({
         orderNumber,
         total: body.amount,
+        subtotal: computedSubtotal,
+        discountTotal: computedDiscountTotal,
+        deliveryFee: computedDeliveryFee,
         currency: body.currencyIso === 2 ? 'USD' : 'ILS',
         customerName: `${body.customer.firstName} ${body.customer.lastName}`,
         customerEmail: body.customer.email,
         customerPhone: body.customer.mobile,
         items: orderItems,
+        coupons: body.coupons?.map(coupon => ({
+          code: coupon.code,
+          discountAmount: coupon.discountAmount,
+          discountType: coupon.discountType,
+          stackable: coupon.stackable,
+          description: coupon.description,
+          couponId: couponMap.get(coupon.code.toUpperCase())
+        }))
       });
     } catch (createError: any) {
       // If we still get a unique constraint error, retry with a new order number
@@ -105,11 +135,21 @@ export async function POST(request: NextRequest) {
         order = await createOrder({
           orderNumber,
           total: body.amount,
+          subtotal: computedSubtotal,
+          discountTotal: computedDiscountTotal,
+          deliveryFee: computedDeliveryFee,
           currency: body.currencyIso === 2 ? 'USD' : 'ILS',
           customerName: `${body.customer.firstName} ${body.customer.lastName}`,
           customerEmail: body.customer.email,
           customerPhone: body.customer.mobile,
           items: orderItems,
+          coupons: body.coupons?.map(coupon => ({
+            code: coupon.code,
+            discountAmount: coupon.discountAmount,
+            discountType: coupon.discountType,
+            stackable: coupon.stackable,
+            description: coupon.description
+          }))
         });
       } else {
         throw createError;

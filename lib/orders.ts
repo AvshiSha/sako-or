@@ -1,9 +1,13 @@
 import { prisma } from './prisma';
 import { parseSku } from './sku-parser';
+import { CouponDiscountType } from '@prisma/client';
 
 export interface CreateOrderData {
   orderNumber: string;
   total: number;
+  subtotal?: number;
+  discountTotal?: number;
+  deliveryFee?: number;
   currency?: string;
   customerName?: string;
   customerEmail?: string;
@@ -16,6 +20,14 @@ export interface CreateOrderData {
     quantity: number;
     price: number;
   }[];
+  coupons?: Array<{
+    code: string;
+    discountAmount: number;
+    discountType: CouponDiscountType;
+    stackable: boolean;
+    description?: string;
+    couponId?: string;
+  }>;
 }
 
 export async function createOrder(data: CreateOrderData) {
@@ -24,6 +36,9 @@ export async function createOrder(data: CreateOrderData) {
       data: {
         orderNumber: data.orderNumber,
         total: data.total,
+        subtotal: data.subtotal ?? data.total,
+        discountTotal: data.discountTotal ?? 0,
+        deliveryFee: data.deliveryFee ?? 0,
         currency: data.currency || 'ILS',
         customerName: data.customerName,
         customerEmail: data.customerEmail,
@@ -51,9 +66,22 @@ export async function createOrder(data: CreateOrderData) {
             };
           }),
         },
+        appliedCoupons: data.coupons && data.coupons.length > 0
+          ? {
+              create: data.coupons.map(coupon => ({
+                code: coupon.code,
+                discountAmount: coupon.discountAmount,
+                discountType: coupon.discountType,
+                stackable: coupon.stackable,
+                description: coupon.description ?? null,
+                couponId: coupon.couponId ?? undefined
+              }))
+            }
+          : undefined,
       },
       include: {
         orderItems: true,
+        appliedCoupons: true,
       },
     });
 

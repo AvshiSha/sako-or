@@ -83,5 +83,21 @@
       "newsletterDescription": "הירשמו לקבלת עדכונים בלעדיים, גישה מוקדמת לאוספים חדשים והמלצות סגנון מותאמות אישית.",
       "emailPlaceholder": "כתובת האימייל שלך",
       "subscribeButton": "הרשמה"
+    },
+    "cart": {
+      "couponLabel": "הכנס קוד קופון",
+      "couponPlaceholder": "קוד קופון",
+      "couponApply": "החל",
+      "couponRemove": "הסר",
+      "couponDiscount": "הנחה",
+      "couponSuccess": "הקופון הופעל בהצלחה.",
+      "couponRemoved": "הקופון הוסר.",
+      "couponStackableNotice": "קופון זה ניתן לשילוב עם הנחות קיימות.",
+      "couponOverridesNotice": "קופון זה מחליף את ההנחה הנוכחית שלך.",
+      "couponAutoApplied": "מצאנו עבורך קופון!",
+      "couponInvalid": "קופון זה אינו תקף או שפג תוקפו.",
+      "couponPerUserRequired": "התחבר/י כדי להשתמש בקופון זה.",
+      "couponLoading": "בודק קופון…",
+      "subtotalAfterDiscounts": "סכום לאחר הנחות"
     }
   }

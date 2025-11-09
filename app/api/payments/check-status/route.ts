@@ -17,7 +17,10 @@ export async function POST(request: NextRequest) {
     // Find the order
     const order = await prisma.order.findUnique({
       where: { orderNumber: orderId },
-      include: { payments: true }
+      include: {
+        payments: true,
+        appliedCoupons: true
+      }
     });
 
     if (!order) {
@@ -68,6 +71,58 @@ export async function POST(request: NextRequest) {
             cardcomResponseCode: statusResponse.ResponseCode,
           },
         });
+      }
+
+      if (order.status !== 'completed' && order.appliedCoupons.length > 0) {
+        const userIdentifier = order.customerEmail ? order.customerEmail.toLowerCase() : null
+
+        for (const appliedCoupon of order.appliedCoupons) {
+          try {
+            let couponId = appliedCoupon.couponId
+
+            if (!couponId) {
+              const couponRecord = await prisma.coupon.findUnique({
+                where: { code: appliedCoupon.code }
+              })
+              couponId = couponRecord?.id ?? null
+            }
+
+            if (couponId) {
+              await prisma.coupon.update({
+                where: { id: couponId },
+                data: {
+                  usageCount: {
+                    increment: 1
+                  }
+                }
+              })
+
+              if (userIdentifier) {
+                await prisma.couponRedemption.upsert({
+                  where: {
+                    couponId_userIdentifier: {
+                      couponId,
+                      userIdentifier
+                    }
+                  },
+                  create: {
+                    couponId,
+                    userIdentifier,
+                    usageCount: 1
+                  },
+                  update: {
+                    usageCount: {
+                      increment: 1
+                    },
+                    lastUsedAt: new Date()
+                  }
+                })
+              }
+            }
+          } catch (usageError) {
+            console.warn('Failed to update coupon usage', usageError)
+          }
+        }
       }
 
       return NextResponse.json({

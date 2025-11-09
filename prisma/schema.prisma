@@ -130,25 +130,29 @@ model ProductTag {
 }
 
 model Order {
-  id                   String      @id @default(cuid())
-  orderNumber          String      @unique
-  status               String      @default("pending")
+  id                   String        @id @default(cuid())
+  orderNumber          String        @unique
+  status               String        @default("pending")
   total                Float
-  currency             String      @default("ILS")
+  subtotal             Float?
+  discountTotal        Float         @default(0)
+  deliveryFee          Float         @default(0)
+  currency             String        @default("ILS")
   customerName         String?
   customerEmail        String?
   customerPhone        String?
-  paymentStatus        String      @default("pending")
+  paymentStatus        String        @default("pending")
   paymentMethod        String?
   paymentData          String?
   cardcomLowProfileId  String?
   cardcomTransactionId String?
-  emailSentAt          DateTime? // Track when confirmation email was sent
-  emailMessageId       String? // Store Resend message ID for tracking
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  emailSentAt          DateTime?
+  emailMessageId       String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   orderItems           OrderItem[]
   payments             Payment[]
+  appliedCoupons       OrderCoupon[]
 
   @@map("orders")
 }
@@ -238,4 +242,74 @@ model ContactMessage {
   // idempotencyKey String?  @unique // Temporarily disabled - column doesn't exist in DB
 
   @@map("contact_messages")
+}
+
+enum CouponDiscountType {
+  percent_all
+  percent_specific
+  fixed
+  bogo
+}
+
+model Coupon {
+  id                 String             @id @default(cuid())
+  code               String             @unique
+  name_en            String
+  name_he            String
+  description_en     String?
+  description_he     String?
+  discountType       CouponDiscountType
+  discountValue      Float?
+  minCartValue       Float?             @default(0)
+  startDate          DateTime?
+  endDate            DateTime?
+  usageLimit         Int?
+  usageLimitPerUser  Int?
+  usageCount         Int                @default(0)
+  stackable          Boolean            @default(false)
+  autoApply          Boolean            @default(false)
+  eligibleProducts   String[]           @default([])
+  eligibleCategories String[]           @default([])
+  bogoBuyQuantity    Int                @default(1)
+  bogoGetQuantity    Int                @default(1)
+  bogoEligibleSkus   String[]           @default([])
+  isActive           Boolean            @default(true)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  redemptions        CouponRedemption[]
+  orderCoupons       OrderCoupon[]
+
+  @@map("coupons")
+}
+
+model CouponRedemption {
+  id             String   @id @default(cuid())
+  couponId       String
+  userIdentifier String
+  usageCount     Int      @default(0)
+  lastUsedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  coupon         Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, userIdentifier])
+  @@map("coupon_redemptions")
+}
+
+model OrderCoupon {
+  id             String             @id @default(cuid())
+  orderId        String
+  couponId       String?
+  code           String
+  discountAmount Float
+  discountType   CouponDiscountType
+  stackable      Boolean
+  description    String?
+  metadata       Json?
+  createdAt      DateTime           @default(now())
+  coupon         Coupon?            @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  order          Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([code])
+  @@map("order_coupons")
 }

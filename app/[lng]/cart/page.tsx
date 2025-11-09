@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { 
@@ -13,11 +13,49 @@ import {
 import { useCart } from '@/app/hooks/useCart'
 import CheckoutModal from '@/app/components/CheckoutModal'
 import { trackViewCart } from '@/lib/dataLayer'
+import { CouponValidationSuccess } from '@/lib/coupons'
+import { useAuth } from '@/app/contexts/AuthContext'
+
+const couponContent = {
+  en: {
+    label: 'Have a coupon code?',
+    placeholder: 'Enter coupon',
+    apply: 'Apply',
+    remove: 'Remove',
+    discount: 'Discount',
+    success: 'Coupon applied successfully.',
+    removed: 'Coupon removed.',
+    stackableNotice: 'This coupon stacks with existing discounts.',
+    overridesNotice: 'This coupon replaces your current discount.',
+    autoApplied: 'We found a coupon for you!',
+    invalid: 'Invalid or expired coupon.',
+    perUserRequired: 'Please sign in to use this coupon.',
+    loading: 'Checking coupon…'
+  },
+  he: {
+    label: 'הכנס קוד קופון',
+    placeholder: 'קוד קופון',
+    apply: 'החל',
+    remove: 'הסר',
+    discount: 'הנחה',
+    success: 'הקופון הופעל בהצלחה.',
+    removed: 'הקופון הוסר.',
+    stackableNotice: 'קופון זה ניתן לשילוב עם הנחות קיימות.',
+    overridesNotice: 'קופון זה מחליף את ההנחה הנוכחית שלך.',
+    autoApplied: 'מצאנו עבורך קופון!',
+    invalid: 'קופון זה אינו תקף או שפג תוקפו.',
+    perUserRequired: 'התחבר/י כדי להשתמש בקופון זה.',
+    loading: 'בודק קופון…'
+  }
+} as const
+
+const COUPON_STORAGE_KEY = 'cart_coupons'
 
 export default function CartPage() {
   const params = useParams()
   const lng = params?.lng as string || 'en'
   const isRTL = lng === 'he'
+  const couponStrings = couponContent[lng as keyof typeof couponContent]
   
   const { 
     items, 
@@ -34,6 +72,242 @@ export default function CartPage() {
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
 
   const [isClient, setIsClient] = useState(false)
+const [couponInput, setCouponInput] = useState('')
+const [couponLoading, setCouponLoading] = useState(false)
+const [couponStatus, setCouponStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
+const [appliedCoupons, setAppliedCoupons] = useState<CouponValidationSuccess[]>([])
+const [autoApplyAttempted, setAutoApplyAttempted] = useState(false)
+const pendingCodesRef = useRef<string[] | null>(null)
+const initializedCouponsRef = useRef(false)
+const revalidatingRef = useRef(false)
+const lastCartSignatureRef = useRef<string | null>(null)
+const urlCouponAttemptedRef = useRef<string | null>(null)
+const searchParamsObj = useSearchParams()
+const { user } = useAuth()
+const appliedCodes = useMemo(() => appliedCoupons.map(coupon => coupon.coupon.code), [appliedCoupons])
+const userIdentifier = user?.email ? user.email.toLowerCase() : undefined
+const cartCurrency = useMemo(() => {
+  if (items.length === 0) return 'ILS'
+  return items[0].currency || 'ILS'
+}, [items])
+
+const cartItemsPayload = useMemo(() => {
+  return items.map(item => ({
+    sku: item.sku,
+    quantity: item.quantity,
+    price: item.price,
+    salePrice: item.salePrice,
+    color: item.color,
+    size: item.size
+  }))
+}, [items])
+
+const cartItemsSignature = useMemo(() => JSON.stringify(cartItemsPayload), [cartItemsPayload])
+
+const saveCouponsToStorage = useCallback((codes: string[]) => {
+  if (typeof window === 'undefined') return
+  try {
+    if (codes.length === 0) {
+      localStorage.removeItem(COUPON_STORAGE_KEY)
+    } else {
+      localStorage.setItem(COUPON_STORAGE_KEY, JSON.stringify(codes))
+    }
+  } catch (storageError) {
+    console.warn('Failed to persist coupons:', storageError)
+  }
+}, [])
+
+const loadCouponsFromStorage = useCallback((): string[] => {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem(COUPON_STORAGE_KEY)
+    if (!stored) return []
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed.filter((code): code is string => typeof code === 'string') : []
+  } catch (storageError) {
+    console.warn('Failed to load coupons from storage:', storageError)
+    return []
+  }
+}, [])
+
+const applyCouponCode = useCallback(async (
+  rawCode: string,
+  options?: {
+    presetResult?: CouponValidationSuccess
+    silent?: boolean
+    skipStorageUpdate?: boolean
+  }
+) => {
+  const normalizedCode = rawCode.trim().toUpperCase()
+  if (!normalizedCode) {
+    return
+  }
+
+  if (appliedCodes.includes(normalizedCode)) {
+    if (!options?.silent) {
+      setCouponStatus({
+        type: 'info',
+        message: couponStrings.success
+      })
+    }
+    return
+  }
+
+  try {
+    setCouponLoading(!options?.presetResult)
+    if (!options?.silent) {
+      setCouponStatus(null)
+    }
+
+    let result: CouponValidationSuccess
+
+    if (options?.presetResult) {
+      result = options.presetResult
+    } else {
+      const response = await fetch('/api/coupons/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          code: normalizedCode,
+          cartItems: cartItemsPayload,
+          currency: cartCurrency,
+          locale: lng,
+          userIdentifier,
+          existingCouponCodes: appliedCodes
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        if (!options?.silent) {
+          const message = data?.messages?.[lng] ??
+            (data?.code === 'MISSING_USER_IDENTIFIER'
+              ? couponStrings.perUserRequired
+              : couponStrings.invalid)
+          setCouponStatus({
+            type: 'error',
+            message
+          })
+        }
+        return
+      }
+
+      result = data as CouponValidationSuccess
+    }
+
+    setAppliedCoupons(prev => [...prev, result])
+    if (!options?.skipStorageUpdate) {
+      saveCouponsToStorage([...appliedCodes, result.coupon.code])
+    }
+
+    if (!options?.silent) {
+      const baseMessage = result.messages[lng as 'en' | 'he'] || couponStrings.success
+      const stackableNote = result.coupon.stackable && appliedCodes.length > 0
+        ? ` ${couponStrings.stackableNotice}`
+        : ''
+      setCouponStatus({
+        type: 'success',
+        message: `${baseMessage}${stackableNote}`
+      })
+    }
+    setCouponInput('')
+  } catch (applyError) {
+    console.error('[CART_APPLY_COUPON_ERROR]', applyError)
+    if (!options?.silent) {
+      setCouponStatus({
+        type: 'error',
+        message: couponStrings.invalid
+      })
+    }
+  } finally {
+    setCouponLoading(false)
+  }
+}, [appliedCodes, cartCurrency, cartItemsPayload, couponStrings.invalid, couponStrings.perUserRequired, couponStrings.success, lng, saveCouponsToStorage, userIdentifier])
+
+const removeCoupon = useCallback((code: string) => {
+  setAppliedCoupons(prev => prev.filter(coupon => coupon.coupon.code !== code))
+  saveCouponsToStorage(appliedCodes.filter(existing => existing !== code))
+  setCouponStatus({
+    type: 'info',
+    message: `${couponStrings.removed} (${code})`
+  })
+}, [appliedCodes, couponStrings.removed, saveCouponsToStorage])
+
+const revalidateCouponCodes = useCallback(async (
+  codes: string[],
+  options?: { silent?: boolean }
+) => {
+  if (codes.length === 0) {
+    setAppliedCoupons([])
+    saveCouponsToStorage([])
+    if (!options?.silent) {
+      setCouponStatus(null)
+    }
+    return
+  }
+
+  if (loading || cartItemsPayload.length === 0) return
+
+  revalidatingRef.current = true
+  setCouponLoading(true)
+
+  try {
+    const validated: CouponValidationSuccess[] = []
+    for (const code of codes) {
+      const response = await fetch('/api/coupons/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          code,
+          cartItems: cartItemsPayload,
+          currency: cartCurrency,
+          locale: lng,
+          userIdentifier,
+          existingCouponCodes: validated.map(coupon => coupon.coupon.code)
+        })
+      })
+
+      const data = await response.json()
+      if (!response.ok || !data.success) {
+        const message = data?.messages?.[lng] ?? couponStrings.invalid
+        if (!options?.silent) {
+          setCouponStatus({
+            type: 'error',
+            message
+          })
+        }
+        break
+      }
+
+      validated.push(data as CouponValidationSuccess)
+    }
+
+    setAppliedCoupons(validated)
+    saveCouponsToStorage(validated.map(coupon => coupon.coupon.code))
+
+    if (!options?.silent && validated.length > 0) {
+      setCouponStatus({
+        type: 'success',
+        message: couponStrings.success
+      })
+    }
+  } catch (error) {
+    console.error('[CART_REVALIDATE_COUPONS_ERROR]', error)
+    if (!options?.silent) {
+      setCouponStatus({
+        type: 'error',
+        message: couponStrings.invalid
+      })
+    }
+  } finally {
+    revalidatingRef.current = false
+    setCouponLoading(false)
+  }
+}, [cartCurrency, cartItemsPayload, couponStrings.invalid, couponStrings.success, lng, loading, saveCouponsToStorage, userIdentifier])
 
   // Generate product name from cart items
   const getProductName = () => {
@@ -98,57 +372,145 @@ export default function CartPage() {
     setIsClient(true)
   }, [])
 
-  // Track view_cart event
-  useEffect(() => {
-    if (!isClient || loading || items.length === 0) return
+useEffect(() => {
+  if (!isClient) return
+  if (initializedCouponsRef.current) return
+  const storedCodes = loadCouponsFromStorage()
+  if (storedCodes.length > 0) {
+    pendingCodesRef.current = storedCodes
+  }
+  initializedCouponsRef.current = true
+}, [isClient, loadCouponsFromStorage])
 
+useEffect(() => {
+  if (!initializedCouponsRef.current) return
+  if (loading) return
+  if (!pendingCodesRef.current || pendingCodesRef.current.length === 0) return
+
+  const codes = [...pendingCodesRef.current]
+  pendingCodesRef.current = null
+  revalidateCouponCodes(codes, { silent: true })
+}, [loading, revalidateCouponCodes, cartItemsSignature])
+
+useEffect(() => {
+  if (!initializedCouponsRef.current) return
+  if (loading) return
+  if (revalidatingRef.current) return
+  if (appliedCodes.length === 0) return
+  if (pendingCodesRef.current && pendingCodesRef.current.length > 0) return
+
+  if (lastCartSignatureRef.current === cartItemsSignature) return
+  lastCartSignatureRef.current = cartItemsSignature
+
+  revalidateCouponCodes(appliedCodes, { silent: true })
+}, [appliedCodes, cartItemsSignature, loading, revalidateCouponCodes])
+
+useEffect(() => {
+  if (!searchParamsObj) return
+  if (loading) return
+  const couponFromUrl = searchParamsObj.get('coupon')
+  if (!couponFromUrl) return
+  if (urlCouponAttemptedRef.current === couponFromUrl.toUpperCase()) return
+
+  urlCouponAttemptedRef.current = couponFromUrl.toUpperCase()
+  applyCouponCode(couponFromUrl)
+}, [applyCouponCode, loading, searchParamsObj])
+
+useEffect(() => {
+  if (loading) return
+  if (cartItemsPayload.length === 0) return
+  if (autoApplyAttempted) return
+  if (pendingCodesRef.current && pendingCodesRef.current.length > 0) return
+  if (appliedCoupons.length > 0) return
+
+  const autoApply = async () => {
     try {
-      const cartItems = items.map(item => ({
-        name: item.name[lng as 'en' | 'he'] || 'Unknown Product',
-        id: item.sku,
-        price: item.salePrice || item.price,
-        brand: undefined, // Cart items don't have brand info, can be enhanced later
-        categories: undefined, // Cart items don't have category info, can be enhanced later
-        variant: [item.size, item.color].filter(Boolean).join('-') || undefined,
-        quantity: item.quantity
-      }))
+      const response = await fetch('/api/coupons/auto-apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          cartItems: cartItemsPayload,
+          currency: cartCurrency,
+          locale: lng,
+          userIdentifier
+        })
+      })
 
-      trackViewCart(cartItems, 'ILS')
-    } catch (dataLayerError) {
-      console.warn('Data layer tracking error:', dataLayerError)
+      const data = await response.json()
+      if (response.ok && data.success) {
+        await applyCouponCode(data.coupon.code, {
+          presetResult: data as CouponValidationSuccess,
+          silent: true
+        })
+        setCouponStatus({
+          type: 'success',
+          message: couponStrings.autoApplied
+        })
+      }
+    } catch (error) {
+      console.warn('Auto-apply coupon failed:', error)
+    } finally {
+      setAutoApplyAttempted(true)
     }
-  }, [isClient, loading, items, lng])
+  }
 
-  if (!isClient || loading) {
-    return (
-      <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
-            <div className="space-y-4">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg shadow-sm p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="h-20 w-20 bg-gray-200 rounded"></div>
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                    </div>
+  autoApply()
+}, [applyCouponCode, appliedCoupons.length, autoApplyAttempted, cartCurrency, cartItemsPayload, couponStrings.autoApplied, lng, loading, userIdentifier])
+
+useEffect(() => {
+  if (!isClient || loading || items.length === 0) return
+
+  try {
+    const cartItems = items.map(item => ({
+      name: item.name[lng as 'en' | 'he'] || 'Unknown Product',
+      id: item.sku,
+      price: item.salePrice || item.price,
+      brand: undefined,
+      categories: undefined,
+      variant: [item.size, item.color].filter(Boolean).join('-') || undefined,
+      quantity: item.quantity
+    }))
+
+    trackViewCart(cartItems, cartCurrency)
+  } catch (dataLayerError) {
+    console.warn('Data layer tracking error:', dataLayerError)
+  }
+}, [cartCurrency, isClient, items, loading, lng])
+
+if (!isClient || loading) {
+  return (
+    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex items-center space-x-4">
+                  <div className="h-20 w-20 bg-gray-200 rounded"></div>
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
-  const totalItems = getTotalItems()
-  const totalPrice = getTotalPrice()
-  const deliveryFee = getDeliveryFee()
-  const totalWithDelivery = getTotalWithDelivery()
-  const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
+const totalItems = getTotalItems()
+const subtotal = getTotalPrice()
+const deliveryFee = getDeliveryFee()
+const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
+const discountedSubtotal = Math.max(subtotal - totalDiscount, 0)
+const finalTotal = Math.max(discountedSubtotal + deliveryFee, 0)
+const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
   return (
     <div className="min-h-screen bg-gray-50 pt-16" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -297,6 +659,54 @@ export default function CartPage() {
                 <h2 className="text-lg font-medium text-gray-900 mb-4">
                   {t.subtotal}
                 </h2>
+
+                <div className="pb-4 border-b border-gray-200 mb-4" dir={isRTL ? 'rtl' : 'ltr'}>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {couponStrings.label}
+                  </label>
+                  <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(event) => setCouponInput(event.target.value)}
+                      placeholder={couponStrings.placeholder}
+                      className={`flex-1 rounded-md border border-gray-300 text-gray-900 py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isRTL ? 'text-right' : 'text-left'}`}
+                      disabled={couponLoading}
+                    />
+                    <button
+                      onClick={() => applyCouponCode(couponInput)}
+                      disabled={couponLoading || !couponInput.trim()}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70"
+                    >
+                      {couponLoading ? couponStrings.loading : couponStrings.apply}
+                    </button>
+                  </div>
+                  {couponStatus && (
+                    <p className={`mt-2 text-sm ${couponStatus.type === 'error' ? 'text-red-600' : couponStatus.type === 'success' ? 'text-green-600' : 'text-gray-600'}`}>
+                      {couponStatus.message}
+                    </p>
+                  )}
+
+                  {appliedCoupons.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {appliedCoupons.map(coupon => (
+                        <span
+                          key={coupon.coupon.code}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"
+                        >
+                          {coupon.coupon.code}
+                          <button
+                            onClick={() => removeCoupon(coupon.coupon.code)}
+                            className={`${isRTL ? 'mr-2' : 'ml-2'} text-indigo-500 hover:text-indigo-700`}
+                            aria-label={couponStrings.remove}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 
                 <div className="space-y-3">
                   {items.map((item, index) => (
@@ -326,9 +736,24 @@ export default function CartPage() {
                 <div className="border-t border-gray-200 pt-4 mt-4 space-y-2">
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>{t.subtotal}</span>
-                    <span>₪{totalPrice.toFixed(2)}</span>
+                    <span>₪{subtotal.toFixed(2)}</span>
                   </div>
-      
+
+                  {totalDiscount > 0 && (
+                    <>
+                      {appliedCoupons.map(coupon => (
+                        <div key={coupon.coupon.code} className="flex justify-between text-xs text-green-600">
+                          <span>{coupon.coupon.code} • {coupon.coupon.discountLabel[lng as 'en' | 'he']}</span>
+                          <span>-₪{coupon.discountAmount.toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <div className="flex justify-between text-sm text-gray-600">
+                        <span>{lng === 'he' ? 'סכום לאחר הנחות' : 'Subtotal after discounts'}</span>
+                        <span>₪{discountedSubtotal.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
+
                   {deliveryFee > 0 ? (
                     <div className="flex justify-between text-sm text-gray-600">
                       <span>{t.delivery}</span>
@@ -339,10 +764,10 @@ export default function CartPage() {
                       {t.freeDelivery}
                     </div>
                   )}
-                  
+
                   <div className="flex justify-between text-lg font-bold text-gray-700 border-t border-gray-200 pt-2">
                     <span>{t.total}</span>
-                    <span>₪{totalWithDelivery.toFixed(2)}</span>
+                    <span>₪{finalTotal.toFixed(2)}</span>
                   </div>
                 </div>
 
@@ -370,13 +795,23 @@ export default function CartPage() {
         isOpen={isCheckoutModalOpen}
         onClose={() => setIsCheckoutModalOpen(false)}
         orderId={`ORDER-${Date.now()}`}
-        amount={totalWithDelivery}
-        currency="ILS"
+        amount={finalTotal}
+        subtotal={subtotal}
+        discountTotal={totalDiscount}
+        deliveryFee={deliveryFee}
+        currency={cartCurrency}
         productName={getProductName()}
         productSku={items.length > 0 ? items[0].sku : 'UNKNOWN'}
         quantity={totalItems}
         language={lng as 'he' | 'en'}
         items={items}
+        appliedCoupons={appliedCoupons.map(coupon => ({
+          code: coupon.coupon.code,
+          discountAmount: coupon.discountAmount,
+          discountType: coupon.coupon.discountType,
+          stackable: coupon.coupon.stackable,
+          description: coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined
+        }))}
       />
     </div>
   )

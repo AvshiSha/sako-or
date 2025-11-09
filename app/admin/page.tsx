@@ -13,7 +13,8 @@ import {
   ArrowDownTrayIcon,
   ExclamationTriangleIcon,
   UserGroupIcon,
-  ArchiveBoxIcon
+  ArchiveBoxIcon,
+  TicketIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -91,24 +92,18 @@ function AdminDashboard() {
       icon: TagIcon,
       description: 'Organize your product categories'
     },
+  {
+    name: 'Manage Coupons',
+    href: '/admin/coupons',
+    icon: TicketIcon,
+    description: 'Create and monitor promotional discounts'
+  },
     {
       name: 'Sync Newsletter',
       href: '/admin/newsletter/sync',
       icon: UserGroupIcon,
       description: 'Synchronize newsletter emails with Neon DB'
     },
-    {
-      name: 'View Analytics',
-      href: '/admin/analytics',
-      icon: ChartBarIcon,
-      description: 'Check your store performance'
-    },
-    {
-      name: 'Settings',
-      href: '/admin/settings',
-      icon: CogIcon,
-      description: 'Configure your store settings'
-    }
   ]
 
   return (

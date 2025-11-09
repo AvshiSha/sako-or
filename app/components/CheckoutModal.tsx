@@ -13,12 +13,22 @@ interface CheckoutModalProps {
   onClose: () => void;
   orderId: string;
   amount: number;
+  subtotal?: number;
+  discountTotal?: number;
+  deliveryFee?: number;
   currency?: string;
   productName?: string;
   productSku?: string;
   quantity?: number;
   language?: 'he' | 'en';
   items?: CartItem[]; // Cart items for tracking
+  appliedCoupons?: Array<{
+    code: string;
+    discountAmount: number;
+    discountType: 'percent_all' | 'percent_specific' | 'fixed' | 'bogo';
+    stackable: boolean;
+    description?: string;
+  }>;
 }
 
 export default function CheckoutModal({
@@ -26,12 +36,16 @@ export default function CheckoutModal({
   onClose,
   orderId,
   amount,
+  subtotal,
+  discountTotal,
+  deliveryFee,
   currency = 'ILS',
   productName = 'Sako Order',
   productSku = 'UNKNOWN',
   quantity = 1,
   language = 'he',
-  items = []
+  items = [],
+  appliedCoupons = []
 }: CheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>('IDLE');
   const [formData, setFormData] = useState<CheckoutFormData>({
@@ -144,6 +158,16 @@ export default function CheckoutModal({
       customer: formData.payer,
       deliveryAddress: formData.deliveryAddress,
       notes: formData.notes,
+      subtotal,
+      discountTotal,
+      deliveryFee,
+      coupons: appliedCoupons.map(coupon => ({
+        code: coupon.code,
+        discountAmount: coupon.discountAmount,
+        discountType: coupon.discountType,
+        stackable: coupon.stackable,
+        description: coupon.description
+      })),
       ui: {
         isCardOwnerPhoneRequired: true,
         cssUrl: `${window.location.origin}/cardcom.css`

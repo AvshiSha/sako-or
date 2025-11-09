@@ -86,5 +86,21 @@
     "newsletterDescription": "Subscribe to receive exclusive updates, early access to new collections, and personalized style recommendations.",
     "emailPlaceholder": "Enter your email",
     "subscribeButton": "Subscribe"
+  },
+  "cart": {
+    "couponLabel": "Have a coupon code?",
+    "couponPlaceholder": "Enter coupon",
+    "couponApply": "Apply",
+    "couponRemove": "Remove",
+    "couponDiscount": "Discount",
+    "couponSuccess": "Coupon applied successfully.",
+    "couponRemoved": "Coupon removed.",
+    "couponStackableNotice": "This coupon stacks with existing discounts.",
+    "couponOverridesNotice": "This coupon replaces your current discount.",
+    "couponAutoApplied": "We found a coupon for you!",
+    "couponInvalid": "Invalid or expired coupon.",
+    "couponPerUserRequired": "Please sign in to use this coupon.",
+    "couponLoading": "Checking coupon…",
+    "subtotalAfterDiscounts": "Subtotal after discounts"
   }
 } 

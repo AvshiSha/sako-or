@@ -35,6 +35,8 @@ interface CouponApiResponse {
     bogoBuyQuantity: number
     bogoGetQuantity: number
     bogoEligibleSkus: string[]
+    bogoBuySkus: string[]
+    bogoGetSkus: string[]
     isActive: boolean
     createdAt: string
     updatedAt: string
@@ -74,7 +76,12 @@ function mapCouponToFormValues(data: CouponApiResponse['coupon']): CouponFormVal
     description_en: data.description_en ?? '',
     description_he: data.description_he ?? '',
     discountType: data.discountType as CouponFormValues['discountType'],
-    discountValue: data.discountValue != null ? String(data.discountValue) : '',
+    discountValue:
+      data.discountType === 'bogo'
+        ? String(data.discountValue ?? 100)
+        : data.discountValue != null
+          ? String(data.discountValue)
+          : '',
     minCartValue: data.minCartValue != null ? String(data.minCartValue) : '',
     usageLimit: data.usageLimit != null ? String(data.usageLimit) : '',
     usageLimitPerUser: data.usageLimitPerUser != null ? String(data.usageLimitPerUser) : '',
@@ -86,7 +93,9 @@ function mapCouponToFormValues(data: CouponApiResponse['coupon']): CouponFormVal
     eligibleCategories: data.eligibleCategories.join(', '),
     bogoBuyQuantity: data.bogoBuyQuantity ? String(data.bogoBuyQuantity) : '',
     bogoGetQuantity: data.bogoGetQuantity ? String(data.bogoGetQuantity) : '',
-    bogoEligibleSkus: data.bogoEligibleSkus.join(', '),
+    bogoEligibleSkus: (data.bogoEligibleSkus ?? []).join(', '),
+    bogoBuySkus: (data.bogoBuySkus ?? []).join(', '),
+    bogoGetSkus: (data.bogoGetSkus ?? []).join(', '),
     isActive: data.isActive
   }
 }
@@ -160,18 +169,46 @@ function EditCouponPageContent() {
     }
 
     setTestModalCode(code)
-    const eligibleProduct = values.eligibleProducts.split(',').map((item) => item.trim()).filter(Boolean)[0] ?? 'SKU-1001'
+    const splitToList = (value: string) => value.split(',').map((item) => item.trim()).filter(Boolean)
+
+    const buySkus = splitToList(values.bogoBuySkus)
+    const getSkus = splitToList(values.bogoGetSkus)
+    const legacySkus = splitToList(values.bogoEligibleSkus)
+    const eligibleProducts = splitToList(values.eligibleProducts)
+
     const buyQty = Number(values.bogoBuyQuantity) || 1
     const getQty = Number(values.bogoGetQuantity) || 1
     const isBogo = values.discountType === 'bogo'
 
+    const primaryBuySku =
+      buySkus[0] ??
+      getSkus[0] ??
+      legacySkus[0] ??
+      eligibleProducts[0] ??
+      'SKU-1001'
+
+    const primaryGetSku =
+      getSkus[0] ??
+      buySkus[0] ??
+      legacySkus[0] ??
+      eligibleProducts[1] ??
+      primaryBuySku
+
     const sampleCart: CouponCartItemInput[] = [
       {
-        sku: eligibleProduct,
-        quantity: isBogo ? buyQty + getQty : 1,
-        price: 220
+        sku: primaryBuySku,
+        quantity: isBogo ? Math.max(buyQty, 1) : 1,
+        price: 250
       }
     ]
+
+    if (isBogo) {
+      sampleCart.push({
+        sku: primaryGetSku,
+        quantity: Math.max(getQty, 1),
+        price: 220
+      })
+    }
 
     setTestSampleCart(sampleCart)
     setTestModalOpen(true)
@@ -315,6 +352,8 @@ function createPayload(values: CouponFormValues) {
     bogoBuyQuantity: toNumber(values.bogoBuyQuantity),
     bogoGetQuantity: toNumber(values.bogoGetQuantity),
     bogoEligibleSkus: toStringArray(values.bogoEligibleSkus),
+    bogoBuySkus: toStringArray(values.bogoBuySkus),
+    bogoGetSkus: toStringArray(values.bogoGetSkus),
     isActive: values.isActive
   }
 }

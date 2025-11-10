@@ -273,6 +273,8 @@ model Coupon {
   bogoBuyQuantity    Int                @default(1)
   bogoGetQuantity    Int                @default(1)
   bogoEligibleSkus   String[]           @default([])
+  bogoBuySkus        String[]           @default([])
+  bogoGetSkus        String[]           @default([])
   isActive           Boolean            @default(true)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt

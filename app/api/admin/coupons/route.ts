@@ -30,6 +30,8 @@ const couponFieldsSchema = z.object({
   bogoBuyQuantity: z.number().int().min(1).nullable().optional(),
   bogoGetQuantity: z.number().int().min(1).nullable().optional(),
   bogoEligibleSkus: z.array(z.string()).optional(),
+  bogoBuySkus: z.array(z.string()).optional(),
+  bogoGetSkus: z.array(z.string()).optional(),
   isActive: z.boolean().optional()
 })
 
@@ -40,6 +42,17 @@ const createCouponSchema = couponFieldsSchema.superRefine((data, ctx) => {
         code: z.ZodIssueCode.custom,
         path: ['discountValue'],
         message: 'Discount value is required for percentage and fixed coupons.'
+      })
+    }
+  }
+
+  if (data.discountType === 'bogo') {
+    const percent = typeof data.discountValue === 'number' ? data.discountValue : 100
+    if (percent <= 0 || percent > 100) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['discountValue'],
+        message: 'BOGO discount percentage must be between 0 and 100.'
       })
     }
   }
@@ -65,6 +78,22 @@ const updateCouponSchema = couponFieldsSchema.partial().superRefine((data, ctx) 
       path: ['discountType'],
       message: 'Provide a discount type when updating discount value.'
     })
+  }
+
+  if (discountType === 'bogo' || (discountType === undefined && discountValue !== undefined)) {
+    const percent =
+      typeof discountValue === 'number'
+        ? discountValue
+        : discountValue === undefined
+          ? undefined
+          : Number.NaN
+    if (percent !== undefined && (Number.isNaN(percent) || percent <= 0 || percent > 100)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['discountValue'],
+        message: 'BOGO discount percentage must be between 0 and 100.'
+      })
+    }
   }
 })
 
@@ -203,6 +232,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const resolvedDiscountValue =
+      payload.discountType === 'bogo'
+        ? Math.min(Math.max(payload.discountValue ?? 100, 0), 100)
+        : payload.discountValue ?? null
+
     const coupon = await prisma.coupon.create({
       data: {
         code,
@@ -211,7 +245,7 @@ export async function POST(request: NextRequest) {
         description_en: payload.description_en ?? null,
         description_he: payload.description_he ?? null,
         discountType: payload.discountType,
-        discountValue: payload.discountValue ?? null,
+        discountValue: resolvedDiscountValue,
         minCartValue: payload.minCartValue ?? null,
         startDate: parseDate(payload.startDate),
         endDate: parseDate(payload.endDate),
@@ -224,8 +258,10 @@ export async function POST(request: NextRequest) {
         bogoBuyQuantity: payload.bogoBuyQuantity ?? 1,
         bogoGetQuantity: payload.bogoGetQuantity ?? 1,
         bogoEligibleSkus: sanitizeStringArray(payload.bogoEligibleSkus),
+        bogoBuySkus: sanitizeStringArray(payload.bogoBuySkus),
+        bogoGetSkus: sanitizeStringArray(payload.bogoGetSkus),
         isActive: payload.isActive ?? true
-      }
+      } as any
     })
 
     return NextResponse.json(coupon, { status: 201 })

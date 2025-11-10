@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CouponCartItemInput, CouponValidationSuccess } from '@/lib/coupons'
 import clsx from 'clsx'
 
@@ -83,6 +83,10 @@ export function CouponTestModal({
   const [result, setResult] = useState<CouponValidationSuccess | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isTesting, setIsTesting] = useState(false)
+
+  useEffect(() => {
+    setCartInput(JSON.stringify(initialCartItems, null, 2))
+  }, [initialCartItems])
 
   if (!isOpen) {
     return null

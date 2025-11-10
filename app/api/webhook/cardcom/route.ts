@@ -182,7 +182,8 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
     const order = await prisma.order.findUnique({
       where: { orderNumber: orderId },
       include: { 
-        orderItems: true
+        orderItems: true,
+        appliedCoupons: true
       },
     });
 
@@ -251,6 +252,14 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       orderDate: new Date(order.createdAt).toLocaleDateString(),
       items: items,
       total: order.total,
+      subtotal: order.subtotal ?? undefined,
+      deliveryFee: order.deliveryFee ?? undefined,
+      discountTotal: order.discountTotal ?? undefined,
+      coupons: order.appliedCoupons.map(coupon => ({
+        code: coupon.code,
+        discountAmount: coupon.discountAmount,
+        discountLabel: coupon.description ?? undefined,
+      })),
       payer: payer,
       deliveryAddress: deliveryAddress,
       notes: checkout?.customerDeliveryNotes || undefined,

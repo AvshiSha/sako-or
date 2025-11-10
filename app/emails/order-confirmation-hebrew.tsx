@@ -28,6 +28,14 @@ interface OrderConfirmationEmailProps {
     price: number;
   }>;
   total: number;
+  subtotal?: number;
+  deliveryFee?: number;
+  discountTotal?: number;
+  coupons?: Array<{
+    code: string;
+    discountAmount: number;
+    discountLabel?: string;
+  }>;
   payer: {
     firstName: string;
     lastName: string;
@@ -47,12 +55,32 @@ interface OrderConfirmationEmailProps {
   isHebrew?: boolean;
 }
 
+const getTotalPrice = (
+  subtotal: number | undefined,
+  deliveryFee: number | undefined,
+  discountTotal: number | undefined,
+  fallbackTotal: number
+) => {
+  if (
+    typeof subtotal !== 'number' ||
+    typeof deliveryFee !== 'number' ||
+    typeof discountTotal !== 'number'
+  ) {
+    return fallbackTotal;
+  }
+  return subtotal + deliveryFee - discountTotal;
+};
+
 export function OrderConfirmationEmailHebrew({
   customerName,
   orderNumber,
   orderDate,
   items,
   total,
+  subtotal,
+  deliveryFee,
+  discountTotal,
+  coupons,
   payer,
   deliveryAddress,
   notes,
@@ -68,6 +96,11 @@ export function OrderConfirmationEmailHebrew({
     quantity: 'כמות',
     price: 'מחיר',
     total: 'סה"כ',
+    subtotal: 'סכום ביניים',
+    delivery: 'עלות משלוח',
+    discountTotalLabel: 'סה"כ הנחות',
+    couponsApplied: 'קופונים שהופעלו',
+    noCoupons: 'לא הופעלו קופונים',
     customerDetails: 'פרטי לקוח',
     firstName: 'שם פרטי',
     lastName: 'שם משפחה',
@@ -210,9 +243,54 @@ export function OrderConfirmationEmailHebrew({
             <Hr style={hr} />
 
             <Section dir="rtl" style={totalSection}>
+              {typeof subtotal === 'number' && (
+                <Row>
+                  <Column align="right" style={summaryLabel(isHebrew)}>{t.subtotal}:</Column>
+                  <Column align="left" style={summaryValue(isHebrew)}>
+                    <span dir="ltr">₪{subtotal.toFixed(2)}</span>
+                  </Column>
+                </Row>
+              )}
+
+              {typeof deliveryFee === 'number' && (
+                <Row>
+                  <Column align="right" style={summaryLabel(isHebrew)}>{t.delivery}:</Column>
+                  <Column align="left" style={summaryValue(isHebrew)}>
+                    <span dir="ltr">{deliveryFee > 0 ? `₪${deliveryFee.toFixed(2)}` : 'חינם'}</span>
+                  </Column>
+                </Row>
+              )}
+
+              {typeof discountTotal === 'number' && discountTotal > 0 && (
+                <Row>
+                  <Column align="right" style={summaryLabel(isHebrew)}>{t.discountTotalLabel}:</Column>
+                  <Column align="left" style={summaryValue(isHebrew)}>
+                    <span dir="ltr">-₪{discountTotal.toFixed(2)}</span>
+                  </Column>
+                </Row>
+              )}
+
+              {coupons && coupons.length > 0 && (
+                <Row>
+                  <Column align="right" style={{ ...summaryLabel(isHebrew), verticalAlign: 'top' }}>
+                    {t.couponsApplied}:
+                  </Column>
+                  <Column align="left" style={{ ...summaryValue(isHebrew), whiteSpace: 'pre-line' }}>
+                    {coupons
+                      .map(coupon => {
+                        const label = coupon.discountLabel ? ` (${coupon.discountLabel})` : '';
+                        return `${coupon.code}${label} - ₪${coupon.discountAmount.toFixed(2)}`;
+                      })
+                      .join('\n')}
+                  </Column>
+                </Row>
+              )}
+
               <Row>
                 <Column align="right" style={totalLabel(isHebrew)}>{t.total}:</Column>
-                <Column align="left" style={totalValue(isHebrew)}><span dir="ltr">₪{total.toFixed(2)}</span></Column>
+                <Column align="left" style={totalValue(isHebrew)}>
+                  <span dir="ltr">₪{getTotalPrice(subtotal, deliveryFee, discountTotal, total).toFixed(2)}</span>
+                </Column>
               </Row>
             </Section>
           </Section>
@@ -231,31 +309,38 @@ export function OrderConfirmationEmailHebrew({
 
 // Preview props for React Email dashboard
 OrderConfirmationEmailHebrew.PreviewProps = {
-  customerName: 'אבשלום שהרבני',
-  orderNumber: 'ORDER-2024-001',
-  orderDate: '15 בינואר 2024',
-  items: [
-    { name: 'נעליים מעור איכותיות', quantity: 1, size: '36', sku: '0000-0000', price: 299.99 },
-    { name: 'גרבי כותנה', quantity: 2, size: '35', sku: '0000-0001', price: 15.50 },
-  ],
-  total: 330.99,
-  payer: {
-    firstName: 'אבשלום',
-    lastName: 'שהרבני',
-    email: 'avshi@sako-or.com',
-    mobile: '+972-50-123-4567',
-    idNumber: '123456789'
-  },
-  deliveryAddress: {
-    city: 'תל אביב',
-    streetName: 'שדרות רוטשילד',
-    streetNumber: '15',
-    floor: '3',
-    apartmentNumber: '12',
-    zipCode: '66881'
-  },
-  notes: 'אנא משלוח אחרי השעה 17:00',
-  isHebrew: true,
+   customerName: 'שרה לוי',
+   orderNumber: 'ORD-2024-001',
+   orderDate: '15 בינואר 2024',
+   items: [
+     { name: 'שמלת ערב', quantity: 1, price: 299.99, size: '36', sku: '0000-0000' },
+     { name: 'ג׳קט אלגנטי', quantity: 2, price: 15.50, size: '35', sku: '0000-0001' },
+   ],
+   total: 330.99,
+   subtotal: 350.99,
+   deliveryFee: 0,
+   discountTotal: 20,
+   coupons: [
+     { code: 'SUMMER20', discountAmount: 15, discountLabel: '20% הנחה על פריטים נבחרים' },
+     { code: 'FREESHIP', discountAmount: 5 }
+   ],
+   payer: {
+     firstName: 'שרה',
+     lastName: 'לוי',
+     email: 'sara.levi@example.com',
+     mobile: '+972-50-123-4567',
+     idNumber: '123456789'
+   },
+   deliveryAddress: {
+     city: 'תל אביב',
+     streetName: 'שדרות רוטשילד',
+     streetNumber: '15',
+     floor: '3',
+     apartmentNumber: '12',
+     zipCode: '66881'
+   },
+   notes: 'אנא משלוח אחרי השעה 17:00',
+   isHebrew: true,
 } as OrderConfirmationEmailProps;
 
 export default OrderConfirmationEmailHebrew;
@@ -395,6 +480,20 @@ const totalValue = (isHebrew: boolean) => ({
   fontSize: '18px',
   fontWeight: 'bold',
   width: '50%',
+  textAlign: (isHebrew ? 'left' : 'right') as 'left' | 'right',
+});
+
+const summaryLabel = (isHebrew: boolean) => ({
+  color: '#555',
+  fontSize: '14px',
+  width: '60%',
+  textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
+});
+
+const summaryValue = (isHebrew: boolean) => ({
+  color: '#333',
+  fontSize: '14px',
+  width: '40%',
   textAlign: (isHebrew ? 'left' : 'right') as 'left' | 'right',
 });
 

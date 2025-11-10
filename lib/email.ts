@@ -38,6 +38,14 @@ export interface OrderEmailData {
   };
   notes?: string;
   isHebrew?: boolean;
+  subtotal?: number;
+  deliveryFee?: number;
+  discountTotal?: number;
+  coupons?: Array<{
+    code: string;
+    discountAmount: number;
+    discountLabel?: string;
+  }>;
 }
 
 export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?: string) {
@@ -78,6 +86,10 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
         orderDate: data.orderDate,
         items: data.items,
         total: data.total,
+        subtotal: data.subtotal,
+        deliveryFee: data.deliveryFee,
+        discountTotal: data.discountTotal,
+        coupons: data.coupons,
         payer: data.payer,
         deliveryAddress: data.deliveryAddress,
         notes: data.notes,

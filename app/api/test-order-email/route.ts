@@ -41,6 +41,12 @@ export async function POST(request: Request) {
         }
       ],
       total: body.total || 100.00,
+      subtotal: body.subtotal ?? body.total ?? 100.00,
+      deliveryFee: body.deliveryFee ?? 0,
+      discountTotal: body.discountTotal ?? 0,
+      coupons: body.coupons || [
+        { code: 'TEST10', discountAmount: 10, discountLabel: '10% off' }
+      ],
       payer: body.payer || {
         firstName: 'Test',
         lastName: 'Customer',

@@ -26,10 +26,17 @@ export async function GET(request: NextRequest) {
         },
       ],
       total: 330.99,
+      subtotal: 350.99,
+      deliveryFee: 0,
+      discountTotal: 20,
+      coupons: [
+        { code: 'SUMMER20', discountAmount: 15, discountLabel: '20% off selected items' },
+        { code: 'FREESHIP', discountAmount: 5 }
+      ],
       payer: {
         firstName: 'John',
         lastName: 'Doe',
-        email: 'john.doe@example.com',
+        email: 'avshi@sako-or.com',
         mobile: '+972-50-123-4567',
         idNumber: '123456789'
       },
@@ -42,7 +49,7 @@ export async function GET(request: NextRequest) {
         zipCode: '66881'
       },
       notes: 'Please deliver after 5 PM',
-      isHebrew: false,
+      isHebrew: true,
     };
 
     const html = await render(OrderConfirmationEmail(sampleData));

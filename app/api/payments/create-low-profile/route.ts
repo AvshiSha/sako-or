@@ -175,6 +175,40 @@ export async function POST(request: NextRequest) {
           IsVatFree: false
         }];
 
+    // Apply order-level discounts proportionally to CardCom products so document totals match charge amount
+    if (computedDiscountTotal > 0 && cardcomProducts.length > 0) {
+      const subtotalBeforeDiscount = cardcomProducts.reduce((sum, product) => {
+        return sum + (product.UnitCost * product.Quantity);
+      }, 0);
+
+      if (subtotalBeforeDiscount > 0) {
+        let remainingDiscount = parseFloat(computedDiscountTotal.toFixed(2));
+
+        cardcomProducts.forEach((product, index) => {
+          const quantity = product.Quantity && product.Quantity > 0 ? product.Quantity : 1;
+          const originalLineTotal = product.UnitCost * quantity;
+
+          let lineDiscount: number;
+          if (index === cardcomProducts.length - 1) {
+            lineDiscount = remainingDiscount;
+          } else {
+            lineDiscount = parseFloat(((originalLineTotal / subtotalBeforeDiscount) * computedDiscountTotal).toFixed(2));
+            // Guard against rounding pushing discount beyond remaining amount
+            if (lineDiscount > remainingDiscount) {
+              lineDiscount = remainingDiscount;
+            }
+            remainingDiscount = parseFloat((remainingDiscount - lineDiscount).toFixed(2));
+          }
+
+          const discountedLineTotal = parseFloat((originalLineTotal - lineDiscount).toFixed(2));
+          const discountedUnitCost = parseFloat((discountedLineTotal / quantity).toFixed(2));
+
+          product.UnitCost = discountedUnitCost;
+          product.TotalLineCost = parseFloat((discountedUnitCost * quantity).toFixed(2));
+        });
+      }
+    }
+
     // Verify the total matches
     const calculatedTotal = cardcomProducts.reduce((sum, product) => sum + product.TotalLineCost, 0);
     if (Math.abs(calculatedTotal - body.amount) > 0.01) {
@@ -182,7 +216,11 @@ export async function POST(request: NextRequest) {
       // Adjust the last product to match the total
       if (cardcomProducts.length > 0) {
         const difference = body.amount - calculatedTotal;
-        cardcomProducts[cardcomProducts.length - 1].TotalLineCost += difference;
+        const lastProduct = cardcomProducts[cardcomProducts.length - 1];
+        lastProduct.TotalLineCost = parseFloat((lastProduct.TotalLineCost + difference).toFixed(2));
+        if (lastProduct.Quantity && lastProduct.Quantity > 0) {
+          lastProduct.UnitCost = parseFloat((lastProduct.TotalLineCost / lastProduct.Quantity).toFixed(2));
+        }
       }
     }
 

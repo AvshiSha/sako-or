@@ -224,16 +224,7 @@ export function useCart(): CartHook {
   }, [items])
 
   const getDeliveryFee = useCallback(() => {
-    // Free shipping for test product SKU 0000-0002 (and any variants like 0000-0002-color-size)
-    const hasTestProduct = items.some(item => {
-      const sku = item.sku?.trim() || ''
-      return sku === '0000-0002' || sku.startsWith('0000-0002-')
-    })
-    if (hasTestProduct) {
-      return 0
-    }
-    
-    // Calculate total directly to avoid dependency chain issues
+ // Calculate total directly to avoid dependency chain issues
     const total = items.reduce((sum, item) => {
       const price = item.salePrice || item.price
       return sum + (price * item.quantity)

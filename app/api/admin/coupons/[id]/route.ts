@@ -30,6 +30,8 @@ const updateSchema = z.object({
   bogoBuyQuantity: z.number().int().min(1).nullable().optional(),
   bogoGetQuantity: z.number().int().min(1).nullable().optional(),
   bogoEligibleSkus: z.array(z.string()).optional(),
+  bogoBuySkus: z.array(z.string()).optional(),
+  bogoGetSkus: z.array(z.string()).optional(),
   isActive: z.boolean().optional()
 })
 
@@ -146,6 +148,26 @@ export async function PUT(
       }
     }
 
+    if (discountType === 'bogo') {
+      const effectiveBogoDiscount =
+        payload.discountValue ?? existingCoupon.discountValue ?? 100
+      if (effectiveBogoDiscount <= 0 || effectiveBogoDiscount > 100) {
+        return NextResponse.json(
+          { error: 'BOGO discount percentage must be between 0 and 100.' },
+          { status: 400 }
+        )
+      }
+    }
+
+    const discountValueForUpdate =
+      payload.discountValue !== undefined
+        ? discountType === 'bogo'
+          ? Math.min(Math.max(payload.discountValue ?? 100, 0), 100)
+          : payload.discountValue
+        : discountType === 'bogo' && existingCoupon.discountValue == null
+          ? 100
+          : undefined
+
     const updatedCoupon = await prisma.coupon.update({
       where: { id },
       data: {
@@ -155,7 +177,7 @@ export async function PUT(
         description_en: payload.description_en,
         description_he: payload.description_he,
         discountType: payload.discountType,
-        discountValue: payload.discountValue,
+        discountValue: discountValueForUpdate,
         minCartValue: payload.minCartValue,
         startDate: parseDate(payload.startDate),
         endDate: parseDate(payload.endDate),
@@ -168,8 +190,10 @@ export async function PUT(
         bogoBuyQuantity: payload.bogoBuyQuantity ?? undefined,
         bogoGetQuantity: payload.bogoGetQuantity ?? undefined,
         bogoEligibleSkus: sanitizeStringArray(payload.bogoEligibleSkus),
+        bogoBuySkus: sanitizeStringArray(payload.bogoBuySkus),
+        bogoGetSkus: sanitizeStringArray(payload.bogoGetSkus),
         isActive: payload.isActive
-      }
+      } as any
     })
 
     return NextResponse.json(updatedCoupon)

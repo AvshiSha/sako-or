@@ -16,6 +16,7 @@ const uiText = {
     descriptionHe: 'Description (Hebrew)',
     discountType: 'Discount Type',
     discountValue: 'Discount Value',
+    discountValueBogoHelper: 'For BOGO, enter how much of the “get” items to discount (0-100%). Leave blank for 100%.',
     minCartValue: 'Minimum Cart Value',
     usageLimit: 'Usage Limit (Global)',
     usageLimitPerUser: 'Usage Limit Per User',
@@ -27,7 +28,9 @@ const uiText = {
     eligibleCategories: 'Eligible Categories (IDs or slugs, comma separated)',
     bogoBuyQuantity: 'BOGO: Buy Quantity',
     bogoGetQuantity: 'BOGO: Get Quantity Free',
-    bogoEligibleSkus: 'BOGO Eligible SKUs (comma separated)',
+    bogoEligibleSkus: 'Additional Eligible SKUs (optional, comma separated)',
+    bogoBuySkus: 'BOGO Buy SKUs (comma separated)',
+    bogoGetSkus: 'BOGO Free SKUs (comma separated)',
     isActive: 'Coupon is active',
     submit: 'Save Coupon',
     test: 'Test Coupon',
@@ -57,6 +60,7 @@ const uiText = {
     descriptionHe: 'תיאור (עברית)',
     discountType: 'סוג הנחה',
     discountValue: 'ערך ההנחה',
+    discountValueBogoHelper: 'במבצע 1+1 הזן כמה אחוזי הנחה לקבל על פריטי המתנה (0-100%). השאר ריק להנחה מלאה.',
     minCartValue: 'סכום עגלה מינימלי',
     usageLimit: 'מגבלת שימוש (כללית)',
     usageLimitPerUser: 'מגבלת שימוש למשתמש',
@@ -68,7 +72,9 @@ const uiText = {
     eligibleCategories: 'קטגוריות זכאיות (מזהים או סלאגים, מופרדים בפסיקים)',
     bogoBuyQuantity: 'מבצע 1+1: כמות לקנייה',
     bogoGetQuantity: 'מבצע 1+1: כמות במתנה',
-    bogoEligibleSkus: 'מק"טים למבצע 1+1 (מופרדים בפסיקים)',
+    bogoEligibleSkus: 'מק"טים נוספים לזכאות (לא חובה, מופרדים בפסיקים)',
+    bogoBuySkus: 'מק"טים לקנייה (מופרדים בפסיקים)',
+    bogoGetSkus: 'מק"טים למתנה (מופרדים בפסיקים)',
     isActive: 'הקופון פעיל',
     submit: 'שמור קופון',
     test: 'בדוק קופון',
@@ -147,6 +153,8 @@ export interface CouponFormValues {
   bogoBuyQuantity: string
   bogoGetQuantity: string
   bogoEligibleSkus: string
+  bogoBuySkus: string
+  bogoGetSkus: string
   isActive: boolean
 }
 
@@ -182,6 +190,8 @@ const defaultValues: CouponFormValues = {
   bogoBuyQuantity: '',
   bogoGetQuantity: '',
   bogoEligibleSkus: '',
+  bogoBuySkus: '',
+  bogoGetSkus: '',
   isActive: true
 }
 
@@ -245,9 +255,16 @@ export function CouponForm({
       case 'bogo': {
         const buyQty = Number(values.bogoBuyQuantity) || 1
         const getQty = Number(values.bogoGetQuantity) || 1
+      const percent = Number(values.discountValue) || 100
         discountLabel = {
-          en: `Buy ${buyQty}, get ${getQty} free`,
-          he: `קנה ${buyQty}, קבל ${getQty} חינם`
+        en:
+          percent >= 100
+            ? `Buy ${buyQty}, get ${getQty} free`
+            : `Buy ${buyQty}, get ${getQty} at ${percent}% off`,
+        he:
+          percent >= 100
+            ? `קנה ${buyQty}, קבל ${getQty} חינם`
+            : `קנה ${buyQty}, קבל ${getQty} בהנחה של ${percent}%`
         }
         break
       }
@@ -281,10 +298,24 @@ export function CouponForm({
   ])
 
   const handleChange = <K extends keyof CouponFormValues>(key: K, value: CouponFormValues[K]) => {
-    setValues(prev => ({
-      ...prev,
-      [key]: value
-    }))
+    setValues(prev => {
+      const next = {
+        ...prev,
+        [key]: value
+      }
+
+      if (key === 'discountType') {
+        const nextType = value as CouponDiscountType
+        if (
+          nextType === 'bogo' &&
+          (!next.discountValue || Number(next.discountValue) <= 0)
+        ) {
+          next.discountValue = '100'
+        }
+      }
+
+      return next
+    })
     setErrors(prev => ({
       ...prev,
       [key]: undefined
@@ -321,12 +352,23 @@ export function CouponForm({
     if (values.discountType === 'bogo') {
       const buyQty = Number(values.bogoBuyQuantity)
       const getQty = Number(values.bogoGetQuantity)
+      const percent =
+        values.discountValue.trim() === ''
+          ? 100
+          : Number(values.discountValue)
 
       if (!buyQty || buyQty <= 0) {
         validationErrors.bogoBuyQuantity = labels.required
       }
       if (!getQty || getQty <= 0) {
         validationErrors.bogoGetQuantity = labels.required
+      }
+      if (
+        Number.isNaN(percent) ||
+        percent <= 0 ||
+        percent > 100
+      ) {
+        validationErrors.discountValue = labels.discountValueBogoHelper
       }
     }
 
@@ -470,6 +512,11 @@ export function CouponForm({
                   )}
                   placeholder={labels.discountValuePlaceholder}
                 />
+                {values.discountType === 'bogo' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {labels.discountValueBogoHelper}
+                  </p>
+                )}
                 {errors.discountValue && (
                   <p className="mt-1 text-sm text-red-600">{errors.discountValue}</p>
                 )}
@@ -715,7 +762,39 @@ export function CouponForm({
                     )}
                   </div>
 
-                  <div className="md:col-span-1">
+                  <div className="md:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {labels.bogoBuySkus}
+                    </label>
+                    <textarea
+                      value={values.bogoBuySkus}
+                      onChange={(event) => handleChange('bogoBuySkus', event.target.value)}
+                      rows={2}
+                      className={clsx(
+                        'mt-1 block w-full rounded-md border-gray-300 text-gray-500 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+                        formLocale === 'he' ? 'text-right' : 'text-left'
+                      )}
+                      placeholder="SKU-1001, SKU-1002"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      {labels.bogoGetSkus}
+                    </label>
+                    <textarea
+                      value={values.bogoGetSkus}
+                      onChange={(event) => handleChange('bogoGetSkus', event.target.value)}
+                      rows={2}
+                      className={clsx(
+                        'mt-1 block w-full rounded-md border-gray-300 text-gray-500 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
+                        formLocale === 'he' ? 'text-right' : 'text-left'
+                      )}
+                      placeholder="SKU-2001, SKU-2002"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3">
                     <label className="block text-sm font-medium text-gray-700">
                       {labels.bogoEligibleSkus}
                     </label>
@@ -727,7 +806,7 @@ export function CouponForm({
                         'mt-1 block w-full rounded-md border-gray-300 text-gray-500 shadow-sm focus:border-indigo-500 focus:ring-indigo-500',
                         formLocale === 'he' ? 'text-right' : 'text-left'
                       )}
-                      placeholder="SKU-1001, SKU-1002"
+                      placeholder="SKU-3001, SKU-3002"
                     />
                   </div>
                 </div>

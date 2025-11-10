@@ -27,6 +27,8 @@ const initialValues: CouponFormValues = {
   bogoBuyQuantity: '',
   bogoGetQuantity: '',
   bogoEligibleSkus: '',
+  bogoBuySkus: '',
+  bogoGetSkus: '',
   isActive: true
 }
 
@@ -70,6 +72,8 @@ function createPayload(values: CouponFormValues) {
     bogoBuyQuantity: toNumber(values.bogoBuyQuantity),
     bogoGetQuantity: toNumber(values.bogoGetQuantity),
     bogoEligibleSkus: toStringArray(values.bogoEligibleSkus),
+    bogoBuySkus: toStringArray(values.bogoBuySkus),
+    bogoGetSkus: toStringArray(values.bogoGetSkus),
     isActive: values.isActive
   }
 }
@@ -106,18 +110,46 @@ function NewCouponPageContent() {
 
     setTestModalCode(code)
 
-    const eligibleProduct = values.eligibleProducts.split(',').map((item) => item.trim()).filter(Boolean)[0] ?? 'SKU-1001'
+    const splitToList = (value: string) => value.split(',').map((item) => item.trim()).filter(Boolean)
+
+    const buySkus = splitToList(values.bogoBuySkus)
+    const getSkus = splitToList(values.bogoGetSkus)
+    const legacySkus = splitToList(values.bogoEligibleSkus)
+    const eligibleProducts = splitToList(values.eligibleProducts)
+
     const buyQty = Number(values.bogoBuyQuantity) || 1
     const getQty = Number(values.bogoGetQuantity) || 1
     const isBogo = values.discountType === 'bogo'
 
+    const primaryBuySku =
+      buySkus[0] ??
+      getSkus[0] ??
+      legacySkus[0] ??
+      eligibleProducts[0] ??
+      'SKU-1001'
+
+    const primaryGetSku =
+      getSkus[0] ??
+      buySkus[0] ??
+      legacySkus[0] ??
+      eligibleProducts[1] ??
+      primaryBuySku
+
     const sampleCart: CouponCartItemInput[] = [
       {
-        sku: eligibleProduct,
-        quantity: isBogo ? buyQty + getQty : 1,
+        sku: primaryBuySku,
+        quantity: isBogo ? Math.max(buyQty, 1) : 1,
         price: 250
       }
     ]
+
+    if (isBogo) {
+      sampleCart.push({
+        sku: primaryGetSku,
+        quantity: Math.max(getQty, 1),
+        price: 220
+      })
+    }
 
     setTestSampleCart(sampleCart)
     setTestModalOpen(true)

@@ -147,14 +147,14 @@ export default function Footer({ lng }: { lng: string }) {
               >
                 <FaTwitter size={20} />
               </a> */}
-              <a
+              {/* <a
                 href="https://pinterest.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-gray-400 hover:text-white transition-colors duration-300"
               >
                 <FaPinterest size={20} />
-              </a>
+              </a> */}
             </div>
           </div>
 
@@ -168,7 +168,7 @@ export default function Footer({ lng }: { lng: string }) {
                 </Link>
               </li>
               <li>
-                <Link href={`/${lng}/collection`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
+                <Link href={`/${lng}/collection/women/shoes`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
                   {t.newCollection}
                 </Link>
               </li>

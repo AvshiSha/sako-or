@@ -1,4 +1,4 @@
-import Image from 'next/image'
+﻿import Image from 'next/image'
 import { getImageUrl } from '@/lib/image-urls'
 
 // Hardcoded translations for build-time rendering
@@ -69,9 +69,9 @@ export default async function About({ params }: { params: Promise<{ lng: string 
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-18">
         {/* Introduction */}
-        <div className="mb-20">
+        <div className="mb-8 md:mb-18">
           <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12">
             <p className={`text-lg md:text-xl text-gray-700 leading-relaxed ${isRTL ? 'text-right' : 'text-left'}`}>
               {t.intro}
@@ -80,15 +80,26 @@ export default async function About({ params }: { params: Promise<{ lng: string 
         </div>
 
         {/* Timeline Section */}
-        <div className="space-y-16">
+        <div className="space-y-8">
           {/* The Beginning */}
-          <div className={`flex flex-col md:flex-row gap-8 items-center ${isRTL ? 'md:flex-row-reverse' : ''}`}>
+          {/* <div className="relative w-full h-100 md:h-80 rounded-3xl overflow-hidden shadow-xl md:flex-1">
+              <Image
+                src={getImageUrl('/images/about/dad.png')}
+                alt={t.theBeginnings}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover"
+                priority
+              />
+            </div> */}
+          <div className={`flex flex-col md:flex-row gap-4 md:gap-8 md:items-center ${isRTL ? 'md:flex-row-reverse' : ''}`}>
             <div className="flex-1">
               <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 h-full">
                 <div className="flex items-center gap-4 mb-6">
                   <div className="w-12 h-12 rounded-full bg-[#1a1a1a] flex items-center justify-center text-white font-bold text-xl">
                     1
                   </div>
+                  
                   <h2 className={`text-3xl md:text-4xl font-light text-gray-900 ${isRTL ? 'text-right' : 'text-left'}`}>
                     {t.theBeginnings}
                   </h2>
@@ -98,26 +109,18 @@ export default async function About({ params }: { params: Promise<{ lng: string 
                 </p>
               </div>
             </div>
-            <div className="flex-1 relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl">
-              <Image
-                src={getImageUrl("/images/about/dad.png")}
-                alt={t.theBeginnings}
-                fill
-                className="object-cover"
-              />
-            </div>
           </div>
 
           {/* The Expansion */}
           <div className={`flex flex-col md:flex-row gap-8 items-center ${isRTL ? 'md:flex-row-reverse' : ''}`}>
-            <div className="flex-1 relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl">
+            {/* <div className="flex-1 relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl">
               <Image
                 src={getImageUrl("/images/about/craftsmanship.jpg")}
                 alt={t.theExpansion}
                 fill
                 className="object-cover"
               />
-            </div>
+            </div> */}
             <div className="flex-1">
               <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 h-full">
                 <div className="flex items-center gap-4 mb-6">
@@ -136,7 +139,7 @@ export default async function About({ params }: { params: Promise<{ lng: string 
           </div>
 
           {/* The Growth */}
-          <div className={`flex flex-col md:flex-row gap-8 items-center ${isRTL ? 'md:flex-row-reverse' : ''}`}>
+          <div className={`flex flex-col md:flex-row gap-8 md:items-center ${isRTL ? 'md:flex-row-reverse' : ''}`}>
             <div className="flex-1">
               <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 h-full">
                 <div className="flex items-center gap-4 mb-6">
@@ -152,26 +155,26 @@ export default async function About({ params }: { params: Promise<{ lng: string 
                 </p>
               </div>
             </div>
-            <div className="flex-1 relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl">
+            {/* <div className="flex-1 relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl">
               <Image
                 src={getImageUrl("/images/hero/main-hero.jpg")}
                 alt={t.theGrowth}
                 fill
                 className="object-cover"
               />
-            </div>
+            </div> */}
           </div>
 
           {/* The Evolution */}
-          <div className={`flex flex-col md:flex-row gap-8 items-center ${isRTL ? 'md:flex-row-reverse' : ''}`}>
-            <div className="flex-1 relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl">
+          <div className={`flex flex-col md:flex-row gap-8 md:items-center ${isRTL ? 'md:flex-row-reverse' : ''}`}>
+            {/* <div className="flex-1 relative h-64 md:h-80 rounded-3xl overflow-hidden shadow-xl">
               <Image
                 src={getImageUrl("/images/hero/main-hero.jpg")}
                 alt={t.theEvolution}
                 fill
                 className="object-cover"
               />
-            </div>
+            </div> */}
             <div className="flex-1">
               <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12 h-full">
                 <div className="flex items-center gap-4 mb-6">

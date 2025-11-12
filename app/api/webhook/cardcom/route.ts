@@ -204,6 +204,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       price: item.price,
       size: item.size,
       sku: item.productSku,
+      colorName: item.colorName || undefined,
     }));
 
     // Extract language from webhook URL parameters

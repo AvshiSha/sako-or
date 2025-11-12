@@ -17,6 +17,7 @@ export interface OrderEmailData {
     name: string;
     sku?: string;
     size?: string;
+    colorName?: string;
     quantity: number;
     price: number;
   }>;

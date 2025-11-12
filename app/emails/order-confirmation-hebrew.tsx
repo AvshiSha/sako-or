@@ -24,6 +24,7 @@ interface OrderConfirmationEmailProps {
     name: string;
     sku?: string;
     size?: string;
+    colorName?: string;
     quantity: number;
     price: number;
   }>;
@@ -114,6 +115,9 @@ export function OrderConfirmationEmailHebrew({
     floor: 'קומה',
     apartment: 'דירה',
     zipCode: 'מיקוד',
+    sizeLabel: 'מידה',
+    skuLabel: 'מספר דגם',
+    colorLabel: 'צבע',
     notes: 'הערות',
     footer: 'אם יש לך שאלות, אנא צור איתנו קשר.',
     contact: 'צור קשר',
@@ -227,11 +231,25 @@ export function OrderConfirmationEmailHebrew({
                   <Column align="right" style={itemName(isHebrew)}>
                     <div>
                       <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.name}</div>
-                      <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
-                        <span>מידה: {item.size}</span>
-                        <br />
-                        <span>מספר דגם: {item.sku}</span>
-                      </div>
+                      {(item.size || item.sku || item.colorName) && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                          {item.size && (
+                            <>
+                              <span>{t.sizeLabel}: {item.size}</span>
+                              {(item.sku || item.colorName) && <br />}
+                            </>
+                          )}
+                          {item.sku && (
+                            <>
+                              <span>{t.skuLabel}: {item.sku}</span>
+                              {item.colorName && <br />}
+                            </>
+                          )}
+                          {item.colorName && (
+                            <span>{t.colorLabel}: {item.colorName}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </Column>
                   <Column align="center" style={itemQuantity}>{item.quantity}</Column>
@@ -313,8 +331,8 @@ OrderConfirmationEmailHebrew.PreviewProps = {
    orderNumber: 'ORD-2024-001',
    orderDate: '15 בינואר 2024',
    items: [
-     { name: 'שמלת ערב', quantity: 1, price: 299.99, size: '36', sku: '0000-0000' },
-     { name: 'ג׳קט אלגנטי', quantity: 2, price: 15.50, size: '35', sku: '0000-0001' },
+     { name: 'שמלת ערב', quantity: 1, price: 299.99, size: '36', sku: '0000-0000', colorName: 'שחור' },
+     { name: 'ג׳קט אלגנטי', quantity: 2, price: 15.50, size: '35', sku: '0000-0001', colorName: 'לבן' },
    ],
    total: 330.99,
    subtotal: 350.99,

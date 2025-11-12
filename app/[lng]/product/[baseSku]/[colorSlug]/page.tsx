@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import type { TouchEvent as ReactTouchEvent } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import Head from 'next/head'
 import { 
   ChevronLeftIcon, 
+  ChevronRightIcon,
   HeartIcon, 
   ShareIcon,
   ShoppingBagIcon,
@@ -75,7 +77,12 @@ export default function ProductColorPage() {
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   
   // Image navigation state
-  const [isTransitioning, setIsTransitioning] = useState(false)
+  const touchStartXRef = useRef<number | null>(null)
+  const touchStartYRef = useRef<number | null>(null)
+  const isSwipingRef = useRef(false)
+  const [isTransitionEnabled, setIsTransitionEnabled] = useState(true)
+  const [carouselPositionState, setCarouselPositionState] = useState(1)
+  const carouselPositionRef = useRef(1)
   
   // Favorites hook
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -86,10 +93,60 @@ export default function ProductColorPage() {
   // Toast hook
   const { toast, showToast, hideToast } = useToast()
 
+  const setCarouselPosition = useCallback((value: number | ((prev: number) => number)) => {
+    setCarouselPositionState((prev) => {
+      const nextValue = typeof value === 'function' ? (value as (prevValue: number) => number)(prev) : value
+      carouselPositionRef.current = nextValue
+      return nextValue
+    })
+  }, [setCarouselPositionState])
+
+  const mediaItems = useMemo(() => {
+    if (!currentVariant) return []
+
+    const items: Array<{ type: 'image' | 'video'; src: string; index: number }> = []
+    const images = currentVariant.images || []
+    const videos = currentVariant.videos || []
+
+    images.forEach((src, index) => {
+      if (src) {
+        items.push({
+          type: 'image',
+          src,
+          index,
+        })
+      }
+    })
+
+    const videoStartIndex = images.length
+    videos.forEach((src, videoIdx) => {
+      if (src) {
+        items.push({
+          type: 'video',
+          src,
+          index: videoStartIndex + videoIdx,
+        })
+      }
+    })
+
+    return items
+  }, [currentVariant])
+
+  const totalMediaCount = mediaItems.length
+
+  const extendedMediaItems = useMemo(() => {
+    if (totalMediaCount <= 1) return mediaItems
+
+    const firstItem = mediaItems[0]
+    const lastItem = mediaItems[totalMediaCount - 1]
+    return [lastItem, ...mediaItems, firstItem]
+  }, [mediaItems, totalMediaCount])
+
   // Get language, baseSku, and colorSlug from params
   const lng = params?.lng as string || 'en'
   const baseSku = params?.baseSku as string
   const colorSlug = params?.colorSlug as string
+  const isRTL = lng === 'he'
 
   // Client-side only effect
   useEffect(() => {
@@ -141,6 +198,24 @@ export default function ProductColorPage() {
 
         // Reset image selection to 0 (video will be shown if available)
         setSelectedImageIndex(0)
+
+        const totalMedia = (variant.images?.length || 0) + (variant.videos?.length || 0)
+        if (totalMedia > 1) {
+          setIsTransitionEnabled(false)
+          setCarouselPosition(1)
+
+          if (typeof window !== 'undefined') {
+            window.requestAnimationFrame(() => {
+              window.requestAnimationFrame(() => {
+                setIsTransitionEnabled(true)
+              })
+            })
+          } else {
+            setIsTransitionEnabled(true)
+          }
+        } else {
+          setCarouselPosition(0)
+        }
 
         // Fire Product View analytics event (Firebase)
         if (analytics && productData && typeof analytics.logEvent === 'function') {
@@ -258,11 +333,168 @@ export default function ProductColorPage() {
 
   // Get total media count for navigation
   const getTotalMediaCount = useCallback(() => {
-    if (!currentVariant) return 0
-    const imageCount = currentVariant.images?.length || 0
-    const videoCount = currentVariant.videos?.length || 0
-    return imageCount + videoCount
-  }, [currentVariant])
+    return totalMediaCount
+  }, [totalMediaCount])
+
+  const handleMediaIndexChange = useCallback((targetIndex: number) => {
+    const total = getTotalMediaCount()
+    if (total === 0) return
+
+    const normalizedIndex = ((targetIndex % total) + total) % total
+    setSelectedImageIndex(normalizedIndex)
+
+    if (total > 1) {
+      setIsTransitionEnabled(true)
+      setCarouselPosition(normalizedIndex + 1)
+    } else {
+      setCarouselPosition(normalizedIndex)
+    }
+  }, [getTotalMediaCount, setCarouselPosition])
+
+  const goToNextMedia = useCallback(() => {
+    const total = getTotalMediaCount()
+    if (total <= 1) return
+
+    setIsTransitionEnabled(true)
+    setCarouselPosition((prev) => prev + 1)
+    setSelectedImageIndex((prev) => {
+      const nextIndex = (prev + 1) % total
+      return nextIndex
+    })
+  }, [getTotalMediaCount, setCarouselPosition])
+
+  const goToPreviousMedia = useCallback(() => {
+    const total = getTotalMediaCount()
+    if (total <= 1) return
+
+    setIsTransitionEnabled(true)
+    setCarouselPosition((prev) => prev - 1)
+    setSelectedImageIndex((prev) => {
+      const nextIndex = ((prev - 1) % total + total) % total
+      return nextIndex
+    })
+  }, [getTotalMediaCount, setCarouselPosition])
+
+  const handleCarouselTransitionEnd = useCallback(() => {
+    const total = getTotalMediaCount()
+    if (total <= 1) return
+
+    if (carouselPositionRef.current === 0) {
+      setIsTransitionEnabled(false)
+      setCarouselPosition(total)
+
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            setIsTransitionEnabled(true)
+          })
+        })
+      } else {
+        setIsTransitionEnabled(true)
+      }
+    } else if (carouselPositionRef.current === total + 1) {
+      setIsTransitionEnabled(false)
+      setCarouselPosition(1)
+
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            setIsTransitionEnabled(true)
+          })
+        })
+      } else {
+        setIsTransitionEnabled(true)
+      }
+    }
+  }, [getTotalMediaCount, setCarouselPosition])
+
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    const target = event.target as HTMLElement | null
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      return
+    }
+
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      if (isRTL) {
+        goToPreviousMedia()
+      } else {
+        goToNextMedia()
+      }
+    }
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      if (isRTL) {
+        goToNextMedia()
+      } else {
+        goToPreviousMedia()
+      }
+    }
+  }, [goToNextMedia, goToPreviousMedia, isRTL])
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [handleKeyDown])
+
+  const handleTouchStart = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0]
+    touchStartXRef.current = touch.clientX
+    touchStartYRef.current = touch.clientY
+    isSwipingRef.current = false
+  }, [])
+
+  const handleTouchMove = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return
+    const touch = event.touches[0]
+    const deltaX = touch.clientX - touchStartXRef.current
+    const deltaY = touch.clientY - touchStartYRef.current
+
+    if (!isSwipingRef.current && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+      isSwipingRef.current = true
+    }
+
+    if (isSwipingRef.current && event.cancelable) {
+      event.preventDefault()
+    }
+  }, [])
+
+  const handleTouchEnd = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return
+
+    const touch = event.changedTouches[0]
+    const deltaX = touch.clientX - touchStartXRef.current
+    const swipeThreshold = 50
+
+    if (Math.abs(deltaX) > swipeThreshold) {
+      if (isRTL) {
+        if (deltaX < 0) {
+          goToPreviousMedia()
+        } else {
+          goToNextMedia()
+        }
+      } else {
+        if (deltaX < 0) {
+          goToNextMedia()
+        } else {
+          goToPreviousMedia()
+        }
+      }
+    }
+
+    touchStartXRef.current = null
+    touchStartYRef.current = null
+    isSwipingRef.current = false
+  }, [goToNextMedia, goToPreviousMedia, isRTL])
+
+  const handleTouchCancel = useCallback(() => {
+    touchStartXRef.current = null
+    touchStartYRef.current = null
+    isSwipingRef.current = false
+  }, [])
 
   // Show loading until client-side hydration is complete
   if (!isClient) {
@@ -315,7 +547,10 @@ export default function ProductColorPage() {
 
   const productName = productHelpers.getField(product, 'name', lng as 'en' | 'he')
   const productDescription = productHelpers.getField(product, 'description', lng as 'en' | 'he')
-  const isRTL = lng === 'he'
+  const nextMediaLabel = lng === 'he' ? 'המדיה הבאה' : 'Next media'
+  const previousMediaLabel = lng === 'he' ? 'המדיה הקודמת' : 'Previous media'
+  const LeftArrowIconComponent = isRTL ? ChevronRightIcon : ChevronLeftIcon
+  const RightArrowIconComponent = isRTL ? ChevronLeftIcon : ChevronRightIcon
   const currentPrice = getCurrentPrice()
   const currentStock = getSizeStock(selectedSize)
   const isOutOfStock = currentStock <= 0
@@ -547,7 +782,13 @@ export default function ProductColorPage() {
             {/* Product Images and Video */}
             <div className="space-y-4">
               {/* Main Media Carousel */}
-              <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg relative">
+              <div
+                className="group aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg relative touch-pan-y"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchCancel}
+              >
                 {/* Media indicator dots */}
                 {getTotalMediaCount() > 1 && (
                   <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex space-x-2">
@@ -564,53 +805,68 @@ export default function ProductColorPage() {
 
                 {/* Media Container */}
                 <div 
+                  dir="ltr"
                   className="flex h-full w-full transition-transform duration-300 ease-out"
                   style={{
-                    transform: isRTL 
-                      ? `translateX(${selectedImageIndex * 100}%)` 
-                      : `translateX(-${selectedImageIndex * 100}%)`
+                    transform: totalMediaCount > 1
+                      ? `translateX(-${carouselPositionState * 100}%)`
+                      : `translateX(-${selectedImageIndex * 100}%)`,
+                    transitionDuration: isTransitionEnabled ? undefined : '0ms'
                   }}
+                  onTransitionEnd={handleCarouselTransitionEnd}
                 >
-                  {/* Images */}
-                  {currentVariant.images && currentVariant.images.map((image, index) => (
-                    <div key={`image-${index}`} className="w-full h-full flex-shrink-0 relative">
-                      <Image
-                        src={image}
-                        alt={`${productName} - ${currentVariant.colorSlug}`}
-                        width={600}
-                        height={600}
-                        className="h-full w-full object-cover object-center"
-                        priority={index === 0}
-                        unoptimized={true}
-                        onError={(e) => {
-                          console.error('Image failed to load:', image, 'Index:', index, 'Language:', lng)
-                        }}
-                        onLoad={() => {
-                          console.log('Image loaded successfully:', image, 'Index:', index, 'Language:', lng)
-                        }}
-                      />
-                    </div>
-                  ))}
-                  
-                  {/* Videos */}
-                  {currentVariant.videos && currentVariant.videos.map((video, index) => (
-                    <div key={`video-${index}`} className="w-full h-full flex-shrink-0">
-                      <video
-                        src={video}
-                        autoPlay={selectedImageIndex === (currentVariant.images?.length || 0) + index}
-                        loop
-                        muted
-                        playsInline
-                        className="h-full w-full object-cover object-center"
-                        poster={currentVariant.images?.[0]}
-                      >
-                        Your browser does not support the video tag.
-                      </video>
-                    </div>
-                  ))}
-                  
-                  {/* Fallback for no media */}
-                  {(!currentVariant.images || currentVariant.images.length === 0) && (!currentVariant.videos || currentVariant.videos.length === 0) && (
+                  {extendedMediaItems.length > 0 ? (
+                    extendedMediaItems.map((item, extendedIndex) => {
+                      const actualIndex = item.index
+                      const isClone = totalMediaCount > 1 && (extendedIndex === 0 || extendedIndex === extendedMediaItems.length - 1)
+                      const distance = Math.abs(selectedImageIndex - actualIndex)
+                      const wrapDistance = totalMediaCount > 0 ? Math.min(distance, totalMediaCount - distance) : distance
+                      const shouldPreload = wrapDistance <= 1
+                      const isActive = selectedImageIndex === actualIndex && !isClone
+
+                      if (item.type === 'image') {
+                        return (
+                          <div key={`media-image-${extendedIndex}-${actualIndex}`} className="w-full h-full flex-shrink-0 relative">
+                            <Image
+                              src={item.src}
+                              alt={`${productName} - ${currentVariant.colorSlug}`}
+                              width={600}
+                              height={600}
+                              className="h-full w-full object-cover object-center"
+                              priority={shouldPreload && !isClone}
+                              unoptimized={true}
+                              loading={shouldPreload && !isClone ? undefined : 'lazy'}
+                              draggable={false}
+                              decoding={isActive ? 'sync' : 'async'}
+                              onError={(e) => {
+                                console.error('Image failed to load:', item.src, 'Index:', actualIndex, 'Language:', lng)
+                              }}
+                              onLoad={() => {
+                                console.log('Image loaded successfully:', item.src, 'Index:', actualIndex, 'Language:', lng)
+                              }}
+                            />
+                          </div>
+                        )
+                      }
+
+                      return (
+                        <div key={`media-video-${extendedIndex}-${actualIndex}`} className="w-full h-full flex-shrink-0">
+                          <video
+                            src={item.src}
+                            autoPlay={isActive}
+                            loop
+                            muted
+                            playsInline
+                            preload={shouldPreload ? 'auto' : 'metadata'}
+                            className="h-full w-full object-cover object-center"
+                            poster={currentVariant.images?.[0]}
+                          >
+                            Your browser does not support the video tag.
+                          </video>
+                        </div>
+                      )
+                    })
+                  ) : (
                     <div className="w-full h-full flex-shrink-0 flex items-center justify-center bg-gray-200">
                       <span className="text-gray-400">
                         {lng === 'he' ? 'אין תמונה זמינה' : 'No image available'}
@@ -618,6 +874,31 @@ export default function ProductColorPage() {
                     </div>
                   )}
                 </div>
+
+                {getTotalMediaCount() > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={isRTL ? goToNextMedia : goToPreviousMedia}
+                      aria-label={isRTL ? nextMediaLabel : previousMediaLabel}
+                      className="pointer-events-auto hidden sm:flex items-center justify-center absolute inset-y-0 left-0 px-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-gray-700 shadow">
+                        <LeftArrowIconComponent className="h-5 w-5" />
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={isRTL ? goToPreviousMedia : goToNextMedia}
+                      aria-label={isRTL ? previousMediaLabel : nextMediaLabel}
+                      className="pointer-events-auto hidden sm:flex items-center justify-center absolute inset-y-0 right-0 px-2 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-gray-700 shadow">
+                        <RightArrowIconComponent className="h-5 w-5" />
+                      </span>
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Thumbnail Images and Video */}
@@ -627,11 +908,7 @@ export default function ProductColorPage() {
                   {currentVariant.images && currentVariant.images.map((image, index) => (
                     <button
                       key={index}
-                      onClick={() => {
-                        setIsTransitioning(true)
-                        setSelectedImageIndex(index)
-                        setTimeout(() => setIsTransitioning(false), 300)
-                      }}
+                      onClick={() => handleMediaIndexChange(index)}
                       className={`aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border-2 transition-all duration-200 ${
                         selectedImageIndex === index ? 'border-indigo-600 scale-105' : 'border-gray-200 hover:border-gray-300'
                       }`}
@@ -643,6 +920,7 @@ export default function ProductColorPage() {
                         height={150}
                         className="h-full w-full object-cover object-center"
                         loading="lazy"
+                        draggable={false}
                       />
                     </button>
                   ))}
@@ -653,11 +931,7 @@ export default function ProductColorPage() {
                     return (
                       <button
                         key={`video-thumb-${index}`}
-                        onClick={() => {
-                          setIsTransitioning(true)
-                          setSelectedImageIndex(videoIndex)
-                          setTimeout(() => setIsTransitioning(false), 300)
-                        }}
+                        onClick={() => handleMediaIndexChange(videoIndex)}
                         className={`aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg border-2 relative transition-all duration-200 ${
                           selectedImageIndex === videoIndex ? 'border-indigo-600 scale-105' : 'border-gray-200 hover:border-gray-300'
                         }`}
@@ -668,6 +942,7 @@ export default function ProductColorPage() {
                           loop
                           muted
                           playsInline
+                          preload="metadata"
                           className="h-full w-full object-cover object-center"
                           poster={currentVariant.images?.[0]}
                         >

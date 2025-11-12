@@ -552,18 +552,11 @@ export default function ProductColorPage() {
     setTransitionDurationMs(getResponsiveDuration())
 
     if (shouldCommit) {
-      if (isRTL) {
-        if (deltaX < 0) {
-          goToPreviousMedia()
-        } else {
-          goToNextMedia()
-        }
+      const directionalDelta = deltaX !== 0 ? deltaX : velocity
+      if (directionalDelta < 0) {
+        goToNextMedia()
       } else {
-        if (deltaX < 0) {
-          goToNextMedia()
-        } else {
-          goToPreviousMedia()
-        }
+        goToPreviousMedia()
       }
     } else {
       setDragOffset(0)

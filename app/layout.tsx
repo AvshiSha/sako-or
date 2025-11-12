@@ -1,8 +1,9 @@
 import './globals.css'
 import { Assistant } from 'next/font/google'  
-import ClientAuthProvider from './components/ClientAuthProvider'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata } from 'next'
+import ClientAuthProvider from './components/ClientAuthProvider'
+import FloatingWhatsAppButton from './components/FloatingWhatsAppButton'
 
 const assistant = Assistant({ subsets: ['latin'] })
 
@@ -59,6 +60,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <ClientAuthProvider>
           {children}
         </ClientAuthProvider>
+
+        <FloatingWhatsAppButton />
         
         {/* Accessibility */}
         <script

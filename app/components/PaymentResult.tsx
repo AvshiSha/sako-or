@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PaymentStatus, PaymentStatusResponse } from '../types/checkout';
 import Link from 'next/link';
+import { trackPurchase } from '@/lib/dataLayer';
 
 interface PaymentResultProps {
   lpid: string;
@@ -24,6 +25,7 @@ export default function PaymentResult({
   const [isPolling, setIsPolling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const isHebrew = language === 'he';
+  const hasTrackedPurchase = useRef(false);
 
   // Poll for payment status
   const pollPaymentStatus = async () => {
@@ -70,6 +72,47 @@ export default function PaymentResult({
       };
     }
   }, [lpid, initialStatus]);
+
+  useEffect(() => {
+    if (
+      typeof window === 'undefined' ||
+      hasTrackedPurchase.current ||
+      status !== 'success' ||
+      !paymentData ||
+      !paymentData.order
+    ) {
+      return;
+    }
+
+    try {
+      const items =
+        paymentData.order.orderItems?.length > 0
+          ? paymentData.order.orderItems.map((item, index) => ({
+              name: item.productName || 'Order Item',
+              id: `${paymentData.order.orderNumber}-${index + 1}`,
+              price: item.price,
+              quantity: item.quantity,
+            }))
+          : [
+              {
+                name: 'Order',
+                id: paymentData.order.orderNumber,
+                price: paymentData.order.total,
+                quantity: 1,
+              },
+            ];
+
+      trackPurchase(paymentData.order.orderNumber, items, {
+        currency: paymentData.order.currency || 'ILS',
+        value: paymentData.order.total,
+        affiliation: 'Sako Online Store',
+      });
+
+      hasTrackedPurchase.current = true;
+    } catch (trackingError) {
+      console.warn('PaymentResult purchase tracking failed:', trackingError);
+    }
+  }, [paymentData, status]);
 
   const getStatusIcon = (status: PaymentStatus) => {
     switch (status) {

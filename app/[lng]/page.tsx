@@ -98,7 +98,7 @@ const featuredProducts = [
       he:  'מגפוני בוקרים זמש'
     },
     price: 599,
-    salePrice: 479,
+    // salePrice: 479,
     description: {
       en: 'Add a bold western touch to your look with these rich brown suede cowboy boots.',
       he: 'הוסיפי טאץ\' מערבי נועז למראה שלך עם המגפוני בוקרים שלנו'

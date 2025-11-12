@@ -1,13 +1,3 @@
-/// <reference types="next" />
-/// <reference types="next/image-types/global" />
-
-declare global {
-  interface Window {
-    gtag?: (...args: any[]) => void;
-    dataLayer?: any[];
-  }
-}
-
 declare module 'react-whatsapp-button' {
   import { CSSProperties } from 'react';
 
@@ -22,6 +12,4 @@ declare module 'react-whatsapp-button' {
 
   export default function WhatsAppButton(props: WhatsAppButtonProps): JSX.Element;
 }
-
-export {};
 

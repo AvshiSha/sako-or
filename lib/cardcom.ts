@@ -168,6 +168,8 @@ export function createPaymentSessionRequest(
     webhook: `${baseUrl}/api/webhook/cardcom?bypass=${bypassSecret}&lang=${options.language || 'he'}`,
   };
 
+  const isILS = currency?.toUpperCase() === 'ILS' || currency === undefined || currency === null
+
   const request: CreateLowProfileRequest = {
     TerminalNumber: parseInt(CARDCOM_TERMINAL_NUMBER!),
     ApiName: CARDCOM_API_NAME!,
@@ -179,9 +181,15 @@ export function createPaymentSessionRequest(
     ReturnValue: orderId,
     Operation: 'ChargeOnly', // Simplified - just charge, no tokens
     Language: options.language || 'he',
-    ISOCoinId: currency === 'USD' ? 2 : 1, // 1=ILS, 2=USD
+    ISOCoinId: 1, // Force ILS to avoid accidental USD charges
     ProductName: options.productName || 'Sako Order',
   };
+
+  if (!isILS) {
+    console.warn(
+      `[CardCom] Unsupported currency "${currency}" requested for order ${orderId}. Defaulting to ILS (ISOCoinId=1).`
+    );
+  }
 
   // Add UI Definition for better UX
   if (options.customerEmail || options.customerName || options.customerPhone) {

@@ -79,10 +79,18 @@ export default function ProductColorPage() {
   // Image navigation state
   const touchStartXRef = useRef<number | null>(null)
   const touchStartYRef = useRef<number | null>(null)
+  const touchStartTimeRef = useRef<number | null>(null)
+  const lastTouchXRef = useRef<number | null>(null)
+  const lastTouchTimeRef = useRef<number | null>(null)
   const isSwipingRef = useRef(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
   const [isTransitionEnabled, setIsTransitionEnabled] = useState(true)
+  const [transitionDurationMs, setTransitionDurationMs] = useState(260)
+  const [carouselWidth, setCarouselWidth] = useState(0)
   const [carouselPositionState, setCarouselPositionState] = useState(1)
   const carouselPositionRef = useRef(1)
+  const carouselContainerRef = useRef<HTMLDivElement | null>(null)
   
   // Favorites hook
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -148,9 +156,42 @@ export default function ProductColorPage() {
   const colorSlug = params?.colorSlug as string
   const isRTL = lng === 'he'
 
+  const getResponsiveDuration = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return 260
+    }
+    return window.innerWidth < 768 ? 320 : 240
+  }, [])
+
   // Client-side only effect
   useEffect(() => {
     setIsClient(true)
+  }, [])
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (carouselContainerRef.current) {
+        setCarouselWidth(carouselContainerRef.current.offsetWidth)
+      }
+    }
+
+    updateWidth()
+
+    let resizeObserver: ResizeObserver | null = null
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateWidth)
+      if ('ResizeObserver' in window && carouselContainerRef.current) {
+        resizeObserver = new ResizeObserver(() => updateWidth())
+        resizeObserver.observe(carouselContainerRef.current)
+      }
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', updateWidth)
+      }
+      resizeObserver?.disconnect()
+    }
   }, [])
 
   // Set up real-time listener for product data
@@ -345,35 +386,42 @@ export default function ProductColorPage() {
 
     if (total > 1) {
       setIsTransitionEnabled(true)
+      setTransitionDurationMs(getResponsiveDuration())
       setCarouselPosition(normalizedIndex + 1)
     } else {
+      setTransitionDurationMs(getResponsiveDuration())
       setCarouselPosition(normalizedIndex)
     }
-  }, [getTotalMediaCount, setCarouselPosition])
+    setDragOffset(0)
+  }, [getResponsiveDuration, getTotalMediaCount, setCarouselPosition])
 
   const goToNextMedia = useCallback(() => {
     const total = getTotalMediaCount()
     if (total <= 1) return
 
     setIsTransitionEnabled(true)
+    setTransitionDurationMs(getResponsiveDuration())
     setCarouselPosition((prev) => prev + 1)
     setSelectedImageIndex((prev) => {
       const nextIndex = (prev + 1) % total
       return nextIndex
     })
-  }, [getTotalMediaCount, setCarouselPosition])
+    setDragOffset(0)
+  }, [getResponsiveDuration, getTotalMediaCount, setCarouselPosition])
 
   const goToPreviousMedia = useCallback(() => {
     const total = getTotalMediaCount()
     if (total <= 1) return
 
     setIsTransitionEnabled(true)
+    setTransitionDurationMs(getResponsiveDuration())
     setCarouselPosition((prev) => prev - 1)
     setSelectedImageIndex((prev) => {
       const nextIndex = ((prev - 1) % total + total) % total
       return nextIndex
     })
-  }, [getTotalMediaCount, setCarouselPosition])
+    setDragOffset(0)
+  }, [getResponsiveDuration, getTotalMediaCount, setCarouselPosition])
 
   const handleCarouselTransitionEnd = useCallback(() => {
     const total = getTotalMediaCount()
@@ -444,7 +492,13 @@ export default function ProductColorPage() {
     const touch = event.touches[0]
     touchStartXRef.current = touch.clientX
     touchStartYRef.current = touch.clientY
+    touchStartTimeRef.current = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    lastTouchXRef.current = touch.clientX
+    lastTouchTimeRef.current = typeof performance !== 'undefined' ? performance.now() : Date.now()
     isSwipingRef.current = false
+    setIsTransitionEnabled(false)
+    setIsDragging(true)
+    setDragOffset(0)
   }, [])
 
   const handleTouchMove = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
@@ -457,44 +511,78 @@ export default function ProductColorPage() {
       isSwipingRef.current = true
     }
 
-    if (isSwipingRef.current && event.cancelable) {
-      event.preventDefault()
+    if (isSwipingRef.current) {
+      if (carouselWidth > 0) {
+        const maxOffset = carouselWidth * 0.35
+        const clampedDelta = Math.max(Math.min(deltaX, maxOffset), -maxOffset)
+        setDragOffset(clampedDelta)
+      } else {
+        setDragOffset(deltaX)
+      }
+      lastTouchXRef.current = touch.clientX
+      lastTouchTimeRef.current = typeof performance !== 'undefined' ? performance.now() : Date.now()
     }
-  }, [])
+  }, [carouselWidth])
 
   const handleTouchEnd = useCallback((event: ReactTouchEvent<HTMLDivElement>) => {
     if (touchStartXRef.current === null || touchStartYRef.current === null) return
 
     const touch = event.changedTouches[0]
     const deltaX = touch.clientX - touchStartXRef.current
-    const swipeThreshold = 50
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+    const lastTime = lastTouchTimeRef.current ?? now
+    const lastX = lastTouchXRef.current ?? touch.clientX
+    const timeSinceLast = Math.max(1, now - lastTime)
+    const deltaSinceLast = touch.clientX - lastX
 
-    if (Math.abs(deltaX) > swipeThreshold) {
-      if (isRTL) {
-        if (deltaX < 0) {
-          goToPreviousMedia()
-        } else {
-          goToNextMedia()
-        }
+    const instantaneousVelocity = deltaSinceLast / timeSinceLast
+    const totalTime = touchStartTimeRef.current ? Math.max(1, now - touchStartTimeRef.current) : timeSinceLast
+    const averageVelocity = deltaX / totalTime
+    const velocity = instantaneousVelocity !== 0 ? instantaneousVelocity : averageVelocity
+
+    const width = carouselWidth || (carouselContainerRef.current?.offsetWidth ?? 0)
+    const distanceThreshold = width > 0 ? width * 0.28 : 80
+    const velocityThreshold = 0.35
+
+    const shouldCommitByDistance = Math.abs(deltaX) >= distanceThreshold
+    const shouldCommitByVelocity = Math.abs(velocity) >= velocityThreshold
+    const shouldCommit = shouldCommitByDistance || shouldCommitByVelocity
+
+    setIsTransitionEnabled(true)
+    setTransitionDurationMs(getResponsiveDuration())
+
+    if (shouldCommit) {
+      const directionalDelta = deltaX !== 0 ? deltaX : velocity
+      if (directionalDelta < 0) {
+        goToNextMedia()
       } else {
-        if (deltaX < 0) {
-          goToNextMedia()
-        } else {
-          goToPreviousMedia()
-        }
+        goToPreviousMedia()
       }
+    } else {
+      setDragOffset(0)
     }
 
     touchStartXRef.current = null
     touchStartYRef.current = null
+    touchStartTimeRef.current = null
+    lastTouchXRef.current = null
+    lastTouchTimeRef.current = null
     isSwipingRef.current = false
-  }, [goToNextMedia, goToPreviousMedia, isRTL])
+    setIsDragging(false)
+  }, [carouselWidth, getResponsiveDuration, goToNextMedia, goToPreviousMedia, isRTL])
 
   const handleTouchCancel = useCallback(() => {
     touchStartXRef.current = null
     touchStartYRef.current = null
+    touchStartTimeRef.current = null
+    lastTouchXRef.current = null
+    lastTouchTimeRef.current = null
     isSwipingRef.current = false
-  }, [])
+    setDragOffset(0)
+    setIsTransitionEnabled(true)
+    setIsDragging(false)
+    setTransitionDurationMs(getResponsiveDuration())
+  }, [getResponsiveDuration])
 
   // Show loading until client-side hydration is complete
   if (!isClient) {
@@ -549,11 +637,14 @@ export default function ProductColorPage() {
   const productDescription = productHelpers.getField(product, 'description', lng as 'en' | 'he')
   const nextMediaLabel = lng === 'he' ? 'המדיה הבאה' : 'Next media'
   const previousMediaLabel = lng === 'he' ? 'המדיה הקודמת' : 'Previous media'
-  const LeftArrowIconComponent = isRTL ? ChevronRightIcon : ChevronLeftIcon
-  const RightArrowIconComponent = isRTL ? ChevronLeftIcon : ChevronRightIcon
+  const LeftArrowIconComponent = ChevronLeftIcon
+  const RightArrowIconComponent = ChevronRightIcon
   const currentPrice = getCurrentPrice()
   const currentStock = getSizeStock(selectedSize)
   const isOutOfStock = currentStock <= 0
+  const baseSlidePosition = totalMediaCount > 1 ? carouselPositionState : selectedImageIndex
+  const translateDeltaPercentage = carouselWidth > 0 ? (dragOffset / carouselWidth) * 100 : 0
+  const translateValue = -(baseSlidePosition * 100) + translateDeltaPercentage
 
   const handleAddToCart = async () => {
     if (isOutOfStock || isAddingToCart || !selectedSize) return
@@ -784,6 +875,7 @@ export default function ProductColorPage() {
               {/* Main Media Carousel */}
               <div
                 className="group aspect-w-1 aspect-h-1 w-full overflow-hidden bg-gray-200 rounded-lg relative touch-pan-y"
+                ref={carouselContainerRef}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -806,12 +898,12 @@ export default function ProductColorPage() {
                 {/* Media Container */}
                 <div 
                   dir="ltr"
-                  className="flex h-full w-full transition-transform duration-300 ease-out"
+                  className="flex h-full w-full transition-transform"
                   style={{
-                    transform: totalMediaCount > 1
-                      ? `translateX(-${carouselPositionState * 100}%)`
-                      : `translateX(-${selectedImageIndex * 100}%)`,
-                    transitionDuration: isTransitionEnabled ? undefined : '0ms'
+                    transform: `translate3d(${translateValue}%, 0, 0)`,
+                    transitionDuration: isTransitionEnabled ? `${transitionDurationMs}ms` : '0ms',
+                    transitionTimingFunction: 'cubic-bezier(.22,.61,.36,1)',
+                    willChange: isDragging ? 'transform' : undefined
                   }}
                   onTransitionEnd={handleCarouselTransitionEnd}
                 >

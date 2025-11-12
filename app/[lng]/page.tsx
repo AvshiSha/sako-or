@@ -322,9 +322,12 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {featuredProducts.map((product) => {
-              const salePrice = product.salePrice;
-              const hasSale = typeof salePrice === 'number' && salePrice < product.price;
+          {featuredProducts.map((product) => {
+            const salePriceValue =
+              'salePrice' in product && typeof product.salePrice === 'number'
+                ? product.salePrice
+                : null;
+            const hasSale = salePriceValue !== null && salePriceValue < product.price;
 
               return (
                 <Link
@@ -360,8 +363,8 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
                       <span className="text-base text-gray-500 line-through" aria-label={`Original price ${product.price}₪`}>
                         {product.price}₪
                       </span>
-                      <span className="text-lg text-red-600 font-medium" aria-label={`${t.salePriceLabel} ${salePrice}₪`}>
-                        {salePrice}₪
+                      <span className="text-lg text-red-600 font-medium" aria-label={`${t.salePriceLabel} ${salePriceValue}₪`}>
+                        {salePriceValue}₪
                       </span>
                     </div>
                   ) : (

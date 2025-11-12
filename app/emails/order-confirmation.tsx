@@ -24,6 +24,7 @@ interface OrderConfirmationEmailProps {
     name: string;
     sku?: string;
     size?: string;
+    colorName?: string;
     quantity: number;
     price: number;
   }>;
@@ -116,6 +117,9 @@ export function OrderConfirmationEmail({
     floor: isHebrew ? 'קומה' : 'Floor',
     apartment: isHebrew ? 'דירה' : 'Apartment',
     zipCode: isHebrew ? 'מיקוד' : 'ZIP Code',
+    sizeLabel: isHebrew ? 'מידה' : 'Size',
+    skuLabel: isHebrew ? 'מק"ט' : 'SKU',
+    colorLabel: isHebrew ? 'צבע' : 'Color',
     notes: isHebrew ? 'הערות' : 'Notes',
     footer: isHebrew 
       ? 'אם יש לך שאלות, אנא צור איתנו קשר.' 
@@ -229,13 +233,27 @@ export function OrderConfirmationEmail({
               {items.map((item, index) => (
                 <Row key={index} style={itemRow}>
                   <Column align={isHebrew ? 'right' : 'left'} style={itemName(isHebrew)}>
-                  <div>
+                    <div>
                       <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.name}</div>
-                      <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
-                        <span>Size: {item.size}</span>
-                        <br />
-                        <span>SKU: {item.sku}</span>
-                      </div>
+                      {(item.size || item.sku || item.colorName) && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+                          {item.size && (
+                            <>
+                              <span>{t.sizeLabel}: {item.size}</span>
+                              {(item.sku || item.colorName) && <br />}
+                            </>
+                          )}
+                          {item.sku && (
+                            <>
+                              <span>{t.skuLabel}: {item.sku}</span>
+                              {item.colorName && <br />}
+                            </>
+                          )}
+                          {item.colorName && (
+                            <span>{t.colorLabel}: {item.colorName}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </Column>
                   <Column align="center" style={itemQuantity}>{item.quantity}</Column>
@@ -317,8 +335,8 @@ OrderConfirmationEmail.PreviewProps = {
   orderNumber: 'ORD-2024-001',
   orderDate: 'January 15, 2024',
   items: [
-    { name: 'Premium Leather Shoes', quantity: 1, price: 299.99,size: '36', sku: '0000-0000' },
-    { name: 'Cotton Socks', quantity: 2, price: 15.50,size: '35', sku: '0000-0001' },
+    { name: 'Premium Leather Shoes', quantity: 1, price: 299.99, size: '36', sku: '0000-0000', colorName: 'Black' },
+    { name: 'Cotton Socks', quantity: 2, price: 15.50, size: '35', sku: '0000-0001', colorName: 'White' },
   ],
   total: 330.99,
   subtotal: 350.99,

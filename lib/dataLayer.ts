@@ -8,6 +8,7 @@
 declare global {
   interface Window {
     dataLayer?: any[];
+    gtag?: (...args: any[]) => void;
   }
 }
 
@@ -121,6 +122,32 @@ function pushEvent(eventData: any): void {
     // Conversion tracking expert can also inspect window.dataLayer directly in browser console
     if (process.env.NODE_ENV === 'development') {
       console.log('📊 DataLayer Event:', JSON.stringify(eventData, null, 2));
+    }
+
+    // If gtag is available, mirror purchase events to gtag for GA/Ads
+    try {
+      if (
+        typeof window.gtag === 'function' &&
+        eventData &&
+        eventData.event === 'purchase' &&
+        eventData.ecommerce
+      ) {
+        const ec = eventData.ecommerce || {};
+        const transactionId = ec.transaction_id;
+        const value = ec.value;
+        const currency = ec.currency || 'ILS';
+
+        // Send simplified purchase event to gtag
+        window.gtag('event', 'purchase', {
+          transaction_id: transactionId,
+          value,
+          currency
+        });
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('gtag purchase mirror failed:', err);
+      }
     }
   }
 }

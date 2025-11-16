@@ -87,8 +87,7 @@ const { user } = useAuth()
 const appliedCodes = useMemo(() => appliedCoupons.map(coupon => coupon.coupon.code), [appliedCoupons])
 const userIdentifier = user?.email ? user.email.toLowerCase() : undefined
 const cartCurrency = useMemo(() => {
-  if (items.length === 0) return 'ILS'
-  return items[0].currency || 'ILS'
+ return 'ILS'
 }, [items])
 
 const cartItemsPayload = useMemo(() => {

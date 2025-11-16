@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { OrderConfirmationEmail } from '../app/emails/order-confirmation';
 import { OrderConfirmationEmailHebrew } from '../app/emails/order-confirmation-hebrew';
 import { prisma } from './prisma';
+import { OrderConfirmationTeamEmail } from '../app/emails/order-confirmation-team-mail';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -79,7 +80,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
     // Production email with proper template and recipients
     const emailPromise = resend.emails.send({
       from: 'Sako Or <info@sako-or.com>',
-      to: [data.customerEmail, 'moshe@sako-or.com', 'avshi@sako-or.com'],
+      to: [data.customerEmail, 'avshi@sako-or.com'],
       subject: subject,
       react: EmailTemplate({
         customerName: data.customerName,
@@ -123,6 +124,39 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
       }
 
       console.log(`[EMAIL] Confirmation sent for order ${data.orderNumber}, messageId: ${emailData?.id}`);
+
+      // Send team notification email (does not affect the main result)
+      try {
+        const teamIdempotencyKey = `order-confirmation-team-${data.orderNumber}-${Date.now()}`;
+        await Promise.race([
+          resend.emails.send({
+            from: 'Sako Or <info@sako-or.com>',
+            to: ['moshe@sako-or.com', 'avshi@sako-or.com'],
+            subject: `New Order Received - ${data.orderNumber}`,
+            react: OrderConfirmationTeamEmail({
+              customerName: data.customerName,
+              orderNumber: data.orderNumber,
+              orderDate: data.orderDate,
+              items: data.items,
+              total: data.total,
+              subtotal: data.subtotal,
+              deliveryFee: data.deliveryFee,
+              discountTotal: data.discountTotal,
+              coupons: data.coupons,
+              payer: data.payer,
+              deliveryAddress: data.deliveryAddress,
+              notes: data.notes,
+              isHebrew: data.isHebrew,
+            }),
+          }, { idempotencyKey: teamIdempotencyKey }),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error(`Resend API timeout (team) after ${timeoutMs}ms`)), timeoutMs);
+          }),
+        ]);
+        console.log(`[EMAIL] Team notification sent for order ${data.orderNumber}`);
+      } catch (teamError) {
+        console.error(`[EMAIL TEAM ERROR] Failed to send team email for order ${data.orderNumber}:`, teamError);
+      }
 
       return { success: true, messageId: emailData?.id, idempotencyKey };
       

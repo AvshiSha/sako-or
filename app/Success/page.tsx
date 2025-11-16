@@ -13,6 +13,7 @@ function SuccessPageContent() {
     amount?: number;
     currency?: string;
   }>({});
+  const [hasTracked, setHasTracked] = useState(false);
 
   useEffect(() => {
     // Extract parameters from URL
@@ -53,14 +54,20 @@ function SuccessPageContent() {
     });
 
     // Track purchase event for GA4 data layer
-    if (orderId && amount) {
+    // Fire if we have either LPID or OrderId; derive values from backend if not in URL
+    if (!hasTracked && (lpid || orderId)) {
       try {
-        // Fetch order details from API
-        fetch(`/api/payments/by-low-profile-id?lpid=${lpid || ''}`)
+        // Fetch order details from API (prefer LPID)
+        const url = lpid
+          ? `/api/payments/by-low-profile-id?lpid=${encodeURIComponent(lpid)}`
+          : `/api/payments/by-low-profile-id?orderId=${encodeURIComponent(orderId as string)}`;
+
+        fetch(url)
           .then(res => res.json())
           .then(data => {
-            if (data.order && data.order.orderItems) {
-              const orderItems = data.order.orderItems.map((item: any) => ({
+            const order = data?.order;
+            if (order && Array.isArray(order.orderItems) && order.orderItems.length > 0) {
+              const orderItems = order.orderItems.map((item: any) => ({
                 name: item.productName || 'Unknown Product',
                 id: item.productSku || 'unknown',
                 price: item.price || 0,
@@ -72,7 +79,7 @@ function SuccessPageContent() {
 
               // Get user properties from checkout if available
               const userProperties: PurchaseUserProperties = {
-                customer_email: data.order.customerEmail || undefined,
+                customer_email: order.customerEmail || undefined,
                 user_id: undefined,
                 customer_first_name: undefined,
                 customer_last_name: undefined,
@@ -86,52 +93,55 @@ function SuccessPageContent() {
               };
 
               trackPurchase(
-                orderId,
+                order.orderNumber || orderId,
                 orderItems,
                 {
-                  currency: currency || 'ILS',
-                  value: parseFloat(amount),
-                  tax: 0, // Can be enhanced if tax data is available
-                  shipping: 0, // Can be enhanced if shipping data is available
+                  currency: order.currency || currency || 'ILS',
+                  value: typeof order.total === 'number' ? order.total : (amount ? parseFloat(amount) : undefined),
+                  tax: typeof order.tax === 'number' ? order.tax : undefined,
+                  shipping: typeof order.deliveryFee === 'number' ? order.deliveryFee : undefined,
                   affiliation: 'Sako Online Store',
                   userProperties: userProperties
                 }
               );
+              setHasTracked(true);
             } else {
               // Fallback: track purchase with minimal data
               trackPurchase(
-                orderId,
+                order?.orderNumber || orderId || 'unknown',
                 [{
                   name: 'Order',
                   id: 'order',
-                  price: parseFloat(amount),
+                  price: order?.total ?? (amount ? parseFloat(amount) : 0),
                   quantity: 1
                 }],
                 {
-                  currency: currency || 'ILS',
-                  value: parseFloat(amount),
+                  currency: order?.currency || currency || 'ILS',
+                  value: order?.total ?? (amount ? parseFloat(amount) : 0),
                   affiliation: 'Sako Online Store'
                 }
               );
+              setHasTracked(true);
             }
           })
           .catch(err => {
             console.error('Error fetching order details for tracking:', err);
             // Fallback: track purchase with minimal data
             trackPurchase(
-              orderId,
+              orderId || 'unknown',
               [{
                 name: 'Order',
                 id: 'order',
-                price: parseFloat(amount),
+                price: amount ? parseFloat(amount) : 0,
                 quantity: 1
               }],
               {
                 currency: currency || 'ILS',
-                value: parseFloat(amount),
+                value: amount ? parseFloat(amount) : 0,
                 affiliation: 'Sako Online Store'
               }
             );
+            setHasTracked(true);
           });
       } catch (error) {
         console.error('Error tracking purchase:', error);
@@ -144,21 +154,14 @@ function SuccessPageContent() {
     if (typeof window !== 'undefined' && window.gtag) {
       window.gtag('event', 'conversion', {
         send_to: 'AW-CONVERSION_ID/CONVERSION_LABEL',
-        value: amount ? parseFloat(amount) : undefined,
+        value: amount ? parseFloat(amount) : orderInfo.amount,
         currency: currency || 'ILS',
-        transaction_id: orderId || undefined
-      });
-      
-      // Also send the purchase event for Google Analytics
-      window.gtag('event', 'purchase', {
-        transaction_id: orderId || undefined,
-        value: amount ? parseFloat(amount) : undefined,
-        currency: currency || 'ILS'
+        transaction_id: orderId || orderInfo.orderId || undefined
       });
     }
 
     setIsLoading(false);
-  }, [searchParams]);
+  }, [searchParams, hasTracked]);
 
   const verifyPaymentStatus = async (lpid: string, orderId?: string | null) => {
     try {

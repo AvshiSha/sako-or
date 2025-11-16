@@ -132,9 +132,6 @@ export function OrderConfirmationTeamEmail({
                     {t('Qty', 'כמות')}: {item.quantity}
                   </Text>
                 </Column>
-                <Column align="right">
-                  <Text style={styles.itemPrice}>{currency(item.price)}</Text>
-                </Column>
               </Row>
             ))}
           </Section>

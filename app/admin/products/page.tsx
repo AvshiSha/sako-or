@@ -16,6 +16,7 @@ import {
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { productService, Product, productHelpers, categoryService, Category } from '@/lib/firebase'
 import SuccessMessage from '@/app/components/SuccessMessage'
+import router from 'next/router'
 
 function ProductsPageContent() {
   const searchParams = useSearchParams()
@@ -145,6 +146,14 @@ function ProductsPageContent() {
                 Manage your product catalog
               </p>
             </div>
+             <div className="flex space-x-3 justify-end ml-auto mr-2">
+              <Link
+                href="/admin"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Back to Dashboard
+              </Link>
+              </div>
             <div className="flex space-x-3">
               <Link
                 href="/admin/products/sync"

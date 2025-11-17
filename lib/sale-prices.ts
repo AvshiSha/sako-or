@@ -134,7 +134,7 @@ export async function validateSalePriceRow(
   validation.currentPrice = product.price;
   validation.currentSalePrice = product.salePrice;
   validation.csvPrice = price;
-  validation.csvSalePrice = salePrice ?? null;
+  validation.csvSalePrice = salePrice ?? undefined;
 
   // 4. Skip if sale price is empty, null, or zero
   if (salePrice === null || salePrice === 0) {

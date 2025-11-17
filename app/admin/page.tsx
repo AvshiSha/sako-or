@@ -14,7 +14,8 @@ import {
   ExclamationTriangleIcon,
   UserGroupIcon,
   ArchiveBoxIcon,
-  TicketIcon
+  TicketIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -79,6 +80,12 @@ function AdminDashboard() {
       href: '/admin/inventory',
       icon: ArchiveBoxIcon,
       description: 'Update stock levels from CSV'
+    },
+    {
+      name: 'End-of-Season Price Update',
+      href: '/admin/sale-prices',
+      icon: CurrencyDollarIcon,
+      description: 'Update sale prices in bulk from CSV'
     },
     {
       name: 'Export Meta Catalog',

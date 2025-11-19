@@ -9,6 +9,7 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import QuickBuyDrawer from './QuickBuyDrawer'
 import { trackSelectItem } from '@/lib/dataLayer'
+import { getColorName } from '@/lib/colors'
 
 interface ProductCardProps {
   product: Product
@@ -238,7 +239,7 @@ export default function ProductCard({ product, language = 'en', returnUrl }: Pro
                   key={variant.colorSlug}
                   onClick={() => handleVariantSelect(variant)}
                   className="flex-shrink-0 relative group"
-                  title={variant.colorSlug}
+                  title={getColorName(variant.colorSlug, language)}
                 >
                   {/* Product image */}
                   {variantImage && (

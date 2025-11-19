@@ -15,6 +15,7 @@ import CheckoutModal from '@/app/components/CheckoutModal'
 import { trackViewCart } from '@/lib/dataLayer'
 import { CouponValidationSuccess } from '@/lib/coupons'
 import { useAuth } from '@/app/contexts/AuthContext'
+import { getColorName } from '@/lib/colors'
 
 const couponContent = {
   en: {
@@ -600,7 +601,7 @@ function CartPageFallback() {
                           )}
                           {item.color && (
                             <div>
-                              {lng === 'he' ? 'צבע' : 'Color'}: <span className="font-medium text-gray-700 capitalize">{item.color}</span>
+                              {lng === 'he' ? 'צבע' : 'Color'}: <span className="font-medium text-gray-700 capitalize">{getColorName(item.color, lng as 'en' | 'he')}</span>
                             </div>
                           )}
                         </div>
@@ -738,7 +739,7 @@ function CartPageFallback() {
                           )}
                           {item.size && item.color && <span> • </span>}
                           {item.color && (
-                            <span>{lng === 'he' ? 'צבע' : 'Color'}: {item.color}</span>
+                            <span>{lng === 'he' ? 'צבע' : 'Color'}: {getColorName(item.color, lng as 'en' | 'he')}</span>
                           )}
                         </div>
                         <div className="text-xs text-gray-500">

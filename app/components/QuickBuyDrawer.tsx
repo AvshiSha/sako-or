@@ -13,6 +13,7 @@ import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
+import { getColorName } from '@/lib/colors'
 
 interface QuickBuyDrawerProps {
   isOpen: boolean
@@ -290,7 +291,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                         <div className="mb-8">
                           <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-medium text-gray-900">
-                              {language === 'he' ? 'צבע' : 'Color'}: {activeVariant.colorSlug}
+                              {language === 'he' ? 'צבע' : 'Color'}: {getColorName(activeVariant.colorSlug, language)}
                             </h3>
                           </div>
                           <div className="flex gap-3">

@@ -24,6 +24,7 @@ import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
+import { getColorName } from '@/lib/colors'
 
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
@@ -861,7 +862,7 @@ export default function ProductColorPage() {
                   </div>
                 </li>
                 <li>
-                  <span className="text-gray-600 font-medium">{product.sku} {currentVariant.colorSlug}</span>
+                  <span className="text-gray-600 font-medium">{product.sku} {getColorName(currentVariant.colorSlug, lng as 'en' | 'he')}</span>
                 </li>
               </ol>
             </nav>
@@ -1123,7 +1124,7 @@ export default function ProductColorPage() {
                           }}
                           disabled={isVariantOutOfStock}
                           className="flex-shrink-0 relative group"
-                          title={variant.colorSlug}
+                          title={getColorName(variant.colorSlug, lng as 'en' | 'he')}
                         >
                           {/* Product image */}
                           {variantImage ? (
@@ -1142,7 +1143,7 @@ export default function ProductColorPage() {
                             <div className={`w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center ${
                               isVariantOutOfStock ? 'opacity-50' : ''
                             }`}>
-                              <span className="text-xs text-gray-500">{variant.colorSlug}</span>
+                              <span className="text-xs text-gray-500">{getColorName(variant.colorSlug, lng as 'en' | 'he')}</span>
                             </div>
                           )}
                           
@@ -1310,8 +1311,8 @@ export default function ProductColorPage() {
                         <span>{baseSku}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>{lng === 'he' ? 'צבע' : 'Color'}:</span> {/* TODO: fix this */}
-                        <span>{currentVariant.colorSlug}</span>
+                        <span>{lng === 'he' ? 'צבע' : 'Color'}:</span>
+                        <span>{getColorName(currentVariant.colorSlug, lng as 'en' | 'he')}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>

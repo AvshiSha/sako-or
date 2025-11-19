@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useCart } from '../hooks/useCart'
 import { useToast } from './Toast'
 import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
+import { getColorName } from '@/lib/colors'
 
 interface Product {
   sku?: string
@@ -275,7 +276,7 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
                         : 'border-gray-300 hover:border-gray-400'
                     }`}
                   >
-                    {color}
+                    {getColorName(color, lng as 'en' | 'he')}
                   </button>
                 ))}
               </div>

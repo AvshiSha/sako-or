@@ -962,13 +962,10 @@ export async function getFilteredProducts(
       }
     }
 
-    // Price filtering
-    if (filters.minPrice !== undefined && filters.minPrice > 0) {
-      constraints.push(where('price', '>=', filters.minPrice));
-    }
-    if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
-      constraints.push(where('price', '<=', filters.maxPrice));
-    }
+    // Price filtering - Note: We do this entirely client-side because actual prices can be
+    // variant.salePrice, product.salePrice, variant.priceOverride, or product.price
+    // Firestore can't easily query nested variant prices, so we filter after fetching
+    // We don't add any price constraints here to avoid excluding valid products
 
     // Outlet filter
     if (filters.isOutlet) {
@@ -1179,6 +1176,104 @@ export async function getFilteredProducts(
       });
     }
 
+    // Price filtering (client-side to handle salePrice and variant prices)
+    // The actual displayed price can be: variant.salePrice > product.salePrice > variant.priceOverride > product.price
+    const productsBeforePriceFilter = filteredProducts.length;
+    console.log('[Price Filter] Products before price filtering:', productsBeforePriceFilter);
+    console.log('[Price Filter] Filter values:', { minPrice: filters.minPrice, maxPrice: filters.maxPrice });
+    
+    if (filters.minPrice !== undefined && filters.minPrice > 0) {
+      console.log('[Price Filter] Applying minPrice filter:', filters.minPrice);
+      filteredProducts = filteredProducts.filter((product) => {
+        // Get the minimum price across all active variants
+        if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
+          // No variants, use product-level price
+          const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
+          const passes = productPrice >= filters.minPrice!;
+          if (!passes) {
+            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice: productPrice=${productPrice}, minPrice=${filters.minPrice}, basePrice=${product.price}, salePrice=${product.salePrice}`);
+          }
+          return passes;
+        }
+
+        // Check all active variants to find the minimum price
+        const variantPrices = Object.values(product.colorVariants)
+          .filter(variant => variant.isActive !== false)
+          .map((variant) => {
+            // Priority: variant.salePrice > product.salePrice > variant.priceOverride > product.price
+            if (variant.salePrice && variant.salePrice > 0) return variant.salePrice;
+            if (product.salePrice && product.salePrice > 0) return product.salePrice;
+            if ((variant as any).priceOverride && (variant as any).priceOverride > 0) return (variant as any).priceOverride;
+            return product.price;
+          });
+
+        if (variantPrices.length === 0) {
+          const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
+          const passes = productPrice >= filters.minPrice!;
+          if (!passes) {
+            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice (no active variants): productPrice=${productPrice}, minPrice=${filters.minPrice}`);
+          }
+          return passes;
+        }
+
+        // Product matches if any variant's price is >= minPrice
+        const minVariantPrice = Math.min(...variantPrices);
+        const passes = minVariantPrice >= filters.minPrice!;
+        if (!passes) {
+          console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice: minVariantPrice=${minVariantPrice}, minPrice=${filters.minPrice}, variantPrices=[${variantPrices.join(', ')}], basePrice=${product.price}, salePrice=${product.salePrice}`);
+        }
+        return passes;
+      });
+      console.log('[Price Filter] Products after minPrice filter:', filteredProducts.length);
+    }
+
+    if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
+      console.log('[Price Filter] Applying maxPrice filter:', filters.maxPrice);
+      filteredProducts = filteredProducts.filter((product) => {
+        // Get the minimum price across all active variants (we show the lowest price)
+        if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
+          // No variants, use product-level price
+          const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
+          const passes = productPrice <= filters.maxPrice!;
+          if (!passes) {
+            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice: productPrice=${productPrice}, maxPrice=${filters.maxPrice}, basePrice=${product.price}, salePrice=${product.salePrice}`);
+          }
+          return passes;
+        }
+
+        // Check all active variants to find the minimum price (what's displayed)
+        const variantPrices = Object.values(product.colorVariants)
+          .filter(variant => variant.isActive !== false)
+          .map((variant) => {
+            // Priority: variant.salePrice > product.salePrice > variant.priceOverride > product.price
+            if (variant.salePrice && variant.salePrice > 0) return variant.salePrice;
+            if (product.salePrice && product.salePrice > 0) return product.salePrice;
+            if ((variant as any).priceOverride && (variant as any).priceOverride > 0) return (variant as any).priceOverride;
+            return product.price;
+          });
+
+        if (variantPrices.length === 0) {
+          const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
+          const passes = productPrice <= filters.maxPrice!;
+          if (!passes) {
+            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice (no active variants): productPrice=${productPrice}, maxPrice=${filters.maxPrice}`);
+          }
+          return passes;
+        }
+
+        // Product matches if the minimum variant price is <= maxPrice
+        const minVariantPrice = Math.min(...variantPrices);
+        const passes = minVariantPrice <= filters.maxPrice!;
+        if (!passes) {
+          console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice: minVariantPrice=${minVariantPrice}, maxPrice=${filters.maxPrice}, variantPrices=[${variantPrices.join(', ')}], basePrice=${product.price}, salePrice=${product.salePrice}`);
+        }
+        return passes;
+      });
+      console.log('[Price Filter] Products after maxPrice filter:', filteredProducts.length);
+    }
+    
+    console.log('[Price Filter] Final product count:', filteredProducts.length, '(started with', productsBeforePriceFilter, ')');
+
     return {
       products: filteredProducts,
       hasMore,
@@ -1249,14 +1344,18 @@ export async function getCollectionProducts(
   // Price range
   const minPriceParam = searchParams.minPrice;
   const maxPriceParam = searchParams.maxPrice;
+  console.log('[Price Filter] Raw params:', { minPriceParam, maxPriceParam });
+  
   if (minPriceParam) {
     const minPrice = typeof minPriceParam === 'string' 
       ? parseFloat(minPriceParam) 
       : Array.isArray(minPriceParam) 
         ? parseFloat(minPriceParam[0]) 
         : undefined;
+    console.log('[Price Filter] Parsed minPrice:', minPrice, 'isNaN:', isNaN(minPrice!));
     if (!isNaN(minPrice!) && minPrice! > 0) {
       filters.minPrice = minPrice;
+      console.log('[Price Filter] Set filters.minPrice to:', filters.minPrice);
     }
   }
   if (maxPriceParam) {
@@ -1265,10 +1364,14 @@ export async function getCollectionProducts(
       : Array.isArray(maxPriceParam)
         ? parseFloat(maxPriceParam[0])
         : undefined;
+    console.log('[Price Filter] Parsed maxPrice:', maxPrice, 'isNaN:', isNaN(maxPrice!));
     if (!isNaN(maxPrice!) && maxPrice! > 0) {
       filters.maxPrice = maxPrice;
+      console.log('[Price Filter] Set filters.maxPrice to:', filters.maxPrice);
     }
   }
+  
+  console.log('[Price Filter] Final filters object:', { minPrice: filters.minPrice, maxPrice: filters.maxPrice });
 
   // Sort option - map from URL params to internal sort values
   const sortParam = searchParams.sort;

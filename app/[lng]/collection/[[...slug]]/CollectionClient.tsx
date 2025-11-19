@@ -183,11 +183,18 @@ export default function CollectionClient({
     if (newFilters.sizes && newFilters.sizes.length > 0) {
       urlParams.set('sizes', newFilters.sizes.join(','));
     }
-    if (newFilters.minPrice) {
-      urlParams.set('minPrice', newFilters.minPrice);
+    // Explicitly handle price params - if they're provided (even as empty string), set or remove them
+    if (newFilters.minPrice !== undefined) {
+      if (newFilters.minPrice && newFilters.minPrice.trim() !== '') {
+        urlParams.set('minPrice', newFilters.minPrice);
+      }
+      // If empty string, don't set it (it will be removed from URL)
     }
-    if (newFilters.maxPrice) {
-      urlParams.set('maxPrice', newFilters.maxPrice);
+    if (newFilters.maxPrice !== undefined) {
+      if (newFilters.maxPrice && newFilters.maxPrice.trim() !== '') {
+        urlParams.set('maxPrice', newFilters.maxPrice);
+      }
+      // If empty string, don't set it (it will be removed from URL)
     }
     if (newFilters.sort && newFilters.sort !== 'relevance') {
       urlParams.set('sort', newFilters.sort);
@@ -207,7 +214,13 @@ export default function CollectionClient({
       ? selectedColors.filter((c) => c !== color)
       : [...selectedColors, color];
     setSelectedColors(newColors);
-    updateURL({ ...priceRange, colors: newColors, sizes: selectedSizes, sort: sortBy });
+    updateURL({ 
+      minPrice: priceRange.min, 
+      maxPrice: priceRange.max, 
+      colors: newColors, 
+      sizes: selectedSizes, 
+      sort: sortBy 
+    });
   };
 
   const handleSizeToggle = (size: string) => {
@@ -215,16 +228,26 @@ export default function CollectionClient({
       ? selectedSizes.filter((s) => s !== size)
       : [...selectedSizes, size];
     setSelectedSizes(newSizes);
-    updateURL({ ...priceRange, colors: selectedColors, sizes: newSizes, sort: sortBy });
+    updateURL({ 
+      minPrice: priceRange.min, 
+      maxPrice: priceRange.max, 
+      colors: selectedColors, 
+      sizes: newSizes, 
+      sort: sortBy 
+    });
   };
 
   // Debounced price update effect
   useEffect(() => {
-    // Only update URL if price values have actually changed (not on initial mount)
-    if (priceRange.min === '' && priceRange.max === '') return;
-    
+    // Always update URL when price values change, even if they're empty (to remove from URL)
     const timeoutId = setTimeout(() => {
-      updateURL({ ...priceRange, colors: selectedColors, sizes: selectedSizes, sort: sortBy });
+      updateURL({ 
+        minPrice: priceRange.min, 
+        maxPrice: priceRange.max, 
+        colors: selectedColors, 
+        sizes: selectedSizes, 
+        sort: sortBy 
+      });
     }, 500);
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -236,16 +259,28 @@ export default function CollectionClient({
 
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort);
-    updateURL({ ...priceRange, colors: selectedColors, sizes: selectedSizes, sort: newSort });
+    updateURL({ 
+      minPrice: priceRange.min, 
+      maxPrice: priceRange.max, 
+      colors: selectedColors, 
+      sizes: selectedSizes, 
+      sort: newSort 
+    });
   };
 
   const handleClearFilters = () => {
     setSelectedColors([]);
     setSelectedSizes([]);
     setPriceRange({ min: '', max: '' });
-    const slug = params?.slug as string[] | undefined;
-    const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
-    router.push(currentPath, { scroll: false });
+    setSortBy('relevance');
+    // Use updateURL to ensure all params are properly cleared
+    updateURL({ 
+      minPrice: '', 
+      maxPrice: '', 
+      colors: [], 
+      sizes: [], 
+      sort: 'relevance' 
+    });
   };
 
   // Apply sorting to products (products are already filtered server-side)

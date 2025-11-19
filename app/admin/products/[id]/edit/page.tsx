@@ -7,6 +7,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import GoogleDrivePicker from '@/app/components/GoogleDrivePicker'
 import Image from 'next/image'
+import { getColorHex } from '@/lib/colors'
 import { 
   ArrowLeftIcon, 
   TrashIcon, 
@@ -136,40 +137,7 @@ interface GoogleDriveFile {
 }
 
 const commonSizes = ['One size', 'XS', 'S', 'M', 'L', 'XL', 'XXL','34','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
-const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'light Brown', 'Dark Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver', 'Off White', 'Light Blue', 'Dark Blue', 'Bordeaux', 'Black nail polish', 'Olive', 'Multicolor', 'Black & White', 'Transparent', 'camel', 'light pink', 'caramel', 'bronze'];
-
-// Color hex mapping
-const colorHexMap: Record<string, string> = {
-  'Black': '#000000',
-  'White': '#FFFFFF',
-  'Red': '#FF0000',
-  'Blue': '#0000FF',
-  'Green': '#008000',
-  'Yellow': '#FFFF00',
-  'Purple': '#800080',
-  'Pink': '#FFC0CB',
-  'Orange': '#FFA500',
-  'light Brown': '#b5651d',
-  'Dark Brown': '#654321',
-  'Gray': '#808080',
-  'Navy': '#000080',
-  'Beige': '#F5F5DC',
-  'Gold': '#FFD700',
-  'Silver': '#C0C0C0',
-  'Off White': '#f5f5f5',
-  'Light Blue': '#ADD8E6',
-  'Dark Blue': '#000080',
-  'Bordeaux': '#800020',
-  'Black nail polish': '#000000',
-  'Olive': '#808000',
-  'Multicolor': '#FF0000',
-  'Black & White': '#000000',
-  'Transparent': '#FFFFFF',
-  'camel': '#C19A6B',
-  'light pink': '#FFB6C1',
-  'caramel': '#b5651d',
-  'bronze': '#CD7F32'
-};
+const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'light Brown', 'Dark Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver', 'Off White', 'Light Blue', 'Dark Blue', 'Bordeaux', 'Black nail polish', 'Olive', 'Multicolor', 'Black & White', 'Transparent', 'camel', 'light pink', 'caramel', 'bronze', 'black-red'];
 
 function EditProductPage() {
   const router = useRouter()
@@ -265,7 +233,7 @@ function EditProductPage() {
             id: `existing-${index}`,
             colorName: variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1).replace(/-/g, ' '),
             colorSlug: variant.colorSlug,
-            colorHex: colorHexMap[variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1).replace(/-/g, ' ')] || '#000000',
+            colorHex: (variant as any).colorHex || getColorHex(variant.colorSlug),
             price: variant.priceOverride,
             salePrice: variant.salePrice,
             stock: Object.values(variant.stockBySize || {}).reduce((sum, stock) => sum + stock, 0),
@@ -529,7 +497,7 @@ function EditProductPage() {
           id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           colorName,
           colorSlug: generateColorSlug(colorName),
-          colorHex: colorHexMap[colorName] || '#000000',
+          colorHex: getColorHex(colorName),
           stock: 0,
           isActive: true,
           images: [],
@@ -1560,7 +1528,7 @@ function EditProductPage() {
                   <div className="flex items-center space-x-2">
                     <div 
                       className="w-4 h-4 rounded border border-gray-300"
-                      style={{ backgroundColor: colorHexMap[color] || '#000000' }}
+                      style={{ backgroundColor: getColorHex(color) }}
                     />
                     <span className="text-sm text-gray-700">{color}</span>
                   </div>

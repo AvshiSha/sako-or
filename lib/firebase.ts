@@ -929,8 +929,6 @@ export async function getFilteredProducts(
     // Firestore supports querying array elements by index using dot notation
     // Note: Arrays are 0-indexed, so we use .0, .1, .2 for indices 0, 1, 2
     if (filters.categoryIds && filters.categoryIds.length > 0) {
-      console.log(`[getFilteredProducts] Filtering by category IDs using Firestore dot notation: ${filters.categoryIds.join(', ')}`);
-      
       // Add where clauses for each level using dot notation
       // If Level 0: categories_path_id.0 == categoryIds[0]
       // If Level 1: categories_path_id contains categoryIds[1]
@@ -949,7 +947,6 @@ export async function getFilteredProducts(
           break;
       }
     } else if (filters.categoryId && filters.categoryLevel !== undefined) {
-      console.log(`[getFilteredProducts] Filtering by category ID: ${filters.categoryId} at level ${filters.categoryLevel}`);
       // Use array-contains to get products that have this category ID in their path
       // We'll filter by exact level client-side
       constraints.push(where('categories_path_id', 'array-contains', filters.categoryId));
@@ -961,11 +958,8 @@ export async function getFilteredProducts(
       // Use array-contains for the first segment (main category) to narrow down results
       if (pathSegments.length > 0) {
         const firstSegment = pathSegments[0];
-        console.log(`[getFilteredProducts] Filtering by category path: ${filters.categoryPath}, first segment: ${firstSegment}`);
         constraints.push(where('categories_path', 'array-contains', firstSegment));
       }
-    } else {
-      console.log('[getFilteredProducts] No category filter, fetching all active products');
     }
 
     // Price filtering
@@ -1018,23 +1012,13 @@ export async function getFilteredProducts(
         break;
     }
 
-    // Pagination - disabled for now, fetch all matching products
-    // const pageSize = pagination?.pageSize || 50;
-    // if (pagination?.lastDocument) {
-    //   constraints.push(startAfter(pagination.lastDocument));
-    // }
-    // constraints.push(limit(pageSize + 1)); // Fetch one extra to check if there's more
-
     let querySnapshot;
     try {
       q = query(q, ...constraints);
       querySnapshot = await getDocs(q);
-      console.log(`[getFilteredProducts] Firestore query returned ${querySnapshot.docs.length} documents`);
     } catch (queryError: any) {
       // If query fails (e.g., missing composite index), try without category filter
-      console.warn(`[getFilteredProducts] Firestore query failed:`, queryError?.message);
       if (filters.categoryPath && queryError?.code === 'failed-precondition') {
-        console.log(`[getFilteredProducts] Retrying without category filter due to index issue`);
         // Retry without category filter - we'll do all filtering client-side
         const fallbackConstraints = constraints.filter(c => {
           // Remove category-related constraints
@@ -1042,7 +1026,6 @@ export async function getFilteredProducts(
         });
         q = query(collection(db, 'products'), ...fallbackConstraints);
         querySnapshot = await getDocs(q);
-        console.log(`[getFilteredProducts] Fallback query returned ${querySnapshot.docs.length} documents`);
       } else {
         throw queryError;
       }
@@ -1060,17 +1043,6 @@ export async function getFilteredProducts(
     for (const docSnapshot of docsToProcess) {
       const docData = docSnapshot.data();
       const product = { id: docSnapshot.id, ...docData } as Product;
-      
-      // Debug: Log categories_path_id structure for first few products
-      if (products.length < 2 && filters.categoryIds) {
-        console.log(`[getFilteredProducts] Product ${product.id} raw data:`, {
-          hasCategoriesPathId: 'categories_path_id' in docData,
-          categoriesPathId: docData.categories_path_id,
-          categoriesPathIdType: typeof docData.categories_path_id,
-          isArray: Array.isArray(docData.categories_path_id),
-          categoriesPath: docData.categories_path,
-        });
-      }
       
       // Fetch category data if needed
       if (product.categoryId) {
@@ -1096,9 +1068,7 @@ export async function getFilteredProducts(
     // Note: Since we're using Firestore dot notation queries, products are already filtered at the database level
     // We still do a client-side verification to ensure data integrity, but most filtering happens in Firestore
     if (filters.categoryIds && filters.categoryIds.length > 0) {
-      const beforeFilterCount = filteredProducts.length;
       const categoryIds = filters.categoryIds; // Store in local variable for TypeScript
-      const targetLevel = categoryIds.length - 1; // The deepest level we're filtering by
       
       // Client-side verification (Firestore should have already filtered, but we verify for safety)
       filteredProducts = filteredProducts.filter((product) => {
@@ -1114,8 +1084,6 @@ export async function getFilteredProducts(
         // Verify each level matches (Firestore query should have already filtered, but we double-check)
         for (let i = 0; i < categoryIds.length; i++) {
           if (product.categories_path_id[i] !== categoryIds[i]) {
-            // This shouldn't happen if Firestore query worked correctly
-            console.warn(`[getFilteredProducts] Product ${product.id} level ${i} mismatch: got "${product.categories_path_id[i]}", expected "${categoryIds[i]}"`);
             return false;
           }
         }
@@ -1123,41 +1091,7 @@ export async function getFilteredProducts(
         // Product matches up to the target level - include it
         return true;
       });
-      console.log(`[getFilteredProducts] Category IDs filter (Firestore + client verification, level ${targetLevel}): ${beforeFilterCount} -> ${filteredProducts.length} products`);
-      
-      // Debug: log first few product paths for troubleshooting
-      if (filteredProducts.length === 0 && products.length > 0) {
-        console.log(`[getFilteredProducts] No products matched. Expected IDs: [${categoryIds.join(', ')}]`);
-        console.log(`[getFilteredProducts] Sample product category IDs (first 5):`, 
-          products.slice(0, 5).map(p => ({
-            productId: p.id,
-            sku: p.sku,
-            pathIds: p.categories_path_id || [],
-            pathIdsType: Array.isArray(p.categories_path_id) ? 'array' : typeof p.categories_path_id,
-            pathIdsLength: p.categories_path_id?.length || 0,
-            path: p.categories_path?.join('/') || 'none',
-            // Check each level
-            level0Match: p.categories_path_id?.[0] === categoryIds[0],
-            level1Match: categoryIds.length > 1 ? p.categories_path_id?.[1] === categoryIds[1] : 'N/A',
-            level2Match: categoryIds.length > 2 ? p.categories_path_id?.[2] === categoryIds[2] : 'N/A',
-          }))
-        );
-        
-        // Also check if any products have the first category ID
-        const productsWithFirstId = products.filter(p => 
-          p.categories_path_id && p.categories_path_id.includes(categoryIds[0])
-        );
-        console.log(`[getFilteredProducts] Products with first category ID (${categoryIds[0]}): ${productsWithFirstId.length}`);
-        if (productsWithFirstId.length > 0) {
-          console.log(`[getFilteredProducts] Sample product with first ID:`, {
-            productId: productsWithFirstId[0].id,
-            pathIds: productsWithFirstId[0].categories_path_id,
-            expected: categoryIds
-          });
-        }
-      }
     } else if (filters.categoryId && filters.categoryLevel !== undefined) {
-      const beforeFilterCount = filteredProducts.length;
       const targetLevel = filters.categoryLevel;
       filteredProducts = filteredProducts.filter((product) => {
         if (!product.categories_path_id || product.categories_path_id.length === 0) {
@@ -1172,23 +1106,10 @@ export async function getFilteredProducts(
         
         return false;
       });
-      console.log(`[getFilteredProducts] Category ID filter (level ${targetLevel}): ${beforeFilterCount} -> ${filteredProducts.length} products`);
-      
-      // Debug: log first few product paths for troubleshooting
-      if (filteredProducts.length === 0 && products.length > 0) {
-        console.log(`[getFilteredProducts] No products matched. Sample product category IDs:`, 
-          products.slice(0, 3).map(p => ({
-            id: p.id,
-            pathIds: p.categories_path_id || [],
-            path: p.categories_path?.join('/') || 'none'
-          }))
-        );
-      }
     } else if (filters.categoryPath) {
       // Fallback: Category path hierarchical matching (parent/child relationships)
       const categoryPathLower = filters.categoryPath.toLowerCase();
       const requestedPath = categoryPathLower;
-      const beforeFilterCount = filteredProducts.length;
       filteredProducts = filteredProducts.filter((product) => {
         if (!product.categories_path || product.categories_path.length === 0) {
           return false;
@@ -1213,17 +1134,6 @@ export async function getFilteredProducts(
         
         return false;
       });
-      console.log(`[getFilteredProducts] Category path filter: ${beforeFilterCount} -> ${filteredProducts.length} products (requested: ${requestedPath})`);
-      
-      // Debug: log first few product paths for troubleshooting
-      if (filteredProducts.length === 0 && products.length > 0) {
-        console.log(`[getFilteredProducts] No products matched. Sample product paths:`, 
-          products.slice(0, 3).map(p => ({
-            id: p.id,
-            path: p.categories_path?.join('/') || 'none'
-          }))
-        );
-      }
     }
 
     // SKU exclusion (client-side since Firestore doesn't support NOT IN easily)
@@ -1300,14 +1210,11 @@ export async function getCollectionProducts(
       const categoryInfo = await categoryService.getCategoryIdsFromPath(categoryPath, language);
       if (categoryInfo && categoryInfo.categoryIds.length > 0) {
         filters.categoryIds = categoryInfo.categoryIds;
-        console.log(`[getCollectionProducts] Resolved category path "${categoryPath}" to IDs: [${categoryInfo.categoryIds.join(', ')}] at level ${categoryInfo.targetLevel}`);
       } else {
         // Fallback to path-based filtering if category not found
-        console.warn(`[getCollectionProducts] Could not resolve category IDs from path "${categoryPath}", using path-based filtering`);
         filters.categoryPath = categoryPath;
       }
     } catch (error) {
-      console.error(`[getCollectionProducts] Error resolving category from path "${categoryPath}":`, error);
       // Fallback to path-based filtering
       filters.categoryPath = categoryPath;
     }
@@ -1570,33 +1477,22 @@ export const categoryService = {
               id: docSnapshot.id,
               ...docSnapshot.data()
             } as Category;
-            console.log(`[getCategoryIdsFromPath] Found category "${segment}" at level ${expectedLevel} with ID: ${category.id}`);
           }
         } catch (queryError) {
-          console.warn(`[getCategoryIdsFromPath] Query failed for "${segment}" at level ${expectedLevel}:`, queryError);
+          // Continue to fallback
         }
         
         // Fallback 1: Try without level filter (in case level doesn't match)
         if (!category) {
-          console.warn(`[getCategoryIdsFromPath] No category found for "${segment}" at level ${expectedLevel}, trying without level filter`);
           try {
             category = await this.getCategoryBySlug(segment, language);
-            if (category) {
-              console.log(`[getCategoryIdsFromPath] Found category "${segment}" (without level filter) with ID: ${category.id}, level: ${category.level}`);
-              // Verify the level matches what we expect
-              if (category.level !== undefined && category.level !== expectedLevel) {
-                console.warn(`[getCategoryIdsFromPath] Category "${segment}" level mismatch: expected ${expectedLevel}, got ${category.level}`);
-                // Still use it, but log the warning
-              }
-            }
           } catch (slugError) {
-            console.warn(`[getCategoryIdsFromPath] getCategoryBySlug failed for "${segment}":`, slugError);
+            // Continue to next fallback
           }
         }
         
         // Fallback 2: Try case-insensitive search by fetching all categories and matching manually
         if (!category) {
-          console.warn(`[getCategoryIdsFromPath] Trying case-insensitive search for "${segment}" at level ${expectedLevel}`);
           try {
             const allCategories = await this.getAllCategories();
             const segmentLower = segment.toLowerCase();
@@ -1607,62 +1503,14 @@ export const categoryService = {
               return catSlug.toLowerCase() === segmentLower && 
                      (cat.level === expectedLevel || cat.level === undefined);
             }) || null;
-            
-            if (category) {
-              console.log(`[getCategoryIdsFromPath] Found category "${segment}" (case-insensitive) with ID: ${category.id}`);
-            }
           } catch (fallbackError) {
-            console.warn(`[getCategoryIdsFromPath] Case-insensitive search failed:`, fallbackError);
+            // Continue
           }
         }
         
         if (category && category.id) {
           categoryIds.push(category.id);
         } else {
-          console.error(`[getCategoryIdsFromPath] Could not resolve category "${segment}" at level ${expectedLevel} after all attempts`);
-          // Log available categories for debugging
-          try {
-            const allCategories = await this.getAllCategories();
-            
-            // Show all categories at the expected level
-            const categoriesAtLevel = allCategories
-              .filter(cat => cat.level === expectedLevel)
-              .map(cat => {
-                const catSlug = typeof cat.slug === 'object' 
-                  ? (cat.slug[language] || cat.slug.en || '')
-                  : (cat.slug || '');
-                const catName = typeof cat.name === 'object'
-                  ? (cat.name[language] || cat.name.en || '')
-                  : (cat.name || '');
-                return {
-                  id: cat.id,
-                  slug: catSlug,
-                  slugRaw: cat.slug,
-                  name: catName,
-                  level: cat.level
-                };
-              });
-            console.log(`[getCategoryIdsFromPath] All categories at level ${expectedLevel}:`, categoriesAtLevel);
-            
-            // Also show categories with similar slugs
-            const matchingSlugs = allCategories
-              .filter(cat => {
-                const catSlug = typeof cat.slug === 'object' 
-                  ? (cat.slug[language] || cat.slug.en || '')
-                  : (cat.slug || '');
-                return catSlug.toLowerCase().includes(segment.toLowerCase());
-              })
-              .map(cat => ({
-                id: cat.id,
-                slug: typeof cat.slug === 'object' ? cat.slug[language] : cat.slug,
-                slugRaw: cat.slug,
-                level: cat.level,
-                name: typeof cat.name === 'object' ? cat.name[language] : cat.name
-              }));
-            console.log(`[getCategoryIdsFromPath] Categories with similar slugs to "${segment}":`, matchingSlugs);
-          } catch (debugError) {
-            console.error(`[getCategoryIdsFromPath] Error fetching categories for debug:`, debugError);
-          }
           return null;
         }
       }

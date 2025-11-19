@@ -5,6 +5,7 @@ import { Dialog, Transition } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import Image from 'next/image'
 import { Product, productHelpers } from '@/lib/firebase'
+import { getColorName, getColorHex } from '@/lib/colors'
 
 interface QuickViewModalProps {
   isOpen: boolean
@@ -100,8 +101,8 @@ export default function QuickViewModal({ isOpen, onClose, product, language = 'e
                               <div
                                 key={color}
                                 className="w-8 h-8 rounded-full border-2 border-gray-200"
-                                style={{ backgroundColor: color.toLowerCase() }}
-                                title={color}
+                                style={{ backgroundColor: getColorHex(color) }}
+                                title={getColorName(color, language)}
                               />
                             ))}
                           </div>

@@ -13,6 +13,7 @@ import {
 import { Product, Category, productHelpers } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
 import { trackViewItemList } from "@/lib/dataLayer";
+import { getColorName, getColorHex } from "@/lib/colors";
 
 // Translations for the collection page
 const translations = {
@@ -307,70 +308,27 @@ export default function CollectionClient({
     }
   }, [sortedProducts, categoryPath, selectedCategory, lng]);
 
-  // Static color mapping as fallback
-  const staticColorMap: Record<string, string> = {
-    'black': '#000000',
-    'white': '#FFFFFF',
-    'red': '#FF0000',
-    'blue': '#0000FF',
-    'green': '#008000',
-    'yellow': '#FFFF00',
-    'purple': '#800080',
-    'pink': '#FFC0CB',
-    'orange': '#FFA500',
-    'light-brown': '#b5651d',
-    'dark-brown': '#654321',
-    'gray': '#808080',
-    'grey': '#808080',
-    'navy': '#000080',
-    'beige': '#F5F5DC',
-    'gold': '#FFD700',
-    'silver': '#C0C0C0',
-    'off-white': '#f5f5f5',
-    'light-blue': '#ADD8E6',
-    'dark-blue': '#000080',
-    'bordeaux': '#800020',
-    'black-nail-polish': '#000000',
-    'olive': '#808000',
-    'multicolor': '#FF0000',
-    'black-white': '#000000',
-    'transparent': '#FFFFFF',
-    'camel': '#C19A6B',
-    'light-pink': '#FFB6C1'
-  };
-
-  // Normalize color slug for matching (lowercase, replace spaces with hyphens)
-  const normalizeColorSlug = (slug: string): string => {
-    return slug.toLowerCase().replace(/\s+/g, '-');
-  };
-
   // Build dynamic color mapping from products (includes colorHex when available)
+  // This prioritizes colorHex from variants, then falls back to getColorHex
   const colorSlugToHex = useMemo(() => {
-    const map: Record<string, string> = { ...staticColorMap };
+    const map: Record<string, string> = {};
     
     // Extract color info from products and add to map
     initialProducts.forEach((product) => {
       if (product.colorVariants) {
         Object.values(product.colorVariants).forEach((variant) => {
           if (variant.isActive !== false && variant.colorSlug) {
-            const normalizedSlug = normalizeColorSlug(variant.colorSlug);
-            // Use colorHex from variant if available, otherwise keep existing mapping
+            // Use colorHex from variant if available, otherwise use getColorHex
             if ((variant as any).colorHex) {
-              map[normalizedSlug] = (variant as any).colorHex;
-            } else if (!map[normalizedSlug]) {
-              // If not in map yet, try to find a match in static map
-              const staticKey = Object.keys(staticColorMap).find(
-                key => normalizeColorSlug(key) === normalizedSlug
-              );
-              if (staticKey) {
-                map[normalizedSlug] = staticColorMap[staticKey];
-              }
+              map[variant.colorSlug] = (variant as any).colorHex;
+            } else {
+              map[variant.colorSlug] = getColorHex(variant.colorSlug);
             }
           }
         });
       }
     });
-
+    
     return map;
   }, [initialProducts]);
 
@@ -646,9 +604,9 @@ export default function CollectionClient({
                       >
                         <div
                           className="w-6 h-6 rounded-full border border-gray-200"
-                          style={{ backgroundColor: colorSlugToHex[normalizeColorSlug(color)] || '#CCCCCC' }}
+                          style={{ backgroundColor: colorSlugToHex[color] || getColorHex(color) }}
                         />
-                        <span className="text-sm font-light text-black">{color}</span>
+                        <span className="text-sm font-light text-black">{getColorName(color, lng as 'en' | 'he')}</span>
                       </button>
                     ))}
                   </div>
@@ -843,9 +801,9 @@ export default function CollectionClient({
                           >
                             <div
                               className="w-6 h-6 rounded-full border border-gray-200"
-                              style={{ backgroundColor: colorSlugToHex[normalizeColorSlug(color)] || '#CCCCCC' }}
+                              style={{ backgroundColor: colorSlugToHex[color] || getColorHex(color) }}
                             />
-                            <span className="text-sm font-light text-black">{color}</span>
+                            <span className="text-sm font-light text-black">{getColorName(color, lng as 'en' | 'he')}</span>
                           </button>
                         ))}
                       </div>

@@ -34,7 +34,9 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   const { toast, showToast, hideToast } = useToast()
   
   // Get the first active color variant for display
-  const defaultVariant = product.colorVariants ? Object.values(product.colorVariants)[0] : null
+  const defaultVariant = product.colorVariants 
+    ? Object.values(product.colorVariants).find(v => v.isActive !== false) || null
+    : null
   const activeVariant = selectedVariant || defaultVariant
   
   if (!activeVariant) {
@@ -287,7 +289,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                       </div>
 
                       {/* Color Selection */}
-                      {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
+                      {product.colorVariants && Object.values(product.colorVariants).filter(v => v.isActive !== false).length > 1 && (
                         <div className="mb-8">
                           <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-medium text-gray-900">
@@ -295,7 +297,9 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                             </h3>
                           </div>
                           <div className="flex gap-3">
-                            {Object.values(product.colorVariants).map((variant) => {
+                            {Object.values(product.colorVariants)
+                              .filter(variant => variant.isActive !== false)
+                              .map((variant) => {
                               const variantImage = variant.primaryImage || variant.images?.[0]
                               const isSelected = variant.colorSlug === activeVariant.colorSlug
                               

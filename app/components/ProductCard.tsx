@@ -15,15 +15,36 @@ interface ProductCardProps {
   product: Product
   language?: 'en' | 'he'
   returnUrl?: string
+  selectedColors?: string[] // Color filter from collection page
 }
 
-export default function ProductCard({ product, language = 'en', returnUrl }: ProductCardProps) {
+export default function ProductCard({ product, language = 'en', returnUrl, selectedColors }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
   
-  // Get the first active color variant for display
-  const defaultVariant = product.colorVariants ? Object.values(product.colorVariants).find(variant => variant.isActive !== false) : null
+  // Get the default color variant for display
+  // If selectedColors filter is active, prioritize matching color variant
+  const getDefaultVariant = () => {
+    if (!product.colorVariants) return null
+    
+    const activeVariants = Object.values(product.colorVariants).filter(variant => variant.isActive !== false)
+    
+    // If color filter is active, find matching variant
+    if (selectedColors && selectedColors.length > 0) {
+      const matchingVariant = activeVariants.find(variant => 
+        variant.colorSlug && selectedColors.includes(variant.colorSlug)
+      )
+      if (matchingVariant) {
+        return matchingVariant
+      }
+    }
+    
+    // Fallback to first active variant
+    return activeVariants[0] || null
+  }
+  
+  const defaultVariant = getDefaultVariant()
   const activeVariant = selectedVariant || defaultVariant
   
   if (!activeVariant) {

@@ -516,7 +516,12 @@ export default function CollectionClient({
                   whileHover={{ y: -4 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <ProductCard product={product} language={lng as 'en' | 'he'} returnUrl={currentUrl} />
+                  <ProductCard 
+                    product={product} 
+                    language={lng as 'en' | 'he'} 
+                    returnUrl={currentUrl}
+                    selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+                  />
                 </motion.div>
               ))}
             </div>

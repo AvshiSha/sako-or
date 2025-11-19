@@ -307,6 +307,73 @@ export default function CollectionClient({
     }
   }, [sortedProducts, categoryPath, selectedCategory, lng]);
 
+  // Static color mapping as fallback
+  const staticColorMap: Record<string, string> = {
+    'black': '#000000',
+    'white': '#FFFFFF',
+    'red': '#FF0000',
+    'blue': '#0000FF',
+    'green': '#008000',
+    'yellow': '#FFFF00',
+    'purple': '#800080',
+    'pink': '#FFC0CB',
+    'orange': '#FFA500',
+    'light-brown': '#b5651d',
+    'dark-brown': '#654321',
+    'gray': '#808080',
+    'grey': '#808080',
+    'navy': '#000080',
+    'beige': '#F5F5DC',
+    'gold': '#FFD700',
+    'silver': '#C0C0C0',
+    'off-white': '#f5f5f5',
+    'light-blue': '#ADD8E6',
+    'dark-blue': '#000080',
+    'bordeaux': '#800020',
+    'black-nail-polish': '#000000',
+    'olive': '#808000',
+    'multicolor': '#FF0000',
+    'black-white': '#000000',
+    'transparent': '#FFFFFF',
+    'camel': '#C19A6B',
+    'light-pink': '#FFB6C1'
+  };
+
+  // Normalize color slug for matching (lowercase, replace spaces with hyphens)
+  const normalizeColorSlug = (slug: string): string => {
+    return slug.toLowerCase().replace(/\s+/g, '-');
+  };
+
+  // Build dynamic color mapping from products (includes colorHex when available)
+  const colorSlugToHex = useMemo(() => {
+    const map: Record<string, string> = { ...staticColorMap };
+    
+    // Extract color info from products and add to map
+    initialProducts.forEach((product) => {
+      if (product.colorVariants) {
+        Object.values(product.colorVariants).forEach((variant) => {
+          if (variant.isActive !== false && variant.colorSlug) {
+            const normalizedSlug = normalizeColorSlug(variant.colorSlug);
+            // Use colorHex from variant if available, otherwise keep existing mapping
+            if ((variant as any).colorHex) {
+              map[normalizedSlug] = (variant as any).colorHex;
+            } else if (!map[normalizedSlug]) {
+              // If not in map yet, try to find a match in static map
+              const staticKey = Object.keys(staticColorMap).find(
+                key => normalizeColorSlug(key) === normalizedSlug
+              );
+              if (staticKey) {
+                map[normalizedSlug] = staticColorMap[staticKey];
+              }
+            }
+          }
+        });
+      }
+    });
+
+    return map;
+  }, [initialProducts]);
+
   // Get all colors and sizes from the filtered products
   const allColors = useMemo(() => {
     return [
@@ -336,37 +403,6 @@ export default function CollectionClient({
       ]),
     ] as string[];
   }, [initialProducts]);
-
-  // Map color slugs to hex for proper swatch rendering
-  const colorSlugToHex: Record<string, string> = {
-    'Black': '#000000',
-    'White': '#FFFFFF',
-    'Red': '#FF0000',
-    'Blue': '#0000FF',
-    'Green': '#008000',
-    'Yellow': '#FFFF00',
-    'Purple': '#800080',
-    'Pink': '#FFC0CB',
-    'Orange': '#FFA500',
-    'light Brown': '#b5651d',
-    'Dark Brown': '#654321',
-    'Gray': '#808080',
-    'Navy': '#000080',
-    'Beige': '#F5F5DC',
-    'Gold': '#FFD700',
-    'Silver': '#C0C0C0',
-    'off-white': '#f5f5f5',
-    'Light Blue': '#ADD8E6',
-    'Dark Blue': '#000080',
-    'bordeaux': '#800020',
-    'Black nail polish': '#000000',
-    'Olive': '#808000',
-    'Multicolor': '#FF0000',
-    'black-white': '#000000',
-    'Transparent': '#FFFFFF',
-    'camel': '#C19A6B',
-    'light-pink': '#FFB6C1'
-  };
 
   // Separate numeric sizes (shoes) from alpha sizes (clothing)
   const numericSizes = allSizes.filter(size => /^\d+(\.\d+)?$/.test(size)).sort((a, b) => parseFloat(a) - parseFloat(b));
@@ -610,7 +646,7 @@ export default function CollectionClient({
                       >
                         <div
                           className="w-6 h-6 rounded-full border border-gray-200"
-                          style={{ backgroundColor: colorSlugToHex[color] || color.toLowerCase() }}
+                          style={{ backgroundColor: colorSlugToHex[normalizeColorSlug(color)] || '#CCCCCC' }}
                         />
                         <span className="text-sm font-light text-black">{color}</span>
                       </button>
@@ -807,7 +843,7 @@ export default function CollectionClient({
                           >
                             <div
                               className="w-6 h-6 rounded-full border border-gray-200"
-                              style={{ backgroundColor: colorSlugToHex[color] || color.toLowerCase() }}
+                              style={{ backgroundColor: colorSlugToHex[normalizeColorSlug(color)] || '#CCCCCC' }}
                             />
                             <span className="text-sm font-light text-black">{color}</span>
                           </button>

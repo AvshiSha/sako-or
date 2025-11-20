@@ -1190,46 +1190,69 @@ export default function ProductColorPage() {
                 </div>
               )}
 
-              {/* Quantity */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {lng === 'he' ? 'כמות' : 'Quantity'}
-                </h3>
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    disabled={quantity <= 1 || isOutOfStock}
-                    className="p-2 border border-gray-600 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <MinusIcon className="h-4 w-4 text-gray-600" />
-                  </button>
-                  <span className="text-lg font-medium min-w-[2rem] text-center text-gray-600">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(Math.min(quantity + 1, currentStock))}
-                    disabled={quantity >= currentStock || isOutOfStock}
-                    className="p-2 border border-gray-600 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <PlusIcon className="h-4 w-4 text-gray-600" />
-                  </button>
-                </div>
-                {/* Stock Info */}
-                {/* {selectedSize && currentStock > 0 && (
-                  <div className="mt-2 text-sm text-gray-600">
-                    {lng === 'he' 
-                      ? `מקסימום ${currentStock} יחידות זמינות` 
-                      : `Maximum ${currentStock} units available`
-                    }
+              {/* Quantity or Out of Stock */}
+              {(() => {
+                // Check if all sizes are out of stock
+                const allSizesOutOfStock = Object.keys(currentVariant.stockBySize).length > 0 && 
+                  Object.values(currentVariant.stockBySize).every(stock => stock <= 0)
+                
+                if (allSizesOutOfStock) {
+                  // Show "OUT OF STOCK" message in red
+                  return (
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        {lng === 'he' ? 'כמות' : 'Quantity'}
+                      </h3>
+                      <div className="text-red-600 font-semibold text-lg">
+                        {lng === 'he' ? 'אזל מהמלאי' : 'OUT OF STOCK'}
+                      </div>
+                    </div>
+                  )
+                }
+                
+                // Show quantity selector if there are available sizes
+                return (
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      {lng === 'he' ? 'כמות' : 'Quantity'}
+                    </h3>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        disabled={quantity <= 1 || isOutOfStock}
+                        className="p-2 border border-gray-600 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <MinusIcon className="h-4 w-4 text-gray-600" />
+                      </button>
+                      <span className="text-lg font-medium min-w-[2rem] text-center text-gray-600">{quantity}</span>
+                      <button
+                        onClick={() => setQuantity(Math.min(quantity + 1, currentStock))}
+                        disabled={quantity >= currentStock || isOutOfStock}
+                        className="p-2 border border-gray-600 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <PlusIcon className="h-4 w-4 text-gray-600" />
+                      </button>
+                    </div>
+                    {/* Stock Info */}
+                    {/* {selectedSize && currentStock > 0 && (
+                      <div className="mt-2 text-sm text-gray-600">
+                        {lng === 'he' 
+                          ? `מקסימום ${currentStock} יחידות זמינות` 
+                          : `Maximum ${currentStock} units available`
+                        }
+                      </div>
+                    )} */}
+                    {!selectedSize && Object.keys(currentVariant.stockBySize).length > 0 && (
+                      <div className="mt-2 text-sm text-gray-500">
+                        {lng === 'he' 
+                          ? 'אנא בחר מידה' 
+                          : 'Please select a size'
+                        }
+                      </div>
+                    )}
                   </div>
-                )} */}
-                {!selectedSize && Object.keys(currentVariant.stockBySize).length > 0 && (
-                  <div className="mt-2 text-sm text-gray-500">
-                    {lng === 'he' 
-                      ? 'אנא בחר מידה' 
-                      : 'Please select a size'
-                    }
-                  </div>
-                )}
-              </div>
+                )
+              })()}
 
               {/* Actions */}
               <div className="space-y-4">

@@ -15,7 +15,8 @@ import {
   UserGroupIcon,
   ArchiveBoxIcon,
   TicketIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  MegaphoneIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -105,6 +106,12 @@ function AdminDashboard() {
     icon: TicketIcon,
     description: 'Create and monitor promotional discounts'
   },
+    {
+      name: 'Manage Campaigns',
+      href: '/admin/campaigns',
+      icon: MegaphoneIcon,
+      description: 'Create and manage promotional landing pages'
+    },
     {
       name: 'Sync Newsletter',
       href: '/admin/newsletter/sync',

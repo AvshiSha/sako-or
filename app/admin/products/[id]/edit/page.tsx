@@ -91,6 +91,7 @@ interface ProductFormData {
   };
   
   searchKeywords: string[];
+  tags: string[];
 }
 
 interface FormErrors {
@@ -208,7 +209,8 @@ function EditProductPage() {
       slug: ''
     },
     
-    searchKeywords: []
+    searchKeywords: [],
+    tags: []
   })
 
   useEffect(() => {
@@ -312,7 +314,8 @@ function EditProductPage() {
               slug: product.seo?.slug || ''
             },
             
-            searchKeywords: product.searchKeywords || []
+            searchKeywords: product.searchKeywords || [],
+            tags: product.tags || []
           })
           // Keep a copy to compare on submit so we update only changed fields
           setOriginalFormData({
@@ -360,7 +363,8 @@ function EditProductPage() {
               description_he: product.seo?.description_he || '',
               slug: product.seo?.slug || ''
             },
-            searchKeywords: product.searchKeywords || []
+            searchKeywords: product.searchKeywords || [],
+            tags: product.tags || []
           })
           
           // Load subcategories if main category is selected
@@ -1203,6 +1207,11 @@ function EditProductPage() {
       // Search keywords
       if (originalFormData && JSON.stringify(formData.searchKeywords) !== JSON.stringify(originalFormData.searchKeywords)) {
         productData.searchKeywords = formData.searchKeywords
+      }
+
+      // Tags
+      if (originalFormData && JSON.stringify(formData.tags) !== JSON.stringify(originalFormData.tags)) {
+        productData.tags = formData.tags
       }
 
       // Always set updatedAt on the server; here just for completeness
@@ -2132,6 +2141,47 @@ function EditProductPage() {
                 />
                 <span className="ml-2 text-sm text-gray-700">Enabled</span>
               </label>
+            </div>
+          </div>
+
+          {/* Tags & Campaigns */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Tags & Campaigns</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={formData.tags.join(', ')}
+                  onChange={(e) => {
+                    const tagsArray = e.target.value
+                      .split(',')
+                      .map(tag => tag.trim())
+                      .filter(tag => tag.length > 0)
+                    handleInputChange('tags', tagsArray)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g., black-friday-2025, sale, boots"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Add tags to include this product in campaigns. Use campaign slugs (e.g., "black-friday-2025") to include products in specific campaigns.
+                </p>
+                {formData.tags.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {formData.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

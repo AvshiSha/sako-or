@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import CampaignClient from "./CampaignClient";
 import { Metadata } from "next";
 
+// This page is dynamic because it uses searchParams
+export const dynamic = 'force-dynamic';
+
 // Helper to serialize Firestore timestamps or other complex objects
 const serializeValue = (value: any): any => {
   if (value === null || value === undefined) return value;

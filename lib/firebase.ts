@@ -274,6 +274,8 @@ export interface Campaign {
   seoDescription?: LocalizedString;
   bannerDesktopUrl?: string;
   bannerMobileUrl?: string;
+  bannerDesktopVideoUrl?: string;
+  bannerMobileVideoUrl?: string;
   active: boolean;
   priority: number;
   startAt?: string; // ISO string
@@ -2672,6 +2674,12 @@ export const campaignService = {
       if (data.bannerMobileUrl) {
         cleanData.bannerMobileUrl = data.bannerMobileUrl;
       }
+      if (data.bannerDesktopVideoUrl) {
+        cleanData.bannerDesktopVideoUrl = data.bannerDesktopVideoUrl;
+      }
+      if (data.bannerMobileVideoUrl) {
+        cleanData.bannerMobileVideoUrl = data.bannerMobileVideoUrl;
+      }
       if (data.startAt) {
         cleanData.startAt = data.startAt;
       }
@@ -2733,6 +2741,12 @@ export const campaignService = {
       }
       if (campaignData.bannerMobileUrl !== undefined) {
         updateData.bannerMobileUrl = campaignData.bannerMobileUrl || null;
+      }
+      if (campaignData.bannerDesktopVideoUrl !== undefined) {
+        updateData.bannerDesktopVideoUrl = campaignData.bannerDesktopVideoUrl || null;
+      }
+      if (campaignData.bannerMobileVideoUrl !== undefined) {
+        updateData.bannerMobileVideoUrl = campaignData.bannerMobileVideoUrl || null;
       }
       if (campaignData.active !== undefined) updateData.active = campaignData.active;
       if (campaignData.priority !== undefined) updateData.priority = campaignData.priority;

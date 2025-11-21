@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { languageMetadata } from '../../i18n/settings'
 import { ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
@@ -12,6 +12,7 @@ interface DropdownLanguageSwitcherProps {
 export default function DropdownLanguageSwitcher({ currentLanguage }: DropdownLanguageSwitcherProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -27,7 +28,11 @@ export default function DropdownLanguageSwitcher({ currentLanguage }: DropdownLa
       pathSegments.splice(1, 0, newLanguage)
     }
     
-    const newPath = pathSegments.join('/')
+    // Preserve query parameters
+    const queryString = searchParams?.toString() || ''
+    const queryParams = queryString ? `?${queryString}` : ''
+    
+    const newPath = pathSegments.join('/') + queryParams
     router.push(newPath)
     setIsOpen(false)
   }

@@ -3,13 +3,13 @@
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { languageMetadata } from '../../i18n/settings'
 import { ChevronDown } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Suspense } from 'react'
 
 interface DropdownLanguageSwitcherProps {
   currentLanguage: string
 }
 
-export default function DropdownLanguageSwitcher({ currentLanguage }: DropdownLanguageSwitcherProps) {
+function DropdownLanguageSwitcherInner({ currentLanguage }: DropdownLanguageSwitcherProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -87,5 +87,25 @@ export default function DropdownLanguageSwitcher({ currentLanguage }: DropdownLa
         </div>
       )}
     </div>
+  )
+}
+
+export default function DropdownLanguageSwitcher({ currentLanguage }: DropdownLanguageSwitcherProps) {
+  return (
+    <Suspense fallback={
+      <div className="relative">
+        <button
+          className="flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700"
+          disabled
+        >
+          <span>{languageMetadata[currentLanguage as keyof typeof languageMetadata]?.flag || '🌐'}</span>
+          <span className="hidden sm:inline">{languageMetadata[currentLanguage as keyof typeof languageMetadata]?.nativeName || currentLanguage.toUpperCase()}</span>
+          <span className="sm:hidden">{currentLanguage.toUpperCase()}</span>
+          <ChevronDown className="h-4 w-4" />
+        </button>
+      </div>
+    }>
+      <DropdownLanguageSwitcherInner currentLanguage={currentLanguage} />
+    </Suspense>
   )
 }

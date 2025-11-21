@@ -2,12 +2,13 @@
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { languageMetadata } from '../../i18n/settings'
+import { Suspense } from 'react'
 
 interface MobileLanguageSwitcherProps {
   currentLanguage: string
 }
 
-export default function MobileLanguageSwitcher({ currentLanguage }: MobileLanguageSwitcherProps) {
+function MobileLanguageSwitcherInner({ currentLanguage }: MobileLanguageSwitcherProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -49,5 +50,28 @@ export default function MobileLanguageSwitcher({ currentLanguage }: MobileLangua
         ))}
       </select>
     </div>
+  )
+}
+
+export default function MobileLanguageSwitcher({ currentLanguage }: MobileLanguageSwitcherProps) {
+  return (
+    <Suspense fallback={
+      <div className="px-4 py-3 border-t border-gray-200">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          {currentLanguage === 'he' ? 'שפה' : 'Language'}
+        </label>
+        <select
+          value={currentLanguage}
+          disabled
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900"
+        >
+          <option value={currentLanguage}>
+            {languageMetadata[currentLanguage as keyof typeof languageMetadata]?.flag} {languageMetadata[currentLanguage as keyof typeof languageMetadata]?.nativeName} ({currentLanguage.toUpperCase()})
+          </option>
+        </select>
+      </div>
+    }>
+      <MobileLanguageSwitcherInner currentLanguage={currentLanguage} />
+    </Suspense>
   )
 }

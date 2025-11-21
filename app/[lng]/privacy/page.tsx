@@ -1,6 +1,3 @@
-'use client'
-
-import React from 'react'
 import Link from 'next/link'
 
 // Hardcoded translations for build-time rendering
@@ -119,16 +116,8 @@ const translations = {
   }
 }
 
-export default function PrivacyPolicy({ params }: { params: Promise<{ lng: string }> }) {
-  const [lng, setLng] = React.useState<string>('en')
-  
-  // Initialize language from params
-  React.useEffect(() => {
-    params.then(({ lng: language }) => {
-      setLng(language)
-    })
-  }, [params])
-  
+export default async function PrivacyPolicy({ params }: { params: Promise<{ lng: string }> }) {
+  const { lng } = await params
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
 

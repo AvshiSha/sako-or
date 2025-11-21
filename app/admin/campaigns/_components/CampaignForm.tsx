@@ -15,6 +15,8 @@ interface CampaignFormData {
   seoDescription: { he: string; en: string }
   bannerDesktopUrl: string
   bannerMobileUrl: string
+  bannerDesktopVideoUrl: string
+  bannerMobileVideoUrl: string
   active: boolean
   priority: number
   startAt: string
@@ -45,6 +47,8 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
     seoDescription: initialData?.seoDescription || { he: '', en: '' },
     bannerDesktopUrl: initialData?.bannerDesktopUrl || '',
     bannerMobileUrl: initialData?.bannerMobileUrl || '',
+    bannerDesktopVideoUrl: initialData?.bannerDesktopVideoUrl || '',
+    bannerMobileVideoUrl: initialData?.bannerMobileVideoUrl || '',
     active: initialData?.active ?? false,
     priority: initialData?.priority ?? 100,
     startAt: initialData?.startAt ? new Date(initialData.startAt).toISOString().slice(0, 16) : '',
@@ -146,6 +150,16 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
       if (formData.bannerMobileUrl?.trim()) {
         campaignData.bannerMobileUrl = formData.bannerMobileUrl.trim()
       }
+      if (formData.bannerDesktopVideoUrl?.trim()) {
+        campaignData.bannerDesktopVideoUrl = formData.bannerDesktopVideoUrl.trim()
+        console.log('Saving desktop video URL:', formData.bannerDesktopVideoUrl.trim())
+      }
+      if (formData.bannerMobileVideoUrl?.trim()) {
+        campaignData.bannerMobileVideoUrl = formData.bannerMobileVideoUrl.trim()
+        console.log('Saving mobile video URL:', formData.bannerMobileVideoUrl.trim())
+      }
+      
+      console.log('Campaign data being saved:', campaignData)
       if (formData.startAt) {
         campaignData.startAt = new Date(formData.startAt).toISOString()
       }
@@ -391,43 +405,129 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
 
           {/* Banners */}
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Banners</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Banners & Videos</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-6">
+              {/* Desktop */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Desktop Banner URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.bannerDesktopUrl}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bannerDesktopUrl: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
-                  placeholder="https://..."
-                />
-                {formData.bannerDesktopUrl && (
-                  <div className="mt-2">
-                    <img src={formData.bannerDesktopUrl} alt="Desktop preview" className="w-full h-32 object-cover rounded" />
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Desktop</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Desktop Banner Image URL
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.bannerDesktopUrl}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bannerDesktopUrl: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
+                      placeholder="https://... (image)"
+                    />
+                    {formData.bannerDesktopUrl && !formData.bannerDesktopVideoUrl && (
+                      <div className="mt-2">
+                        {formData.bannerDesktopUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                          <video
+                            src={formData.bannerDesktopUrl}
+                            className="w-full h-32 object-cover rounded"
+                            muted
+                            loop
+                            playsInline
+                          />
+                        ) : (
+                          <img src={formData.bannerDesktopUrl} alt="Desktop preview" className="w-full h-32 object-cover rounded" />
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Desktop Banner Video URL (.mp4)
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.bannerDesktopVideoUrl}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bannerDesktopVideoUrl: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
+                      placeholder="https://... (video.mp4)"
+                    />
+                    {formData.bannerDesktopVideoUrl && (
+                      <div className="mt-2">
+                        <video
+                          src={formData.bannerDesktopVideoUrl}
+                          className="w-full h-32 object-cover rounded"
+                          muted
+                          loop
+                          playsInline
+                        />
+                      </div>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Video takes priority over image if both are provided
+                    </p>
+                  </div>
+                </div>
               </div>
 
+              {/* Mobile */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mobile Banner URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.bannerMobileUrl}
-                  onChange={(e) => setFormData(prev => ({ ...prev, bannerMobileUrl: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
-                  placeholder="https://..."
-                />
-                {formData.bannerMobileUrl && (
-                  <div className="mt-2">
-                    <img src={formData.bannerMobileUrl} alt="Mobile preview" className="w-full h-32 object-cover rounded" />
+                <h3 className="text-lg font-medium text-gray-800 mb-3">Mobile</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mobile Banner Image URL
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.bannerMobileUrl}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bannerMobileUrl: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
+                      placeholder="https://... (image)"
+                    />
+                    {formData.bannerMobileUrl && !formData.bannerMobileVideoUrl && (
+                      <div className="mt-2">
+                        {formData.bannerMobileUrl.match(/\.(mp4|webm|ogg)$/i) ? (
+                          <video
+                            src={formData.bannerMobileUrl}
+                            className="w-full h-32 object-cover rounded"
+                            muted
+                            loop
+                            playsInline
+                          />
+                        ) : (
+                          <img src={formData.bannerMobileUrl} alt="Mobile preview" className="w-full h-32 object-cover rounded" />
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mobile Banner Video URL (.mp4)
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.bannerMobileVideoUrl}
+                      onChange={(e) => setFormData(prev => ({ ...prev, bannerMobileVideoUrl: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
+                      placeholder="https://... (video.mp4)"
+                    />
+                    {formData.bannerMobileVideoUrl && (
+                      <div className="mt-2">
+                        <video
+                          src={formData.bannerMobileVideoUrl}
+                          className="w-full h-32 object-cover rounded"
+                          muted
+                          loop
+                          playsInline
+                        />
+                      </div>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      Video takes priority over image if both are provided
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

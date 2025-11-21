@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
+import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import { languageMetadata } from '../../i18n/settings'
 
 interface MobileLanguageSwitcherProps {
@@ -10,6 +10,7 @@ interface MobileLanguageSwitcherProps {
 export default function MobileLanguageSwitcher({ currentLanguage }: MobileLanguageSwitcherProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
 
   const handleLanguageChange = (newLanguage: string) => {
     // Replace the current language in the pathname
@@ -23,7 +24,11 @@ export default function MobileLanguageSwitcher({ currentLanguage }: MobileLangua
       pathSegments.splice(1, 0, newLanguage)
     }
     
-    const newPath = pathSegments.join('/')
+    // Preserve query parameters
+    const queryString = searchParams?.toString() || ''
+    const queryParams = queryString ? `?${queryString}` : ''
+    
+    const newPath = pathSegments.join('/') + queryParams
     router.push(newPath)
   }
 

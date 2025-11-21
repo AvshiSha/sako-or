@@ -2478,7 +2478,7 @@ export const campaignService = {
       const now = new Date().toISOString();
       
       // Query for active campaigns
-      let q = query(
+      const q = query(
         collection(db, 'campaigns'),
         where('active', '==', true),
         orderBy('priority', 'desc'),

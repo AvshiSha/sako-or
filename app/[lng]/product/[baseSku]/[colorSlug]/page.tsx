@@ -818,7 +818,7 @@ export default function ProductColorPage() {
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         {/* Breadcrumb Navigation */}
-        <div className="pt-16 bg-white border-b border-gray-100">
+        <div className="pt-[104px] bg-white border-b border-gray-100">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <nav className="py-6" aria-label="Breadcrumb">
               <ol className={`flex items-center space-x-1 text-sm ${isRTL ? 'space-x-reverse' : ''}`}>

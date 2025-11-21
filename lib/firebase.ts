@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, Query, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, Query, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
@@ -244,6 +244,44 @@ export interface NewsletterEmail {
   email: string;
   subscribedAt: Date;
   isActive: boolean;
+}
+
+// Campaign Types
+export type Locale = 'he' | 'en';
+
+export interface LocalizedString {
+  he: string;
+  en: string;
+}
+
+export type CampaignProductFilterMode = 'tag' | 'sale' | 'manual';
+
+export interface CampaignProductFilter {
+  mode: CampaignProductFilterMode;
+  tag?: string;
+  limit?: number;
+  orderBy?: 'createdAt' | 'salePrice' | 'popularity';
+  orderDirection?: 'asc' | 'desc';
+}
+
+export interface Campaign {
+  id: string; // doc ID == slug
+  slug: string;
+  title: LocalizedString;
+  subtitle?: LocalizedString;
+  description?: LocalizedString;
+  seoTitle?: LocalizedString;
+  seoDescription?: LocalizedString;
+  bannerDesktopUrl?: string;
+  bannerMobileUrl?: string;
+  active: boolean;
+  priority: number;
+  startAt?: string; // ISO string
+  endAt?: string;   // ISO string
+  productFilter: CampaignProductFilter;
+  productIds?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Helper functions for bilingual products
@@ -2391,5 +2429,358 @@ export const newsletterService = {
   // Alias for sync compatibility
   async getAllNewsletterEmails(): Promise<NewsletterEmail[]> {
     return this.getAllSubscribers();
+  }
+};
+
+// Campaign Services
+export const campaignService = {
+  // Get all campaigns
+  async getAllCampaigns(): Promise<Campaign[]> {
+    try {
+      const q = query(collection(db, 'campaigns'), orderBy('priority', 'desc'), orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        slug: doc.id,
+        ...doc.data()
+      } as Campaign));
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+      throw error;
+    }
+  },
+
+  // Get campaign by slug
+  async getCampaignBySlug(slug: string): Promise<Campaign | null> {
+    try {
+      const docRef = doc(db, 'campaigns', slug);
+      const docSnap = await getDoc(docRef);
+      
+      if (!docSnap.exists()) {
+        return null;
+      }
+      
+      return {
+        id: docSnap.id,
+        slug: docSnap.id,
+        ...docSnap.data()
+      } as Campaign;
+    } catch (error) {
+      console.error('Error fetching campaign:', error);
+      throw error;
+    }
+  },
+
+  // Get active campaign (highest priority active campaign within date range)
+  async getActiveCampaign(): Promise<Campaign | null> {
+    try {
+      const now = new Date().toISOString();
+      
+      // Query for active campaigns
+      let q = query(
+        collection(db, 'campaigns'),
+        where('active', '==', true),
+        orderBy('priority', 'desc'),
+        orderBy('startAt', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      // Filter by date range client-side (Firestore doesn't support multiple range queries easily)
+      const campaigns = querySnapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          slug: doc.id,
+          ...doc.data()
+        } as Campaign))
+        .filter(campaign => {
+          // Check if campaign is within date range
+          if (campaign.startAt && new Date(campaign.startAt) > new Date(now)) {
+            return false; // Campaign hasn't started yet
+          }
+          if (campaign.endAt && new Date(campaign.endAt) < new Date(now)) {
+            return false; // Campaign has ended
+          }
+          return true;
+        });
+      
+      // Return the highest priority campaign
+      return campaigns.length > 0 ? campaigns[0] : null;
+    } catch (error) {
+      console.error('Error fetching active campaign:', error);
+      throw error;
+    }
+  },
+
+  // Get products for a campaign based on productFilter
+  async getCampaignProducts(campaign: Campaign): Promise<Product[]> {
+    try {
+      const { productFilter } = campaign;
+      
+      if (productFilter.mode === 'tag' && productFilter.tag) {
+        // Tag-based selection
+        let q: Query = query(
+          collection(db, 'products'),
+          where('tags', 'array-contains', productFilter.tag),
+          where('isDeleted', '==', false),
+          where('isEnabled', '==', true)
+        );
+        
+        // Add ordering
+        if (productFilter.orderBy) {
+          const direction = productFilter.orderDirection === 'asc' ? 'asc' : 'desc';
+          q = query(q, orderBy(productFilter.orderBy, direction));
+        } else {
+          q = query(q, orderBy('createdAt', 'desc'));
+        }
+        
+        // Add limit
+        if (productFilter.limit) {
+          q = query(q, limit(productFilter.limit));
+        }
+        
+        const querySnapshot = await getDocs(q);
+        const products: Product[] = [];
+        
+        for (const docSnapshot of querySnapshot.docs) {
+          const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
+          
+          // Fetch category data if needed
+          if (product.categoryId) {
+            const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
+            if (categoryDoc.exists()) {
+              product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+            }
+          }
+          
+          products.push(product);
+        }
+        
+        return products;
+      } else if (productFilter.mode === 'sale') {
+        // All sale products
+        let q: Query = query(
+          collection(db, 'products'),
+          where('salePrice', '>', 0),
+          where('isDeleted', '==', false),
+          where('isEnabled', '==', true)
+        );
+        
+        // Add ordering
+        if (productFilter.orderBy) {
+          const direction = productFilter.orderDirection === 'asc' ? 'asc' : 'desc';
+          q = query(q, orderBy(productFilter.orderBy, direction));
+        } else {
+          q = query(q, orderBy('createdAt', 'desc'));
+        }
+        
+        // Add limit
+        if (productFilter.limit) {
+          q = query(q, limit(productFilter.limit));
+        }
+        
+        const querySnapshot = await getDocs(q);
+        const products: Product[] = [];
+        
+        for (const docSnapshot of querySnapshot.docs) {
+          const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
+          
+          if (product.categoryId) {
+            const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
+            if (categoryDoc.exists()) {
+              product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+            }
+          }
+          
+          products.push(product);
+        }
+        
+        return products;
+      } else if (productFilter.mode === 'manual' && campaign.productIds && campaign.productIds.length > 0) {
+        // Manual selection - fetch products by IDs
+        const products: Product[] = [];
+        
+        for (const productId of campaign.productIds) {
+          try {
+            const productDoc = await getDoc(doc(db, 'products', productId));
+            if (productDoc.exists()) {
+              const product = { id: productDoc.id, ...productDoc.data() } as Product;
+              
+              // Only include active, non-deleted products
+              if (!product.isDeleted && product.isEnabled) {
+                if (product.categoryId) {
+                  const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
+                  if (categoryDoc.exists()) {
+                    product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
+                  }
+                }
+                
+                products.push(product);
+              }
+            }
+          } catch (error) {
+            console.warn(`Error fetching product ${productId}:`, error);
+          }
+        }
+        
+        return products;
+      }
+      
+      return [];
+    } catch (error) {
+      console.error('Error fetching campaign products:', error);
+      throw error;
+    }
+  },
+
+  // Create campaign
+  async createCampaign(campaignData: Omit<Campaign, 'id'>): Promise<string> {
+    try {
+      const now = new Date().toISOString();
+      const docRef = doc(db, 'campaigns', campaignData.slug);
+      
+      const { slug, ...data } = campaignData;
+      
+      // Remove undefined values and empty optional objects
+      const cleanData: any = {
+        slug: slug,
+        title: data.title,
+        active: data.active,
+        priority: data.priority,
+        productFilter: data.productFilter,
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      // Only include optional fields if they have values
+      if (data.subtitle && (data.subtitle.en || data.subtitle.he)) {
+        cleanData.subtitle = data.subtitle;
+      }
+      if (data.description && (data.description.en || data.description.he)) {
+        cleanData.description = data.description;
+      }
+      if (data.seoTitle && (data.seoTitle.en || data.seoTitle.he)) {
+        cleanData.seoTitle = data.seoTitle;
+      }
+      if (data.seoDescription && (data.seoDescription.en || data.seoDescription.he)) {
+        cleanData.seoDescription = data.seoDescription;
+      }
+      if (data.bannerDesktopUrl) {
+        cleanData.bannerDesktopUrl = data.bannerDesktopUrl;
+      }
+      if (data.bannerMobileUrl) {
+        cleanData.bannerMobileUrl = data.bannerMobileUrl;
+      }
+      if (data.startAt) {
+        cleanData.startAt = data.startAt;
+      }
+      if (data.endAt) {
+        cleanData.endAt = data.endAt;
+      }
+      if (data.productIds && data.productIds.length > 0) {
+        cleanData.productIds = data.productIds;
+      }
+      
+      await setDoc(docRef, cleanData);
+      
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating campaign:', error);
+      throw error;
+    }
+  },
+
+  // Update campaign
+  async updateCampaign(slug: string, campaignData: Partial<Campaign>): Promise<void> {
+    try {
+      const docRef = doc(db, 'campaigns', slug);
+      
+      // Build update data, removing undefined values
+      const updateData: any = {
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Only include fields that are actually provided (not undefined)
+      if (campaignData.slug !== undefined) updateData.slug = campaignData.slug;
+      if (campaignData.title !== undefined) updateData.title = campaignData.title;
+      if (campaignData.subtitle !== undefined) {
+        // Only include if it has at least one non-empty value
+        if (campaignData.subtitle && (campaignData.subtitle.en || campaignData.subtitle.he)) {
+          updateData.subtitle = campaignData.subtitle;
+        } else {
+          // If empty, we can delete it by setting to null (or omit it)
+          // For now, we'll omit it - Firestore will keep the old value
+        }
+      }
+      if (campaignData.description !== undefined) {
+        if (campaignData.description && (campaignData.description.en || campaignData.description.he)) {
+          updateData.description = campaignData.description;
+        }
+      }
+      if (campaignData.seoTitle !== undefined) {
+        if (campaignData.seoTitle && (campaignData.seoTitle.en || campaignData.seoTitle.he)) {
+          updateData.seoTitle = campaignData.seoTitle;
+        }
+      }
+      if (campaignData.seoDescription !== undefined) {
+        if (campaignData.seoDescription && (campaignData.seoDescription.en || campaignData.seoDescription.he)) {
+          updateData.seoDescription = campaignData.seoDescription;
+        }
+      }
+      if (campaignData.bannerDesktopUrl !== undefined) {
+        updateData.bannerDesktopUrl = campaignData.bannerDesktopUrl || null;
+      }
+      if (campaignData.bannerMobileUrl !== undefined) {
+        updateData.bannerMobileUrl = campaignData.bannerMobileUrl || null;
+      }
+      if (campaignData.active !== undefined) updateData.active = campaignData.active;
+      if (campaignData.priority !== undefined) updateData.priority = campaignData.priority;
+      if (campaignData.startAt !== undefined) {
+        updateData.startAt = campaignData.startAt || null;
+      }
+      if (campaignData.endAt !== undefined) {
+        updateData.endAt = campaignData.endAt || null;
+      }
+      if (campaignData.productFilter !== undefined) updateData.productFilter = campaignData.productFilter;
+      if (campaignData.productIds !== undefined) {
+        updateData.productIds = campaignData.productIds && campaignData.productIds.length > 0 
+          ? campaignData.productIds 
+          : null;
+      }
+      
+      // Remove id if present
+      delete updateData.id;
+      
+      await updateDoc(docRef, updateData);
+    } catch (error) {
+      console.error('Error updating campaign:', error);
+      throw error;
+    }
+  },
+
+  // Toggle campaign active status
+  async toggleCampaignActive(slug: string, active: boolean): Promise<void> {
+    try {
+      const docRef = doc(db, 'campaigns', slug);
+      await updateDoc(docRef, {
+        active,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error toggling campaign active status:', error);
+      throw error;
+    }
+  },
+
+  // Delete campaign
+  async deleteCampaign(slug: string): Promise<void> {
+    try {
+      const docRef = doc(db, 'campaigns', slug);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+      throw error;
+    }
   }
 }; 

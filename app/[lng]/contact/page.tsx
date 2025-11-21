@@ -273,7 +273,7 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
   }
 
   return (
-    <div className={`bg-white pt-16 min-h-screen ${isRTL ? 'text-right' : 'text-left'}`}>
+    <div className={`bg-white pt-[104px] min-h-screen ${isRTL ? 'text-right' : 'text-left'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="mb-12">

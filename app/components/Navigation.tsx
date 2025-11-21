@@ -300,7 +300,7 @@ export default function Navigation({ lng }: { lng: string }) {
 
 
   return (
-    <nav className="shadow-lg fixed w-full top-0 z-50" style={{ backgroundColor: '#FFFFFF' }}>
+    <nav className="shadow-lg fixed w-full top-[40px] md:top-[40px] z-50" style={{ backgroundColor: '#FFFFFF' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
           className="flex justify-between items-center h-16"

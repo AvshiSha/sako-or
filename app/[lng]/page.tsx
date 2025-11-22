@@ -110,8 +110,8 @@ const featuredProducts = [
 const translations = {
   en: {
     brandName: 'Sako Or',
-    heroDescription: 'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
-    exploreCollections: 'Explore Collections',
+    heroDescription: 'Black Friday Sale\n25% Discount on all products!!',//'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
+    exploreCollections: 'Black Friday Sale',//'Explore Collections',
     collectionsTitle: 'Curated Collections',
     collectionsDescription: 'Each piece in our collection represents the perfect harmony of design, comfort, and craftsmanship',
     viewCollection: 'View Collection',
@@ -129,8 +129,8 @@ const translations = {
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!
-    heroDescription: 'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
-    exploreCollections: 'לקולקציה החדשה',
+    heroDescription: 'Black Friday Sale\n25% הנחה על מגוון פריטים!!',//'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
+    exploreCollections: 'למבצעי Black Friday',//'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
     collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
     viewCollection: 'צפה באוסף',
@@ -258,12 +258,12 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
             <h1 className="text-5xl md:text-7xl font-light text-white mb-6 tracking-tight">
               Sako-Or
             </h1>
-            <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10">
+            <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10 whitespace-pre-line">
               {t.heroDescription}
             </p>
             <Link
               onClick={() => track('explore_collections_hero_button')}
-              href={`/${lng}/collection/women/shoes`}
+              href={`/${lng}/collection/campaign?slug=black-friday`}
               className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
             >
               {t.exploreCollections}

@@ -72,7 +72,7 @@ export default function CampaignClient({
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative w-full h-[80vh] md:h-[90vh] overflow-hidden">
+      <div className="relative w-full h-[70vh] md:h-[80vh] overflow-hidden">
         {hasDesktopBanner || hasMobileBanner ? (
           <>
             {/* Desktop Video (priority) */}

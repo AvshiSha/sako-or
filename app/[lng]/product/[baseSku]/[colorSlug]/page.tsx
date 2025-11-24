@@ -1485,7 +1485,7 @@ export default function ProductColorPage() {
                             <p><strong>🔄 החזרות והחלפות:</strong></p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
                               <li>החזרה בחינם דרך החנות תוך 14 יום</li>
-                              <li>החזרה עם שליח – בעלות של 30 ₪</li>
+                              <li>החזרה עם שליח – בעלות של 45 ₪</li>
                               <li>החלפה ראשונה ללא עלות</li>
                               <li>המוצר המוחזר חייב להיות חדש, ללא שימוש ובאריזתו המקורית</li>
                               <li>החזר כספי מיידי עם הגעת המוצר אלינו</li>

@@ -15,6 +15,7 @@ import {
   Row,
   Column,
 } from '@react-email/components';
+import { getColorName } from '../../lib/colors';
 
 interface OrderConfirmationEmailProps {
   customerName: string;
@@ -246,7 +247,7 @@ export function OrderConfirmationEmailHebrew({
                             </>
                           )}
                           {item.colorName && (
-                            <span>{t.colorLabel}: {item.colorName}</span>
+                            <span>{t.colorLabel}: {getColorName(item.colorName, 'he')}</span>
                           )}
                         </div>
                       )}

@@ -68,15 +68,22 @@ export const colorTranslations: Record<string, ColorTranslation> = {
 export function getColorName(colorSlug: string, language: 'en' | 'he'): string {
   if (!colorSlug) return '';
   
-  const normalized = normalizeColorSlug(colorSlug);
+  // Trim whitespace
+  const trimmed = colorSlug.trim();
+  if (!trimmed) return '';
+  
+  const normalized = normalizeColorSlug(trimmed);
+  
+  // Direct lookup in colorTranslations
   const translation = colorTranslations[normalized];
   
-  if (translation) {
+  if (translation && translation[language]) {
     return translation[language];
   }
   
   // Fallback: return the original slug if no translation found
-  return colorSlug;
+  // This ensures we don't return undefined or empty strings
+  return trimmed;
 }
 
 /**

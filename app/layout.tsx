@@ -1,6 +1,7 @@
 import './globals.css'
 import { Assistant } from 'next/font/google'  
 import ClientAuthProvider from './components/ClientAuthProvider'
+import WhatsAppButton from './components/WhatsAppButton'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata } from 'next'
 
@@ -58,6 +59,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* End Google Tag Manager (noscript) */}
         <ClientAuthProvider>
           {children}
+          <WhatsAppButton />
         </ClientAuthProvider>
         
         {/* Accessibility */}
@@ -100,9 +102,18 @@ function getCurrentAccessibilityLanguagePage() {
 // Wait for React hydration to complete before initializing accessibility
 function initializeAccessibility() {
 	try {
+		// Get sitekey from environment variable (must be NEXT_PUBLIC_ prefixed)
+		const sitekey = '${process.env.NEXT_PUBLIC_ACCESSIBILITY_KEY || ''}';
+		
+		// Check if sitekey is provided
+		if (!sitekey || sitekey.trim() === '') {
+			console.warn('Accessibility widget: ACCESSIBILITY_KEY is not set. Widget will not be initialized.');
+			return;
+		}
+		
 		// Initialize accessibility with dynamic language
 		window.args = {
-		sitekey   : '${process.env.ACCESSIBILITY_KEY}',
+		sitekey   : sitekey,
 		position  : 'Right',
 		language : getCurrentLanguage(),
 		container : '',
@@ -159,27 +170,60 @@ function initializeAccessibility() {
 		
 		// Add error handling for network issues
 		embed.onerror = function() {
-			console.warn('Accessibility widget failed to load. This might be due to network issues or service unavailability.');
+			console.error('Accessibility widget failed to load. This might be due to network issues, service unavailability, or invalid sitekey.');
+			console.error('Sitekey used:', sitekey ? sitekey.substring(0, 10) + '...' : 'NOT SET');
 		};
 		
 		embed.onload = function() {
-			console.log('Accessibility widget loaded successfully');
+			console.log('Accessibility widget script loaded successfully');
 		};
 		
 		body? body.appendChild(embed) : head.appendChild(embed);
 	})(document, document.head, document.body);
 	
 	} catch (error) {
-		console.warn('Accessibility widget initialization failed:', error.message);
+		console.error('Accessibility widget initialization failed:', error.message);
+		console.error('Error details:', error);
 	}
 }
 
-// Add comprehensive error handling for accessibility widget
+// Add comprehensive error handling for accessibility widget and other third-party scripts
 window.addEventListener('error', function(e) {
-	if (e.message && (e.message.includes('focus') || e.message.includes('accessibility') || e.message.includes('vee'))) {
-		console.warn('Accessibility widget error caught and handled:', e.message);
+	// Log accessibility errors but don't suppress them during development
+	if (e.message && (
+		e.message.includes('dataset') ||
+		e.message.includes('Cannot read properties of null')
+	)) {
+		// Only suppress dataset errors (these are harmless)
+		console.warn('Third-party script error caught and handled:', e.message);
 		e.preventDefault();
 		return false;
+	}
+	// Log but don't suppress accessibility/vee errors so we can debug
+	if (e.message && (
+		e.message.includes('focus') || 
+		e.message.includes('accessibility') || 
+		e.message.includes('vee')
+	)) {
+		console.warn('Accessibility widget error (not suppressed for debugging):', e.message);
+		// Don't prevent default - let it log normally
+	}
+});
+
+// Global error handler for unhandled promise rejections that might contain dataset errors
+window.addEventListener('unhandledrejection', function(e) {
+	if (e.reason && (
+		(e.reason.message && (
+			e.reason.message.includes('dataset') ||
+			e.reason.message.includes('Cannot read properties of null')
+		)) ||
+		(typeof e.reason === 'string' && (
+			e.reason.includes('dataset') ||
+			e.reason.includes('Cannot read properties of null')
+		))
+	)) {
+		console.warn('Unhandled promise rejection caught (likely from third-party script):', e.reason);
+		e.preventDefault();
 	}
 });
 

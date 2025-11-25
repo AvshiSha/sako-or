@@ -25,3 +25,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Force Vee accessibility icon to be visible */
+#vpplugin-toggler {
+  display: block !important;
+  z-index: 999999 !important;
+}
+
+/* Optional: make sure the interface (panel) can appear above everything too */
+#vpplugin-interface {
+  z-index: 999999 !important;
+}

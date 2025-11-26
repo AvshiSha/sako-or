@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
+import CountdownPopup from '@/app/components/CountdownPopup'
 
 const collections = [
   {
@@ -155,13 +156,37 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [subscribedEmail, setSubscribedEmail] = useState('')
   const [emailError, setEmailError] = useState('')
+  const [showCountdownPopup, setShowCountdownPopup] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   
   // Initialize language from params
-  React.useEffect(() => {
+  useEffect(() => {
     params.then(({ lng: language }) => {
       setLng(language)
     })
   }, [params])
+
+  // Mark that we're on the client
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // Black Friday Popup Logic - Show only once on home page
+  useEffect(() => {
+    // Only run on client after hydration
+    if (!isClient) return
+    
+    // Check if popup has been seen before
+    const popupSeen = localStorage.getItem('bf_popup_seen')
+    if (!popupSeen) {
+      // Show popup after a short delay for better UX
+      const timer = setTimeout(() => {
+        setShowCountdownPopup(true)
+        localStorage.setItem('bf_popup_seen', 'true')
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [isClient])
   
   const isRTL = lng === 'he'
   
@@ -425,6 +450,15 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         email={subscribedEmail}
+        lng={lng}
+      />
+
+      {/* Black Friday Countdown Popup */}
+      <CountdownPopup
+        isOpen={showCountdownPopup}
+        onClose={() => setShowCountdownPopup(false)}
+        targetDate="2025-11-28T00:00:00+02:00"
+        ctaUrl={`https://www.sako-or.com/${lng}/collection/campaign?slug=black-friday`}
         lng={lng}
       />
     </div>

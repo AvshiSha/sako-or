@@ -21,7 +21,8 @@ interface TimeLeft {
 const translations = {
   en: {
     title: 'Black Friday🖤',
-    subtitle: 'Exclusive deals on shoes, bags from the new collection - don\'t miss it!',
+    subtitle: '25% off on selected products',
+    subsubtitle: '10% discount with code: OUT10 — until Saturday ✨',
     ctaButton: 'Shop Black Friday Collection',
     days: 'Days',
     hours: 'Hours',
@@ -29,8 +30,9 @@ const translations = {
     seconds: 'Seconds'
   },
   he: {
-    title: 'Black Friday🖤',
-    subtitle: 'מבצעים בלעדיים על נעליים ותיקים מהקולקציה החדשה -  אל תפספסי!',
+    title: 'Black Friday כבר כאן! ✨',
+    subtitle: '25% הנחה על מוצרים נבחרים',
+    subsubtitle: 'ובנוסף 10% הנחה באאוטלט עם הקוד OUT10 — עד מוצ"ש!',
     ctaButton: 'לקולקציית Black Friday',
     days: 'ימים',
     hours: 'שעות',
@@ -115,9 +117,14 @@ export default function CountdownPopup({ isOpen, onClose, targetDate, ctaUrl, ln
           <h2 className={`text-3xl md:text-4xl font-light text-gray-900 mb-4 ${isRTL ? 'text-right' : 'text-left'}`}>
             {t.title}
           </h2>
-          <p className={`text-gray-600 mb-8 ${isRTL ? 'text-right' : 'text-left'}`}>
+          <p className={`text-gray-600 mb-2 ${isRTL ? 'text-right' : 'text-left'}`}>
             {t.subtitle}
           </p>
+          {'subsubtitle' in t && (
+            <p className={`text-gray-600 font-bold mb-8 ${isRTL ? 'text-right' : 'text-left'}`}>
+              {t.subsubtitle}
+            </p>
+          )}
 
           {/* Countdown Timer */}
           <div className="grid grid-cols-4 gap-4 mb-8" dir="ltr">

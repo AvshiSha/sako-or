@@ -8,8 +8,8 @@ interface PromoRibbonProps {
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
   const text = lng === 'he' 
-    ? 'בלאק פריידי עם 25% הנחה על מגוון מוצרים!' 
-    : 'Black Friday with up to 25% off on selected products!'
+    ? '25% הנחה על מוצרים נבחרים + 10% הנחה באאוטלט עם הקוד: OUT10 ✨' 
+    : '25% off on selected products + 10% discount with code: OUT10 ✨'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-black to-gray-900 text-white h-10 z-[60]">

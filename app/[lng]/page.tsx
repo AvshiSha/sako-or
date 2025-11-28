@@ -457,7 +457,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       <CountdownPopup
         isOpen={showCountdownPopup}
         onClose={() => setShowCountdownPopup(false)}
-        targetDate="2025-11-29T00:00:00+02:00"
+        targetDate="2025-11-30T00:00:00+02:00"
         ctaUrl={`https://www.sako-or.com/${lng}/collection/campaign?slug=black-friday`}
         lng={lng}
       />

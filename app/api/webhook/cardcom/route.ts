@@ -5,6 +5,106 @@ import { prisma } from '../../../../lib/prisma';
 import { sendOrderConfirmationEmailIdempotent } from '../../../../lib/email';
 import { stringifyPaymentData } from '../../../../lib/orders';
 
+/**
+ * Send WhatsApp trigger to InforUMobile API
+ */
+async function sendWhatsAppTrigger(contact: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phoneNumber: string;
+}) {
+  try {
+    const username = process.env.INFORU_USERNAME;
+    const token = process.env.INFORU_TOKEN;
+
+    // Check if credentials are configured
+    if (!username || !token) {
+      console.warn('[WHATSAPP] InforU credentials not configured. Skipping WhatsApp trigger.');
+      return;
+    }
+
+    // Validate required fields
+    if (!contact.email && !contact.phoneNumber) {
+      console.warn('[WHATSAPP] Missing required contact information (email or phone). Skipping WhatsApp trigger.');
+      return;
+    }
+
+    // Format phone number: remove spaces, dashes, and other non-digit characters except leading +
+    let formattedPhone = contact.phoneNumber?.trim() || '';
+    if (formattedPhone) {
+      // Keep leading + if present, then remove all non-digits
+      const hasPlus = formattedPhone.startsWith('+');
+      formattedPhone = formattedPhone.replace(/\D/g, '');
+      if (hasPlus && formattedPhone) {
+        formattedPhone = '+' + formattedPhone;
+      }
+    }
+
+    // Build contact object - email or phoneNumber is mandatory
+    const contactData: any = {};
+    
+    if (contact.email) {
+      contactData.Email = contact.email.trim();
+    }
+    
+    if (formattedPhone) {
+      contactData.PhoneNumber = formattedPhone;
+    }
+
+    // Add optional fields if available
+    if (contact.firstName) {
+      contactData.FirstName = contact.firstName.trim();
+    }
+    
+    if (contact.lastName) {
+      contactData.LastName = contact.lastName.trim();
+    }
+
+    // Leave empty fields as specified
+    contactData.GenderId = '';
+    contactData.BirthDate = '';
+    contactData.CustomerLabel = '';
+
+    // Prepare the request payload
+    const payload = {
+      User: {
+        Username: username,
+        Token: token,
+      },
+      Data: {
+        ApiEventName: 'confirmation_whatsapp',
+        Contacts: [contactData],
+      },
+    };
+
+    // Send POST request to InforU API
+    const apiUrl = 'https://capi.inforu.co.il/api/Automation/Trigger?json=';
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[WHATSAPP] Failed to send WhatsApp trigger: ${response.status} ${response.statusText}`, errorText);
+      return;
+    }
+
+    const result = await response.json();
+    console.log(`[WHATSAPP] WhatsApp trigger sent successfully for ${contact.email || contact.phoneNumber}`);
+    
+    return result;
+  } catch (error) {
+    // Don't throw - WhatsApp trigger failure shouldn't break the payment flow
+    console.error('[WHATSAPP] Error sending WhatsApp trigger:', error);
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // Check for bypass secret in header or URL parameter
@@ -273,6 +373,16 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
       console.log(`[WEBHOOK] Email skipped for order ${orderId} - already sent`);
     } else {
       console.log(`[WEBHOOK] Order ${orderId} confirmation processed successfully`);
+    }
+
+    // Send WhatsApp trigger after successful email confirmation
+    if (emailResult.success && !('skipped' in emailResult && emailResult.skipped)) {
+      await sendWhatsAppTrigger({
+        firstName: payer.firstName,
+        lastName: payer.lastName,
+        email: payer.email,
+        phoneNumber: payer.mobile,
+      });
     }
     
   } catch (error) {

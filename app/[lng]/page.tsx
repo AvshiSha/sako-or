@@ -6,7 +6,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
-import CountdownPopup from '@/app/components/CountdownPopup'
 
 const collections = [
   {
@@ -111,8 +110,8 @@ const featuredProducts = [
 const translations = {
   en: {
     brandName: 'Sako Or',
-    heroDescription: 'Black Friday Sale\n25% Discount on all products!!',//'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
-    exploreCollections: 'Black Friday Sale',//'Explore Collections',
+    heroDescription: 'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
+    exploreCollections: 'Explore Collections',
     collectionsTitle: 'Curated Collections',
     collectionsDescription: 'Each piece in our collection represents the perfect harmony of design, comfort, and craftsmanship',
     viewCollection: 'View Collection',
@@ -130,8 +129,8 @@ const translations = {
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!
-    heroDescription: 'Black Friday Sale\n25% הנחה על מגוון פריטים!!',//'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
-    exploreCollections: 'למבצעי Black Friday',//'לקולקציה החדשה',
+    heroDescription: 'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
+    exploreCollections: 'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
     collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
     viewCollection: 'צפה באוסף',
@@ -156,8 +155,6 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [subscribedEmail, setSubscribedEmail] = useState('')
   const [emailError, setEmailError] = useState('')
-  const [showCountdownPopup, setShowCountdownPopup] = useState(false)
-  const [isClient, setIsClient] = useState(false)
   
   // Initialize language from params
   useEffect(() => {
@@ -166,28 +163,6 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
     })
   }, [params])
 
-  // Mark that we're on the client
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
-  // Black Friday Popup Logic - Show only once on home page
-  useEffect(() => {
-    // Only run on client after hydration
-    if (!isClient) return
-    
-    // Check if popup has been seen before
-    const popupSeen = localStorage.getItem('bf_popup_seen')
-    if (!popupSeen) {
-      // Show popup after a short delay for better UX
-      const timer = setTimeout(() => {
-        setShowCountdownPopup(true)
-        localStorage.setItem('bf_popup_seen', 'true')
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [isClient])
-  
   const isRTL = lng === 'he'
   
   // Get translations for current language
@@ -248,7 +223,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   }
 
   return (
-    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#F6F3ED' }}>
+    <div className={`pt-16 ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#F6F3ED' }}>
       {/* Hero section */}
       <div className="relative h-screen">
         <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
@@ -288,7 +263,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
             </p>
             <Link
               onClick={() => track('explore_collections_hero_button')}
-              href={`/${lng}/collection/campaign?slug=black-friday`}
+              href={`/${lng}/collection/women`}
               className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
             >
               {t.exploreCollections}
@@ -450,15 +425,6 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         email={subscribedEmail}
-        lng={lng}
-      />
-
-      {/* Black Friday Countdown Popup */}
-      <CountdownPopup
-        isOpen={showCountdownPopup}
-        onClose={() => setShowCountdownPopup(false)}
-        targetDate="2025-11-30T00:00:00+02:00"
-        ctaUrl={`https://www.sako-or.com/${lng}/collection/campaign?slug=black-friday`}
         lng={lng}
       />
     </div>

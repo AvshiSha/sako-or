@@ -506,7 +506,7 @@ if (!isClient || loading) {
 
 function CartPageFallback() {
   return (
-    <div className="min-h-screen bg-gray-50 pt-[104px]">
+    <div className="min-h-screen bg-gray-50 pt-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse space-y-6">
           <div className="h-8 bg-gray-200 rounded w-48" />
@@ -533,7 +533,7 @@ function CartPageFallback() {
   const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-[104px]" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gray-50 pt-16" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

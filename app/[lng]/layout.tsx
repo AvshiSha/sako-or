@@ -1,7 +1,6 @@
 import { languages, getLanguageDirection } from '../../i18n/settings'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
-import PromoRibbon from '../components/PromoRibbon'
 
 export async function generateStaticParams() {
   return languages.map((lng) => ({ lng }))
@@ -35,7 +34,6 @@ export default async function LanguageLayout({
       dir={direction}
       lang={lng}
     >
-      <PromoRibbon lng={lng as 'en' | 'he'} />
       <Navigation lng={lng} />
       <main className="flex-grow">
         {children}

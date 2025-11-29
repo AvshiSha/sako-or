@@ -402,7 +402,7 @@ export default function CollectionClient({
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
 
   return (
-    <div className="min-h-screen pt-[104px]">
+    <div className="min-h-screen pt-16">
       {/* Breadcrumb Navigation */}
       <nav className="bg-gray-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

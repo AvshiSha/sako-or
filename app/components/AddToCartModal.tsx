@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { useCart } from '../hooks/useCart'
 import { useToast } from './Toast'
 import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
+import { trackAddToCart, generateEventId } from '@/lib/meta-events-client'
 import { getColorName } from '@/lib/colors'
 
 interface Product {
@@ -114,6 +115,23 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
         )
       } catch (dataLayerError) {
         console.warn('Data layer tracking error:', dataLayerError)
+      }
+
+      // Track Meta AddToCart event
+      try {
+        const eventId = generateEventId()
+        const contentIds = [product!.sku || 'unknown']
+        const value = (product!.salePrice || product!.price) * quantity
+        
+        trackAddToCart(
+          contentIds,
+          value,
+          product!.currency || 'ILS',
+          undefined, // userData - can be added if user is logged in
+          eventId
+        )
+      } catch (metaError) {
+        console.warn('Meta AddToCart tracking error:', metaError)
       }
 
       // Add multiple items if quantity > 1

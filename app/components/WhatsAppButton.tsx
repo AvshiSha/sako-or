@@ -2,6 +2,7 @@
 
 import { FaWhatsapp } from 'react-icons/fa'
 import { usePathname } from 'next/navigation'
+import { trackContact, generateEventId } from '@/lib/meta-events-client'
 
 export default function WhatsAppButton() {
   const phoneNumber = '+972504487979'
@@ -16,11 +17,22 @@ export default function WhatsAppButton() {
   const encodedMessage = encodeURIComponent(defaultMessage)
   const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}`
 
+  const handleWhatsAppClick = () => {
+    // Track Meta Contact event
+    try {
+      const eventId = generateEventId()
+      trackContact(undefined, eventId) // No user data available for WhatsApp click
+    } catch (metaError) {
+      console.warn('Meta Contact tracking error:', metaError)
+    }
+  }
+
   return (
     <a
       href={whatsappUrl}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={handleWhatsAppClick}
       className="fixed bottom-6 right-6 z-50 bg-[#25D366] hover:bg-[#20BA5A] text-white rounded-full p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-110 flex items-center justify-center group"
       aria-label="Contact us on WhatsApp"
     >

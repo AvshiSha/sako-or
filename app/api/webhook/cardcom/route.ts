@@ -4,6 +4,7 @@ import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
 import { sendOrderConfirmationEmailIdempotent } from '../../../../lib/email';
 import { stringifyPaymentData } from '../../../../lib/orders';
+import { sendMetaEvent, hashUserData, getCurrentTimestamp } from '../../../../lib/meta-conversions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -274,8 +275,83 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
     } else {
       console.log(`[WEBHOOK] Order ${orderId} confirmation processed successfully`);
     }
+
+    // Send Meta Conversions API Purchase event
+    try {
+      await sendMetaPurchaseEvent(order, checkout, requestUrl);
+    } catch (metaError) {
+      // Don't fail the webhook if Meta event fails
+      console.error(`[WEBHOOK] Failed to send Meta Purchase event for order ${orderId}:`, metaError);
+    }
     
   } catch (error) {
     console.error('Failed to handle post-payment actions:', error);
+  }
+}
+
+/**
+ * Send Meta Conversions API Purchase event
+ */
+async function sendMetaPurchaseEvent(order: any, checkout: any, requestUrl: string) {
+  try {
+    // Build user data from order and checkout
+    const userData = {
+      email: order.customerEmail || checkout?.customerEmail,
+      phone: checkout?.customerPhone,
+      firstName: checkout?.customerFirstName,
+      lastName: checkout?.customerLastName,
+      zipCode: checkout?.customerZip,
+      city: checkout?.customerCity,
+      state: checkout?.customerCity, // Using city as state
+      country: checkout?.customerCountry || 'IL',
+    };
+
+    // Get client user agent from request (we'll need to pass it or use a default)
+    // Since this is a webhook, we don't have the original user agent
+    // Meta will still accept the event without it, but it's better to have it
+    const clientUserAgent = undefined; // Webhook doesn't have original user agent
+
+    const hashedUserData = hashUserData(userData, clientUserAgent);
+
+    // Build custom data
+    const contentIds = order.orderItems.map((item: any) => item.productSku || 'unknown');
+    const customData = {
+      currency: order.currency || 'ILS',
+      value: order.total || 0,
+      content_type: 'product',
+      content_ids: contentIds,
+      order_id: order.orderNumber,
+      num_items: order.orderItems.reduce((sum: number, item: any) => sum + (item.quantity || 1), 0),
+    };
+
+    // Build event source URL (success page)
+    const url = new URL(requestUrl);
+    const origin = url.origin;
+    const langParam = url.searchParams.get('lang') || 'he';
+    const eventSourceUrl = `${origin}/${langParam === 'he' ? 'he' : 'en'}/Success?orderId=${order.orderNumber}`;
+
+    // Generate or use order number as event_id for deduplication
+    // The frontend should use the same event_id when sending the pixel event
+    const eventId = `purchase_${order.orderNumber}_${Date.now()}`;
+
+    // Send Purchase event
+    const result = await sendMetaEvent({
+      event_name: 'Purchase',
+      event_time: Math.floor(new Date(order.createdAt).getTime() / 1000), // Use order creation time
+      event_source_url: eventSourceUrl,
+      action_source: 'website',
+      event_id: eventId,
+      user_data: hashedUserData,
+      custom_data: customData,
+    });
+
+    if (result.success) {
+      console.log(`[WEBHOOK] Meta Purchase event sent successfully for order ${order.orderNumber}`);
+    } else {
+      console.error(`[WEBHOOK] Meta Purchase event failed for order ${order.orderNumber}:`, result.error);
+    }
+  } catch (error) {
+    console.error('[WEBHOOK] Error sending Meta Purchase event:', error);
+    throw error;
   }
 }

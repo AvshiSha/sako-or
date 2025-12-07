@@ -24,6 +24,7 @@ import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
+import { trackViewContent, trackAddToCart, generateEventId } from '@/lib/meta-events-client'
 import { getColorName } from '@/lib/colors'
 
 interface ProductWithVariants extends Product {
@@ -299,6 +300,21 @@ export default function ProductColorPage() {
           )
         } catch (dataLayerError) {
           console.warn('Data layer tracking error:', dataLayerError)
+        }
+
+        // Track Meta ViewContent event
+        try {
+          const eventId = generateEventId()
+          const contentIds = [baseSku] // Use base SKU as content ID
+          
+          trackViewContent(
+            contentIds,
+            'product',
+            undefined, // userData - can be added if user is logged in
+            eventId
+          )
+        } catch (metaError) {
+          console.warn('Meta ViewContent tracking error:', metaError)
         }
         
         setLoading(false)
@@ -694,6 +710,23 @@ export default function ProductColorPage() {
       )
     } catch (dataLayerError) {
       console.warn('Data layer tracking error:', dataLayerError)
+    }
+
+    // Track Meta AddToCart event
+    try {
+      const eventId = generateEventId()
+      const contentIds = [baseSku] // Use base SKU as content ID
+      const value = currentPrice * quantity
+      
+      trackAddToCart(
+        contentIds,
+        value,
+        product.currency || 'ILS',
+        undefined, // userData - can be added if user is logged in
+        eventId
+      )
+    } catch (metaError) {
+      console.warn('Meta AddToCart tracking error:', metaError)
     }
 
     // Add to cart

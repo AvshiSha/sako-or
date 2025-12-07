@@ -6,6 +6,7 @@ import PayerDetailsForm from './PayerDetailsForm';
 import PaymentIframe from './PaymentIframe';
 import PaymentResultComponent from './PaymentResult';
 import { trackBeginCheckout } from '@/lib/dataLayer';
+import { trackInitiateCheckout, generateEventId } from '@/lib/meta-events-client';
 import { CartItem } from '../hooks/useCart';
 
 interface CheckoutModalProps {
@@ -217,6 +218,26 @@ export default function CheckoutModal({
       }
     } catch (dataLayerError) {
       console.warn('Data layer tracking error:', dataLayerError);
+    }
+
+    // Track Meta InitiateCheckout event
+    try {
+      const eventId = generateEventId();
+      const userData = formData.payer.email ? {
+        email: formData.payer.email,
+        firstName: formData.payer.firstName,
+        lastName: formData.payer.lastName,
+        phone: formData.payer.mobile,
+      } : undefined;
+
+      await trackInitiateCheckout(
+        amount,
+        currency,
+        userData,
+        eventId
+      );
+    } catch (metaError) {
+      console.warn('Meta InitiateCheckout tracking error:', metaError);
     }
 
     setStep('CREATING_LP');

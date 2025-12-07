@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
+import { trackContact, generateEventId } from '@/lib/meta-events-client'
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -247,6 +248,20 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
         // Reset Turnstile widget
         if ((window as any).turnstile) {
           (window as any).turnstile.reset()
+        }
+
+        // Track Meta Contact event
+        try {
+          const eventId = generateEventId()
+          const userData = {
+            email: formData.email,
+            firstName: formData.name.split(' ')[0],
+            lastName: formData.name.split(' ').slice(1).join(' ') || undefined,
+          }
+          
+          trackContact(userData, eventId)
+        } catch (metaError) {
+          console.warn('Meta Contact tracking error:', metaError)
         }
       } else {
         console.error('Contact form submission failed:', data.error)

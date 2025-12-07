@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { trackAddToWishlist, generateEventId } from '@/lib/meta-events-client'
 
 export interface FavoritesHook {
   favorites: string[]
@@ -74,9 +75,25 @@ export function useFavorites(): FavoritesHook {
 
   const toggleFavorite = useCallback((sku: string) => {
     setFavorites(prev => {
-      if (prev.includes(sku)) {
+      const isCurrentlyFavorite = prev.includes(sku)
+      
+      if (isCurrentlyFavorite) {
+        // Removing from favorites - no event needed
         return prev.filter(favSku => favSku !== sku)
       } else {
+        // Adding to favorites - track AddToWishlist event
+        try {
+          const eventId = generateEventId()
+          trackAddToWishlist(
+            [sku],
+            'ILS',
+            undefined, // userData - can be added if user is logged in
+            eventId
+          )
+        } catch (metaError) {
+          console.warn('Meta AddToWishlist tracking error:', metaError)
+        }
+        
         return [...prev, sku]
       }
     })

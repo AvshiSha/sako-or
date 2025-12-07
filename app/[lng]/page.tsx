@@ -225,6 +225,19 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
         setShowSuccessModal(true)
         setEmail('') // Clear the form
         setEmailError('') // Clear any errors
+
+        // Track Meta Lead event
+        try {
+          const { trackLead, generateEventId } = await import('@/lib/meta-events-client')
+          const eventId = generateEventId()
+          const userData = {
+            email: email.trim(),
+          }
+          
+          trackLead(userData, eventId)
+        } catch (metaError) {
+          console.warn('Meta Lead tracking error:', metaError)
+        }
       } else {
         setEmailError(data.error || t.subscriptionError || 'Failed to subscribe. Please try again.')
       }

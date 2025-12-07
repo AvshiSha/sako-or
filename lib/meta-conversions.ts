@@ -154,7 +154,7 @@ export interface MetaEvent {
   event_id?: string; // For deduplication with pixel
   user_data: HashedUserData;
   custom_data?: CustomData;
-  test_event_code?: string; // For testing
+  // Note: test_event_code is NOT part of the event object - it's a top-level payload parameter
 }
 
 /**
@@ -176,16 +176,20 @@ export async function sendMetaEvent(
     return { success: false, error };
   }
 
-  // Add test event code if provided (for testing in Events Manager)
-  const eventWithTestCode = TEST_EVENT_CODE
-    ? { ...event, test_event_code: TEST_EVENT_CODE }
-    : event;
-
   // Build payload
-  const payload = {
-    data: [eventWithTestCode],
+  const payload: {
+    data: MetaEvent[];
+    access_token: string;
+    test_event_code?: string;
+  } = {
+    data: [event],
     access_token: ACCESS_TOKEN,
   };
+
+  // Add test event code at payload level (not in event object)
+  if (TEST_EVENT_CODE) {
+    payload.test_event_code = TEST_EVENT_CODE;
+  }
 
   try {
     const response = await fetch(CONVERSIONS_API_URL, {

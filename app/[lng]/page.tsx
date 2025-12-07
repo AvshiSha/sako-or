@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
+import CountdownPopup from '@/app/components/CountdownPopup'
 
 const collections = [
   {
@@ -155,6 +156,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [subscribedEmail, setSubscribedEmail] = useState('')
   const [emailError, setEmailError] = useState('')
+  const [showCountdownPopup, setShowCountdownPopup] = useState(false)
   
   // Initialize language from params
   useEffect(() => {
@@ -162,6 +164,18 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       setLng(language)
     })
   }, [params])
+
+  // Show countdown popup on home page
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      // Small delay to ensure component is fully mounted
+      const timer = setTimeout(() => {
+        setShowCountdownPopup(true)
+      }, 500) // 500ms delay to ensure everything is ready
+      
+      return () => clearTimeout(timer)
+    }
+  }, [])
 
   const isRTL = lng === 'he'
   
@@ -223,7 +237,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   }
 
   return (
-    <div className={`pt-16 ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#F6F3ED' }}>
+    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#F6F3ED' }}>
       {/* Hero section */}
       <div className="relative h-screen">
         <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
@@ -425,6 +439,15 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         email={subscribedEmail}
+        lng={lng}
+      />
+
+      {/* Countdown Popup */}
+      <CountdownPopup
+        isOpen={showCountdownPopup}
+        onClose={() => setShowCountdownPopup(false)}
+        targetDate="2025-12-09T23:59:59"
+        ctaUrl={`/${lng}/collection/campaign?slug=dec-sales`}
         lng={lng}
       />
     </div>

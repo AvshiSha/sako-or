@@ -21,6 +21,33 @@ export function generateEventId(): string {
 }
 
 /**
+ * Get or create a session ID for use as external_id
+ * This helps Meta match events even when user is not logged in
+ */
+export function getSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  
+  const STORAGE_KEY = 'meta_session_id';
+  let sessionId = localStorage.getItem(STORAGE_KEY);
+  
+  if (!sessionId) {
+    sessionId = generateEventId();
+    localStorage.setItem(STORAGE_KEY, sessionId);
+  }
+  
+  return sessionId;
+}
+
+/**
+ * Check if user data is sufficient for Meta matching
+ * Meta requires at least: email, phone, or external_id
+ */
+function hasSufficientUserData(userData?: MetaUserData): boolean {
+  if (!userData) return false;
+  return !!(userData.email || userData.phone || userData.externalId);
+}
+
+/**
  * User data input (non-hashed, will be hashed on server)
  */
 export interface MetaUserData {
@@ -136,9 +163,15 @@ export async function trackInitiateCheckout(
   userData?: MetaUserData,
   eventId?: string
 ) {
+  // Add session ID if no user data provided
+  const finalUserData: MetaUserData = userData || {};
+  if (typeof window !== 'undefined' && !hasSufficientUserData(finalUserData)) {
+    finalUserData.externalId = getSessionId();
+  }
+  
   return sendMetaEvent('InitiateCheckout', {
     eventId,
-    userData,
+    userData: finalUserData,
     customData: {
       currency,
       value,
@@ -152,9 +185,26 @@ export async function trackViewContent(
   userData?: MetaUserData,
   eventId?: string
 ) {
+  // Meta requires at least email, phone, or external_id for matching
+  // If no user data provided, use session ID as external_id
+  const finalUserData: MetaUserData = userData || {};
+  
+  // If no user data and we're in browser, add session ID as external_id
+  if (typeof window !== 'undefined' && !hasSufficientUserData(finalUserData)) {
+    finalUserData.externalId = getSessionId();
+  }
+  
+  // Only send if we have sufficient user data (email, phone, or external_id)
+  if (!hasSufficientUserData(finalUserData)) {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Meta Events] Skipping ViewContent - insufficient user data for matching');
+    }
+    return { success: false, error: 'Insufficient user data for Meta matching' };
+  }
+  
   return sendMetaEvent('ViewContent', {
     eventId,
-    userData,
+    userData: finalUserData,
     customData: {
       content_type: contentType,
       content_ids: contentIds,
@@ -170,9 +220,15 @@ export async function trackAddToCart(
   userData?: MetaUserData,
   eventId?: string
 ) {
+  // Add session ID if no user data provided
+  const finalUserData: MetaUserData = userData || {};
+  if (typeof window !== 'undefined' && !hasSufficientUserData(finalUserData)) {
+    finalUserData.externalId = getSessionId();
+  }
+  
   return sendMetaEvent('AddToCart', {
     eventId,
-    userData,
+    userData: finalUserData,
     customData: {
       currency,
       value,
@@ -188,9 +244,15 @@ export async function trackAddToWishlist(
   userData?: MetaUserData,
   eventId?: string
 ) {
+  // Add session ID if no user data provided
+  const finalUserData: MetaUserData = userData || {};
+  if (typeof window !== 'undefined' && !hasSufficientUserData(finalUserData)) {
+    finalUserData.externalId = getSessionId();
+  }
+  
   return sendMetaEvent('AddToWishlist', {
     eventId,
-    userData,
+    userData: finalUserData,
     customData: {
       currency,
       content_type: 'product',
@@ -203,9 +265,15 @@ export async function trackContact(
   userData?: MetaUserData,
   eventId?: string
 ) {
+  // Add session ID if no user data provided
+  const finalUserData: MetaUserData = userData || {};
+  if (typeof window !== 'undefined' && !hasSufficientUserData(finalUserData)) {
+    finalUserData.externalId = getSessionId();
+  }
+  
   return sendMetaEvent('Contact', {
     eventId,
-    userData,
+    userData: finalUserData,
     customData: {
       currency: 'ILS', // Required by Meta
     },

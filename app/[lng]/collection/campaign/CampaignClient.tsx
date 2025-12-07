@@ -233,9 +233,9 @@ export default function CampaignClient({
       {/* Products Grid Section */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 md:py-12">
         <div className={`mb-6 ${lng === "he" ? "text-right" : "text-left"}`}>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+          {/* <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
             {title}
-          </h2>
+          </h2> */}
           <p className="text-gray-600">
             {lng === "he" 
               ? `${products.length} מוצרים` 

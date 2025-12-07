@@ -20,20 +20,20 @@ interface TimeLeft {
 
 const translations = {
   en: {
-    title: 'Black Friday🖤',
-    subtitle: '25% off on selected products',
-    subsubtitle: '10% discount with code: OUT10 — until Saturday ✨',
-    ctaButton: 'Shop Black Friday Collection',
+    title: 'December Sales🖤',
+    subtitle: '30% off on selected products',
+    subsubtitle: 'with code: DEC30 — Only till Tuesday ✨',
+    ctaButton: 'Shop December Sales Collection',
     days: 'Days',
     hours: 'Hours',
     minutes: 'Minutes',
     seconds: 'Seconds'
   },
   he: {
-    title: 'Black Friday כבר כאן! ✨',
-    subtitle: '25% הנחה על מוצרים נבחרים',
-    subsubtitle: 'ובנוסף 10% הנחה באאוטלט עם הקוד OUT10 — עד מוצ"ש!',
-    ctaButton: 'לקולקציית Black Friday',
+    title: 'December Sales🖤',
+    subtitle: '30% הנחה על מוצרים נבחרים',
+    subsubtitle: 'עם הקוד DEC30 — עד יום שלישי בלבד!',
+    ctaButton: 'לקולקציית December Sales',
     days: 'ימים',
     hours: 'שעות',
     minutes: 'דקות',

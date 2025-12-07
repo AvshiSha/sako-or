@@ -176,6 +176,20 @@ export async function sendMetaEvent(
     return { success: false, error };
   }
 
+  // Validate user data has at least one identifier
+  const hasEmail = !!(event.user_data.em && event.user_data.em.length > 0);
+  const hasPhone = !!(event.user_data.ph && event.user_data.ph.length > 0);
+  const hasExternalId = !!(event.user_data.external_id && event.user_data.external_id.length > 0);
+  
+  if (!hasEmail && !hasPhone && !hasExternalId) {
+    const error = 'User data must include at least one of: email, phone, or external_id';
+    console.error('[Meta Conversions API]', error, {
+      event_name: event.event_name,
+      user_data_keys: Object.keys(event.user_data),
+    });
+    return { success: false, error };
+  }
+
   // Build payload
   const payload: {
     data: MetaEvent[];

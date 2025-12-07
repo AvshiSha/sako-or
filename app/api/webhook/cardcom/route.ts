@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Send confirmation email
-    await handlePostPaymentActions(orderId, transactionData, request.url);
+    await handlePostPaymentActions(orderId, transactionData, request.url, request);
 
     return NextResponse.json({ success: true });
 
@@ -176,7 +176,7 @@ async function savePaymentToken(orderId: string, tokenInfo: any) {
 /**
  * Handle post-payment actions (emails, notifications, etc.)
  */
-async function handlePostPaymentActions(orderId: string, transactionData: any, requestUrl: string) {
+async function handlePostPaymentActions(orderId: string, transactionData: any, requestUrl: string, request: NextRequest) {
   try {
 
     // Fetch order with items
@@ -278,7 +278,7 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
 
     // Send Meta Conversions API Purchase event
     try {
-      await sendMetaPurchaseEvent(order, checkout, requestUrl);
+      await sendMetaPurchaseEvent(order, checkout, requestUrl, request);
     } catch (metaError) {
       // Don't fail the webhook if Meta event fails
       console.error(`[WEBHOOK] Failed to send Meta Purchase event for order ${orderId}:`, metaError);
@@ -292,12 +292,21 @@ async function handlePostPaymentActions(orderId: string, transactionData: any, r
 /**
  * Send Meta Conversions API Purchase event
  */
-async function sendMetaPurchaseEvent(order: any, checkout: any, requestUrl: string) {
+async function sendMetaPurchaseEvent(order: any, checkout: any, requestUrl: string, request: NextRequest) {
   try {
+    // Validate that we have required user data (email or phone)
+    const email = order.customerEmail || checkout?.customerEmail;
+    const phone = checkout?.customerPhone;
+    
+    if (!email && !phone) {
+      console.warn(`[WEBHOOK] Skipping Meta Purchase event for order ${order.orderNumber}: No email or phone available`);
+      return;
+    }
+
     // Build user data from order and checkout
     const userData = {
-      email: order.customerEmail || checkout?.customerEmail,
-      phone: checkout?.customerPhone,
+      email: email,
+      phone: phone,
       firstName: checkout?.customerFirstName,
       lastName: checkout?.customerLastName,
       zipCode: checkout?.customerZip,
@@ -306,12 +315,16 @@ async function sendMetaPurchaseEvent(order: any, checkout: any, requestUrl: stri
       country: checkout?.customerCountry || 'IL',
     };
 
-    // Get client user agent from request (we'll need to pass it or use a default)
-    // Since this is a webhook, we don't have the original user agent
-    // Meta will still accept the event without it, but it's better to have it
-    const clientUserAgent = undefined; // Webhook doesn't have original user agent
+    // Get client user agent from request headers (if available)
+    const clientUserAgent = request.headers.get('user-agent') || undefined;
 
     const hashedUserData = hashUserData(userData, clientUserAgent);
+    
+    // Validate that we have at least one hashed identifier
+    if (!hashedUserData.em && !hashedUserData.ph) {
+      console.warn(`[WEBHOOK] Skipping Meta Purchase event for order ${order.orderNumber}: No valid user identifiers after hashing`);
+      return;
+    }
 
     // Build custom data
     const contentIds = order.orderItems.map((item: any) => item.productSku || 'unknown');
@@ -346,12 +359,27 @@ async function sendMetaPurchaseEvent(order: any, checkout: any, requestUrl: stri
     });
 
     if (result.success) {
-      console.log(`[WEBHOOK] Meta Purchase event sent successfully for order ${order.orderNumber}`);
+      console.log(`[WEBHOOK] Meta Purchase event sent successfully for order ${order.orderNumber}`, {
+        event_id: eventId,
+        value: customData.value,
+        currency: customData.currency,
+        content_ids: contentIds.length,
+      });
     } else {
-      console.error(`[WEBHOOK] Meta Purchase event failed for order ${order.orderNumber}:`, result.error);
+      console.error(`[WEBHOOK] Meta Purchase event failed for order ${order.orderNumber}:`, {
+        error: result.error,
+        response: result.response,
+        event_id: eventId,
+      });
     }
+    
+    return result;
   } catch (error) {
-    console.error('[WEBHOOK] Error sending Meta Purchase event:', error);
+    console.error('[WEBHOOK] Error sending Meta Purchase event:', {
+      orderId: order.orderNumber,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     throw error;
   }
 }

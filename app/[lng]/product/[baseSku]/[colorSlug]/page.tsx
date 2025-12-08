@@ -267,7 +267,7 @@ export default function ProductColorPage() {
               value: variant.salePrice || productData.price,
               items: [{
                 item_id: `${baseSku}-${colorSlug}`,
-                item_name: `${productHelpers.getField(productData, 'name', lng as 'en' | 'he')} - ${variant.colorSlug}`,
+                item_name: `${baseSku} - ${variant.colorSlug}`,
                 item_category: productData.category || 'Unknown',
                 price: variant.salePrice || productData.price,
                 quantity: 1
@@ -666,7 +666,7 @@ export default function ProductColorPage() {
           value: currentPrice * quantity,
           items: [{
             item_id: variantItemId,
-            item_name: itemName,
+            item_name: `${baseSku} - ${currentVariant.colorSlug}`,
             item_category: product.category || 'Unknown',
             item_variant: `${sizeLabel}-${currentVariant.colorSlug}`,
             price: currentPrice,

@@ -17,6 +17,11 @@ if (typeof window !== 'undefined') {
   window.dataLayer = window.dataLayer || [];
 }
 
+// GA4 Measurement ID (overridable in env; falls back to provided property)
+const GA_MEASUREMENT_ID =
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ||
+  'G-1BY36XK59X';
+
 /**
  * Format price to string with dot separator (e.g., "14.00")
  * Removes currency symbols and commas
@@ -141,7 +146,8 @@ function pushEvent(eventData: any): void {
         window.gtag('event', 'purchase', {
           transaction_id: transactionId,
           value,
-          currency
+          currency,
+          ...(GA_MEASUREMENT_ID && { send_to: GA_MEASUREMENT_ID }),
         });
       }
     } catch (err) {
@@ -557,6 +563,17 @@ export function trackPurchase(
   // Add user properties if provided
   if (options.userProperties && Object.keys(options.userProperties).length > 0) {
     eventData.user_properties = options.userProperties;
+  }
+
+  if (typeof window !== 'undefined') {
+    // Lightweight debug signal to verify purchase event firing
+    // Includes transaction id and item count, but avoids logging full payload to keep PII minimal.
+    console.info('[trackPurchase] firing purchase event', {
+      transactionId,
+      items: ecommerceItems.length,
+      currency: eventData.ecommerce.currency,
+      value: eventData.ecommerce.value,
+    });
   }
 
   pushEvent(eventData);

@@ -5,6 +5,8 @@ import { PaymentRedirectMessage } from '../types/checkout';
 
 interface PaymentIframeProps {
   redirectUrl: string;
+  orderId?: string;
+  lowProfileId?: string;
   onPaymentComplete: (result: { status: 'success' | 'failed' | 'cancelled'; lpid: string; orderId?: string }) => void;
   onError?: (error: string) => void;
   language?: 'he' | 'en';
@@ -12,6 +14,8 @@ interface PaymentIframeProps {
 
 export default function PaymentIframe({
   redirectUrl,
+  orderId,
+  lowProfileId,
   onPaymentComplete,
   onError,
   language = 'he'
@@ -20,10 +24,75 @@ export default function PaymentIframe({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isHebrew = language === 'he';
+  const cardcomOrigin = 'https://secure.cardcom.solutions';
+
+  const deriveStatusFromRedirect = (urlString: string) => {
+    try {
+      const parsed = new URL(urlString);
+      const path = parsed.pathname.toLowerCase();
+      const status: 'success' | 'failed' | 'cancelled' =
+        path.includes('failed') ? 'failed' : path.includes('cancel') ? 'cancelled' : 'success';
+
+      return {
+        status,
+        orderId: parsed.searchParams.get('orderId') || parsed.searchParams.get('ReturnValue') || undefined,
+        lpid: parsed.searchParams.get('lpid') || parsed.searchParams.get('lowprofilecode') || undefined,
+      };
+    } catch {
+      return {};
+    }
+  };
+
+  const updateOrderBeforeRedirect = async (orderNumber?: string) => {
+    if (!orderNumber) return;
+    try {
+      await fetch('/api/payments/check-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: orderNumber }),
+      });
+    } catch (updateError) {
+      console.warn('Failed to pre-update order before redirect', updateError);
+    }
+  };
 
   useEffect(() => {
+    const handleCardcomRedirect = async (event: MessageEvent) => {
+      const action = (event.data as any)?.action;
+      const redirectValue = (event.data as any)?.value as string | undefined;
+
+      if (action !== 'RedirectingCustOnCardcomPage' || !redirectValue) {
+        return;
+      }
+
+      setIsLoading(false);
+      setError(null);
+
+      const derived = deriveStatusFromRedirect(redirectValue);
+      const effectiveOrderId = derived.orderId || orderId;
+      const effectiveLpid = derived.lpid || lowProfileId || '';
+
+      await updateOrderBeforeRedirect(effectiveOrderId);
+
+      if (derived.status) {
+        onPaymentComplete({
+          status: derived.status,
+          lpid: effectiveLpid,
+          orderId: effectiveOrderId,
+        });
+      }
+
+      window.location.href = redirectValue;
+    };
+
     const handleMessage = (event: MessageEvent) => {
-      // Verify origin for security
+      // Handle Cardcom iframe notifications
+      if (event.origin === cardcomOrigin) {
+        void handleCardcomRedirect(event);
+        return;
+      }
+
+      // Verify origin for our own domain messages
       if (event.origin !== window.location.origin) {
         return;
       }
@@ -43,6 +112,11 @@ export default function PaymentIframe({
     const handleIframeLoad = () => {
       setIsLoading(false);
       setError(null);
+      try {
+        iframeRef.current?.contentWindow?.postMessage({ command: 'stopRedirect' }, '*');
+      } catch (postError) {
+        console.warn('Unable to post stopRedirect to Cardcom iframe', postError);
+      }
     };
 
     const handleIframeError = () => {
@@ -68,7 +142,7 @@ export default function PaymentIframe({
         iframeRef.current.removeEventListener('error', handleIframeError);
       }
     };
-  }, [onPaymentComplete, onError, isHebrew]);
+  }, [onPaymentComplete, onError, isHebrew, orderId, lowProfileId]);
 
   return (
     <div className="w-full h-full flex flex-col">

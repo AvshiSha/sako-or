@@ -69,6 +69,8 @@ export default function CheckoutModal({
   const [isFormValid, setIsFormValid] = useState(false);
   const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
   const [redirectUrl, setRedirectUrl] = useState<string>('');
+  const [lowProfileId, setLowProfileId] = useState<string>('');
+  const [createdOrderId, setCreatedOrderId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -98,6 +100,8 @@ export default function CheckoutModal({
       });
       setPaymentResult(null);
       setRedirectUrl('');
+      setLowProfileId('');
+      setCreatedOrderId('');
       setError(null);
       setIsLoading(false);
     }
@@ -235,6 +239,8 @@ export default function CheckoutModal({
       
       if (result.success) {
         setRedirectUrl(result.paymentUrl);
+        setLowProfileId(result.lowProfileId || '');
+        setCreatedOrderId(result.orderId || orderId);
         setStep('PAYING');
         setIsLoading(false);
       } else {
@@ -284,6 +290,8 @@ export default function CheckoutModal({
   const handleCancelPayment = () => {
     setStep('DETAILS');
     setRedirectUrl('');
+    setLowProfileId('');
+    setCreatedOrderId('');
     setError(null);
     setPaymentResult(null);
     setIsLoading(false);
@@ -390,6 +398,8 @@ export default function CheckoutModal({
             {step === 'PAYING' && redirectUrl && (
               <PaymentIframe
                 redirectUrl={redirectUrl}
+                orderId={createdOrderId || orderId}
+                lowProfileId={lowProfileId}
                 onPaymentComplete={handlePaymentComplete}
                 onError={handlePaymentError}
                 language={language}

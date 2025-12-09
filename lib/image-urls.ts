@@ -28,8 +28,8 @@ const imageUrlMappings: Record<string, string> = {
 };
 
 const videoUrlMappings: Record<string, string> = {
-  "/videos/hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2F9077-Reels-desktop.mp4?alt=media",
-  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2F9077-Reels-mobyle.mp4?alt=media",
+  "/videos/hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_desktop.mp4?alt=media&token=79623f94-7759-4a68-9de7-9ac846aba48e",
+  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_mobile.mp4?alt=media&token=27de529b-9234-4560-8029-612d03794cef"
 };
 
 /**

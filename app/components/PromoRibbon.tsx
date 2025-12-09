@@ -8,14 +8,14 @@ interface PromoRibbonProps {
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
   const text = lng === 'he' 
-    ? '✨ 30% הנחה על מוצרים נבחרים מהקולקציה החדשה, קוד: DEC30 ✨' 
-    : '✨ 30% on products from the new collection, with code: DEC30 ✨'
+    ? '✨ סוף העונה הגיע! מבצעים שווים על כל קולקציית החורף! ✨' 
+    : '✨ The end of the year is here! 30% off on all the new collection! ✨'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-black to-gray-900 text-white h-10 z-[60]">
       <div className="max-w-7xl mx-auto h-full flex items-center justify-center px-4">
         <Link
-          href={`/${lng}/collection/campaign?slug=dec-sales`}
+          href={`/${lng}/collection/women/shoes`}
           className="text-center hover:underline font-medium text-sm md:text-base"
         >
           {text}

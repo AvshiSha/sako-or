@@ -516,12 +516,13 @@ export default function Navigation({ lng }: { lng: string }) {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
+        <div className="fixed inset-0 z-[70] md:hidden">
           <div className="fixed inset-0 bg-black/20 bg-opacity-50" onClick={closeMobileMenu} />
 
-          <div className="fixed top-0 left-0 h-full w-80 bg-white shadow-xl">
-            <div className="flex items-center justify-between p-2.5 border-b">
-              <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
+          <div className="fixed top-0 left-0 h-full w-80 bg-white shadow-xl z-[70]">
+            <div className="pt-10">
+              <div className="flex items-center justify-between p-2.5 border-b">
+                <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
               <button
                 onClick={closeMobileMenu}
                 className="text-gray-500 hover:text-gray-700"
@@ -749,6 +750,7 @@ export default function Navigation({ lng }: { lng: string }) {
                   </div>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>

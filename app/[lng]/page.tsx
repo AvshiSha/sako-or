@@ -111,8 +111,8 @@ const featuredProducts = [
 const translations = {
   en: {
     brandName: 'Sako Or',
-    heroDescription: 'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
-    exploreCollections: 'Explore Collections',
+    heroDescription: 'End of year sales on all winter collections!',  //'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
+    exploreCollections: 'Explore Winter Collections',  //'Explore Collections',
     collectionsTitle: 'Curated Collections',
     collectionsDescription: 'Each piece in our collection represents the perfect harmony of design, comfort, and craftsmanship',
     viewCollection: 'View Collection',
@@ -130,8 +130,8 @@ const translations = {
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!
-    heroDescription: 'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
-    exploreCollections: 'לקולקציה החדשה',
+    heroDescription:  'מבצעי סוף עונה על כל קולקציית החורף!',   //'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
+    exploreCollections:  'למבצעי סוף העונה',  //'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
     collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
     viewCollection: 'צפה באוסף',
@@ -443,13 +443,13 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       />
 
       {/* Countdown Popup */}
-      <CountdownPopup
+      {/* <CountdownPopup
         isOpen={showCountdownPopup}
         onClose={() => setShowCountdownPopup(false)}
         targetDate="2025-12-09T23:59:59"
         ctaUrl={`/${lng}/collection/campaign?slug=dec-sales`}
         lng={lng}
-      />
+      /> */}
     </div>
   )
 } 

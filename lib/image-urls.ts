@@ -29,6 +29,7 @@ const imageUrlMappings: Record<string, string> = {
 
 const videoUrlMappings: Record<string, string> = {
   "/videos/hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_desktop_fix.mp4?alt=media&token=67c85ea8-4a10-4ccd-8ab3-1b96d9b98425",
+  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_mobile.mp4?alt=media&token=27de529b-9234-4560-8029-612d03794cef"
 };
 
 /**

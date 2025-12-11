@@ -4,6 +4,7 @@
  * This utility provides functions for tracking e-commerce events
  * following the GA4 Enhanced Ecommerce specification.
  */
+import { fbqTrackAddToCart, fbqTrackInitiateCheckout, fbqTrackPurchase } from '@/lib/facebookPixel';
 
 declare global {
   interface Window {
@@ -31,6 +32,11 @@ function formatPrice(price: number | string | undefined): string {
   
   const numPrice = typeof price === 'string' ? parseFloat(price.replace(/[^\d.-]/g, '')) : price;
   return numPrice.toFixed(2);
+}
+
+function toNumericPrice(price: number | string | undefined): number {
+  if (price === undefined || price === null) return 0;
+  return typeof price === 'string' ? parseFloat(price.replace(/[^\d.-]/g, '')) : price;
 }
 
 /**
@@ -322,6 +328,17 @@ export function trackAddToCart(
       items: ecommerceItems
     }
   });
+
+  fbqTrackAddToCart(
+    items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity || 1,
+      item_price: toNumericPrice(item.price),
+      brand: item.brand,
+      item_variant: item.variant,
+    })),
+    { currency, value: totalValue }
+  );
 }
 
 /**
@@ -402,6 +419,21 @@ export function trackBeginCheckout(
       items: ecommerceItems
     }
   });
+
+  fbqTrackInitiateCheckout(
+    items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity || 1,
+      item_price: toNumericPrice(item.price),
+      brand: item.brand,
+      item_variant: item.variant,
+    })),
+    {
+      currency,
+      value: totalValue,
+      num_items: items.reduce((sum, item) => sum + (item.quantity || 1), 0),
+    }
+  );
 }
 
 /**
@@ -577,5 +609,16 @@ export function trackPurchase(
   }
 
   pushEvent(eventData);
+
+  fbqTrackPurchase(
+    items.map((item) => ({
+      id: item.id,
+      quantity: item.quantity || 1,
+      item_price: toNumericPrice(item.price),
+      brand: item.brand,
+      item_variant: item.variant,
+    })),
+    { currency: eventData.ecommerce.currency, value: eventData.ecommerce.value }
+  );
 }
 

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { FaFacebook, FaInstagram, FaPinterest } from 'react-icons/fa';
 import { useState } from 'react';
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal';
+import { fbqTrackSubscribe } from '@/lib/facebookPixel';
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -100,6 +101,12 @@ export default function Footer({ lng }: { lng: string }) {
         setShowSuccessModal(true)
         setEmail('') // Clear the form
         setEmailError('') // Clear any errors
+
+        fbqTrackSubscribe({
+          subscription_type: 'newsletter',
+          placement: 'footer_form',
+          email: email.trim(),
+        })
       } else {
         setEmailError(data.error || t.subscriptionError || 'Failed to subscribe. Please try again.')
       }

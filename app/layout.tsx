@@ -2,6 +2,7 @@ import './globals.css'
 import { Assistant } from 'next/font/google'  
 import ClientAuthProvider from './components/ClientAuthProvider'
 import WhatsAppButton from './components/WhatsAppButton'
+import FacebookPixel from './components/FacebookPixel'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata } from 'next'
 
@@ -24,6 +25,7 @@ export default function RootLayout({
 }) {
   // Get the accessibility key at build time (server-side)
   const accessibilityKey = process.env.NEXT_PUBLIC_ACCESSIBILITY_KEY || '';
+  const facebookPixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
   
   return (
     <html className="light">
@@ -60,7 +62,22 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           />
         </noscript>
         {/* End Google Tag Manager (noscript) */}
+        
+        {/* Facebook Pixel (noscript) */}
+        {facebookPixelId && (
+          <noscript>
+            <img
+              height="1"
+              width="1"
+              style={{ display: 'none' }}
+              src={`https://www.facebook.com/tr?id=${facebookPixelId}&ev=PageView&noscript=1`}
+              alt=""
+            />
+          </noscript>
+        )}
+        {/* End Facebook Pixel (noscript) */}
         <ClientAuthProvider>
+          <FacebookPixel />
           {children}
           <WhatsAppButton />
         </ClientAuthProvider>

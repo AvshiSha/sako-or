@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { fbqTrackAddToFavorites } from '@/lib/facebookPixel'
+import { fbqTrackAddToFavorites, fbqTrackRemoveFromFavorites } from '@/lib/facebookPixel'
 
 export interface FavoritesHook {
   favorites: string[]
@@ -91,6 +91,9 @@ export function useFavorites(): FavoritesHook {
     if (!isCurrentlyFavorite) {
       // Track BEFORE state update to ensure it only fires once
       fbqTrackAddToFavorites({ id: sku, quantity: 1 })
+    } else {
+      // Track removal BEFORE state update
+      fbqTrackRemoveFromFavorites({ id: sku, quantity: 1 })
     }
     setFavorites(prev => {
       if (prev.includes(sku)) {

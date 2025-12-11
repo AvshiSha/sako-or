@@ -115,6 +115,27 @@ export function fbqTrackAddToFavorites(item: PixelContent): void {
   );
 }
 
+export function fbqTrackRemoveFromFavorites(item: PixelContent): void {
+  if (!item?.id) return;
+  fbqTrack(
+    'RemoveFromFavorites',
+    {
+      content_type: 'product',
+      content_ids: [item.id],
+      contents: [
+        {
+          id: item.id,
+          quantity: item.quantity || 1,
+          item_price: item.item_price,
+          brand: item.brand,
+          item_variant: item.item_variant,
+        },
+      ],
+    },
+    true
+  );
+}
+
 export function fbqTrackSubscribe(params: Record<string, any>): void {
   fbqTrack('Subscribe', params, true);
 }

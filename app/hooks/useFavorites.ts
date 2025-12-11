@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { fbqTrackAddToFavorites } from '@/lib/facebookPixel'
 
 export interface FavoritesHook {
   favorites: string[]
@@ -14,6 +15,7 @@ export interface FavoritesHook {
 export function useFavorites(): FavoritesHook {
   const [favorites, setFavorites] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const favoritesRef = useRef<string[]>([])
 
   // Load favorites from localStorage on mount
   useEffect(() => {
@@ -28,6 +30,11 @@ export function useFavorites(): FavoritesHook {
       setLoading(false)
     }
   }, [])
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    favoritesRef.current = favorites
+  }, [favorites])
 
   // Save favorites to localStorage whenever favorites change
   useEffect(() => {
@@ -60,11 +67,17 @@ export function useFavorites(): FavoritesHook {
   }, [favorites])
 
   const addToFavorites = useCallback((sku: string) => {
+    // Check ref (current state) before updating to avoid double-tracking
+    const isCurrentlyFavorite = favoritesRef.current.includes(sku)
+    if (!isCurrentlyFavorite) {
+      // Track BEFORE state update to ensure it only fires once
+      fbqTrackAddToFavorites({ id: sku, quantity: 1 })
+    }
     setFavorites(prev => {
-      if (!prev.includes(sku)) {
-        return [...prev, sku]
+      if (prev.includes(sku)) {
+        return prev
       }
-      return prev
+      return [...prev, sku]
     })
   }, [])
 
@@ -73,6 +86,12 @@ export function useFavorites(): FavoritesHook {
   }, [])
 
   const toggleFavorite = useCallback((sku: string) => {
+    // Check ref (current state) before updating to determine action
+    const isCurrentlyFavorite = favoritesRef.current.includes(sku)
+    if (!isCurrentlyFavorite) {
+      // Track BEFORE state update to ensure it only fires once
+      fbqTrackAddToFavorites({ id: sku, quantity: 1 })
+    }
     setFavorites(prev => {
       if (prev.includes(sku)) {
         return prev.filter(favSku => favSku !== sku)

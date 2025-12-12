@@ -66,6 +66,8 @@ export async function GET(request: NextRequest) {
         createdAt: order.createdAt.toISOString(),
         orderItems: order.orderItems.map(item => ({
           productName: item.productName,
+          productSku: item.productSku,
+          size: item.size,
           quantity: item.quantity,
           price: item.price,
           total: item.total

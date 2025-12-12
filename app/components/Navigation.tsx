@@ -398,6 +398,19 @@ export default function Navigation({ lng }: { lng: string }) {
 
             {/* Men Dropdown - Only show if Men category exists */}
             {hasMenCategory() && (
+              <div className="relative" data-dropdown>
+                <button
+                  onMouseEnter={() => handleMouseEnter('men')}
+                  onMouseLeave={() => handleMouseLeave('men')}
+                  className={`flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50 ${isMenDropdownOpen ? 'bg-gray-50' : ''}`}
+                >
+                  {translations[lng as keyof typeof translations].men}
+                  <ChevronDown className="ml-1 h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {isMenDropdownOpen && hasMenCategory() && (
               <div
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
                 style={{ left: 0, right: 0, width: '100vw' }}

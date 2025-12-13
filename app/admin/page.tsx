@@ -112,12 +112,7 @@ function AdminDashboard() {
       icon: MegaphoneIcon,
       description: 'Create and manage promotional landing pages'
     },
-    {
-      name: 'Sync Newsletter',
-      href: '/admin/newsletter/sync',
-      icon: UserGroupIcon,
-      description: 'Synchronize newsletter emails with Neon DB'
-    },
+  
   ]
 
   return (

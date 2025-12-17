@@ -4,6 +4,7 @@
  * Facebook / Meta Pixel utilities.
  * All public helpers guard against SSR and missing fbq to avoid runtime errors.
  */
+import { initMarketingCookies } from './marketingCookies';
 
 export const FACEBOOK_PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
 
@@ -31,6 +32,8 @@ function warnMissingFbq(eventName: string) {
 
 export function initFacebookPixel(): void {
   if (typeof window === 'undefined') return;
+  // Ensure first-party identifiers exist before Meta loads (or even if already loaded elsewhere)
+  initMarketingCookies();
   if (window.fbq) return;
 
   // Meta Pixel base code

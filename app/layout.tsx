@@ -3,6 +3,7 @@ import { Assistant } from 'next/font/google'
 import ClientAuthProvider from './components/ClientAuthProvider'
 import WhatsAppButton from './components/WhatsAppButton'
 import FacebookPixel from './components/FacebookPixel'
+import MarketingCookies from './components/MarketingCookies'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata } from 'next'
 
@@ -77,6 +78,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         )}
         {/* End Facebook Pixel (noscript) */}
         <ClientAuthProvider>
+          <MarketingCookies />
           <FacebookPixel />
           {children}
           <WhatsAppButton />

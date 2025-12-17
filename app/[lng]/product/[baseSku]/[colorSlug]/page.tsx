@@ -260,7 +260,7 @@ export default function ProductColorPage() {
         }
 
         // Fire Product View analytics event (Firebase)
-        if (analytics && productData && typeof analytics.logEvent === 'function') {
+        if (analytics && typeof analytics.logEvent === 'function' && productData) {
           try {
             analytics.logEvent('view_item', {
               currency: 'USD',
@@ -659,7 +659,7 @@ export default function ProductColorPage() {
     const categories = product.categories_path || [product.category || 'Unknown']
 
     // Fire Add to Cart analytics event (Firebase)
-    if (analytics) {
+    if (analytics && typeof analytics.logEvent === 'function') {
       try {
         analytics.logEvent('add_to_cart', {
           currency: 'USD',

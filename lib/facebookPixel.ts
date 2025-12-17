@@ -53,18 +53,43 @@ export function initFacebookPixel(): void {
 
   // Type assertion needed because TypeScript doesn't track the IIFE's side effects
   const fbq = (window as any).fbq as FacebookPixel | undefined;
-  if (FACEBOOK_PIXEL_ID && fbq) {
-    fbq('init', FACEBOOK_PIXEL_ID);
-    fbq('track', 'PageView');
+  const pixelId = FACEBOOK_PIXEL_ID;
+
+  if (pixelId && fbq) {
+    // Avoid duplicate init if another script (e.g. GTM) already initialized this pixel
+    const isPixelInitialized = Boolean(fbq.getState?.()?.pixels?.[pixelId]);
+    if (isPixelInitialized) return;
+
+    fbq('init', pixelId);
+
+    // Avoid double PageView (e.g., GTM also fires PageView)
+    const pageViewSentFlag = '__fbqPageViewSent';
+    const winAny = window as any;
+    if (!winAny[pageViewSentFlag]) {
+      fbq('track', 'PageView');
+      winAny[pageViewSentFlag] = true;
+    }
   } else if (!FACEBOOK_PIXEL_ID) {
     console.warn('[FacebookPixel] Missing NEXT_PUBLIC_FACEBOOK_PIXEL_ID; pixel not initialized.');
   }
 }
 
-export function fbqTrack(eventName: string, params?: Record<string, any>, isCustom: boolean = false): void {
+export function fbqTrack(
+  eventName: string,
+  params?: Record<string, any>,
+  isCustom: boolean = false,
+  attempt: number = 0
+): void {
   if (typeof window === 'undefined') return;
+
   if (!window.fbq) {
-    warnMissingFbq(eventName);
+    // Try to initialize pixel once if missing, then retry once after a short delay.
+    if (attempt === 0) {
+      initFacebookPixel();
+      setTimeout(() => fbqTrack(eventName, params, isCustom, attempt + 1), 250);
+    } else {
+      warnMissingFbq(eventName);
+    }
     return;
   }
 
@@ -160,6 +185,29 @@ export function fbqTrackInitiateCheckout(
       brand: item.brand,
       item_variant: item.item_variant,
     })),
+  });
+}
+
+export function fbqTrackViewContent(
+  item: PixelContent,
+  options: PixelEventOptions = {}
+): void {
+  if (!item?.id) return;
+
+  fbqTrack('ViewContent', {
+    content_type: 'product',
+    content_ids: [item.id],
+    contents: [
+      {
+        id: item.id,
+        quantity: item.quantity || 1,
+        item_price: item.item_price,
+        brand: item.brand,
+        item_variant: item.item_variant,
+      },
+    ],
+    currency: options.currency || 'ILS',
+    value: options.value ?? item.item_price ?? 0,
   });
 }
 

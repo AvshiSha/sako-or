@@ -15,10 +15,12 @@ export default function FacebookPixel() {
   useEffect(() => {
     // Prevent duplicate initialization in React Strict Mode
     if (hasInitialized.current) return;
-    
+
+    // Mark as initialized attempt immediately to avoid retries on errors
+    hasInitialized.current = true;
+
     try {
       initFacebookPixel();
-      hasInitialized.current = true;
     } catch (error) {
       console.warn('[FacebookPixel] initialization failed', error);
     }

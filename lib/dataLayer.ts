@@ -4,7 +4,12 @@
  * This utility provides functions for tracking e-commerce events
  * following the GA4 Enhanced Ecommerce specification.
  */
-import { fbqTrackAddToCart, fbqTrackInitiateCheckout, fbqTrackPurchase } from '@/lib/facebookPixel';
+import {
+  fbqTrackAddToCart,
+  fbqTrackInitiateCheckout,
+  fbqTrackPurchase,
+  fbqTrackViewContent,
+} from '@/lib/facebookPixel';
 
 declare global {
   interface Window {
@@ -282,6 +287,17 @@ export function trackViewItem(
       items: [item]
     }
   });
+
+  fbqTrackViewContent(
+    {
+      id: itemId,
+      quantity: options.quantity || 1,
+      item_price: numPrice,
+      brand: options.brand,
+      item_variant: options.variant,
+    },
+    { currency: options.currency, value: numPrice }
+  );
 }
 
 /**

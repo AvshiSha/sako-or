@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckoutStep, CheckoutFormData, CreateLowProfileRequest, CreateLowProfileResponse, PaymentResult } from '../types/checkout';
 import PayerDetailsForm from './PayerDetailsForm';
 import PaymentIframe from './PaymentIframe';
@@ -73,8 +73,23 @@ export default function CheckoutModal({
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const checkoutTrackedSignatureRef = useRef<string | null>(null);
 
   const isHebrew = language === 'he';
+
+  const checkoutItems = useMemo(() => {
+    if (!items?.length) return [];
+
+    return items.map((item) => ({
+      name: item.name[language as 'en' | 'he'] || 'Unknown Product',
+      id: item.sku,
+      price: item.salePrice || item.price,
+      brand: undefined, // Cart items don't have brand info
+      categories: undefined, // Cart items don't have category info
+      variant: [item.size, item.color].filter(Boolean).join('-') || undefined,
+      quantity: item.quantity,
+    }));
+  }, [items, language]);
 
   // Reset modal when opened
   useEffect(() => {
@@ -106,6 +121,21 @@ export default function CheckoutModal({
       setIsLoading(false);
     }
   }, [isOpen]);
+
+  // Track begin_checkout when the modal opens (once per cart signature)
+  useEffect(() => {
+    if (!isOpen || checkoutItems.length === 0) return;
+
+    const signature = JSON.stringify(checkoutItems);
+    if (checkoutTrackedSignatureRef.current === signature) return;
+
+    try {
+      trackBeginCheckout(checkoutItems, currency);
+      checkoutTrackedSignatureRef.current = signature;
+    } catch (dataLayerError) {
+      console.warn('Data layer tracking error:', dataLayerError);
+    }
+  }, [isOpen, checkoutItems, currency]);
 
   // Handle form data changes
   const handleFormChange = (newFormData: CheckoutFormData) => {
@@ -203,25 +233,6 @@ export default function CheckoutModal({
   // Handle payment submission
   const handlePaymentSubmit = async () => {
     if (!isFormValid) return;
-
-    // Track begin_checkout event
-    try {
-      if (items.length > 0) {
-        const checkoutItems = items.map(item => ({
-          name: item.name[language as 'en' | 'he'] || 'Unknown Product',
-          id: item.sku,
-          price: item.salePrice || item.price,
-          brand: undefined, // Cart items don't have brand info
-          categories: undefined, // Cart items don't have category info
-          variant: [item.size, item.color].filter(Boolean).join('-') || undefined,
-          quantity: item.quantity
-        }));
-        
-        trackBeginCheckout(checkoutItems, currency);
-      }
-    } catch (dataLayerError) {
-      console.warn('Data layer tracking error:', dataLayerError);
-    }
 
     setStep('CREATING_LP');
     setIsLoading(true);

@@ -7,6 +7,7 @@ declare global {
     queue?: any[];
     loaded?: boolean;
     version?: string;
+    getState?: () => { pixels?: Record<string, any> };
   }
 
   interface Window {

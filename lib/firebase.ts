@@ -1956,7 +1956,8 @@ export const authService = {
       };
       
       const now = new Date();
-      await addDoc(collection(db, 'users'), {
+      // Use Firebase Auth UID as the document ID to keep identity consistent
+      await setDoc(doc(db, 'users', user.uid), {
         ...userData,
         createdAt: now,
         updatedAt: now

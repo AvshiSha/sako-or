@@ -35,6 +35,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = user ? ADMIN_EMAILS.includes((user.email || '').toLowerCase()) : false
 
+  const syncUserToNeon = async (firebaseUser: User) => {
+    try {
+      const token = await firebaseUser.getIdToken()
+      await fetch('/api/me/sync', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+    } catch (error) {
+      // Don't block auth on sync failures
+      console.warn('Neon sync failed:', error)
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user)
@@ -44,9 +59,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe
   }, [])
 
+  // Keep Neon user record up to date on login / refresh
+  useEffect(() => {
+    if (!user) return
+    void syncUserToNeon(user)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid])
+
   const signIn = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      const userCredential = await signInWithEmailAndPassword(auth, email, password)
+      void syncUserToNeon(userCredential.user)
     } catch (error) {
       console.error('Sign in error:', error)
       throw error
@@ -55,7 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      await createUserWithEmailAndPassword(auth, email, password)
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      void syncUserToNeon(userCredential.user)
     } catch (error) {
       console.error('Sign up error:', error)
       throw error

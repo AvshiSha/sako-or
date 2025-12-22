@@ -8,8 +8,8 @@ interface PromoRibbonProps {
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
   const text = lng === 'he' 
-    ? '✨ חנוכה סייל! 7% הנחה על כל האתר! בהקלדת קופון: HANU7 ✨' 
-    : '✨ Hanukkah is here! 7% off on all the site! With coupon code: HANU7 ✨'
+    ? 'משלוחים חינם לכל הארץ בהזמנות מעל ₪300 ✨' 
+    : 'Free shipping to all Israel on orders over ₪300 ✨'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-black to-gray-900 text-white h-10 z-[60]">

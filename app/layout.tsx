@@ -13,8 +13,14 @@ export const metadata: Metadata = {
   title: "Sako Or",
   description: "Sako Or",
   icons: {
-    icon: '/favicon.ico',
-    apple: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/favicon.ico', sizes: '16x16', type: 'image/x-icon' },
+    ],
+    apple: [
+      { url: '/favicon.ico', sizes: '180x180', type: 'image/png' },
+    ],
     shortcut: '/favicon.ico',
   }
 }

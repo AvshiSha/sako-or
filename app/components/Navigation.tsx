@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, X, Heart, ShoppingBag, ChevronDown } from 'lucide-react'
+import { Menu, X, Heart, ShoppingBag, ChevronDown, User } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import SearchBar from './SearchBar'
@@ -21,7 +21,8 @@ const translations = {
     allWomen: 'All Women',
     allMen: 'All Men',
     categories: 'Categories',
-    allProducts: 'Show All'
+    allProducts: 'Show All',
+    signIn: 'Sign in'
   },
   he: {
     home: 'בית',
@@ -32,7 +33,8 @@ const translations = {
     allWomen: 'כל קולקצית הנשים',
     allMen: 'כל קולקצית הגברים',
     categories: 'קטגוריות',
-    allProducts: 'לכל המוצרים'
+    allProducts: 'לכל המוצרים',
+    signIn: 'התחברות'
   }
 }
 
@@ -478,6 +480,14 @@ export default function Navigation({ lng }: { lng: string }) {
             {/* Search Bar next to cart and favorites */}
             <SearchBar language={lng} />
             <Link
+              href={`/${lng}/signin`}
+              className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+              aria-label={translations[lng as keyof typeof translations].signIn}
+              title={translations[lng as keyof typeof translations].signIn}
+            >
+              <User className="h-5 w-5" />
+            </Link>
+            <Link
               href={`/${lng}/cart`}
               className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
             >
@@ -722,6 +732,15 @@ export default function Navigation({ lng }: { lng: string }) {
                 {/* Mobile Cart and Favorites Icons */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
                   <div className="flex items-center justify-center space-x-8">
+                    <Link
+                      href={`/${lng}/signin`}
+                      onClick={closeMobileMenu}
+                      className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-3 rounded-md hover:bg-gray-50"
+                      aria-label={translations[lng as keyof typeof translations].signIn}
+                      title={translations[lng as keyof typeof translations].signIn}
+                    >
+                      <User className="h-6 w-6" />
+                    </Link>
                     <Link
                       href={`/${lng}/favorites`}
                       onClick={closeMobileMenu}

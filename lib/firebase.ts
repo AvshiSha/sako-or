@@ -16,7 +16,11 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-WK1B8GCMT0"
 };
 
-// Initialize Firebase
+// #region agent log
+if (typeof window !== 'undefined') {
+  fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/firebase.ts:20',message:'Firebase Init',data:{projectId:firebaseConfig.projectId,authDomain:firebaseConfig.authDomain},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
+}
+// #endregion
 const app = initializeApp(firebaseConfig);
 
 // Initialize analytics only on client side
@@ -1924,18 +1928,10 @@ export const categoryService = {
 // Authentication Services
 export const authService = {
   // Sign in
-  async signIn(email: string, password: string): Promise<AppUser> {
+  async signIn(email: string, password: string): Promise<FirebaseUser> {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Get user data from Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        return { id: userDoc.id, ...userDoc.data() } as AppUser;
-      }
-      
-      throw new Error('User data not found');
+      return userCredential.user;
     } catch (error) {
       console.error('Error signing in:', error);
       throw error;
@@ -1943,27 +1939,10 @@ export const authService = {
   },
 
   // Sign up
-  async signUp(email: string, password: string, name: string): Promise<string> {
+  async signUp(email: string, password: string): Promise<FirebaseUser> {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Create user document in Firestore
-      const userData: Omit<AppUser, 'id' | 'createdAt' | 'updatedAt'> = {
-        email,
-        name,
-        role: 'USER'
-      };
-      
-      const now = new Date();
-      // Use Firebase Auth UID as the document ID to keep identity consistent
-      await setDoc(doc(db, 'users', user.uid), {
-        ...userData,
-        createdAt: now,
-        updatedAt: now
-      });
-      
-      return user.uid;
+      return userCredential.user;
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;

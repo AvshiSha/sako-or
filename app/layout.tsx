@@ -9,8 +9,8 @@ import type { Metadata } from 'next'
 const assistant = Assistant({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: "Sako Or",
-  description: "Sako Or",
+  title: "SAKO OR",
+  description: "SAKO OR",
   icons: {
     icon: '/favicon.ico',
     apple: '/favicon.ico',

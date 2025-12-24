@@ -71,153 +71,149 @@ export default function CampaignClient({
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <div className="relative w-full h-[70vh] md:h-[80vh] overflow-hidden">
-        {hasDesktopBanner || hasMobileBanner ? (
-          <>
-            {/* Desktop Video (priority) */}
-            {hasDesktopVideo && desktopVideoUrl && (
-              <div className="hidden md:block absolute inset-0">
-                <video
-                  key={desktopVideoUrl}
-                  src={desktopVideoUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  crossOrigin="anonymous"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Desktop video load error:', desktopVideoUrl, e);
-                    const target = e.target as HTMLVideoElement;
-                    console.error('Video error details:', {
-                      error: target.error,
-                      networkState: target.networkState,
-                      readyState: target.readyState
-                    });
-                  }}
-                  onLoadedData={() => {
-                    console.log('Desktop video loaded successfully:', desktopVideoUrl);
-                  }}
-                />
-              </div>
-            )}
-            {/* Desktop Image (fallback if no video) */}
-            {!hasDesktopVideo && desktopImageUrl && (
-              <div className="hidden md:block absolute inset-0">
-                <Image
-                  src={desktopImageUrl}
-                  alt=""
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="100vw"
-                />
-              </div>
-            )}
-            {/* Mobile Video (priority) */}
-            {hasMobileVideo && mobileVideoUrl && (
-              <div className="md:hidden absolute inset-0">
-                <video
-                  key={mobileVideoUrl}
-                  src={mobileVideoUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="auto"
-                  crossOrigin="anonymous"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Mobile video load error:', mobileVideoUrl, e);
-                    const target = e.target as HTMLVideoElement;
-                    console.error('Video error details:', {
-                      error: target.error,
-                      networkState: target.networkState,
-                      readyState: target.readyState
-                    });
-                  }}
-                  onLoadedData={() => {
-                    console.log('Mobile video loaded successfully:', mobileVideoUrl);
-                  }}
-                />
-              </div>
-            )}
-            {/* Mobile Image (fallback if no video) */}
-            {!hasMobileVideo && mobileImageUrl && (
-              <div className="md:hidden absolute inset-0">
-                <Image
-                  src={mobileImageUrl}
-                  alt=""
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="100vw"
-                />
-              </div>
-            )}
-            {/* Fallback: Use mobile video/image for desktop if desktop not available */}
-            {!hasDesktopVideo && !desktopImageUrl && hasMobileVideo && mobileVideoUrl && (
-              <div className="hidden md:block absolute inset-0">
-                <video
-                  src={mobileVideoUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  crossOrigin="anonymous"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-            {!hasDesktopVideo && !desktopImageUrl && !hasMobileVideo && mobileImageUrl && (
-              <div className="hidden md:block absolute inset-0">
-                <Image
-                  src={mobileImageUrl}
-                  alt={title}
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="100vw"
-                />
-              </div>
-            )}
-            {/* Fallback: Use desktop video/image for mobile if mobile not available */}
-            {!hasMobileVideo && !mobileImageUrl && hasDesktopVideo && desktopVideoUrl && (
-              <div className="md:hidden absolute inset-0">
-                <video
-                  src={desktopVideoUrl}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  crossOrigin="anonymous"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-            {!hasMobileVideo && !mobileImageUrl && !hasDesktopVideo && desktopImageUrl && (
-              <div className="md:hidden absolute inset-0">
-                <Image
-                  src={desktopImageUrl}
-                  alt={title}
-                  fill
-                  priority
-                  className="object-cover"
-                  sizes="100vw"
-                />
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 to-gray-700" />
-        )}
+      {/* Hero Section - Only render if there are videos or images */}
+      {(hasDesktopBanner || hasMobileBanner) && (
+        <div className="relative w-full h-[70vh] md:h-[80vh] overflow-hidden">
+          {/* Desktop Video (priority) */}
+          {hasDesktopVideo && desktopVideoUrl && (
+            <div className="hidden md:block absolute inset-0">
+              <video
+                key={desktopVideoUrl}
+                src={desktopVideoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                crossOrigin="anonymous"
+                className="absolute inset-0 w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('Desktop video load error:', desktopVideoUrl, e);
+                  const target = e.target as HTMLVideoElement;
+                  console.error('Video error details:', {
+                    error: target.error,
+                    networkState: target.networkState,
+                    readyState: target.readyState
+                  });
+                }}
+                onLoadedData={() => {
+                  console.log('Desktop video loaded successfully:', desktopVideoUrl);
+                }}
+              />
+            </div>
+          )}
+          {/* Desktop Image (fallback if no video) */}
+          {!hasDesktopVideo && desktopImageUrl && (
+            <div className="hidden md:block absolute inset-0">
+              <Image
+                src={desktopImageUrl}
+                alt=""
+                fill
+                priority
+                className="object-cover"
+                sizes="100vw"
+              />
+            </div>
+          )}
+          {/* Mobile Video (priority) */}
+          {hasMobileVideo && mobileVideoUrl && (
+            <div className="md:hidden absolute inset-0">
+              <video
+                key={mobileVideoUrl}
+                src={mobileVideoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                preload="auto"
+                crossOrigin="anonymous"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  console.error('Mobile video load error:', mobileVideoUrl, e);
+                  const target = e.target as HTMLVideoElement;
+                  console.error('Video error details:', {
+                    error: target.error,
+                    networkState: target.networkState,
+                    readyState: target.readyState
+                  });
+                }}
+                onLoadedData={() => {
+                  console.log('Mobile video loaded successfully:', mobileVideoUrl);
+                }}
+              />
+            </div>
+          )}
+          {/* Mobile Image (fallback if no video) */}
+          {!hasMobileVideo && mobileImageUrl && (
+            <div className="md:hidden absolute inset-0">
+              <Image
+                src={mobileImageUrl}
+                alt=""
+                fill
+                priority
+                className="object-cover"
+                sizes="100vw"
+              />
+            </div>
+          )}
+          {/* Fallback: Use mobile video/image for desktop if desktop not available */}
+          {!hasDesktopVideo && !desktopImageUrl && hasMobileVideo && mobileVideoUrl && (
+            <div className="hidden md:block absolute inset-0">
+              <video
+                src={mobileVideoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                crossOrigin="anonymous"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          {!hasDesktopVideo && !desktopImageUrl && !hasMobileVideo && mobileImageUrl && (
+            <div className="hidden md:block absolute inset-0">
+              <Image
+                src={mobileImageUrl}
+                alt={title}
+                fill
+                priority
+                className="object-cover"
+                sizes="100vw"
+              />
+            </div>
+          )}
+          {/* Fallback: Use desktop video/image for mobile if mobile not available */}
+          {!hasMobileVideo && !mobileImageUrl && hasDesktopVideo && desktopVideoUrl && (
+            <div className="md:hidden absolute inset-0">
+              <video
+                src={desktopVideoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                crossOrigin="anonymous"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          {!hasMobileVideo && !mobileImageUrl && !hasDesktopVideo && desktopImageUrl && (
+            <div className="md:hidden absolute inset-0">
+              <Image
+                src={desktopImageUrl}
+                alt={title}
+                fill
+                priority
+                className="object-cover"
+                sizes="100vw"
+              />
+            </div>
+          )}
 
-        {/* Overlay with content */}
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+          {/* Overlay with content */}
+          <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Description Section */}
       {description && (

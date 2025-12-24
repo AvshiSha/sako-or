@@ -284,6 +284,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
                 {t.exploreCollections}
               </Link>
               <Link
+                onClick={() => track('silvester_sale_hero_button')}
                 href={`/${lng}/collection/campaign?slug=silvester-sale`}
                 className="inline-block bg-white/90 hover:bg-white py-4 px-11 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
               >

@@ -131,7 +131,7 @@ const translations = {
   he: {
     brandName: 'סכו עור', // Don't fix it!!
     heroDescription:  'מבצעי סוף עונה על כל קולקציית החורף!',   //'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
-    exploreCollections:  'למבצעי סוף העונה',  //'לקולקציה החדשה',
+    exploreCollections:  'מבצעי סוף העונה',  //'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
     collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
     viewCollection: 'צפה באוסף',
@@ -270,18 +270,26 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
         <div className="relative h-full flex items-center justify-center text-center">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-5xl md:text-7xl font-light text-white mb-6 tracking-tight">
-              Sako-Or
+              SAKO OR
             </h1>
             <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10 whitespace-pre-line">
               {t.heroDescription}
             </p>
-            <Link
-              onClick={() => track('explore_collections_hero_button')}
-              href={`/${lng}/collection/women/shoes`}
-              className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
-            >
-              {t.exploreCollections}
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <Link
+                onClick={() => track('explore_collections_hero_button')}
+                href={`/${lng}/collection/women/shoes`}
+                className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
+              >
+                {t.exploreCollections}
+              </Link>
+              <Link
+                href={`/${lng}/collection/campaign?slug=silvester-sale`}
+                className="inline-block bg-white/90 hover:bg-white py-4 px-11 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
+              >
+                {lng === 'he' ? 'סילבסטר סייל' : 'Silvester Sale'}
+              </Link>
+            </div>
           </div>
         </div>
       </div>

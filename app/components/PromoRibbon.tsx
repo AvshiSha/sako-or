@@ -8,14 +8,14 @@ interface PromoRibbonProps {
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
   const text = lng === 'he' 
-    ? 'משלוחים חינם לכל הארץ בהזמנות מעל ₪300 ✨' 
-    : 'Free shipping to all Israel on orders over ₪300 ✨'
+    ? 'סילבסטר סייל 🔥 10% הנחה על מגוון פריטים, עם הקוד: SILB10' 
+    : 'Silvestr Sale 🔥 10% off on selected items, with code: SILB10'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-black to-gray-900 text-white h-10 z-[60]">
       <div className="max-w-7xl mx-auto h-full flex items-center justify-center px-4">
         <Link
-          href={`/${lng}/collection/women/shoes`}
+          href={`/${lng}/collection/campaign?slug=silvester-sale`}
           className="text-center hover:underline font-medium text-sm md:text-base"
         >
           {text}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDownIcon,
   FunnelIcon,
@@ -402,7 +402,7 @@ export default function CollectionClient({
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
 
   return (
-    <div className="min-h-screen pt-16">
+    <div className="min-h-screen pt-11">
       {/* Breadcrumb Navigation */}
       <nav className="bg-gray-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -446,7 +446,7 @@ export default function CollectionClient({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         {/* Header with Filters Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 ">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
               {getTranslatedName(selectedCategory, selectedSubcategory)}
@@ -476,7 +476,7 @@ export default function CollectionClient({
               onClick={() => setMobileFiltersOpen(true)}
               className="md:hidden inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
             >
-              <FunnelIcon className="h-4 w-4 mr-2" />
+              <FunnelIcon className="h-4 w-4 mr-1" />
               {t.filters}
               {(selectedColors.length > 0 || selectedSizes.length > 0 || priceRange.min || priceRange.max) && (
                 <span className="ml-2 bg-black text-white text-xs rounded-full px-2 py-1">
@@ -502,7 +502,7 @@ export default function CollectionClient({
         <div className="w-full">
           {sortedProducts.length === 0 ? (
             <div className="text-center py-12">
-              <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <CubeIcon className="mx-auto h-14 w-14 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">{t.noProductsFound}</h3>
               <p className="mt-1 text-sm text-gray-500">
                 {t.tryAdjusting}
@@ -742,19 +742,25 @@ export default function CollectionClient({
       </motion.div>
 
       {/* Mobile Filter Overlay */}
-      {mobileFiltersOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div 
-            className="absolute inset-0 bg-black/30"
-            onClick={() => setMobileFiltersOpen(false)}
-          />
-          
-          <motion.div
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="absolute left-0 top-0 h-full w-80 bg-white shadow-xl"
-          >
+      <AnimatePresence>
+        {mobileFiltersOpen && (
+          <div className="fixed inset-0 z-[70] md:hidden">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/30"
+              onClick={() => setMobileFiltersOpen(false)}
+            />
+            
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="absolute left-0 top-0 h-full w-80 bg-white shadow-xl z-[71]"
+            >
             <div className="flex flex-col h-full">
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
                 <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
@@ -936,7 +942,8 @@ export default function CollectionClient({
             </div>
           </motion.div>
         </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

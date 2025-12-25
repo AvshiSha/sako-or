@@ -32,6 +32,7 @@ export default function FavoritesPage() {
   const [selectedProduct, setSelectedProduct] = useState<FavoriteProduct | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
+  const [drawerProduct, setDrawerProduct] = useState<FavoriteProduct | null>(null)
   
   // Toast hook
   const { toast, hideToast } = useToast()
@@ -202,7 +203,7 @@ export default function FavoritesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-[#E1DBD7]" style={{ backgroundColor: '#E1DBD7' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
@@ -222,16 +223,16 @@ export default function FavoritesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-15" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-gray-50 pt-15" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 mt-6">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center text-center">
-            <HeartSolidIcon className="h-8 w-8 text-red-500 mr-3" />
+          <h1 className="text-3xl font-bold text-gray-900 flex items-center font-assistant gap-4">
+            <HeartSolidIcon className="h-8 w-8 text-red-500" />
             {t.title}
           </h1>
           {favorites.length > 0 && (
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600 mt-2 font-assistant">
               {favorites.length} {t.totalItems}
             </p>
           )}
@@ -241,7 +242,7 @@ export default function FavoritesPage() {
         {favorites.length === 0 ? (
           /* Empty State */
           <div className="text-center py-12">
-            <HeartIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <HeartIcon className="h-16 w-16 text-[#856D55] mx-auto mb-4 font-assistant " />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               {t.emptyTitle}
             </h2>
@@ -250,7 +251,7 @@ export default function FavoritesPage() {
             </p>
             <Link
               href={`/${lng}`}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#856D55] hover:bg-indigo-700"
             >
               {t.emptyButton}
             </Link>
@@ -361,7 +362,11 @@ export default function FavoritesPage() {
                       <button
                         onClick={() => {
                           setSelectedProduct(product)
-                          setIsQuickBuyOpen(true)
+                          setDrawerProduct(product)
+                          // Small delay to ensure component is mounted before animation starts
+                          setTimeout(() => {
+                            setIsQuickBuyOpen(true)
+                          }, 10)
                         }}
                         disabled={!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                           // Check if this color variant has any stock across all sizes
@@ -413,14 +418,18 @@ export default function FavoritesPage() {
       />
 
       {/* Quick Buy Drawer */}
-      {selectedProduct && (
+      {drawerProduct && (
         <QuickBuyDrawer
           isOpen={isQuickBuyOpen}
           onClose={() => {
             setIsQuickBuyOpen(false)
             setSelectedProduct(null)
+            // Delay clearing drawerProduct to allow close animation to complete
+            setTimeout(() => {
+              setDrawerProduct(null)
+            }, 700)
           }}
-          product={selectedProduct}
+          product={drawerProduct}
           language={lng as 'en' | 'he'}
           returnUrl={`/${lng}/favorites`}
         />

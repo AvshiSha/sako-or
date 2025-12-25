@@ -481,7 +481,7 @@ useEffect(() => {
 
 if (!isClient || loading) {
   return (
-    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-[#E1DBD7]" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
@@ -506,7 +506,7 @@ if (!isClient || loading) {
 
 function CartPageFallback() {
   return (
-    <div className="min-h-screen bg-gray-50 pt-16">
+    <div className="min-h-screen bg-[#E1DBD7] pt-16" style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse space-y-6">
           <div className="h-8 bg-gray-200 rounded w-48" />
@@ -533,14 +533,14 @@ function CartPageFallback() {
   const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-[#E1DBD7] pt-16" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 mt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center pt-1 pb-1">
-                <ShoppingBagIcon className="h-8 w-8 text-indigo-600 mr-3 pt-1" />
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center pt-1 pb-1 gap-4">
+                <ShoppingBagIcon className="h-8 w-8 text-[#856D55] pt-1" />
                 {t.title}
               </h1>
             </div>

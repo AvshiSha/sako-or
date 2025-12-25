@@ -199,10 +199,10 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
       <Dialog as="div" className="relative z-[70]" onClose={onClose}>
          <Transition.Child
            as={Fragment}
-           enter="ease-in-out duration-500"
+           enter="ease-in-out duration-700"
            enterFrom="opacity-0"
            enterTo="opacity-100"
-           leave="ease-in-out duration-500"
+           leave="ease-in-out duration-700"
            leaveFrom="opacity-100"
            leaveTo="opacity-0"
          >
@@ -214,10 +214,10 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
             <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
               <Transition.Child
                 as={Fragment}
-                enter="transform transition ease-in-out duration-500 sm:duration-700"
+                enter="transform transition ease-in-out duration-700 sm:duration-1000"
                 enterFrom="translate-x-full"
                 enterTo="translate-x-0"
-                leave="transform transition ease-in-out duration-500 sm:duration-700"
+                leave="transform transition ease-in-out duration-700 sm:duration-1000"
                 leaveFrom="translate-x-0"
                 leaveTo="translate-x-full"
               >

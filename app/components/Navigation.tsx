@@ -13,6 +13,163 @@ import { categoryService } from '@/lib/firebase'
 import { getImageUrl } from '@/lib/image-urls'
 import { motion, AnimatePresence } from "framer-motion"
 
+// Category Accordion Item Component with smooth animation
+function CategoryAccordionItem({
+  categoryId,
+  isExpanded,
+  hasChildren,
+  categoryName,
+  subcategory,
+  selectedGender,
+  lng,
+  onToggle,
+  onLinkClick,
+  translations
+}: {
+  categoryId: string
+  isExpanded: boolean
+  hasChildren: boolean
+  categoryName: string
+  subcategory: { id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> }
+  selectedGender: 'women' | 'men'
+  lng: string
+  onToggle: () => void
+  onLinkClick: () => void
+  translations: {
+    en: { allProducts: string }
+    he: { allProducts: string }
+  }
+}) {
+  const contentRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState<number | "auto">(0)
+  const [opacity, setOpacity] = useState<number>(0)
+
+  useEffect(() => {
+    const contentEl = contentRef.current
+    const innerEl = innerRef.current
+    if (!contentEl || !innerEl || !hasChildren) {
+      if (!isExpanded) {
+        setHeight(0)
+        setOpacity(0)
+      }
+      return
+    }
+
+    if (isExpanded) {
+      const startHeight = contentEl.getBoundingClientRect().height
+      const targetHeight = innerEl.scrollHeight
+
+      setOpacity(1)
+      setHeight(startHeight)
+      requestAnimationFrame(() => {
+        setHeight(targetHeight)
+      })
+    } else {
+      // Closing: Get the height we captured before state change
+      const storedHeight = contentEl.getAttribute('data-closing-height')
+      const currentHeight = storedHeight 
+        ? parseFloat(storedHeight) 
+        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0)
+      
+      if (currentHeight > 0) {
+        // Set to the captured height first to ensure smooth transition
+        setHeight(currentHeight)
+        // Remove the data attribute
+        contentEl.removeAttribute('data-closing-height')
+        // Then animate to 0 on the next frame
+        requestAnimationFrame(() => {
+          setHeight(0)
+          setOpacity(0)
+        })
+      } else {
+        setHeight(0)
+        setOpacity(0)
+      }
+    }
+  }, [isExpanded, hasChildren])
+
+  const onTransitionEnd = () => {
+    const contentEl = contentRef.current
+    if (!contentEl) return
+    
+    // After opening finishes, let height be auto for responsive content
+    if (isExpanded && height !== "auto") {
+      setHeight("auto")
+    }
+    // Clean up any remaining data attributes
+    contentEl.removeAttribute('data-closing-height')
+  }
+
+  if (!hasChildren) {
+    return (
+      <div className="border-b border-gray-200">
+        <Link
+          href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
+          onClick={onLinkClick}
+          className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
+          dir={lng === 'he' ? 'rtl' : 'ltr'}
+        >
+          <span className="text-sm uppercase tracking-wide">{categoryName}</span>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border-b border-gray-200">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
+        dir={lng === 'he' ? 'rtl' : 'ltr'}
+      >
+        <span className="text-sm uppercase tracking-wide">{categoryName}</span>
+        <ChevronDown 
+          className={`h-5 w-5 text-gray-400 transition-transform duration-300 ease-in-out ${isExpanded ? 'rotate-180' : ''}`}
+        />
+      </button>
+      <div
+        id={`category-content-${categoryId}`}
+        ref={contentRef}
+        onTransitionEnd={onTransitionEnd}
+        style={{
+          height: height === "auto" ? "auto" : `${height}px`,
+          opacity: opacity,
+          transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        className="overflow-hidden"
+      >
+        <div ref={innerRef} className="bg-gray-50 border-t border-gray-100">
+          <Link
+            href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
+            onClick={onLinkClick}
+            className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm font-medium border-b border-gray-200"
+            dir={lng === 'he' ? 'rtl' : 'ltr'}
+          >
+            {translations[lng as keyof typeof translations].allProducts}
+          </Link>
+          {subcategory.subChildren?.map((subSubCategory) => {
+            const subSubName = typeof subSubCategory.name === 'object'
+              ? (lng === 'he' ? (subSubCategory.name as any).he : (subSubCategory.name as any).en) || (subSubCategory.name as any).en
+              : subSubCategory.name
+            return (
+              <Link
+                key={subSubCategory.id}
+                href={`/${lng}/collection/${selectedGender}/${subcategory.slug}/${subSubCategory.slug}`}
+                onClick={onLinkClick}
+                className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
+                dir={lng === 'he' ? 'rtl' : 'ltr'}
+              >
+                {subSubName}
+              </Link>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -239,6 +396,18 @@ export default function Navigation({ lng }: { lng: string }) {
   }, [isMobileMenuOpen])
 
   const toggleCategory = (categoryId: string) => {
+    // If closing, capture height before state change
+    const isCurrentlyExpanded = expandedCategories.has(categoryId)
+    if (isCurrentlyExpanded) {
+      const contentElement = document.getElementById(`category-content-${categoryId}`)
+      if (contentElement) {
+        // Capture the current rendered height before closing
+        const currentHeight = contentElement.getBoundingClientRect().height
+        // Store it in a data attribute so the component can access it
+        contentElement.setAttribute('data-closing-height', currentHeight.toString())
+      }
+    }
+    
     setExpandedCategories(prev => {
       const newSet = new Set(prev)
       if (newSet.has(categoryId)) {
@@ -712,59 +881,19 @@ export default function Navigation({ lng }: { lng: string }) {
                     : subcategory.name
 
                   return (
-                    <div key={subcategory.id} className="border-b border-gray-200">
-                      {hasChildren ? (
-                        <>
-                          <button
-                            onClick={() => toggleCategory(subcategory.id)}
-                            className="w-full flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
-                            dir={lng === 'he' ? 'rtl' : 'ltr'}
-                          >
-                            <span className="text-sm uppercase tracking-wide">{categoryName}</span>
-                            <ChevronDown 
-                              className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-                            />
-                          </button>
-                          {isExpanded && (
-                            <div className="bg-gray-50 border-t border-gray-100">
-                              <Link
-                                href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-                                onClick={closeMobileMenu}
-                                className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm font-medium border-b border-gray-200"
-                                dir={lng === 'he' ? 'rtl' : 'ltr'}
-                              >
-                                {translations[lng as keyof typeof translations].allProducts}
-                              </Link>
-                              {subcategory.subChildren?.map((subSubCategory) => {
-                                const subSubName = typeof subSubCategory.name === 'object'
-                                  ? (lng === 'he' ? (subSubCategory.name as any).he : (subSubCategory.name as any).en) || (subSubCategory.name as any).en
-                                  : subSubCategory.name
-                                return (
-                                  <Link
-                                    key={subSubCategory.id}
-                                    href={`/${lng}/collection/${selectedGender}/${subcategory.slug}/${subSubCategory.slug}`}
-                                    onClick={closeMobileMenu}
-                                    className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
-                                    dir={lng === 'he' ? 'rtl' : 'ltr'}
-                                  >
-                                    {subSubName}
-                                  </Link>
-                                )
-                              })}
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <Link
-                          href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-                          onClick={closeMobileMenu}
-                          className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
-                          dir={lng === 'he' ? 'rtl' : 'ltr'}
-                        >
-                          <span className="text-sm uppercase tracking-wide">{categoryName}</span>
-                        </Link>
-                      )}
-                    </div>
+                    <CategoryAccordionItem
+                      key={subcategory.id}
+                      categoryId={subcategory.id}
+                      isExpanded={isExpanded}
+                      hasChildren={hasChildren ?? false}
+                      categoryName={categoryName}
+                      subcategory={subcategory}
+                      selectedGender={selectedGender}
+                      lng={lng}
+                      onToggle={() => toggleCategory(subcategory.id)}
+                      onLinkClick={closeMobileMenu}
+                      translations={translations}
+                    />
                   )
                 })}
 

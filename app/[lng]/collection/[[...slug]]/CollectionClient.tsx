@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -167,6 +167,38 @@ export default function CollectionClient({
   const [expandedColors, setExpandedColors] = useState(false);
   const [expandedSizes, setExpandedSizes] = useState(false);
 
+  // Refs and state for smooth dropdown animations (mobile)
+  const priceContentRef = useRef<HTMLDivElement>(null);
+  const priceInnerRef = useRef<HTMLDivElement>(null);
+  const [priceHeight, setPriceHeight] = useState<number | "auto">(0);
+  const [priceOpacity, setPriceOpacity] = useState<number>(0);
+
+  const colorsContentRef = useRef<HTMLDivElement>(null);
+  const colorsInnerRef = useRef<HTMLDivElement>(null);
+  const [colorsHeight, setColorsHeight] = useState<number | "auto">(0);
+  const [colorsOpacity, setColorsOpacity] = useState<number>(0);
+
+  const sizesContentRef = useRef<HTMLDivElement>(null);
+  const sizesInnerRef = useRef<HTMLDivElement>(null);
+  const [sizesHeight, setSizesHeight] = useState<number | "auto">(0);
+  const [sizesOpacity, setSizesOpacity] = useState<number>(0);
+
+  // Refs and state for smooth dropdown animations (desktop)
+  const desktopPriceContentRef = useRef<HTMLDivElement>(null);
+  const desktopPriceInnerRef = useRef<HTMLDivElement>(null);
+  const [desktopPriceHeight, setDesktopPriceHeight] = useState<number | "auto">(0);
+  const [desktopPriceOpacity, setDesktopPriceOpacity] = useState<number>(0);
+
+  const desktopColorsContentRef = useRef<HTMLDivElement>(null);
+  const desktopColorsInnerRef = useRef<HTMLDivElement>(null);
+  const [desktopColorsHeight, setDesktopColorsHeight] = useState<number | "auto">(0);
+  const [desktopColorsOpacity, setDesktopColorsOpacity] = useState<number>(0);
+
+  const desktopSizesContentRef = useRef<HTMLDivElement>(null);
+  const desktopSizesInnerRef = useRef<HTMLDivElement>(null);
+  const [desktopSizesHeight, setDesktopSizesHeight] = useState<number | "auto">(0);
+  const [desktopSizesOpacity, setDesktopSizesOpacity] = useState<number>(0);
+
   // Update URL when filters change
   const updateURL = (newFilters: {
     colors?: string[];
@@ -282,6 +314,248 @@ export default function CollectionClient({
       sort: 'relevance' 
     });
   };
+
+  // Animation effects for smooth dropdown transitions
+  useEffect(() => {
+    const contentEl = priceContentRef.current;
+    const innerEl = priceInnerRef.current;
+    if (!contentEl || !innerEl) {
+      if (!expandedPrice) {
+        setPriceHeight(0);
+        setPriceOpacity(0);
+      }
+      return;
+    }
+
+    if (expandedPrice) {
+      const startHeight = contentEl.getBoundingClientRect().height;
+      const targetHeight = innerEl.scrollHeight;
+
+      setPriceOpacity(1);
+      setPriceHeight(startHeight);
+      requestAnimationFrame(() => {
+        setPriceHeight(targetHeight);
+      });
+    } else {
+      const storedHeight = contentEl.getAttribute('data-closing-height');
+      const currentHeight = storedHeight 
+        ? parseFloat(storedHeight) 
+        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
+      
+      if (currentHeight > 0) {
+        setPriceHeight(currentHeight);
+        contentEl.removeAttribute('data-closing-height');
+        requestAnimationFrame(() => {
+          setPriceHeight(0);
+          setPriceOpacity(0);
+        });
+      } else {
+        setPriceHeight(0);
+        setPriceOpacity(0);
+      }
+    }
+  }, [expandedPrice]);
+
+  useEffect(() => {
+    const contentEl = colorsContentRef.current;
+    const innerEl = colorsInnerRef.current;
+    if (!contentEl || !innerEl) {
+      if (!expandedColors) {
+        setColorsHeight(0);
+        setColorsOpacity(0);
+      }
+      return;
+    }
+
+    if (expandedColors) {
+      const startHeight = contentEl.getBoundingClientRect().height;
+      const targetHeight = innerEl.scrollHeight;
+
+      setColorsOpacity(1);
+      setColorsHeight(startHeight);
+      requestAnimationFrame(() => {
+        setColorsHeight(targetHeight);
+      });
+    } else {
+      const storedHeight = contentEl.getAttribute('data-closing-height');
+      const currentHeight = storedHeight 
+        ? parseFloat(storedHeight) 
+        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
+      
+      if (currentHeight > 0) {
+        setColorsHeight(currentHeight);
+        contentEl.removeAttribute('data-closing-height');
+        requestAnimationFrame(() => {
+          setColorsHeight(0);
+          setColorsOpacity(0);
+        });
+      } else {
+        setColorsHeight(0);
+        setColorsOpacity(0);
+      }
+    }
+  }, [expandedColors]);
+
+  useEffect(() => {
+    const contentEl = sizesContentRef.current;
+    const innerEl = sizesInnerRef.current;
+    if (!contentEl || !innerEl) {
+      if (!expandedSizes) {
+        setSizesHeight(0);
+        setSizesOpacity(0);
+      }
+      return;
+    }
+
+    if (expandedSizes) {
+      const startHeight = contentEl.getBoundingClientRect().height;
+      const targetHeight = innerEl.scrollHeight;
+
+      setSizesOpacity(1);
+      setSizesHeight(startHeight);
+      requestAnimationFrame(() => {
+        setSizesHeight(targetHeight);
+      });
+    } else {
+      const storedHeight = contentEl.getAttribute('data-closing-height');
+      const currentHeight = storedHeight 
+        ? parseFloat(storedHeight) 
+        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
+      
+      if (currentHeight > 0) {
+        setSizesHeight(currentHeight);
+        contentEl.removeAttribute('data-closing-height');
+        requestAnimationFrame(() => {
+          setSizesHeight(0);
+          setSizesOpacity(0);
+        });
+      } else {
+        setSizesHeight(0);
+        setSizesOpacity(0);
+      }
+    }
+  }, [expandedSizes]);
+
+  // Desktop filter animation effects
+  useEffect(() => {
+    const contentEl = desktopPriceContentRef.current;
+    const innerEl = desktopPriceInnerRef.current;
+    if (!contentEl || !innerEl) {
+      if (!expandedPrice) {
+        setDesktopPriceHeight(0);
+        setDesktopPriceOpacity(0);
+      }
+      return;
+    }
+
+    if (expandedPrice) {
+      const startHeight = contentEl.getBoundingClientRect().height;
+      const targetHeight = innerEl.scrollHeight;
+
+      setDesktopPriceOpacity(1);
+      setDesktopPriceHeight(startHeight);
+      requestAnimationFrame(() => {
+        setDesktopPriceHeight(targetHeight);
+      });
+    } else {
+      const storedHeight = contentEl.getAttribute('data-closing-height');
+      const currentHeight = storedHeight 
+        ? parseFloat(storedHeight) 
+        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
+      
+      if (currentHeight > 0) {
+        setDesktopPriceHeight(currentHeight);
+        contentEl.removeAttribute('data-closing-height');
+        requestAnimationFrame(() => {
+          setDesktopPriceHeight(0);
+          setDesktopPriceOpacity(0);
+        });
+      } else {
+        setDesktopPriceHeight(0);
+        setDesktopPriceOpacity(0);
+      }
+    }
+  }, [expandedPrice]);
+
+  useEffect(() => {
+    const contentEl = desktopColorsContentRef.current;
+    const innerEl = desktopColorsInnerRef.current;
+    if (!contentEl || !innerEl) {
+      if (!expandedColors) {
+        setDesktopColorsHeight(0);
+        setDesktopColorsOpacity(0);
+      }
+      return;
+    }
+
+    if (expandedColors) {
+      const startHeight = contentEl.getBoundingClientRect().height;
+      const targetHeight = innerEl.scrollHeight;
+
+      setDesktopColorsOpacity(1);
+      setDesktopColorsHeight(startHeight);
+      requestAnimationFrame(() => {
+        setDesktopColorsHeight(targetHeight);
+      });
+    } else {
+      const storedHeight = contentEl.getAttribute('data-closing-height');
+      const currentHeight = storedHeight 
+        ? parseFloat(storedHeight) 
+        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
+      
+      if (currentHeight > 0) {
+        setDesktopColorsHeight(currentHeight);
+        contentEl.removeAttribute('data-closing-height');
+        requestAnimationFrame(() => {
+          setDesktopColorsHeight(0);
+          setDesktopColorsOpacity(0);
+        });
+      } else {
+        setDesktopColorsHeight(0);
+        setDesktopColorsOpacity(0);
+      }
+    }
+  }, [expandedColors]);
+
+  useEffect(() => {
+    const contentEl = desktopSizesContentRef.current;
+    const innerEl = desktopSizesInnerRef.current;
+    if (!contentEl || !innerEl) {
+      if (!expandedSizes) {
+        setDesktopSizesHeight(0);
+        setDesktopSizesOpacity(0);
+      }
+      return;
+    }
+
+    if (expandedSizes) {
+      const startHeight = contentEl.getBoundingClientRect().height;
+      const targetHeight = innerEl.scrollHeight;
+
+      setDesktopSizesOpacity(1);
+      setDesktopSizesHeight(startHeight);
+      requestAnimationFrame(() => {
+        setDesktopSizesHeight(targetHeight);
+      });
+    } else {
+      const storedHeight = contentEl.getAttribute('data-closing-height');
+      const currentHeight = storedHeight 
+        ? parseFloat(storedHeight) 
+        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
+      
+      if (currentHeight > 0) {
+        setDesktopSizesHeight(currentHeight);
+        contentEl.removeAttribute('data-closing-height');
+        requestAnimationFrame(() => {
+          setDesktopSizesHeight(0);
+          setDesktopSizesOpacity(0);
+        });
+      } else {
+        setDesktopSizesHeight(0);
+        setDesktopSizesOpacity(0);
+      }
+    }
+  }, [expandedSizes]);
 
   // Apply sorting to products (products are already filtered server-side)
   const sortedProducts = useMemo(() => {
@@ -402,7 +676,7 @@ export default function CollectionClient({
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
 
   return (
-    <div className="min-h-screen pt-11">
+    <div className="min-h-screen pt-11 bg-[#E1DBD7]">
       {/* Breadcrumb Navigation */}
       <nav className="bg-gray-50 border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -572,19 +846,45 @@ export default function CollectionClient({
             {/* Price Filter */}
             <div className="mb-6 border border-gray-200 rounded-lg">
               <button
-                onClick={() => setExpandedPrice(!expandedPrice)}
+                onClick={() => {
+                  const isCurrentlyExpanded = expandedPrice;
+                  if (isCurrentlyExpanded) {
+                    const contentElement = desktopPriceContentRef.current;
+                    if (contentElement) {
+                      const currentHeight = contentElement.getBoundingClientRect().height;
+                      contentElement.setAttribute('data-closing-height', currentHeight.toString());
+                    }
+                  }
+                  setExpandedPrice(!expandedPrice);
+                }}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
               >
                 <h3 className="text-sm font-medium text-black">{t.price}</h3>
                 <ChevronDownIcon 
-                  className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                  className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
                     expandedPrice ? 'rotate-180' : ''
                   }`} 
                 />
               </button>
               
-              {expandedPrice && (
-                <div className="px-4 pb-4 border-t border-gray-100">
+              <div
+                ref={desktopPriceContentRef}
+                onTransitionEnd={() => {
+                  const contentEl = desktopPriceContentRef.current;
+                  if (!contentEl) return;
+                  if (expandedPrice && desktopPriceHeight !== "auto") {
+                    setDesktopPriceHeight("auto");
+                  }
+                  contentEl.removeAttribute('data-closing-height');
+                }}
+                style={{
+                  height: desktopPriceHeight === "auto" ? "auto" : `${desktopPriceHeight}px`,
+                  opacity: desktopPriceOpacity,
+                  transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                className="overflow-hidden"
+              >
+                <div ref={desktopPriceInnerRef} className="px-4 pb-4 border-t border-gray-100">
                   <div className="space-y-3 pt-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -612,25 +912,51 @@ export default function CollectionClient({
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Colors */}
             <div className="mb-6 border border-gray-200 rounded-lg">
               <button
-                onClick={() => setExpandedColors(!expandedColors)}
+                onClick={() => {
+                  const isCurrentlyExpanded = expandedColors;
+                  if (isCurrentlyExpanded) {
+                    const contentElement = desktopColorsContentRef.current;
+                    if (contentElement) {
+                      const currentHeight = contentElement.getBoundingClientRect().height;
+                      contentElement.setAttribute('data-closing-height', currentHeight.toString());
+                    }
+                  }
+                  setExpandedColors(!expandedColors);
+                }}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
               >
                 <h3 className="text-sm font-medium text-black">{t.colors}</h3>
                 <ChevronDownIcon 
-                  className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                  className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
                     expandedColors ? 'rotate-180' : ''
                   }`} 
                 />
               </button>
               
-              {expandedColors && (
-                <div className="px-4 pb-4 border-t border-gray-100">
+              <div
+                ref={desktopColorsContentRef}
+                onTransitionEnd={() => {
+                  const contentEl = desktopColorsContentRef.current;
+                  if (!contentEl) return;
+                  if (expandedColors && desktopColorsHeight !== "auto") {
+                    setDesktopColorsHeight("auto");
+                  }
+                  contentEl.removeAttribute('data-closing-height');
+                }}
+                style={{
+                  height: desktopColorsHeight === "auto" ? "auto" : `${desktopColorsHeight}px`,
+                  opacity: desktopColorsOpacity,
+                  transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                className="overflow-hidden"
+              >
+                <div ref={desktopColorsInnerRef} className="px-4 pb-4 border-t border-gray-100">
                   <div className="space-y-2 pt-3">
                     {allColors.map((color) => (
                       <button
@@ -651,25 +977,51 @@ export default function CollectionClient({
                     ))}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Sizes */}
             <div className="mb-6 border border-gray-200 rounded-lg">
               <button
-                onClick={() => setExpandedSizes(!expandedSizes)}
+                onClick={() => {
+                  const isCurrentlyExpanded = expandedSizes;
+                  if (isCurrentlyExpanded) {
+                    const contentElement = desktopSizesContentRef.current;
+                    if (contentElement) {
+                      const currentHeight = contentElement.getBoundingClientRect().height;
+                      contentElement.setAttribute('data-closing-height', currentHeight.toString());
+                    }
+                  }
+                  setExpandedSizes(!expandedSizes);
+                }}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
               >
                 <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
                 <ChevronDownIcon 
-                  className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                  className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
                     expandedSizes ? 'rotate-180' : ''
                   }`} 
                 />
               </button>
               
-              {expandedSizes && (
-                <div className="px-4 pb-4 border-t border-gray-100">
+              <div
+                ref={desktopSizesContentRef}
+                onTransitionEnd={() => {
+                  const contentEl = desktopSizesContentRef.current;
+                  if (!contentEl) return;
+                  if (expandedSizes && desktopSizesHeight !== "auto") {
+                    setDesktopSizesHeight("auto");
+                  }
+                  contentEl.removeAttribute('data-closing-height');
+                }}
+                style={{
+                  height: desktopSizesHeight === "auto" ? "auto" : `${desktopSizesHeight}px`,
+                  opacity: desktopSizesOpacity,
+                  transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                className="overflow-hidden"
+              >
+                <div ref={desktopSizesInnerRef} className="px-4 pb-4 border-t border-gray-100">
                   <div className="space-y-4 pt-3">
                     {numericSizes.length > 0 && (
                       <div>
@@ -714,7 +1066,7 @@ export default function CollectionClient({
                     )}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Clear Filters Button */}
@@ -776,19 +1128,45 @@ export default function CollectionClient({
                 {/* Same filter content as desktop */}
                 <div className="mb-6 border border-gray-200 rounded-lg">
                   <button
-                    onClick={() => setExpandedPrice(!expandedPrice)}
+                    onClick={() => {
+                      const isCurrentlyExpanded = expandedPrice;
+                      if (isCurrentlyExpanded) {
+                        const contentElement = priceContentRef.current;
+                        if (contentElement) {
+                          const currentHeight = contentElement.getBoundingClientRect().height;
+                          contentElement.setAttribute('data-closing-height', currentHeight.toString());
+                        }
+                      }
+                      setExpandedPrice(!expandedPrice);
+                    }}
                     className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
                   >
                     <h3 className="text-sm font-medium text-black">{t.price}</h3>
                     <ChevronDownIcon 
-                      className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                      className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
                         expandedPrice ? 'rotate-180' : ''
                       }`} 
                     />
                   </button>
                   
-                  {expandedPrice && (
-                    <div className="px-4 pb-4 border-t border-gray-100">
+                  <div
+                    ref={priceContentRef}
+                    onTransitionEnd={() => {
+                      const contentEl = priceContentRef.current;
+                      if (!contentEl) return;
+                      if (expandedPrice && priceHeight !== "auto") {
+                        setPriceHeight("auto");
+                      }
+                      contentEl.removeAttribute('data-closing-height');
+                    }}
+                    style={{
+                      height: priceHeight === "auto" ? "auto" : `${priceHeight}px`,
+                      opacity: priceOpacity,
+                      transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                    className="overflow-hidden"
+                  >
+                    <div ref={priceInnerRef} className="px-4 pb-4 border-t border-gray-100">
                       <div className="space-y-3 pt-3">
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -816,24 +1194,50 @@ export default function CollectionClient({
                         </div>
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="mb-6 border border-gray-200 rounded-lg">
                   <button
-                    onClick={() => setExpandedColors(!expandedColors)}
+                    onClick={() => {
+                      const isCurrentlyExpanded = expandedColors;
+                      if (isCurrentlyExpanded) {
+                        const contentElement = colorsContentRef.current;
+                        if (contentElement) {
+                          const currentHeight = contentElement.getBoundingClientRect().height;
+                          contentElement.setAttribute('data-closing-height', currentHeight.toString());
+                        }
+                      }
+                      setExpandedColors(!expandedColors);
+                    }}
                     className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
                   >
                     <h3 className="text-sm font-medium text-black">{t.colors}</h3>
                     <ChevronDownIcon 
-                      className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                      className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
                         expandedColors ? 'rotate-180' : ''
                       }`} 
                     />
                   </button>
                   
-                  {expandedColors && (
-                    <div className="px-4 pb-4 border-t border-gray-100">
+                  <div
+                    ref={colorsContentRef}
+                    onTransitionEnd={() => {
+                      const contentEl = colorsContentRef.current;
+                      if (!contentEl) return;
+                      if (expandedColors && colorsHeight !== "auto") {
+                        setColorsHeight("auto");
+                      }
+                      contentEl.removeAttribute('data-closing-height');
+                    }}
+                    style={{
+                      height: colorsHeight === "auto" ? "auto" : `${colorsHeight}px`,
+                      opacity: colorsOpacity,
+                      transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                    className="overflow-hidden"
+                  >
+                    <div ref={colorsInnerRef} className="px-4 pb-4 border-t border-gray-100">
                       <div className="space-y-2 pt-3">
                         {allColors.map((color) => (
                           <button
@@ -854,24 +1258,50 @@ export default function CollectionClient({
                         ))}
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="mb-6 border border-gray-200 rounded-lg">
                   <button
-                    onClick={() => setExpandedSizes(!expandedSizes)}
+                    onClick={() => {
+                      const isCurrentlyExpanded = expandedSizes;
+                      if (isCurrentlyExpanded) {
+                        const contentElement = sizesContentRef.current;
+                        if (contentElement) {
+                          const currentHeight = contentElement.getBoundingClientRect().height;
+                          contentElement.setAttribute('data-closing-height', currentHeight.toString());
+                        }
+                      }
+                      setExpandedSizes(!expandedSizes);
+                    }}
                     className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
                   >
                     <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
                     <ChevronDownIcon 
-                      className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
+                      className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
                         expandedSizes ? 'rotate-180' : ''
                       }`} 
                     />
                   </button>
                   
-                  {expandedSizes && (
-                    <div className="px-4 pb-4 border-t border-gray-100">
+                  <div
+                    ref={sizesContentRef}
+                    onTransitionEnd={() => {
+                      const contentEl = sizesContentRef.current;
+                      if (!contentEl) return;
+                      if (expandedSizes && sizesHeight !== "auto") {
+                        setSizesHeight("auto");
+                      }
+                      contentEl.removeAttribute('data-closing-height');
+                    }}
+                    style={{
+                      height: sizesHeight === "auto" ? "auto" : `${sizesHeight}px`,
+                      opacity: sizesOpacity,
+                      transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                    className="overflow-hidden"
+                  >
+                    <div ref={sizesInnerRef} className="px-4 pb-4 border-t border-gray-100">
                       <div className="space-y-4 pt-3">
                         {numericSizes.length > 0 && (
                           <div>
@@ -916,7 +1346,7 @@ export default function CollectionClient({
                         )}
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {(selectedColors.length > 0 || selectedSizes.length > 0 || priceRange.min || priceRange.max) && (

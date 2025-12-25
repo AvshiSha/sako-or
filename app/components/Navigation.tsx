@@ -1,13 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { Menu, X, Heart, ShoppingBag, ChevronDown } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import SearchBar from './SearchBar'
 import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { categoryService } from '@/lib/firebase'
+import { getImageUrl } from '@/lib/image-urls'
 
 
 // Hardcoded translations for build-time rendering
@@ -50,9 +53,20 @@ export default function Navigation({ lng }: { lng: string }) {
   // Mobile navigation state
   const [mobileNavLevel, setMobileNavLevel] = useState<'main' | 'women' | 'men' | 'women-sub' | 'men-sub'>('main')
   const [selectedMobileCategory, setSelectedMobileCategory] = useState<{ id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> } | null>(null)
+  const [selectedGender, setSelectedGender] = useState<'women' | 'men'>('women')
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
   const { items } = useCart()
   const { favorites } = useFavorites()
+  const pathname = usePathname()
+
+  // Close menu on route change
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      closeMobileMenu()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname])
 
   // Helper functions to check if categories exist
   const hasWomenCategory = () => {
@@ -195,6 +209,44 @@ export default function Navigation({ lng }: { lng: string }) {
     setIsMobileMenuOpen(false)
     setMobileNavLevel('main')
     setSelectedMobileCategory(null)
+    setExpandedCategories(new Set())
+    // Unlock body scroll
+    document.body.style.overflow = ''
+  }
+
+  // Lock/unlock body scroll when menu opens/closes
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isMobileMenuOpen])
+
+  // Handle ESC key to close menu
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isMobileMenuOpen) {
+        closeMobileMenu()
+      }
+    }
+    document.addEventListener('keydown', handleEsc)
+    return () => document.removeEventListener('keydown', handleEsc)
+  }, [isMobileMenuOpen])
+
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId)
+      } else {
+        newSet.add(categoryId)
+      }
+      return newSet
+    })
   }
 
   const navigateToLevel = (level: 'main' | 'women' | 'men' | 'women-sub' | 'men-sub', category?: { id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> }) => {
@@ -306,15 +358,40 @@ export default function Navigation({ lng }: { lng: string }) {
           className="flex justify-between items-center h-16"
           onMouseLeave={handleNavigationMouseLeave}
         >
-          {/* Logo */}
-          <div className="flex items-center">
+          {/* Desktop: Logo on left */}
+          <div className="hidden md:flex items-center">
             <Link href={`/${lng}`} className="text-1xl font-bold text-gray-900">
               SAKO OR
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          {/* Mobile Layout: Three-column layout */}
+          {/* Left: Menu + Search */}
+          <div className="flex items-center flex-1 md:hidden">
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="text-gray-700 hover:text-gray-900 p-2"
+              aria-label="Menu"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+
+            {/* Search Bar */}
+            <div className={lng === 'he' ? 'mr-2' : 'ml-2'}>
+              <SearchBar language={lng} />
+            </div>
+          </div>
+
+          {/* Center: Logo (Mobile only, positioned more to the left) */}
+          <div className="flex-1 flex justify-start items-center md:hidden ml-1">
+            <Link href={`/${lng}`}>
+              <span className="text-xl font-bold text-gray-900">SAKO OR</span>
+            </Link>
+          </div>
+
+          {/* Desktop Navigation - Center */}
+          <div className="hidden md:flex items-center space-x-8 flex-1 justify-center ml-8">
             <Link
               href={`/${lng}`}
               className="text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
@@ -486,287 +563,211 @@ export default function Navigation({ lng }: { lng: string }) {
           </div>
 
 
-          {/* Right side icons */}
-          <div className="flex items-center space-x-4">
-            {/* Search Bar next to cart and favorites */}
-            <SearchBar language={lng} />
-            <Link
-              href={`/${lng}/cart`}
-              className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-            >
-              <ShoppingBag className="h-5 w-5" />
-              {items.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
-                  {items.length}
-                </span>
-              )}
-            </Link>
+          {/* Right side icons - Desktop and Mobile */}
+          <div className="flex items-center">
+            {/* Desktop: Search Bar, Cart, Favorites, Language Switcher */}
+            <div className="hidden md:flex items-center space-x-4">
+              <SearchBar language={lng} />
+              <Link
+                href={`/${lng}/cart`}
+                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                {items.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
+                    {items.length}
+                  </span>
+                )}
+              </Link>
 
-            <Link
-              href={`/${lng}/favorites`}
-              className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-            >
-              <Heart className="h-5 w-5" />
-              {favorites.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
-                  {favorites.length}
-                </span>
-              )}
-            </Link>
+              <Link
+                href={`/${lng}/favorites`}
+                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+              >
+                <Heart className="h-5 w-5" />
+                {favorites.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
+                    {favorites.length}
+                  </span>
+                )}
+              </Link>
 
-            <DropdownLanguageSwitcher currentLanguage={lng} />
+              <DropdownLanguageSwitcher currentLanguage={lng} />
+            </div>
 
-            {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden text-gray-700 hover:text-gray-900"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
+            {/* Mobile: Favorites and Cart (right side) */}
+            <div className="flex items-center space-x-2 md:hidden">
+              <Link
+                href={`/${lng}/favorites`}
+                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"
+              >
+                <Heart className="h-5 w-5" />
+                {favorites.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold z-10">
+                    {favorites.length}
+                  </span>
+                )}
+              </Link>
+
+              <Link
+                href={`/${lng}/cart`}
+                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"
+              >
+                <ShoppingBag className="h-5 w-5" />
+                {items.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold z-10">
+                    {items.length}
+                  </span>
+                )}
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Menu - New Dropdown Design */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-[70] md:hidden">
-          <div className="fixed inset-0 bg-black/20 bg-opacity-50" onClick={closeMobileMenu} />
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/40 z-[60] md:hidden transition-opacity duration-300"
+            onClick={closeMobileMenu}
+            style={{
+              opacity: isMobileMenuOpen ? 1 : 0,
+            }}
+          />
 
-          <div className="fixed top-0 left-0 h-full w-80 bg-white shadow-xl z-[70]">
-            <div className="pt-10">
-              <div className="flex items-center justify-between p-2.5 border-b">
-                <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
-              <button
-                onClick={closeMobileMenu}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            <div
-              ref={drawerRef}
-              className="overflow-y-auto h-full pb-20"
-            >
-              <div className="p-1">
-                {/* Header with back button (if not on main level) */}
-                {mobileNavLevel !== 'main' && (
-                  <div className="flex items-center mb-1 pb-1 border-b border-gray-200">
-                    <button
-                      onClick={navigateBack}
-                      className="flex items-center text-gray-600 hover:text-gray-900 mr-3 p-2 rounded-md hover:bg-gray-50"
-                    >
-                      <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-
-                    </button>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {mobileNavLevel === 'women' && translations[lng as keyof typeof translations].women}
-                      {mobileNavLevel === 'men' && translations[lng as keyof typeof translations].men}
-                      {mobileNavLevel === 'women-sub' && (typeof selectedMobileCategory?.name === 'object' ? (selectedMobileCategory.name as any).en : selectedMobileCategory?.name)}
-                      {mobileNavLevel === 'men-sub' && (typeof selectedMobileCategory?.name === 'object' ? (selectedMobileCategory.name as any).en : selectedMobileCategory?.name)}
-                    </h3>
-                  </div>
+          {/* Dropdown Panel - Anchored to bottom of nav bar */}
+          <div 
+            className="fixed left-0 right-0 bg-white shadow-2xl z-[71] md:hidden overflow-hidden"
+            style={{
+              top: '102px', // Below nav bar (top-10 = 40px + h-16 = 64px + 2px for border)
+              maxHeight: 'calc(104vh - 102px)',
+              transform: isMobileMenuOpen ? 'translateY(0)' : 'translateY(-20px)',
+              opacity: isMobileMenuOpen ? 1 : 0,
+              transition: 'opacity 250ms ease, transform 250ms ease',
+            }}
+          >
+            {/* MEN/WOMEN Toggle */}
+            <div className="border-b border-gray-200 px-4 py-3">
+              <div className="flex rounded-lg bg-gray-100 p-1" dir={lng === 'he' ? 'rtl' : 'ltr'}>
+                <button
+                  onClick={() => {
+                    setSelectedGender('women')
+                    setExpandedCategories(new Set())
+                  }}
+                  className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
+                    selectedGender === 'women'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {translations[lng as keyof typeof translations].women.toUpperCase()}
+                </button>
+                {hasMenCategory() && (
+                  <button
+                    onClick={() => {
+                      setSelectedGender('men')
+                      setExpandedCategories(new Set())
+                    }}
+                    className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
+                      selectedGender === 'men'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {translations[lng as keyof typeof translations].men.toUpperCase()}
+                  </button>
                 )}
-
-                {/* Main Level */}
-                {mobileNavLevel === 'main' && (
-                  <>
-                    <Link
-                      href={`/${lng}`}
-                      onClick={closeMobileMenu}
-                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100"
-                    >
-                      {translations[lng as keyof typeof translations].home}
-                    </Link>
-
-                    <button
-                      onClick={() => navigateToLevel('women')}
-                      className="block w-full text-left py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
-                    >
-                      {translations[lng as keyof typeof translations].women}
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-
-
-                    {hasMenCategory() && (
-                      <button
-                        onClick={() => navigateToLevel('men')}
-                        className="block w-full text-left py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium flex items-center justify-between"
-                      >
-                        {translations[lng as keyof typeof translations].men}
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                    )}
-
-                    <Link
-                      href={`/${lng}/about`}
-                      onClick={closeMobileMenu}
-                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100"
-                    >
-                      {translations[lng as keyof typeof translations].about}
-                    </Link>
-
-                    <Link
-                      href={`/${lng}/contact`}
-                      onClick={closeMobileMenu}
-                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100"
-                    >
-                      {translations[lng as keyof typeof translations].contact}
-                    </Link>
-                  </>
-                )}
-
-                {/* Women Level */}
-                {mobileNavLevel === 'women' && (
-                  <>
-                    <Link
-                      href={`/${lng}/collection/women`}
-                      onClick={closeMobileMenu}
-                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium"
-                    >
-                      {translations[lng as keyof typeof translations].allWomen}
-                    </Link>
-
-                    {womenSubcategories.map((subcategory) => (
-                      <div key={subcategory.id}>
-                        {subcategory.subChildren && subcategory.subChildren.length > 0 ? (
-                          <button
-                            onClick={() => navigateToLevel('women-sub', subcategory)}
-                            className="block w-full text-left py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
-                          >
-                            {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        ) : (
-                          <Link
-                            href={`/${lng}/collection/women/${subcategory.slug}`}
-                            onClick={closeMobileMenu}
-                            className="block py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100"
-                          >
-                            {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
-                          </Link>
-                        )}
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Men Level - Only show if Men category exists */}
-                {mobileNavLevel === 'men' && hasMenCategory() && (
-                  <>
-                    <Link
-                      href={`/${lng}/collection/men`}
-                      onClick={closeMobileMenu}
-                      className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium"
-                    >
-                      {translations[lng as keyof typeof translations].allMen}
-                    </Link>
-
-                    {menSubcategories.map((subcategory) => (
-                      <div key={subcategory.id}>
-                        {subcategory.subChildren && subcategory.subChildren.length > 0 ? (
-                          <button
-                            onClick={() => navigateToLevel('men-sub', subcategory)}
-                            className="block w-full text-left py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100 flex items-center justify-between"
-                          >
-                            {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        ) : (
-                          <Link
-                            href={`/${lng}/collection/men/${subcategory.slug}`}
-                            onClick={closeMobileMenu}
-                            className="block py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100"
-                          >
-                            {typeof subcategory.name === 'object' ? (subcategory.name as any).en : subcategory.name}
-                          </Link>
-                        )}
-                      </div>
-                    ))}
-                  </>
-                )}
-
-                {/* Women Sub-sub-categories Level */}
-                {mobileNavLevel === 'women-sub' && selectedMobileCategory && (
-                  <>
-                    <Link href={`/${lng}/collection/women/${selectedMobileCategory.slug}`} onClick={closeMobileMenu} className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium">{translations[lng as keyof typeof translations].allProducts}</Link>
-
-                    {selectedMobileCategory.subChildren?.map((subSubCategory) => (
-                      <Link
-                        key={subSubCategory.id}
-                        href={`/${lng}/collection/women/${selectedMobileCategory.slug}/${subSubCategory.slug}`}
-                        onClick={closeMobileMenu}
-                        className="block py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100"
-                      >
-                        {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
-                      </Link>
-                    ))}
-                  </>
-                )}
-
-                {/* Men Sub-sub-categories Level - Only show if Men category exists */}
-                {mobileNavLevel === 'men-sub' && selectedMobileCategory && hasMenCategory() && (
-                  <>
-                    <Link href={`/${lng}/collection/men/${selectedMobileCategory.slug}`} onClick={closeMobileMenu} className="block py-2 text-gray-700 hover:text-gray-900 border-b border-gray-100 font-medium">{translations[lng as keyof typeof translations].allProducts}</Link>
-
-                    {selectedMobileCategory.subChildren?.map((subSubCategory) => (
-                      <Link
-                        key={subSubCategory.id}
-                        href={`/${lng}/collection/men/${selectedMobileCategory.slug}/${subSubCategory.slug}`}
-                        onClick={closeMobileMenu}
-                        className="block py-2 text-gray-600 hover:text-gray-900 border-b border-gray-100"
-                      >
-                        {typeof subSubCategory.name === 'object' ? (subSubCategory.name as any).en : subSubCategory.name}
-                      </Link>
-                    ))}
-                  </>
-                )}
-
-                {/* Mobile Cart and Favorites Icons */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 bg-white">
-                  <div className="flex items-center justify-center space-x-8">
-                    <Link
-                      href={`/${lng}/favorites`}
-                      onClick={closeMobileMenu}
-                      className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-3 rounded-md hover:bg-gray-50"
-                    >
-                      <Heart className="h-6 w-6" />
-                      {favorites.length > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
-                          {favorites.length}
-                        </span>
-                      )}
-                    </Link>
-
-                    <Link
-                      href={`/${lng}/cart`}
-                      onClick={closeMobileMenu}
-                      className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-3 rounded-md hover:bg-gray-50"
-                    >
-                      <ShoppingBag className="h-6 w-6" />
-                      {items.length > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
-                          {items.length}
-                        </span>
-                      )}
-                    </Link>
-                  </div>
-                </div>
               </div>
             </div>
+
+            {/* Categories List */}
+            <div
+              ref={drawerRef}
+              className="overflow-y-auto"
+              style={{ maxHeight: 'calc(100vh - 200px)' }}
+            >
+              <div className="px-4 py-2">
+                {/* All Products Link */}
+                <Link
+                  href={`/${lng}/collection/${selectedGender}`}
+                  onClick={closeMobileMenu}
+                  className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-900 font-medium border-b border-gray-200 uppercase text-sm tracking-wide"
+                  dir={lng === 'he' ? 'rtl' : 'ltr'}
+                >
+                  <span>{selectedGender === 'women' ? translations[lng as keyof typeof translations].allWomen : translations[lng as keyof typeof translations].allMen}</span>
+                </Link>
+
+                {/* Categories List with Accordion */}
+                {(selectedGender === 'women' ? womenSubcategories : menSubcategories).map((subcategory) => {
+                  const hasChildren = subcategory.subChildren && subcategory.subChildren.length > 0
+                  const isExpanded = expandedCategories.has(subcategory.id)
+                  const categoryName = typeof subcategory.name === 'object' 
+                    ? (lng === 'he' ? (subcategory.name as any).he : (subcategory.name as any).en) || (subcategory.name as any).en
+                    : subcategory.name
+
+                  return (
+                    <div key={subcategory.id} className="border-b border-gray-200">
+                      {hasChildren ? (
+                        <>
+                          <button
+                            onClick={() => toggleCategory(subcategory.id)}
+                            className="w-full flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
+                            dir={lng === 'he' ? 'rtl' : 'ltr'}
+                          >
+                            <span className="text-sm uppercase tracking-wide">{categoryName}</span>
+                            <ChevronDown 
+                              className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                          {isExpanded && (
+                            <div className="bg-gray-50 border-t border-gray-100">
+                              <Link
+                                href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
+                                onClick={closeMobileMenu}
+                                className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm font-medium border-b border-gray-200"
+                                dir={lng === 'he' ? 'rtl' : 'ltr'}
+                              >
+                                {translations[lng as keyof typeof translations].allProducts}
+                              </Link>
+                              {subcategory.subChildren?.map((subSubCategory) => {
+                                const subSubName = typeof subSubCategory.name === 'object'
+                                  ? (lng === 'he' ? (subSubCategory.name as any).he : (subSubCategory.name as any).en) || (subSubCategory.name as any).en
+                                  : subSubCategory.name
+                                return (
+                                  <Link
+                                    key={subSubCategory.id}
+                                    href={`/${lng}/collection/${selectedGender}/${subcategory.slug}/${subSubCategory.slug}`}
+                                    onClick={closeMobileMenu}
+                                    className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
+                                    dir={lng === 'he' ? 'rtl' : 'ltr'}
+                                  >
+                                    {subSubName}
+                                  </Link>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <Link
+                          href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
+                          onClick={closeMobileMenu}
+                          className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
+                          dir={lng === 'he' ? 'rtl' : 'ltr'}
+                        >
+                          <span className="text-sm uppercase tracking-wide">{categoryName}</span>
+                        </Link>
+                      )}
+                    </div>
+                  )
+                })}
+
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </nav>
   )

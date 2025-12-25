@@ -24,7 +24,8 @@ const imageUrlMappings: Record<string, string> = {
   "/images/products/downtown-2.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fproducts%2Fdowntown-2.jpg?alt=media&token=db5936c8-953f-478d-9839-dd8bf6b9cf07",
   "/images/products/downtown-3.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fproducts%2Fdowntown-3.jpg?alt=media&token=7f23dbbc-e59a-4e9d-96ca-ae550d440836",
   "/images/products/italian-leather-stilettos.svg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fproducts%2Fitalian-leather-stilettos.svg?alt=media&token=f602de4b-39a2-41dc-97e4-98f25027d5c4",
-  "/images/products/suede-chelsea-boots.svg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fproducts%2Fsuede-chelsea-boots.svg?alt=media&token=3bf8c93a-4a5f-48e1-8485-474597a12759"
+  "/images/products/suede-chelsea-boots.svg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fproducts%2Fsuede-chelsea-boots.svg?alt=media&token=3bf8c93a-4a5f-48e1-8485-474597a12759",
+  "/images/logo/icon.png": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Ficon%2Ficon.png?alt=media&token=21a42254-77d1-40fe-a4c4-f6f4ab6f0cda"
 };
 
 const videoUrlMappings: Record<string, string> = {

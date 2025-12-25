@@ -93,9 +93,9 @@ window.args = {
 	icon : '',
 	access : 'https://vee-crm.com',
 	styles : {
-		primary_color: '#177fab',
+		primary_color: '#856D55',
 		secondary_color: '#b586ff',
-		background_color: '#f6f6f6',
+		background_color: '#856D55',
 		primary_text_color: '#636363',
 		headers_text_color: '#105675',
 		primary_font_size: 14,

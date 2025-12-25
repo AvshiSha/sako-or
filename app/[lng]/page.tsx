@@ -237,7 +237,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   }
 
   return (
-    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#F6F3ED' }}>
+    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#E1DBD7' }}>
       {/* Hero section */}
       <div className="relative h-screen">
         <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
@@ -296,10 +296,10 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       </div>
 
       {/* Collections Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24" style={{ backgroundColor: '#E1DBD7' }}>
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-light text-gray-900 mb-4">{t.collectionsTitle}</h2>
-          <p className="text-gray-500 max-w-2xl mx-auto">
+          <h2 className="text-3xl font-light text-black mb-4">{t.collectionsTitle}</h2>
+          <p className="text-black max-w-2xl mx-auto">
             {t.collectionsDescription}
           </p>
         </div>
@@ -335,7 +335,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       </div>
 
       {/* Featured Products */}
-      <div className="bg-neutral-50">
+      <div style={{ backgroundColor: '#E1DBD7' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-light text-gray-900 mb-4">{t.featuredTitle}</h2>
@@ -401,11 +401,11 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       </div>
 
       {/* Newsletter Section */}
-      <div style={{ backgroundColor: '#f6f3ed' }}>
+      <div style={{ backgroundColor: '#E1DBD7' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="max-w-xl mx-auto text-center">
-            <h2 className="text-3xl font-light text-gray-900 mb-4">{t.newsletterTitle}</h2>
-            <p className="text-gray-500 mb-8">
+            <h2 className="text-3xl font-light text-black mb-4">{t.newsletterTitle}</h2>
+            <p className="text-black mb-8">
               {t.newsletterDescription}
             </p>
             <form onSubmit={handleNewsletterSubmit} className="max-w-md mx-auto">

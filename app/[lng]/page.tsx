@@ -262,6 +262,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
             preload="metadata"
             //poster={heroImageSrc}
             aria-hidden="true"
+
           >
             <source src={heroMobileVideoSrc} type="video/mp4" />
           </video>

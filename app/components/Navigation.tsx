@@ -813,8 +813,8 @@ export default function Navigation({ lng }: { lng: string }) {
             <motion.div
               initial={{ y: -200 }}
               animate={{ y: 0 }}
-              exit={{ y: -400 }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              exit={{ y: -800 }}
+              transition={{ type: "spring", damping: 30, stiffness: 200 }}
               className="fixed left-0 right-0 bg-white shadow-2xl z-[71] md:hidden overflow-hidden"
               style={{
                 top: '102px', // Below nav bar (top-10 = 40px + h-16 = 64px + 2px for border)

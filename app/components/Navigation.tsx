@@ -11,6 +11,7 @@ import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { categoryService } from '@/lib/firebase'
 import { getImageUrl } from '@/lib/image-urls'
+import { motion, AnimatePresence } from "framer-motion"
 
 
 // Hardcoded translations for build-time rendering
@@ -626,28 +627,31 @@ export default function Navigation({ lng }: { lng: string }) {
       </div>
 
       {/* Mobile Menu - New Dropdown Design */}
-      {isMobileMenuOpen && (
-        <>
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black/40 z-[60] md:hidden transition-opacity duration-300"
-            onClick={closeMobileMenu}
-            style={{
-              opacity: isMobileMenuOpen ? 1 : 0,
-            }}
-          />
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/40 z-[60] md:hidden"
+              onClick={closeMobileMenu}
+            />
 
-          {/* Dropdown Panel - Anchored to bottom of nav bar */}
-          <div 
-            className="fixed left-0 right-0 bg-white shadow-2xl z-[71] md:hidden overflow-hidden"
-            style={{
-              top: '102px', // Below nav bar (top-10 = 40px + h-16 = 64px + 2px for border)
-              maxHeight: 'calc(104vh - 102px)',
-              transform: isMobileMenuOpen ? 'translateY(0)' : 'translateY(-20px)',
-              opacity: isMobileMenuOpen ? 1 : 0,
-              transition: 'opacity 250ms ease, transform 250ms ease',
-            }}
-          >
+            {/* Dropdown Panel - Anchored to bottom of nav bar */}
+            <motion.div
+              initial={{ y: -200 }}
+              animate={{ y: 0 }}
+              exit={{ y: -400 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed left-0 right-0 bg-white shadow-2xl z-[71] md:hidden overflow-hidden"
+              style={{
+                top: '102px', // Below nav bar (top-10 = 40px + h-16 = 64px + 2px for border)
+                maxHeight: 'calc(104vh - 102px)',
+              }}
+            >
             {/* MEN/WOMEN Toggle */}
             <div className="border-b border-gray-200 px-4 py-3">
               <div className="flex rounded-lg bg-gray-100 p-1" dir={lng === 'he' ? 'rtl' : 'ltr'}>
@@ -766,9 +770,10 @@ export default function Navigation({ lng }: { lng: string }) {
 
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </nav>
   )
 }

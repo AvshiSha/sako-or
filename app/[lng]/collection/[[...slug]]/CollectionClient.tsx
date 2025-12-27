@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +14,20 @@ import { Product, Category, productHelpers } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
 import { trackViewItemList } from "@/lib/dataLayer";
 import { getColorName, getColorHex } from "@/lib/colors";
+import { cn } from "@/lib/utils";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/app/components/ui/accordion';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select';
 
 // Translations for the collection page
 const translations = {
@@ -163,41 +177,6 @@ export default function CollectionClient({
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
-  const [expandedPrice, setExpandedPrice] = useState(false);
-  const [expandedColors, setExpandedColors] = useState(false);
-  const [expandedSizes, setExpandedSizes] = useState(false);
-
-  // Refs and state for smooth dropdown animations (mobile)
-  const priceContentRef = useRef<HTMLDivElement>(null);
-  const priceInnerRef = useRef<HTMLDivElement>(null);
-  const [priceHeight, setPriceHeight] = useState<number | "auto">(0);
-  const [priceOpacity, setPriceOpacity] = useState<number>(0);
-
-  const colorsContentRef = useRef<HTMLDivElement>(null);
-  const colorsInnerRef = useRef<HTMLDivElement>(null);
-  const [colorsHeight, setColorsHeight] = useState<number | "auto">(0);
-  const [colorsOpacity, setColorsOpacity] = useState<number>(0);
-
-  const sizesContentRef = useRef<HTMLDivElement>(null);
-  const sizesInnerRef = useRef<HTMLDivElement>(null);
-  const [sizesHeight, setSizesHeight] = useState<number | "auto">(0);
-  const [sizesOpacity, setSizesOpacity] = useState<number>(0);
-
-  // Refs and state for smooth dropdown animations (desktop)
-  const desktopPriceContentRef = useRef<HTMLDivElement>(null);
-  const desktopPriceInnerRef = useRef<HTMLDivElement>(null);
-  const [desktopPriceHeight, setDesktopPriceHeight] = useState<number | "auto">(0);
-  const [desktopPriceOpacity, setDesktopPriceOpacity] = useState<number>(0);
-
-  const desktopColorsContentRef = useRef<HTMLDivElement>(null);
-  const desktopColorsInnerRef = useRef<HTMLDivElement>(null);
-  const [desktopColorsHeight, setDesktopColorsHeight] = useState<number | "auto">(0);
-  const [desktopColorsOpacity, setDesktopColorsOpacity] = useState<number>(0);
-
-  const desktopSizesContentRef = useRef<HTMLDivElement>(null);
-  const desktopSizesInnerRef = useRef<HTMLDivElement>(null);
-  const [desktopSizesHeight, setDesktopSizesHeight] = useState<number | "auto">(0);
-  const [desktopSizesOpacity, setDesktopSizesOpacity] = useState<number>(0);
 
   // Update URL when filters change
   const updateURL = (newFilters: {
@@ -315,247 +294,6 @@ export default function CollectionClient({
     });
   };
 
-  // Animation effects for smooth dropdown transitions
-  useEffect(() => {
-    const contentEl = priceContentRef.current;
-    const innerEl = priceInnerRef.current;
-    if (!contentEl || !innerEl) {
-      if (!expandedPrice) {
-        setPriceHeight(0);
-        setPriceOpacity(0);
-      }
-      return;
-    }
-
-    if (expandedPrice) {
-      const startHeight = contentEl.getBoundingClientRect().height;
-      const targetHeight = innerEl.scrollHeight;
-
-      setPriceOpacity(1);
-      setPriceHeight(startHeight);
-      requestAnimationFrame(() => {
-        setPriceHeight(targetHeight);
-      });
-    } else {
-      const storedHeight = contentEl.getAttribute('data-closing-height');
-      const currentHeight = storedHeight 
-        ? parseFloat(storedHeight) 
-        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
-      
-      if (currentHeight > 0) {
-        setPriceHeight(currentHeight);
-        contentEl.removeAttribute('data-closing-height');
-        requestAnimationFrame(() => {
-          setPriceHeight(0);
-          setPriceOpacity(0);
-        });
-      } else {
-        setPriceHeight(0);
-        setPriceOpacity(0);
-      }
-    }
-  }, [expandedPrice]);
-
-  useEffect(() => {
-    const contentEl = colorsContentRef.current;
-    const innerEl = colorsInnerRef.current;
-    if (!contentEl || !innerEl) {
-      if (!expandedColors) {
-        setColorsHeight(0);
-        setColorsOpacity(0);
-      }
-      return;
-    }
-
-    if (expandedColors) {
-      const startHeight = contentEl.getBoundingClientRect().height;
-      const targetHeight = innerEl.scrollHeight;
-
-      setColorsOpacity(1);
-      setColorsHeight(startHeight);
-      requestAnimationFrame(() => {
-        setColorsHeight(targetHeight);
-      });
-    } else {
-      const storedHeight = contentEl.getAttribute('data-closing-height');
-      const currentHeight = storedHeight 
-        ? parseFloat(storedHeight) 
-        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
-      
-      if (currentHeight > 0) {
-        setColorsHeight(currentHeight);
-        contentEl.removeAttribute('data-closing-height');
-        requestAnimationFrame(() => {
-          setColorsHeight(0);
-          setColorsOpacity(0);
-        });
-      } else {
-        setColorsHeight(0);
-        setColorsOpacity(0);
-      }
-    }
-  }, [expandedColors]);
-
-  useEffect(() => {
-    const contentEl = sizesContentRef.current;
-    const innerEl = sizesInnerRef.current;
-    if (!contentEl || !innerEl) {
-      if (!expandedSizes) {
-        setSizesHeight(0);
-        setSizesOpacity(0);
-      }
-      return;
-    }
-
-    if (expandedSizes) {
-      const startHeight = contentEl.getBoundingClientRect().height;
-      const targetHeight = innerEl.scrollHeight;
-
-      setSizesOpacity(1);
-      setSizesHeight(startHeight);
-      requestAnimationFrame(() => {
-        setSizesHeight(targetHeight);
-      });
-    } else {
-      const storedHeight = contentEl.getAttribute('data-closing-height');
-      const currentHeight = storedHeight 
-        ? parseFloat(storedHeight) 
-        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
-      
-      if (currentHeight > 0) {
-        setSizesHeight(currentHeight);
-        contentEl.removeAttribute('data-closing-height');
-        requestAnimationFrame(() => {
-          setSizesHeight(0);
-          setSizesOpacity(0);
-        });
-      } else {
-        setSizesHeight(0);
-        setSizesOpacity(0);
-      }
-    }
-  }, [expandedSizes]);
-
-  // Desktop filter animation effects
-  useEffect(() => {
-    const contentEl = desktopPriceContentRef.current;
-    const innerEl = desktopPriceInnerRef.current;
-    if (!contentEl || !innerEl) {
-      if (!expandedPrice) {
-        setDesktopPriceHeight(0);
-        setDesktopPriceOpacity(0);
-      }
-      return;
-    }
-
-    if (expandedPrice) {
-      const startHeight = contentEl.getBoundingClientRect().height;
-      const targetHeight = innerEl.scrollHeight;
-
-      setDesktopPriceOpacity(1);
-      setDesktopPriceHeight(startHeight);
-      requestAnimationFrame(() => {
-        setDesktopPriceHeight(targetHeight);
-      });
-    } else {
-      const storedHeight = contentEl.getAttribute('data-closing-height');
-      const currentHeight = storedHeight 
-        ? parseFloat(storedHeight) 
-        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
-      
-      if (currentHeight > 0) {
-        setDesktopPriceHeight(currentHeight);
-        contentEl.removeAttribute('data-closing-height');
-        requestAnimationFrame(() => {
-          setDesktopPriceHeight(0);
-          setDesktopPriceOpacity(0);
-        });
-      } else {
-        setDesktopPriceHeight(0);
-        setDesktopPriceOpacity(0);
-      }
-    }
-  }, [expandedPrice]);
-
-  useEffect(() => {
-    const contentEl = desktopColorsContentRef.current;
-    const innerEl = desktopColorsInnerRef.current;
-    if (!contentEl || !innerEl) {
-      if (!expandedColors) {
-        setDesktopColorsHeight(0);
-        setDesktopColorsOpacity(0);
-      }
-      return;
-    }
-
-    if (expandedColors) {
-      const startHeight = contentEl.getBoundingClientRect().height;
-      const targetHeight = innerEl.scrollHeight;
-
-      setDesktopColorsOpacity(1);
-      setDesktopColorsHeight(startHeight);
-      requestAnimationFrame(() => {
-        setDesktopColorsHeight(targetHeight);
-      });
-    } else {
-      const storedHeight = contentEl.getAttribute('data-closing-height');
-      const currentHeight = storedHeight 
-        ? parseFloat(storedHeight) 
-        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
-      
-      if (currentHeight > 0) {
-        setDesktopColorsHeight(currentHeight);
-        contentEl.removeAttribute('data-closing-height');
-        requestAnimationFrame(() => {
-          setDesktopColorsHeight(0);
-          setDesktopColorsOpacity(0);
-        });
-      } else {
-        setDesktopColorsHeight(0);
-        setDesktopColorsOpacity(0);
-      }
-    }
-  }, [expandedColors]);
-
-  useEffect(() => {
-    const contentEl = desktopSizesContentRef.current;
-    const innerEl = desktopSizesInnerRef.current;
-    if (!contentEl || !innerEl) {
-      if (!expandedSizes) {
-        setDesktopSizesHeight(0);
-        setDesktopSizesOpacity(0);
-      }
-      return;
-    }
-
-    if (expandedSizes) {
-      const startHeight = contentEl.getBoundingClientRect().height;
-      const targetHeight = innerEl.scrollHeight;
-
-      setDesktopSizesOpacity(1);
-      setDesktopSizesHeight(startHeight);
-      requestAnimationFrame(() => {
-        setDesktopSizesHeight(targetHeight);
-      });
-    } else {
-      const storedHeight = contentEl.getAttribute('data-closing-height');
-      const currentHeight = storedHeight 
-        ? parseFloat(storedHeight) 
-        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0);
-      
-      if (currentHeight > 0) {
-        setDesktopSizesHeight(currentHeight);
-        contentEl.removeAttribute('data-closing-height');
-        requestAnimationFrame(() => {
-          setDesktopSizesHeight(0);
-          setDesktopSizesOpacity(0);
-        });
-      } else {
-        setDesktopSizesHeight(0);
-        setDesktopSizesOpacity(0);
-      }
-    }
-  }, [expandedSizes]);
 
   // Apply sorting to products (products are already filtered server-side)
   const sortedProducts = useMemo(() => {
@@ -750,25 +488,29 @@ export default function CollectionClient({
               onClick={() => setMobileFiltersOpen(true)}
               className="md:hidden inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
             >
-              <FunnelIcon className="h-4 w-4 mr-1" />
+              <FunnelIcon className={cn("h-4 w-4", lng === 'he' ? 'ml-1' : 'mr-1')} />
               {t.filters}
               {(selectedColors.length > 0 || selectedSizes.length > 0 || priceRange.min || priceRange.max) && (
-                <span className="ml-2 bg-black text-white text-xs rounded-full px-2 py-1">
+                <span className={cn("bg-black text-white text-xs rounded-full px-2 py-1", lng === 'he' ? 'mr-2' : 'ml-2')}>
                   {selectedColors.length + selectedSizes.length + (priceRange.min ? 1 : 0) + (priceRange.max ? 1 : 0)}
                 </span>
               )}
             </button>
 
-            <select
-              value={sortBy}
-              onChange={(e) => handleSortChange(e.target.value)}
-              className="block w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md text-black bg-white"
-            >
-              <option value="relevance">{t.relevance}</option>
-              <option value="price-low">{t.priceLow}</option>
-              <option value="price-high">{t.priceHigh}</option>
-              <option value="newest">{t.newest}</option>
-            </select>
+            <Select value={sortBy} onValueChange={handleSortChange}>
+              <SelectTrigger 
+                className="w-full sm:w-auto text-black" 
+                dir={lng === 'he' ? 'rtl' : 'ltr'}
+              >
+                <SelectValue placeholder={t.relevance} />
+              </SelectTrigger>
+              <SelectContent dir={lng === 'he' ? 'rtl' : 'ltr'}>
+                <SelectItem value="relevance" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.relevance}</SelectItem>
+                <SelectItem value="price-low" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.priceLow}</SelectItem>
+                <SelectItem value="price-high" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.priceHigh}</SelectItem>
+                <SelectItem value="newest" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.newest}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -803,34 +545,41 @@ export default function CollectionClient({
         </div>
       </div>
 
-      {/* Desktop Filter Overlay */}
-      {desktopFiltersOpen && (
-        <>
-          <div className="fixed inset-0 z-40 lg:hidden">
-            <div 
-              className="absolute inset-0 bg-black/30 transition-opacity duration-300 ease-in-out"
-              onClick={() => setDesktopFiltersOpen(false)}
-            />
-          </div>
-          
-          <div className="fixed inset-0 z-40 hidden lg:block">
-            <div 
-              className="absolute inset-0 bg-black/30 transition-opacity duration-300 ease-in-out"
-              onClick={() => setDesktopFiltersOpen(false)}
-            />
-          </div>
-        </>
-      )}
-      
-      {/* Desktop Filter Sidebar */}
-      <motion.div
-        initial={{ x: '-100%' }}
-        animate={{ x: desktopFiltersOpen ? 0 : '-100%' }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className={`fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50 ${
-          desktopFiltersOpen ? 'block' : 'hidden'
-        }`}
-      >
+      {/* Desktop Filter Overlay and Sidebar */}
+      <AnimatePresence>
+        {desktopFiltersOpen && (
+          <>
+            {/* Desktop Filter Overlay */}
+            <div className="fixed inset-0 z-40 lg:hidden">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 bg-black/30"
+                onClick={() => setDesktopFiltersOpen(false)}
+              />
+            </div>
+            
+            <div className="fixed inset-0 z-40 hidden lg:block">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 bg-black/30"
+                onClick={() => setDesktopFiltersOpen(false)}
+              />
+            </div>
+            
+            {/* Desktop Filter Sidebar */}
+            <motion.div
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50"
+            >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-100">
             <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
@@ -844,48 +593,13 @@ export default function CollectionClient({
 
           <div className="flex-1 overflow-y-auto p-6">
             {/* Price Filter */}
-            <div className="mb-6 border border-gray-200 rounded-lg">
-              <button
-                onClick={() => {
-                  const isCurrentlyExpanded = expandedPrice;
-                  if (isCurrentlyExpanded) {
-                    const contentElement = desktopPriceContentRef.current;
-                    if (contentElement) {
-                      const currentHeight = contentElement.getBoundingClientRect().height;
-                      contentElement.setAttribute('data-closing-height', currentHeight.toString());
-                    }
-                  }
-                  setExpandedPrice(!expandedPrice);
-                }}
-                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
-              >
-                <h3 className="text-sm font-medium text-black">{t.price}</h3>
-                <ChevronDownIcon 
-                  className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
-                    expandedPrice ? 'rotate-180' : ''
-                  }`} 
-                />
-              </button>
-              
-              <div
-                ref={desktopPriceContentRef}
-                onTransitionEnd={() => {
-                  const contentEl = desktopPriceContentRef.current;
-                  if (!contentEl) return;
-                  if (expandedPrice && desktopPriceHeight !== "auto") {
-                    setDesktopPriceHeight("auto");
-                  }
-                  contentEl.removeAttribute('data-closing-height');
-                }}
-                style={{
-                  height: desktopPriceHeight === "auto" ? "auto" : `${desktopPriceHeight}px`,
-                  opacity: desktopPriceOpacity,
-                  transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-                className="overflow-hidden"
-              >
-                <div ref={desktopPriceInnerRef} className="px-4 pb-4 border-t border-gray-100">
-                  <div className="space-y-3 pt-3">
+            <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
+              <AccordionItem value="price" className="border-0">
+                <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
+                  <h3 className="text-sm font-medium text-black">{t.price}</h3>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-3 pt-3 border-t border-gray-100">
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         {t.minPrice}
@@ -911,53 +625,18 @@ export default function CollectionClient({
                       />
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {/* Colors */}
-            <div className="mb-6 border border-gray-200 rounded-lg">
-              <button
-                onClick={() => {
-                  const isCurrentlyExpanded = expandedColors;
-                  if (isCurrentlyExpanded) {
-                    const contentElement = desktopColorsContentRef.current;
-                    if (contentElement) {
-                      const currentHeight = contentElement.getBoundingClientRect().height;
-                      contentElement.setAttribute('data-closing-height', currentHeight.toString());
-                    }
-                  }
-                  setExpandedColors(!expandedColors);
-                }}
-                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
-              >
-                <h3 className="text-sm font-medium text-black">{t.colors}</h3>
-                <ChevronDownIcon 
-                  className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
-                    expandedColors ? 'rotate-180' : ''
-                  }`} 
-                />
-              </button>
-              
-              <div
-                ref={desktopColorsContentRef}
-                onTransitionEnd={() => {
-                  const contentEl = desktopColorsContentRef.current;
-                  if (!contentEl) return;
-                  if (expandedColors && desktopColorsHeight !== "auto") {
-                    setDesktopColorsHeight("auto");
-                  }
-                  contentEl.removeAttribute('data-closing-height');
-                }}
-                style={{
-                  height: desktopColorsHeight === "auto" ? "auto" : `${desktopColorsHeight}px`,
-                  opacity: desktopColorsOpacity,
-                  transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-                className="overflow-hidden"
-              >
-                <div ref={desktopColorsInnerRef} className="px-4 pb-4 border-t border-gray-100">
-                  <div className="space-y-2 pt-3">
+            <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
+              <AccordionItem value="colors" className="border-0">
+                <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
+                  <h3 className="text-sm font-medium text-black">{t.colors}</h3>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-2 pt-3 border-t border-gray-100">
                     {allColors.map((color) => (
                       <button
                         key={color}
@@ -976,53 +655,18 @@ export default function CollectionClient({
                       </button>
                     ))}
                   </div>
-                </div>
-              </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {/* Sizes */}
-            <div className="mb-6 border border-gray-200 rounded-lg">
-              <button
-                onClick={() => {
-                  const isCurrentlyExpanded = expandedSizes;
-                  if (isCurrentlyExpanded) {
-                    const contentElement = desktopSizesContentRef.current;
-                    if (contentElement) {
-                      const currentHeight = contentElement.getBoundingClientRect().height;
-                      contentElement.setAttribute('data-closing-height', currentHeight.toString());
-                    }
-                  }
-                  setExpandedSizes(!expandedSizes);
-                }}
-                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
-              >
-                <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
-                <ChevronDownIcon 
-                  className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
-                    expandedSizes ? 'rotate-180' : ''
-                  }`} 
-                />
-              </button>
-              
-              <div
-                ref={desktopSizesContentRef}
-                onTransitionEnd={() => {
-                  const contentEl = desktopSizesContentRef.current;
-                  if (!contentEl) return;
-                  if (expandedSizes && desktopSizesHeight !== "auto") {
-                    setDesktopSizesHeight("auto");
-                  }
-                  contentEl.removeAttribute('data-closing-height');
-                }}
-                style={{
-                  height: desktopSizesHeight === "auto" ? "auto" : `${desktopSizesHeight}px`,
-                  opacity: desktopSizesOpacity,
-                  transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-                className="overflow-hidden"
-              >
-                <div ref={desktopSizesInnerRef} className="px-4 pb-4 border-t border-gray-100">
-                  <div className="space-y-4 pt-3">
+            <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
+              <AccordionItem value="sizes" className="border-0">
+                <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
+                  <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
+                </AccordionTrigger>
+                <AccordionContent className="px-4 pb-4">
+                  <div className="space-y-4 pt-3 border-t border-gray-100">
                     {numericSizes.length > 0 && (
                       <div>
                         <h4 className="text-xs font-medium text-gray-600 mb-2">Shoes</h4>
@@ -1065,9 +709,9 @@ export default function CollectionClient({
                       </div>
                     )}
                   </div>
-                </div>
-              </div>
-            </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {/* Clear Filters Button */}
             {(selectedColors.length > 0 || selectedSizes.length > 0 || priceRange.min || priceRange.max) && (
@@ -1092,6 +736,9 @@ export default function CollectionClient({
           </div>
         </div>
       </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Mobile Filter Overlay */}
       <AnimatePresence>
@@ -1126,48 +773,13 @@ export default function CollectionClient({
 
               <div className="flex-1 overflow-y-auto p-6">
                 {/* Same filter content as desktop */}
-                <div className="mb-6 border border-gray-200 rounded-lg">
-                  <button
-                    onClick={() => {
-                      const isCurrentlyExpanded = expandedPrice;
-                      if (isCurrentlyExpanded) {
-                        const contentElement = priceContentRef.current;
-                        if (contentElement) {
-                          const currentHeight = contentElement.getBoundingClientRect().height;
-                          contentElement.setAttribute('data-closing-height', currentHeight.toString());
-                        }
-                      }
-                      setExpandedPrice(!expandedPrice);
-                    }}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    <h3 className="text-sm font-medium text-black">{t.price}</h3>
-                    <ChevronDownIcon 
-                      className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
-                        expandedPrice ? 'rotate-180' : ''
-                      }`} 
-                    />
-                  </button>
-                  
-                  <div
-                    ref={priceContentRef}
-                    onTransitionEnd={() => {
-                      const contentEl = priceContentRef.current;
-                      if (!contentEl) return;
-                      if (expandedPrice && priceHeight !== "auto") {
-                        setPriceHeight("auto");
-                      }
-                      contentEl.removeAttribute('data-closing-height');
-                    }}
-                    style={{
-                      height: priceHeight === "auto" ? "auto" : `${priceHeight}px`,
-                      opacity: priceOpacity,
-                      transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}
-                    className="overflow-hidden"
-                  >
-                    <div ref={priceInnerRef} className="px-4 pb-4 border-t border-gray-100">
-                      <div className="space-y-3 pt-3">
+                <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
+                  <AccordionItem value="price" className="border-0">
+                    <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
+                      <h3 className="text-sm font-medium text-black">{t.price}</h3>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="space-y-3 pt-3 border-t border-gray-100">
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">
                             {t.minPrice}
@@ -1193,52 +805,17 @@ export default function CollectionClient({
                           />
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
 
-                <div className="mb-6 border border-gray-200 rounded-lg">
-                  <button
-                    onClick={() => {
-                      const isCurrentlyExpanded = expandedColors;
-                      if (isCurrentlyExpanded) {
-                        const contentElement = colorsContentRef.current;
-                        if (contentElement) {
-                          const currentHeight = contentElement.getBoundingClientRect().height;
-                          contentElement.setAttribute('data-closing-height', currentHeight.toString());
-                        }
-                      }
-                      setExpandedColors(!expandedColors);
-                    }}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    <h3 className="text-sm font-medium text-black">{t.colors}</h3>
-                    <ChevronDownIcon 
-                      className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
-                        expandedColors ? 'rotate-180' : ''
-                      }`} 
-                    />
-                  </button>
-                  
-                  <div
-                    ref={colorsContentRef}
-                    onTransitionEnd={() => {
-                      const contentEl = colorsContentRef.current;
-                      if (!contentEl) return;
-                      if (expandedColors && colorsHeight !== "auto") {
-                        setColorsHeight("auto");
-                      }
-                      contentEl.removeAttribute('data-closing-height');
-                    }}
-                    style={{
-                      height: colorsHeight === "auto" ? "auto" : `${colorsHeight}px`,
-                      opacity: colorsOpacity,
-                      transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}
-                    className="overflow-hidden"
-                  >
-                    <div ref={colorsInnerRef} className="px-4 pb-4 border-t border-gray-100">
-                      <div className="space-y-2 pt-3">
+                <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
+                  <AccordionItem value="colors" className="border-0">
+                    <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
+                      <h3 className="text-sm font-medium text-black">{t.colors}</h3>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="space-y-2 pt-3 border-t border-gray-100">
                         {allColors.map((color) => (
                           <button
                             key={color}
@@ -1257,52 +834,17 @@ export default function CollectionClient({
                           </button>
                         ))}
                       </div>
-                    </div>
-                  </div>
-                </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
 
-                <div className="mb-6 border border-gray-200 rounded-lg">
-                  <button
-                    onClick={() => {
-                      const isCurrentlyExpanded = expandedSizes;
-                      if (isCurrentlyExpanded) {
-                        const contentElement = sizesContentRef.current;
-                        if (contentElement) {
-                          const currentHeight = contentElement.getBoundingClientRect().height;
-                          contentElement.setAttribute('data-closing-height', currentHeight.toString());
-                        }
-                      }
-                      setExpandedSizes(!expandedSizes);
-                    }}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
-                    <ChevronDownIcon 
-                      className={`h-4 w-4 text-gray-500 transition-transform duration-300 ease-in-out ${
-                        expandedSizes ? 'rotate-180' : ''
-                      }`} 
-                    />
-                  </button>
-                  
-                  <div
-                    ref={sizesContentRef}
-                    onTransitionEnd={() => {
-                      const contentEl = sizesContentRef.current;
-                      if (!contentEl) return;
-                      if (expandedSizes && sizesHeight !== "auto") {
-                        setSizesHeight("auto");
-                      }
-                      contentEl.removeAttribute('data-closing-height');
-                    }}
-                    style={{
-                      height: sizesHeight === "auto" ? "auto" : `${sizesHeight}px`,
-                      opacity: sizesOpacity,
-                      transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-                    }}
-                    className="overflow-hidden"
-                  >
-                    <div ref={sizesInnerRef} className="px-4 pb-4 border-t border-gray-100">
-                      <div className="space-y-4 pt-3">
+                <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
+                  <AccordionItem value="sizes" className="border-0">
+                    <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
+                      <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="space-y-4 pt-3 border-t border-gray-100">
                         {numericSizes.length > 0 && (
                           <div>
                             <h4 className="text-xs font-medium text-gray-600 mb-2">Shoes</h4>
@@ -1345,9 +887,9 @@ export default function CollectionClient({
                           </div>
                         )}
                       </div>
-                    </div>
-                  </div>
-                </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
 
                 {(selectedColors.length > 0 || selectedSizes.length > 0 || priceRange.min || priceRange.max) && (
                   <div className="mb-6">

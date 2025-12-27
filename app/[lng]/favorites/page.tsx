@@ -364,6 +364,7 @@ export default function FavoritesPage() {
                           setSelectedProduct(product)
                           setDrawerProduct(product)
                           // Small delay to ensure component is mounted before animation starts
+                          // This ensures drawerProduct is set before isOpen becomes true
                           setTimeout(() => {
                             setIsQuickBuyOpen(true)
                           }, 10)
@@ -420,14 +421,19 @@ export default function FavoritesPage() {
       {/* Quick Buy Drawer */}
       {drawerProduct && (
         <QuickBuyDrawer
-          isOpen={isQuickBuyOpen}
+          isOpen={isQuickBuyOpen && !!drawerProduct}
           onClose={() => {
+            // Start the close animation
             setIsQuickBuyOpen(false)
             setSelectedProduct(null)
             // Delay clearing drawerProduct to allow close animation to complete
+            // Use responsive timeout: 700ms for mobile, 1000ms for desktop (sm:duration-1000)
+            // This matches the animation durations in QuickBuyDrawer
+            const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches
+            const timeoutDuration = isDesktop ? 1000 : 700
             setTimeout(() => {
               setDrawerProduct(null)
-            }, 700)
+            }, timeoutDuration)
           }}
           product={drawerProduct}
           language={lng as 'en' | 'he'}

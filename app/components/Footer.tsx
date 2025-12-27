@@ -2,12 +2,17 @@
 
 import Link from 'next/link';
 import { FaFacebook, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa';
-import { useState, Suspense, useRef, useEffect } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { ChevronDown } from 'lucide-react';
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal';
 import { fbqTrackSubscribe } from '@/lib/facebookPixel';
 import { languageMetadata } from '../../i18n/settings';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/app/components/ui/accordion';
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -77,14 +82,12 @@ function FooterInner({ lng }: { lng: string }) {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [subscribedEmail, setSubscribedEmail] = useState('')
   const [emailError, setEmailError] = useState('')
-  const [openAccordion, setOpenAccordion] = useState<string | null>(null)
   
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   
   const t = translations[lng as keyof typeof translations]
-  const isRTL = lng === 'he'
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -142,20 +145,6 @@ function FooterInner({ lng }: { lng: string }) {
     }
   }
 
-  const toggleAccordion = (section: string) => {
-    // If closing, capture height BEFORE state change
-    if (openAccordion === section) {
-      const contentElement = document.getElementById(`accordion-content-${section}`)
-      if (contentElement) {
-        // Capture the current rendered height before closing
-        const currentHeight = contentElement.getBoundingClientRect().height
-        // Store it in a data attribute so the component can access it
-        contentElement.setAttribute('data-closing-height', currentHeight.toString())
-      }
-    }
-    setOpenAccordion(openAccordion === section ? null : section)
-  }
-
   const handleLanguageChange = (newLanguage: string) => {
     if (!pathname) return
     
@@ -171,110 +160,6 @@ function FooterInner({ lng }: { lng: string }) {
     
     const newPath = pathSegments.join('/') + queryParams
     router.push(newPath)
-    setOpenAccordion(null) // Close accordion after navigation
-  }
-
-  const handleLinkClick = () => {
-    setOpenAccordion(null) // Close accordion when link is clicked
-  }
-
-  // Accordion Item Component
-  const AccordionItem = ({ 
-    id, 
-    title, 
-    children 
-  }: { 
-    id: string
-    title: string
-    children: React.ReactNode 
-  }) => {
-    const isOpen = openAccordion === id
-    const contentRef = useRef<HTMLDivElement>(null)
-    const innerRef = useRef<HTMLDivElement>(null)
-    const [height, setHeight] = useState<number | "auto">(0)
-    const [opacity, setOpacity] = useState<number>(0)
-    
-    useEffect(() => {
-      const contentEl = contentRef.current
-      const innerEl = innerRef.current
-      if (!contentEl || !innerEl) return
-
-      if (isOpen) {
-        const startHeight = contentEl.getBoundingClientRect().height
-        const targetHeight = innerEl.scrollHeight
-
-        setOpacity(1)
-        setHeight(startHeight)
-        requestAnimationFrame(() => {
-          setHeight(targetHeight)
-        })
-      } else {
-        // Closing: Get the height we captured before state change
-        const storedHeight = contentEl.getAttribute('data-closing-height')
-        const currentHeight = storedHeight 
-          ? parseFloat(storedHeight) 
-          : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0)
-        
-        if (currentHeight > 0) {
-          // Set to the captured height first to ensure smooth transition
-          setHeight(currentHeight)
-          // Remove the data attribute
-          contentEl.removeAttribute('data-closing-height')
-          // Then animate to 0 on the next frame
-          requestAnimationFrame(() => {
-            setHeight(0)
-            setOpacity(0)
-          })
-        } else {
-          setHeight(0)
-          setOpacity(0)
-        }
-      }
-    }, [isOpen])
-
-    const onTransitionEnd = () => {
-      const contentEl = contentRef.current
-      if (!contentEl) return
-      
-      // After opening finishes, let height be auto for responsive content
-      if (isOpen && height !== "auto") {
-        setHeight("auto")
-      }
-      // Clean up any remaining data attributes
-      contentEl.removeAttribute('data-closing-height')
-    }
-    
-    return (
-      <div className="border-b border-black/20">
-        <button
-          onClick={() => toggleAccordion(id)}
-          className="w-full flex items-center justify-between py-4 px-4 text-left uppercase font-bold text-sm tracking-wide"
-          aria-expanded={isOpen}
-          aria-controls={`accordion-content-${id}`}
-        >
-          <span>{title}</span>
-          <ChevronDown 
-            className={`w-5 h-5 transition-transform duration-300 ease-in-out ${isOpen ? 'rotate-180' : ''}`}
-            aria-hidden="true"
-          />
-        </button>
-        <div
-          id={`accordion-content-${id}`}
-          ref={contentRef}
-          onTransitionEnd={onTransitionEnd}
-          style={{
-            height: height === "auto" ? "auto" : `${height}px`,
-            opacity: opacity,
-            transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-          className="overflow-hidden"
-        >
-          <div ref={innerRef} className="px-4 pb-4">
-            {children}
-          </div>
-        </div>
-      </div>
-    )
   }
 
   // Social Media Links
@@ -291,102 +176,108 @@ function FooterInner({ lng }: { lng: string }) {
       <footer className="md:hidden bg-[#B2A28E] text-black">
         <div className="w-full">
           {/* Accordion Sections */}
-          <div className="w-full">
+          <Accordion type="single" collapsible className="w-full">
             {/* COMPANY Accordion */}
-            <AccordionItem id="company" title={t.company}>
-              <ul className="space-y-3">
-                <li>
-                  <Link 
-                    href={`/${lng}/about`}
-                    onClick={handleLinkClick}
-                    className="block text-sm hover:opacity-70 transition-opacity"
-                  >
-                    {t.about}
-                  </Link>
-                </li>
-                <li>
-                  <Link 
-                    href={`/${lng}/contact`}
-                    onClick={handleLinkClick}
-                    className="block text-sm hover:opacity-70 transition-opacity"
-                  >
-                    {t.contact}
-                  </Link>
-                </li>
-              </ul>
+            <AccordionItem value="company" className="border-b border-black/20">
+              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
+                {t.company}
+              </AccordionTrigger>
+              <AccordionContent className="px-4">
+                <ul className="space-y-3">
+                  <li>
+                    <Link 
+                      href={`/${lng}/about`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.about}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/contact`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.contact}
+                    </Link>
+                  </li>
+                </ul>
+              </AccordionContent>
             </AccordionItem>
 
             {/* CUSTOMER SUPPORT Accordion */}
-            <AccordionItem id="support" title={t.customerSupport}>
-              <ul className="space-y-3">
-                <li>
-                  <Link 
-                    href={`/${lng}/terms`}
-                    onClick={handleLinkClick}
-                    className="block text-sm hover:opacity-70 transition-opacity"
-                  >
-                    {t.terms}
-                  </Link>
-                </li>
-                <li>
-                  <Link 
-                    href={`/${lng}/contact`}
-                    onClick={handleLinkClick}
-                    className="block text-sm hover:opacity-70 transition-opacity"
-                  >
-                    {t.contact}
-                  </Link>
-                </li>
-                <li>
-                  <Link 
-                    href={`/${lng}/privacy`}
-                    onClick={handleLinkClick}
-                    className="block text-sm hover:opacity-70 transition-opacity"
-                  >
-                    {t.privacy}
-                  </Link>
-                </li>
-                <li>
-                  <Link 
-                    href={`/${lng}/accessibility`}
-                    onClick={handleLinkClick}
-                    className="block text-sm hover:opacity-70 transition-opacity"
-                  >
-                    {t.accessibility}
-                  </Link>
-                </li>
-              </ul>
+            <AccordionItem value="support" className="border-b border-black/20">
+              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
+                {t.customerSupport}
+              </AccordionTrigger>
+              <AccordionContent className="px-4">
+                <ul className="space-y-3">
+                  <li>
+                    <Link 
+                      href={`/${lng}/terms`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.terms}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/contact`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.contact}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/privacy`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.privacy}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/accessibility`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.accessibility}
+                    </Link>
+                  </li>
+                </ul>
+              </AccordionContent>
             </AccordionItem>
 
             {/* LANGUAGE Accordion */}
-            <AccordionItem 
-              id="language" 
-              title={`${t.language} / ${lng.toUpperCase()}`}
-            >
-              <ul className="space-y-3">
-                <li>
-                  <button
-                    onClick={() => handleLanguageChange('he')}
-                    className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
-                      lng === 'he' ? 'font-bold' : ''
-                    }`}
-                  >
-                    {t.hebrew}
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => handleLanguageChange('en')}
-                    className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
-                      lng === 'en' ? 'font-bold' : ''
-                    }`}
-                  >
-                    {t.english}
-                  </button>
-                </li>
-              </ul>
+            <AccordionItem value="language" className="border-b border-black/20">
+              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
+                {`${t.language} / ${lng.toUpperCase()}`}
+              </AccordionTrigger>
+              <AccordionContent className="px-4">
+                <ul className="space-y-3">
+                  <li>
+                    <button
+                      onClick={() => handleLanguageChange('he')}
+                      className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
+                        lng === 'he' ? 'font-bold' : ''
+                      }`}
+                    >
+                      {t.hebrew}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => handleLanguageChange('en')}
+                      className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
+                        lng === 'en' ? 'font-bold' : ''
+                      }`}
+                    >
+                      {t.english}
+                    </button>
+                  </li>
+                </ul>
+              </AccordionContent>
             </AccordionItem>
-          </div>
+          </Accordion>
 
           {/* Social Icons Row */}
           <div className="flex items-center justify-center gap-6 py-6 px-4 border-b border-black/20">

@@ -3,7 +3,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
 import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
 import { HeartIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
@@ -11,6 +10,12 @@ import { useFavorites } from '@/app/hooks/useFavorites'
 import QuickBuyDrawer from './QuickBuyDrawer'
 import { trackSelectItem } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from '@/app/components/ui/carousel'
 
 interface ProductCardProps {
   product: Product
@@ -24,22 +29,8 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
   
-  // Swipe/carousel state
-  const isRTL = language === 'he'
-  const pointerStartXRef = useRef<number | null>(null)
-  const pointerStartYRef = useRef<number | null>(null)
-  const pointerStartTimeRef = useRef<number | null>(null)
-  const lastPointerXRef = useRef<number | null>(null)
-  const lastPointerTimeRef = useRef<number | null>(null)
-  const isSwipingRef = useRef(false)
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragOffset, setDragOffset] = useState(0)
-  const [isTransitionEnabled, setIsTransitionEnabled] = useState(true)
-  const [transitionDurationMs, setTransitionDurationMs] = useState(260)
-  const [carouselWidth, setCarouselWidth] = useState(0)
-  const [carouselPositionState, setCarouselPositionState] = useState(1)
-  const carouselPositionRef = useRef(1)
-  const carouselContainerRef = useRef<HTMLDivElement | null>(null)
+  // Carousel state
+  const [api, setApi] = useState<CarouselApi>()
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const linkClickedRef = useRef(false)
   
@@ -88,271 +79,58 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
     return index >= 0 ? index : 0
   }, [activeVariant, variantImages, totalImages])
   
-  // Extended images for infinite carousel
-  const extendedImages = useMemo(() => {
-    if (totalImages <= 1) return variantImages
-    const firstImage = variantImages[0]
-    const lastImage = variantImages[totalImages - 1]
-    return [lastImage, ...variantImages, firstImage]
-  }, [variantImages, totalImages])
-  
-  const setCarouselPosition = useCallback((value: number | ((prev: number) => number)) => {
-    setCarouselPositionState((prev) => {
-      const nextValue = typeof value === 'function' ? (value as (prevValue: number) => number)(prev) : value
-      carouselPositionRef.current = nextValue
-      return nextValue
-    })
-  }, [])
-  
-  const getResponsiveDuration = useCallback(() => {
-    if (typeof window === 'undefined') {
-      return 260
-    }
-    return window.innerWidth < 768 ? 320 : 240
-  }, [])
-  
-  // Update carousel width on mount and resize
+  // Update selected image index when carousel changes
   useEffect(() => {
-    const updateWidth = () => {
-      if (carouselContainerRef.current) {
-        setCarouselWidth(carouselContainerRef.current.offsetWidth)
+    if (!api) return
+
+    let isScrolling = false
+    let scrollTimeout: NodeJS.Timeout | null = null
+
+    const onSelect = () => {
+      const selected = api.selectedScrollSnap()
+      setSelectedImageIndex(selected)
+      
+      // If the index changed, it means user swiped - prevent link click
+      if (isScrolling) {
+        linkClickedRef.current = true
+        // Reset after a short delay to allow normal clicks again
+        if (scrollTimeout) clearTimeout(scrollTimeout)
+        scrollTimeout = setTimeout(() => {
+          linkClickedRef.current = false
+        }, 300)
       }
     }
 
-    updateWidth()
-
-    let resizeObserver: ResizeObserver | null = null
-    if (typeof window !== 'undefined') {
-      window.addEventListener('resize', updateWidth)
-      if ('ResizeObserver' in window && carouselContainerRef.current) {
-        resizeObserver = new ResizeObserver(() => updateWidth())
-        resizeObserver.observe(carouselContainerRef.current)
-      }
+    const onScroll = () => {
+      isScrolling = true
+      linkClickedRef.current = true
     }
+
+    const onScrollEnd = () => {
+      isScrolling = false
+    }
+
+    api.on('select', onSelect)
+    api.on('scroll', onScroll)
+    api.on('settle', onScrollEnd)
+    onSelect() // Set initial index
 
     return () => {
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('resize', updateWidth)
-      }
-      resizeObserver?.disconnect()
+      api.off('select', onSelect)
+      api.off('scroll', onScroll)
+      api.off('settle', onScrollEnd)
+      if (scrollTimeout) clearTimeout(scrollTimeout)
     }
-  }, [])
-  
-  // Reset carousel when variant changes - start with primary image
+  }, [api])
+
+  // Reset carousel to primary image when variant changes
   useEffect(() => {
-    if (activeVariant && totalImages > 0) {
+    if (api && activeVariant && totalImages > 0) {
       const initialIndex = primaryImageIndex
+      api.scrollTo(initialIndex, false) // false = instant scroll, no animation
       setSelectedImageIndex(initialIndex)
-      if (totalImages > 1) {
-        setIsTransitionEnabled(false)
-        // For infinite carousel, position 1 is the first real image (index 0)
-        // So we need to add 1 to the index to account for the clone at the start
-        setCarouselPosition(initialIndex + 1)
-
-        if (typeof window !== 'undefined') {
-          window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(() => {
-              setIsTransitionEnabled(true)
-            })
-          })
-        } else {
-          setIsTransitionEnabled(true)
-        }
-      } else {
-        setCarouselPosition(0)
-      }
     }
-  }, [activeVariant, totalImages, primaryImageIndex, setCarouselPosition])
-  
-  const goToNextImage = useCallback(() => {
-    if (totalImages <= 1) return
-
-    setIsTransitionEnabled(true)
-    setTransitionDurationMs(getResponsiveDuration())
-    setCarouselPosition((prev) => prev + 1)
-    setSelectedImageIndex((prev) => {
-      const nextIndex = (prev + 1) % totalImages
-      return nextIndex
-    })
-    setDragOffset(0)
-  }, [getResponsiveDuration, totalImages, setCarouselPosition])
-
-  const goToPreviousImage = useCallback(() => {
-    if (totalImages <= 1) return
-
-    setIsTransitionEnabled(true)
-    setTransitionDurationMs(getResponsiveDuration())
-    setCarouselPosition((prev) => prev - 1)
-    setSelectedImageIndex((prev) => {
-      const nextIndex = ((prev - 1) % totalImages + totalImages) % totalImages
-      return nextIndex
-    })
-    setDragOffset(0)
-  }, [getResponsiveDuration, totalImages, setCarouselPosition])
-  
-  const handleCarouselTransitionEnd = useCallback(() => {
-    if (totalImages <= 1) return
-
-    if (carouselPositionRef.current === 0) {
-      setIsTransitionEnabled(false)
-      setCarouselPosition(totalImages)
-
-      if (typeof window !== 'undefined') {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            setIsTransitionEnabled(true)
-          })
-        })
-      } else {
-        setIsTransitionEnabled(true)
-      }
-    } else if (carouselPositionRef.current === totalImages + 1) {
-      setIsTransitionEnabled(false)
-      setCarouselPosition(1)
-
-      if (typeof window !== 'undefined') {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            setIsTransitionEnabled(true)
-          })
-        })
-      } else {
-        setIsTransitionEnabled(true)
-      }
-    }
-  }, [totalImages, setCarouselPosition])
-  
-  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    // Only handle primary pointer (left mouse button or first touch)
-    if (event.button !== 0 && event.pointerType !== 'touch') return
-    
-    const element = event.currentTarget
-    element.setPointerCapture(event.pointerId)
-    
-    pointerStartXRef.current = event.clientX
-    pointerStartYRef.current = event.clientY
-    pointerStartTimeRef.current = typeof performance !== 'undefined' ? performance.now() : Date.now()
-    lastPointerXRef.current = event.clientX
-    lastPointerTimeRef.current = typeof performance !== 'undefined' ? performance.now() : Date.now()
-    isSwipingRef.current = false
-    setIsTransitionEnabled(false)
-    setIsDragging(true)
-    setDragOffset(0)
-    linkClickedRef.current = false
-  }, [])
-
-  const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (pointerStartXRef.current === null || pointerStartYRef.current === null) return
-    
-    const deltaX = event.clientX - pointerStartXRef.current
-    const deltaY = event.clientY - pointerStartYRef.current
-
-    // Detect horizontal swipe (threshold: 10px to avoid accidental taps)
-    if (!isSwipingRef.current && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-      isSwipingRef.current = true
-      linkClickedRef.current = true
-      // Disable transitions for smooth dragging
-      setIsTransitionEnabled(false)
-    }
-
-    // Live drag-follow: continuously update transform while dragging
-    if (isSwipingRef.current) {
-      const width = carouselWidth || (carouselContainerRef.current?.offsetWidth ?? 0)
-      
-      if (width > 0) {
-        // Allow rubber-band effect with max 35% drag
-        const maxOffset = width * 0.35
-        const clampedDelta = Math.max(Math.min(deltaX, maxOffset), -maxOffset)
-        // Update drag offset in real-time - this triggers re-render with new transform
-        setDragOffset(clampedDelta)
-      } else {
-        setDragOffset(deltaX)
-      }
-      
-      lastPointerXRef.current = event.clientX
-      lastPointerTimeRef.current = typeof performance !== 'undefined' ? performance.now() : Date.now()
-    }
-  }, [carouselWidth])
-
-  const handlePointerUp = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (pointerStartXRef.current === null || pointerStartYRef.current === null) return
-    
-    const element = event.currentTarget
-    element.releasePointerCapture(event.pointerId)
-
-    const deltaX = event.clientX - pointerStartXRef.current
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
-    const lastTime = lastPointerTimeRef.current ?? now
-    const lastX = lastPointerXRef.current ?? event.clientX
-    const timeSinceLast = Math.max(1, now - lastTime)
-    const deltaSinceLast = event.clientX - lastX
-
-    // Calculate velocity for momentum-based snapping
-    const instantaneousVelocity = deltaSinceLast / timeSinceLast
-    const totalTime = pointerStartTimeRef.current ? Math.max(1, now - pointerStartTimeRef.current) : timeSinceLast
-    const averageVelocity = deltaX / totalTime
-    const velocity = instantaneousVelocity !== 0 ? instantaneousVelocity : averageVelocity
-
-    const width = carouselWidth || (carouselContainerRef.current?.offsetWidth ?? 0)
-    
-    // Threshold: 20% of card width (within 15-30% range) or velocity-based
-    const distanceThreshold = width > 0 ? width * 0.20 : 80
-    const velocityThreshold = 0.3 // pixels per ms
-    
-    // Prevent accidental taps: if drag distance > 8px, it's a swipe
-    const minSwipeDistance = 8
-    const isSwipe = Math.abs(deltaX) > minSwipeDistance
-
-    const shouldCommitByDistance = Math.abs(deltaX) >= distanceThreshold
-    const shouldCommitByVelocity = Math.abs(velocity) >= velocityThreshold
-    const shouldCommit = (shouldCommitByDistance || shouldCommitByVelocity) && isSwipe
-
-    setIsTransitionEnabled(true)
-    setTransitionDurationMs(getResponsiveDuration())
-
-    // Snap to closest slide with momentum
-    if (shouldCommit && isSwipingRef.current) {
-      const directionalDelta = deltaX !== 0 ? deltaX : velocity
-      if (directionalDelta < 0) {
-        goToNextImage()
-      } else {
-        goToPreviousImage()
-      }
-      linkClickedRef.current = true
-    } else if (isSwipe) {
-      // Small swipe that didn't meet threshold - snap back
-      setDragOffset(0)
-      linkClickedRef.current = true
-    } else {
-      // No swipe detected - allow normal tap
-      setDragOffset(0)
-      linkClickedRef.current = false
-    }
-
-    pointerStartXRef.current = null
-    pointerStartYRef.current = null
-    pointerStartTimeRef.current = null
-    lastPointerXRef.current = null
-    lastPointerTimeRef.current = null
-    isSwipingRef.current = false
-    setIsDragging(false)
-  }, [carouselWidth, getResponsiveDuration, goToNextImage, goToPreviousImage])
-
-  const handlePointerCancel = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const element = event.currentTarget
-    element.releasePointerCapture(event.pointerId)
-    
-    pointerStartXRef.current = null
-    pointerStartYRef.current = null
-    pointerStartTimeRef.current = null
-    lastPointerXRef.current = null
-    lastPointerTimeRef.current = null
-    isSwipingRef.current = false
-    setDragOffset(0)
-    setIsTransitionEnabled(true)
-    setIsDragging(false)
-    setTransitionDurationMs(getResponsiveDuration())
-  }, [getResponsiveDuration])
+  }, [api, activeVariant, totalImages, primaryImageIndex])
   
   if (!activeVariant) {
     return null
@@ -392,11 +170,6 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   
   // Get primary image from the active variant (for fallback)
   const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
-  
-  // Calculate carousel transform
-  const baseSlidePosition = totalImages > 1 ? carouselPositionState : selectedImageIndex
-  const translateDeltaPercentage = carouselWidth > 0 ? (dragOffset / carouselWidth) * 100 : 0
-  const translateValue = -(baseSlidePosition * 100) + translateDeltaPercentage
   
   // Get available sizes for the active variant (only sizes with stock > 0)
   // const availableSizes = 'stockBySize' in activeVariant ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => size) : []
@@ -469,15 +242,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
         onClick={handleLinkClick}
       >
         {/* Image Carousel Container */}
-        <div
-          ref={carouselContainerRef}
-          className="w-full h-full relative"
-          style={{ touchAction: 'pan-y' }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerCancel}
-        >
+        <div className="w-full h-full relative">
           {/* Image indicator dots */}
           {totalImages > 1 && (
             <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex space-x-1">
@@ -493,63 +258,61 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           )}
           
           {/* Image Carousel */}
-          <div 
-            dir="ltr"
-            className="flex h-full w-full"
-            style={{
-              transform: `translate3d(${translateValue}%, 0, 0)`,
-              transitionDuration: isTransitionEnabled && !isDragging ? `${transitionDurationMs}ms` : '0ms',
-              transitionTimingFunction: isTransitionEnabled ? 'cubic-bezier(.22,.61,.36,1)' : 'linear',
-              willChange: 'transform',
-              touchAction: 'pan-y'
-            }}
-            onTransitionEnd={handleCarouselTransitionEnd}
-          >
-            {extendedImages.length > 0 ? (
-              extendedImages.map((image, extendedIndex) => {
-                const actualIndex = extendedIndex === 0 ? totalImages - 1 : extendedIndex === extendedImages.length - 1 ? 0 : extendedIndex - 1
-                const isClone = totalImages > 1 && (extendedIndex === 0 || extendedIndex === extendedImages.length - 1)
-                const distance = Math.abs(selectedImageIndex - actualIndex)
-                const wrapDistance = totalImages > 0 ? Math.min(distance, totalImages - distance) : distance
-                const shouldPreload = wrapDistance <= 1
-                const isActive = selectedImageIndex === actualIndex && !isClone
+          {totalImages > 1 ? (
+            <Carousel
+              setApi={setApi}
+              direction={language === 'he' ? 'rtl' : 'ltr'}
+              opts={{
+                align: 'start',
+                loop: true,
+              }}
+              className="w-full h-full"
+            >
+              <CarouselContent className={`h-full ${language === 'he' ? '-mr-0' : '-ml-0'}`}>
+                {variantImages.map((image, index) => {
+                  const shouldPreload = Math.abs(selectedImageIndex - index) <= 1
+                  const isActive = selectedImageIndex === index
+                  const isPrimary = index === primaryImageIndex
 
-                return (
-                  <div key={`image-${extendedIndex}-${actualIndex}`} className="w-full h-full flex-shrink-0 relative">
-                    <Image
-                      src={typeof image === 'string' ? image : image?.url || ''}
-                      alt={`${productName} - ${activeVariant.colorSlug}`}
-                      width={500}
-                      height={500}
-                      className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-                      priority={shouldPreload && !isClone && extendedIndex === 1}
-                      unoptimized={true}
-                      loading={shouldPreload && !isClone ? undefined : 'lazy'}
-                      draggable={false}
-                      decoding={isActive ? 'sync' : 'async'}
-                    />
-                  </div>
-                )
-              })
-            ) : primaryImage ? (
-              <div className="w-full h-full flex-shrink-0 relative">
-                <Image
-                  src={typeof primaryImage === 'string' ? primaryImage : primaryImage?.url || ''}
-                  alt={`${productName} - ${activeVariant.colorSlug}`}
-                  width={500}
-                  height={500}
-                  className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-                  priority={true}
-                  unoptimized={true}
-                  draggable={false}
-                />
-              </div>
-            ) : (
-              <div className="w-full h-full flex-shrink-0 flex items-center justify-center bg-gray-200">
-                <span className="text-gray-400 text-sm">No Image</span>
-              </div>
-            )}
-          </div>
+                  return (
+                    <CarouselItem key={`image-${index}`} className={`h-full basis-full ${language === 'he' ? 'pr-0' : 'pl-0'}`}>
+                      <div className="w-full h-full relative">
+                        <Image
+                          src={typeof image === 'string' ? image : image?.url || ''}
+                          alt={`${productName} - ${activeVariant.colorSlug}`}
+                          width={500}
+                          height={500}
+                          className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                          priority={isPrimary}
+                          unoptimized={true}
+                          {...(isPrimary ? {} : { loading: shouldPreload ? undefined : 'lazy' })}
+                          draggable={false}
+                          decoding={isActive ? 'sync' : 'async'}
+                        />
+                      </div>
+                    </CarouselItem>
+                  )
+                })}
+              </CarouselContent>
+            </Carousel>
+          ) : primaryImage ? (
+            <div className="w-full h-full relative">
+              <Image
+                src={typeof primaryImage === 'string' ? primaryImage : primaryImage?.url || ''}
+                alt={`${productName} - ${activeVariant.colorSlug}`}
+                width={500}
+                height={500}
+                className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                priority={true}
+                unoptimized={true}
+                draggable={false}
+              />
+            </div>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-200">
+              <span className="text-gray-400 text-sm">No Image</span>
+            </div>
+          )}
         </div>
         
                     {/* Mobile Icons - Heart and Quick Buy */}

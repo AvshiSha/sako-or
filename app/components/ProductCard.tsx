@@ -22,9 +22,10 @@ interface ProductCardProps {
   language?: 'en' | 'he'
   returnUrl?: string
   selectedColors?: string[] // Color filter from collection page
+  disableImageCarousel?: boolean // Disable image carousel (e.g., when inside ProductCarousel)
 }
 
-export default function ProductCard({ product, language = 'en', returnUrl, selectedColors }: ProductCardProps) {
+export default function ProductCard({ product, language = 'en', returnUrl, selectedColors, disableImageCarousel = false }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -244,7 +245,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
         {/* Image Carousel Container */}
         <div className="w-full h-full relative">
           {/* Image indicator dots */}
-          {totalImages > 1 && (
+          {!disableImageCarousel && totalImages > 1 && (
             <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex space-x-1">
               {Array.from({ length: totalImages }).map((_, index) => (
                 <div
@@ -258,7 +259,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           )}
           
           {/* Image Carousel */}
-          {totalImages > 1 ? (
+          {!disableImageCarousel && totalImages > 1 ? (
             <Carousel
               setApi={setApi}
               direction={language === 'he' ? 'rtl' : 'ltr'}

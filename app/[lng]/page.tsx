@@ -7,6 +7,9 @@ import Link from 'next/link'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
 import CountdownPopup from '@/app/components/CountdownPopup'
+import ProductCarousel from '@/app/components/ProductCarousel'
+import { productService } from '@/lib/firebase'
+import { Product } from '@/lib/firebase'
 
 const collections = [
   {
@@ -157,6 +160,8 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   const [subscribedEmail, setSubscribedEmail] = useState('')
   const [emailError, setEmailError] = useState('')
   const [showCountdownPopup, setShowCountdownPopup] = useState(false)
+  const [bestSellers, setBestSellers] = useState<Product[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(true)
   
   // Initialize language from params
   useEffect(() => {
@@ -164,6 +169,27 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       setLng(language)
     })
   }, [params])
+
+  // Fetch best sellers products
+  useEffect(() => {
+    const fetchBestSellers = async () => {
+      try {
+        setLoadingProducts(true)
+        // Fetch featured products or newest products as best sellers
+        const products = await productService.getAllProducts({
+          isActive: true,
+          limit: 12, // Limit to 12 products for the carousel
+        })
+        setBestSellers(products)
+      } catch (error) {
+        console.error('Error fetching best sellers:', error)
+      } finally {
+        setLoadingProducts(false)
+      }
+    }
+
+    fetchBestSellers()
+  }, [])
 
   // Show countdown popup on home page
   useEffect(() => {
@@ -237,9 +263,9 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   }
 
   return (
-    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#E1DBD7' }}>
+    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
-      <div className="relative h-screen">
+      <div className="relative aspect-[3/4] md:h-screen">
         <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
           <video
             className="hidden md:block h-full w-full object-cover"
@@ -295,6 +321,15 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
           </div>
         </div>
       </div>
+
+      {/* Product Carousel - Best Sellers */}
+      {!loadingProducts && bestSellers.length > 0 && (
+        <ProductCarousel
+          products={bestSellers}
+          title={lng === 'he' ? 'הנמכרים ביותר' : 'Best Sellers'}
+          language={lng as 'en' | 'he'}
+        />
+      )}
 
       {/* Collections Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24" style={{ backgroundColor: '#E1DBD7' }}>

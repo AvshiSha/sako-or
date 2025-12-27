@@ -629,7 +629,7 @@ export default function Navigation({ lng }: { lng: string }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.3 }}
               className="fixed inset-0 bg-black/40 z-[60] md:hidden"
               onClick={closeMobileMenu}
             />
@@ -639,7 +639,7 @@ export default function Navigation({ lng }: { lng: string }) {
               initial={{ y: -200 }}
               animate={{ y: 0 }}
               exit={{ y: -800 }}
-              transition={{ type: "spring", damping: 30, stiffness: 200 }}
+              transition={{ type: "spring", damping: 30, stiffness: 100, duration: 0.4 }}
               className="fixed left-0 right-0 bg-white shadow-2xl z-[71] md:hidden overflow-hidden"
               style={{
                 top: '102px', // Below nav bar (top-10 = 40px + h-16 = 64px + 2px for border)

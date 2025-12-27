@@ -65,7 +65,7 @@ const translations = {
     privacyPolicy: 'מדיניות פרטיות',
     termsOfService: 'תנאי שימוש',
     termsReturns: 'מדיניות החזרות',
-    company: 'חברה',
+    company: 'פרטי החברה',
     customerSupport: 'תמיכה ללקוחות',
     language: 'שפה',
     terms: 'תנאים',

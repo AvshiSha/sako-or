@@ -1125,14 +1125,12 @@ export default function ProductColorPage() {
                 </div>
               </div>
 
-              {/* Product Info */}
-              <div className="border-t border-gray-200 pt-6">
+              {/* Product Info, Material & Care, and Shipping & Returns */}
+              <div className="border-t border-gray-200 pt-4">
                 <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium text-gray-900">
-                      {lng === 'he' ? 'מידע נוסף' : 'Additional Information'}
-                    </h4>
-                    <div className="mt-2 space-y-2 text-sm text-gray-600">
+                  {/* Additional Information Accordion */}
+                  <Accordion title={lng === 'he' ? 'מידע נוסף' : 'Additional Information'}>
+                    <div className="space-y-2 text-sm text-gray-600">
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'מספר דגם' : 'SKU'}:</span>
                         <span>{baseSku}</span>
@@ -1143,21 +1141,22 @@ export default function ProductColorPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>
-                        <span>{product.categories_path[0]}</span>
+                        <span>
+                          {product.categories_path.length >= 2
+                            ? product.categories_path[product.categories_path.length - 1] // Sub-subcategory (last item)
+                            : product.categories_path.length === 1
+                            ? product.categories_path[0] // Subcategory (first item)
+                            : product.category} {/* Main category (fallback) */}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'מותג' : 'Brand'}:</span>
                         <span>{product.brand}</span>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
+                  </Accordion>
 
-              {/* Material & Care and Shipping & Returns Sections */}
-              <div className="border-t border-gray-200 pt-6">
-                <div className="space-y-4">
-                  {/* Material & Care Section */}
+                  {/* Material & Care Accordion */}
                   {(product.materialCare?.upperMaterial_en || product.materialCare?.upperMaterial_he || 
                     product.materialCare?.materialInnerSole_en || product.materialCare?.materialInnerSole_he ||
                     product.materialCare?.lining_en || product.materialCare?.lining_he ||
@@ -1269,7 +1268,7 @@ export default function ProductColorPage() {
                     </Accordion>
                   )}
 
-                  {/* Shipping & Returns Section */}
+                  {/* Shipping & Returns Accordion */}
                   <Accordion title={lng === 'he' ? 'משלוחים והחזרות' : 'Shipping & Returns'}>
                     <div className="text-sm text-gray-600 leading-relaxed">
                       {product.shippingReturns ? (

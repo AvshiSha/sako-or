@@ -139,10 +139,15 @@ export default function CollectionClient({
 
   // Helper function to get translated category/subcategory name
   const getTranslatedName = (category: string, subcategory?: string | null) => {
+    console.log(category, subcategory);
     if (subcategory) {
-      const subcategoryKey = subcategory.toLowerCase().replace(/[-\s]+/g, '');
-      const translatedSubcategory = t.subcategoriesList[subcategoryKey as keyof typeof t.subcategoriesList];
-      return translatedSubcategory || subcategory;
+      const subCategoryCapitalized = subcategory.charAt(0).toUpperCase() + subcategory.slice(1);
+      return subCategoryCapitalized;
+    }
+
+    if (category) {
+      const categoryCapitalized = category.charAt(0).toUpperCase() + category.slice(1);
+      return categoryCapitalized;
     }
     
     const categoryKey = category.toLowerCase();
@@ -414,12 +419,12 @@ export default function CollectionClient({
 
   return (
     <div className="min-h-screen pt-22 bg-[#E1DBD7]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 py-6 md:py-16 relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pt-20 md:pb-16 relative">
         {/* Header with Filters Button */}
         <div className="mb-4 md:mb-4">
           <div className="mb-4">
-            <h1 className="text-3xl md:text-4xl font-bold leading-tight text-black text-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
-              {getTranslatedName(selectedCategory, selectedSubcategory) || selectedCategory || 'All Products'}
+            <h1 className="text-2xl md:text-4xl font-bold leading-tight text-black text-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              Sako's {getTranslatedName(selectedCategory, selectedSubcategory)} Collection
             </h1>
           </div>
 

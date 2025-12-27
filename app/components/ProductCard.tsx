@@ -249,8 +249,8 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
               {Array.from({ length: totalImages }).map((_, index) => (
                 <div
                   key={index}
-                  className={`w-1.5 h-1.5 rounded-full transition-all duration-200 ${
-                    selectedImageIndex === index ? 'bg-white' : 'bg-white/50'
+                  className={`w-1 h-1 rounded-full transition-all duration-200 ${
+                    selectedImageIndex === index ? 'bg-[#E1DBD7]' : 'bg-[#E1DBD7]/50'
                   }`}
                 />
               ))}
@@ -369,7 +369,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       </Link>
       
       {/* Product Information Section */}
-      <div className="mt-0 bg-gray-100 p-3 pb-1">
+      <div className="mt-0 bg-[#E1DBD7] p-3 pb-1">
         <div className="flex items-center gap-2 mb-1">
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{productName}</h3>
           {product.newProduct && (
@@ -399,7 +399,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       
       {/* Color Variants Section */}
       {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
-        <div className="mt-0 bg-gray-100 p-3 pt-1">
+        <div className="mt-0 bg-[#E1DBD7] p-3 pt-1">
           <div className="flex gap-2 overflow-x-auto pb-2">
             {Object.values(product.colorVariants)
               .filter(variant => variant.isActive !== false) // Filter out inactive variants

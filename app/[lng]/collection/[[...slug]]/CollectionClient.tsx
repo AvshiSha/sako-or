@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronDownIcon,
   FunnelIcon,
   XMarkIcon,
   CubeIcon,
@@ -414,70 +413,26 @@ export default function CollectionClient({
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
 
   return (
-    <div className="min-h-screen pt-11 bg-[#E1DBD7]">
-      {/* Breadcrumb Navigation */}
-      <nav className="bg-gray-50 border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-2 py-4">
-            <Link href={`/${lng}`} className="text-gray-500 hover:text-gray-700">
-              {t.home}
-            </Link>
-            <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
-            {selectedCategory !== "All Products" && (
-              <>
-                {!selectedSubcategory && (
-                  <Link
-                    href={`/${lng}/collection/${selectedCategory}`}
-                    className="text-gray-900"
-                  >
-                    {getTranslatedName(selectedCategory)}
-                  </Link>
-                )}
-                {selectedSubcategory && (
-                  <>
-                    <Link
-                      href={`/${lng}/collection/${selectedCategory}`}
-                      className="text-gray-500 hover:text-gray-700"
-                    >
-                      {getTranslatedName(selectedCategory)}
-                    </Link>
-                    <ChevronDownIcon className="h-4 w-4 text-gray-400 rotate-270" />
-                    <Link
-                      href={`/${lng}/collection/${selectedCategory}/${selectedSubcategory}`}
-                      className="text-gray-900"
-                    >
-                      {getTranslatedName(selectedCategory, selectedSubcategory)}
-                    </Link>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    <div className="min-h-screen pt-22 bg-[#E1DBD7]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 py-6 md:py-16 relative">
         {/* Header with Filters Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {getTranslatedName(selectedCategory, selectedSubcategory)}
+        <div className="mb-4 md:mb-4">
+          <div className="mb-4">
+            <h1 className="text-3xl md:text-4xl font-bold leading-tight text-black text-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+              {getTranslatedName(selectedCategory, selectedSubcategory) || selectedCategory || 'All Products'}
             </h1>
-            <p className="mt-1 text-sm text-gray-500">
-              {sortedProducts.length} {t.products}
-            </p>
           </div>
 
-          <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+          <div className={cn("flex items-center gap-3", lng === 'he' ? 'flex-row-reverse' : 'flex-row')}>
             {/* Desktop Filters Button */}
             <button
               onClick={() => setDesktopFiltersOpen(!desktopFiltersOpen)}
               className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
             >
-              <FunnelIcon className="h-4 w-4 mr-2" />
+              <FunnelIcon className={cn("h-4 w-4", lng === 'he' ? 'ml-2' : 'mr-2')} />
               {t.filters}
               {(selectedColors.length > 0 || selectedSizes.length > 0 || priceRange.min || priceRange.max) && (
-                <span className="ml-2 bg-black text-white text-xs rounded-full px-2 py-1">
+                <span className={cn("bg-black text-white text-xs rounded-full px-2 py-1", lng === 'he' ? 'mr-2' : 'ml-2')}>
                   {selectedColors.length + selectedSizes.length + (priceRange.min ? 1 : 0) + (priceRange.max ? 1 : 0)}
                 </span>
               )}

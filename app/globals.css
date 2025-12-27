@@ -72,3 +72,47 @@ body {
 .accordion-content[data-state="closed"] {
   animation: accordion-up 0.3s ease-out;
 }
+
+/* Select animations */
+@keyframes select-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes select-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+}
+
+.select-content[data-state="open"] {
+  animation: select-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.select-content[data-state="closed"] {
+  animation: select-fade-out 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* RTL support for Select component */
+[dir="rtl"] .select-content {
+  text-align: right;
+}
+
+[dir="rtl"] [data-radix-select-trigger] {
+  direction: rtl;
+}
+
+[dir="rtl"] [data-radix-select-item] {
+  text-align: right;
+}

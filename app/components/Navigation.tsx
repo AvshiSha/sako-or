@@ -12,163 +12,13 @@ import { useFavorites } from '@/app/hooks/useFavorites'
 import { categoryService } from '@/lib/firebase'
 import { getImageUrl } from '@/lib/image-urls'
 import { motion, AnimatePresence } from "framer-motion"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/app/components/ui/accordion'
 
-// Category Accordion Item Component with smooth animation
-function CategoryAccordionItem({
-  categoryId,
-  isExpanded,
-  hasChildren,
-  categoryName,
-  subcategory,
-  selectedGender,
-  lng,
-  onToggle,
-  onLinkClick,
-  translations
-}: {
-  categoryId: string
-  isExpanded: boolean
-  hasChildren: boolean
-  categoryName: string
-  subcategory: { id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> }
-  selectedGender: 'women' | 'men'
-  lng: string
-  onToggle: () => void
-  onLinkClick: () => void
-  translations: {
-    en: { allProducts: string }
-    he: { allProducts: string }
-  }
-}) {
-  const contentRef = useRef<HTMLDivElement>(null)
-  const innerRef = useRef<HTMLDivElement>(null)
-  const [height, setHeight] = useState<number | "auto">(0)
-  const [opacity, setOpacity] = useState<number>(0)
-
-  useEffect(() => {
-    const contentEl = contentRef.current
-    const innerEl = innerRef.current
-    if (!contentEl || !innerEl || !hasChildren) {
-      if (!isExpanded) {
-        setHeight(0)
-        setOpacity(0)
-      }
-      return
-    }
-
-    if (isExpanded) {
-      const startHeight = contentEl.getBoundingClientRect().height
-      const targetHeight = innerEl.scrollHeight
-
-      setOpacity(1)
-      setHeight(startHeight)
-      requestAnimationFrame(() => {
-        setHeight(targetHeight)
-      })
-    } else {
-      // Closing: Get the height we captured before state change
-      const storedHeight = contentEl.getAttribute('data-closing-height')
-      const currentHeight = storedHeight 
-        ? parseFloat(storedHeight) 
-        : (contentEl.getBoundingClientRect().height || innerEl.scrollHeight || 0)
-      
-      if (currentHeight > 0) {
-        // Set to the captured height first to ensure smooth transition
-        setHeight(currentHeight)
-        // Remove the data attribute
-        contentEl.removeAttribute('data-closing-height')
-        // Then animate to 0 on the next frame
-        requestAnimationFrame(() => {
-          setHeight(0)
-          setOpacity(0)
-        })
-      } else {
-        setHeight(0)
-        setOpacity(0)
-      }
-    }
-  }, [isExpanded, hasChildren])
-
-  const onTransitionEnd = () => {
-    const contentEl = contentRef.current
-    if (!contentEl) return
-    
-    // After opening finishes, let height be auto for responsive content
-    if (isExpanded && height !== "auto") {
-      setHeight("auto")
-    }
-    // Clean up any remaining data attributes
-    contentEl.removeAttribute('data-closing-height')
-  }
-
-  if (!hasChildren) {
-    return (
-      <div className="border-b border-gray-200">
-        <Link
-          href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-          onClick={onLinkClick}
-          className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
-          dir={lng === 'he' ? 'rtl' : 'ltr'}
-        >
-          <span className="text-sm uppercase tracking-wide">{categoryName}</span>
-        </Link>
-      </div>
-    )
-  }
-
-  return (
-    <div className="border-b border-gray-200">
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
-        dir={lng === 'he' ? 'rtl' : 'ltr'}
-      >
-        <span className="text-sm uppercase tracking-wide">{categoryName}</span>
-        <ChevronDown 
-          className={`h-5 w-5 text-gray-400 transition-transform duration-300 ease-in-out ${isExpanded ? 'rotate-180' : ''}`}
-        />
-      </button>
-      <div
-        id={`category-content-${categoryId}`}
-        ref={contentRef}
-        onTransitionEnd={onTransitionEnd}
-        style={{
-          height: height === "auto" ? "auto" : `${height}px`,
-          opacity: opacity,
-          transition: 'height 300ms cubic-bezier(0.4, 0, 0.2, 1), opacity 300ms cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-        className="overflow-hidden"
-      >
-        <div ref={innerRef} className="bg-gray-50 border-t border-gray-100">
-          <Link
-            href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-            onClick={onLinkClick}
-            className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm font-medium border-b border-gray-200"
-            dir={lng === 'he' ? 'rtl' : 'ltr'}
-          >
-            {translations[lng as keyof typeof translations].allProducts}
-          </Link>
-          {subcategory.subChildren?.map((subSubCategory) => {
-            const subSubName = typeof subSubCategory.name === 'object'
-              ? (lng === 'he' ? (subSubCategory.name as any).he : (subSubCategory.name as any).en) || (subSubCategory.name as any).en
-              : subSubCategory.name
-            return (
-              <Link
-                key={subSubCategory.id}
-                href={`/${lng}/collection/${selectedGender}/${subcategory.slug}/${subSubCategory.slug}`}
-                onClick={onLinkClick}
-                className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
-                dir={lng === 'he' ? 'rtl' : 'ltr'}
-              >
-                {subSubName}
-              </Link>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 
 // Hardcoded translations for build-time rendering
@@ -190,8 +40,8 @@ const translations = {
     men: 'גברים',
     about: 'אודות',
     contact: 'צרו קשר',
-    allWomen: 'כל קולקצית הנשים',
-    allMen: 'כל קולקצית הגברים',
+    allWomen: 'לכל קולקצית הנשים',
+    allMen: 'לכל קולקצית הגברים',
     categories: 'קטגוריות',
     allProducts: 'לכל המוצרים'
   }
@@ -212,7 +62,6 @@ export default function Navigation({ lng }: { lng: string }) {
   const [mobileNavLevel, setMobileNavLevel] = useState<'main' | 'women' | 'men' | 'women-sub' | 'men-sub'>('main')
   const [selectedMobileCategory, setSelectedMobileCategory] = useState<{ id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> } | null>(null)
   const [selectedGender, setSelectedGender] = useState<'women' | 'men'>('women')
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
   const { items } = useCart()
   const { favorites } = useFavorites()
@@ -367,7 +216,6 @@ export default function Navigation({ lng }: { lng: string }) {
     setIsMobileMenuOpen(false)
     setMobileNavLevel('main')
     setSelectedMobileCategory(null)
-    setExpandedCategories(new Set())
     // Unlock body scroll
     document.body.style.overflow = ''
   }
@@ -395,29 +243,6 @@ export default function Navigation({ lng }: { lng: string }) {
     return () => document.removeEventListener('keydown', handleEsc)
   }, [isMobileMenuOpen])
 
-  const toggleCategory = (categoryId: string) => {
-    // If closing, capture height before state change
-    const isCurrentlyExpanded = expandedCategories.has(categoryId)
-    if (isCurrentlyExpanded) {
-      const contentElement = document.getElementById(`category-content-${categoryId}`)
-      if (contentElement) {
-        // Capture the current rendered height before closing
-        const currentHeight = contentElement.getBoundingClientRect().height
-        // Store it in a data attribute so the component can access it
-        contentElement.setAttribute('data-closing-height', currentHeight.toString())
-      }
-    }
-    
-    setExpandedCategories(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(categoryId)) {
-        newSet.delete(categoryId)
-      } else {
-        newSet.add(categoryId)
-      }
-      return newSet
-    })
-  }
 
   const navigateToLevel = (level: 'main' | 'women' | 'men' | 'women-sub' | 'men-sub', category?: { id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> }) => {
     setMobileNavLevel(level)
@@ -827,7 +652,6 @@ export default function Navigation({ lng }: { lng: string }) {
                 <button
                   onClick={() => {
                     setSelectedGender('women')
-                    setExpandedCategories(new Set())
                   }}
                   className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
                     selectedGender === 'women'
@@ -841,7 +665,6 @@ export default function Navigation({ lng }: { lng: string }) {
                   <button
                     onClick={() => {
                       setSelectedGender('men')
-                      setExpandedCategories(new Set())
                     }}
                     className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
                       selectedGender === 'men'
@@ -873,29 +696,65 @@ export default function Navigation({ lng }: { lng: string }) {
                 </Link>
 
                 {/* Categories List with Accordion */}
-                {(selectedGender === 'women' ? womenSubcategories : menSubcategories).map((subcategory) => {
-                  const hasChildren = subcategory.subChildren && subcategory.subChildren.length > 0
-                  const isExpanded = expandedCategories.has(subcategory.id)
-                  const categoryName = typeof subcategory.name === 'object' 
-                    ? (lng === 'he' ? (subcategory.name as any).he : (subcategory.name as any).en) || (subcategory.name as any).en
-                    : subcategory.name
+                <Accordion type="single" collapsible className="w-full">
+                  {(selectedGender === 'women' ? womenSubcategories : menSubcategories).map((subcategory) => {
+                    const hasChildren = subcategory.subChildren && subcategory.subChildren.length > 0
+                    const categoryName = typeof subcategory.name === 'object' 
+                      ? (lng === 'he' ? (subcategory.name as any).he : (subcategory.name as any).en) || (subcategory.name as any).en
+                      : subcategory.name
 
-                  return (
-                    <CategoryAccordionItem
-                      key={subcategory.id}
-                      categoryId={subcategory.id}
-                      isExpanded={isExpanded}
-                      hasChildren={hasChildren ?? false}
-                      categoryName={categoryName}
-                      subcategory={subcategory}
-                      selectedGender={selectedGender}
-                      lng={lng}
-                      onToggle={() => toggleCategory(subcategory.id)}
-                      onLinkClick={closeMobileMenu}
-                      translations={translations}
-                    />
-                  )
-                })}
+                    if (!hasChildren) {
+                      return (
+                        <div key={subcategory.id} className="border-b border-gray-200">
+                          <Link
+                            href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
+                            onClick={closeMobileMenu}
+                            className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
+                            dir={lng === 'he' ? 'rtl' : 'ltr'}
+                          >
+                            <span className="text-sm uppercase tracking-wide">{categoryName}</span>
+                          </Link>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <AccordionItem key={subcategory.id} value={subcategory.id} className="border-b border-gray-200">
+                        <AccordionTrigger className="min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 hover:no-underline" dir={lng === 'he' ? 'rtl' : 'ltr'}>
+                          <span className="text-sm uppercase tracking-wide">{categoryName}</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="px-0">
+                          <div className="bg-gray-50 border-t border-gray-100">
+                            <Link
+                              href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
+                              onClick={closeMobileMenu}
+                              className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm font-medium border-b border-gray-200"
+                              dir={lng === 'he' ? 'rtl' : 'ltr'}
+                            >
+                              {translations[lng as keyof typeof translations].allProducts}
+                            </Link>
+                            {subcategory.subChildren?.map((subSubCategory) => {
+                              const subSubName = typeof subSubCategory.name === 'object'
+                                ? (lng === 'he' ? (subSubCategory.name as any).he : (subSubCategory.name as any).en) || (subSubCategory.name as any).en
+                                : subSubCategory.name
+                              return (
+                                <Link
+                                  key={subSubCategory.id}
+                                  href={`/${lng}/collection/${selectedGender}/${subcategory.slug}/${subSubCategory.slug}`}
+                                  onClick={closeMobileMenu}
+                                  className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
+                                  dir={lng === 'he' ? 'rtl' : 'ltr'}
+                                >
+                                  {subSubName}
+                                </Link>
+                              )
+                            })}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  })}
+                </Accordion>
 
               </div>
             </div>

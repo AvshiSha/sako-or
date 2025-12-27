@@ -48,33 +48,78 @@ export default async function CollectionSlugPage({
 
   const { lng, slug } = resolvedParams;
 
-  // Build category path from slug
-  let categoryPath: string | undefined;
-  let selectedCategory = "All Products";
-  let selectedSubcategory: string | null = null;
-    
+  // Check for search query parameter
+  const searchQuery = typeof resolvedSearchParams.search === 'string' 
+    ? resolvedSearchParams.search.trim() 
+    : undefined;
+
+  let products: any[] = [];
+  let searchTotal = 0;
+  let searchPage = 1;
+
+  // If search query exists, fetch from search API
+  if (searchQuery) {
+    try {
+      const page = typeof resolvedSearchParams.page === 'string' 
+        ? parseInt(resolvedSearchParams.page) 
+        : 1;
+      
+      // Use absolute URL for server-side fetch
+      const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+      const host = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_BASE_URL?.replace(/^https?:\/\//, '') || 'localhost:3000';
+      const baseUrl = `${protocol}://${host}`;
+      
+      const searchResponse = await fetch(
+        `${baseUrl}/api/products/search?q=${encodeURIComponent(searchQuery)}&page=${page}&limit=24`,
+        { 
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+      
+      if (searchResponse.ok) {
+        const searchData = await searchResponse.json();
+        products = searchData.items || [];
+        searchTotal = searchData.total || 0;
+        searchPage = searchData.page || 1;
+      } else {
+        console.error('Search API error:', searchResponse.status, searchResponse.statusText);
+      }
+    } catch (error) {
+      console.error('Error fetching search results:', error);
+    }
+  } else {
+    // Build category path from slug
+    let categoryPath: string | undefined;
+    let selectedCategory = "All Products";
+    let selectedSubcategory: string | null = null;
+      
     if (slug && slug.length > 0) {
       categoryPath = slug.map(s => decodeURIComponent(s)).join('/');
       
       if (slug.length === 1) {
         // URL: /en/collection/women
-      selectedCategory = decodeURIComponent(slug[0]);
+        selectedCategory = decodeURIComponent(slug[0]);
       } else if (slug.length === 2) {
         // URL: /en/collection/women/shoes
-      selectedCategory = decodeURIComponent(slug[0]);
-      selectedSubcategory = decodeURIComponent(slug[1]);
+        selectedCategory = decodeURIComponent(slug[0]);
+        selectedSubcategory = decodeURIComponent(slug[1]);
       } else if (slug.length === 3) {
         // URL: /en/collection/women/shoes/boots
-      selectedCategory = decodeURIComponent(slug[0]);
-      selectedSubcategory = decodeURIComponent(slug[2]); // The deepest category
+        selectedCategory = decodeURIComponent(slug[0]);
+        selectedSubcategory = decodeURIComponent(slug[2]); // The deepest category
       } else {
         // For deeper paths, use the full path
-      selectedCategory = categoryPath;
+        selectedCategory = categoryPath;
+      }
     }
-  }
 
-  // Fetch filtered products server-side
-  const { products } = await getCollectionProducts(categoryPath, resolvedSearchParams, lng as 'en' | 'he');
+    // Fetch filtered products server-side
+    const collectionData = await getCollectionProducts(categoryPath, resolvedSearchParams, lng as 'en' | 'he');
+    products = collectionData.products;
+  }
 
   // Fetch categories for the client component (needed for breadcrumbs and other UI)
   const categories = await categoryService.getAllCategories();
@@ -87,10 +132,13 @@ export default async function CollectionSlugPage({
     <CollectionClient
       initialProducts={serializedProducts}
       categories={serializedCategories}
-      categoryPath={categoryPath}
-      selectedCategory={selectedCategory}
-      selectedSubcategory={selectedSubcategory}
+      categoryPath={searchQuery ? undefined : (slug ? slug.map(s => decodeURIComponent(s)).join('/') : undefined)}
+      selectedCategory={searchQuery ? undefined : (slug && slug.length > 0 ? decodeURIComponent(slug[0]) : "All Products")}
+      selectedSubcategory={searchQuery ? null : (slug && slug.length >= 2 ? decodeURIComponent(slug[slug.length - 1]) : null)}
       lng={lng}
+      searchQuery={searchQuery}
+      searchTotal={searchTotal}
+      searchPage={searchPage}
     />
   );
 }

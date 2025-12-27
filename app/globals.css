@@ -36,3 +36,39 @@ body {
 #vpplugin-interface {
   z-index: 999999 !important;
 }
+
+/* Accordion animations */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+.animate-accordion-down {
+  animation: accordion-down 0.3s ease-out;
+}
+
+.animate-accordion-up {
+  animation: accordion-up 0.3s ease-out;
+}
+
+/* Direct application for Radix UI accordion - targets the content element */
+.accordion-content[data-state="open"] {
+  animation: accordion-down 0.3s ease-out;
+}
+
+.accordion-content[data-state="closed"] {
+  animation: accordion-up 0.3s ease-out;
+}

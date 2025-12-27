@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { Search, X } from 'lucide-react'
 import { Product } from '@/lib/firebase'
 import ProductCard from './ProductCard'
@@ -10,6 +11,7 @@ interface SearchBarProps {
 }
 
 export default function SearchBar({ language }: SearchBarProps) {
+  const router = useRouter()
   const [isExpanded, setIsExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Product[]>([])
@@ -30,10 +32,10 @@ export default function SearchBar({ language }: SearchBarProps) {
       setIsLoading(true)
       try {
         const response = await fetch(
-          `/api/products/search?q=${encodeURIComponent(searchQuery)}&lng=${language}`
+          `/api/products/search?q=${encodeURIComponent(searchQuery)}&limit=8`
         )
         const data = await response.json()
-        setSearchResults(data.products || [])
+        setSearchResults(data.items || [])
         setShowResults(true)
       } catch (error) {
         console.error('Search error:', error)
@@ -67,8 +69,19 @@ export default function SearchBar({ language }: SearchBarProps) {
   }, [isExpanded])
 
   const handleSearchIconClick = () => {
+    // Search icon only expands/collapses the search bar
     setIsExpanded(!isExpanded)
     if (isExpanded) {
+      setSearchQuery('')
+      setShowResults(false)
+    }
+  }
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/${language}/collection?search=${encodeURIComponent(searchQuery.trim())}`)
+      setIsExpanded(false)
       setSearchQuery('')
       setShowResults(false)
     }
@@ -89,12 +102,14 @@ export default function SearchBar({ language }: SearchBarProps) {
   const translations = {
     en: {
       search: 'Search products...',
+      searchButton: 'Search',
       searching: 'Searching...',
       noResults: 'No products found',
       resultsCount: (count: number) => `${count} result${count !== 1 ? 's' : ''} found`
     },
     he: {
       search: 'חיפוש מוצרים...',
+      searchButton: 'חיפוש',
       searching: 'מחפש...',
       noResults: 'לא נמצאו מוצרים',
       resultsCount: (count: number) => `נמצאו ${count} תוצאות`
@@ -130,26 +145,39 @@ export default function SearchBar({ language }: SearchBarProps) {
           <div className="fixed top-20 left-1/2 transform -translate-x-1/2 w-full max-w-3xl z-50 px-4">
             <div className="bg-white rounded-lg shadow-2xl">
               {/* Search Input */}
-              <div className="flex items-center border-b border-gray-200 p-4">
+              <form onSubmit={handleSearchSubmit} className="flex items-center border-b border-gray-200 p-4">
                 <Search className="h-5 w-5 text-gray-400 mr-3" />
                 <input
                   ref={inputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      handleSearchSubmit(e)
+                    }
+                  }}
                   placeholder={t.search}
                   className="flex-1 outline-none text-gray-900 placeholder-gray-400"
                   dir={language === 'he' ? 'rtl' : 'ltr'}
                 />
                 {searchQuery && (
                   <button
+                    type="button"
                     onClick={handleClearSearch}
                     className="ml-2 text-gray-400 hover:text-gray-600"
                   >
                     <X className="h-5 w-5" />
                   </button>
                 )}
-              </div>
+                <button
+                  type="submit"
+                  className="ml-2 px-4 py-2 bg-[#856D55] text-white rounded-md hover:bg-[#6d5a47] transition-colors"
+                >
+                  {t.searchButton}
+                </button>
+              </form>
 
               {/* Search Results */}
               {showResults && (

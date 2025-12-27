@@ -119,6 +119,9 @@ interface CollectionClientProps {
   selectedCategory: string;
   selectedSubcategory: string | null;
   lng: string;
+  searchQuery?: string;
+  searchTotal?: number;
+  searchPage?: number;
 }
 
 export default function CollectionClient({
@@ -128,6 +131,9 @@ export default function CollectionClient({
   selectedCategory,
   selectedSubcategory,
   lng,
+  searchQuery,
+  searchTotal,
+  searchPage = 1,
 }: CollectionClientProps) {
   const params = useParams();
   const router = useRouter();
@@ -138,21 +144,24 @@ export default function CollectionClient({
   const currentUrl = `/${lng}/collection${categoryPath ? `/${categoryPath}` : ''}`;
 
   // Helper function to get translated category/subcategory name
-  const getTranslatedName = (category: string, subcategory?: string | null) => {
-    console.log(category, subcategory);
+  const getTranslatedName = (category: string | undefined, subcategory?: string | null) => {
+    // If search query exists, show search results title instead
+    if (searchQuery) {
+      return lng === 'he' ? 'תוצאות חיפוש' : 'Search Results';
+    }
+
     if (subcategory) {
       const subCategoryCapitalized = subcategory.charAt(0).toUpperCase() + subcategory.slice(1);
       return subCategoryCapitalized;
     }
 
-    if (category) {
-      const categoryCapitalized = category.charAt(0).toUpperCase() + category.slice(1);
-      return categoryCapitalized;
+    if (!category) {
+      return lng === 'he' ? 'כל המוצרים' : 'All Products';
     }
-    
+
     const categoryKey = category.toLowerCase();
     const translatedCategory = t.categoriesList[categoryKey as keyof typeof t.categoriesList];
-    return translatedCategory || category;
+    return translatedCategory || category.charAt(0).toUpperCase() + category.slice(1);
   };
 
   // Initialize filter state from URL searchParams
@@ -474,14 +483,46 @@ export default function CollectionClient({
           </div>
         </div>
 
+        {/* Search Results Label */}
+        {searchQuery && (
+          <div className="w-full mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  {lng === 'he' 
+                    ? `תוצאות עבור: "${searchQuery}"`
+                    : `Results for: "${searchQuery}"`
+                  }
+                </h2>
+                {searchTotal !== undefined && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    {lng === 'he'
+                      ? `נמצאו ${searchTotal} תוצאות`
+                      : `${searchTotal} result${searchTotal !== 1 ? 's' : ''} found`
+                    }
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Products Grid - Full Width */}
         <div className="w-full">
           {sortedProducts.length === 0 ? (
             <div className="text-center py-12">
               <CubeIcon className="mx-auto h-14 w-14 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">{t.noProductsFound}</h3>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                {searchQuery 
+                  ? (lng === 'he' ? `לא נמצאו תוצאות עבור "${searchQuery}"` : `No results found for "${searchQuery}"`)
+                  : t.noProductsFound
+                }
+              </h3>
               <p className="mt-1 text-sm text-gray-500">
-                {t.tryAdjusting}
+                {searchQuery
+                  ? (lng === 'he' ? 'נסה לשנות את מילות החיפוש או לבדוק את האיות.' : 'Try different search terms or check your spelling.')
+                  : t.tryAdjusting
+                }
               </p>
             </div>
           ) : (

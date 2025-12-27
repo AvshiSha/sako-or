@@ -19,13 +19,13 @@ export default function Accordion({ title, children }: AccordionProps) {
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
         <ChevronDownIcon
-          className={`h-5 w-5 text-gray-500 transition-transform duration-200 ${
+          className={`h-5 w-5 text-gray-500 transition-transform duration-800 ${
             isOpen ? 'transform rotate-180' : ''
           }`}
         />
       </button>
       <div
-        className={`overflow-hidden transition-all duration-200 ${
+        className={`overflow-hidden transition-all duration-800 ${
           isOpen ? 'max-h-96' : 'max-h-0'
         }`}
       >

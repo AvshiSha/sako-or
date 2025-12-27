@@ -337,7 +337,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                       {availableSizes.length > 0 && (
                         <div className="mb-8">
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-900">
+                            <h3 className={`text-sm font-medium text-gray-900 ${language === 'he' ? 'ml-auto text-right' : ''}`}>
                               {language === 'he' ? 'מידה' : 'Size'}
                             </h3>
                           </div>

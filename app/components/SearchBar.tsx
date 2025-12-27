@@ -156,7 +156,7 @@ export default function SearchBar({ language }: SearchBarProps) {
                 <div className="max-h-[70vh] overflow-y-auto">
                   {isLoading ? (
                     <div className="p-8 text-center text-gray-500">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-2"></div>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#856D55] mx-auto mb-2"></div>
                       <p>{t.searching}</p>
                     </div>
                   ) : searchResults.length > 0 ? (

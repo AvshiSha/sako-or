@@ -59,7 +59,8 @@ async function backfillHebrewCategories() {
 
         // Resolve category path using categories_path_id array
         if (product.categories_path_id && Array.isArray(product.categories_path_id) && product.categories_path_id.length > 0) {
-          const resolvedPath = product.categories_path_id.map((firebaseId: string) => {
+          type ResolvedCategory = { en: string; he: string; level?: number; parentId?: string }
+          const resolvedPath = product.categories_path_id.map((firebaseId: string): ResolvedCategory | null => {
             const firebaseCat = firebaseCategoryMap.get(firebaseId)
             return firebaseCat ? {
               en: firebaseCat.en,
@@ -67,7 +68,7 @@ async function backfillHebrewCategories() {
               level: firebaseCat.level,
               parentId: firebaseCat.parentId
             } : null
-          }).filter(Boolean)
+          }).filter((item): item is ResolvedCategory => item !== null)
 
           if (resolvedPath.length > 0) {
             categoryEn = resolvedPath[0].en
@@ -94,20 +95,20 @@ async function backfillHebrewCategories() {
             if (resolvedPath.length > 2) {
               subSubCategoryEn = resolvedPath[2].en
               // Look up Hebrew name from Neon DB with parent matching
-              const subCategoryForLookup = await prisma.category.findFirst({
+              const subCategoryForLookup = subCategoryEn ? await prisma.category.findFirst({
                 where: {
                   name_en: subCategoryEn,
                   level: 1,
                   parentId: mainCategory?.id || undefined
                 }
-              })
-              const subSubCategory = await prisma.category.findFirst({
+              }) : null
+              const subSubCategory = subSubCategoryEn ? await prisma.category.findFirst({
                 where: {
                   name_en: subSubCategoryEn,
                   level: 2,
                   parentId: subCategoryForLookup?.id || undefined
                 }
-              })
+              }) : null
               subSubCategoryHe = subSubCategory?.name_he || resolvedPath[2].he
             }
           }

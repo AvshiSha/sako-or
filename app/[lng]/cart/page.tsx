@@ -52,6 +52,26 @@ const couponContent = {
 
 const COUPON_STORAGE_KEY = 'cart_coupons'
 
+function CartPageFallback() {
+  return (
+    <div className="min-h-screen bg-[#E1DBD7] pt-16" style={{ backgroundColor: '#E1DBD7' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-48" />
+          <div className="space-y-4">
+            {[...Array(2)].map((_, idx) => (
+              <div key={idx} className="bg-white rounded-lg shadow-sm p-6">
+                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CartPageContent() {
   const params = useParams()
   const lng = params?.lng as string || 'en'
@@ -504,26 +524,6 @@ if (!isClient || loading) {
   )
 }
 
-function CartPageFallback() {
-  return (
-    <div className="min-h-screen bg-[#E1DBD7] pt-16" style={{ backgroundColor: '#E1DBD7' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-48" />
-          <div className="space-y-4">
-            {[...Array(2)].map((_, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow-sm p-6">
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
   const totalItems = getTotalItems()
   const subtotal = getTotalPrice()
   const deliveryFee = getDeliveryFee()
@@ -833,26 +833,6 @@ function CartPageFallback() {
           description: coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined
         }))}
       />
-    </div>
-  )
-}
-
-function CartPageFallback() {
-  return (
-    <div className="min-h-screen bg-gray-50 pt-[104px]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-48" />
-          <div className="space-y-4">
-            {[...Array(2)].map((_, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow-sm p-6">
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

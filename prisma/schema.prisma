@@ -67,6 +67,9 @@ model Product {
   category             String
   subCategory          String?
   subSubCategory       String?
+  category_he          String?
+  subCategory_he        String?
+  subSubCategory_he    String?
   categories_path      String[]
   categories_path_id   String[]
   categoryId           String

@@ -48,10 +48,27 @@ export default function SearchBar({ language }: SearchBarProps) {
     return () => clearTimeout(debounceTimer)
   }, [searchQuery, language])
 
-  // Close on click outside
+  // Close on click outside (but not when QuickBuyDrawer is open)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+      const target = event.target as HTMLElement
+      
+      // Don't close if clicking on QuickBuyDrawer or its backdrop
+      // Check for Headless UI Dialog elements (used by QuickBuyDrawer)
+      // Headless UI creates a div with role="dialog" for the Dialog component
+      const drawerDialog = document.querySelector('[role="dialog"]')
+      const isDrawerElement = drawerDialog && (
+        drawerDialog.contains(target) || 
+        target === drawerDialog ||
+        // Also check if clicking on backdrop (the fixed inset-0 div inside the dialog)
+        target.closest('.fixed.inset-0.bg-black\\/20')
+      )
+      
+      if (isDrawerElement) {
+        return // Don't close search overlay when drawer is open
+      }
+      
+      if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
         setIsExpanded(false)
         setShowResults(false)
       }
@@ -60,6 +77,28 @@ export default function SearchBar({ language }: SearchBarProps) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+  
+  // Handle Escape key - close drawer first, then search overlay
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isExpanded) {
+        // Check if QuickBuyDrawer is open by looking for Dialog elements
+        const drawerDialog = document.querySelector('[role="dialog"][data-headlessui-state]')
+        if (drawerDialog) {
+          // Drawer is open - let it handle Escape first
+          // The drawer will close itself, we don't need to do anything
+          return
+        }
+        
+        // No drawer open, close search overlay
+        setIsExpanded(false)
+        setShowResults(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isExpanded])
 
   // Focus input when expanded
   useEffect(() => {
@@ -105,14 +144,14 @@ export default function SearchBar({ language }: SearchBarProps) {
       searchButton: 'Search',
       searching: 'Searching...',
       noResults: 'No products found',
-      resultsCount: (count: number) => `${count} result${count !== 1 ? 's' : ''} found`
+      resultsCount: (count: number) => `${count} result${count !== 1 ? 's' : ''} found, to see more products click here 👆`
     },
     he: {
       search: 'חיפוש מוצרים...',
       searchButton: 'חיפוש',
       searching: 'מחפש...',
       noResults: 'לא נמצאו מוצרים',
-      resultsCount: (count: number) => `נמצאו ${count} תוצאות`
+      resultsCount: (count: number) => `נמצאו ${count} תוצאות, לעוד מוצרים לחצו על כפתור החיפוש 👆`
     }
   }
 
@@ -135,18 +174,28 @@ export default function SearchBar({ language }: SearchBarProps) {
           {/* Overlay backdrop */}
           <div 
             className="fixed inset-0 bg-black/20 z-40"
-            onClick={() => {
-              setIsExpanded(false)
-              setShowResults(false)
+            onClick={(e) => {
+              // Don't close if clicking on QuickBuyDrawer backdrop
+              const target = e.target as HTMLElement
+              const drawerDialog = document.querySelector('[role="dialog"]')
+              const isDrawerBackdrop = drawerDialog && (
+                drawerDialog.contains(target) || 
+                target === drawerDialog
+              )
+              
+              if (!isDrawerBackdrop) {
+                setIsExpanded(false)
+                setShowResults(false)
+              }
             }}
           />
           
           {/* Search Container */}
-          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 w-full max-w-3xl z-50 px-4">
+          <div className="fixed top-26 left-1/2 transform -translate-x-1/2 w-full max-w-3xl z-50 px-2">
             <div className="bg-white rounded-lg shadow-2xl">
               {/* Search Input */}
               <form onSubmit={handleSearchSubmit} className="flex items-center border-b border-gray-200 p-4">
-                <Search className="h-5 w-5 text-gray-400 mr-3" />
+                <Search className={`h-5 w-5 text-gray-400 ${language === 'he' ? 'ml-3' : 'mr-4'}`} />
                 <input
                   ref={inputRef}
                   type="text"

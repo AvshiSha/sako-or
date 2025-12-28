@@ -147,7 +147,7 @@ export default function CollectionClient({
   const getTranslatedName = (category: string | undefined, subcategory?: string | null) => {
     // If search query exists, show search results title instead
     if (searchQuery) {
-      return lng === 'he' ? 'תוצאות חיפוש' : 'Search Results';
+      return '';
     }
 
     if (subcategory) {
@@ -200,6 +200,18 @@ export default function CollectionClient({
     sort?: string;
   }) => {
     const urlParams = new URLSearchParams();
+    
+    // Preserve the search query parameter if it exists
+    const currentSearch = safeSearchParams.get('search');
+    if (currentSearch) {
+      urlParams.set('search', currentSearch);
+    }
+    
+    // Preserve the page parameter if it exists (for search pagination)
+    const currentPage = safeSearchParams.get('page');
+    if (currentPage && currentSearch) {
+      urlParams.set('page', currentPage);
+    }
     
     if (newFilters.colors && newFilters.colors.length > 0) {
       urlParams.set('colors', newFilters.colors.join(','));

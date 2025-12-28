@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
               level: firebaseCat.level,
               parentId: firebaseCat.parentId
             } : null
-          }).filter(Boolean)
+          }).filter((item): item is { en: string; he: string; level?: number; parentId?: string } => item !== null)
 
           if (resolvedPath.length > 0) {
             categoryEn = resolvedPath[0].en

@@ -93,13 +93,14 @@ export async function POST(request: NextRequest) {
 
         // Priority 1: Check if category names are already resolved and stored in Firebase
         // This is the most reliable source since admin pages store resolved names
-        if (firebaseProduct.category_en) {
-          categoryEn = firebaseProduct.category_en
-          categoryHe = firebaseProduct.category_he || null
-          subCategoryEn = firebaseProduct.subCategory_en || null
-          subCategoryHe = firebaseProduct.subCategory_he || null
-          subSubCategoryEn = firebaseProduct.subSubCategory_en || null
-          subSubCategoryHe = firebaseProduct.subSubCategory_he || null
+        const productWithResolvedCategories = firebaseProduct as any
+        if (productWithResolvedCategories.category_en) {
+          categoryEn = productWithResolvedCategories.category_en
+          categoryHe = productWithResolvedCategories.category_he || null
+          subCategoryEn = productWithResolvedCategories.subCategory_en || null
+          subCategoryHe = productWithResolvedCategories.subCategory_he || null
+          subSubCategoryEn = productWithResolvedCategories.subSubCategory_en || null
+          subSubCategoryHe = productWithResolvedCategories.subSubCategory_he || null
 
           // Look up main category in Neon DB to get categoryId
           const mainCategory = await prisma.category.findFirst({

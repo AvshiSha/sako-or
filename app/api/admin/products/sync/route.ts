@@ -154,7 +154,8 @@ export async function POST(request: NextRequest) {
 
         // Priority 2: Resolve category path using categories_path_id array (preserves hierarchy)
         if (!categoryEn && firebaseProduct.categories_path_id && firebaseProduct.categories_path_id.length > 0) {
-          const resolvedPath = firebaseProduct.categories_path_id.map((firebaseId: string) => {
+          type ResolvedCategory = { en: string; he: string; level?: number; parentId?: string }
+          const resolvedPath = firebaseProduct.categories_path_id.map((firebaseId: string): ResolvedCategory | null => {
             const firebaseCat = firebaseCategoryMap.get(firebaseId)
             return firebaseCat ? {
               en: firebaseCat.en,
@@ -162,7 +163,7 @@ export async function POST(request: NextRequest) {
               level: firebaseCat.level,
               parentId: firebaseCat.parentId
             } : null
-          }).filter((item): item is { en: string; he: string; level?: number; parentId?: string } => item !== null)
+          }).filter((item): item is ResolvedCategory => item !== null)
 
           if (resolvedPath.length > 0) {
             categoryEn = resolvedPath[0].en

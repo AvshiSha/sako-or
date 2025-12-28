@@ -176,7 +176,8 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   // const availableSizes = 'stockBySize' in activeVariant ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => size) : []
   
   // Handle color variant selection - just change the display
-  const handleVariantSelect = (variant: any) => {
+  const handleVariantSelect = (variant: any, e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent click from bubbling up to parent (e.g., SearchBar wrapper)
     setSelectedVariant(variant)
   }
   
@@ -411,7 +412,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
               return (
                 <button
                   key={variant.colorSlug}
-                  onClick={() => handleVariantSelect(variant)}
+                  onClick={(e) => handleVariantSelect(variant, e)}
                   className="flex-shrink-0 relative group"
                   title={getColorName(variant.colorSlug, language)}
                 >

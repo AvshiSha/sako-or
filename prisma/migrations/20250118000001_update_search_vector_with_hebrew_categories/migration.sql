@@ -1,11 +1,12 @@
--- Add category, subCategory, subSubCategory, and brand to search_vector
--- This allows searching for products by category names like "נעלי סירה" (boat shoes)
+-- Update search_vector to include Hebrew category fields
+-- This allows searching for "מגפיים" to find products with subSubCategory_he = "מגפיים"
+-- Also handles partial matches like "boots" in "outlet-boots"
 
--- Drop and recreate search_vector to include category fields
+-- Drop and recreate search_vector to include Hebrew category fields
 DROP INDEX IF EXISTS "products_search_vector_gin";
 ALTER TABLE "products" DROP COLUMN IF EXISTS "search_vector";
 
--- Recreate search_vector with categories and brand included
+-- Recreate search_vector with Hebrew category fields included
 ALTER TABLE "products"
 ADD COLUMN "search_vector" tsvector
 GENERATED ALWAYS AS (
@@ -34,8 +35,7 @@ GENERATED ALWAYS AS (
   setweight(to_tsvector('simple', coalesce("sole_he", '')), 'B') ||
   setweight(to_tsvector('simple', coalesce("heelHeight_he", '')), 'B') ||
   
-  -- Category fields (English) - for searching by category/subcategory names
-  -- These are stored as strings, so we use 'simple' for both English and Hebrew
+  -- Category fields (English) - handles partial matches like "boots" in "outlet-boots"
   setweight(to_tsvector('simple', coalesce("category", '')), 'A') ||
   setweight(to_tsvector('simple', coalesce("subCategory", '')), 'A') ||
   setweight(to_tsvector('simple', coalesce("subSubCategory", '')), 'A') ||

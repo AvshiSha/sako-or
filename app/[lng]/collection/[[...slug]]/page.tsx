@@ -133,7 +133,7 @@ export default async function CollectionSlugPage({
       initialProducts={serializedProducts}
       categories={serializedCategories}
       categoryPath={searchQuery ? undefined : (slug ? slug.map(s => decodeURIComponent(s)).join('/') : undefined)}
-      selectedCategory={searchQuery ? undefined : (slug && slug.length > 0 ? decodeURIComponent(slug[0]) : "All Products")}
+      selectedCategory={searchQuery ? "All Products" : (slug && slug.length > 0 ? decodeURIComponent(slug[0]) : "All Products")}
       selectedSubcategory={searchQuery ? null : (slug && slug.length >= 2 ? decodeURIComponent(slug[slug.length - 1]) : null)}
       lng={lng}
       searchQuery={searchQuery}

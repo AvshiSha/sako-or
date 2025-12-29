@@ -690,13 +690,13 @@ if (!isClient || loading) {
                       value={couponInput}
                       onChange={(event) => setCouponInput(event.target.value)}
                       placeholder={couponStrings.placeholder}
-                      className={`flex-1 rounded-md border border-gray-300 text-gray-900 py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isRTL ? 'text-right' : 'text-left'}`}
+                      className={`flex-1 rounded-md border border-gray-300 text-gray-900 py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#856D55]/90 ${isRTL ? 'text-right' : 'text-left'}`}
                       disabled={couponLoading}
                     />
                     <button
                       onClick={() => applyCouponCode(couponInput)}
                       disabled={couponLoading || !couponInput.trim()}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70"
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
                     >
                       {couponLoading ? couponStrings.loading : couponStrings.apply}
                     </button>
@@ -793,7 +793,7 @@ if (!isClient || loading) {
 
                 <button
                   onClick={() => setIsCheckoutModalOpen(true)}
-                  className="w-full mt-6 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="w-full mt-6 bg-[#856D55]/90 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium"
                 >
                   {t.checkout}
                 </button>
@@ -830,7 +830,8 @@ if (!isClient || loading) {
           discountAmount: coupon.discountAmount,
           discountType: coupon.coupon.discountType,
           stackable: coupon.coupon.stackable,
-          description: coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined
+          description: coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined,
+          discountLabel: coupon.coupon.discountLabel
         }))}
       />
     </div>

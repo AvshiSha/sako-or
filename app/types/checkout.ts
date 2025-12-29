@@ -1,6 +1,6 @@
 // Checkout Modal Types
 
-export type CheckoutStep = 'IDLE' | 'DETAILS' | 'CREATING_LP' | 'PAYING' | 'RESULT';
+export type CheckoutStep = 'IDLE' | 'INFO' | 'CREATING_LP' | 'PAYMENT' | 'RESULT';
 
 export type PaymentStatus = 'pending' | 'success' | 'failed' | 'cancelled';
 

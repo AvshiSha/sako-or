@@ -81,9 +81,9 @@ export default function SearchBar({ language }: SearchBarProps) {
       }
       
       // Don't close if clicking on a Link (product card navigation)
-      // Check if the click target is inside a Link element
+      // Let the Link handle navigation first, then close via pathname change
       const isLinkClick = target.closest('a[href]')
-      if (isLinkClick) {
+      if (isLinkClick && searchContainerRef.current?.contains(target)) {
         // Let the link handle navigation, pathname change will close the search
         return
       }
@@ -151,6 +151,7 @@ export default function SearchBar({ language }: SearchBarProps) {
     setShowResults(false)
     inputRef.current?.focus()
   }
+
 
   const translations = {
     en: {

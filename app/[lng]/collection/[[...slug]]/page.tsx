@@ -1,5 +1,6 @@
 import { getCollectionProducts, categoryService } from "@/lib/firebase";
 import CollectionClient from "./CollectionClient";
+import { headers } from 'next/headers';
 
 // Helper to serialize Firestore timestamps or other complex objects
 const serializeValue = (value: any): any => {
@@ -65,19 +66,42 @@ export default async function CollectionSlugPage({
         : 1;
       
       // Use absolute URL for server-side fetch
-      const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-      const host = process.env.VERCEL_URL || process.env.NEXT_PUBLIC_BASE_URL?.replace(/^https?:\/\//, '') || 'localhost:3000';
-      const baseUrl = `${protocol}://${host}`;
-      
-      const searchResponse = await fetch(
-        `${baseUrl}/api/products/search?q=${encodeURIComponent(searchQuery)}&page=${page}&limit=24`,
-        { 
-          cache: 'no-store',
-          headers: {
-            'Content-Type': 'application/json',
-          }
+      // Try to get the host from request headers first (most reliable)
+      let baseUrl: string;
+      try {
+        const headersList = await headers();
+        const host = headersList.get('host');
+        const protocol = headersList.get('x-forwarded-proto') || 
+                        (process.env.NODE_ENV === 'production' ? 'https' : 'http');
+        
+        if (host) {
+          baseUrl = `${protocol}://${host}`;
+        } else {
+          throw new Error('No host header');
         }
-      );
+      } catch (headerError) {
+        // Fallback to environment variables if headers not available
+        if (process.env.VERCEL_URL) {
+          // Vercel provides VERCEL_URL without protocol (e.g., "sako-or-git-v2searchbar-sako-or.vercel.app")
+          baseUrl = `https://${process.env.VERCEL_URL}`;
+        } else if (process.env.NEXT_PUBLIC_BASE_URL) {
+          // Use NEXT_PUBLIC_BASE_URL if available (should include protocol)
+          baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+        } else {
+          // Fallback for localhost
+          const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+          baseUrl = `${protocol}://localhost:3000`;
+        }
+      }
+      
+      const searchUrl = `${baseUrl}/api/products/search?q=${encodeURIComponent(searchQuery)}&page=${page}&limit=24`;
+      
+      const searchResponse = await fetch(searchUrl, { 
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
       
       if (searchResponse.ok) {
         const searchData = await searchResponse.json();
@@ -85,7 +109,8 @@ export default async function CollectionSlugPage({
         searchTotal = searchData.total || 0;
         searchPage = searchData.page || 1;
       } else {
-        console.error('Search API error:', searchResponse.status, searchResponse.statusText);
+        const errorText = await searchResponse.text();
+        console.error('Search API error:', searchResponse.status, searchResponse.statusText, errorText);
       }
     } catch (error) {
       console.error('Error fetching search results:', error);

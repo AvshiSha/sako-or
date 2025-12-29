@@ -592,9 +592,16 @@ export default function ProductColorPage() {
                       {productImages.map((_, index) => (
                         <button
                           key={index}
-                          onClick={() => api?.scrollTo(index)}
+                          onClick={() => {
+                            if (api) {
+                              api.scrollTo(index)
+                            }
+                          }}
+                          disabled={!api}
                           className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                            selectedImageIndex === index
+                            !api
+                              ? 'bg-[#E1DBD7]/30 cursor-not-allowed'
+                              : selectedImageIndex === index
                               ? 'bg-[#E1DBD7] w-6'
                               : 'bg-[#E1DBD7]/50 hover:bg-[#E1DBD7]/75'
                           }`}

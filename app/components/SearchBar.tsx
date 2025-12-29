@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Search, X } from 'lucide-react'
 import { Product } from '@/lib/firebase'
 import ProductCard from './ProductCard'
@@ -12,6 +12,7 @@ interface SearchBarProps {
 
 export default function SearchBar({ language }: SearchBarProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Product[]>([])
@@ -19,6 +20,7 @@ export default function SearchBar({ language }: SearchBarProps) {
   const [showResults, setShowResults] = useState(false)
   const searchContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const previousPathnameRef = useRef<string>(pathname)
 
   // Debounced search
   useEffect(() => {
@@ -48,7 +50,17 @@ export default function SearchBar({ language }: SearchBarProps) {
     return () => clearTimeout(debounceTimer)
   }, [searchQuery, language])
 
-  // Close on click outside (but not when QuickBuyDrawer is open)
+  // Close search when pathname changes (navigation occurred)
+  useEffect(() => {
+    if (pathname !== previousPathnameRef.current && isExpanded) {
+      setIsExpanded(false)
+      setSearchQuery('')
+      setShowResults(false)
+    }
+    previousPathnameRef.current = pathname
+  }, [pathname, isExpanded])
+
+  // Close on click outside (but not when QuickBuyDrawer is open or clicking on product cards)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement
@@ -66,6 +78,14 @@ export default function SearchBar({ language }: SearchBarProps) {
       
       if (isDrawerElement) {
         return // Don't close search overlay when drawer is open
+      }
+      
+      // Don't close if clicking on a Link (product card navigation)
+      // Check if the click target is inside a Link element
+      const isLinkClick = target.closest('a[href]')
+      if (isLinkClick) {
+        // Let the link handle navigation, pathname change will close the search
+        return
       }
       
       if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
@@ -130,12 +150,6 @@ export default function SearchBar({ language }: SearchBarProps) {
     setSearchQuery('')
     setShowResults(false)
     inputRef.current?.focus()
-  }
-
-  const handleResultClick = () => {
-    setIsExpanded(false)
-    setSearchQuery('')
-    setShowResults(false)
   }
 
   const translations = {
@@ -245,10 +259,7 @@ export default function SearchBar({ language }: SearchBarProps) {
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4">
                         {searchResults.map((product) => (
-                          <div 
-                            key={product.id} 
-                            onClick={handleResultClick}
-                          >
+                          <div key={product.id}>
                             <ProductCard
                               product={product}
                               language={language as 'en' | 'he'}

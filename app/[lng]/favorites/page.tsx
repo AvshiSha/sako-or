@@ -15,9 +15,25 @@ import { productService, Product } from '@/lib/firebase'
 import Toast, { useToast } from '@/app/components/Toast'
 import AddToCartModal from '@/app/components/AddToCartModal'
 import QuickBuyDrawer from '@/app/components/QuickBuyDrawer'
+import { useFavorites } from '@/app/hooks/useFavorites'
 
 interface FavoriteProduct extends Product {
   isUnavailable?: boolean
+}
+
+interface FavoriteItem extends FavoriteProduct {
+  favoriteKey: string
+  favoriteBaseSku: string
+  favoriteColorSlug?: string
+}
+
+function parseFavoriteKey(key: string): { baseSku: string; colorSlug?: string } {
+  const trimmed = (key || '').trim()
+  if (!trimmed) return { baseSku: '' }
+  if (!trimmed.includes('::')) return { baseSku: trimmed }
+  const parts = trimmed.split('::')
+  if (parts.length !== 2) return { baseSku: trimmed }
+  return { baseSku: parts[0], colorSlug: parts[1] }
 }
 
 export default function FavoritesPage() {
@@ -26,7 +42,8 @@ export default function FavoritesPage() {
   const isRTL = lng === 'he'
   
   
-  const [favorites, setFavorites] = useState<FavoriteProduct[]>([])
+  const { favorites: favoriteKeys, toggleFavorite, loading: favoritesLoading } = useFavorites()
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([])
   const [loading, setLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<FavoriteProduct | null>(null)
@@ -71,129 +88,112 @@ export default function FavoritesPage() {
   }, [])
 
   useEffect(() => {
-    if (isClient) {
-      const loadFavorites = async () => {
-        if (!isClient) return
-        
-        try {
-          setLoading(true)
-          
-          // Get favorite SKUs from localStorage
-          const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
-          
-          if (favoriteSkus.length === 0) {
-            setFavorites([])
-            setLoading(false)
-            return
-          }
+    if (!isClient) return
+    if (favoritesLoading) {
+      setLoading(true)
+      return
+    }
 
-          // Fetch product data for each favorite SKU
-          const favoriteProducts: FavoriteProduct[] = []
-          
-          for (const sku of favoriteSkus) {
+    const loadFavorites = async () => {
+      try {
+        setLoading(true)
+
+        // #region agent log
+        // #endregion
+
+        if (!favoriteKeys || favoriteKeys.length === 0) {
+          setFavorites([])
+          return
+        }
+
+        // Cache by baseSku to avoid refetching the same product for multiple colors
+        const productCache = new Map<string, FavoriteProduct | null>()
+        const favoriteItems: FavoriteItem[] = []
+
+        for (const favoriteKey of favoriteKeys) {
+          const { baseSku, colorSlug } = parseFavoriteKey(favoriteKey)
+          // #region agent log
+          // #endregion
+          if (!baseSku) continue
+
+          let product = productCache.get(baseSku)
+          if (product === undefined) {
             try {
               // Get product directly (color variants are already in the document)
-              let product = await productService.getProductByBaseSku(sku)
-              
+              product = await productService.getProductByBaseSku(baseSku)
+
               // If not found, try legacy method (using sku field)
               if (!product) {
-                product = await productService.getProductBySku(sku)
+                product = await productService.getProductBySku(baseSku)
               }
-              
+
               // If still not found, try searching by baseSku in legacy products
               if (!product) {
                 const allProducts = await productService.getAllProducts()
-                product = allProducts.find(p => p.baseSku === sku) || null
-              }
-              
-              if (product) {
-                favoriteProducts.push(product)
-              } else {
-                // Product not found - mark as unavailable
-                favoriteProducts.push({
-                  sku,
-                  title_en: 'Unavailable Product',
-                  title_he: 'מוצר לא זמין',
-                  description_en: 'This product is no longer available',
-                  description_he: 'המוצר הזה כבר לא זמין',
-                  category: '',
-                  subCategory: '',
-                  subSubCategory: '',
-                  categories_path: [],
-                  categories_path_id: [],
-                  brand: '',
-                  price: 0,
-                  salePrice: 0,
-                  currency: 'USD',
-                  colorVariants: {},
-                  isEnabled: false,
-                  isDeleted: true,
-                  newProduct: false,
-                  featuredProduct: false,
-                  materialCare: {},
-                  seo: {},
-                  searchKeywords: [],
-                  tags: [],
-                  createdAt: new Date(),
-                  updatedAt: new Date(),
-                  isUnavailable: true
-                } as FavoriteProduct)
+                product = allProducts.find((p) => p.baseSku === baseSku) || null
               }
             } catch (error) {
-              console.error(`Error fetching product ${sku}:`, error)
+              console.error(`Error fetching product ${baseSku}:`, error)
+              product = null
             }
+
+            productCache.set(baseSku, product)
           }
-          
-          setFavorites(favoriteProducts)
-        } catch (error) {
-          console.error('❌ Error loading favorites:', error)
-        } finally {
-          setLoading(false)
+
+          if (product) {
+            // #region agent log
+            // #endregion
+            favoriteItems.push({
+              ...(product as FavoriteProduct),
+              favoriteKey,
+              favoriteBaseSku: baseSku,
+              favoriteColorSlug: colorSlug
+            })
+          } else {
+            favoriteItems.push({
+              sku: baseSku,
+              title_en: 'Unavailable Product',
+              title_he: 'מוצר לא זמין',
+              description_en: 'This product is no longer available',
+              description_he: 'המוצר הזה כבר לא זמין',
+              category: '',
+              subCategory: '',
+              subSubCategory: '',
+              categories_path: [],
+              categories_path_id: [],
+              brand: '',
+              price: 0,
+              salePrice: 0,
+              currency: 'USD',
+              colorVariants: {},
+              isEnabled: false,
+              isDeleted: true,
+              newProduct: false,
+              featuredProduct: false,
+              materialCare: {},
+              seo: {},
+              searchKeywords: [],
+              tags: [],
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              isUnavailable: true,
+              favoriteKey,
+              favoriteBaseSku: baseSku,
+              favoriteColorSlug: colorSlug
+            } as FavoriteItem)
+          }
         }
-      }
-      
-      loadFavorites()
-    }
-  }, [isClient])
 
-  const removeFromFavorites = (sku: string) => {
-    if (!isClient) return
-    
-    try {
-      // Remove from localStorage
-      const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
-      const updatedFavorites = favoriteSkus.filter((favSku: string) => favSku !== sku)
-      localStorage.setItem('favorites', JSON.stringify(updatedFavorites))
-      
-      // Update state
-      setFavorites(prev => prev.filter(product => product.sku !== sku))
-    } catch (error) {
-      console.error('Error removing from favorites:', error)
-    }
-  }
-
-  const toggleFavorite = (sku: string) => {
-    if (!isClient) return
-    
-    try {
-      const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
-      const isFavorite = favoriteSkus.includes(sku)
-      
-      if (isFavorite) {
-        // Remove from favorites
-        const updatedFavorites = favoriteSkus.filter((favSku: string) => favSku !== sku)
-        localStorage.setItem('favorites', JSON.stringify(updatedFavorites))
-        setFavorites(prev => prev.filter(product => product.sku !== sku))
-      } else {
-        // Add to favorites
-        const updatedFavorites = [...favoriteSkus, sku]
-        localStorage.setItem('favorites', JSON.stringify(updatedFavorites))
-        // Note: We don't add to state here since we don't have the full product data
+        setFavorites(favoriteItems)
+      } catch (error) {
+        console.error('❌ Error loading favorites:', error)
+      } finally {
+        setLoading(false)
       }
-    } catch (error) {
-      console.error('Error toggling favorite:', error)
     }
-  }
+
+    void loadFavorites()
+  }, [isClient, favoritesLoading, favoriteKeys])
 
 
   if (!isClient) {
@@ -259,15 +259,29 @@ export default function FavoritesPage() {
           /* Favorites Grid */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {favorites.map((product) => {
-              const firstVariant = product.colorVariants && Object.keys(product.colorVariants).length > 0 ? Object.values(product.colorVariants)[0] : null
-              const imageSrc = firstVariant?.primaryImage || firstVariant?.images?.[0] || (product as any).primaryImage || (product as any).images?.[0] || '/images/placeholder.svg'
+              const activeVariants = product.colorVariants
+                ? Object.values(product.colorVariants).filter((v: any) => v?.isActive !== false)
+                : []
+
+              const preferredVariant = product.favoriteColorSlug
+                ? activeVariants.find((v: any) => v?.colorSlug === product.favoriteColorSlug) || null
+                : null
+
+              const firstVariant = preferredVariant || activeVariants[0] || null
+              const chosenColorSlug = firstVariant?.colorSlug || product.favoriteColorSlug || 'default'
+              const imageSrc =
+                firstVariant?.primaryImage ||
+                firstVariant?.images?.[0] ||
+                (product as any).primaryImage ||
+                (product as any).images?.[0] ||
+                '/images/placeholder.svg'
               
               // Check if this is a product with no images (needs color variants)
               const hasNoImages = !firstVariant?.primaryImage && !firstVariant?.images?.length && !(product as any).primaryImage && !(product as any).images?.length
               
               
               return (
-              <div key={product.sku} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+              <div key={product.favoriteKey} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                 {/* Product Image */}
                 <div className="relative aspect-square">
                   {!product.isEnabled ? (
@@ -287,10 +301,10 @@ export default function FavoritesPage() {
                       </span>
                     </div>
                   ) : (
-                    <Link href={`/${lng}/product/${product.sku}/${firstVariant?.colorSlug || 'default'}`}>
+                    <Link href={`/${lng}/product/${product.favoriteBaseSku}/${chosenColorSlug}`}>
                       <Image
                         src={imageSrc}
-                        alt={firstVariant?.colorSlug || 'default'}
+                        alt={chosenColorSlug}
                         fill
                         className="object-cover hover:scale-105 transition-transform duration-200"
                       />
@@ -299,7 +313,7 @@ export default function FavoritesPage() {
                   
                   {/* Favorite Button */}
                   <button
-                    onClick={() => toggleFavorite(product.baseSku || product.sku!)}
+                    onClick={() => void toggleFavorite(product.favoriteKey)}
                     className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
                   >
                     <HeartSolidIcon className="h-5 w-5 text-red-500" />
@@ -316,7 +330,7 @@ export default function FavoritesPage() {
                         <span className="text-sm font-medium">{t.productUnavailable}</span>
                       </div>
                       <button
-                        onClick={() => removeFromFavorites(product.baseSku || product.sku!)}
+                        onClick={() => void toggleFavorite(product.favoriteKey)}
                         className="text-sm text-gray-500 hover:text-red-600 flex items-center"
                       >
                         <TrashIcon className="h-4 w-4 mr-1" />
@@ -326,7 +340,7 @@ export default function FavoritesPage() {
                   ) : (
                     /* Available Product */
                     <>
-                      <Link href={`/${lng}/product/${product.baseSku || product.sku}`}>
+                      <Link href={`/${lng}/product/${product.favoriteBaseSku}/${chosenColorSlug}`}>
                         <h3 className="font-medium text-gray-900 mb-2 hover:text-indigo-600 line-clamp-2">
                           {lng === 'he' ? product.title_he : product.title_en}
                         </h3>

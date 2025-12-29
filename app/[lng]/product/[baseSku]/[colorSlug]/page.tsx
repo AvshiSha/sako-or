@@ -1282,29 +1282,29 @@ export default function ProductColorPage() {
                 <div className="flex space-x-4">
                   <button
                     onClick={() => {
-                      const baseSkuKey = baseSku
-                      toggleFavorite(baseSkuKey)
+                      const favoriteKey = `${baseSku}::${colorSlug}`
+                      void toggleFavorite(favoriteKey)
                     }}
                     className={`flex-1 py-3 px-6 rounded-md font-medium border transition-colors duration-200 flex items-center justify-center ${
                       (() => {
-                        const baseSkuKey = baseSku
-                        return isFavorite(baseSkuKey)
+                        const favoriteKey = `${baseSku}::${colorSlug}`
+                        return isFavorite(favoriteKey)
                       })()
                         ? 'border-red-300 bg-red-50 text-red-600'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     {(() => {
-                      const baseSkuKey = baseSku
-                      return isFavorite(baseSkuKey)
+                      const favoriteKey = `${baseSku}::${colorSlug}`
+                      return isFavorite(favoriteKey)
                     })() ? (
                       <HeartSolidIcon className="h-5 w-5 mr-2" />
                     ) : (
                       <HeartIcon className="h-5 w-5 mr-2" />
                     )}
                     {(() => {
-                      const baseSkuKey = baseSku
-                      return isFavorite(baseSkuKey)
+                      const favoriteKey = `${baseSku}::${colorSlug}`
+                      return isFavorite(favoriteKey)
                     })()
                       ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
                       : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')

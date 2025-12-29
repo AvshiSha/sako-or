@@ -3,11 +3,51 @@ import { CardComAPI, createPaymentSessionRequest } from '../../../../lib/cardcom
 import { CreateLowProfileRequest } from '../../../../app/types/checkout';
 import { createOrder, generateOrderNumber } from '../../../../lib/orders';
 import { prisma } from '../../../../lib/prisma';
+import { adminAuth } from '../../../../lib/firebase-admin';
+import { spendPointsForOrder } from '../../../../lib/points';
 
 export async function POST(request: NextRequest) {
   try {
     const body: CreateLowProfileRequest = await request.json();
     console.log('Payment request received:', JSON.stringify(body, null, 2));
+
+    // Optional auth: if a Firebase bearer token is provided, link the order to that user.
+    const authHeader = request.headers.get('authorization') || '';
+    const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    const bearerToken = tokenMatch?.[1] ?? null;
+    let userId: string | undefined = undefined;
+
+    if (bearerToken) {
+      try {
+        const decoded = await adminAuth.verifyIdToken(bearerToken);
+        const firebaseUid = decoded.uid;
+        const email = decoded.email ?? null;
+        const emailVerified = decoded.email_verified ?? false;
+        const now = new Date();
+
+        const user = await prisma.user.upsert({
+          where: { firebaseUid },
+          update: {
+            lastLoginAt: now,
+            ...(email ? { email } : {}),
+            emailVerified
+          },
+          create: {
+            firebaseUid,
+            email,
+            emailVerified,
+            authProvider: 'firebase',
+            role: 'USER',
+            lastLoginAt: now
+          }
+        });
+
+        userId = user.id;
+      } catch {
+        // Treat invalid/expired token as guest checkout
+        console.warn('[CREATE_LOW_PROFILE] Invalid bearer token, proceeding as guest');
+      }
+    }
     
     // Debug environment variables
     console.log('Environment variables:', {
@@ -28,6 +68,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Missing required customer information' },
         { status: 400 }
+      );
+    }
+
+    const pointsToSpend = body.pointsToSpend ? Math.trunc(body.pointsToSpend) : 0;
+    if (pointsToSpend > 0 && !userId) {
+      return NextResponse.json(
+        { error: 'Must be logged in to spend points' },
+        { status: 401 }
       );
     }
 
@@ -117,6 +165,7 @@ export async function POST(request: NextRequest) {
         customerName: `${body.customer.firstName} ${body.customer.lastName}`,
         customerEmail: body.customer.email,
         customerPhone: body.customer.mobile,
+        userId,
         items: orderItems,
         coupons: body.coupons?.map(coupon => ({
           code: coupon.code,
@@ -142,6 +191,7 @@ export async function POST(request: NextRequest) {
           customerName: `${body.customer.firstName} ${body.customer.lastName}`,
           customerEmail: body.customer.email,
           customerPhone: body.customer.mobile,
+          userId,
           items: orderItems,
           coupons: body.coupons?.map(coupon => ({
             code: coupon.code,
@@ -153,6 +203,28 @@ export async function POST(request: NextRequest) {
         });
       } else {
         throw createError;
+      }
+    }
+
+    // If points were used as a discount, create a SPEND row linked to the order and update user balance.
+    if (pointsToSpend > 0 && userId) {
+      try {
+        await spendPointsForOrder({
+          userId,
+          orderId: order.id,
+          pointsToSpend
+        });
+      } catch (pointsError: any) {
+        console.error('[POINTS_SPEND_ERROR]', pointsError);
+        // Avoid leaving an order in a discounted state if spend failed
+        await prisma.order.delete({ where: { id: order.id } });
+        return NextResponse.json(
+          {
+            error: 'Failed to spend points for order',
+            details: typeof pointsError?.message === 'string' ? pointsError.message : 'Unknown error'
+          },
+          { status: 400 }
+        );
       }
     }
 

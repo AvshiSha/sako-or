@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -34,8 +34,36 @@ export default function FavoritesPage() {
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const [drawerProduct, setDrawerProduct] = useState<FavoriteProduct | null>(null)
   
+  // Track desktop status for drawer animation timeout
+  // Use ref to avoid re-renders and ensure consistent value during close callback
+  const isDesktopRef = useRef(false)
+  
   // Toast hook
   const { toast, hideToast } = useToast()
+  
+  // Track desktop status for drawer close animation timeout
+  useEffect(() => {
+    const updateDesktopStatus = () => {
+      isDesktopRef.current = window.matchMedia('(min-width: 640px)').matches
+    }
+    
+    // Set initial value
+    updateDesktopStatus()
+    
+    // Update on resize
+    const mediaQuery = window.matchMedia('(min-width: 640px)')
+    const handleChange = () => updateDesktopStatus()
+    
+    // Modern browsers
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', handleChange)
+      return () => mediaQuery.removeEventListener('change', handleChange)
+    } else {
+      // Fallback for older browsers
+      mediaQuery.addListener(handleChange)
+      return () => mediaQuery.removeListener(handleChange)
+    }
+  }, [])
 
   // Localized content
   const content = {
@@ -361,12 +389,10 @@ export default function FavoritesPage() {
                         )}
                       <button
                         onClick={() => {
+                          // Set both states synchronously to avoid race conditions
+                          // The drawer component handles the animation timing internally
                           setDrawerProduct(product)
-                          // Small delay to ensure component is mounted before animation starts
-                          // This ensures drawerProduct is set before isOpen becomes true
-                          setTimeout(() => {
-                            setIsQuickBuyOpen(true)
-                          }, 10)
+                          setIsQuickBuyOpen(true)
                         }}
                         disabled={!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
                           // Check if this color variant has any stock across all sizes
@@ -428,8 +454,8 @@ export default function FavoritesPage() {
             // Delay clearing drawerProduct to allow close animation to complete
             // Use responsive timeout: 700ms for mobile, 1000ms for desktop (sm:duration-1000)
             // This matches the animation durations in QuickBuyDrawer
-            const isDesktop = typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches
-            const timeoutDuration = isDesktop ? 1000 : 700
+            // Use ref to get consistent desktop status (avoids SSR/hydration issues)
+            const timeoutDuration = isDesktopRef.current ? 1000 : 700
             setTimeout(() => {
               setDrawerProduct(null)
             }, timeoutDuration)

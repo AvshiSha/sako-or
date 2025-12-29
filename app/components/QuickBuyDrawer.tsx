@@ -97,9 +97,11 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   
   // Handle wishlist toggle
   const handleWishlistToggle = () => {
-    const sku = product.baseSku || product.sku || ''
-    if (sku) {
-      toggleFavorite(sku)
+    const baseSku = product.baseSku || product.sku || ''
+    const colorSlug = activeVariant?.colorSlug || ''
+    const favoriteKey = colorSlug ? `${baseSku}::${colorSlug}` : baseSku
+    if (favoriteKey) {
+      void toggleFavorite(favoriteKey)
     }
   }
   
@@ -232,7 +234,13 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                           onClick={handleWishlistToggle}
                           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                         >
-                          {isFavorite(product.baseSku || product.sku || '') ? (
+                          {isFavorite(
+                            (() => {
+                              const baseSku = product.baseSku || product.sku || ''
+                              const colorSlug = activeVariant?.colorSlug || ''
+                              return colorSlug ? `${baseSku}::${colorSlug}` : baseSku
+                            })()
+                          ) ? (
                             <HeartSolidIcon className="h-5 w-5 text-red-500" />
                           ) : (
                             <HeartIcon className="h-5 w-5 text-gray-600" />

@@ -47,6 +47,16 @@ export default function AuthDebugPage() {
 
   const firebaseProjectId = auth.app.options.projectId ?? '(unknown)'
   const firebaseAuthDomain = auth.app.options.authDomain ?? '(unknown)'
+  const authDomainHost = useMemo(() => {
+    // `authDomain` can be "foo.firebaseapp.com" or a custom domain; we just compare hostnames.
+    return String(firebaseAuthDomain).replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+  }, [firebaseAuthDomain])
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : ''
+  const hasAuthDomainMismatch =
+    typeof window !== 'undefined' &&
+    hostname.length > 0 &&
+    authDomainHost !== '(unknown)' &&
+    hostname !== authDomainHost
 
   function formatAuthError(e: any, fallback: string) {
     const code = typeof e?.code === 'string' ? e.code : ''
@@ -59,7 +69,6 @@ export default function AuthDebugPage() {
 
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:61',message:'Page Load - URL check',data:{href:window.location.href,projectId:auth.app.options.projectId,authDomain:auth.app.options.authDomain},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
     // #endregion
     if (typeof window !== 'undefined') {
       setPageUrl(window.location.href)
@@ -69,7 +78,6 @@ export default function AuthDebugPage() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:67',message:'onAuthStateChanged listener fired',data:{uid:u?.uid,email:u?.email},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
       // #endregion
       setFirebaseUser(u)
       setAuthLoading(false)
@@ -78,7 +86,6 @@ export default function AuthDebugPage() {
       // This covers cases where getRedirectResult() returns null but the session is still authenticated.
       if (u && lastSyncedUidRef.current !== u.uid) {
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:73',message:'Triggering safety-net syncToNeon',data:{uid:u.uid},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         lastSyncedUidRef.current = u.uid
         setBusy(true)
@@ -102,18 +109,15 @@ export default function AuthDebugPage() {
     redirectCheckedRef.current = true
 
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:91',message:'Google Redirect Effect started',data:{search:window.location.search,hash:window.location.hash},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
     // #endregion
     let cancelled = false
     ;(async () => {
       try {
         setGoogleAuthStatus('checking_redirect_result')
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:95',message:'Calling getRedirectResult',timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         const result = await getRedirectResult(auth)
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:97',message:'getRedirectResult returned',data:{hasResult:!!result,hasUser:!!result?.user,uid:result?.user?.uid},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         if (cancelled) return
 
@@ -132,7 +136,6 @@ export default function AuthDebugPage() {
         await syncToNeon(result.user)
       } catch (e: any) {
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:107',message:'getRedirectResult catch error',data:{error:e},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
         // #endregion
         if (cancelled) return
         // If there's no redirect in progress, Firebase can throw or return null depending on version.
@@ -157,12 +160,10 @@ export default function AuthDebugPage() {
   async function syncToNeon(user: User) {
     console.log('[DEBUG] syncToNeon started for:', user.uid);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:127',message:'syncToNeon started',data:{uid:user.uid,email:user.email},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
     // #endregion
     const token = await user.getIdToken()
     console.log('[DEBUG] Token obtained, calling /api/me/sync');
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:130',message:'Fetching /api/me/sync',timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
     // #endregion
     const res = await fetch('/api/me/sync', {
       method: 'POST',
@@ -175,7 +176,6 @@ export default function AuthDebugPage() {
     const text = await res.text()
     console.log('[DEBUG] /api/me/sync response status:', res.status, 'body:', text);
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:138',message:'/api/me/sync response',data:{status:res.status,body:text.slice(0, 100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
     // #endregion
 
     let json: SyncResponse
@@ -232,25 +232,48 @@ export default function AuthDebugPage() {
 
   async function handleGoogleSignIn() {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:191',message:'handleGoogleSignIn clicked',timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
     // #endregion
     setBusy(true)
     setError(null)
     setSyncStatus(null)
     setSyncBody(null)
     setGoogleAuthError(null)
-    setGoogleAuthStatus('starting_redirect')
+    if (hasAuthDomainMismatch) {
+      const msg = `Firebase authDomain mismatch: running on "${hostname}" but authDomain is "${authDomainHost}". Fix NEXT_PUBLIC_FIREBASE_* env vars for this deployment.`
+      setError(msg)
+      setGoogleAuthError(msg)
+      setGoogleAuthStatus('config_mismatch')
+      setBusy(false)
+      return
+    }
+
     try {
       const provider = new GoogleAuthProvider()
       // Always show account chooser so you can test multiple Google accounts.
       provider.setCustomParameters({ prompt: 'select_account' })
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:202',message:'Calling signInWithRedirect',timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
-      // #endregion
-      await signInWithRedirect(auth, provider)
+      // Prefer popup: avoids getting stranded on /__/auth/handler when redirect handling is misconfigured.
+      setGoogleAuthStatus('starting_popup_preferred')
+      try {
+        const cred = await signInWithPopup(auth, provider)
+        setGoogleAuthStatus('popup_success')
+        await syncToNeon(cred.user)
+        return
+      } catch (e: any) {
+        const code = typeof e?.code === 'string' ? e.code : ''
+        // If popups are blocked (common on mobile / strict browsers), fall back to redirect.
+        if (
+          code === 'auth/popup-blocked' ||
+          code === 'auth/popup-closed-by-user' ||
+          code === 'auth/cancelled-popup-request'
+        ) {
+          setGoogleAuthStatus('popup_failed_fallback_to_redirect')
+          await signInWithRedirect(auth, provider)
+          return
+        }
+        throw e
+      }
     } catch (e: any) {
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:204',message:'signInWithRedirect error',data:{error:e},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
       // #endregion
       const code = typeof e?.code === 'string' ? e.code : ''
       if (code === 'auth/account-exists-with-different-credential') {
@@ -261,7 +284,7 @@ export default function AuthDebugPage() {
         setError(formatAuthError(e, 'Google sign in failed'))
       }
       setGoogleAuthError(formatAuthError(e, 'Google sign in failed'))
-      setGoogleAuthStatus('redirect_start_error')
+      setGoogleAuthStatus('google_sign_in_error')
     } finally {
       // Redirect flow navigates away; if it doesn't (error), unlock UI.
       setBusy(false)
@@ -271,7 +294,6 @@ export default function AuthDebugPage() {
   async function handleGooglePopupSignIn() {
     console.log('[DEBUG] handleGooglePopupSignIn clicked');
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:220',message:'handleGooglePopupSignIn clicked',timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
     // #endregion
     setBusy(true)
     setError(null)
@@ -284,19 +306,16 @@ export default function AuthDebugPage() {
       provider.setCustomParameters({ prompt: 'select_account' })
       console.log('[DEBUG] Calling signInWithPopup');
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:231',message:'Calling signInWithPopup',timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
       // #endregion
       const cred = await signInWithPopup(auth, provider)
       console.log('[DEBUG] signInWithPopup success:', cred.user.uid);
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:233',message:'signInWithPopup success',data:{uid:cred.user.uid},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
       // #endregion
       setGoogleAuthStatus('popup_success')
       await syncToNeon(cred.user)
     } catch (e: any) {
       console.error('[DEBUG] signInWithPopup error:', e);
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:237',message:'signInWithPopup error',data:{error:e},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
       // #endregion
       const formatted = formatAuthError(e, 'Google popup sign in failed')
       setError(formatted)
@@ -309,7 +328,6 @@ export default function AuthDebugPage() {
 
   async function handleResync() {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:244',message:'handleResync clicked',data:{hasUser:!!firebaseUser},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
     // #endregion
     if (!firebaseUser) return
     setBusy(true)
@@ -320,7 +338,6 @@ export default function AuthDebugPage() {
       await syncToNeon(firebaseUser)
     } catch (e: any) {
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/[lng]/auth/page.tsx:254',message:'handleResync error',data:{error:e},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
       // #endregion
       setError(typeof e?.message === 'string' ? e.message : 'Sync failed')
     } finally {
@@ -449,7 +466,7 @@ export default function AuthDebugPage() {
             disabled={busy}
             className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
-            {busy ? 'Working…' : 'Continue with Google → Sync (Neon)'}
+            {busy ? 'Working…' : 'Continue with Google (Popup preferred) → Sync (Neon)'}
           </button>
           <button
             type="button"

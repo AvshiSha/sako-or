@@ -7,6 +7,7 @@ import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import SearchBar from './SearchBar'
 import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
+import { useAuth } from '@/app/contexts/AuthContext'
 import { categoryService } from '@/lib/firebase'
 
 
@@ -55,6 +56,7 @@ export default function Navigation({ lng }: { lng: string }) {
 
   const { items } = useCart()
   const { favorites } = useFavorites()
+  const { user } = useAuth()
 
   // Helper functions to check if categories exist
   const hasWomenCategory = () => {
@@ -480,10 +482,10 @@ export default function Navigation({ lng }: { lng: string }) {
             {/* Search Bar next to cart and favorites */}
             <SearchBar language={lng} />
             <Link
-              href={`/${lng}/signin`}
+              href={user ? `/${lng}/profile` : `/${lng}/signin`}
               className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-              aria-label={translations[lng as keyof typeof translations].signIn}
-              title={translations[lng as keyof typeof translations].signIn}
+              aria-label={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
+              title={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
             >
               <User className="h-5 w-5" />
             </Link>

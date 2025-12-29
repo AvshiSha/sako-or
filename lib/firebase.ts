@@ -6,21 +6,22 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 // Your web app's Firebase configuration
+const defaultProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "sako-or";
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyA6M1iGDwf4iesgujOxqqLlkLddigFonL4",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "sako-or.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "sako-or",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "sako-or.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "492015346123",
+  // Keep authDomain consistent with the projectId by default (prevents redirect handler getting "stuck" on the wrong domain).
+  authDomain:
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || `${defaultProjectId}.firebaseapp.com`,
+  projectId: defaultProjectId,
+  storageBucket:
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "sako-or.firebasestorage.app",
+  messagingSenderId:
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "492015346123",
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:492015346123:web:2da31215f1b7f3212f164e",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-WK1B8GCMT0"
+  measurementId:
+    process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-WK1B8GCMT0"
 };
 
-// #region agent log
-if (typeof window !== 'undefined') {
-  fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/firebase.ts:20',message:'Firebase Init',data:{projectId:firebaseConfig.projectId,authDomain:firebaseConfig.authDomain},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
-}
-// #endregion
 const app = initializeApp(firebaseConfig);
 
 // Initialize analytics only on client side

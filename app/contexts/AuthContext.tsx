@@ -36,9 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = user ? ADMIN_EMAILS.includes((user.email || '').toLowerCase()) : false
 
   const syncUserToNeon = async (firebaseUser: User) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/contexts/AuthContext.tsx:38',message:'syncUserToNeon started in context',data:{uid:firebaseUser.uid},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
-    // #endregion
     try {
       const token = await firebaseUser.getIdToken()
       const res = await fetch('/api/me/sync', {
@@ -48,11 +45,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
       
-      // #region agent log
-      const resText = await res.clone().text();
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/contexts/AuthContext.tsx:47',message:'syncUserToNeon context result',data:{status:res.status,body:resText.slice(0, 100)},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
-      // #endregion
-
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
         const errorMessage = errorData.error || `HTTP ${res.status}`
@@ -80,9 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/bc52a81b-1e67-4b90-bdf5-80492a19f8bf',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/contexts/AuthContext.tsx:54',message:'onAuthStateChanged in context',data:{uid:user?.uid,email:user?.email},timestamp:Date.now(),sessionId:'debug-session'})}).catch(()=>{});
-      // #endregion
       setUser(user)
       setLoading(false)
     })

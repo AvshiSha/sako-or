@@ -28,8 +28,8 @@ export default function ProductCarousel({ products, title, language = 'en', retu
   }
 
   return (
-    <div className="w-full py-8" style={{ backgroundColor: '#E1DBD7' }}>
-      <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+    <div className="w-full py-12" style={{ backgroundColor: '#E1DBD7' }}>
+      <div className="max-w-[90rem] mx-auto px-2 sm:px-6 lg:px-8">
         {/* Section Title */}
         <h2 className={`text-2xl md:text-3xl font-bold text-black mb-6 ${isRTL ? 'text-right' : 'text-left'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
           {title}
@@ -65,13 +65,13 @@ export default function ProductCarousel({ products, title, language = 'en', retu
             <div className="hidden md:block">
               {isRTL ? (
                 <>
-                  <CarouselNext className="left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-gray-300 bg-white/90 hover:bg-white [&>svg]:rotate-180" />
-                  <CarouselPrevious className="right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-gray-300 bg-white/90 hover:bg-white [&>svg]:rotate-180" />
+                  <CarouselNext className="!left-1 !right-auto !top-1/3 !-translate-y-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-[#856D55]/80 bg-[#856D55]/80 hover:bg-[#856D55] [&>svg]:rotate-180" />
+                  <CarouselPrevious className="!right-1 !left-auto !top-1/3 !-translate-y-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-[#856D55]/80 bg-[#856D55]/80 hover:bg-[#856D55] [&>svg]:rotate-180" />
                 </>
               ) : (
                 <>
-                  <CarouselPrevious className="left-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-gray-300 bg-white/90 hover:bg-white" />
-                  <CarouselNext className="right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-gray-300 bg-white/90 hover:bg-white" />
+                  <CarouselPrevious className="left-2 !top-1/4 !-translate-y-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-gray-300 bg-white/90 hover:bg-white" />
+                  <CarouselNext className="right-2 !top-1/4 !-translate-y-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-gray-300 bg-white/90 hover:bg-white" />
                 </>
               )}
             </div>

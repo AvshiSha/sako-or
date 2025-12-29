@@ -329,120 +329,157 @@ function FooterInner({ lng }: { lng: string }) {
       </footer>
 
       {/* Desktop Footer */}
-      <footer className="hidden md:block bg-[#1a1a1a] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Main Footer Content */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 py-16">
-            {/* Brand Section */}
-            <div className="md:col-span-2">
-              <h2 className="text-2xl font-light tracking-wider mb-6">{t.brand}</h2>
-              <p className="text-gray-400 mb-6 max-w-md">
-                {t.description}
-              </p>
-              <div className="flex space-x-6">
-                <a
-                  href={socialLinks.facebook}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors duration-300"
-                >
-                  <FaFacebook size={20} />
-                </a>
-                <a
-                  href={socialLinks.instagram}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors duration-300"
-                >
-                  <FaInstagram size={20} />
-                </a>
-              </div>
-            </div>
+      <footer className="hidden md:block bg-[#B2A28E] text-black">
+        <div className="w-full">
+          {/* Accordion Sections */}
+          <Accordion type="single" collapsible className="w-full">
+            {/* COMPANY Accordion */}
+            <AccordionItem value="company" className="border-b border-black/20">
+              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
+                {t.company}
+              </AccordionTrigger>
+              <AccordionContent className="px-4">
+                <ul className="space-y-3">
+                  <li>
+                    <Link 
+                      href={`/${lng}/about`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.about}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/contact`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.contact}
+                    </Link>
+                  </li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
 
-            {/* Quick Links */}
-            <div>
-              <h3 className="text-sm font-medium uppercase tracking-wider mb-6">{t.navigation}</h3>
-              <ul className="space-y-3">
-                <li>
-                  <Link href={`/${lng}`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                    {t.home}
-                  </Link>
-                </li>
-                <li>
-                  <Link href={`/${lng}/collection/women/shoes`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                    {t.newCollection}
-                  </Link>
-                </li>
-                <li>
-                  <Link href={`/${lng}/about`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                    {t.about}
-                  </Link>
-                </li>
-                <li>
-                  <Link href={`/${lng}/contact`} className="text-gray-400 hover:text-white transition-colors duration-300 text-sm">
-                    {t.contact}
-                  </Link>
-                </li>
-              </ul>
-            </div>
+            {/* CUSTOMER SUPPORT Accordion */}
+            <AccordionItem value="support" className="border-b border-black/20">
+              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
+                {t.customerSupport}
+              </AccordionTrigger>
+              <AccordionContent className="px-4">
+                <ul className="space-y-3">
+                  <li>
+                    <Link 
+                      href={`/${lng}/terms`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.terms}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/contact`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.contact}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/privacy`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.privacy}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/accessibility`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.accessibility}
+                    </Link>
+                  </li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
 
-            {/* Newsletter */}
-            <div>
-              <h3 className="text-sm font-medium uppercase tracking-wider mb-6">{t.newsletter}</h3>
-              <p className="text-gray-400 mb-4 text-sm">
-                {t.newsletterDescription}
-              </p>
-              <form onSubmit={handleNewsletterSubmit}>
-                <div className="flex">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value)
-                      if (emailError) setEmailError('') // Clear error when user types
-                    }}
-                    placeholder={t.subscribePlaceholder}
-                    required
-                    disabled={isSubmitting}
-                    className={`flex-1 px-4 py-2 bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                      emailError ? 'focus:ring-red-500 border-red-500' : 'focus:ring-white'
-                    }`}
-                  />
-                  <button
-                    type="submit"
-                    disabled={isSubmitting || !email.trim()}
-                    className="px-6 py-2 bg-white text-black hover:bg-gray-200 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? '...' : t.subscribe}
-                  </button>
-                </div>
-                {emailError && (
-                  <p className="mt-2 text-sm text-red-400">
-                    {emailError}
-                  </p>
-                )}
-              </form>
-            </div>
+            {/* LANGUAGE Accordion */}
+            <AccordionItem value="language" className="border-b border-black/20">
+              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
+                {`${t.language} / ${lng.toUpperCase()}`}
+              </AccordionTrigger>
+              <AccordionContent className="px-4">
+                <ul className="space-y-3">
+                  <li>
+                    <button
+                      onClick={() => handleLanguageChange('he')}
+                      className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
+                        lng === 'he' ? 'font-bold' : ''
+                      }`}
+                    >
+                      {t.hebrew}
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => handleLanguageChange('en')}
+                      className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
+                        lng === 'en' ? 'font-bold' : ''
+                      }`}
+                    >
+                      {t.english}
+                    </button>
+                  </li>
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+
+          {/* Social Icons Row */}
+          <div className="flex items-center justify-center gap-6 py-6 px-4 border-b border-black/20">
+            <a
+              href={socialLinks.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-black hover:opacity-70 transition-opacity"
+              aria-label="Instagram"
+            >
+              <FaInstagram size={24} />
+            </a>
+            <a
+              href={socialLinks.facebook}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-black hover:opacity-70 transition-opacity"
+              aria-label="Facebook"
+            >
+              <FaFacebook size={24} />
+            </a>
+            <a
+              href={socialLinks.tiktok}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-black hover:opacity-70 transition-opacity"
+              aria-label="TikTok"
+            >
+              <FaTiktok size={24} />
+            </a>
+            <a
+              href={socialLinks.whatsapp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-black hover:opacity-70 transition-opacity"
+              aria-label="WhatsApp"
+            >
+              <FaWhatsapp size={24} />
+            </a>
           </div>
 
-          {/* Bottom Footer */}
-          <div className="border-t border-gray-800 py-8">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <p className="text-gray-400 text-sm">
-                {t.copyright}
-              </p>
-              <div className="flex space-x-6 mt-4 md:mt-0">
-                <Link href={`/${lng}/privacy`} className="text-gray-400 hover:text-white text-sm">
-                  {t.privacyPolicy}
-                </Link>
-                <Link href={`/${lng}/terms`} className="text-gray-400 hover:text-white text-sm">
-                  {t.termsOfService}
-                </Link>
-                <Link href={`/${lng}/terms-returns`} className="text-gray-400 hover:text-white text-sm">
-                  {t.termsReturns}
-                </Link>
-              </div>
-            </div>
+          {/* Big Brand Name */}
+          <div className="py-6 px-4">
+            <h2 className="text-6xl md:text-6xl font-bold tracking-wider text-center">
+              {t.brand}
+            </h2>
           </div>
         </div>
       </footer>

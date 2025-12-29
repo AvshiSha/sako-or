@@ -103,7 +103,7 @@ window.args = {
 		slider_right_color:  '#177fab',
 		icon_vertical_position: 'bottom',
 		icon_offset_top: 0,
-		icon_offset_bottom: 60,
+		icon_offset_bottom: 90,
 		highlight_focus_color: '#177fab',
 		toggler_icon_color: '#ffffff',
 	},

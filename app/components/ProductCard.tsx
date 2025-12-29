@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
-import { HeartIcon, ShoppingCartIcon } from '@heroicons/react/24/outline'
+import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import QuickBuyDrawer from './QuickBuyDrawer'
@@ -235,6 +235,27 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
     }
   }, [product, activeVariant, currentPrice, language])
 
+  // Handle arrow navigation (desktop only)
+  const handleArrowClick = useCallback((direction: 'prev' | 'next', e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!api || totalImages <= 1) return
+    
+    linkClickedRef.current = true // Prevent link navigation
+    
+    if (direction === 'prev') {
+      api.scrollPrev()
+    } else {
+      api.scrollNext()
+    }
+    
+    // Reset after a short delay to allow normal clicks again
+    setTimeout(() => {
+      linkClickedRef.current = false
+    }, 300)
+  }, [api, totalImages])
+
   return (
     <div className="group relative bg-gray-100">
       {/* Main Product Image Section - Clickable to go to selected variant */}
@@ -261,42 +282,67 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           
           {/* Image Carousel */}
           {!disableImageCarousel && totalImages > 1 ? (
-            <Carousel
-              setApi={setApi}
-              direction={language === 'he' ? 'rtl' : 'ltr'}
-              opts={{
-                align: 'start',
-                loop: true,
-              }}
-              className="w-full h-full"
-            >
-              <CarouselContent className={`h-full ${language === 'he' ? '-mr-0' : '-ml-0'}`}>
-                {variantImages.map((image, index) => {
-                  const shouldPreload = Math.abs(selectedImageIndex - index) <= 1
-                  const isActive = selectedImageIndex === index
-                  const isPrimary = index === primaryImageIndex
+            <>
+              <Carousel
+                setApi={setApi}
+                direction={language === 'he' ? 'rtl' : 'ltr'}
+                opts={{
+                  align: 'start',
+                  loop: true,
+                }}
+                className="w-full h-full"
+              >
+                <CarouselContent className={`h-full ${language === 'he' ? '-mr-0' : '-ml-0'}`}>
+                  {variantImages.map((image, index) => {
+                    const shouldPreload = Math.abs(selectedImageIndex - index) <= 1
+                    const isActive = selectedImageIndex === index
+                    const isPrimary = index === primaryImageIndex
 
-                  return (
-                    <CarouselItem key={`image-${index}`} className={`h-full basis-full ${language === 'he' ? 'pr-0' : 'pl-0'}`}>
-                      <div className="w-full h-full relative">
-                        <Image
-                          src={typeof image === 'string' ? image : image?.url || ''}
-                          alt={`${productName} - ${activeVariant.colorSlug}`}
-                          width={500}
-                          height={500}
-                          className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
-                          priority={isPrimary}
-                          unoptimized={true}
-                          {...(isPrimary ? {} : { loading: shouldPreload ? undefined : 'lazy' })}
-                          draggable={false}
-                          decoding={isActive ? 'sync' : 'async'}
-                        />
-                      </div>
-                    </CarouselItem>
-                  )
-                })}
-              </CarouselContent>
-            </Carousel>
+                    return (
+                      <CarouselItem key={`image-${index}`} className={`h-full basis-full ${language === 'he' ? 'pr-0' : 'pl-0'}`}>
+                        <div className="w-full h-full relative">
+                          <Image
+                            src={typeof image === 'string' ? image : image?.url || ''}
+                            alt={`${productName} - ${activeVariant.colorSlug}`}
+                            width={500}
+                            height={500}
+                            className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                            priority={isPrimary}
+                            unoptimized={true}
+                            {...(isPrimary ? {} : { loading: shouldPreload ? undefined : 'lazy' })}
+                            draggable={false}
+                            decoding={isActive ? 'sync' : 'async'}
+                          />
+                        </div>
+                      </CarouselItem>
+                    )
+                  })}
+                </CarouselContent>
+              </Carousel>
+              
+              {/* Desktop Arrow Navigation - Only show when more than 1 image */}
+              {totalImages > 1 && (
+                <>
+                  {/* Left Arrow (Previous) */}
+                  <button
+                    onClick={(e) => handleArrowClick('prev', e)}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 hidden md:flex items-center justify-center"
+                    aria-label={language === 'he' ? 'תמונה קודמת' : 'Previous image'}
+                  >
+                    <ChevronLeftIcon className="h-5 w-5 text-gray-800" />
+                  </button>
+                  
+                  {/* Right Arrow (Next) */}
+                  <button
+                    onClick={(e) => handleArrowClick('next', e)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 hidden md:flex items-center justify-center"
+                    aria-label={language === 'he' ? 'תמונה הבאה' : 'Next image'}
+                  >
+                    <ChevronRightIcon className="h-5 w-5 text-gray-800" />
+                  </button>
+                </>
+              )}
+            </>
           ) : primaryImage ? (
             <div className="w-full h-full relative">
               <Image
@@ -304,7 +350,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                 alt={`${productName} - ${activeVariant.colorSlug}`}
                 width={500}
                 height={500}
-                className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+                className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
                 priority={true}
                 unoptimized={true}
                 draggable={false}

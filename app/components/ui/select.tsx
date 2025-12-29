@@ -24,9 +24,9 @@ const SelectTrigger = React.forwardRef<
     ref={ref}
     dir={dir}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 [&>span]:line-clamp-1",
-      dir === "rtl" && "[&>span]:text-right [&>span]:flex-1",
-      dir === "ltr" && "[&>span]:text-left [&>span]:flex-1",
+      "flex h-10 w-full items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 [&>span]:line-clamp-1",
+      dir === "rtl" && "flex-row justify-end [&>span]:text-right [&>span]:flex-1",
+      dir === "ltr" && "justify-between [&>span]:text-left [&>span]:flex-1",
       className
     )}
     {...props}

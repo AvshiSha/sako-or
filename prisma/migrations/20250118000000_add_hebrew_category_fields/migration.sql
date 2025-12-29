@@ -11,3 +11,4 @@ CREATE INDEX IF NOT EXISTS "products_category_he_idx" ON "products" ("category_h
 CREATE INDEX IF NOT EXISTS "products_subCategory_he_idx" ON "products" ("subCategory_he");
 CREATE INDEX IF NOT EXISTS "products_subSubCategory_he_idx" ON "products" ("subSubCategory_he");
 
+

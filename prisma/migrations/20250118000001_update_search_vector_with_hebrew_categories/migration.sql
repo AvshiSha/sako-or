@@ -54,3 +54,4 @@ CREATE INDEX "products_search_vector_gin"
 ON "products"
 USING GIN ("search_vector");
 
+

@@ -135,3 +135,4 @@ showCategoryTranslation()
     process.exit(1)
   })
 
+

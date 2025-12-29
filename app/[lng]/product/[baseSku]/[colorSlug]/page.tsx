@@ -292,7 +292,7 @@ export default function ProductColorPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
@@ -303,7 +303,7 @@ export default function ProductColorPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading product...</p>
         </div>
       </div>
@@ -512,8 +512,7 @@ export default function ProductColorPage() {
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         <div className="pt-[102px]">
-          <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-0">
-            {/* Product Images - Full Width */}
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-0">            {/* Product Images - Full Width */}
             <div className="relative w-full">
               {/* Favorite Heart Icon - Top Left */}
               <button
@@ -592,16 +591,9 @@ export default function ProductColorPage() {
                       {productImages.map((_, index) => (
                         <button
                           key={index}
-                          onClick={() => {
-                            if (api) {
-                              api.scrollTo(index)
-                            }
-                          }}
-                          disabled={!api}
+                          onClick={() => api?.scrollTo(index)}
                           className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                            !api
-                              ? 'bg-[#E1DBD7]/30 cursor-not-allowed'
-                              : selectedImageIndex === index
+                            selectedImageIndex === index
                               ? 'bg-[#E1DBD7] w-6'
                               : 'bg-[#E1DBD7]/50 hover:bg-[#E1DBD7]/75'
                           }`}
@@ -646,10 +638,10 @@ export default function ProductColorPage() {
                 {/* Product Variants (Colors) */}
                 {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
                       {lng === 'he' ? 'צבע' : 'Color'}
                     </h3>
-                    <div className="flex gap-2 overflow-x-auto pb-4">
+                    <div className="flex gap-2 overflow-x-auto pb-2">
                       {Object.values(product.colorVariants)
                         .filter(variant => variant.isActive !== false)
                         .map((variant) => {
@@ -705,7 +697,7 @@ export default function ProductColorPage() {
                 {/* Size Selection */}
                 {Object.keys(currentVariant.stockBySize).length > 0 && (
                   <div>
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-2">
                       <h3 className="text-lg font-medium text-gray-900">
                         {lng === 'he' ? 'מידה' : 'Size'}
                       </h3>
@@ -713,7 +705,7 @@ export default function ProductColorPage() {
                         {lng === 'he' ? 'טבלת מידות' : 'Size Chart'}
                       </button>
                     </div>
-                    <div className="flex flex-wrap gap-2 pb-4">
+                    <div className="flex flex-wrap gap-2">
                       {Object.entries(currentVariant.stockBySize)
                         .filter(([size, stock]) => stock > 0)
                         .map(([size, stock]) => {
@@ -743,7 +735,7 @@ export default function ProductColorPage() {
                   if (allSizesOutOfStock) {
                     return (
                       <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-4">
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
                         <div className="text-red-600 font-semibold text-lg">
@@ -755,10 +747,10 @@ export default function ProductColorPage() {
                   
                   return (
                     <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
                         {lng === 'he' ? 'כמות' : 'Quantity'}
                       </h3>
-                      <div className="flex items-center space-x-2 pb-4">
+                      <div className="flex items-center space-x-3">
                         <button
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
                           disabled={quantity <= 1 || isOutOfStock}
@@ -853,7 +845,7 @@ export default function ProductColorPage() {
                 </div>
 
                 {/* Benefits / Info Lines */}
-                <div className="space-y-4 text-sm text-gray-600 bg-[#E1DBD7] p-2 rounded-md gap-2">
+                <div className="space-y-4 text-sm text-gray-600 bg-[#E1DBD7] p-2 rounded-md gap">
                   <div>
                     {lng === 'he' 
                       ? 'משלוח חינם בקנייה מעל 300 ₪' 
@@ -862,60 +854,44 @@ export default function ProductColorPage() {
                   </div>
                   <div>
                     {lng === 'he' 
-                      ? 'החלפה ראשונה ללא עלות משלוח' 
+                      ? 'החלפה ראשונה ללא עלות – ללא עלות משלוח' 
                       : 'First exchange is free – no shipping cost'
                     }
                   </div>
                 </div>
 
                 {/* Product Description */}
+                <div className="text-lg font-medium text-gray-900 mb-2">{lng === 'he' ? 'תיאור' : 'Description'}</div>
                 <div>
-                  <div>
-                  <div className="border-t border-gray-200 pt-4"></div>
-                  </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {lng === 'he' ? 'תיאור' : 'Description'}
-                  </h3>
                   <p className="text-gray-600 leading-relaxed">{lng === 'he' ? product.description_he : product.description_en}</p>
                 </div>
               </div>
 
               {/* Desktop Layout */}
-              <div className="hidden lg:block space-y-6">
-                {/* Product Header */}
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
+              <div className="hidden lg:block space-y-2">
+                {/* Product Title + Price (same row) */}
+                <div className="flex items-start justify-between gap-2">
+                  <h1 className="text-2xl font-bold text-gray-900 flex-1">
                     {lng === 'he' ? product.title_he : product.title_en}
                   </h1>
-                </div>
-
-                {/* Price */}
-                <div className="flex items-center space-x-4">
-                  {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
-                    <>
-                      <span className="text-3xl font-bold text-red-600">
-                        ₪{getSalePrice()!.toFixed(2)}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
+                      <>
+                        <div className="flex flex-col items-end">
+                          <span className="text-2xl font-bold text-red-600">
+                            ₪{getSalePrice()!.toFixed(2)}
+                          </span>
+                          <span className="text-sm text-gray-500 line-through">
+                            ₪{getOriginalPrice().toFixed(2)}
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <span className="text-2xl font-bold text-gray-900">
+                        ₪{currentPrice.toFixed(2)}
                       </span>
-                      <span className="text-xl text-gray-500 line-through">
-                        ₪{getOriginalPrice().toFixed(2)}
-                      </span>
-                      <span className="bg-red-100 text-red-800 text-sm font-medium px-2.5 py-0.5 rounded">
-                        {Math.round((getOriginalPrice() - getSalePrice()!) / getOriginalPrice() * 100)}% {lng === 'he' ? 'הנחה' : 'OFF'}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-3xl font-bold text-gray-900">
-                      ₪{currentPrice.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    {lng === 'he' ? 'תיאור' : 'Description'}
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">{lng === 'he' ? product.description_he : product.description_en}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Color Selection */}
@@ -936,13 +912,6 @@ export default function ProductColorPage() {
                           <button
                             key={variant.colorSlug}
                             onClick={() => {
-                              console.log('Color button clicked:', { 
-                                colorSlug: variant.colorSlug, 
-                                isVariantOutOfStock,
-                                currentColorSlug: colorSlug,
-                                variantStock: Object.values(variant.stockBySize).reduce((sum, stock) => sum + stock, 0),
-                                sizes: Object.entries(variant.stockBySize).map(([size, stock]) => ({ size, stock }))
-                              })
                               if (!isVariantOutOfStock) {
                                 handleColorChange(variant.colorSlug)
                               }
@@ -987,9 +956,14 @@ export default function ProductColorPage() {
                 {/* Size Selection */}
                 {Object.keys(currentVariant.stockBySize).length > 0 && (
                   <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      {lng === 'he' ? 'מידה' : 'Size'}
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {lng === 'he' ? 'מידה' : 'Size'}
+                      </h3>
+                      <button className="text-sm text-gray-600 underline">
+                        {lng === 'he' ? 'טבלת מידות' : 'Size Chart'}
+                      </button>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {Object.entries(currentVariant.stockBySize)
                         .filter(([size, stock]) => stock > 0)
@@ -1000,7 +974,7 @@ export default function ProductColorPage() {
                               onClick={() => setSelectedSize(size)}
                               className={`px-4 py-2 border rounded-md text-sm font-medium ${
                                 selectedSize === size
-                                  ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                                  ? 'border-[#856D55] bg-[#B2A28E] text-[#000000]'
                                   : 'border-gray-300 text-gray-700 hover:border-gray-400'
                               }`}
                             >
@@ -1064,80 +1038,102 @@ export default function ProductColorPage() {
                   )
                 })()}
 
-                {/* Actions */}
-                <div className="space-y-4">
-                  <button
-                    onClick={handleAddToCart}
-                    disabled={isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart}
-                    className={`w-full py-3 px-6 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-3 ${
-                      isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    }`}
-                  >
-                    <ShoppingBagIcon className="h-5 w-5" />
-                    {(() => {
-                      if (isAddingToCart) {
-                        return lng === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
-                      } else if (isOutOfStock) {
-                        return lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
-                      } else if (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) {
-                        return lng === 'he' ? 'בחר מידה' : 'Select Size'
-                      } else {
-                        return lng === 'he' ? 'הוסף לעגלה' : 'Add to Cart'
-                      }
-                    })()}
-                  </button>
+                {/* Add to Bag Button */}
+                <button
+                  onClick={handleAddToCart}
+                  disabled={isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart}
+                  className={`w-full py-3 px-6 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2 ${
+                    isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#B2A28E] text-[#000000] hover:bg-[#856D55]'
+                  }`}
+                >
+                  <ShoppingBagIcon className="h-5 w-5" />
+                  {(() => {
+                    if (isAddingToCart) {
+                      return lng === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
+                    } else if (isOutOfStock) {
+                      return lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
+                    } else if (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) {
+                      return lng === 'he' ? 'בחר מידה' : 'Select Size'
+                    } else {
+                      return lng === 'he' ? 'הוסף לעגלה' : 'Add to Cart'
+                    }
+                  })()}
+                </button>
 
-                  <div className="flex space-x-4">
-                    <button
-                      onClick={() => {
-                        const baseSkuKey = baseSku
-                        toggleFavorite(baseSkuKey)
-                      }}
-                      className={`flex-1 py-1 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
-                        (() => {
-                          const baseSkuKey = baseSku
-                          return isFavorite(baseSkuKey)
-                        })()
-                          ? 'border-red-300 bg-red-50 text-red-600'
-                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {(() => {
-                        const baseSkuKey = baseSku
-                        return isFavorite(baseSkuKey)
-                      })() ? (
-                        <HeartSolidIcon className="h-3 w-3" />
-                      ) : (
-                        <HeartIcon className="h-3 w-3" />
-                      )}
-                      {(() => {
+                {/* Actions Row: Share & Favorites */}
+                <div className="flex space-x-4">
+                  <button
+                    onClick={handleShare}
+                    className="flex-1 py-2 px-2 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center gap-1"
+                  >
+                    <ShareIcon className="h-3 w-3" />
+                    {lng === 'he' ? 'שתף' : 'Share'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      const baseSkuKey = baseSku
+                      toggleFavorite(baseSkuKey)
+                    }}
+                    className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
+                      (() => {
                         const baseSkuKey = baseSku
                         return isFavorite(baseSkuKey)
                       })()
-                        ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
-                        : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')
-                      }
-                    </button>
+                        ? 'border-red-300 bg-red-50 text-red-600'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {(() => {
+                      const baseSkuKey = baseSku
+                      return isFavorite(baseSkuKey)
+                    })() ? (
+                      <HeartSolidIcon className="h-3 w-3" />
+                    ) : (
+                      <HeartIcon className="h-3 w-3" />
+                    )}
+                    {(() => {
+                      const baseSkuKey = baseSku
+                      return isFavorite(baseSkuKey)
+                    })()
+                      ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
+                      : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')
+                    }
+                  </button>
+                </div>
 
-                    <button
-                      onClick={handleShare}
-                      className="flex-1 py-1 px-2 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center gap-1"
-                    >
-                      <ShareIcon className="h-3 w-3" />
-                      {lng === 'he' ? 'שתף' : 'Share'}
-                    </button>
+                {/* Benefits / Info Lines */}
+                <div className="space-y-4 text-sm text-gray-600 bg-[#E1DBD7] p-2 rounded-md gap">
+                  <div>
+                    {lng === 'he' 
+                      ? 'משלוח חינם בקנייה מעל 300 ₪' 
+                      : 'Free delivery above 300 ILS'
+                    }
                   </div>
+                  <div>
+                    {lng === 'he' 
+                      ? 'החלפה ראשונה ללא עלות – ללא עלות משלוח' 
+                      : 'First exchange is free – no shipping cost'
+                    }
+                  </div>
+                </div>
+
+                {/* Product Description */}
+                <div className="text-lg font-medium text-gray-900 mb-2">{lng === 'he' ? 'תיאור' : 'Description'}</div>
+                <div>
+                  <p className="text-gray-600 leading-relaxed">{lng === 'he' ? product.description_he : product.description_en}</p>
                 </div>
               </div>
 
-              {/* Product Info, Material & Care, and Shipping & Returns */}
-              <div className="border-t border-gray-200 pt-4">
+              {/* Product Info */}
+              <div className="border-t border-gray-200 pt-6">
                 <div className="space-y-4">
-                  {/* Additional Information Accordion */}
-                  <Accordion title={lng === 'he' ? 'מידע נוסף' : 'Additional Information'}>
-                    <div className="space-y-2 text-sm text-gray-600">
+                  <div>
+                    <h4 className="font-medium text-gray-900">
+                      {lng === 'he' ? 'מידע נוסף' : 'Additional Information'}
+                    </h4>
+                    <div className="mt-2 space-y-2 text-sm text-gray-600">
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'מספר דגם' : 'SKU'}:</span>
                         <span>{baseSku}</span>
@@ -1148,22 +1144,21 @@ export default function ProductColorPage() {
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>
-                        <span>
-                          {product.categories_path.length >= 2
-                            ? product.categories_path[product.categories_path.length - 1] // Sub-subcategory (last item)
-                            : product.categories_path.length === 1
-                            ? product.categories_path[0] // Subcategory (first item)
-                            : product.category} {/* Main category (fallback) */}
-                        </span>
+                        <span>{product.categories_path[0]}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'מותג' : 'Brand'}:</span>
                         <span>{product.brand}</span>
                       </div>
                     </div>
-                  </Accordion>
+                  </div>
+                </div>
+              </div>
 
-                  {/* Material & Care Accordion */}
+              {/* Material & Care and Shipping & Returns Sections */}
+              <div className="border-t border-gray-200 pt-6">
+                <div className="space-y-4">
+                  {/* Material & Care Section */}
                   {(product.materialCare?.upperMaterial_en || product.materialCare?.upperMaterial_he || 
                     product.materialCare?.materialInnerSole_en || product.materialCare?.materialInnerSole_he ||
                     product.materialCare?.lining_en || product.materialCare?.lining_he ||
@@ -1275,7 +1270,7 @@ export default function ProductColorPage() {
                     </Accordion>
                   )}
 
-                  {/* Shipping & Returns Accordion */}
+                  {/* Shipping & Returns Section */}
                   <Accordion title={lng === 'he' ? 'משלוחים והחזרות' : 'Shipping & Returns'}>
                     <div className="text-sm text-gray-600 leading-relaxed">
                       {product.shippingReturns ? (

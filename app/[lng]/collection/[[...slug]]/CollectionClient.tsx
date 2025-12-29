@@ -147,7 +147,7 @@ export default function CollectionClient({
   const getTranslatedName = (category: string | undefined, subcategory?: string | null) => {
     // If search query exists, show search results title instead
     if (searchQuery) {
-      return '';
+      return lng === 'he' ? 'תוצאות חיפוש' : 'Search Results';
     }
 
     if (subcategory) {
@@ -200,18 +200,6 @@ export default function CollectionClient({
     sort?: string;
   }) => {
     const urlParams = new URLSearchParams();
-    
-    // Preserve the search query parameter if it exists
-    const currentSearch = safeSearchParams.get('search');
-    if (currentSearch) {
-      urlParams.set('search', currentSearch);
-    }
-    
-    // Preserve the page parameter if it exists (for search pagination)
-    const currentPage = safeSearchParams.get('page');
-    if (currentPage && currentSearch) {
-      urlParams.set('page', currentPage);
-    }
     
     if (newFilters.colors && newFilters.colors.length > 0) {
       urlParams.set('colors', newFilters.colors.join(','));
@@ -480,16 +468,19 @@ export default function CollectionClient({
 
             <Select value={sortBy} onValueChange={handleSortChange}>
               <SelectTrigger 
-                className="w-full sm:w-auto text-black" 
+                className={cn(
+                  "w-full sm:w-auto text-black md:py-3 md:px-4 md:text-base md:text-right",
+                  lng === 'he' && "md:ml-auto"
+                )} 
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
               >
                 <SelectValue placeholder={t.relevance} />
               </SelectTrigger>
-              <SelectContent dir={lng === 'he' ? 'rtl' : 'ltr'}>
-                <SelectItem value="relevance" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.relevance}</SelectItem>
-                <SelectItem value="price-low" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.priceLow}</SelectItem>
-                <SelectItem value="price-high" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.priceHigh}</SelectItem>
-                <SelectItem value="newest" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.newest}</SelectItem>
+              <SelectContent dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:text-base">
+                <SelectItem value="relevance" dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:py-2">{t.relevance}</SelectItem>
+                <SelectItem value="price-low" dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:py-2">{t.priceLow}</SelectItem>
+                <SelectItem value="price-high" dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:py-2">{t.priceHigh}</SelectItem>
+                <SelectItem value="newest" dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:py-2">{t.newest}</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -265,7 +265,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   return (
     <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
-      <div className="relative aspect-[3/4] md:h-screen">
+      <div className="relative aspect-[3/4] md:aspect-[21/9]">
         <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
           <video
             className="hidden md:block h-full w-full object-cover"
@@ -332,7 +332,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       )}
 
       {/* Collections Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24" style={{ backgroundColor: '#E1DBD7' }}>
+      <div className="max-w-68xl mx-auto px-4 sm:px-6 lg:px-8 py-24" style={{ backgroundColor: '#E1DBD7' }}>
         <div className="text-center mb-16">
           <h2 className="text-3xl font-light text-black mb-4">{t.collectionsTitle}</h2>
           <p className="text-black max-w-2xl mx-auto">

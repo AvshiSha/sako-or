@@ -1,6 +1,6 @@
 import { getCollectionProducts, categoryService } from "@/lib/firebase";
 import CollectionClient from "./CollectionClient";
-import { headers } from 'next/headers';
+import { searchProducts } from "@/lib/search-products";
 
 // Helper to serialize Firestore timestamps or other complex objects
 const serializeValue = (value: any): any => {
@@ -57,70 +57,28 @@ export default async function CollectionSlugPage({
   let products: any[] = [];
   let searchTotal = 0;
   let searchPage = 1;
+  let categoryPath: string | undefined;
+  let selectedCategory = "All Products";
+  let selectedSubcategory: string | null = null;
 
-  // If search query exists, fetch from search API
+  // If search query exists, call search function directly (avoids HTTP request and Vercel protection issues)
   if (searchQuery) {
     try {
       const page = typeof resolvedSearchParams.page === 'string' 
         ? parseInt(resolvedSearchParams.page) 
         : 1;
       
-      // Use absolute URL for server-side fetch
-      // Try to get the host from request headers first (most reliable)
-      let baseUrl: string;
-      try {
-        const headersList = await headers();
-        const host = headersList.get('host');
-        const protocol = headersList.get('x-forwarded-proto') || 
-                        (process.env.NODE_ENV === 'production' ? 'https' : 'http');
-        
-        if (host) {
-          baseUrl = `${protocol}://${host}`;
-        } else {
-          throw new Error('No host header');
-        }
-      } catch (headerError) {
-        // Fallback to environment variables if headers not available
-        if (process.env.VERCEL_URL) {
-          // Vercel provides VERCEL_URL without protocol (e.g., "sako-or-git-v2searchbar-sako-or.vercel.app")
-          baseUrl = `https://${process.env.VERCEL_URL}`;
-        } else if (process.env.NEXT_PUBLIC_BASE_URL) {
-          // Use NEXT_PUBLIC_BASE_URL if available (should include protocol)
-          baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-        } else {
-          // Fallback for localhost
-          const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-          baseUrl = `${protocol}://localhost:3000`;
-        }
-      }
-      
-      const searchUrl = `${baseUrl}/api/products/search?q=${encodeURIComponent(searchQuery)}&page=${page}&limit=24`;
-      
-      const searchResponse = await fetch(searchUrl, { 
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (searchResponse.ok) {
-        const searchData = await searchResponse.json();
-        products = searchData.items || [];
-        searchTotal = searchData.total || 0;
-        searchPage = searchData.page || 1;
-      } else {
-        const errorText = await searchResponse.text();
-        console.error('Search API error:', searchResponse.status, searchResponse.statusText, errorText);
-      }
+      // Call search function directly instead of making HTTP request
+      // This avoids Vercel Deployment Protection issues
+      const searchData = await searchProducts(searchQuery, page, 24);
+      products = searchData.items || [];
+      searchTotal = searchData.total || 0;
+      searchPage = searchData.page || 1;
     } catch (error) {
-      console.error('Error fetching search results:', error);
+      console.error('Error searching products:', error);
     }
   } else {
     // Build category path from slug
-    let categoryPath: string | undefined;
-    let selectedCategory = "All Products";
-    let selectedSubcategory: string | null = null;
-      
     if (slug && slug.length > 0) {
       categoryPath = slug.map(s => decodeURIComponent(s)).join('/');
       
@@ -157,9 +115,9 @@ export default async function CollectionSlugPage({
     <CollectionClient
       initialProducts={serializedProducts}
       categories={serializedCategories}
-      categoryPath={searchQuery ? undefined : (slug ? slug.map(s => decodeURIComponent(s)).join('/') : undefined)}
-      selectedCategory={searchQuery ? "All Products" : (slug && slug.length > 0 ? decodeURIComponent(slug[0]) : "All Products")}
-      selectedSubcategory={searchQuery ? null : (slug && slug.length >= 2 ? decodeURIComponent(slug[slug.length - 1]) : null)}
+      categoryPath={searchQuery ? undefined : categoryPath}
+      selectedCategory={searchQuery ? "All Products" : selectedCategory}
+      selectedSubcategory={searchQuery ? null : selectedSubcategory}
       lng={lng}
       searchQuery={searchQuery}
       searchTotal={searchTotal}

@@ -427,7 +427,7 @@ export default function CollectionClient({
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
 
   return (
-    <div className="min-h-screen pt-22 bg-white">
+    <div className="min-h-screen pt-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pt-20 md:pb-16 relative">
         {/* Header with Filters Button */}
         <div className="mb-4 md:mb-4">

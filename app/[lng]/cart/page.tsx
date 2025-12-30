@@ -534,7 +534,7 @@ if (!isClient || loading) {
 
   return (
     <div className="min-h-screen bg-[#E1DBD7] pt-16" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12">
         {/* Header */}
         <div className="mb-8 mt-6">
           <div className="flex items-center justify-between">
@@ -572,7 +572,7 @@ if (!isClient || loading) {
           </div>
         ) : (
           /* Cart Items */
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Cart Items List */}
             <div className="lg:col-span-2">
               <div className="space-y-4">
@@ -793,7 +793,7 @@ if (!isClient || loading) {
 
                 <button
                   onClick={() => setIsCheckoutModalOpen(true)}
-                  className="w-full mt-6 bg-[#856D55]/90 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="w-full mt-6 bg-[#856D55]/90 text-white py-3 px-6 rounded-lg hover:bg-[#856D55] transition-colors font-medium"
                 >
                   {t.checkout}
                 </button>

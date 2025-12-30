@@ -64,9 +64,15 @@ export default async function CollectionSlugPage({
   // If search query exists, call search function directly (avoids HTTP request and Vercel protection issues)
   if (searchQuery) {
     try {
-      const page = typeof resolvedSearchParams.page === 'string' 
-        ? parseInt(resolvedSearchParams.page) 
-        : 1;
+      // Parse and validate page parameter
+      let page = 1;
+      if (typeof resolvedSearchParams.page === 'string') {
+        const parsedPage = parseInt(resolvedSearchParams.page, 10);
+        // Validate that parsing resulted in a valid positive integer
+        if (!isNaN(parsedPage) && parsedPage > 0 && Number.isInteger(parsedPage)) {
+          page = parsedPage;
+        }
+      }
       
       // Call search function directly instead of making HTTP request
       // This avoids Vercel Deployment Protection issues

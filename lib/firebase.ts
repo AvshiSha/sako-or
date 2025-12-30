@@ -363,6 +363,7 @@ export const productService = {
     featured?: boolean;
     isNew?: boolean;
     isActive?: boolean;
+    brand?: string;
     limit?: number;
   }): Promise<Product[]> {
     try {
@@ -380,6 +381,9 @@ export const productService = {
       }
       if (filters?.isActive !== undefined) {
         constraints.push(where('isEnabled', '==', filters.isActive));
+      }
+      if (filters?.brand) {
+        constraints.push(where('brand', '==', filters.brand));
       }
       
       constraints.push(orderBy('createdAt', 'desc'));

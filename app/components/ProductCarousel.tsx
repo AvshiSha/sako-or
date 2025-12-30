@@ -31,7 +31,7 @@ export default function ProductCarousel({ products, title, language = 'en', retu
     <div className="w-full py-12" style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-[90rem] lg:max-w-[90%] xl:max-w-[90%] mx-auto px-2 sm:px-6 lg:px-4">
         {/* Section Title */}
-        <h2 className={`text-2xl md:text-3xl font-bold text-black mb-6 ${isRTL ? 'text-right' : 'text-left'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+        <h2 className={`text-2xl md:text-3xl font-bold text-black mb-6 ${isRTL ? 'text-center' : 'text-center'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
           {title}
         </h2>
         <div className="border-b border-gray-200 mb-6"></div>

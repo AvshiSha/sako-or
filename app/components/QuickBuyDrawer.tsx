@@ -357,7 +357,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                                   disabled={isOutOfStock}
                                   className={`p-2 text-sm text-gray-900 border rounded-md transition-colors ${
                                     isSelected
-                                      ? 'border-black bg-gray-200 text-black'
+                                      ? 'border-[#856D55] bg-[#856D55] text-white'
                                       : isOutOfStock
                                       ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
                                       : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
@@ -421,7 +421,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                           className={`w-full font-medium py-3 px-4 transition-colors duration-200 ${
                             availableSizes.length > 0 && !selectedSize || isAddingToCart
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              : 'bg-black text-white hover:bg-gray-800'
+                              : 'bg-[#856D55] text-white hover:bg-[#856D55]'
                           }`}
                         >
                           {isAddingToCart ? (

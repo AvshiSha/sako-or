@@ -409,7 +409,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
         <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 hidden md:block">
           <button
             onClick={handleQuickBuy}
-            className="w-full border border-black bg-white text-black font-medium py-2 px-4 hover:bg-black hover:text-white transition-colors duration-200"
+            className="w-full border border-[#856D55]/90 bg-white text-black font-medium py-2 px-4 hover:bg-[#856D55]/90 hover:text-white transition-colors duration-200"
           >
             {language === 'he' ? 'קניה מהירה' : 'Quick buy'}
           </button>

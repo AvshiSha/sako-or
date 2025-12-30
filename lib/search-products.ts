@@ -26,7 +26,10 @@ export async function searchProducts(
   }
 
   const searchQuery = query.trim()
-  const offset = (page - 1) * limit
+  
+  // Validate page parameter to prevent NaN in calculations
+  const validatedPage = Number.isInteger(page) && page > 0 ? page : 1
+  const offset = (validatedPage - 1) * limit
 
   // First, check if search_vector column exists
   const columnCheck = await prisma.$queryRaw<Array<{ column_name: string }>>`
@@ -471,7 +474,7 @@ export async function searchProducts(
   return {
     items,
     total,
-    page,
+    page: validatedPage,
     limit,
     query: searchQuery
   }

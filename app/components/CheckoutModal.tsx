@@ -150,7 +150,6 @@ export default function CheckoutModal({
     const handlePopState = (event: PopStateEvent) => {
       if (step === 'PAYMENT') {
         // Go back to INFO step
-        event.preventDefault();
         setStep('INFO');
         setRedirectUrl('');
         setLowProfileId('');

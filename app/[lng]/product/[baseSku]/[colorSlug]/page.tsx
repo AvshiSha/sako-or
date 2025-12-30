@@ -512,7 +512,7 @@ export default function ProductColorPage() {
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         <div className="pt-[102px]">
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-0">            {/* Product Images - Full Width */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_2fr] gap-0">            {/* Product Images - Full Width */}
             <div className="relative w-full">
               {/* Favorite Heart Icon - Top Left */}
               <button
@@ -607,7 +607,7 @@ export default function ProductColorPage() {
             </div>
 
             {/* Product Details */}
-            <div className={`space-y-6 px-4 sm:px-6 py-4 ${isRTL ? 'lg:pl-24 lg:pr-4' : 'lg:pl-4 lg:pr-24'}`}>
+            <div className={`space-y-6 px-4 sm:px-6 py-4 ${isRTL ? 'lg:pl-48 lg:pr-4' : 'lg:pl-4 lg:pr-48'}`}>
               {/* Mobile Layout */}
               <div className="lg:hidden space-y-2">
                 {/* Product Title + Price (same row) */}

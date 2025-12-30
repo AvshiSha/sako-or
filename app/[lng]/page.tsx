@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { getImageUrl, getCollectionImageUrl, getProductImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
 import CountdownPopup from '@/app/components/CountdownPopup'
@@ -152,8 +153,9 @@ const translations = {
   }
 }
 
-export default function Home({ params }: { params: Promise<{ lng: string }> }) {
-  const [lng, setLng] = useState<string>('en')
+export default function Home() {
+  const params = useParams()
+  const lng = (params?.lng as string) || 'en'
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -162,13 +164,6 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
   const [showCountdownPopup, setShowCountdownPopup] = useState(false)
   const [bestSellers, setBestSellers] = useState<Product[]>([])
   const [loadingProducts, setLoadingProducts] = useState(true)
-  
-  // Initialize language from params
-  useEffect(() => {
-    params.then(({ lng: language }) => {
-      setLng(language)
-    })
-  }, [params])
 
   // Fetch best sellers products
   useEffect(() => {
@@ -332,7 +327,7 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       )}
 
       {/* Collections Grid */}
-      <div className="max-w-68xl mx-auto px-4 sm:px-6 lg:px-8 py-24" style={{ backgroundColor: '#E1DBD7' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24" style={{ backgroundColor: '#E1DBD7' }}>
         <div className="text-center mb-16">
           <h2 className="text-3xl font-light text-black mb-4">{t.collectionsTitle}</h2>
           <p className="text-black max-w-2xl mx-auto">

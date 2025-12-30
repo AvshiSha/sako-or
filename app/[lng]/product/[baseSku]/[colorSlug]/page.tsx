@@ -607,7 +607,7 @@ export default function ProductColorPage() {
             </div>
 
             {/* Product Details */}
-            <div className={`space-y-6 px-4 sm:px-6 py-4 ${isRTL ? 'lg:px-120 lg:pr-4' : 'lg:px-4 lg:pr-120'}`}>
+            <div className={`space-y-6 px-4 sm:px-6 py-4 ${isRTL ? 'lg:pl-24 lg:pr-4' : 'lg:pl-4 lg:pr-24'}`}>
               {/* Mobile Layout */}
               <div className="lg:hidden space-y-2">
                 {/* Product Title + Price (same row) */}

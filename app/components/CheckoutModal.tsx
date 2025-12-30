@@ -1,10 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckoutStep, CheckoutFormData, CreateLowProfileRequest, CreateLowProfileResponse, PaymentResult } from '../types/checkout';
+import { CheckoutStep, CheckoutFormData, CreateLowProfileRequest, CreateLowProfileResponse } from '../types/checkout';
 import PayerDetailsForm from './PayerDetailsForm';
 import PaymentIframe from './PaymentIframe';
-import PaymentResultComponent from './PaymentResult';
 import OrderSummary from './OrderSummary';
 import { trackBeginCheckout } from '@/lib/dataLayer';
 import { CartItem } from '../hooks/useCart';
@@ -70,7 +69,6 @@ export default function CheckoutModal({
     notes: ''
   });
   const [isFormValid, setIsFormValid] = useState(false);
-  const [paymentResult, setPaymentResult] = useState<PaymentResult | null>(null);
   const [redirectUrl, setRedirectUrl] = useState<string>('');
   const [lowProfileId, setLowProfileId] = useState<string>('');
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
@@ -126,7 +124,6 @@ export default function CheckoutModal({
         },
         notes: ''
       });
-      setPaymentResult(null);
       setRedirectUrl('');
       setLowProfileId('');
       setCreatedOrderId('');
@@ -328,13 +325,10 @@ export default function CheckoutModal({
   };
 
   // Handle payment completion
-  const handlePaymentComplete = (result: { status: 'success' | 'failed' | 'cancelled'; lpid: string; orderId?: string }) => {
-    setPaymentResult({
-      status: result.status,
-      lpid: result.lpid,
-      orderId: result.orderId
-    });
-    setStep('RESULT');
+  // Note: This is called before redirect, but we don't need to show PaymentResult
+  // since we immediately redirect to Success/Failed pages
+  const handlePaymentComplete = (_result: { status: 'success' | 'failed' | 'cancelled'; lpid: string; orderId?: string }) => {
+    // No-op: redirect happens immediately in PaymentIframe
   };
 
   // Handle payment error
@@ -347,7 +341,6 @@ export default function CheckoutModal({
   const handleRetry = () => {
     setStep('INFO');
     setError(null);
-    setPaymentResult(null);
   };
 
   // Handle back button click
@@ -561,16 +554,6 @@ export default function CheckoutModal({
                     language={language}
                   />
                 </div>
-              )}
-
-              {step === 'RESULT' && paymentResult && (
-                <PaymentResultComponent
-                  lpid={paymentResult.lpid}
-                  orderId={paymentResult.orderId}
-                  initialStatus={paymentResult.status}
-                  onRetry={handleRetry}
-                  language={language}
-                />
               )}
             </div>
 

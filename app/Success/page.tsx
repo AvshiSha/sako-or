@@ -183,7 +183,7 @@ function SuccessPageContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
           <p className="mt-4 text-gray-600">מאמת את התשלום...</p>
         </div>
       </div>
@@ -194,9 +194,9 @@ function SuccessPageContent() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
         {/* Success Icon */}
-        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
+        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-[#856D55]/10 mb-6">
           <svg
-            className="h-8 w-8 text-green-600"
+            className="h-8 w-8 text-[#856D55]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

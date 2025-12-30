@@ -528,7 +528,7 @@ export default function CheckoutModal({
                     <button
                       onClick={handlePaymentSubmit}
                       disabled={!isFormValid || isLoading}
-                      className="px-6 py-2 bg-[#856D55]/90 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                      className="px-6 py-2 bg-[#856D55]/90 text-white rounded-lg hover:bg-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                     >
                       {isLoading 
                         ? (isHebrew ? 'יוצר תשלום...' : 'Creating payment...')
@@ -542,7 +542,7 @@ export default function CheckoutModal({
               {step === 'CREATING_LP' && (
                 <div className="flex items-center justify-center py-12">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto mb-4"></div>
                     <p className="text-gray-600">
                       {isHebrew ? 'שומר פרטים ויוצר הפעלת תשלום...' : 'Saving details and creating payment session...'}
                     </p>

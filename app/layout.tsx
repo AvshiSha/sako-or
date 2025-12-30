@@ -125,7 +125,7 @@ window.args = {
 		icon_offset_top_tablet: 0,
 		icon_offset_bottom_tablet: 60,
 		icon_offset_top_mobile: 0,
-		icon_offset_bottom_mobile: 100,
+		icon_offset_bottom_mobile: 120,
 		keyboard_shortcut: true,
 		hide_purchase_link: false,
 		display_checkmark_icon: false,

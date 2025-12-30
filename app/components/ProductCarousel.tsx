@@ -29,7 +29,7 @@ export default function ProductCarousel({ products, title, language = 'en', retu
 
   return (
     <div className="w-full py-12" style={{ backgroundColor: '#E1DBD7' }}>
-      <div className="max-w-[90rem] mx-auto px-2 sm:px-6 lg:px-8">
+      <div className="max-w-[90rem] lg:max-w-[90%] xl:max-w-[90%] mx-auto px-2 sm:px-6 lg:px-4">
         {/* Section Title */}
         <h2 className={`text-2xl md:text-3xl font-bold text-black mb-6 ${isRTL ? 'text-right' : 'text-left'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
           {title}
@@ -54,7 +54,7 @@ export default function ProductCarousel({ products, title, language = 'en', retu
               {products.map((product) => (
                 <CarouselItem
                   key={product.id || product.sku}
-                  className="basis-[85%] sm:basis-[45%] lg:basis-[25%]"
+                  className="basis-[85%] sm:basis-[45%] lg:basis-[30%]"
                 >
                   <ProductCard product={product} language={language} returnUrl={returnUrl} disableImageCarousel={true} />
                 </CarouselItem>

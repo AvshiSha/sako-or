@@ -279,7 +279,7 @@ export default function FavoritesPage() {
             </p>
             <Link
               href={`/${lng}`}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#856D55] hover:bg-indigo-700"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#856D55] hover:bg-[#856D55]/90"
             >
               {t.emptyButton}
             </Link>

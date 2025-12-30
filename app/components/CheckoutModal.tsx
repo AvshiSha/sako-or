@@ -49,7 +49,7 @@ export default function CheckoutModal({
   items = [],
   appliedCoupons = []
 }: CheckoutModalProps) {
-  const [step, setStep] = useState<CheckoutStep>('IDLE');
+  const [step, setStep] = useState<CheckoutStep>('INFO');
   const [formData, setFormData] = useState<CheckoutFormData>({
     payer: {
       firstName: '',

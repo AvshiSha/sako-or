@@ -30,7 +30,8 @@ const imageUrlMappings: Record<string, string> = {
 
 const videoUrlMappings: Record<string, string> = {
   "/videos/hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_desktop_fix.mp4?alt=media&token=67c85ea8-4a10-4ccd-8ab3-1b96d9b98425",
-  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_mobile.mp4?alt=media&token=27de529b-9234-4560-8029-612d03794cef"
+  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_mobile.mp4?alt=media&token=27de529b-9234-4560-8029-612d03794cef",
+  "/videos/sako-or-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fexa_v2.mp4?alt=media&token=33a2da44-fff6-4f61-be5e-616c965ae1c9"
 };
 
 /**
@@ -70,6 +71,13 @@ export function getHeroDesktopVideoUrl(): string {
  */
 export function getHeroMobileVideoUrl(): string {
   return getVideoUrl("/videos/hero-mobile.mp4");
+}
+
+/**
+ * Get Firebase Storage URL for the sako or mobile video
+ */
+export function getSakoOrMobileVideoUrl(): string {
+  return getVideoUrl("/videos/sako-or-mobile.mp4");
 }
 
 /**

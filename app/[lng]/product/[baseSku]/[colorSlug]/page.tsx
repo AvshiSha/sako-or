@@ -518,9 +518,9 @@ export default function ProductColorPage() {
               <button
                 onClick={() => toggleFavorite(baseSku, colorSlug)}
                 className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors"
-                aria-label={isFavorite(baseSku) ? (lng === 'he' ? 'הסר ממועדפים' : 'Remove from favorites') : (lng === 'he' ? 'הוסף למועדפים' : 'Add to favorites')}
+                aria-label={isFavorite(baseSku, colorSlug) ? (lng === 'he' ? 'הסר ממועדפים' : 'Remove from favorites') : (lng === 'he' ? 'הוסף למועדפים' : 'Add to favorites')}
               >
-                {isFavorite(baseSku) ? (
+                {isFavorite(baseSku, colorSlug) ? (
                   <HeartSolidIcon className="h-4 w-4 text-red-500" />
                 ) : (
                   <HeartIcon className="h-4 w-4 text-gray-700" />
@@ -820,7 +820,7 @@ export default function ProductColorPage() {
                     className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
                       (() => {
                         const baseSkuKey = baseSku
-                        return isFavorite(baseSkuKey)
+                        return isFavorite(baseSkuKey, colorSlug)
                       })()
                         ? 'border-red-300 bg-red-50 text-red-600'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -828,7 +828,7 @@ export default function ProductColorPage() {
                   >
                     {(() => {
                       const baseSkuKey = baseSku
-                      return isFavorite(baseSkuKey)
+                      return isFavorite(baseSkuKey, colorSlug)
                     })() ? (
                       <HeartSolidIcon className="h-3 w-3" />
                     ) : (
@@ -836,7 +836,7 @@ export default function ProductColorPage() {
                     )}
                     {(() => {
                       const baseSkuKey = baseSku
-                      return isFavorite(baseSkuKey)
+                      return isFavorite(baseSkuKey, colorSlug)
                     })()
                       ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
                       : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')
@@ -1079,7 +1079,7 @@ export default function ProductColorPage() {
                     className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
                       (() => {
                         const baseSkuKey = baseSku
-                        return isFavorite(baseSkuKey)
+                        return isFavorite(baseSkuKey, colorSlug)
                       })()
                         ? 'border-red-300 bg-red-50 text-red-600'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
@@ -1087,7 +1087,7 @@ export default function ProductColorPage() {
                   >
                     {(() => {
                       const baseSkuKey = baseSku
-                      return isFavorite(baseSkuKey)
+                      return isFavorite(baseSkuKey, colorSlug)
                     })() ? (
                       <HeartSolidIcon className="h-3 w-3" />
                     ) : (
@@ -1095,7 +1095,7 @@ export default function ProductColorPage() {
                     )}
                     {(() => {
                       const baseSkuKey = baseSku
-                      return isFavorite(baseSkuKey)
+                      return isFavorite(baseSkuKey, colorSlug)
                     })()
                       ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
                       : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')

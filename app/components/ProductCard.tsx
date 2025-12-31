@@ -460,7 +460,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       </Link>
       
       {/* Product Information Section */}
-      <div className="mt-0 bg-[#E1DBD7] p-3 pb-1">
+      <div className="mt-0 bg-[#E1DBD7]/60 p-3 pb-1">
         <div className={`flex items-center justify-between mb-1 ${language === 'he' ? 'flex-row' : 'flex-row-reverse'}`}>
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{productName}</h3>
           {/* {product.newProduct && (
@@ -490,7 +490,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       
       {/* Color Variants Section */}
       {product.colorVariants && Object.keys(product.colorVariants).length >= 1 && (
-        <div className="mt-0 bg-[#E1DBD7] p-3 pt-1">
+        <div className="mt-0 bg-[#E1DBD7]/60 p-3 pt-1">
           <div className="flex gap-2 overflow-x-auto pb-2">
             {Object.values(product.colorVariants)
               .filter(variant => variant.isActive !== false) // Filter out inactive variants
@@ -522,7 +522,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                   <div 
                     className={`absolute -bottom-1 left-0 w-8 h-0.5 transition-all duration-200 ${
                       isSelected 
-                        ? 'bg-black' 
+                        ? 'bg-[#856D55]/90' 
                         : 'bg-transparent group-hover:bg-gray-400'
                     }`}
                   />

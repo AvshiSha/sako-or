@@ -161,18 +161,18 @@ body {
 
 /* RIGHT side - slides from right */
 .sheet-content[data-side="right"][data-state="open"] {
-  animation: sheet-slide-in-from-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: sheet-slide-in-from-right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sheet-content[data-side="right"][data-state="closed"] {
-  animation: sheet-slide-out-to-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: sheet-slide-out-to-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* LEFT side - slides from left */
 .sheet-content[data-side="left"][data-state="open"] {
-  animation: sheet-slide-in-from-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: sheet-slide-in-from-left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sheet-content[data-side="left"][data-state="closed"] {
-  animation: sheet-slide-out-to-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: sheet-slide-out-to-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }

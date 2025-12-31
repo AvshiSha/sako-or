@@ -14,9 +14,19 @@ import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { productService, Product } from '@/lib/firebase'
 import Toast, { useToast } from '@/app/components/Toast'
 import QuickBuyDrawer from '@/app/components/QuickBuyDrawer'
+import FavoriteMobileCard from '@/app/components/FavoriteMobileCard'
+import { getColorName } from '@/lib/colors'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from '@/app/components/ui/carousel'
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 
 interface FavoriteProduct extends Product {
   isUnavailable?: boolean
+  favoriteColorSlug?: string // The specific color variant that was favorited
 }
 
 export default function FavoritesPage() {
@@ -35,8 +45,13 @@ export default function FavoritesPage() {
   // Use ref to avoid re-renders and ensure consistent value during close callback
   const isDesktopRef = useRef(false)
   
+  // Carousel state per product (using Map for efficient lookups)
+  const [carouselApis, setCarouselApis] = useState<Map<string, CarouselApi>>(new Map())
+  const [selectedImageIndices, setSelectedImageIndices] = useState<Map<string, number>>(new Map())
+  const carouselApisRef = useRef<Map<string, CarouselApi>>(new Map())
+  
   // Toast hook
-  const { toast, hideToast } = useToast()
+  const { toast, showToast, hideToast } = useToast()
   
   // Track desktop status for drawer close animation timeout
   useEffect(() => {
@@ -105,39 +120,56 @@ export default function FavoritesPage() {
           setLoading(true)
           
           // Get favorite SKUs from localStorage
-          const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
+          // Support both old format (string[]) and new format ({baseSku: string, colorSlug?: string}[])
+          const favoriteData = JSON.parse(localStorage.getItem('favorites') || '[]')
           
-          if (favoriteSkus.length === 0) {
+          if (favoriteData.length === 0) {
             setFavorites([])
             setLoading(false)
             return
           }
 
-          // Fetch product data for each favorite SKU
+          // Normalize to new format: convert strings to objects
+          const normalizedFavorites = favoriteData.map((item: string | {baseSku: string, colorSlug?: string}) => {
+            if (typeof item === 'string') {
+              // Old format - just baseSku, no colorSlug
+              return { baseSku: item, colorSlug: undefined }
+            }
+            // New format - already an object
+            return item
+          })
+
+          // Fetch product data for each favorite
           const favoriteProducts: FavoriteProduct[] = []
           
-          for (const sku of favoriteSkus) {
+          for (const favorite of normalizedFavorites) {
+            const baseSku = favorite.baseSku || favorite // Fallback for old format
             try {
               // Get product directly (color variants are already in the document)
-              let product = await productService.getProductByBaseSku(sku)
+              let product = await productService.getProductByBaseSku(baseSku)
               
               // If not found, try legacy method (using sku field)
               if (!product) {
-                product = await productService.getProductBySku(sku)
+                product = await productService.getProductBySku(baseSku)
               }
               
               // If still not found, try searching by baseSku in legacy products
               if (!product) {
                 const allProducts = await productService.getAllProducts()
-                product = allProducts.find(p => p.baseSku === sku) || null
+                product = allProducts.find(p => p.baseSku === baseSku) || null
               }
               
               if (product) {
-                favoriteProducts.push(product)
+                // Store the colorSlug that was favorited
+                const favoriteProduct: FavoriteProduct = {
+                  ...product,
+                  favoriteColorSlug: favorite.colorSlug
+                }
+                favoriteProducts.push(favoriteProduct)
               } else {
                 // Product not found - mark as unavailable
                 favoriteProducts.push({
-                  sku,
+                  sku: baseSku,
                   title_en: 'Unavailable Product',
                   title_he: 'מוצר לא זמין',
                   description_en: 'This product is no longer available',
@@ -166,7 +198,7 @@ export default function FavoritesPage() {
                 } as FavoriteProduct)
               }
             } catch (error) {
-              console.error(`Error fetching product ${sku}:`, error)
+              console.error(`Error fetching product ${baseSku}:`, error)
             }
           }
           
@@ -182,17 +214,55 @@ export default function FavoritesPage() {
     }
   }, [isClient])
 
-  const removeFromFavorites = (sku: string) => {
+  // Update selected image index when carousel changes for each product
+  useEffect(() => {
+    const unsubscribes: (() => void)[] = []
+    
+    carouselApisRef.current.forEach((api, productKey) => {
+      if (!api) return
+      
+      const onSelect = () => {
+        const selected = api.selectedScrollSnap()
+        setSelectedImageIndices((prev: Map<string, number>) => {
+          const currentIndex = prev.get(productKey)
+          if (currentIndex === selected) {
+            return prev // No change, return same Map
+          }
+          const newMap = new Map(prev)
+          newMap.set(productKey, selected)
+          return newMap
+        })
+      }
+      
+      api.on('select', onSelect)
+      onSelect() // Set initial index
+      
+      unsubscribes.push(() => {
+        api.off('select', onSelect)
+      })
+    })
+    
+    return () => {
+      unsubscribes.forEach(unsub => unsub())
+    }
+  }, [carouselApis])
+
+  const removeFromFavorites = (baseSku: string) => {
     if (!isClient) return
     
     try {
-      // Remove from localStorage
-      const favoriteSkus = JSON.parse(localStorage.getItem('favorites') || '[]')
-      const updatedFavorites = favoriteSkus.filter((favSku: string) => favSku !== sku)
+      // Remove from localStorage - support both old and new format
+      const favoriteData = JSON.parse(localStorage.getItem('favorites') || '[]')
+      const updatedFavorites = favoriteData.filter((item: string | {baseSku: string, colorSlug?: string}) => {
+        if (typeof item === 'string') {
+          return item !== baseSku
+        }
+        return item.baseSku !== baseSku
+      })
       localStorage.setItem('favorites', JSON.stringify(updatedFavorites))
       
       // Update state
-      setFavorites(prev => prev.filter(product => product.sku !== sku))
+      setFavorites(prev => prev.filter(product => (product.baseSku || product.sku) !== baseSku))
     } catch (error) {
       console.error('Error removing from favorites:', error)
     }
@@ -222,36 +292,23 @@ export default function FavoritesPage() {
   }
 
 
-  if (!isClient) {
-    return <div className="min-h-screen bg-gray-50"></div>
-  }
-
-  if (loading) {
+  // Show loading state
+  if (!isClient || loading) {
     return (
-      <div className="min-h-screen bg-[#E1DBD7]" style={{ backgroundColor: '#E1DBD7' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg shadow-sm p-4">
-                  <div className="h-48 bg-gray-200 rounded mb-4"></div>
-                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                </div>
-              ))}
-            </div>
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
+          <p className="mt-4 text-gray-600">{lng === 'he' ? 'טוען...' : 'Loading...'}</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-15" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
+    <div className="min-h-screen bg-[#E1DBD7] pt-15" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8 mt-6">
+        <div className="mb-4 mt-6">
           <h1 className="text-3xl font-bold text-gray-900 flex items-center font-assistant gap-4">
             <HeartSolidIcon className="h-8 w-8 text-red-500" />
             {t.title}
@@ -282,20 +339,88 @@ export default function FavoritesPage() {
             </Link>
           </div>
         ) : (
-          /* Favorites Grid */
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {favorites.map((product) => {
-              const firstVariant = product.colorVariants && Object.keys(product.colorVariants).length > 0 ? Object.values(product.colorVariants)[0] : null
-              const imageSrc = firstVariant?.primaryImage || firstVariant?.images?.[0] || (product as any).primaryImage || (product as any).images?.[0] || '/images/placeholder.svg'
-              
-              // Check if this is a product with no images (needs color variants)
-              const hasNoImages = !firstVariant?.primaryImage && !firstVariant?.images?.length && !(product as any).primaryImage && !(product as any).images?.length
-              
-              
-              return (
-              <div key={product.sku} className="bg-white rounded-lg shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <>
+            {/* Mobile View - Horizontal Cards */}
+            <div className="sm:hidden space-y-4">
+              {favorites.map((product) => {
+                if (!product.isEnabled) {
+                  // Unavailable product - show simple card
+                  return (
+                    <div key={product.sku} className="bg-white rounded-lg shadow-sm overflow-hidden p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-red-600 flex-1">
+                          <ExclamationTriangleIcon className="h-5 w-5 mr-2" />
+                          <span className="text-sm font-medium">{t.productUnavailable}</span>
+                        </div>
+                        <button
+                          onClick={() => removeFromFavorites(product.baseSku || product.sku!)}
+                          className="text-sm text-gray-500 hover:text-red-600 flex items-center ml-4"
+                        >
+                          <TrashIcon className="h-4 w-4 mr-1" />
+                          {t.removeUnavailable}
+                        </button>
+                      </div>
+                    </div>
+                  )
+                }
+                return (
+                  <FavoriteMobileCard
+                    key={product.sku}
+                    product={product}
+                    language={lng as 'en' | 'he'}
+                    onRemove={removeFromFavorites}
+                    onAddToCartSuccess={() => {
+                      showToast(
+                        lng === 'he' ? 'הוסף לעגלה בהצלחה' : 'Added to cart successfully',
+                        'success'
+                      )
+                    }}
+                  />
+                )
+              })}
+            </div>
+
+            {/* Desktop View - Grid */}
+            <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {favorites.map((product) => {
+                // Get the specific color variant that was favorited, or fallback to first active
+                const favoriteColorSlug = product.favoriteColorSlug
+                let selectedVariant = null
+                
+                if (favoriteColorSlug && product.colorVariants && product.colorVariants[favoriteColorSlug]) {
+                  selectedVariant = product.colorVariants[favoriteColorSlug]
+                } else if (product.colorVariants && Object.keys(product.colorVariants).length > 0) {
+                  // Fallback to first active variant
+                  const activeVariants = Object.values(product.colorVariants).filter((v: any) => v.isActive !== false)
+                  selectedVariant = activeVariants[0] || null
+                }
+                
+                // Get all images from the selected variant
+                const variantImages = selectedVariant?.images || []
+                const totalImages = variantImages.length
+                const primaryImage = selectedVariant?.primaryImage || variantImages[0]
+                const imageSrc = primaryImage || (product as any).primaryImage || (product as any).images?.[0] || '/images/placeholder.svg'
+                
+                // Check if this is a product with no images (needs color variants)
+                const hasNoImages = !primaryImage && !variantImages.length && !(product as any).primaryImage && !(product as any).images?.length
+                
+                // Get carousel API and selected index for this product
+                const productKey = product.sku || product.baseSku || ''
+                const carouselApi = carouselApisRef.current.get(productKey)
+                const selectedImageIndex = selectedImageIndices.get(productKey) || 0
+                
+                // Find primary image index
+                const primaryImageIndex = primaryImage && variantImages.length > 0
+                  ? variantImages.findIndex((img: any) => img === primaryImage || (typeof img === 'string' ? img : img?.url) === primaryImage)
+                  : 0
+                
+                return (
+                <div key={product.sku} className="group relative bg-gray-100">
                 {/* Product Image */}
-                <div className="relative aspect-square">
+                <Link 
+                  href={`/${lng}/product/${product.baseSku || product.sku}/${selectedVariant?.colorSlug || favoriteColorSlug || 'default'}`}
+                  className="relative aspect-square overflow-hidden bg-gray-50 block"
+                >
                   {!product.isEnabled ? (
                     <div className="w-full h-full bg-gray-100 flex items-center justify-center">
                       <ExclamationTriangleIcon className="h-12 w-12 text-gray-400" />
@@ -312,28 +437,137 @@ export default function FavoritesPage() {
                         {lng === 'he' ? 'צור קשר עם מנהל המערכת' : 'Contact admin to add images'}
                       </span>
                     </div>
+                  ) : totalImages > 1 ? (
+                    <>
+                      {/* Image Carousel */}
+                      <Carousel
+                        setApi={(api) => {
+                          if (api && carouselApisRef.current.get(productKey) !== api) {
+                            carouselApisRef.current.set(productKey, api)
+                            setCarouselApis(new Map(carouselApisRef.current))
+                          }
+                        }}
+                        direction={isRTL ? 'rtl' : 'ltr'}
+                        opts={{
+                          align: 'start',
+                          loop: true,
+                        }}
+                        className="w-full h-full"
+                      >
+                        <CarouselContent className={`h-full ${isRTL ? '-mr-0' : '-ml-0'}`}>
+                          {variantImages.map((image: any, index: number) => {
+                            const imageUrl = typeof image === 'string' ? image : image?.url || ''
+                            const shouldPreload = Math.abs(selectedImageIndex - index) <= 1
+                            const isPrimary = index === (primaryImageIndex >= 0 ? primaryImageIndex : 0)
+                            
+                            return (
+                              <CarouselItem key={`image-${index}`} className={`h-full basis-full ${isRTL ? 'pr-0' : 'pl-0'}`}>
+                                <div className="w-full h-full relative">
+                                  <Image
+                                    src={imageUrl}
+                                    alt={`${lng === 'he' ? product.title_he : product.title_en} - ${selectedVariant?.colorSlug || favoriteColorSlug || 'default'} - ${index + 1}`}
+                                    width={500}
+                                    height={500}
+                                    className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                                    priority={isPrimary}
+                                    unoptimized={true}
+                                    {...(isPrimary ? {} : { loading: shouldPreload ? undefined : 'lazy' })}
+                                    draggable={false}
+                                  />
+                                </div>
+                              </CarouselItem>
+                            )
+                          })}
+                        </CarouselContent>
+                      </Carousel>
+                      
+                      {/* Image indicator dots */}
+                      <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex space-x-1">
+                        {Array.from({ length: totalImages }).map((_, index) => (
+                          <div
+                            key={index}
+                            className={`w-1 h-1 rounded-full transition-all duration-200 ${
+                              selectedImageIndex === index ? 'bg-[#E1DBD7]' : 'bg-[#E1DBD7]/50'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Desktop Arrow Navigation */}
+                      {totalImages > 1 && (
+                        <>
+                          {/* Left Arrow (Previous) */}
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              carouselApi?.scrollPrev()
+                            }}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 hidden md:flex items-center justify-center"
+                            aria-label={lng === 'he' ? 'תמונה קודמת' : 'Previous image'}
+                          >
+                            <ChevronLeftIcon className="h-5 w-5 text-gray-800" />
+                          </button>
+                          
+                          {/* Right Arrow (Next) */}
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              carouselApi?.scrollNext()
+                            }}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 hidden md:flex items-center justify-center"
+                            aria-label={lng === 'he' ? 'תמונה הבאה' : 'Next image'}
+                          >
+                            <ChevronRightIcon className="h-5 w-5 text-gray-800" />
+                          </button>
+                        </>
+                      )}
+                    </>
                   ) : (
-                    <Link href={`/${lng}/product/${product.sku}/${firstVariant?.colorSlug || 'default'}`}>
-                      <Image
-                        src={imageSrc}
-                        alt={firstVariant?.colorSlug || 'default'}
-                        fill
-                        className="object-cover hover:scale-105 transition-transform duration-200"
-                      />
-                    </Link>
+                    <Image
+                      src={imageSrc}
+                      alt={selectedVariant?.colorSlug || favoriteColorSlug || 'default'}
+                      fill
+                      className="object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                    />
                   )}
                   
                   {/* Favorite Button */}
                   <button
-                    onClick={() => toggleFavorite(product.baseSku || product.sku!)}
-                    className="absolute top-3 right-3 p-2 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleFavorite(product.baseSku || product.sku!)
+                    }}
+                    className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"
                   >
-                    <HeartSolidIcon className="h-5 w-5 text-red-500" />
+                    <HeartSolidIcon className="h-4 w-4 text-red-500" />
                   </button>
-                </div>
 
-                {/* Product Info */}
-                <div className="p-4">
+                  {/* Desktop Quick Buy Button - Overlay at bottom of image */}
+                  {product.isEnabled && !hasNoImages && (
+                    <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 hidden md:block">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setDrawerProduct(product)
+                          // Add delay before opening to slow down the animation
+                          setTimeout(() => {
+                            setIsQuickBuyOpen(true)
+                          }, 200)
+                        }}
+                        className="w-full border border-[#856D55]/90 bg-white text-black font-medium py-2 px-4 hover:bg-[#856D55]/90 hover:text-white transition-colors duration-200"
+                      >
+                        {lng === 'he' ? 'קניה מהירה' : 'Quick buy'}
+                      </button>
+                    </div>
+                  )}
+                </Link>
+
+                {/* Product Information Section */}
+                <div className="mt-0 bg-[#E1DBD7]/60 p-3 pb-1">
                   {!product.isEnabled ? (
                     /* Unavailable Product */
                     <div>
@@ -352,72 +586,81 @@ export default function FavoritesPage() {
                   ) : (
                     /* Available Product */
                     <>
-                      <Link href={`/${lng}/product/${product.baseSku || product.sku}`}>
-                        <h3 className="font-medium text-gray-900 mb-2 hover:text-indigo-600 line-clamp-2">
+                      <div className={`flex items-center justify-between mb-1 ${isRTL ? 'flex-row' : 'flex-row-reverse'}`}>
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">
                           {lng === 'he' ? product.title_he : product.title_en}
                         </h3>
-                      </Link>
+                      </div>
+
+                      <div className="text-sm font-medium text-gray-900">{product.sku}</div>
                       
-                      <div className="mb-3">
+                      <div className="text-sm font-medium text-gray-900">
                         {product.salePrice && product.salePrice < product.price ? (
-                          <div className="flex items-baseline gap-2">
-                            <span className="text-sm line-through" style={{ color: '#888888' }}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 line-through">
                               ₪{product.price.toFixed(2)}
                             </span>
-                            <span className="text-lg font-bold" style={{ color: '#d32f2f' }}>
+                            <span className="text-red-600 font-bold">
                               ₪{product.salePrice.toFixed(2)}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-lg font-bold text-black">
-                            ₪{product.price.toFixed(2)}
-                          </span>
+                          <span>₪{product.price.toFixed(2)}</span>
                         )}
                       </div>
-                      {(!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
-                          // Check if this color variant has any stock across all sizes
-                          if (!v.stockBySize) return true;
-                          const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
-                          return totalStock <= 0;
-                        })) && (
-                          <span className="text-sm text-red-600 font-medium">
-                            {t.outOfStock}
-                          </span>
-                        )}
-                      <button
-                        onClick={() => {
-                          // Set both states synchronously to avoid race conditions
-                          // The drawer component handles the animation timing internally
-                          setDrawerProduct(product)
-                          setIsQuickBuyOpen(true)
-                        }}
-                        disabled={!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
-                          // Check if this color variant has any stock across all sizes
-                          if (!v.stockBySize) return true;
-                          const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
-                          return totalStock <= 0;
-                        })}
-                        className={`w-full py-2 px-4 rounded-md font-medium transition-colors flex items-center justify-center ${
-                          (!product.colorVariants || Object.keys(product.colorVariants).length === 0 || Object.values(product.colorVariants).every(v => {
-                            // Check if this color variant has any stock across all sizes
-                            if (!v.stockBySize) return true;
-                            const totalStock = Object.values(v.stockBySize).reduce((total, stock) => total + stock, 0);
-                            return totalStock <= 0;
-                          }))
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        }`}
-                      >
-                        <ShoppingBagIcon className="h-4 w-4 mr-2" />
-                        {t.addToCart}
-                      </button>
                     </>
                   )}
                 </div>
+                
+                {/* Color Variants Section */}
+                {product.colorVariants && Object.keys(product.colorVariants).length >= 1 && product.isEnabled && (
+                  <div className="mt-0 bg-[#E1DBD7]/60 p-3 pt-1">
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {Object.values(product.colorVariants)
+                        .filter((v: any) => v.isActive !== false)
+                        .map((variant: any) => {
+                          const variantImage = variant.primaryImage || variant.images?.[0]
+                          const isSelected = variant.colorSlug === (selectedVariant?.colorSlug || favoriteColorSlug)
+                          
+                          return (
+                            <Link
+                              key={variant.colorSlug}
+                              href={`/${lng}/product/${product.baseSku || product.sku}/${variant.colorSlug}`}
+                              className="flex-shrink-0 relative group"
+                              title={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                            >
+                              {/* Product image */}
+                              {variantImage && (
+                                <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-transparent">
+                                  <Image
+                                    src={variantImage}
+                                    alt={variant.colorSlug}
+                                    width={32}
+                                    height={32}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+                              
+                              {/* Selection line indicator */}
+                              <div 
+                                className={`absolute -bottom-1 left-0 w-8 h-0.5 transition-all duration-200 ${
+                                  isSelected 
+                                    ? 'bg-[#856D55]/90' 
+                                    : 'bg-transparent group-hover:bg-gray-400'
+                                }`}
+                              />
+                            </Link>
+                          )
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
               )
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
       
@@ -437,7 +680,7 @@ export default function FavoritesPage() {
             // Start the close animation
             setIsQuickBuyOpen(false)
             // Delay clearing drawerProduct to allow close animation to complete
-            // Use responsive timeout: 700ms for mobile, 1000ms for desktop (sm:duration-1000)
+            // Use responsive timeout: 700ms for mobile, 2000ms for desktop (sm:duration-2000)
             // This matches the animation durations in QuickBuyDrawer
             // Use ref to get consistent desktop status (avoids SSR/hydration issues)
             const timeoutDuration = isDesktopRef.current ? 1000 : 700

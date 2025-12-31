@@ -3,19 +3,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { fbqTrackAddToFavorites, fbqTrackRemoveFromFavorites } from '@/lib/facebookPixel'
 
+export type FavoriteItem = string | { baseSku: string; colorSlug?: string }
+
 export interface FavoritesHook {
-  favorites: string[]
+  favorites: FavoriteItem[]
   isFavorite: (sku: string) => boolean
-  addToFavorites: (sku: string) => void
+  addToFavorites: (sku: string, colorSlug?: string) => void
   removeFromFavorites: (sku: string) => void
-  toggleFavorite: (sku: string) => void
+  toggleFavorite: (sku: string, colorSlug?: string) => void
   loading: boolean
 }
 
 export function useFavorites(): FavoritesHook {
-  const [favorites, setFavorites] = useState<string[]>([])
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([])
   const [loading, setLoading] = useState(true)
-  const favoritesRef = useRef<string[]>([])
+  const favoritesRef = useRef<FavoriteItem[]>([])
 
   // Load favorites from localStorage on mount
   useEffect(() => {
@@ -62,32 +64,51 @@ export function useFavorites(): FavoritesHook {
     }
   }, [])
 
+  // Helper to check if a favorite item matches a sku
+  const favoriteMatches = (item: FavoriteItem, sku: string): boolean => {
+    if (typeof item === 'string') {
+      return item === sku
+    }
+    return item.baseSku === sku
+  }
+
+  // Helper to get baseSku from favorite item
+  const getBaseSku = (item: FavoriteItem): string => {
+    if (typeof item === 'string') {
+      return item
+    }
+    return item.baseSku
+  }
+
   const isFavorite = useCallback((sku: string): boolean => {
-    return favorites.includes(sku)
+    return favorites.some(item => favoriteMatches(item, sku))
   }, [favorites])
 
-  const addToFavorites = useCallback((sku: string) => {
+  const addToFavorites = useCallback((sku: string, colorSlug?: string) => {
     // Check ref (current state) before updating to avoid double-tracking
-    const isCurrentlyFavorite = favoritesRef.current.includes(sku)
+    const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatches(item, sku))
     if (!isCurrentlyFavorite) {
       // Track BEFORE state update to ensure it only fires once
       fbqTrackAddToFavorites({ id: sku, quantity: 1 })
     }
     setFavorites(prev => {
-      if (prev.includes(sku)) {
+      // Check if already exists
+      if (prev.some(item => favoriteMatches(item, sku))) {
         return prev
       }
-      return [...prev, sku]
+      // Add new favorite with colorSlug if provided
+      const newFavorite: FavoriteItem = colorSlug ? { baseSku: sku, colorSlug } : sku
+      return [...prev, newFavorite]
     })
   }, [])
 
   const removeFromFavorites = useCallback((sku: string) => {
-    setFavorites(prev => prev.filter(favSku => favSku !== sku))
+    setFavorites(prev => prev.filter(item => !favoriteMatches(item, sku)))
   }, [])
 
-  const toggleFavorite = useCallback((sku: string) => {
+  const toggleFavorite = useCallback((sku: string, colorSlug?: string) => {
     // Check ref (current state) before updating to determine action
-    const isCurrentlyFavorite = favoritesRef.current.includes(sku)
+    const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatches(item, sku))
     if (!isCurrentlyFavorite) {
       // Track BEFORE state update to ensure it only fires once
       fbqTrackAddToFavorites({ id: sku, quantity: 1 })
@@ -96,10 +117,12 @@ export function useFavorites(): FavoritesHook {
       fbqTrackRemoveFromFavorites({ id: sku, quantity: 1 })
     }
     setFavorites(prev => {
-      if (prev.includes(sku)) {
-        return prev.filter(favSku => favSku !== sku)
+      if (prev.some(item => favoriteMatches(item, sku))) {
+        return prev.filter(item => !favoriteMatches(item, sku))
       } else {
-        return [...prev, sku]
+        // Add new favorite with colorSlug if provided
+        const newFavorite: FavoriteItem = colorSlug ? { baseSku: sku, colorSlug } : sku
+        return [...prev, newFavorite]
       }
     })
   }, [])

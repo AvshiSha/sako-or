@@ -542,7 +542,7 @@ if (!isClient || loading) {
         {items.length === 0 ? (
           /* Empty State */
           <div className="text-center py-12">
-            <ShoppingBagIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <ShoppingBagIcon className="h-16 w-16 text-[#856D55] mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               {t.emptyTitle}
             </h2>
@@ -551,7 +551,7 @@ if (!isClient || loading) {
             </p>
             <Link
               href={`/${lng}`}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#856D55] hover:bg-[#856D55]/90"
             >
               {t.emptyButton}
             </Link>

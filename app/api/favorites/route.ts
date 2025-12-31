@@ -12,41 +12,30 @@ function favoriteKeyFromParts(productBaseSku: string, colorSlug: string): string
   return colorSlug ? `${productBaseSku}::${colorSlug}` : productBaseSku
 }
 
-async function getOrCreateNeonUserId(req: NextRequest): Promise<string> {
-  const token = getBearerToken(req)
-  if (!token) {
-    throw new Error('Missing Authorization Bearer token')
-  }
-
-  const decoded = await adminAuth.verifyIdToken(token)
-  const firebaseUid = decoded.uid
-  const email = decoded.email ?? null
-  const emailVerified = decoded.email_verified ?? false
-  const now = new Date()
-
-  const user = await prisma.user.upsert({
-    where: { firebaseUid },
-    update: {
-      lastLoginAt: now,
-      ...(email ? { email } : {}),
-      emailVerified
-    },
-    create: {
-      firebaseUid,
-      email,
-      emailVerified,
-      authProvider: 'firebase',
-      role: 'USER',
-      lastLoginAt: now
-    }
-  })
-
-  return user.id
-}
-
 export async function GET(request: NextRequest) {
   try {
-    const userId = await getOrCreateNeonUserId(request)
+    const token = getBearerToken(request)
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Missing Authorization Bearer token' },
+        { status: 401 }
+      )
+    }
+
+    const decoded = await adminAuth.verifyIdToken(token)
+    const firebaseUid = decoded.uid
+
+    const neonUser = await prisma.user.findUnique({
+      where: { firebaseUid },
+      select: { id: true }
+    })
+    if (!neonUser) {
+      return NextResponse.json(
+        { error: 'Neon user not found; call /api/me/sync first.' },
+        { status: 404 }
+      )
+    }
+    const userId = neonUser.id
 
     const favorites = await prisma.favorite.findMany({
       where: { userId, isActive: true },

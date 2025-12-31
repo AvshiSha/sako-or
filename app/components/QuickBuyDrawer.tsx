@@ -14,6 +14,7 @@ import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
+import { buildFavoriteKey } from '@/lib/favorites'
 
 interface QuickBuyDrawerProps {
   isOpen: boolean
@@ -99,7 +100,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   const handleWishlistToggle = () => {
     const baseSku = product.baseSku || product.sku || ''
     const colorSlug = activeVariant?.colorSlug || ''
-    const favoriteKey = colorSlug ? `${baseSku}::${colorSlug}` : baseSku
+    const favoriteKey = buildFavoriteKey(baseSku, colorSlug)
     if (favoriteKey) {
       void toggleFavorite(favoriteKey)
     }
@@ -238,7 +239,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                             (() => {
                               const baseSku = product.baseSku || product.sku || ''
                               const colorSlug = activeVariant?.colorSlug || ''
-                              return colorSlug ? `${baseSku}::${colorSlug}` : baseSku
+                              return buildFavoriteKey(baseSku, colorSlug)
                             })()
                           ) ? (
                             <HeartSolidIcon className="h-5 w-5 text-red-500" />

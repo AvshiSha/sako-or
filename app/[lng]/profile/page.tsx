@@ -16,6 +16,7 @@ import {
 } from '@/app/components/profile/ProfileFormFields'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { productService, Product } from '@/lib/firebase'
+import { parseFavoriteKey } from '@/lib/favorites'
 import {
   PencilIcon,
   CheckIcon,
@@ -25,6 +26,13 @@ import {
   SparklesIcon,
   CalendarIcon
 } from '@heroicons/react/24/outline'
+import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+
+interface FavoriteItem extends Product {
+  favoriteKey: string
+  favoriteBaseSku: string
+  favoriteColorSlug?: string
+}
 
 type ApiUser = {
   id: string
@@ -87,7 +95,7 @@ export default function ProfilePage() {
   const lng = (params?.lng as string) || 'en'
 
   const { user: firebaseUser, loading: authLoading } = useAuth()
-  const { favorites: favoriteKeys } = useFavorites()
+  const { favorites: favoriteKeys, toggleFavorite } = useFavorites()
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -114,7 +122,7 @@ export default function ProfilePage() {
   const [pointsLoading, setPointsLoading] = useState(true)
 
   // Favorites
-  const [favoriteProducts, setFavoriteProducts] = useState<Product[]>([])
+  const [favoriteProducts, setFavoriteProducts] = useState<FavoriteItem[]>([])
   const [favoritesLoading, setFavoritesLoading] = useState(true)
 
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -255,26 +263,40 @@ export default function ProfilePage() {
       setFavoritesLoading(true)
       try {
         const productsToLoad = favoriteKeys.slice(0, 4)
-        const products: Product[] = []
+        const favoriteItems: FavoriteItem[] = []
+        
+        // Cache by baseSku to avoid refetching the same product for multiple colors
+        const productCache = new Map<string, Product | null>()
 
-        for (const key of productsToLoad) {
-          const baseSku = key.split('::')[0]
+        for (const favoriteKey of productsToLoad) {
+          const { baseSku, colorSlug } = parseFavoriteKey(favoriteKey)
           if (!baseSku) continue
 
-          try {
-            let product = await productService.getProductByBaseSku(baseSku)
-            if (!product) {
-              product = await productService.getProductBySku(baseSku)
+          let product = productCache.get(baseSku)
+          if (product === undefined) {
+            try {
+              product = await productService.getProductByBaseSku(baseSku)
+              if (!product) {
+                product = await productService.getProductBySku(baseSku)
+              }
+            } catch (e) {
+              console.error(`Error loading product ${baseSku}:`, e)
+              product = null
             }
-            if (product && product.isEnabled) {
-              products.push(product)
-            }
-          } catch (e) {
-            console.error(`Error loading product ${baseSku}:`, e)
+            productCache.set(baseSku, product)
+          }
+
+          if (product && product.isEnabled) {
+            favoriteItems.push({
+              ...product,
+              favoriteKey,
+              favoriteBaseSku: baseSku,
+              favoriteColorSlug: colorSlug || undefined
+            })
           }
         }
 
-        if (!cancelled) setFavoriteProducts(products)
+        if (!cancelled) setFavoriteProducts(favoriteItems)
       } catch (e: any) {
         console.error('Error loading favorites:', e)
       } finally {
@@ -733,37 +755,56 @@ export default function ProfilePage() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {favoriteProducts.map((product) => {
-                const firstVariant = product.colorVariants
-                  ? Object.values(product.colorVariants)[0]
+                const activeVariants = product.colorVariants
+                  ? Object.values(product.colorVariants).filter((v: any) => v?.isActive !== false)
+                  : []
+
+                // Find the preferred color variant based on favoriteColorSlug
+                const preferredVariant = product.favoriteColorSlug
+                  ? activeVariants.find((v: any) => v?.colorSlug === product.favoriteColorSlug) || null
                   : null
+
+                const firstVariant = preferredVariant || activeVariants[0] || null
+                const chosenColorSlug = firstVariant?.colorSlug || product.favoriteColorSlug || 'default'
                 const imageSrc =
-                  (firstVariant as any)?.primaryImage ||
-                  (firstVariant as any)?.images?.[0] ||
+                  firstVariant?.primaryImage ||
+                  firstVariant?.images?.[0] ||
+                  (product as any).primaryImage ||
+                  (product as any).images?.[0] ||
                   '/images/placeholder.svg'
 
                 return (
-                  <Link
-                    key={product.sku}
-                    href={`/${lng}/product/${product.sku}`}
-                    className="group"
-                  >
+                  <div key={product.favoriteKey} className="group">
                     <div className="aspect-square relative rounded-lg overflow-hidden bg-gray-100 mb-2">
-                      <Image
-                        src={imageSrc}
-                        alt={product.title_en}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform"
-                      />
+                      <Link href={`/${lng}/product/${product.favoriteBaseSku}/${chosenColorSlug}`}>
+                        <Image
+                          src={imageSrc}
+                          alt={lng === 'he' ? product.title_he : product.title_en}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform"
+                        />
+                      </Link>
+                      
+                      {/* Favorite Button */}
+                      <button
+                        onClick={() => void toggleFavorite(product.favoriteKey)}
+                        className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow z-10"
+                        aria-label="Remove from favorites"
+                      >
+                        <HeartSolidIcon className="h-4 w-4 text-red-500" />
+                      </button>
                     </div>
-                    <p className="text-sm text-gray-900 line-clamp-2 group-hover:text-indigo-600">
-                      {product.title_en}
-                    </p>
+                    <Link href={`/${lng}/product/${product.favoriteBaseSku}/${chosenColorSlug}`}>
+                      <p className="text-sm text-gray-900 line-clamp-2 group-hover:text-indigo-600">
+                        {lng === 'he' ? product.title_he : product.title_en}
+                      </p>
+                    </Link>
                     <p className="text-sm font-bold text-gray-900">
                       ₪{product.salePrice && product.salePrice < product.price
                         ? product.salePrice.toFixed(2)
                         : product.price.toFixed(2)}
                     </p>
-                  </Link>
+                  </div>
                 )
               })}
             </div>

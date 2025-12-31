@@ -88,8 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password)
-      void syncUserToNeon(userCredential.user)
+      await signInWithEmailAndPassword(auth, email, password)
+      // Sync handled by useEffect watching user?.uid
     } catch (error) {
       console.error('Sign in error:', error)
       throw error
@@ -98,8 +98,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      void syncUserToNeon(userCredential.user)
+      await createUserWithEmailAndPassword(auth, email, password)
+      // Sync handled by useEffect watching user?.uid
     } catch (error) {
       console.error('Sign up error:', error)
       throw error

@@ -11,13 +11,19 @@ import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { categoryService } from '@/lib/firebase'
 import { getImageUrl } from '@/lib/image-urls'
-import { motion, AnimatePresence } from "framer-motion"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/app/components/ui/accordion'
+import {
+  Sheet,
+  SheetContent,
+  SheetClose,
+  SheetTitle,
+} from '@/app/components/ui/sheet'
+import { ScrollArea } from '@/app/components/ui/scroll-area'
 
 
 
@@ -56,11 +62,6 @@ export default function Navigation({ lng }: { lng: string }) {
   const [availableCategories, setAvailableCategories] = useState<Array<{ id: string, slug: string, name: string, level: number }>>([])
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const [openTimeout, setOpenTimeout] = useState<NodeJS.Timeout | null>(null)
-  const drawerRef = useRef<HTMLDivElement>(null)
-
-  // Mobile navigation state
-  const [mobileNavLevel, setMobileNavLevel] = useState<'main' | 'women' | 'men' | 'women-sub' | 'men-sub'>('main')
-  const [selectedMobileCategory, setSelectedMobileCategory] = useState<{ id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> } | null>(null)
   const [selectedGender, setSelectedGender] = useState<'women' | 'men'>('women')
 
   const { items } = useCart()
@@ -70,7 +71,7 @@ export default function Navigation({ lng }: { lng: string }) {
   // Close menu on route change
   useEffect(() => {
     if (isMobileMenuOpen) {
-      closeMobileMenu()
+      setIsMobileMenuOpen(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
@@ -214,61 +215,9 @@ export default function Navigation({ lng }: { lng: string }) {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)
-    setMobileNavLevel('main')
-    setSelectedMobileCategory(null)
-    // Unlock body scroll
-    document.body.style.overflow = ''
   }
 
-  // Lock/unlock body scroll when menu opens/closes
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [isMobileMenuOpen])
 
-  // Handle ESC key to close menu
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isMobileMenuOpen) {
-        closeMobileMenu()
-      }
-    }
-    document.addEventListener('keydown', handleEsc)
-    return () => document.removeEventListener('keydown', handleEsc)
-  }, [isMobileMenuOpen])
-
-
-  const navigateToLevel = (level: 'main' | 'women' | 'men' | 'women-sub' | 'men-sub', category?: { id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> }) => {
-    setMobileNavLevel(level)
-    setSelectedMobileCategory(category || null)
-  }
-
-  const navigateBack = () => {
-    switch (mobileNavLevel) {
-      case 'women-sub':
-        setMobileNavLevel('women')
-        setSelectedMobileCategory(null)
-        break
-      case 'men-sub':
-        setMobileNavLevel('men')
-        setSelectedMobileCategory(null)
-        break
-      case 'women':
-      case 'men':
-        setMobileNavLevel('main')
-        setSelectedMobileCategory(null)
-        break
-      default:
-        setMobileNavLevel('main')
-        setSelectedMobileCategory(null)
-    }
-  }
 
   const handleMouseEnter = (dropdown: 'women' | 'men') => {
     // Clear any existing timeouts
@@ -347,7 +296,7 @@ export default function Navigation({ lng }: { lng: string }) {
 
 
   return (
-    <nav className="shadow-lg fixed w-full top-10 z-50" style={{ backgroundColor: '#FFFFFF' }}>
+    <nav className="shadow-lg fixed w-full top-10 z-[65]" style={{ backgroundColor: '#FFFFFF' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
           className="flex justify-between items-center h-16"
@@ -620,148 +569,137 @@ export default function Navigation({ lng }: { lng: string }) {
         </div>
       </div>
 
-      {/* Mobile Menu - New Dropdown Design */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <>
-            {/* Backdrop */}
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="fixed inset-0 bg-black/40 z-[60] md:hidden"
-              onClick={closeMobileMenu}
-            />
-
-            {/* Dropdown Panel - Anchored to bottom of nav bar */}
-            <motion.div
-              initial={{ y: -200 }}
-              animate={{ y: 0 }}
-              exit={{ y: -800 }}
-              transition={{ type: "spring", damping: 30, stiffness: 100, duration: 0.4 }}
-              className="fixed left-0 right-0 bg-white shadow-2xl z-[71] md:hidden overflow-hidden"
-              style={{
-                top: '102px', // Below nav bar (top-10 = 40px + h-16 = 64px + 2px for border)
-                maxHeight: 'calc(104vh - 102px)',
-              }}
-            >
+      {/* Mobile Menu - Sheet Component */}
+      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+        <SheetContent
+          side={lng === 'he' ? 'right' : 'left'}
+          className="p-0 flex flex-col md:hidden"
+          dir={lng === 'he' ? 'rtl' : 'ltr'}
+        >
+          {/* Visually hidden title for accessibility */}
+          <SheetTitle className="sr-only">
+            {lng === 'he' ? 'תפריט נייד' : 'Mobile Menu'}
+          </SheetTitle>
+          
+          {/* Header with Search Bar */}
+          <div className="border-b border-gray-300 px-4 py-4">
+            <div className="mb-3">
+              <SearchBar language={lng} />
+            </div>
+            
             {/* MEN/WOMEN Toggle */}
-            <div className="border-b border-gray-200 px-4 py-3">
-              <div className="flex rounded-lg bg-gray-100 p-1" dir={lng === 'he' ? 'rtl' : 'ltr'}>
+            <div className="flex rounded-lg bg-gray-300 p-1" dir={lng === 'he' ? 'rtl' : 'ltr'}>
+              <button
+                onClick={() => {
+                  setSelectedGender('women')
+                }}
+                className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
+                  selectedGender === 'women'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                {translations[lng as keyof typeof translations].women.toUpperCase()}
+              </button>
+              {hasMenCategory() && (
                 <button
                   onClick={() => {
-                    setSelectedGender('women')
+                    setSelectedGender('men')
                   }}
                   className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
-                    selectedGender === 'women'
+                    selectedGender === 'men'
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  {translations[lng as keyof typeof translations].women.toUpperCase()}
+                  {translations[lng as keyof typeof translations].men.toUpperCase()}
                 </button>
-                {hasMenCategory() && (
-                  <button
-                    onClick={() => {
-                      setSelectedGender('men')
-                    }}
-                    className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
-                      selectedGender === 'men'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    {translations[lng as keyof typeof translations].men.toUpperCase()}
-                  </button>
-                )}
-              </div>
+              )}
             </div>
+          </div>
 
-            {/* Categories List */}
-            <div
-              ref={drawerRef}
-              className="overflow-y-auto"
-              style={{ maxHeight: 'calc(100vh - 200px)' }}
-            >
-              <div className="px-4 py-2">
-                {/* All Products Link */}
+          {/* Scrollable Categories List */}
+          <ScrollArea className="flex-1">
+            <div className="px-4 py-2">
+              {/* All Products Link */}
+              <SheetClose asChild>
                 <Link
                   href={`/${lng}/collection/${selectedGender}`}
-                  onClick={closeMobileMenu}
-                  className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-900 font-medium border-b border-gray-200 uppercase text-sm tracking-wide"
+                  className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-900 font-bold border-b border-gray-300 uppercase text-sm tracking-wide"
+                  style={{ fontFamily: 'Poppins, sans-serif' }}
                   dir={lng === 'he' ? 'rtl' : 'ltr'}
                 >
                   <span>{selectedGender === 'women' ? translations[lng as keyof typeof translations].allWomen : translations[lng as keyof typeof translations].allMen}</span>
                 </Link>
+              </SheetClose>
 
-                {/* Categories List with Accordion */}
-                <Accordion type="single" collapsible className="w-full">
-                  {(selectedGender === 'women' ? womenSubcategories : menSubcategories).map((subcategory) => {
-                    const hasChildren = subcategory.subChildren && subcategory.subChildren.length > 0
-                    const categoryName = typeof subcategory.name === 'object' 
-                      ? (lng === 'he' ? (subcategory.name as any).he : (subcategory.name as any).en) || (subcategory.name as any).en
-                      : subcategory.name
+              {/* Categories List with Accordion */}
+              <Accordion type="single" collapsible className="w-full">
+                {(selectedGender === 'women' ? womenSubcategories : menSubcategories).map((subcategory) => {
+                  const hasChildren = subcategory.subChildren && subcategory.subChildren.length > 0
+                  const categoryName = typeof subcategory.name === 'object' 
+                    ? (lng === 'he' ? (subcategory.name as any).he : (subcategory.name as any).en) || (subcategory.name as any).en
+                    : subcategory.name
 
-                    if (!hasChildren) {
-                      return (
-                        <div key={subcategory.id} className="border-b border-gray-200">
+                  if (!hasChildren) {
+                    return (
+                      <div key={subcategory.id} className="border-b border-gray-300">
+                        <SheetClose asChild>
                           <Link
                             href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-                            onClick={closeMobileMenu}
                             className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
+                            style={{ fontFamily: 'Poppins, sans-serif' }}
                             dir={lng === 'he' ? 'rtl' : 'ltr'}
                           >
                             <span className="text-sm uppercase tracking-wide">{categoryName}</span>
                           </Link>
-                        </div>
-                      )
-                    }
+                        </SheetClose>
+                      </div>
+                    )
+                  }
 
-                    return (
-                      <AccordionItem key={subcategory.id} value={subcategory.id} className="border-b border-gray-200">
-                        <AccordionTrigger className="min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 hover:no-underline" dir={lng === 'he' ? 'rtl' : 'ltr'}>
-                          <span className="text-sm uppercase tracking-wide">{categoryName}</span>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-0">
-                          <div className="bg-gray-50 border-t border-gray-100">
+                  return (
+                    <AccordionItem key={subcategory.id} value={subcategory.id} className="border-b border-gray-300">
+                      <AccordionTrigger className="min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 hover:no-underline" dir={lng === 'he' ? 'rtl' : 'ltr'}>
+                        <span className="text-sm uppercase tracking-wide">{categoryName}</span>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-0">
+                        <div className="bg-gray-50 border-t border-gray-100">
+                          <SheetClose asChild>
                             <Link
                               href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-                              onClick={closeMobileMenu}
                               className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm font-medium border-b border-gray-200"
                               dir={lng === 'he' ? 'rtl' : 'ltr'}
                             >
                               {translations[lng as keyof typeof translations].allProducts}
                             </Link>
-                            {subcategory.subChildren?.map((subSubCategory) => {
-                              const subSubName = typeof subSubCategory.name === 'object'
-                                ? (lng === 'he' ? (subSubCategory.name as any).he : (subSubCategory.name as any).en) || (subSubCategory.name as any).en
-                                : subSubCategory.name
-                              return (
+                          </SheetClose>
+                          {subcategory.subChildren?.map((subSubCategory) => {
+                            const subSubName = typeof subSubCategory.name === 'object'
+                              ? (lng === 'he' ? (subSubCategory.name as any).he : (subSubCategory.name as any).en) || (subSubCategory.name as any).en
+                              : subSubCategory.name
+                            return (
+                              <SheetClose key={subSubCategory.id} asChild>
                                 <Link
-                                  key={subSubCategory.id}
                                   href={`/${lng}/collection/${selectedGender}/${subcategory.slug}/${subSubCategory.slug}`}
-                                  onClick={closeMobileMenu}
                                   className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
                                   dir={lng === 'he' ? 'rtl' : 'ltr'}
                                 >
                                   {subSubName}
                                 </Link>
-                              )
-                            })}
-                          </div>
-                        </AccordionContent>
-                      </AccordionItem>
-                    )
-                  })}
-                </Accordion>
-
-              </div>
+                              </SheetClose>
+                            )
+                          })}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  )
+                })}
+              </Accordion>
             </div>
-          </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </nav>
   )
 }

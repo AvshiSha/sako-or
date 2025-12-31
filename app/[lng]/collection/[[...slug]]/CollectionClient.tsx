@@ -190,6 +190,46 @@ export default function CollectionClient({
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
+  
+  // Controlled state for accordion sections (desktop and mobile)
+  // Using array to allow multiple sections open simultaneously
+  const [desktopAccordionValue, setDesktopAccordionValue] = useState<string[]>([]);
+  const [mobileAccordionValue, setMobileAccordionValue] = useState<string[]>([]);
+
+  // Auto-open accordion sections that have active filters when filter panel opens
+  useEffect(() => {
+    if (desktopFiltersOpen) {
+      // Open all sections that have active filters
+      const openSections: string[] = [];
+      if (priceRange.min || priceRange.max) {
+        openSections.push('price');
+      }
+      if (selectedColors.length > 0) {
+        openSections.push('colors');
+      }
+      if (selectedSizes.length > 0) {
+        openSections.push('sizes');
+      }
+      setDesktopAccordionValue(openSections);
+    }
+  }, [desktopFiltersOpen, selectedColors.length, selectedSizes.length, priceRange.min, priceRange.max]);
+
+  useEffect(() => {
+    if (mobileFiltersOpen) {
+      // Open all sections that have active filters
+      const openSections: string[] = [];
+      if (priceRange.min || priceRange.max) {
+        openSections.push('price');
+      }
+      if (selectedColors.length > 0) {
+        openSections.push('colors');
+      }
+      if (selectedSizes.length > 0) {
+        openSections.push('sizes');
+      }
+      setMobileAccordionValue(openSections);
+    }
+  }, [mobileFiltersOpen, selectedColors.length, selectedSizes.length, priceRange.min, priceRange.max]);
 
   // Update URL when filters change
   const updateURL = (newFilters: {
@@ -513,7 +553,7 @@ export default function CollectionClient({
         {/* Products Grid - Full Width */}
         <div className="w-full">
           {sortedProducts.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-4">
               <CubeIcon className="mx-auto h-14 w-14 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
                 {searchQuery 
@@ -529,7 +569,7 @@ export default function CollectionClient({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3 ">
               {sortedProducts.map((product) => (
                 <motion.div
                   key={product.id}
@@ -596,9 +636,14 @@ export default function CollectionClient({
           </div>
 
           <div className="flex-1 overflow-y-auto p-6">
-            {/* Price Filter */}
-            <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
-              <AccordionItem value="price" className="border-0">
+            <Accordion 
+              type="multiple" 
+              value={desktopAccordionValue}
+              onValueChange={setDesktopAccordionValue}
+              className="space-y-6"
+            >
+              {/* Price Filter */}
+              <AccordionItem value="price" className="border border-gray-200 rounded-lg">
                 <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
                   <h3 className="text-sm font-medium text-black">{t.price}</h3>
                 </AccordionTrigger>
@@ -631,11 +676,9 @@ export default function CollectionClient({
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            </Accordion>
 
-            {/* Colors */}
-            <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
-              <AccordionItem value="colors" className="border-0">
+              {/* Colors */}
+              <AccordionItem value="colors" className="border border-gray-200 rounded-lg">
                 <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
                   <h3 className="text-sm font-medium text-black">{t.colors}</h3>
                 </AccordionTrigger>
@@ -661,11 +704,9 @@ export default function CollectionClient({
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            </Accordion>
 
-            {/* Sizes */}
-            <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
-              <AccordionItem value="sizes" className="border-0">
+              {/* Sizes */}
+              <AccordionItem value="sizes" className="border border-gray-200 rounded-lg">
                 <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
                   <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
                 </AccordionTrigger>
@@ -777,8 +818,13 @@ export default function CollectionClient({
 
               <div className="flex-1 overflow-y-auto p-6">
                 {/* Same filter content as desktop */}
-                <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
-                  <AccordionItem value="price" className="border-0">
+                <Accordion 
+                  type="multiple" 
+                  value={mobileAccordionValue}
+                  onValueChange={setMobileAccordionValue}
+                  className="space-y-6"
+                >
+                  <AccordionItem value="price" className="border border-gray-200 rounded-lg">
                     <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
                       <h3 className="text-sm font-medium text-black">{t.price}</h3>
                     </AccordionTrigger>
@@ -811,10 +857,8 @@ export default function CollectionClient({
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                </Accordion>
 
-                <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
-                  <AccordionItem value="colors" className="border-0">
+                  <AccordionItem value="colors" className="border border-gray-200 rounded-lg">
                     <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
                       <h3 className="text-sm font-medium text-black">{t.colors}</h3>
                     </AccordionTrigger>
@@ -840,10 +884,8 @@ export default function CollectionClient({
                       </div>
                     </AccordionContent>
                   </AccordionItem>
-                </Accordion>
 
-                <Accordion type="single" collapsible className="mb-6 border border-gray-200 rounded-lg">
-                  <AccordionItem value="sizes" className="border-0">
+                  <AccordionItem value="sizes" className="border border-gray-200 rounded-lg">
                     <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
                       <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
                     </AccordionTrigger>

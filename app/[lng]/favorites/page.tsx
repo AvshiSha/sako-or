@@ -13,7 +13,6 @@ import {
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { productService, Product } from '@/lib/firebase'
 import Toast, { useToast } from '@/app/components/Toast'
-import AddToCartModal from '@/app/components/AddToCartModal'
 import QuickBuyDrawer from '@/app/components/QuickBuyDrawer'
 
 interface FavoriteProduct extends Product {
@@ -29,8 +28,6 @@ export default function FavoritesPage() {
   const [favorites, setFavorites] = useState<FavoriteProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<FavoriteProduct | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const [drawerProduct, setDrawerProduct] = useState<FavoriteProduct | null>(null)
   
@@ -432,17 +429,6 @@ export default function FavoritesPage() {
         type={toast.type}
       />
 
-      {/* Add to Cart Modal */}
-      <AddToCartModal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setSelectedProduct(null)
-        }}
-        product={selectedProduct}
-        lng={lng}
-      />
-
       {/* Quick Buy Drawer */}
       {drawerProduct && (
         <QuickBuyDrawer
@@ -450,7 +436,6 @@ export default function FavoritesPage() {
           onClose={() => {
             // Start the close animation
             setIsQuickBuyOpen(false)
-            // Only clear drawerProduct - selectedProduct is managed by the Modal
             // Delay clearing drawerProduct to allow close animation to complete
             // Use responsive timeout: 700ms for mobile, 1000ms for desktop (sm:duration-1000)
             // This matches the animation durations in QuickBuyDrawer

@@ -175,6 +175,28 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   // Get available sizes for the active variant (only sizes with stock > 0)
   // const availableSizes = 'stockBySize' in activeVariant ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => size) : []
   
+  // Calculate total stock for the active variant
+  const totalStock = useMemo(() => {
+    if (!activeVariant) return 0
+    
+    if ('stockBySize' in activeVariant && activeVariant.stockBySize) {
+      const stockValues = Object.values(activeVariant.stockBySize)
+      return stockValues.reduce((total, stock) => total + (stock || 0), 0)
+    }
+    
+    return 0
+  }, [activeVariant])
+  
+  // Check if the active variant is out of stock
+  const isOutOfStock = useMemo(() => {
+    return totalStock <= 0
+  }, [totalStock])
+  
+  // Check if the active variant is in "last call" (stock between 1 and 4)
+  const isLastCall = useMemo(() => {
+    return totalStock > 0 && totalStock < 4
+  }, [totalStock])
+  
   // Handle color variant selection - just change the display
   const handleVariantSelect = (variant: any, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent click from bubbling up to parent (e.g., SearchBar wrapper)
@@ -398,9 +420,30 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                       )}
                     </button>
         
+        {/* Out of Stock Badge */}
+        {isOutOfStock && (
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+            {language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
+          </div>
+        )}
+        
+        {/* Last Call Badge - Show if stock is between 1 and 4 */}
+        {!isOutOfStock && isLastCall && (
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#B2A28E]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+            {language === 'he' ? 'Last Call' : 'Last Call'}
+          </div>
+        )}
+        
+        {/* New Product Badge - Only show if not out of stock and not last call */}
+        {!isOutOfStock && !isLastCall && product.newProduct && (
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#856D55]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+            {language === 'he' ? 'NEW' : 'NEW'}
+          </div>
+        )}
+        
         {/* Sale Badge */}
         {activeVariant.salePrice && currentPrice === activeVariant.salePrice && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded">
+          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded z-10">
             {language === 'he' ? 'מבצע' : 'Sale'}
           </div>
         )}
@@ -418,13 +461,13 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       
       {/* Product Information Section */}
       <div className="mt-0 bg-[#E1DBD7] p-3 pb-1">
-        <div className="flex items-center gap-2 mb-1">
+        <div className={`flex items-center justify-between mb-1 ${language === 'he' ? 'flex-row' : 'flex-row-reverse'}`}>
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{productName}</h3>
-          {product.newProduct && (
+          {/* {product.newProduct && (
             <span className="bg-black text-white text-xs font-medium px-2 py-0.5 uppercase">
               {language === 'he' ? 'חדש' : 'NEW'}
-            </span>
-          )}
+            </span> */}
+          {/* )} */}
         </div>
 
         <div className="text-sm font-medium text-gray-900">{product.sku}</div>
@@ -446,7 +489,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       </div>
       
       {/* Color Variants Section */}
-      {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
+      {product.colorVariants && Object.keys(product.colorVariants).length >= 1 && (
         <div className="mt-0 bg-[#E1DBD7] p-3 pt-1">
           <div className="flex gap-2 overflow-x-auto pb-2">
             {Object.values(product.colorVariants)

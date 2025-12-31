@@ -516,7 +516,7 @@ export default function ProductColorPage() {
             <div className="relative w-full">
               {/* Favorite Heart Icon - Top Left */}
               <button
-                onClick={() => toggleFavorite(baseSku)}
+                onClick={() => toggleFavorite(baseSku, colorSlug)}
                 className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors"
                 aria-label={isFavorite(baseSku) ? (lng === 'he' ? 'הסר ממועדפים' : 'Remove from favorites') : (lng === 'he' ? 'הוסף למועדפים' : 'Add to favorites')}
               >
@@ -815,7 +815,7 @@ export default function ProductColorPage() {
                   <button
                     onClick={() => {
                       const baseSkuKey = baseSku
-                      toggleFavorite(baseSkuKey)
+                      toggleFavorite(baseSkuKey, colorSlug)
                     }}
                     className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
                       (() => {
@@ -1074,7 +1074,7 @@ export default function ProductColorPage() {
                   <button
                     onClick={() => {
                       const baseSkuKey = baseSku
-                      toggleFavorite(baseSkuKey)
+                      toggleFavorite(baseSkuKey, colorSlug)
                     }}
                     className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
                       (() => {

@@ -7,7 +7,7 @@ export type FavoriteItem = string | { baseSku: string; colorSlug?: string }
 
 export interface FavoritesHook {
   favorites: FavoriteItem[]
-  isFavorite: (sku: string) => boolean
+  isFavorite: (sku: string, colorSlug?: string) => boolean
   addToFavorites: (sku: string, colorSlug?: string) => void
   removeFromFavorites: (sku: string) => void
   toggleFavorite: (sku: string, colorSlug?: string) => void
@@ -72,6 +72,24 @@ export function useFavorites(): FavoritesHook {
     return item.baseSku === sku
   }
 
+  // Helper to check if a favorite item matches a sku and colorSlug
+  const favoriteMatchesColor = (item: FavoriteItem, sku: string, colorSlug?: string): boolean => {
+    if (typeof item === 'string') {
+      // String items don't have color info, so they match if sku matches
+      return item === sku
+    }
+    // Object items must match both baseSku and colorSlug (if colorSlug is provided)
+    if (item.baseSku !== sku) {
+      return false
+    }
+    // If colorSlug is provided, it must match exactly
+    if (colorSlug !== undefined) {
+      return item.colorSlug === colorSlug
+    }
+    // If no colorSlug provided, match any color variant of this baseSku
+    return true
+  }
+
   // Helper to get baseSku from favorite item
   const getBaseSku = (item: FavoriteItem): string => {
     if (typeof item === 'string') {
@@ -80,7 +98,12 @@ export function useFavorites(): FavoritesHook {
     return item.baseSku
   }
 
-  const isFavorite = useCallback((sku: string): boolean => {
+  const isFavorite = useCallback((sku: string, colorSlug?: string): boolean => {
+    if (colorSlug !== undefined) {
+      // Check for specific color variant
+      return favorites.some(item => favoriteMatchesColor(item, sku, colorSlug))
+    }
+    // Check for any variant or base product (backward compatibility)
     return favorites.some(item => favoriteMatches(item, sku))
   }, [favorites])
 
@@ -107,22 +130,40 @@ export function useFavorites(): FavoritesHook {
   }, [])
 
   const toggleFavorite = useCallback((sku: string, colorSlug?: string) => {
-    // Check ref (current state) before updating to determine action
-    const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatches(item, sku))
-    if (!isCurrentlyFavorite) {
-      // Track BEFORE state update to ensure it only fires once
-      fbqTrackAddToFavorites({ id: sku, quantity: 1 })
-    } else {
-      // Track removal BEFORE state update
-      fbqTrackRemoveFromFavorites({ id: sku, quantity: 1 })
-    }
     setFavorites(prev => {
-      if (prev.some(item => favoriteMatches(item, sku))) {
-        return prev.filter(item => !favoriteMatches(item, sku))
+      if (colorSlug !== undefined) {
+        // Color-specific toggle: only toggle this specific color variant
+        const existingIndex = prev.findIndex(item => favoriteMatchesColor(item, sku, colorSlug))
+        if (existingIndex >= 0) {
+          // Remove this specific color variant
+          const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatchesColor(item, sku, colorSlug))
+          if (isCurrentlyFavorite) {
+            fbqTrackRemoveFromFavorites({ id: sku, quantity: 1 })
+          }
+          return prev.filter((_, index) => index !== existingIndex)
+        } else {
+          // Add this specific color variant
+          const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatchesColor(item, sku, colorSlug))
+          if (!isCurrentlyFavorite) {
+            fbqTrackAddToFavorites({ id: sku, quantity: 1 })
+          }
+          const newFavorite: FavoriteItem = { baseSku: sku, colorSlug }
+          return [...prev, newFavorite]
+        }
       } else {
-        // Add new favorite with colorSlug if provided
-        const newFavorite: FavoriteItem = colorSlug ? { baseSku: sku, colorSlug } : sku
-        return [...prev, newFavorite]
+        // No colorSlug: toggle any variant (backward compatibility)
+        const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatches(item, sku))
+        if (!isCurrentlyFavorite) {
+          fbqTrackAddToFavorites({ id: sku, quantity: 1 })
+        } else {
+          fbqTrackRemoveFromFavorites({ id: sku, quantity: 1 })
+        }
+        if (prev.some(item => favoriteMatches(item, sku))) {
+          return prev.filter(item => !favoriteMatches(item, sku))
+        } else {
+          const newFavorite: FavoriteItem = sku
+          return [...prev, newFavorite]
+        }
       }
     })
   }, [])

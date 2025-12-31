@@ -176,3 +176,23 @@ body {
 .sheet-content[data-side="left"][data-state="closed"] {
   animation: sheet-slide-out-to-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Hero text animation - fade in with slide up, hold, then repeat */
+@keyframes hero-text-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-text-fade-in {
+  animation: hero-text-fade-in 5s ease-out infinite;
+}

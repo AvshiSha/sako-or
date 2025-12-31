@@ -5,7 +5,7 @@ import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
-import { getImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
+import { getImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl, getSakoOrMobileVideoUrl } from '@/lib/image-urls'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
 import CountdownPopup from '@/app/components/CountdownPopup'
 import ProductCarousel from '@/app/components/ProductCarousel'
@@ -166,6 +166,7 @@ export default function Home() {
   const heroImageSrc = getImageUrl("/images/hero/main-hero.jpg")
   const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
   const heroMobileVideoSrc = getHeroMobileVideoUrl()
+  const sakoOrMobileVideoSrc = getSakoOrMobileVideoUrl()
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -307,36 +308,17 @@ export default function Home() {
             aria-hidden="true"
 
           >
-            <source src={heroMobileVideoSrc} type="video/mp4" />
+            <source src={sakoOrMobileVideoSrc} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-neutral-900/60" aria-hidden="true" />
         </div>
-        {/* <div className="relative h-full flex items-center justify-center text-center">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-5xl md:text-7xl font-light text-white mb-6 tracking-tight">
-              SAKO OR
+         <div className="relative h-full flex items-center justify-center text-center">
+          <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase hero-text-fade-in" style={{ fontFamily: 'Assistant, sans-serif', opacity: 0 }}>
+              SAKO OR EXCLUSIVE
             </h1>
-            <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10 whitespace-pre-line">
-              {t.heroDescription}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                onClick={() => track('explore_collections_hero_button')}
-                href={`/${lng}/collection/women/shoes`}
-                className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
-              >
-                {t.exploreCollections}
-              </Link>
-              <Link
-                onClick={() => track('silvester_sale_hero_button')}
-                href={`/${lng}/collection/campaign?slug=silvester-sale`}
-                className="inline-block bg-white/90 hover:bg-white py-4 px-11 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
-              >
-                {lng === 'he' ? 'סילבסטר סייל' : 'Silvester Sale'}
-              </Link>
             </div>
-          </div>
-        </div> */}
+            </div>
       </div>
 
       {/* Product Carousel - SAKO-OR Products - Second */}

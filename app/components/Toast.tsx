@@ -31,7 +31,7 @@ export default function Toast({
   if (!isVisible) return null
 
   return (
-    <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right-full duration-300">
+    <div className="fixed top-12 right-2 z-50 animate-in slide-in-from-right-full duration-300">
       <div className={`flex items-center p-4 rounded-lg shadow-lg max-w-sm ${
         type === 'success' 
           ? 'bg-green-50 border border-green-200 text-green-800' 

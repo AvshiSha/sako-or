@@ -400,8 +400,8 @@ export default function Navigation({ lng }: { lng: string }) {
               </div>
             )}
 
-            {/* Men Dropdown - Only show if Men category exists */}
-            {hasMenCategory() && (
+            {/* Men Dropdown - Only show if Men category exists AND dropdown is open */}
+            {isMenDropdownOpen && hasMenCategory() && (
               <div
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
                 style={{ left: 0, right: 0, width: '100vw' }}

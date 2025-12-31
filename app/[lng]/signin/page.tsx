@@ -153,7 +153,6 @@ export default function SignInPage() {
 
   // #region agent log
   useEffect(() => {
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:busyStateChange',message:'Busy state changed',data:{busy,isSignedInWithGoogle,showEmailForm},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,C'})}).catch(()=>{});
   }, [busy])
   // #endregion
 
@@ -161,7 +160,6 @@ export default function SignInPage() {
 
   // #region agent log
   useEffect(() => {
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:mount',message:'Component mounted',data:{lng,hasFirebaseUser:!!firebaseUser,authLoading,busy},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
   }, [])
   // #endregion
 
@@ -192,7 +190,6 @@ export default function SignInPage() {
 
   async function syncToNeonWithProfile(user: User) {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:syncToNeonAndRedirect:entry',message:'Starting sync',data:{uid:user.uid,email:user.email},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
     const token = await user.getIdToken()
     
@@ -236,18 +233,15 @@ export default function SignInPage() {
     }
 
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:syncToNeonAndRedirect:beforeRedirect',message:'About to redirect',data:{targetPath:`/${lng}`},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
     // #endregion
     router.replace(`/${lng}`)
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:syncToNeonAndRedirect:afterRedirect',message:'Redirect called',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
     // #endregion
   }
 
   // Complete Google redirect sign-in (fallback when popups are blocked)
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:redirectEffect:entry',message:'Redirect check effect starting',data:{alreadyChecked:redirectChecked},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
     // #endregion
     if (redirectChecked) return
     redirectChecked = true
@@ -256,19 +250,16 @@ export default function SignInPage() {
     ;(async () => {
       try {
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:redirectEffect:beforeGetRedirect',message:'About to call getRedirectResult',data:{cancelled},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         setError(null)
         const result = await getRedirectResult(auth)
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:redirectEffect:afterGetRedirect',message:'getRedirectResult returned',data:{hasResult:!!result,hasUser:!!result?.user,userEmail:result?.user?.email,cancelled},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         if (cancelled) return
         
         if (result?.user) {
           // Redirect result found! Populate email and show form
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:redirectEffect:userFound',message:'User found from redirect, setting state',data:{email:result.user.email},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,E'})}).catch(()=>{});
           // #endregion
           setEmail(result.user.email || '')
           setIsSignedInWithGoogle(true)
@@ -276,7 +267,6 @@ export default function SignInPage() {
         }
       } catch (e: any) {
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:redirectEffect:catch',message:'Error in redirect effect',data:{error:String(e),cancelled},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         if (cancelled) return
         // If there was no redirect in progress, Firebase may throw depending on version.
@@ -295,7 +285,6 @@ export default function SignInPage() {
 
     return () => {
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:redirectEffect:cleanup',message:'Cleanup function called',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
       cancelled = true
     }
@@ -304,7 +293,6 @@ export default function SignInPage() {
   // Populate email from existing Firebase session (safety net for when redirect result is consumed elsewhere)
   useEffect(() => {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:safetyNetEffect:entry',message:'Safety-net effect triggered',data:{authLoading,hasFirebaseUser:!!firebaseUser,uid:firebaseUser?.uid,email:firebaseUser?.email,alreadySynced:syncedUidRef.current},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
     // #endregion
     if (authLoading) return
     if (!firebaseUser) return
@@ -312,7 +300,6 @@ export default function SignInPage() {
     syncedUidRef.current = firebaseUser.uid
 
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:safetyNetEffect:settingState',message:'Setting state from firebase user',data:{email:firebaseUser.email,willSetSignedIn:true},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B,E'})}).catch(()=>{});
     // #endregion
 
     // Populate email and show form if signed in
@@ -321,13 +308,11 @@ export default function SignInPage() {
     setShowEmailForm(false)
     
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:safetyNetEffect:stateSet',message:'State set from firebase user complete',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B,E'})}).catch(()=>{});
     // #endregion
   }, [firebaseUser, authLoading])
 
   async function handleGoogleSignIn() {
     // #region agent log
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:handleGoogleSignIn:entry',message:'Google sign-in clicked',data:{busy,isSignedInWithGoogle,showEmailForm,hasFirebaseUser:!!firebaseUser},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,C'})}).catch(()=>{});
     // #endregion
     setBusy(true)
     setError(null)
@@ -336,27 +321,22 @@ export default function SignInPage() {
       provider.setCustomParameters({ prompt: 'select_account' })
       try {
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:handleGoogleSignIn:beforePopup',message:'About to call signInWithPopup',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,C'})}).catch(()=>{});
         // #endregion
         const cred = await signInWithPopup(auth, provider)
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:handleGoogleSignIn:popupSuccess',message:'Popup returned successfully',data:{uid:cred.user.uid,email:cred.user.email,hasUser:!!cred.user},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,C'})}).catch(()=>{});
         // #endregion
         setEmail(cred.user.email || '')
         setIsSignedInWithGoogle(true)
         setShowEmailForm(false)
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:handleGoogleSignIn:stateSet',message:'State updated after popup',data:{email:cred.user.email,isSignedInWithGoogle:true,showEmailForm:false},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,E'})}).catch(()=>{});
         // #endregion
         setBusy(false)
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:handleGoogleSignIn:popupComplete',message:'Popup flow complete, returning',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,E'})}).catch(()=>{});
         // #endregion
         return
       } catch (e: any) {
         const code = typeof e?.code === 'string' ? e.code : ''
         // #region agent log
-        fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:handleGoogleSignIn:popupError',message:'Popup failed, checking for fallback',data:{code,willFallbackToRedirect:code==='auth/popup-blocked'||code==='auth/popup-closed-by-user'||code==='auth/cancelled-popup-request'},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,D'})}).catch(()=>{});
         // #endregion
         if (
           code === 'auth/popup-blocked' ||
@@ -364,7 +344,6 @@ export default function SignInPage() {
           code === 'auth/cancelled-popup-request'
         ) {
           // #region agent log
-          fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:handleGoogleSignIn:redirectFallback',message:'Falling back to redirect',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
           // #endregion
           await signInWithRedirect(auth, provider)
           return
@@ -374,7 +353,6 @@ export default function SignInPage() {
     } catch (e: any) {
       const code = typeof e?.code === 'string' ? e.code : ''
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:handleGoogleSignIn:error',message:'Google sign-in error',data:{code,message:e?.message},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
       // #endregion
       if (code === 'auth/account-exists-with-different-credential') {
         setError(
@@ -458,7 +436,6 @@ export default function SignInPage() {
   const renderButtonsOnly = !isSignedInWithGoogle && !firebaseUser && !showEmailForm
   const renderForm = isSignedInWithGoogle || firebaseUser || showEmailForm
   useEffect(() => {
-    fetch('http://127.0.0.1:7243/ingest/db253380-8679-4328-9088-dac25e5f842c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'signin:renderState',message:'Render state check',data:{renderButtonsOnly,renderForm,isSignedInWithGoogle,hasFirebaseUser:!!firebaseUser,showEmailForm,busy},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B,E'})}).catch(()=>{});
   }, [renderButtonsOnly, renderForm, isSignedInWithGoogle, firebaseUser, showEmailForm, busy])
   // #endregion
 

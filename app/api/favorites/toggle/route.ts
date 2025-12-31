@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization') || ''
-  const match = authHeader.match(/^Bearer\\s+(.+)$/i)
+  const match = authHeader.match(/^Bearer\s+(.+)$/i)
   return match?.[1] ?? null
 }
 
@@ -15,6 +15,7 @@ function parseFavoriteKey(favoriteKey: string): { productBaseSku: string; colorS
   }
 
   if (!key.includes('::')) {
+    
     return { productBaseSku: key, colorSlug: '' }
   }
 
@@ -30,48 +31,33 @@ function favoriteKeyFromParts(productBaseSku: string, colorSlug: string): string
   return colorSlug ? `${productBaseSku}::${colorSlug}` : productBaseSku
 }
 
-async function getOrCreateNeonUserId(req: NextRequest): Promise<string> {
-  const token = getBearerToken(req)
-  if (!token) {
-    throw new Error('Missing Authorization Bearer token')
-  }
-
-  const decoded = await adminAuth.verifyIdToken(token)
-  const firebaseUid = decoded.uid
-  const email = decoded.email ?? null
-  const emailVerified = decoded.email_verified ?? false
-  const now = new Date()
-
-  const user = await prisma.user.upsert({
-    where: { firebaseUid },
-    update: {
-      lastLoginAt: now,
-      ...(email ? { email } : {}),
-      emailVerified
-    },
-    create: {
-      firebaseUid,
-      email,
-      emailVerified,
-      authProvider: 'firebase',
-      role: 'USER',
-      lastLoginAt: now
-    }
-  })
-
-  return user.id
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const userId = await getOrCreateNeonUserId(request)
+    const token = getBearerToken(request)
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Missing Authorization Bearer token' },
+        { status: 401 }
+      )
+    }
+
+    const decoded = await adminAuth.verifyIdToken(token)
+    const firebaseUid = decoded.uid
+    const neonUser = await prisma.user.findUnique({
+      where: { firebaseUid },
+      select: { id: true }
+    })
+    if (!neonUser) {
+      return NextResponse.json(
+        { error: 'Neon user not found; call /api/me/sync first.' },
+        { status: 404 }
+      )
+    }
+    const userId = neonUser.id
+
     const body = await request.json().catch(() => ({}))
     const favoriteKey = typeof body?.favoriteKey === 'string' ? body.favoriteKey : ''
     const { productBaseSku, colorSlug } = parseFavoriteKey(favoriteKey)
-
-    // #region agent log
-    const fs=require('fs');fs.appendFileSync('/Users/yardenrozenfeld/Projects/sako-or/.cursor/debug.log',JSON.stringify({location:'api/favorites/toggle:parsed',message:'Parsed favoriteKey',data:{favoriteKey,productBaseSku,colorSlug,userId},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})+'\n');
-    // #endregion
 
     const where = {
       userId_productBaseSku_colorSlug: { userId, productBaseSku, colorSlug }
@@ -79,10 +65,6 @@ export async function POST(request: NextRequest) {
 
     const existing = await prisma.favorite.findUnique({ where })
     const now = new Date()
-
-    // #region agent log
-    fs.appendFileSync('/Users/yardenrozenfeld/Projects/sako-or/.cursor/debug.log',JSON.stringify({location:'api/favorites/toggle:existing',message:'Existing favorite check',data:{found:!!existing,isActive:existing?.isActive},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})+'\n');
-    // #endregion
 
     if (!existing) {
       const created = await prisma.favorite.create({
@@ -95,10 +77,6 @@ export async function POST(request: NextRequest) {
           unfavoritedAt: null
         }
       })
-
-      // #region agent log
-      fs.appendFileSync('/Users/yardenrozenfeld/Projects/sako-or/.cursor/debug.log',JSON.stringify({location:'api/favorites/toggle:created',message:'Created new favorite',data:{id:created.id},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})+'\n');
-      // #endregion
 
       return NextResponse.json(
         {
@@ -117,10 +95,6 @@ export async function POST(request: NextRequest) {
         : { isActive: false, unfavoritedAt: now }
     })
 
-    // #region agent log
-    fs.appendFileSync('/Users/yardenrozenfeld/Projects/sako-or/.cursor/debug.log',JSON.stringify({location:'api/favorites/toggle:updated',message:'Updated existing favorite',data:{id:updated.id,isActive:updated.isActive},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})+'\n');
-    // #endregion
-
     return NextResponse.json(
       {
         favoriteKey: favoriteKeyFromParts(updated.productBaseSku, updated.colorSlug),
@@ -129,9 +103,6 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error: any) {
-    // #region agent log
-    const fs=require('fs');fs.appendFileSync('/Users/yardenrozenfeld/Projects/sako-or/.cursor/debug.log',JSON.stringify({location:'api/favorites/toggle:error',message:'Toggle error',data:{error:String(error),stack:error?.stack},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})+'\n');
-    // #endregion
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to toggle favorite'
     const status = message.includes('Bearer token') ? 401 : 400

@@ -25,6 +25,7 @@ import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
+import { buildFavoriteKey } from '@/lib/favorites'
 
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
@@ -1282,29 +1283,25 @@ export default function ProductColorPage() {
                 <div className="flex space-x-4">
                   <button
                     onClick={() => {
-                      const favoriteKey = `${baseSku}::${colorSlug}`
-                      void toggleFavorite(favoriteKey)
+                      void toggleFavorite(buildFavoriteKey(baseSku, colorSlug))
                     }}
                     className={`flex-1 py-3 px-6 rounded-md font-medium border transition-colors duration-200 flex items-center justify-center ${
                       (() => {
-                        const favoriteKey = `${baseSku}::${colorSlug}`
-                        return isFavorite(favoriteKey)
+                        return isFavorite(buildFavoriteKey(baseSku, colorSlug))
                       })()
                         ? 'border-red-300 bg-red-50 text-red-600'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     {(() => {
-                      const favoriteKey = `${baseSku}::${colorSlug}`
-                      return isFavorite(favoriteKey)
+                      return isFavorite(buildFavoriteKey(baseSku, colorSlug))
                     })() ? (
                       <HeartSolidIcon className="h-5 w-5 mr-2" />
                     ) : (
                       <HeartIcon className="h-5 w-5 mr-2" />
                     )}
                     {(() => {
-                      const favoriteKey = `${baseSku}::${colorSlug}`
-                      return isFavorite(favoriteKey)
+                      return isFavorite(buildFavoriteKey(baseSku, colorSlug))
                     })()
                       ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
                       : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')

@@ -14,12 +14,21 @@ export interface FavoritesHook {
 
 const STORAGE_KEY = 'favorites'
 
+class HttpError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'HttpError'
+    this.status = status
+  }
+}
+
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const res = await fetch(input, init)
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
     const msg = typeof err?.error === 'string' ? err.error : `HTTP ${res.status}`
-    throw new Error(msg)
+    throw new HttpError(msg, res.status)
   }
   return (await res.json()) as T
 }
@@ -27,8 +36,8 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 export function useFavorites(): FavoritesHook {
   const { user } = useAuth()
   const [favorites, setFavorites] = useState<string[]>([])
+  const [canUseNeon, setCanUseNeon] = useState(false)
   const [loading, setLoading] = useState(true)
-  const mergedGuestForUidRef = useRef<string | null>(null)
   const lastBroadcastRef = useRef<string>('')
 
   // Load favorites from localStorage on mount (guest buffer / initial hydration)
@@ -43,16 +52,16 @@ export function useFavorites(): FavoritesHook {
     }
   }, [])
 
-  // Save favorites to localStorage whenever favorites change (guest only)
+  // Save favorites to localStorage whenever we're in local-only mode
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && (!user || !canUseNeon)) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites))
       } catch (error) {
         console.error('Error saving favorites:', error)
       }
     }
-  }, [favorites, loading, user])
+  }, [favorites, loading, user, canUseNeon])
 
   // Broadcast favorites changes to sync multiple hook instances (nav/product cards/etc)
   useEffect(() => {
@@ -80,92 +89,90 @@ export function useFavorites(): FavoritesHook {
     }
   }, [])
 
-  // Load favorites from Neon when logged in
+  // Decide whether to use Neon (DB) vs local-only, then load/merge accordingly.
   useEffect(() => {
     let cancelled = false
 
-    async function loadFromNeon() {
-      // #region agent log
-      // #endregion
+    async function syncSourceAndLoad() {
       if (!user) {
+        setCanUseNeon(false)
         setLoading(false)
         return
       }
 
       setLoading(true)
       try {
-        const token = await user.getIdToken()
-        // #region agent log
-        // #endregion
-        const data = await fetchJson<{
-          favorites: Array<{ favoriteKey: string }>
-        }>('/api/favorites', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        const token = await user.getIdToken(true)
+        if (!token) {
+          setCanUseNeon(false)
+          return
+        }
 
-        // #region agent log
-        // #endregion
+        // Check whether Neon user exists.
+        // Note: Auth flows may call /api/me/sync asynchronously; we retry briefly to avoid race conditions.
+        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+        let profileRes: Response | null = null
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (cancelled) return
+          if (attempt > 0) await sleep(300 * attempt)
+          profileRes = await fetch('/api/me/profile', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (profileRes.status !== 404) break
+        }
+
+        if (!profileRes) {
+          setCanUseNeon(false)
+          return
+        }
+        if (profileRes.status === 404) {
+          setCanUseNeon(false)
+          return
+        }
+        if (!profileRes.ok) {
+          console.error('Error checking Neon user existence:', profileRes.status)
+          setCanUseNeon(false)
+          return
+        }
+
+        // Neon user exists -> merge any local favorites, then load from DB
+        setCanUseNeon(true)
+
+        const stored = localStorage.getItem(STORAGE_KEY)
+        const guestKeys: string[] = stored ? JSON.parse(stored) : []
+        if (Array.isArray(guestKeys) && guestKeys.length > 0) {
+          await fetchJson<{ merged: number }>('/api/favorites/merge', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ favoriteKeys: guestKeys })
+          })
+          localStorage.removeItem(STORAGE_KEY)
+        }
+
+        const data = await fetchJson<{ favorites: Array<{ favoriteKey: string }> }>(
+          '/api/favorites',
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
 
         if (!cancelled) {
           setFavorites(data.favorites.map((f) => f.favoriteKey))
         }
       } catch (error) {
-        // #region agent log
-        // #endregion
-        console.error('Error loading favorites from Neon:', error)
+        console.error('Error syncing favorites source:', error)
+        setCanUseNeon(false)
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
 
-    void loadFromNeon()
+    void syncSourceAndLoad()
     return () => {
       cancelled = true
     }
-  }, [user?.uid])
-
-  // Merge guest favorites into Neon on first login per uid
-  useEffect(() => {
-    if (!user) {
-      mergedGuestForUidRef.current = null
-      return
-    }
-
-    if (mergedGuestForUidRef.current === user.uid) return
-    mergedGuestForUidRef.current = user.uid
-    // Capture non-null user for the async work below (avoids TS thinking `user` can become null mid-flight).
-    const currentUser = user
-
-    async function mergeGuestFavorites() {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        const guestKeys: string[] = stored ? JSON.parse(stored) : []
-        // #region agent log
-        // #endregion
-        if (!Array.isArray(guestKeys) || guestKeys.length === 0) return
-
-        const token = await currentUser.getIdToken()
-        await fetchJson<{ merged: number }>('/api/favorites/merge', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ favoriteKeys: guestKeys })
-        })
-
-        // #region agent log
-        // #endregion
-
-        localStorage.removeItem(STORAGE_KEY)
-      } catch (error) {
-        // #region agent log
-        // #endregion
-        console.error('Error merging guest favorites into Neon:', error)
-      }
-    }
-
-    void mergeGuestFavorites()
   }, [user?.uid])
 
   const isFavorite = useCallback((favoriteKey: string): boolean => {
@@ -175,12 +182,10 @@ export function useFavorites(): FavoritesHook {
   const toggleFavorite = useCallback(
     async (favoriteKey: string) => {
       const key = (favoriteKey || '').trim()
-      // #region agent log
-      // #endregion
       if (!key) return
 
-      if (!user) {
-        // Guest toggle (local buffer)
+      if (!user || !canUseNeon) {
+        // Local-only toggle
         setFavorites((prev) => {
           if (prev.includes(key)) return prev.filter((k) => k !== key)
           return [...prev, key]
@@ -189,29 +194,32 @@ export function useFavorites(): FavoritesHook {
       }
 
       // Logged-in toggle (Neon)
-      const currentlyFavorite = favorites.includes(key)
+      let removed = false
       setFavorites((prev) => {
-        if (currentlyFavorite) return prev.filter((k) => k !== key)
-        return [...prev, key]
+        const has = prev.includes(key)
+        removed = has
+        return has ? prev.filter((k) => k !== key) : [...prev, key]
       })
 
       try {
-        const token = await user.getIdToken()
+        const token = await user.getIdToken(true)
+        if (!token) {
+          throw new Error('Failed to get authentication token. Please try logging in again.')
+        }
+
+        const headers = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+
         const data = await fetchJson<{ favoriteKey: string; isActive: boolean }>(
           '/api/favorites/toggle',
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
+            headers: headers,
             body: JSON.stringify({ favoriteKey: key })
           }
         )
-
-        // #region agent log
-        // #endregion
-
         setFavorites((prev) => {
           const has = prev.includes(data.favoriteKey)
           if (data.isActive) {
@@ -220,20 +228,24 @@ export function useFavorites(): FavoritesHook {
           return has ? prev.filter((k) => k !== data.favoriteKey) : prev
         })
       } catch (error) {
-        // #region agent log
-        // #endregion
-        console.error('Error toggling favorite in Neon:', error)
+        if (error instanceof HttpError && error.status === 404) {
+          // Neon user doesn't exist -> fall back to local-only mode and keep the optimistic toggle.
+          setCanUseNeon(false)
+          return
+        }
+
+        console.error('Error toggling favorite:', error)
         // Revert optimistic update
         setFavorites((prev) => {
           const has = prev.includes(key)
-          if (currentlyFavorite) {
+          if (removed) {
             return has ? prev : [...prev, key]
           }
           return has ? prev.filter((k) => k !== key) : prev
         })
       }
     },
-    [favorites, user]
+    [user, canUseNeon]
   )
 
   const addToFavorites = useCallback(

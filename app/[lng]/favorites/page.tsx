@@ -16,6 +16,7 @@ import Toast, { useToast } from '@/app/components/Toast'
 import AddToCartModal from '@/app/components/AddToCartModal'
 import QuickBuyDrawer from '@/app/components/QuickBuyDrawer'
 import { useFavorites } from '@/app/hooks/useFavorites'
+import { parseFavoriteKey } from '@/lib/favorites'
 
 interface FavoriteProduct extends Product {
   isUnavailable?: boolean
@@ -25,15 +26,6 @@ interface FavoriteItem extends FavoriteProduct {
   favoriteKey: string
   favoriteBaseSku: string
   favoriteColorSlug?: string
-}
-
-function parseFavoriteKey(key: string): { baseSku: string; colorSlug?: string } {
-  const trimmed = (key || '').trim()
-  if (!trimmed) return { baseSku: '' }
-  if (!trimmed.includes('::')) return { baseSku: trimmed }
-  const parts = trimmed.split('::')
-  if (parts.length !== 2) return { baseSku: trimmed }
-  return { baseSku: parts[0], colorSlug: parts[1] }
 }
 
 export default function FavoritesPage() {
@@ -147,7 +139,7 @@ export default function FavoritesPage() {
               ...(product as FavoriteProduct),
               favoriteKey,
               favoriteBaseSku: baseSku,
-              favoriteColorSlug: colorSlug
+              favoriteColorSlug: colorSlug || undefined
             })
           } else {
             favoriteItems.push({
@@ -179,7 +171,7 @@ export default function FavoritesPage() {
               isUnavailable: true,
               favoriteKey,
               favoriteBaseSku: baseSku,
-              favoriteColorSlug: colorSlug
+              favoriteColorSlug: colorSlug || undefined
             } as FavoriteItem)
           }
         }

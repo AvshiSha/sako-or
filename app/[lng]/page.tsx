@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { getImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
 import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
 import CountdownPopup from '@/app/components/CountdownPopup'
@@ -17,6 +17,9 @@ import { Product } from '@/lib/firebase'
 const translations = {
   en: {
     brandName: 'Sako Or',
+    holidayCollection: 'Holiday Collection',
+    forHer: 'FOR HER',
+    forHim: 'FOR HIM',
     heroDescription: 'End of year sales on all winter collections!',  //'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
     exploreCollections: 'Explore Winter Collections',  //'Explore Collections',
     collectionsTitle: 'Curated Collections',
@@ -36,6 +39,9 @@ const translations = {
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!
+    holidayCollection: 'קולקציית החגים',
+    forHer: 'לנשים',
+    forHim: 'לגברים',
     heroDescription:  'מבצעי סוף עונה על כל קולקציית החורף!',   //'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
     exploreCollections:  'מבצעי סוף העונה',  //'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
@@ -57,7 +63,7 @@ const translations = {
 
 export default function Home() {
   const params = useParams()
-  const lng = (params?.lng as string) || 'en'
+  const pathname = usePathname()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
@@ -68,6 +74,25 @@ export default function Home() {
   const [sakoOrProducts, setSakoOrProducts] = useState<Product[]>([])
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [loadingSakoOrProducts, setLoadingSakoOrProducts] = useState(true)
+
+  // Extract language from pathname or params to avoid hydration mismatch
+  // pathname is available during SSR, params is only available after hydration
+  // This ensures consistent language extraction on both server and client
+  const lng = React.useMemo((): 'en' | 'he' => {
+    // Try params first (available after hydration)
+    if (params?.lng) {
+      return (params.lng as 'en' | 'he') || 'en'
+    }
+    // Fallback to pathname (available during SSR)
+    if (pathname) {
+      const pathSegments = pathname.split('/').filter(Boolean)
+      const langFromPath = pathSegments[0]
+      if (langFromPath === 'he' || langFromPath === 'en') {
+        return langFromPath
+      }
+    }
+    return 'en'
+  }, [params?.lng, pathname])
 
   // Fetch best sellers products
   useEffect(() => {
@@ -136,7 +161,7 @@ export default function Home() {
   const isRTL = lng === 'he'
   
   // Get translations for current language
-  const t = translations[lng as keyof typeof translations]
+  const t = translations[lng]
 
   const heroImageSrc = getImageUrl("/images/hero/main-hero.jpg")
   const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
@@ -224,30 +249,25 @@ export default function Home() {
           </video>
           <div className="absolute inset-0 bg-neutral-900/60" aria-hidden="true" />
         </div>
-        <div className="relative h-full flex items-center justify-center text-center">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-5xl md:text-7xl font-light text-white mb-6 tracking-tight">
+        <div className="relative h-full flex flex-col items-center text-center">
+          <div className="absolute bottom-[15%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase" style={{ fontFamily: 'Assistant, sans-serif' }}>
               SAKO OR
             </h1>
-            <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10 whitespace-pre-line">
-              {t.heroDescription}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                onClick={() => track('explore_collections_hero_button')}
-                href={`/${lng}/collection/women/shoes`}
-                className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
-              >
-                {t.exploreCollections}
-              </Link>
-              <Link
-                onClick={() => track('silvester_sale_hero_button')}
-                href={`/${lng}/collection/campaign?slug=silvester-sale`}
-                className="inline-block bg-white/90 hover:bg-white py-4 px-11 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
-              >
-                {lng === 'he' ? 'סילבסטר סייל' : 'Silvester Sale'}
-              </Link>
-            </div>
+          </div>
+          <div className="absolute bottom-6 md:bottom-8 left-0 right-0 flex flex-row gap-6 md:gap-8 justify-center items-center px-4">
+            <Link
+              onClick={() => track('new_collection_for_her')}
+              href={`/${lng}/collection/women/shoes`}
+              className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300" style={{ fontFamily: 'Assistant, sans-serif' }}>
+              {lng === 'he' ? 'לקולקציה החדשה' : 'To New Collection'}
+            </Link>
+            <Link
+              onClick={() => track('outlet_collection_for_her')}
+              href={`/${lng}/collection/women/outlet`}
+              className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300" style={{ fontFamily: 'Assistant, sans-serif' }}>
+              {lng === 'he' ? 'לכל המבצעים' : 'To Sales'}
+            </Link>
           </div>
         </div>
       </div>
@@ -323,7 +343,7 @@ export default function Home() {
       {!loadingSakoOrProducts && sakoOrProducts.length > 0 && (
         <ProductCarousel
           products={sakoOrProducts}
-          title={lng === 'he' ? 'Only at SAKO OR' : 'Only at SAKO OR'}
+          title={'Only at SAKO OR'}
           language={lng as 'en' | 'he'}
         />
       )}

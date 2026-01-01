@@ -154,6 +154,24 @@ body {
   }
 }
 
+@keyframes sheet-slide-in-from-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-slide-out-to-bottom {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
 /* Smooth Sheet animations - using keyframes */
 .sheet-content {
   will-change: transform;
@@ -175,6 +193,15 @@ body {
 
 .sheet-content[data-side="left"][data-state="closed"] {
   animation: sheet-slide-out-to-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* BOTTOM side - slides from bottom */
+.sheet-content[data-side="bottom"][data-state="open"] {
+  animation: sheet-slide-in-from-bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sheet-content[data-side="bottom"][data-state="closed"] {
+  animation: sheet-slide-out-to-bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Hero text animation - fade in with slide up, hold, then repeat */

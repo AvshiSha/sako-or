@@ -8,9 +8,10 @@ import ProductCard from './ProductCard'
 
 interface SearchBarProps {
   language: string
+  variant?: 'default' | 'inline'
 }
 
-export default function SearchBar({ language }: SearchBarProps) {
+export default function SearchBar({ language, variant = 'default' }: SearchBarProps) {
   const router = useRouter()
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(false)
@@ -52,13 +53,15 @@ export default function SearchBar({ language }: SearchBarProps) {
 
   // Close search when pathname changes (navigation occurred)
   useEffect(() => {
-    if (pathname !== previousPathnameRef.current && isExpanded) {
-      setIsExpanded(false)
+    if (pathname !== previousPathnameRef.current) {
+      if (variant === 'default' && isExpanded) {
+        setIsExpanded(false)
+      }
       setSearchQuery('')
       setShowResults(false)
     }
     previousPathnameRef.current = pathname
-  }, [pathname, isExpanded])
+  }, [pathname, isExpanded, variant])
 
   // Close on click outside (but not when QuickBuyDrawer is open or clicking on product cards)
   useEffect(() => {
@@ -89,19 +92,21 @@ export default function SearchBar({ language }: SearchBarProps) {
       }
       
       if (searchContainerRef.current && !searchContainerRef.current.contains(target)) {
-        setIsExpanded(false)
+        if (variant === 'default') {
+          setIsExpanded(false)
+        }
         setShowResults(false)
       }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  }, [variant])
   
   // Handle Escape key - close drawer first, then search overlay
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && isExpanded) {
+      if (event.key === 'Escape') {
         // Check if QuickBuyDrawer is open by looking for Dialog elements
         const drawerDialog = document.querySelector('[role="dialog"][data-headlessui-state]')
         if (drawerDialog) {
@@ -110,15 +115,19 @@ export default function SearchBar({ language }: SearchBarProps) {
           return
         }
         
-        // No drawer open, close search overlay
-        setIsExpanded(false)
-        setShowResults(false)
+        // No drawer open, close search
+        if (variant === 'default' && isExpanded) {
+          setIsExpanded(false)
+        }
+        if (showResults) {
+          setShowResults(false)
+        }
       }
     }
 
     document.addEventListener('keydown', handleEscape)
     return () => document.removeEventListener('keydown', handleEscape)
-  }, [isExpanded])
+  }, [isExpanded, showResults, variant])
 
   // Focus input when expanded
   useEffect(() => {
@@ -140,7 +149,20 @@ export default function SearchBar({ language }: SearchBarProps) {
     e.preventDefault()
     if (searchQuery.trim()) {
       router.push(`/${language}/collection?search=${encodeURIComponent(searchQuery.trim())}`)
-      setIsExpanded(false)
+      if (variant === 'default') {
+        setIsExpanded(false)
+      }
+      setSearchQuery('')
+      setShowResults(false)
+    }
+  }
+
+  const handleSearchButtonClick = () => {
+    if (searchQuery.trim()) {
+      router.push(`/${language}/collection?search=${encodeURIComponent(searchQuery.trim())}`)
+      if (variant === 'default') {
+        setIsExpanded(false)
+      }
       setSearchQuery('')
       setShowResults(false)
     }
@@ -156,21 +178,118 @@ export default function SearchBar({ language }: SearchBarProps) {
   const translations = {
     en: {
       search: 'Search products...',
+      searchInline: 'Search for a brand name, products and more...',
       searchButton: 'Search',
       searching: 'Searching...',
       noResults: 'No products found',
-      resultsCount: (count: number) => `${count} result${count !== 1 ? 's' : ''} found, to see more products click here 👆`
+      resultsCount: (count: number) => `${count} result${count !== 1 ? 's' : ''} found, to see more products click here`
     },
     he: {
       search: 'חיפוש מוצרים...',
+      searchInline: 'חפשו שם של מותג, מוצרים ועוד...',
       searchButton: 'חיפוש',
       searching: 'מחפש...',
       noResults: 'לא נמצאו מוצרים',
-      resultsCount: (count: number) => `נמצאו ${count} תוצאות, לעוד מוצרים לחצו על כפתור החיפוש 👆`
+      resultsCount: (count: number) => `נמצאו ${count} תוצאות, לעוד מוצרים לחצו על כפתור החיפוש`
     }
   }
 
   const t = translations[language as keyof typeof translations] || translations.en
+
+  // Inline variant for mobile navigation
+  if (variant === 'inline') {
+    const isRTL = language === 'he'
+    return (
+      <div ref={searchContainerRef} className="relative">
+        <form onSubmit={handleSearchSubmit} className="relative">
+          <input
+            ref={inputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t.searchInline}
+            className={`w-full bg-gray-100 border border-gray-300 rounded-md py-2.5 text-gray-700 placeholder-gray-500 outline-none focus:border-gray-400 focus:bg-gray-50 transition-colors ${
+              isRTL 
+                ? searchQuery ? 'pr-20 pl-4' : 'pr-10 pl-4'
+                : searchQuery ? 'pl-20 pr-4' : 'pl-10 pr-4'
+            }`}
+            dir={isRTL ? 'rtl' : 'ltr'}
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className={`absolute top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors ${
+                isRTL ? 'right-10' : 'left-10'
+              }`}
+              aria-label="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="submit"
+            className={`absolute top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors ${
+              isRTL ? 'right-3' : 'left-3'
+            }`}
+            aria-label="Search"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+        </form>
+
+        {/* Search Button - appears when user types */}
+        {searchQuery.trim() && (
+          <button
+            type="button"
+            onClick={handleSearchButtonClick}
+            className="w-full mt-2 py-2.5 px-4 bg-[#856D55] text-white font-semibold rounded-md hover:bg-[#6d5a47] transition-colors"
+            dir={isRTL ? 'rtl' : 'ltr'}
+          >
+            {t.searchButton}
+          </button>
+        )}
+
+        {/* Search Results Dropdown */}
+        {showResults && (
+          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 max-h-[70vh] overflow-hidden flex flex-col">
+            <div className="overflow-y-auto">
+              {isLoading ? (
+                <div className="p-8 text-center text-gray-500">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#856D55] mx-auto mb-2"></div>
+                  <p>{t.searching}</p>
+                </div>
+              ) : searchResults.length > 0 ? (
+                <>
+                  <div className="p-4 border-b border-gray-200 bg-gray-50">
+                    <p className="text-sm text-gray-600">
+                      {t.resultsCount(searchResults.length)}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 p-4">
+                    {searchResults.map((product) => (
+                      <div key={product.id}>
+                        <ProductCard
+                          product={product}
+                          language={language as 'en' | 'he'}
+                          returnUrl={`/${language}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : searchQuery.trim() ? (
+                <div className="p-8 text-center text-gray-500">
+                  <Search className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>{t.noResults}</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div ref={searchContainerRef} className="relative">

@@ -404,13 +404,13 @@ export default function CheckoutModal({
   const canGoToPayment = step === 'INFO' && isFormValid;
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[100]">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/30 bg-opacity-50 transition-opacity" onClick={handleClose} />
       
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full h-[90vh] flex flex-col">
+        <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full h-[85vh] flex flex-col">
           {/* Sticky Header */}
           <div className="sticky top-0 z-10 bg-white border-b border-gray-200 flex-shrink-0">
             {/* Row 1: Logo and Back Arrow */}

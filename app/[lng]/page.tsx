@@ -76,14 +76,10 @@ export default function Home() {
   const [loadingSakoOrProducts, setLoadingSakoOrProducts] = useState(true)
 
   // Extract language from pathname or params to avoid hydration mismatch
-  // pathname is available during SSR, params is only available after hydration
-  // This ensures consistent language extraction on both server and client
+  // Prioritize pathname (available during SSR) for consistency between server and client
+  // Fallback to params only if pathname doesn't provide a valid language
   const lng = React.useMemo((): 'en' | 'he' => {
-    // Try params first (available after hydration)
-    if (params?.lng) {
-      return (params.lng as 'en' | 'he') || 'en'
-    }
-    // Fallback to pathname (available during SSR)
+    // Try pathname first (available during SSR and consistent on both server and client)
     if (pathname) {
       const pathSegments = pathname.split('/').filter(Boolean)
       const langFromPath = pathSegments[0]
@@ -91,8 +87,12 @@ export default function Home() {
         return langFromPath
       }
     }
+    // Fallback to params (available after hydration, but may not be during SSR)
+    if (params?.lng && (params.lng === 'he' || params.lng === 'en')) {
+      return params.lng as 'en' | 'he'
+    }
     return 'en'
-  }, [params?.lng, pathname])
+  }, [pathname, params?.lng])
 
   // Fetch best sellers products
   useEffect(() => {

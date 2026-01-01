@@ -319,7 +319,7 @@ export default function Navigation({ lng }: { lng: string }) {
               aria-label="Menu"
             >
               {/* <Menu className="h-6 w-6" /> */}
-              <TextSearch strokeWidth={1.5} className="h-7 w-7" />
+              <TextSearch strokeWidth={1.5} className="h-6.5 w-6.5" />
             </button>
 
             {/* Search Bar */}

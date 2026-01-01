@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline'
 import { useCart } from '@/app/hooks/useCart'
 import CheckoutModal from '@/app/components/CheckoutModal'
+import Accordion from '@/app/components/Accordion'
 import { trackViewCart } from '@/lib/dataLayer'
 import { CouponValidationSuccess } from '@/lib/coupons'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -34,7 +35,7 @@ const couponContent = {
     loading: 'Checking coupon…'
   },
   he: {
-    label: 'הכנס קוד קופון',
+    label: 'יש לך קוד קופון?',
     placeholder: 'קוד קופון',
     apply: 'החל',
     remove: 'הסר',
@@ -666,55 +667,66 @@ if (!isClient || loading) {
                   {t.subtotal}
                 </h2>
 
-                <div className="pb-4 border-b border-gray-200 mb-4" dir={isRTL ? 'rtl' : 'ltr'}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {couponStrings.label}
-                  </label>
-                  <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
-                    <input
-                      type="text"
-                      value={couponInput}
-                      onChange={(event) => setCouponInput(event.target.value)}
-                      placeholder={couponStrings.placeholder}
-                      className={`flex-1 rounded-md border border-gray-300 text-gray-900 py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#856D55]/90 ${isRTL ? 'text-right' : 'text-left'}`}
-                      disabled={couponLoading}
-                    />
-                    <button
-                      onClick={() => applyCouponCode(couponInput)}
-                      disabled={couponLoading || !couponInput.trim()}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
-                    >
-                      {couponLoading ? couponStrings.loading : couponStrings.apply}
-                    </button>
-                  </div>
-                  {couponStatus && (
-                    <p className={`mt-2 text-sm ${couponStatus.type === 'error' ? 'text-red-600' : couponStatus.type === 'success' ? 'text-green-600' : 'text-gray-600'}`}>
-                      {couponStatus.message}
-                    </p>
-                  )}
-
-                  {appliedCoupons.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {appliedCoupons.map(coupon => (
-                        <span
-                          key={coupon.coupon.code}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"
-                        >
-                          {coupon.coupon.code}
-                          <button
-                            onClick={() => removeCoupon(coupon.coupon.code)}
-                            className={`${isRTL ? 'mr-2' : 'ml-2'} text-indigo-500 hover:text-indigo-700`}
-                            aria-label={couponStrings.remove}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
+                <Accordion title={couponStrings.label}>
+                  <div className="pb-4" dir={isRTL ? 'rtl' : 'ltr'}>
+                    <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(event) => setCouponInput(event.target.value)}
+                        placeholder={couponStrings.placeholder}
+                        className={`flex-1 rounded-md border text-gray-900 py-2 px-2 shadow-sm focus:outline-none focus:ring-0.5 focus:ring-[#856D55]/90 ${isRTL ? 'text-right' : 'text-left'}`}
+                        disabled={couponLoading}
+                        style={{ 
+                          borderColor: 'rgba(133, 109, 85, 0.2)',
+                          borderRadius: '2px'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = 'rgba(133, 109, 85, 0.7)'
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(133, 109, 85, 0.2)'
+                        }}
+                      />
+                      <button
+                        onClick={() => applyCouponCode(couponInput)}
+                        disabled={couponLoading || !couponInput.trim()}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
+                      >
+                        {couponLoading ? couponStrings.loading : couponStrings.apply}
+                      </button>
                     </div>
-                  )}
-                </div>
+                    {couponStatus && (
+                      <p className={`mt-2 text-sm ${couponStatus.type === 'error' ? 'text-red-600' : couponStatus.type === 'success' ? 'text-green-600' : 'text-gray-600'}`}>
+                        {couponStatus.message}
+                      </p>
+                    )}
+
+                    {appliedCoupons.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {appliedCoupons.map(coupon => (
+                          <span
+                            key={coupon.coupon.code}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"
+                          >
+                            {coupon.coupon.code}
+                            <button
+                              onClick={() => removeCoupon(coupon.coupon.code)}
+                              className={`${isRTL ? 'mr-2' : 'ml-2'} text-indigo-500 hover:text-indigo-700`}
+                              aria-label={couponStrings.remove}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Accordion>
+
+                <hr className="my-6 border-gray-200" />
                 
-                <div className="space-y-3">
+                <div className="mt-6 space-y-3">
                   {items.map((item, index) => (
                     <div key={`${item.sku}-${item.size}-${item.color}-${index}`} className="flex justify-between text-sm">
                       <div className="text-gray-600">

@@ -577,6 +577,7 @@ export default function Navigation({ lng }: { lng: string }) {
           side={lng === 'he' ? 'right' : 'left'}
           className="p-0 flex flex-col md:hidden"
           dir={lng === 'he' ? 'rtl' : 'ltr'}
+          onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {/* Visually hidden title for accessibility */}
           <SheetTitle className="sr-only">

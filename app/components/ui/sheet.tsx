@@ -39,8 +39,8 @@ const sheetVariants = cva(
       side: {
         top: "inset-x-0 top-0 border-b",
         bottom: "inset-x-0 bottom-0 border-t",
-        left: "left-0 top-0 h-[calc(100vh-2rem)] w-[80%] border-r sm:max-w-sm",
-        right: "right-0 top-0 h-[calc(100vh-2rem)] w-[80%] border-l sm:max-w-sm",
+        left: "left-0 top-0 h-[calc(105vh-1rem)] w-[90%] border-r sm:max-w-sm",
+        right: "right-0 top-0 h-[calc(105vh-1rem)] w-[90%] border-l sm:max-w-sm",
       },
     },
     defaultVariants: {

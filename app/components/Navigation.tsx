@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Heart, ShoppingBag, ChevronDown, TextSearch } from 'lucide-react'
+import { Menu, X, Heart, ShoppingBag, ChevronDown, TextSearch, User } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
@@ -324,7 +324,8 @@ export default function Navigation({ lng }: { lng: string }) {
 
             {/* Search Bar */}
             <div className={lng === 'he' ? 'mr-2' : 'ml-2'}>
-              <SearchBar language={lng} />
+              <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" />
+              {/* <SearchBar language={lng} /> */}
             </div>
           </div>
 
@@ -585,7 +586,7 @@ export default function Navigation({ lng }: { lng: string }) {
           {/* Header with Search Bar */}
           <div className="border-b border-gray-300 px-4 py-4">
             <div className="mb-3">
-              <SearchBar language={lng} />
+              <SearchBar language={lng} variant="inline" />
             </div>
             
             {/* MEN/WOMEN Toggle */}

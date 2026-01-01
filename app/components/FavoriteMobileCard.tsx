@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { XMarkIcon, ShoppingBagIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline'
 import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
 import { useCart } from '@/app/hooks/useCart'
@@ -232,11 +233,16 @@ export default function FavoriteMobileCard({
     ? (quantity > 0 && quantity <= maxStockForSize)
     : (selectedSize && quantity > 0 && quantity <= maxStockForSize)
 
+  // Get the color slug for navigation (prefer favoriteColorSlug, fallback to activeVariant)
+  const colorSlug = (product as any).favoriteColorSlug || activeVariant?.colorSlug || 'default'
+  const baseSku = product.baseSku || product.sku || ''
+  const productUrl = `/${language}/product/${baseSku}/${colorSlug}`
+
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-4 sm:hidden -mx-3" dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="flex items-stretch">
-        {/* Image Section - Fixed Stage Container */}
-        <div className="relative w-40 h-40 flex-shrink-0 bg-gray-50 -mx-1">
+        {/* Image Section - Fixed Stage Container - Clickable to navigate to product */}
+        <Link href={productUrl} className="relative w-40 h-40 flex-shrink-0 bg-gray-50 -mx-1 block">
           {variantImages.length > 1 ? (
             <Carousel
               setApi={setCarouselApi}
@@ -302,7 +308,7 @@ export default function FavoriteMobileCard({
               ))}
             </div>
           )}
-        </div>
+        </Link>
 
         {/* Product Info Section */}
         <div className="flex-1 flex flex-col p-3 min-w-0 justify-between">

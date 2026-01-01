@@ -147,7 +147,7 @@ export default function CollectionClient({
   const getTranslatedName = (category: string | undefined, subcategory?: string | null) => {
     // If search query exists, show search results title instead
     if (searchQuery) {
-      return lng === 'he' ? 'תוצאות חיפוש' : 'Search Results';
+      return '';
     }
 
     if (subcategory) {
@@ -239,8 +239,17 @@ export default function CollectionClient({
     maxPrice?: string;
     sort?: string;
   }) => {
-    const urlParams = new URLSearchParams();
+    // Start with current search params to preserve search query and page number
+    const urlParams = new URLSearchParams(safeSearchParams.toString());
     
+    // Remove filter params that we're about to update (so we can reset them)
+    urlParams.delete('colors');
+    urlParams.delete('sizes');
+    urlParams.delete('minPrice');
+    urlParams.delete('maxPrice');
+    urlParams.delete('sort');
+    
+    // Add back only the filter params that have values
     if (newFilters.colors && newFilters.colors.length > 0) {
       urlParams.set('colors', newFilters.colors.join(','));
     }

@@ -20,6 +20,7 @@ import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
+import SizeChart from '@/app/components/SizeChart'
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import {
@@ -81,6 +82,7 @@ export default function ProductColorPage() {
   const [quantity, setQuantity] = useState(1)
   const [isClient, setIsClient] = useState(false)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [isSizeChartOpen, setIsSizeChartOpen] = useState(false)
   
   // Carousel API state
   const [api, setApi] = useState<CarouselApi>()
@@ -701,7 +703,10 @@ export default function ProductColorPage() {
                       <h3 className="text-lg font-medium text-gray-900">
                         {lng === 'he' ? 'מידה' : 'Size'}
                       </h3>
-                      <button className="text-sm text-gray-600 underline">
+                      <button 
+                        onClick={() => setIsSizeChartOpen(true)}
+                        className="text-sm text-gray-600 underline hover:text-gray-900 transition-colors"
+                      >
                         {lng === 'he' ? 'טבלת מידות' : 'Size Chart'}
                       </button>
                     </div>
@@ -960,7 +965,10 @@ export default function ProductColorPage() {
                       <h3 className="text-lg font-medium text-gray-900">
                         {lng === 'he' ? 'מידה' : 'Size'}
                       </h3>
-                      <button className="text-sm text-gray-600 underline">
+                      <button 
+                        onClick={() => setIsSizeChartOpen(true)}
+                        className="text-sm text-gray-600 underline hover:text-gray-900 transition-colors"
+                      >
                         {lng === 'he' ? 'טבלת מידות' : 'Size Chart'}
                       </button>
                     </div>
@@ -1331,6 +1339,13 @@ export default function ProductColorPage() {
         isVisible={toast.isVisible}
         onClose={hideToast}
         type={toast.type}
+      />
+
+      {/* Size Chart Sheet */}
+      <SizeChart
+        isOpen={isSizeChartOpen}
+        onClose={() => setIsSizeChartOpen(false)}
+        lng={lng as 'en' | 'he'}
       />
     </>
   )

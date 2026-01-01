@@ -8,8 +8,8 @@ interface PromoRibbonProps {
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
   const text = lng === 'he' 
-    ? 'סילבסטר סייל 🔥 10% הנחה על מגוון פריטים, עם הקוד: SILB10' 
-    : 'Silvestr Sale 🔥 10% off on selected items, with code: SILB10'
+    ? '🚚 משלוח חינם בכל הארץ בהזמנה מעל ₪300' 
+    : '🚚 Free shipping in Israel on orders over ₪300'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-black to-gray-900 text-white h-10 z-[60]">

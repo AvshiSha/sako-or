@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Heart, ShoppingBag, ChevronDown } from 'lucide-react'
+import { Menu, X, Heart, ShoppingBag, ChevronDown, TextSearch } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
@@ -318,7 +318,8 @@ export default function Navigation({ lng }: { lng: string }) {
               className="text-gray-700 hover:text-gray-900 p-2"
               aria-label="Menu"
             >
-              <Menu className="h-6 w-6" />
+              {/* <Menu className="h-6 w-6" /> */}
+              <TextSearch strokeWidth={1.5} className="h-7 w-7" />
             </button>
 
             {/* Search Bar */}

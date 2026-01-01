@@ -94,13 +94,23 @@ export function useCart(): CartHook {
   useEffect(() => {
     try {
       const storedCart = localStorage.getItem('cart')
-      if (storedCart) {
+      if (storedCart && storedCart.trim()) {
         const parsedItems: CartItem[] = JSON.parse(storedCart)
-        const normalized = parsedItems.map(item => normalizeCartItem(item))
-        setItems(normalized)
+        if (Array.isArray(parsedItems)) {
+          const normalized = parsedItems.map(item => normalizeCartItem(item))
+          setItems(normalized)
+        } else {
+          console.warn('Cart data is not an array, clearing...')
+          localStorage.removeItem('cart')
+        }
       }
     } catch (error) {
-      console.error('Error loading cart:', error)
+      console.error('Error loading cart, clearing corrupted data:', error)
+      try {
+        localStorage.removeItem('cart')
+      } catch (clearError) {
+        console.error('Failed to clear corrupted cart data:', clearError)
+      }
     } finally {
       setLoading(false)
     }

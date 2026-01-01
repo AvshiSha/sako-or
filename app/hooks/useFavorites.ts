@@ -26,11 +26,46 @@ class HttpError extends Error {
 async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
   const res = await fetch(input, init)
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
+    // Some endpoints may return empty bodies on errors; parse defensively.
+    const text = await res.text().catch(() => '')
+    let err: any = {}
+    if (text) {
+      try {
+        err = JSON.parse(text)
+      } catch {
+        err = { error: text }
+      }
+    }
     const msg = typeof err?.error === 'string' ? err.error : `HTTP ${res.status}`
     throw new HttpError(msg, res.status)
   }
-  return (await res.json()) as T
+  // Also handle empty successful responses gracefully.
+  const text = await res.text().catch(() => '')
+  if (!text || !text.trim()) return {} as T
+  try {
+    return JSON.parse(text) as T
+  } catch (error) {
+    console.error('Failed to parse JSON response:', error, 'Response text:', text)
+    return {} as T
+  }
+}
+
+function safeReadFavoritesFromStorage(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((k) => typeof k === 'string').map((k) => k.trim()).filter(Boolean)
+  } catch {
+    // Old/invalid values (e.g. empty string) can cause JSON.parse to throw; clear and continue.
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // ignore
+    }
+    return []
+  }
 }
 
 export function useFavorites(): FavoritesHook {
@@ -42,14 +77,8 @@ export function useFavorites(): FavoritesHook {
 
   // Load favorites from localStorage on mount (guest buffer / initial hydration)
   useEffect(() => {
-    try {
-      const storedFavorites = localStorage.getItem(STORAGE_KEY)
-      if (storedFavorites) {
-        setFavorites(JSON.parse(storedFavorites))
-      }
-    } catch (error) {
-      console.error('Error loading favorites:', error)
-    }
+    const stored = safeReadFavoritesFromStorage()
+    if (stored.length > 0) setFavorites(stored)
   }, [])
 
   // Save favorites to localStorage whenever we're in local-only mode
@@ -139,8 +168,7 @@ export function useFavorites(): FavoritesHook {
         // Neon user exists -> merge any local favorites, then load from DB
         setCanUseNeon(true)
 
-        const stored = localStorage.getItem(STORAGE_KEY)
-        const guestKeys: string[] = stored ? JSON.parse(stored) : []
+        const guestKeys = safeReadFavoritesFromStorage()
         if (Array.isArray(guestKeys) && guestKeys.length > 0) {
           await fetchJson<{ merged: number }>('/api/favorites/merge', {
             method: 'POST',
@@ -162,6 +190,11 @@ export function useFavorites(): FavoritesHook {
           setFavorites(data.favorites.map((f) => f.favoriteKey))
         }
       } catch (error) {
+        // Expected cases: auth expired / missing token / user not synced yet.
+        if (error instanceof HttpError && (error.status === 401 || error.status === 403)) {
+          setCanUseNeon(false)
+          return
+        }
         console.error('Error syncing favorites source:', error)
         setCanUseNeon(false)
       } finally {

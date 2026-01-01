@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization') || ''
-  const match = authHeader.match(/^Bearer\\s+(.+)$/i)
+  const match = authHeader.match(/^Bearer\s+(.+)$/i)
   return match?.[1] ?? null
 }
 

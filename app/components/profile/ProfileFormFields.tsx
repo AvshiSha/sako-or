@@ -111,12 +111,14 @@ export function Checkbox({
   checked,
   onChange,
   label,
-  description
+  description,
+  disabled
 }: {
   checked: boolean
   onChange: (v: boolean) => void
   label: string
   description?: string
+  disabled?: boolean
 }) {
   return (
     <label className="flex items-start gap-3">
@@ -125,6 +127,7 @@ export function Checkbox({
         className="mt-1 h-4 w-4"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
       />
       <span>
         <span className="block text-sm font-medium text-slate-800">{label}</span>

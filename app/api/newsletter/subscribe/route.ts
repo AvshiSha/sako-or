@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { newsletterService } from '@/lib/firebase'
 import { prisma } from '@/lib/prisma'
 
+// Neon-only: subscribe/upsert into Postgres
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json()
-    
+
     if (!email) {
       return NextResponse.json(
         { success: false, error: 'Email is required' },
@@ -13,51 +13,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Subscribe to newsletter in Firebase
-    const firebaseId = await newsletterService.subscribeToNewsletter(email)
-    
-    // Also create/update in Neon DB
-    try {
-      const existingEmail = await prisma.newsletterEmails.findFirst({
-        where: { email: email }
-      })
+    // IMPORTANT: normalize to avoid duplicates like "A@b.com" vs "a@b.com"
+    const normalizedEmail = String(email).trim().toLowerCase()
 
-      if (existingEmail) {
-        // Update existing email
-        await prisma.newsletterEmails.update({
-          where: { id: existingEmail.id },
-          data: { isActive: true }
-        })
-      } else {
-        // Create new email
-        await prisma.newsletterEmails.create({
-          data: {
-            email: email,
-            isActive: true,
-            createdAt: new Date()
-          }
-        })
-      }
-      
-      console.log(`Newsletter email "${email}" synced to both Firebase and Neon DB`)
-    } catch (prismaError) {
-      console.error('Failed to sync newsletter email to Neon DB:', prismaError)
-      // Don't fail the request if Neon DB sync fails
-    }
+    // One atomic DB operation: create if missing, otherwise reactivate
+    const record = await prisma.newsletterEmails.upsert({
+      where: { email: normalizedEmail },     // works because email is @unique in Prisma
+      update: { isActive: true },
+      create: { email: normalizedEmail, isActive: true },
+    })
 
     return NextResponse.json({
       success: true,
       message: 'Successfully subscribed to newsletter',
-      id: firebaseId
+      id: record.id, // optional: now Neon row id (not Firebase)
     })
-    
   } catch (error) {
     console.error('Newsletter subscription error:', error)
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to subscribe to newsletter',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

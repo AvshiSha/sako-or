@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { prisma } from '../../../../lib/prisma';
 import { stringifyPaymentData } from '../../../../lib/orders';
+import { awardPointsForOrder } from '../../../../lib/points';
 
 export async function POST(request: NextRequest) {
   try {
@@ -122,6 +123,16 @@ export async function POST(request: NextRequest) {
           } catch (usageError) {
             console.warn('Failed to update coupon usage', usageError)
           }
+        }
+      }
+
+      // Award points once, after payment is completed (idempotent by DB uniqueness).
+      // `Order.total` is already the final total after discounts/points, so we award based on that.
+      if (order.paymentStatus !== 'completed') {
+        try {
+          await awardPointsForOrder(order.id);
+        } catch (pointsError) {
+          console.warn('[POINTS_AWARD_ERROR] Failed to award points for order', order.id, pointsError);
         }
       }
 

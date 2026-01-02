@@ -6,17 +6,22 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 // Your web app's Firebase configuration
+const defaultProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "sako-or";
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyA6M1iGDwf4iesgujOxqqLlkLddigFonL4",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "sako-or.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "sako-or",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "sako-or.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "492015346123",
+  // Keep authDomain consistent with the projectId by default (prevents redirect handler getting "stuck" on the wrong domain).
+  authDomain:
+    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || `${defaultProjectId}.firebaseapp.com`,
+  projectId: defaultProjectId,
+  storageBucket:
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "sako-or.firebasestorage.app",
+  messagingSenderId:
+    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "492015346123",
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:492015346123:web:2da31215f1b7f3212f164e",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-WK1B8GCMT0"
+  measurementId:
+    process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-WK1B8GCMT0"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 // Initialize analytics only on client side
@@ -1928,18 +1933,10 @@ export const categoryService = {
 // Authentication Services
 export const authService = {
   // Sign in
-  async signIn(email: string, password: string): Promise<AppUser> {
+  async signIn(email: string, password: string): Promise<FirebaseUser> {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Get user data from Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        return { id: userDoc.id, ...userDoc.data() } as AppUser;
-      }
-      
-      throw new Error('User data not found');
+      return userCredential.user;
     } catch (error) {
       console.error('Error signing in:', error);
       throw error;
@@ -1947,26 +1944,10 @@ export const authService = {
   },
 
   // Sign up
-  async signUp(email: string, password: string, name: string): Promise<string> {
+  async signUp(email: string, password: string): Promise<FirebaseUser> {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Create user document in Firestore
-      const userData: Omit<AppUser, 'id' | 'createdAt' | 'updatedAt'> = {
-        email,
-        name,
-        role: 'USER'
-      };
-      
-      const now = new Date();
-      await addDoc(collection(db, 'users'), {
-        ...userData,
-        createdAt: now,
-        updatedAt: now
-      });
-      
-      return user.uid;
+      return userCredential.user;
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;

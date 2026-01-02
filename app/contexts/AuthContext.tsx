@@ -35,6 +35,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAdmin = user ? ADMIN_EMAILS.includes((user.email || '').toLowerCase()) : false
 
+  const syncUserToNeon = async (firebaseUser: User) => {
+    try {
+      const token = await firebaseUser.getIdToken()
+      const res = await fetch('/api/me/sync', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
+        const errorMessage = errorData.error || `HTTP ${res.status}`
+        console.error(
+          `[AUTH_CONTEXT] Failed to sync user to Neon: ${errorMessage}`,
+          { uid: firebaseUser.uid, status: res.status, errorData }
+        )
+        return
+      }
+
+      const data = await res.json()
+      console.log('[AUTH_CONTEXT] User synced to Neon successfully:', { 
+        uid: firebaseUser.uid, 
+        neonId: data.id 
+      })
+    } catch (error) {
+      // Network errors or other exceptions - log as error, not warning
+      console.error(
+        '[AUTH_CONTEXT] Network/system error during Neon sync:',
+        error,
+        { uid: firebaseUser.uid }
+      )
+    }
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user)
@@ -44,9 +79,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe
   }, [])
 
+  // Keep Neon user record up to date on login / refresh
+  useEffect(() => {
+    if (!user) return
+    void syncUserToNeon(user)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid])
+
   const signIn = async (email: string, password: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, password)
+      // Sync handled by useEffect watching user?.uid
     } catch (error) {
       console.error('Sign in error:', error)
       throw error
@@ -56,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signUp = async (email: string, password: string) => {
     try {
       await createUserWithEmailAndPassword(auth, email, password)
+      // Sync handled by useEffect watching user?.uid
     } catch (error) {
       console.error('Sign up error:', error)
       throw error

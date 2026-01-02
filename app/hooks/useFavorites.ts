@@ -1,53 +1,107 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { fbqTrackAddToFavorites, fbqTrackRemoveFromFavorites } from '@/lib/facebookPixel'
-
-export type FavoriteItem = string | { baseSku: string; colorSlug?: string }
+import { useAuth } from '@/app/contexts/AuthContext'
 
 export interface FavoritesHook {
-  favorites: FavoriteItem[]
-  isFavorite: (sku: string, colorSlug?: string) => boolean
-  addToFavorites: (sku: string, colorSlug?: string) => void
-  removeFromFavorites: (sku: string) => void
-  toggleFavorite: (sku: string, colorSlug?: string) => void
+  favorites: string[]
+  isFavorite: (favoriteKey: string) => boolean
+  addToFavorites: (favoriteKey: string) => Promise<void> | void
+  removeFromFavorites: (favoriteKey: string) => Promise<void> | void
+  toggleFavorite: (favoriteKey: string) => Promise<void> | void
   loading: boolean
 }
 
-export function useFavorites(): FavoritesHook {
-  const [favorites, setFavorites] = useState<FavoriteItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const favoritesRef = useRef<FavoriteItem[]>([])
+const STORAGE_KEY = 'favorites'
 
-  // Load favorites from localStorage on mount
-  useEffect(() => {
-    try {
-      const storedFavorites = localStorage.getItem('favorites')
-      if (storedFavorites) {
-        setFavorites(JSON.parse(storedFavorites))
+class HttpError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.name = 'HttpError'
+    this.status = status
+  }
+}
+
+async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, init)
+  if (!res.ok) {
+    // Some endpoints may return empty bodies on errors; parse defensively.
+    const text = await res.text().catch(() => '')
+    let err: any = {}
+    if (text) {
+      try {
+        err = JSON.parse(text)
+      } catch {
+        err = { error: text }
       }
-    } catch (error) {
-      console.error('Error loading favorites:', error)
-    } finally {
-      setLoading(false)
     }
+    const msg = typeof err?.error === 'string' ? err.error : `HTTP ${res.status}`
+    throw new HttpError(msg, res.status)
+  }
+  // Also handle empty successful responses gracefully.
+  const text = await res.text().catch(() => '')
+  if (!text || !text.trim()) return {} as T
+  try {
+    return JSON.parse(text) as T
+  } catch (error) {
+    console.error('Failed to parse JSON response:', error, 'Response text:', text)
+    return {} as T
+  }
+}
+
+function safeReadFavoritesFromStorage(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed.filter((k) => typeof k === 'string').map((k) => k.trim()).filter(Boolean)
+  } catch {
+    // Old/invalid values (e.g. empty string) can cause JSON.parse to throw; clear and continue.
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // ignore
+    }
+    return []
+  }
+}
+
+export function useFavorites(): FavoritesHook {
+  const { user } = useAuth()
+  const [favorites, setFavorites] = useState<string[]>([])
+  const [canUseNeon, setCanUseNeon] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const lastBroadcastRef = useRef<string>('')
+
+  // Load favorites from localStorage on mount (guest buffer / initial hydration)
+  useEffect(() => {
+    const stored = safeReadFavoritesFromStorage()
+    if (stored.length > 0) setFavorites(stored)
   }, [])
 
-  // Keep ref in sync with state
+  // Save favorites to localStorage whenever we're in local-only mode
   useEffect(() => {
-    favoritesRef.current = favorites
-  }, [favorites])
-
-  // Save favorites to localStorage whenever favorites change
-  useEffect(() => {
-    if (!loading) {
+    if (!loading && (!user || !canUseNeon)) {
       try {
-        localStorage.setItem('favorites', JSON.stringify(favorites))
-        // Dispatch custom event to notify other components
-        window.dispatchEvent(new CustomEvent('favoritesUpdated', { detail: favorites }))
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites))
       } catch (error) {
         console.error('Error saving favorites:', error)
       }
+    }
+  }, [favorites, loading, user, canUseNeon])
+
+  // Broadcast favorites changes to sync multiple hook instances (nav/product cards/etc)
+  useEffect(() => {
+    if (loading) return
+    try {
+      const payload = JSON.stringify(favorites)
+      if (payload === lastBroadcastRef.current) return
+      lastBroadcastRef.current = payload
+      window.dispatchEvent(new CustomEvent('favoritesUpdated', { detail: favorites }))
+    } catch (error) {
+      console.error('Error broadcasting favorites:', error)
     }
   }, [favorites, loading])
 
@@ -64,109 +118,188 @@ export function useFavorites(): FavoritesHook {
     }
   }, [])
 
-  // Helper to check if a favorite item matches a sku
-  const favoriteMatches = (item: FavoriteItem, sku: string): boolean => {
-    if (typeof item === 'string') {
-      return item === sku
-    }
-    return item.baseSku === sku
-  }
+  // Decide whether to use Neon (DB) vs local-only, then load/merge accordingly.
+  useEffect(() => {
+    let cancelled = false
 
-  // Helper to check if a favorite item matches a sku and colorSlug
-  const favoriteMatchesColor = (item: FavoriteItem, sku: string, colorSlug?: string): boolean => {
-    if (typeof item === 'string') {
-      // String items don't have color info, so they match if sku matches
-      return item === sku
-    }
-    // Object items must match both baseSku and colorSlug (if colorSlug is provided)
-    if (item.baseSku !== sku) {
-      return false
-    }
-    // If colorSlug is provided, it must match exactly
-    if (colorSlug !== undefined) {
-      return item.colorSlug === colorSlug
-    }
-    // If no colorSlug provided, match any color variant of this baseSku
-    return true
-  }
+    async function syncSourceAndLoad() {
+      if (!user) {
+        setCanUseNeon(false)
+        setLoading(false)
+        return
+      }
 
-  // Helper to get baseSku from favorite item
-  const getBaseSku = (item: FavoriteItem): string => {
-    if (typeof item === 'string') {
-      return item
-    }
-    return item.baseSku
-  }
+      setLoading(true)
+      try {
+        const token = await user.getIdToken(true)
+        if (!token) {
+          setCanUseNeon(false)
+          return
+        }
 
-  const isFavorite = useCallback((sku: string, colorSlug?: string): boolean => {
-    if (colorSlug !== undefined) {
-      // Check for specific color variant
-      return favorites.some(item => favoriteMatchesColor(item, sku, colorSlug))
+        // Check whether Neon user exists.
+        // Note: Auth flows may call /api/me/sync asynchronously; we retry briefly to avoid race conditions.
+        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+        let profileRes: Response | null = null
+        for (let attempt = 0; attempt < 3; attempt++) {
+          if (cancelled) return
+          if (attempt > 0) await sleep(300 * attempt)
+          profileRes = await fetch('/api/me/profile', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (profileRes.status !== 404) break
+        }
+
+        if (!profileRes) {
+          setCanUseNeon(false)
+          return
+        }
+        if (profileRes.status === 404) {
+          setCanUseNeon(false)
+          return
+        }
+        if (!profileRes.ok) {
+          console.error('Error checking Neon user existence:', profileRes.status)
+          setCanUseNeon(false)
+          return
+        }
+
+        // Neon user exists -> merge any local favorites, then load from DB
+        setCanUseNeon(true)
+
+        const guestKeys = safeReadFavoritesFromStorage()
+        if (Array.isArray(guestKeys) && guestKeys.length > 0) {
+          await fetchJson<{ merged: number }>('/api/favorites/merge', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ favoriteKeys: guestKeys })
+          })
+          localStorage.removeItem(STORAGE_KEY)
+        }
+
+        const data = await fetchJson<{ favorites: Array<{ favoriteKey: string }> }>(
+          '/api/favorites',
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+
+        if (!cancelled) {
+          setFavorites(data.favorites.map((f) => f.favoriteKey))
+        }
+      } catch (error) {
+        // Expected cases: auth expired / missing token / user not synced yet.
+        if (error instanceof HttpError && (error.status === 401 || error.status === 403)) {
+          setCanUseNeon(false)
+          return
+        }
+        console.error('Error syncing favorites source:', error)
+        setCanUseNeon(false)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
-    // Check for any variant or base product (backward compatibility)
-    return favorites.some(item => favoriteMatches(item, sku))
+
+    void syncSourceAndLoad()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.uid])
+
+  const isFavorite = useCallback((favoriteKey: string): boolean => {
+    return favorites.includes(favoriteKey)
   }, [favorites])
 
-  const addToFavorites = useCallback((sku: string, colorSlug?: string) => {
-    // Check ref (current state) before updating to avoid double-tracking
-    const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatches(item, sku))
-    if (!isCurrentlyFavorite) {
-      // Track BEFORE state update to ensure it only fires once
-      fbqTrackAddToFavorites({ id: sku, quantity: 1 })
-    }
-    setFavorites(prev => {
-      // Check if already exists
-      if (prev.some(item => favoriteMatches(item, sku))) {
-        return prev
-      }
-      // Add new favorite with colorSlug if provided
-      const newFavorite: FavoriteItem = colorSlug ? { baseSku: sku, colorSlug } : sku
-      return [...prev, newFavorite]
-    })
-  }, [])
+  const toggleFavorite = useCallback(
+    async (favoriteKey: string) => {
+      const key = (favoriteKey || '').trim()
+      if (!key) return
 
-  const removeFromFavorites = useCallback((sku: string) => {
-    setFavorites(prev => prev.filter(item => !favoriteMatches(item, sku)))
-  }, [])
-
-  const toggleFavorite = useCallback((sku: string, colorSlug?: string) => {
-    setFavorites(prev => {
-      if (colorSlug !== undefined) {
-        // Color-specific toggle: only toggle this specific color variant
-        const existingIndex = prev.findIndex(item => favoriteMatchesColor(item, sku, colorSlug))
-        if (existingIndex >= 0) {
-          // Remove this specific color variant
-          const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatchesColor(item, sku, colorSlug))
-          if (isCurrentlyFavorite) {
-            fbqTrackRemoveFromFavorites({ id: sku, quantity: 1 })
-          }
-          return prev.filter((_, index) => index !== existingIndex)
-        } else {
-          // Add this specific color variant
-          const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatchesColor(item, sku, colorSlug))
-          if (!isCurrentlyFavorite) {
-            fbqTrackAddToFavorites({ id: sku, quantity: 1 })
-          }
-          const newFavorite: FavoriteItem = { baseSku: sku, colorSlug }
-          return [...prev, newFavorite]
-        }
-      } else {
-        // No colorSlug: toggle any variant (backward compatibility)
-        const isCurrentlyFavorite = favoritesRef.current.some(item => favoriteMatches(item, sku))
-        if (!isCurrentlyFavorite) {
-          fbqTrackAddToFavorites({ id: sku, quantity: 1 })
-        } else {
-          fbqTrackRemoveFromFavorites({ id: sku, quantity: 1 })
-        }
-        if (prev.some(item => favoriteMatches(item, sku))) {
-          return prev.filter(item => !favoriteMatches(item, sku))
-        } else {
-          const newFavorite: FavoriteItem = sku
-          return [...prev, newFavorite]
-        }
+      if (!user || !canUseNeon) {
+        // Local-only toggle
+        setFavorites((prev) => {
+          if (prev.includes(key)) return prev.filter((k) => k !== key)
+          return [...prev, key]
+        })
+        return
       }
-    })
-  }, [])
+
+      // Logged-in toggle (Neon)
+      let removed = false
+      setFavorites((prev) => {
+        const has = prev.includes(key)
+        removed = has
+        return has ? prev.filter((k) => k !== key) : [...prev, key]
+      })
+
+      try {
+        const token = await user.getIdToken(true)
+        if (!token) {
+          throw new Error('Failed to get authentication token. Please try logging in again.')
+        }
+
+        const headers = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+
+        const data = await fetchJson<{ favoriteKey: string; isActive: boolean }>(
+          '/api/favorites/toggle',
+          {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ favoriteKey: key })
+          }
+        )
+        setFavorites((prev) => {
+          const has = prev.includes(data.favoriteKey)
+          if (data.isActive) {
+            return has ? prev : [...prev, data.favoriteKey]
+          }
+          return has ? prev.filter((k) => k !== data.favoriteKey) : prev
+        })
+      } catch (error) {
+        if (error instanceof HttpError && error.status === 404) {
+          // Neon user doesn't exist -> fall back to local-only mode and keep the optimistic toggle.
+          setCanUseNeon(false)
+          return
+        }
+
+        console.error('Error toggling favorite:', error)
+        // Revert optimistic update
+        setFavorites((prev) => {
+          const has = prev.includes(key)
+          if (removed) {
+            return has ? prev : [...prev, key]
+          }
+          return has ? prev.filter((k) => k !== key) : prev
+        })
+      }
+    },
+    [user, canUseNeon]
+  )
+
+  const addToFavorites = useCallback(
+    async (favoriteKey: string) => {
+      const key = (favoriteKey || '').trim()
+      if (!key) return
+      if (favorites.includes(key)) return
+      await toggleFavorite(key)
+    },
+    [favorites, toggleFavorite]
+  )
+
+  const removeFromFavorites = useCallback(
+    async (favoriteKey: string) => {
+      const key = (favoriteKey || '').trim()
+      if (!key) return
+      if (!favorites.includes(key)) return
+      await toggleFavorite(key)
+    },
+    [favorites, toggleFavorite]
+  )
 
   return {
     favorites,

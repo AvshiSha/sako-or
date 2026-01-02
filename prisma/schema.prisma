@@ -9,15 +9,64 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String
-  role      String   @default("USER")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  firebaseUid       String?  @unique @map("firebase_uid")
+
+  email             String?  @unique
+  phone             String?
+
+  firstName         String?  @map("first_name")
+  lastName          String?  @map("last_name")
+  language          String?
+  gender            String?
+
+  addressStreet         String? @map("address_street")
+  addressStreetNumber   String? @map("address_street_number")
+  addressFloor          String? @map("address_floor")
+  addressApt            String? @map("address_apt")
+
+  authProvider      String?  @map("auth_provider")
+  emailVerified     Boolean  @default(false) @map("email_verified")
+  passwordHash      String?  @map("password_hash")
+  passwordChangedAt DateTime? @db.Timestamptz(6) @map("password_changed_at")
+
+  role              String   @default("USER")
+  isNewsletter      Boolean  @default(false) @map("is_newsletter")
+  pointsBalance     Int      @default(0) @map("points_balance")
+  isDelete          Boolean  @default(false) @map("is_delete")
+
+  lastLoginAt       DateTime? @db.Timestamptz(6) @map("last_login_at")
+
+  createdAt         DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt         DateTime @updatedAt @db.Timestamptz(6) @map("updated_at")
+
+  orders            Order[]
+  points            Points[]
+  favorites         Favorite[]
 
   @@map("users")
+}
+
+model Favorite {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @db.Uuid @map("user_id")
+  productBaseSku String   @map("product_base_sku")
+  // Empty string means: favorited without a specific color context.
+  // We use '' instead of NULL so we can enforce uniqueness via @@unique.
+  colorSlug       String   @default("") @map("color_slug")
+
+  isActive        Boolean  @default(true) @map("is_active")
+  favoritedAt     DateTime @default(now()) @db.Timestamptz(6) @map("favorited_at")
+  unfavoritedAt   DateTime? @db.Timestamptz(6) @map("unfavorited_at")
+
+  createdAt       DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6) @map("updated_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productBaseSku, colorSlug])
+  @@index([userId, isActive])
+  @@map("favorites")
 }
 
 model NewsletterEmails {
@@ -157,6 +206,11 @@ model Order {
   payments             Payment[]
   appliedCoupons       OrderCoupon[]
 
+  userId               String?       @db.Uuid @map("user_id")
+  user                 User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  points               Points[]
+
+  @@index([userId])
   @@map("orders")
 }
 
@@ -254,6 +308,11 @@ enum CouponDiscountType {
   bogo
 }
 
+enum PointsKind {
+  EARN
+  SPEND
+}
+
 model Coupon {
   id                 String             @id @default(cuid())
   code               String             @unique
@@ -317,4 +376,21 @@ model OrderCoupon {
 
   @@index([code])
   @@map("order_coupons")
+}
+
+model Points {
+  id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String     @db.Uuid @map("user_id")
+  orderId   String?    @map("order_id")
+  kind      PointsKind
+  delta     Int
+  reason    String     @db.Text
+  createdAt DateTime   @default(now()) @db.Timestamptz(6) @map("created_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, kind])
+  @@index([userId, createdAt])
+  @@map("points")
 }

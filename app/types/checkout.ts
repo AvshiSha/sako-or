@@ -74,6 +74,13 @@ export interface CreateLowProfileRequest {
     minNumOfPayments: number;
     maxNumOfPayments: number;
   };
+
+  /**
+   * Optional: points the user wants to spend on this order.
+   * If provided, backend will create a SPEND points row (-delta) linked to the order.
+   * `amount` should already reflect the final total after this discount.
+   */
+  pointsToSpend?: number;
 }
 
 export interface CreateLowProfileResponse {

@@ -218,12 +218,24 @@ export default function CheckoutModal({
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to save checkout information');
+      try {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save checkout information');
+      } catch (error) {
+        if (error instanceof Error && error.message !== 'Failed to save checkout information') {
+          throw new Error('Failed to save checkout information');
+        }
+        throw error;
+      }
     }
 
-    const result = await response.json();
-    return result.checkoutId;
+    try {
+      const result = await response.json();
+      return result.checkoutId;
+    } catch (error) {
+      console.error('Failed to parse checkout response:', error);
+      throw new Error('Invalid response from server');
+    }
   };
 
   // Create Low Profile payment session
@@ -292,7 +304,12 @@ export default function CheckoutModal({
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    try {
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to parse payment response:', error);
+      throw new Error('Invalid response from server');
+    }
   };
 
   // Handle payment submission

@@ -12,6 +12,7 @@ export interface CreateOrderData {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  userId?: string;
   items: {
     productName: string;
     productSku: string;
@@ -43,6 +44,7 @@ export async function createOrder(data: CreateOrderData) {
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,
+        ...(data.userId ? { userId: data.userId } : {}),
         orderItems: {
           create: data.items.map(item => {
             // Parse the SKU to extract base SKU, color, and size

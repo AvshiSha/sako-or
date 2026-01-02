@@ -399,7 +399,7 @@ export default function FavoriteMobileCard({
                 className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded font-medium text-sm transition-colors ${
                   !canAddToCart || isAddingToCart
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-[#856D55] text-white hover:bg-[#7B1B38]'
+                    : 'bg-[#856D55] text-white hover:bg-[#856D55]/90'
                 }`}
               >
                 <ShoppingBagIcon className="h-3 w-3" />

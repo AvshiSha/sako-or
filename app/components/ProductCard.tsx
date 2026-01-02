@@ -16,6 +16,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from '@/app/components/ui/carousel'
+import { buildFavoriteKey } from '@/lib/favorites'
 
 interface ProductCardProps {
   product: Product
@@ -208,10 +209,12 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
     e.preventDefault()
     e.stopPropagation()
     
-    // Use the base SKU for favorites (consistent across all color variants)
-    const sku = product.sku || ''
-    if (sku) {
-      toggleFavorite(sku)
+    // Save favorite as product + specific displayed color (when available)
+    const baseSku = product.baseSku || product.sku || ''
+    const colorSlug = activeVariant?.colorSlug || ''
+    const favoriteKey = buildFavoriteKey(baseSku, colorSlug)
+    if (favoriteKey) {
+      void toggleFavorite(favoriteKey)
     }
   }
   
@@ -392,7 +395,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                         onClick={handleWishlistToggle}
                         className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
                       >
-                        {isFavorite(product.sku || '') ? (
+                        {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
                           <HeartSolidIcon className="h-4 w-4 text-red-500" />
                         ) : (
                           <HeartIcon className="h-4 w-4 text-gray-600" />
@@ -413,7 +416,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                       onClick={handleWishlistToggle}
                       className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"
                     >
-                      {isFavorite(product.sku || '') ? (
+                      {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
                         <HeartSolidIcon className="h-4 w-4 text-red-500" />
                       ) : (
                         <HeartIcon className="h-4 w-4 text-gray-600" />

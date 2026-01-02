@@ -9,6 +9,7 @@ import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import SearchBar from './SearchBar'
 import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
+import { useAuth } from '@/app/contexts/AuthContext'
 import { categoryService } from '@/lib/firebase'
 import { getImageUrl } from '@/lib/image-urls'
 import {
@@ -38,7 +39,8 @@ const translations = {
     allWomen: 'All Women',
     allMen: 'All Men',
     categories: 'Categories',
-    allProducts: 'Show All'
+    allProducts: 'Show All',
+    signIn: 'Sign in'
   },
   he: {
     home: 'בית',
@@ -49,7 +51,8 @@ const translations = {
     allWomen: 'לכל קולקצית הנשים',
     allMen: 'לכל קולקצית הגברים',
     categories: 'קטגוריות',
-    allProducts: 'לכל המוצרים'
+    allProducts: 'לכל המוצרים',
+    signIn: 'התחברות'
   }
 }
 
@@ -66,6 +69,7 @@ export default function Navigation({ lng }: { lng: string }) {
 
   const { items } = useCart()
   const { favorites } = useFavorites()
+  const { user } = useAuth()
   const pathname = usePathname()
 
   // Close menu on route change
@@ -324,7 +328,14 @@ export default function Navigation({ lng }: { lng: string }) {
 
             {/* Search Bar */}
             <div className={lng === 'he' ? 'mr-2' : 'ml-2'}>
-              <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" />
+            <Link
+                href={user ? `/${lng}/profile` : `/${lng}/signin`}
+                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+                aria-label={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
+                title={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
+              >
+                <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" />
+              </Link>
               {/* <SearchBar language={lng} /> */}
             </div>
           </div>
@@ -511,9 +522,17 @@ export default function Navigation({ lng }: { lng: string }) {
 
           {/* Right side icons - Desktop and Mobile */}
           <div className="flex items-center">
-            {/* Desktop: Search Bar, Cart, Favorites, Language Switcher */}
+            {/* Desktop: Search Bar, User, Cart, Favorites, Language Switcher */}
             <div className="hidden md:flex items-center space-x-4">
               <SearchBar language={lng} />
+              <Link
+                href={user ? `/${lng}/profile` : `/${lng}/signin`}
+                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+                aria-label={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
+                title={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
+              >
+                <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" />
+              </Link>
               <Link
                 href={`/${lng}/cart`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"

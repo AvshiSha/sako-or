@@ -4,7 +4,17 @@ import { OrderConfirmationEmailHebrew } from '../app/emails/order-confirmation-h
 import { prisma } from './prisma';
 import { OrderConfirmationTeamEmail } from '../app/emails/order-confirmation-team-mail';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+function getResendClient(): Resend {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    throw new Error('RESEND_API_KEY environment variable is not set');
+  }
+  if (!resendClient) {
+    resendClient = new Resend(key);
+  }
+  return resendClient;
+}
 
 // In-memory cache for test orders (since they don't exist in database)
 const testOrderEmailCache = new Map<string, { emailSentAt: Date; emailMessageId: string }>();
@@ -52,9 +62,7 @@ export interface OrderEmailData {
 
 export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?: string) {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY environment variable is not set');
-    }
+    const resend = getResendClient();
 
     // Production logging - minimal
     console.log(`[EMAIL] Sending confirmation for order ${data.orderNumber}`);

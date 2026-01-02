@@ -212,9 +212,9 @@ export default function SignInPage() {
       language: language === 'he' || language === 'en' ? language : undefined,
       gender: gender ? gender : null,
       addressStreet: addressStreet ? addressStreet : null,
-      addressStreetNumber: addressApt ? addressApt : null,
+      addressStreetNumber: null,
       addressFloor: null,
-      addressApt: city ? city : null,
+      addressApt: addressApt ? addressApt : null,
       isNewsletter
     }
 

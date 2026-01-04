@@ -49,6 +49,17 @@ export default function FavoritesPage() {
   const [isClient, setIsClient] = useState(false)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const [drawerProduct, setDrawerProduct] = useState<FavoriteProduct | null>(null)
+  // Prevent repeated auto-cleanup calls across re-renders.
+  const cleanedFavoriteKeysRef = useRef<Set<string>>(new Set())
+
+  const isProductStorefrontActive = (product: any): boolean => {
+    if (!product) return false
+    if (typeof product.isDeleted === 'boolean' && product.isDeleted) return false
+    if (typeof product.isEnabled === 'boolean') return product.isEnabled
+    // Legacy fallback
+    if (typeof product.isActive === 'boolean') return product.isActive
+    return true
+  }
   
   // Track desktop status for drawer animation timeout
   // Use ref to avoid re-renders and ensure consistent value during close callback
@@ -139,6 +150,7 @@ export default function FavoritesPage() {
         // Cache by baseSku to avoid refetching the same product for multiple colors
         const productCache = new Map<string, FavoriteProduct | null>()
         const favoriteItems: FavoriteItem[] = []
+        const inactiveFavoriteKeysToRemove: string[] = []
 
         for (const favoriteKey of favoriteKeys) {
           const { baseSku, colorSlug } = parseFavoriteKey(favoriteKey)
@@ -168,7 +180,7 @@ export default function FavoritesPage() {
             productCache.set(baseSku, product)
           }
 
-          if (product) {
+          if (product && isProductStorefrontActive(product)) {
             favoriteItems.push({
               ...(product as FavoriteProduct),
               favoriteKey,
@@ -176,41 +188,29 @@ export default function FavoritesPage() {
               favoriteColorSlug: colorSlug || undefined
             })
           } else {
-            favoriteItems.push({
-              sku: baseSku,
-              title_en: 'Unavailable Product',
-              title_he: 'מוצר לא זמין',
-              description_en: 'This product is no longer available',
-              description_he: 'המוצר הזה כבר לא זמין',
-              category: '',
-              subCategory: '',
-              subSubCategory: '',
-              categories_path: [],
-              categories_path_id: [],
-              brand: '',
-              price: 0,
-              salePrice: 0,
-              currency: 'USD',
-              colorVariants: {},
-              isEnabled: false,
-              isDeleted: true,
-              newProduct: false,
-              featuredProduct: false,
-              materialCare: {},
-              seo: {},
-              searchKeywords: [],
-              tags: [],
-              createdAt: new Date(),
-              updatedAt: new Date(),
-              isUnavailable: true,
-              favoriteKey,
-              favoriteBaseSku: baseSku,
-              favoriteColorSlug: colorSlug || undefined
-            } as FavoriteItem)
+            // Product is missing or inactive/deleted -> don't show it in favorites,
+            // and auto-remove it so it won't come back on refresh.
+            inactiveFavoriteKeysToRemove.push(favoriteKey)
           }
         }
 
         setFavorites(favoriteItems)
+
+        // Best-effort cleanup (avoid loops by tracking keys we've already cleaned).
+        const uniqueToRemove = Array.from(new Set(inactiveFavoriteKeysToRemove))
+          .filter((k) => k && !cleanedFavoriteKeysRef.current.has(k))
+        if (uniqueToRemove.length > 0) {
+          uniqueToRemove.forEach((k) => cleanedFavoriteKeysRef.current.add(k))
+          await Promise.all(
+            uniqueToRemove.map(async (k) => {
+              try {
+                await toggleFavorite(k)
+              } catch {
+                // ignore cleanup failures (UI is already filtered)
+              }
+            })
+          )
+        }
       } catch (error) {
         console.error('❌ Error loading favorites:', error)
       } finally {

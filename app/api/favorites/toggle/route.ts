@@ -57,6 +57,10 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}))
     const favoriteKey = typeof body?.favoriteKey === 'string' ? body.favoriteKey : ''
+    // Optional idempotent mode: client can request a specific state.
+    // When provided, repeated calls will not "flip" the favorite unexpectedly.
+    const desiredIsActive =
+      typeof body?.isActive === 'boolean' ? (body.isActive as boolean) : null
     const { productBaseSku, colorSlug } = parseFavoriteKey(favoriteKey)
 
     const where = {
@@ -66,6 +70,56 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.favorite.findUnique({ where })
     const now = new Date()
 
+    // Idempotent "set" mode
+    if (desiredIsActive !== null) {
+      if (!existing) {
+        if (!desiredIsActive) {
+          return NextResponse.json(
+            {
+              favoriteKey: favoriteKeyFromParts(productBaseSku, colorSlug),
+              isActive: false
+            },
+            { status: 200 }
+          )
+        }
+
+        const created = await prisma.favorite.create({
+          data: {
+            userId,
+            productBaseSku,
+            colorSlug,
+            isActive: true,
+            favoritedAt: now,
+            unfavoritedAt: null
+          }
+        })
+
+        return NextResponse.json(
+          {
+            favoriteKey: favoriteKeyFromParts(created.productBaseSku, created.colorSlug),
+            isActive: true
+          },
+          { status: 200 }
+        )
+      }
+
+      const updated = await prisma.favorite.update({
+        where,
+        data: desiredIsActive
+          ? { isActive: true, favoritedAt: now, unfavoritedAt: null }
+          : { isActive: false, unfavoritedAt: now }
+      })
+
+      return NextResponse.json(
+        {
+          favoriteKey: favoriteKeyFromParts(updated.productBaseSku, updated.colorSlug),
+          isActive: updated.isActive
+        },
+        { status: 200 }
+      )
+    }
+
+    // Legacy toggle mode (kept for backwards compatibility)
     if (!existing) {
       const created = await prisma.favorite.create({
         data: {

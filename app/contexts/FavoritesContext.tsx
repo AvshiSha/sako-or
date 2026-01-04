@@ -161,12 +161,18 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem(STORAGE_KEY)
         }
 
-        const data = await fetchJson<{ favorites: Array<{ favoriteKey: string }> }>('/api/favorites', {
+        const data = await fetchJson<{
+          favorites: Array<{ favoriteKey: string; isActive?: boolean | null }>
+        }>('/api/favorites', {
           headers: { Authorization: `Bearer ${token}` }
         })
 
         if (!cancelled) {
-          setFavorites(data.favorites.map((f) => f.favoriteKey))
+          setFavorites(
+            data.favorites
+              .filter((f) => f && typeof f.favoriteKey === 'string' && f.isActive !== false)
+              .map((f) => f.favoriteKey)
+          )
         }
       } catch (error) {
         // Expected cases: auth expired / missing token / user not synced yet.

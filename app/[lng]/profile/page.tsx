@@ -286,7 +286,7 @@ export default function ProfilePage() {
             productCache.set(baseSku, product)
           }
 
-          if (product && product.isEnabled) {
+          if (product && product.isEnabled && !product.isDeleted) {
             favoriteItems.push({
               ...product,
               favoriteKey,

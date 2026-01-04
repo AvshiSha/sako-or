@@ -5,64 +5,63 @@ generator client {
 
 datasource db {
   provider = "postgresql" // PostgreSQL for production
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  firebaseUid       String?  @unique @map("firebase_uid")
+  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  firebaseUid String? @unique @map("firebase_uid")
 
-  email             String?  @unique
-  phone             String?
+  email String? @unique
+  phone String?
 
-  firstName         String?  @map("first_name")
-  lastName          String?  @map("last_name")
-  language          String?
-  gender            String?
+  firstName String? @map("first_name")
+  lastName  String? @map("last_name")
+  language  String?
+  gender    String?
 
-  addressStreet         String? @map("address_street")
-  addressStreetNumber   String? @map("address_street_number")
-  addressFloor          String? @map("address_floor")
-  addressApt            String? @map("address_apt")
+  addressStreet       String? @map("address_street")
+  addressStreetNumber String? @map("address_street_number")
+  addressFloor        String? @map("address_floor")
+  addressApt          String? @map("address_apt")
 
-  authProvider      String?  @map("auth_provider")
-  emailVerified     Boolean  @default(false) @map("email_verified")
-  passwordHash      String?  @map("password_hash")
-  passwordChangedAt DateTime? @db.Timestamptz(6) @map("password_changed_at")
+  authProvider      String?   @map("auth_provider")
+  emailVerified     Boolean   @default(false) @map("email_verified")
+  passwordHash      String?   @map("password_hash")
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
 
-  role              String   @default("USER")
-  isNewsletter      Boolean  @default(false) @map("is_newsletter")
-  pointsBalance     Int      @default(0) @map("points_balance")
-  isDelete          Boolean  @default(false) @map("is_delete")
+  role          String  @default("USER")
+  isNewsletter  Boolean @default(false) @map("is_newsletter")
+  pointsBalance Int     @default(0) @map("points_balance")
+  isDelete      Boolean @default(false) @map("is_delete")
 
-  lastLoginAt       DateTime? @db.Timestamptz(6) @map("last_login_at")
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
 
-  createdAt         DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt         DateTime @updatedAt @db.Timestamptz(6) @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  orders            Order[]
-  points            Points[]
-  favorites         Favorite[]
+  orders    Order[]
+  points    Points[]
+  favorites Favorite[]
 
   @@map("users")
 }
 
 model Favorite {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String   @db.Uuid @map("user_id")
-  productBaseSku String   @map("product_base_sku")
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+  productBaseSku String @map("product_base_sku")
   // Empty string means: favorited without a specific color context.
   // We use '' instead of NULL so we can enforce uniqueness via @@unique.
-  colorSlug       String   @default("") @map("color_slug")
+  colorSlug      String @default("") @map("color_slug")
 
-  isActive        Boolean  @default(true) @map("is_active")
-  favoritedAt     DateTime @default(now()) @db.Timestamptz(6) @map("favorited_at")
-  unfavoritedAt   DateTime? @db.Timestamptz(6) @map("unfavorited_at")
+  isActive      Boolean   @default(true) @map("is_active")
+  favoritedAt   DateTime  @default(now()) @map("favorited_at") @db.Timestamptz(6)
+  unfavoritedAt DateTime? @map("unfavorited_at") @db.Timestamptz(6)
 
-  createdAt       DateTime @default(now()) @db.Timestamptz(6) @map("created_at")
-  updatedAt       DateTime @updatedAt @db.Timestamptz(6) @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productBaseSku, colorSlug])
   @@index([userId, isActive])
@@ -117,7 +116,7 @@ model Product {
   subCategory          String?
   subSubCategory       String?
   category_he          String?
-  subCategory_he        String?
+  subCategory_he       String?
   subSubCategory_he    String?
   categories_path      String[]
   categories_path_id   String[]
@@ -206,9 +205,9 @@ model Order {
   payments             Payment[]
   appliedCoupons       OrderCoupon[]
 
-  userId               String?       @db.Uuid @map("user_id")
-  user                 User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  points               Points[]
+  userId String?  @map("user_id") @db.Uuid
+  user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  points Points[]
 
   @@index([userId])
   @@map("orders")
@@ -380,15 +379,15 @@ model OrderCoupon {
 
 model Points {
   id        String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId    String     @db.Uuid @map("user_id")
+  userId    String     @map("user_id") @db.Uuid
   orderId   String?    @map("order_id")
   kind      PointsKind
   delta     Int
   reason    String     @db.Text
-  createdAt DateTime   @default(now()) @db.Timestamptz(6) @map("created_at")
+  createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order     Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order Order? @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([orderId, kind])
   @@index([userId, createdAt])

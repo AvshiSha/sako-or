@@ -9,6 +9,7 @@ export interface FavoritesHook {
   addToFavorites: (favoriteKey: string) => Promise<void> | void
   removeFromFavorites: (favoriteKey: string) => Promise<void> | void
   toggleFavorite: (favoriteKey: string) => Promise<void> | void
+  clearAllLocal: () => void
   loading: boolean
 }
 
@@ -83,7 +84,11 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && (!user || !canUseNeon)) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites))
+        if (favorites.length === 0) {
+          localStorage.removeItem(STORAGE_KEY)
+        } else {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites))
+        }
       } catch (error) {
         console.error('Error saving favorites:', error)
       }
@@ -104,6 +109,9 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     async function syncSourceAndLoad() {
       if (!user) {
         setCanUseNeon(false)
+        // When user signs out, revert to guest favorites from localStorage.
+        // This prevents leaking signed-in favorites into local guest storage.
+        setFavorites(safeReadFavoritesFromStorage())
         setLoading(false)
         return
       }
@@ -192,6 +200,15 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       cancelled = true
     }
   }, [user?.uid]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const clearAllLocal = useCallback(() => {
+    setFavorites([])
+    try {
+      localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // ignore
+    }
+  }, [])
 
   const isFavorite = useCallback(
     (favoriteKey: string): boolean => {
@@ -290,6 +307,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     addToFavorites,
     removeFromFavorites,
     toggleFavorite,
+    clearAllLocal,
     loading
   }
 

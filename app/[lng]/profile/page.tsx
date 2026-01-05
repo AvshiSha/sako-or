@@ -331,7 +331,7 @@ export default function ProfilePage() {
           headers: { Authorization: `Bearer ${token}` }
         })
 
-        const json = await res.json()
+        const json = await res.json().catch(() => ({}))
         if (!res.ok || !json || json.error) {
           throw new Error(json?.error || `HTTP ${res.status}`)
         }
@@ -376,7 +376,7 @@ export default function ProfilePage() {
           headers: { Authorization: `Bearer ${token}` }
         })
 
-        const json = await res.json()
+        const json = await res.json().catch(() => ({}))
         if (!res.ok || !json || json.error) {
           throw new Error(json?.error || t.failedToLoadOrders)
         }
@@ -408,7 +408,7 @@ export default function ProfilePage() {
           headers: { Authorization: `Bearer ${token}` }
         })
 
-        const json = await res.json()
+        const json = await res.json().catch(() => ({}))
         if (!res.ok || !json || json.error) {
           throw new Error(json?.error || t.failedToLoadPoints)
         }
@@ -522,7 +522,7 @@ export default function ProfilePage() {
         body: JSON.stringify(payload)
       })
 
-      const json = await res.json()
+      const json = await res.json().catch(() => ({}))
       if (!res.ok || !json || json.error) {
         throw new Error(json?.error || `HTTP ${res.status}`)
       }

@@ -48,7 +48,7 @@ export class CardComAPI {
       throw new Error(`CardCom API error: ${response.status} - ${errorText}`);
     }
 
-    const result: CreateLowProfileResponse = await response.json();
+    const result: CreateLowProfileResponse = await response.json().catch(() => ({}));
     
     if (result.ResponseCode !== 0) {
       throw new Error(`CardCom API error: ${result.ResponseCode} - ${result.Description}`);
@@ -80,7 +80,7 @@ export class CardComAPI {
       throw new Error(`CardCom API error: ${response.status} - ${errorText}`);
     }
 
-    const result: LowProfileResult = await response.json();
+    const result: LowProfileResult = await response.json().catch(() => ({}));
     return result;
   }
 
@@ -267,7 +267,7 @@ export async function getLowProfileStatus(lowProfileId: string): Promise<any> {
     throw new Error(`CardCom API error: ${response.status} ${response.statusText}`);
   }
 
-  const result = await response.json();
+  const result = await response.json().catch(() => ({}));
 
   return result;
 }

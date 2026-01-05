@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       console.log('[AUTH_CONTEXT] User synced to Neon successfully:', { 
         uid: firebaseUser.uid, 
         neonId: data.id 

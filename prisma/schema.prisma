@@ -15,7 +15,7 @@ model User {
   firebaseUid String? @unique @map("firebase_uid")
 
   email String? @unique
-  phone String?
+  phone String? @unique
 
   firstName String? @map("first_name")
   lastName  String? @map("last_name")
@@ -31,6 +31,9 @@ model User {
   emailVerified     Boolean   @default(false) @map("email_verified")
   passwordHash      String?   @map("password_hash")
   passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  
+  phoneVerifiedAt   DateTime? @map("phone_verified_at") @db.Timestamptz(6)
+  signupCompletedAt DateTime? @map("signup_completed_at") @db.Timestamptz(6)
 
   role          String  @default("USER")
   isNewsletter  Boolean @default(false) @map("is_newsletter")

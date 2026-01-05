@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 // Neon-only: subscribe/upsert into Postgres
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
+    const { email } = await request.json().catch(() => ({}))
 
     if (!email) {
       return NextResponse.json(

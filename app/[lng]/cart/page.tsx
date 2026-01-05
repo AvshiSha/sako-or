@@ -142,7 +142,7 @@ const loadCouponsFromStorage = useCallback((): string[] => {
   if (typeof window === 'undefined') return []
   try {
     const stored = localStorage.getItem(COUPON_STORAGE_KEY)
-    if (!stored) return []
+    if (!stored || !stored.trim()) return []
     const parsed = JSON.parse(stored)
     return Array.isArray(parsed) ? parsed.filter((code): code is string => typeof code === 'string') : []
   } catch (storageError) {
@@ -200,7 +200,7 @@ const applyCouponCode = useCallback(async (
         })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
       if (!response.ok || !data.success) {
         if (!options?.silent) {
           const message = data?.messages?.[lng] ??
@@ -292,7 +292,7 @@ const revalidateCouponCodes = useCallback(async (
         })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
       if (!response.ok || !data.success) {
         const message = data?.messages?.[lng] ?? couponStrings.invalid
         if (!options?.silent) {
@@ -459,7 +459,7 @@ useEffect(() => {
         })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
       if (response.ok && data.success) {
         await applyCouponCode(data.coupon.code, {
           presetResult: data as CouponValidationSuccess,

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found. Call /api/me/sync first.' },
+        { error: 'Profile not found. Please complete your profile first.' },
         { status: 404 }
       )
     }

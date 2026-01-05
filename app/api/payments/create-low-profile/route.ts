@@ -8,10 +8,11 @@ import { spendPointsForOrder } from '../../../../lib/points';
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateLowProfileRequest = await request.json();
+    const body: CreateLowProfileRequest = await request.json().catch(() => ({}));
     console.log('Payment request received:', JSON.stringify(body, null, 2));
 
     // Optional auth: if a Firebase bearer token is provided, link the order to that user.
+    // Only link to existing confirmed users - do NOT create partial users here.
     const authHeader = request.headers.get('authorization') || '';
     const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
     const bearerToken = tokenMatch?.[1] ?? null;
@@ -21,28 +22,20 @@ export async function POST(request: NextRequest) {
       try {
         const decoded = await adminAuth.verifyIdToken(bearerToken);
         const firebaseUid = decoded.uid;
-        const email = decoded.email ?? null;
-        const emailVerified = decoded.email_verified ?? false;
-        const now = new Date();
 
-        const user = await prisma.user.upsert({
+        // Read-only lookup: only link order to existing confirmed user
+        const user = await prisma.user.findUnique({
           where: { firebaseUid },
-          update: {
-            lastLoginAt: now,
-            ...(email ? { email } : {}),
-            emailVerified
-          },
-          create: {
-            firebaseUid,
-            email,
-            emailVerified,
-            authProvider: 'firebase',
-            role: 'USER',
-            lastLoginAt: now
-          }
+          select: { id: true, firstName: true, lastName: true, phone: true, language: true }
         });
 
-        userId = user.id;
+        // Only set userId if user exists and has completed profile (required fields present)
+        if (user && user.firstName && user.lastName && user.phone && user.language) {
+          userId = user.id;
+          console.log('[CREATE_LOW_PROFILE] Linked order to confirmed user:', userId);
+        } else {
+          console.log('[CREATE_LOW_PROFILE] User not confirmed or incomplete, treating as guest');
+        }
       } catch {
         // Treat invalid/expired token as guest checkout
         console.warn('[CREATE_LOW_PROFILE] Invalid bearer token, proceeding as guest');

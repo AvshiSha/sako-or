@@ -21,6 +21,7 @@ import {
   SelectInput,
   TextInput
 } from '@/app/components/profile/ProfileFormFields'
+import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
 
 type SyncResponse =
   | { ok: true; needsProfileCompletion: boolean }
@@ -35,10 +36,11 @@ const translations = {
     firstName: 'First Name',
     lastName: 'Last Name',
     email: 'Email Address',
+    confirmEmail: 'Confirm Email Address',
     password: 'Password',
     passwordPlaceholder: 'At least 6 characters',
     phone: 'Phone Number',
-    phonePlaceholder: '123-456-7890',
+    phonePlaceholder: '+972501234567',
     gender: 'Gender',
     male: 'Male',
     female: 'Female',
@@ -68,8 +70,12 @@ const translations = {
     firstNameRequired: 'First name is required',
     lastNameRequired: 'Last name is required',
     emailRequired: 'Email is required',
+    confirmEmailRequired: 'Please confirm your email',
+    emailInvalid: 'Email must look like name@example.com',
+    emailMismatch: 'Emails do not match. Please check and try again.',
     passwordRequired: 'Password must be at least 6 characters',
     phoneRequired: 'Phone number is required',
+    phoneInvalid: 'Enter a valid Israeli phone number: +972 followed by 8-9 digits (e.g., +972501234567)',
     languageRequired: 'Preferred language is required'
   },
   he: {
@@ -79,10 +85,11 @@ const translations = {
     firstName: 'שם פרטי',
     lastName: 'שם משפחה',
     email: 'כתובת אימייל',
+    confirmEmail: 'אימות כתובת אימייל',
     password: 'סיסמה',
     passwordPlaceholder: 'לפחות 6 תווים',
     phone: 'מספר טלפון',
-    phonePlaceholder: '050-123-4567',
+    phonePlaceholder: '972501234567+',
     gender: 'מגדר',
     male: 'זכר',
     female: 'נקבה',
@@ -112,8 +119,12 @@ const translations = {
     firstNameRequired: 'שם פרטי הוא חובה',
     lastNameRequired: 'שם משפחה הוא חובה',
     emailRequired: 'אימייל הוא חובה',
+    confirmEmailRequired: 'נא לאמת את האימייל',
+    emailInvalid: 'אימייל חייב להיות בפורמט name@example.com',
+    emailMismatch: 'האימיילים אינם זהים. בדקו ונסו שוב.',
     passwordRequired: 'סיסמה חייבת להיות לפחות 6 תווים',
     phoneRequired: 'מספר טלפון הוא חובה',
+    phoneInvalid: 'הזינו מספר ישראלי תקין: 972+ ואחריו 8-9 ספרות (לדוגמה: 972501234567+)',
     languageRequired: 'שפה מועדפת היא חובה'
   }
 }
@@ -137,9 +148,9 @@ export default function SignUpPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
+  const [confirmEmail, setConfirmEmail] = useState('')
   const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
-  const [countryCode, setCountryCode] = useState('+972')
   const [gender, setGender] = useState('')
   const [language, setLanguage] = useState('')
   const [addressStreet, setAddressStreet] = useState('')
@@ -150,6 +161,7 @@ export default function SignUpPage() {
   
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({})
   const [isSignedInWithGoogle, setIsSignedInWithGoogle] = useState(false)
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
@@ -167,20 +179,43 @@ export default function SignUpPage() {
   // #endregion
 
   // Validation
-  const requiredErrors = useMemo(() => {
+  const validationErrors = useMemo(() => {
+    const normalizeEmail = (v: string) => v.trim().toLowerCase()
+    const isValidEmail = (v: string) => /\S+@\S+\.\S+/.test(v)
+
     const errors: Record<string, string> = {}
     if (!firstName.trim()) errors.firstName = t.firstNameRequired
     if (!lastName.trim()) errors.lastName = t.lastNameRequired
-    if (!email.trim()) errors.email = t.emailRequired
+    if (!email.trim()) {
+      errors.email = t.emailRequired
+    } else if (!isValidEmail(normalizeEmail(email))) {
+      errors.email = t.emailInvalid
+    }
+    if (!isSignedInWithGoogle && showEmailForm) {
+      if (!confirmEmail.trim()) {
+        errors.confirmEmail = t.confirmEmailRequired
+      } else if (normalizeEmail(confirmEmail) !== normalizeEmail(email)) {
+        errors.confirmEmail = t.emailMismatch
+      }
+    }
     if (!isSignedInWithGoogle && password.length < 6) errors.password = t.passwordRequired
-    if (!phone.trim()) errors.phone = t.phoneRequired
+    if (!phone.trim()) {
+      errors.phone = t.phoneRequired
+    } else if (!isValidIsraelE164(normalizeIsraelE164(phone))) {
+      errors.phone = t.phoneInvalid
+    }
     if (!language.trim()) errors.language = t.languageRequired
     return errors
-  }, [firstName, lastName, email, password, phone, language, isSignedInWithGoogle, t])
+  }, [firstName, lastName, email, confirmEmail, password, phone, language, isSignedInWithGoogle, showEmailForm, t])
 
   const canSubmit = useMemo(() => {
-    return Object.keys(requiredErrors).length === 0 && !busy && (isSignedInWithGoogle || password.length >= 6)
-  }, [requiredErrors, busy, isSignedInWithGoogle, password])
+    return (
+      Object.keys(validationErrors).length === 0 &&
+      Object.keys(serverFieldErrors).length === 0 &&
+      !busy &&
+      (isSignedInWithGoogle || password.length >= 6)
+    )
+  }, [validationErrors, serverFieldErrors, busy, isSignedInWithGoogle, password])
 
   function formatAuthError(e: any, fallback: string) {
     const code = typeof e?.code === 'string' ? e.code : ''
@@ -223,55 +258,27 @@ export default function SignUpPage() {
     return (user.providerData || []).some((p) => p.providerId === 'google.com')
   }
 
-  async function syncToNeonWithProfile(user: User) {
-    // #region agent log
-    // #endregion
-    const token = await user.getIdToken()
-    
-    // First sync the user to Neon
-    const syncRes = await fetch('/api/me/sync', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` }
-    })
-
-    const syncJson = (await syncRes.json().catch(() => null)) as SyncResponse | null
-    if (!syncRes.ok || !syncJson || 'error' in syncJson) {
-      throw new Error((syncJson && 'error' in syncJson && syncJson.error) || `HTTP ${syncRes.status}`)
-    }
-
-    // Then update the profile with the form data
-    const payload = {
+  async function storeSignupDataAndRedirectToSmsVerify(user: User) {
+    // Store pending signup data in sessionStorage
+    const normalizedPhone = normalizeIsraelE164(phone) || ''
+    const pendingSignup = {
+      uid: user.uid,
       firstName: firstName.trim(),
       lastName: lastName.trim(),
-      phone: phone.trim(),
-      language: language === 'he' || language === 'en' ? language : undefined,
-      gender: gender ? gender : null,
-      addressStreet: addressStreet ? addressStreet : null,
-      addressStreetNumber: null,
-      addressFloor: null,
-      addressApt: addressApt ? addressApt : null,
+      phone: normalizedPhone,
+      language: language === 'he' || language === 'en' ? language : 'en',
+      gender: gender || undefined,
+      addressStreet: addressStreet || undefined,
+      addressStreetNumber: undefined,
+      addressFloor: undefined,
+      addressApt: addressApt || undefined,
       isNewsletter
     }
 
-    const profileRes = await fetch('/api/me/profile', {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
+    sessionStorage.setItem('pendingSignup', JSON.stringify(pendingSignup))
 
-    if (!profileRes.ok) {
-      const profileJson = await profileRes.json().catch(() => null)
-      throw new Error((profileJson && 'error' in profileJson && profileJson.error) || `HTTP ${profileRes.status}`)
-    }
-
-    // #region agent log
-    // #endregion
-    router.replace(`/${lng}/profile`)
-    // #region agent log
-    // #endregion
+    // Redirect to SMS verification page
+    router.push(`/${lng}/verify-sms`)
   }
 
   // Complete Google redirect sign-in (fallback when popups are blocked)
@@ -422,24 +429,54 @@ export default function SignUpPage() {
       firstName: true,
       lastName: true,
       email: true,
+      confirmEmail: !isSignedInWithGoogle && showEmailForm,
       password: !isSignedInWithGoogle,
       phone: true,
       language: true
     })
 
     // Check if there are validation errors
-    if (Object.keys(requiredErrors).length > 0) {
+    if (Object.keys(validationErrors).length > 0) {
       return
     }
 
     setBusy(true)
     setError(null)
+    setServerFieldErrors({})
     try {
       let user: User | null = firebaseUser
 
+      const normalizedEmail = email.trim().toLowerCase()
+      const normalizedPhone = normalizeIsraelE164(phone)
+
+      if (!normalizedPhone) {
+        setError('Invalid phone number format')
+        return
+      }
+
+      // Precheck duplicates before creating/syncing user
+      const precheckRes = await fetch('/api/auth/precheck-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail, phone: normalizedPhone })
+      })
+      const precheckJson = (await precheckRes.json().catch(() => null)) as
+        | { ok: true }
+        | { ok: false; errors?: Record<string, string>; error?: string }
+        | null
+
+      if (!precheckRes.ok) {
+        if (precheckJson && typeof precheckJson === 'object' && 'errors' in precheckJson && precheckJson.errors) {
+          setServerFieldErrors(precheckJson.errors)
+          return
+        }
+        setError('Unable to validate email/phone. Please try again.')
+        return
+      }
+
       // If not already signed in with Google, create/sign in with email
       if (!isSignedInWithGoogle && !firebaseUser) {
-        const cred = await createUserWithEmailAndPassword(auth, email.trim(), password)
+        const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
         user = cred.user
       }
 
@@ -447,7 +484,7 @@ export default function SignUpPage() {
         throw new Error('No user available')
       }
 
-      await syncToNeonWithProfile(user)
+      await storeSignupDataAndRedirectToSmsVerify(user)
     } catch (e: any) {
       setError(formatAuthError(e, 'Failed to create account'))
     } finally {
@@ -465,6 +502,7 @@ export default function SignUpPage() {
       setIsSignedInWithGoogle(false)
       setShowEmailForm(false)
       setEmail('')
+      setConfirmEmail('')
       setFirstName('')
       setLastName('')
       setPhone('')
@@ -475,8 +513,39 @@ export default function SignUpPage() {
       setCity('')
       setPostalCode('')
       setIsNewsletter(false)
+      setServerFieldErrors({})
     } catch (e: any) {
       setError(formatAuthError(e, 'Sign out failed'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleCancelSignup() {
+    if (!firebaseUser) return
+
+    const confirmMessage = lng === 'he' 
+      ? 'האם אתם בטוחים? פעולה זו תמחק את החשבון שלכם ותצטרכו להירשם מחדש מההתחלה.'
+      : 'Are you sure? This will delete your account and you\'ll need to sign up again from scratch.'
+    
+    const confirmed = window.confirm(confirmMessage)
+    if (!confirmed) return
+
+    setBusy(true)
+    setError(null)
+
+    try {
+      const token = await firebaseUser.getIdToken()
+      await fetch('/api/auth/cancel-signup', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      // Sign out and redirect to home
+      await logout()
+      router.replace(`/${lng}`)
+    } catch (e: any) {
+      setError(formatAuthError(e, 'Failed to cancel signup'))
     } finally {
       setBusy(false)
     }
@@ -573,7 +642,7 @@ export default function SignUpPage() {
               <div className={profileTheme.grid}>
                 <Field
                   label={t.firstName}
-                  error={touched.firstName ? requiredErrors.firstName : null}
+                  error={touched.firstName ? validationErrors.firstName : null}
                 >
                   <TextInput
                     value={firstName}
@@ -585,7 +654,7 @@ export default function SignUpPage() {
                   />
                 </Field>
 
-                <Field label={t.lastName} error={touched.lastName ? requiredErrors.lastName : null}>
+                <Field label={t.lastName} error={touched.lastName ? validationErrors.lastName : null}>
                   <TextInput
                     value={lastName}
                     onChange={(v) => {
@@ -597,13 +666,25 @@ export default function SignUpPage() {
                 </Field>
 
                 <div className="sm:col-span-2">
-                  <Field label={t.email} error={touched.email ? requiredErrors.email : null}>
+                  <Field
+                    label={t.email}
+                    error={
+                      touched.email
+                        ? validationErrors.email || serverFieldErrors.email || null
+                        : null
+                    }
+                  >
                     <div className="relative">
                       <TextInput
                         value={email}
                         onChange={(v) => {
                           setTouched((prev) => ({ ...prev, email: true }))
                           setEmail(v)
+                          setServerFieldErrors((prev) => {
+                            const next = { ...prev }
+                            delete next.email
+                            return next
+                          })
                         }}
                         disabled={isSignedInWithGoogle}
                         placeholder=""
@@ -625,7 +706,37 @@ export default function SignUpPage() {
 
                 {!isSignedInWithGoogle && showEmailForm && (
                   <div className="sm:col-span-2">
-                    <Field label={t.password} error={touched.password ? requiredErrors.password : null}>
+                    <Field
+                      label={t.confirmEmail}
+                      error={
+                        touched.confirmEmail
+                          ? validationErrors.confirmEmail || serverFieldErrors.confirmEmail || null
+                          : null
+                      }
+                    >
+                      <TextInput
+                        value={confirmEmail}
+                        onChange={(v) => {
+                          setTouched((prev) => ({ ...prev, confirmEmail: true }))
+                          setConfirmEmail(v)
+                          setServerFieldErrors((prev) => {
+                            const next = { ...prev }
+                            delete next.confirmEmail
+                            return next
+                          })
+                        }}
+                        placeholder=""
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                {!isSignedInWithGoogle && showEmailForm && (
+                  <div className="sm:col-span-2">
+                    <Field
+                      label={t.password}
+                      error={touched.password ? validationErrors.password : null}
+                    >
                       <input
                         type="password"
                         value={password}
@@ -641,27 +752,28 @@ export default function SignUpPage() {
                 )}
 
                 <div className="sm:col-span-2">
-                  <Field label={t.phone} error={touched.phone ? requiredErrors.phone : null}>
-                    <div className="flex gap-2">
-                      <select
-                        value={countryCode}
-                        onChange={(e) => setCountryCode(e.target.value)}
-                        className="mt-1 w-28 flex-shrink-0 rounded-md border border-slate-200 bg-white px-3 py-2 pr-8 text-sm text-slate-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-200 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 fill=%27none%27 viewBox=%270 0 20 20%27%3E%3Cpath stroke=%27%236b7280%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%271.5%27 d=%27M6 8l4 4 4-4%27/%3E%3C/svg%3E')] bg-[length:1.25em_1.25em] bg-[right_0.5rem_center] bg-no-repeat"
-                      >
-                        <option value="+1">🇺🇸 +1</option>
-                        <option value="+972">🇮🇱 +972</option>
-                        <option value="+44">🇬🇧 +44</option>
-                      </select>
-                      <TextInput
-                        value={phone}
-                        onChange={(v) => {
-                          setTouched((prev) => ({ ...prev, phone: true }))
-                          setPhone(v)
-                        }}
-                        placeholder={t.phonePlaceholder}
-                        inputMode="tel"
-                      />
-                    </div>
+                  <Field
+                    label={t.phone}
+                    error={
+                      touched.phone
+                        ? validationErrors.phone || serverFieldErrors.phone || null
+                        : null
+                    }
+                  >
+                    <TextInput
+                      value={phone}
+                      onChange={(v) => {
+                        setTouched((prev) => ({ ...prev, phone: true }))
+                        setPhone(v)
+                        setServerFieldErrors((prev) => {
+                          const next = { ...prev }
+                          delete next.phone
+                          return next
+                        })
+                      }}
+                      placeholder={t.phonePlaceholder}
+                      inputMode="tel"
+                    />
                   </Field>
                 </div>
               </div>
@@ -688,7 +800,7 @@ export default function SignUpPage() {
                 <div className="sm:col-span-2">
                   <Field
                     label={t.preferredLanguage}
-                    error={touched.language ? requiredErrors.language : null}
+                  error={touched.language ? validationErrors.language : null}
                   >
                     <SelectInput
                       value={language}
@@ -765,6 +877,17 @@ export default function SignUpPage() {
               >
                 {busy ? t.saving : t.saveProfile}
               </button>
+              
+              {(isSignedInWithGoogle || firebaseUser) && (
+                <button
+                  type="button"
+                  onClick={handleCancelSignup}
+                  disabled={busy}
+                  className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {lng === 'he' ? 'ביטול הרשמה' : 'Cancel Signup'}
+                </button>
+              )}
             </div>
           </div>
         )}

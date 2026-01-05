@@ -3,6 +3,16 @@ import { z } from 'zod'
 import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
 
+function normalizeIsraeliLocalPhoneDigits(raw: string) {
+  return raw.trim().replace(/\D/g, '')
+}
+
+function isValidIsraeliLocalPhoneDigits(digits: string) {
+  if (digits.startsWith('972')) return false
+  if (!digits.startsWith('0')) return false
+  return digits.length === 9 || digits.length === 10
+}
+
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization') || ''
   const match = authHeader.match(/^Bearer\s+(.+)$/i)
@@ -21,7 +31,16 @@ function computeNeedsProfileCompletion(user: {
 const ProfilePatchSchema = z.object({
   firstName: z.string().trim().min(1).max(50).optional(),
   lastName: z.string().trim().min(1).max(50).optional(),
-  phone: z.string().trim().min(6).max(30).optional(),
+  phone: z
+    .string()
+    .trim()
+    .min(1)
+    .max(30)
+    .transform((raw) => normalizeIsraeliLocalPhoneDigits(raw))
+    .refine((digits) => isValidIsraeliLocalPhoneDigits(digits), {
+      message: 'Invalid phone. Use an Israeli local number starting with 0 (9–10 digits), no +972.'
+    })
+    .optional(),
   language: z.enum(['en', 'he']).optional(),
   gender: z.string().trim().max(30).optional().nullable(),
 
@@ -52,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'User not found. Call /api/me/sync first.' },
+        { error: 'Profile not found. Please complete your profile first.' },
         { status: 404 }
       )
     }
@@ -130,10 +149,73 @@ export async function PATCH(request: NextRequest) {
       ...(data.isNewsletter !== undefined ? { isNewsletter: data.isNewsletter } : {})
     }
 
-    const user = await prisma.user.update({
-      where: { firebaseUid },
-      data: updateData
+    // Check if user exists in DB
+    const existingUser = await prisma.user.findUnique({
+      where: { firebaseUid }
     })
+
+    let user
+    if (!existingUser) {
+      // User doesn't exist yet - this is their first profile save (onboarding)
+      // Validate that all required fields are present
+      if (!data.firstName || !data.lastName || !data.phone || !data.language) {
+        return NextResponse.json(
+          {
+            error: 'Required fields missing. firstName, lastName, phone, and language are required.',
+            issues: [
+              ...(!data.firstName ? [{ path: ['firstName'], message: 'First name is required' }] : []),
+              ...(!data.lastName ? [{ path: ['lastName'], message: 'Last name is required' }] : []),
+              ...(!data.phone ? [{ path: ['phone'], message: 'Phone is required' }] : []),
+              ...(!data.language ? [{ path: ['language'], message: 'Language is required' }] : [])
+            ]
+          },
+          { status: 400 }
+        )
+      }
+
+      // Get additional fields from Firebase for the initial user creation
+      const firebaseUser = await adminAuth.getUser(firebaseUid)
+      const emailRaw = firebaseUser.email ?? decoded.email ?? null
+      const email = emailRaw ? emailRaw.trim().toLowerCase() : null
+
+      const providerIds =
+        firebaseUser.providerData?.map((p) => p.providerId).filter(Boolean) ?? []
+      const authProvider =
+        providerIds.length > 0
+          ? providerIds[0]
+          : ((decoded as any)?.firebase?.sign_in_provider as string | undefined) ?? 'firebase'
+
+      const emailVerified = firebaseUser.emailVerified ?? (decoded.email_verified ?? false)
+
+      // Create the user with all required fields
+      user = await prisma.user.create({
+        data: {
+          firebaseUid,
+          email,
+          emailVerified,
+          authProvider,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          language: data.language,
+          gender: normalizeNullable(data.gender),
+          addressStreet: normalizeNullable(data.addressStreet),
+          addressStreetNumber: normalizeNullable(data.addressStreetNumber),
+          addressFloor: normalizeNullable(data.addressFloor),
+          addressApt: normalizeNullable(data.addressApt),
+          isNewsletter: data.isNewsletter ?? false,
+          role: 'USER',
+          lastLoginAt: new Date(),
+          isDelete: false
+        }
+      })
+    } else {
+      // User exists - update with provided fields
+      user = await prisma.user.update({
+        where: { firebaseUid },
+        data: updateData
+      })
+    }
 
     const needsProfileCompletion = computeNeedsProfileCompletion({
       firstName: user.firstName,
@@ -147,6 +229,28 @@ export async function PATCH(request: NextRequest) {
       { status: 200 }
     )
   } catch (error: any) {
+    // Prisma unique constraint violation
+    if (error?.code === 'P2002') {
+      const target = error?.meta?.target
+      const targetStr = Array.isArray(target) ? target.join(',') : String(target ?? '')
+      if (targetStr.includes('phone')) {
+        return NextResponse.json(
+          { error: 'Phone number is already in use' },
+          { status: 409 }
+        )
+      }
+      if (targetStr.includes('email')) {
+        return NextResponse.json(
+          { error: 'Email is already in use' },
+          { status: 409 }
+        )
+      }
+      return NextResponse.json(
+        { error: 'Conflict: unique constraint violation' },
+        { status: 409 }
+      )
+    }
+
     console.error('[ME_PROFILE_PATCH_ERROR]', error)
     const message =
       typeof error?.message === 'string'

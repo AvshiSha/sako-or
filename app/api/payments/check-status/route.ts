@@ -6,7 +6,7 @@ import { awardPointsForOrder } from '../../../../lib/points';
 
 export async function POST(request: NextRequest) {
   try {
-    const { orderId } = await request.json();
+    const { orderId } = await request.json().catch(() => ({}));
 
     if (!orderId) {
       return NextResponse.json(

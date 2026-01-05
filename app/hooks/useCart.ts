@@ -123,7 +123,11 @@ export function useCart(): CartHook {
         const normalizedItems = items.map(item => normalizeCartItem(item))
         const itemsToPersist = areItemArraysEqual(normalizedItems, items) ? items : normalizedItems
 
-        localStorage.setItem('cart', JSON.stringify(itemsToPersist))
+        if (itemsToPersist.length === 0) {
+          localStorage.removeItem('cart')
+        } else {
+          localStorage.setItem('cart', JSON.stringify(itemsToPersist))
+        }
         // Dispatch custom event to notify other components
         window.dispatchEvent(new CustomEvent('cartUpdated', { detail: itemsToPersist }))
       } catch (error) {

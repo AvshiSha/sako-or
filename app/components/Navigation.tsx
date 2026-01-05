@@ -40,7 +40,8 @@ const translations = {
     allMen: 'All Men',
     categories: 'Categories',
     allProducts: 'Show All',
-    signIn: 'Sign in'
+    signIn: 'Sign in',
+    myProfile: 'My Profile'
   },
   he: {
     home: 'בית',
@@ -52,7 +53,8 @@ const translations = {
     allMen: 'לכל קולקצית הגברים',
     categories: 'קטגוריות',
     allProducts: 'לכל המוצרים',
-    signIn: 'התחברות'
+    signIn: 'התחברות',
+    myProfile: 'הפרופיל שלי'
   }
 }
 
@@ -331,8 +333,16 @@ export default function Navigation({ lng }: { lng: string }) {
             <Link
                 href={user ? `/${lng}/profile` : `/${lng}/signin`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-                aria-label={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
-                title={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
+                aria-label={
+                  user
+                    ? translations[lng as keyof typeof translations].myProfile
+                    : translations[lng as keyof typeof translations].signIn
+                }
+                title={
+                  user
+                    ? translations[lng as keyof typeof translations].myProfile
+                    : translations[lng as keyof typeof translations].signIn
+                }
               >
                 <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" />
               </Link>
@@ -528,8 +538,16 @@ export default function Navigation({ lng }: { lng: string }) {
               <Link
                 href={user ? `/${lng}/profile` : `/${lng}/signin`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-                aria-label={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
-                title={user ? 'My Profile' : translations[lng as keyof typeof translations].signIn}
+                aria-label={
+                  user
+                    ? translations[lng as keyof typeof translations].myProfile
+                    : translations[lng as keyof typeof translations].signIn
+                }
+                title={
+                  user
+                    ? translations[lng as keyof typeof translations].myProfile
+                    : translations[lng as keyof typeof translations].signIn
+                }
               >
                 <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" />
               </Link>

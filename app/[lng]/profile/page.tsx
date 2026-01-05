@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '@/app/contexts/AuthContext'
 import ProfileShell from '@/app/components/profile/ProfileShell'
 import { profileTheme } from '@/app/components/profile/profileTheme'
+import { cn } from '@/lib/utils'
 import {
   Checkbox,
   Field,
@@ -15,8 +16,10 @@ import {
   TextInput
 } from '@/app/components/profile/ProfileFormFields'
 import { useFavorites } from '@/app/hooks/useFavorites'
+import { useCart } from '@/app/hooks/useCart'
 import { productService, Product } from '@/lib/firebase'
 import { parseFavoriteKey } from '@/lib/favorites'
+import { clearGuestStateStorage } from '@/lib/guestReset'
 import {
   PencilIcon,
   CheckIcon,
@@ -24,7 +27,8 @@ import {
   ShoppingBagIcon,
   HeartIcon,
   SparklesIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 
@@ -33,6 +37,167 @@ interface FavoriteItem extends Product {
   favoriteBaseSku: string
   favoriteColorSlug?: string
 }
+
+const translations = {
+  en: {
+    pageTitle: 'My Profile',
+    loading: 'Loading…',
+    welcomeBack: (name: string) => `Welcome back, ${name}!`,
+    userFallback: 'User',
+    unableToLoadProfile: 'Unable to load profile',
+    pointsBalance: 'Points Balance',
+    personalInformation: 'Personal Information',
+    edit: 'Edit',
+    cancel: 'Cancel',
+    save: 'Save',
+    saving: 'Saving…',
+    firstName: 'First Name',
+    firstNamePlaceholder: 'First name',
+    lastName: 'Last Name',
+    lastNamePlaceholder: 'Last name',
+    emailAddress: 'Email Address',
+    emailPlaceholder: 'Email',
+    cannotBeChanged: 'Cannot be changed',
+    phoneNumber: 'Phone Number',
+    phonePlaceholder: '+972...',
+    preferredLanguage: 'Preferred Language',
+    selectLanguage: 'Select Language',
+    english: 'English',
+    hebrew: 'Hebrew',
+    gender: 'Gender',
+    optional: 'Optional',
+    male: 'Male',
+    female: 'Female',
+    other: 'Other',
+    preferNotToSay: 'Prefer not to say',
+    address: 'Address',
+    streetAddress: 'Street Address',
+    streetAddressPlaceholder: 'e.g., Ben Yehuda',
+    streetNumber: 'Street Number',
+    streetNumberPlaceholder: 'e.g., 12',
+    floor: 'Floor',
+    floorPlaceholder: 'e.g., 3',
+    apt: 'Apt',
+    aptPlaceholder: 'e.g., 8',
+    newsletterSubscription: 'Newsletter Subscription',
+    newsletterDescription: 'Receive updates, offers, and news via email.',
+    recentOrders: 'Recent Orders',
+    viewAll: 'View All',
+    noOrdersYet: 'No orders yet',
+    startShopping: 'Start Shopping',
+    orderNumber: (n: string) => `Order #${n}`,
+    itemsCount: (n: number) => `${n} item${n === 1 ? '' : 's'}`,
+    pointsHistory: 'Points History',
+    pointsHelp: 'Earn 5% back in points on every purchase. Use points towards future orders!',
+    noPointsActivityYet: 'No points activity yet',
+    earnedPoints: 'Earned Points',
+    spentPoints: 'Spent Points',
+    favorites: 'Favorites',
+    viewAllWithCount: (n: number) => `View All (${n})`,
+    noFavoritesYet: 'No favorites yet',
+    browseProducts: 'Browse Products',
+    removeFromFavorites: 'Remove from favorites',
+    accountActions: 'Account Actions',
+    logOut: 'Log out',
+    signInDifferentAccount: 'Sign in with a different account',
+    logoutInfo:
+      'Logging out will clear your cart, favorites, and coupons on this device. Your order history and points stay in your account and will be available when you sign in again.',
+    closeDialog: 'Close dialog',
+    logoutDialogTitle: 'Log out and continue as guest?',
+    logoutDialogDescription:
+      'This will clear your cart, favorites, and coupons on this device. Your profile, order history, and points stay in your account and will be available when you sign in again.',
+    // Validation
+    firstNameRequired: 'First name is required',
+    lastNameRequired: 'Last name is required',
+    phoneRequired: 'Phone is required',
+    languageRequired: 'Language is required',
+    memberSince: (value: string) => `Member since ${value}`
+    ,
+    failedToLoadOrders: 'Failed to load orders',
+    failedToLoadPoints: 'Failed to load points',
+    unableToSaveProfile: 'Unable to save profile',
+    failedToLogout: 'Failed to log out. Please try again.'
+  },
+  he: {
+    pageTitle: 'הפרופיל שלי',
+    loading: 'טוען…',
+    welcomeBack: (name: string) => `ברוך שובך, ${name}!`,
+    userFallback: 'משתמש',
+    unableToLoadProfile: 'לא ניתן לטעון את הפרופיל',
+    pointsBalance: 'יתרת נקודות',
+    personalInformation: 'מידע אישי',
+    edit: 'עריכה',
+    cancel: 'ביטול',
+    save: 'שמירה',
+    saving: 'שומר…',
+    firstName: 'שם פרטי',
+    firstNamePlaceholder: 'שם פרטי',
+    lastName: 'שם משפחה',
+    lastNamePlaceholder: 'שם משפחה',
+    emailAddress: 'אימייל',
+    emailPlaceholder: 'אימייל',
+    cannotBeChanged: 'לא ניתן לשינוי',
+    phoneNumber: 'מספר טלפון',
+    phonePlaceholder: '+972...',
+    preferredLanguage: 'שפה מועדפת',
+    selectLanguage: 'בחר שפה',
+    english: 'אנגלית',
+    hebrew: 'עברית',
+    gender: 'מגדר',
+    optional: 'אופציונלי',
+    male: 'זכר',
+    female: 'נקבה',
+    other: 'אחר',
+    preferNotToSay: 'מעדיף/ה לא לציין',
+    address: 'כתובת',
+    streetAddress: 'רחוב',
+    streetAddressPlaceholder: 'לדוגמה, בן יהודה',
+    streetNumber: 'מספר',
+    streetNumberPlaceholder: 'לדוגמה, 12',
+    floor: 'קומה',
+    floorPlaceholder: 'לדוגמה, 3',
+    apt: 'דירה',
+    aptPlaceholder: 'לדוגמה, 8',
+    newsletterSubscription: 'הרשמה לניוזלטר',
+    newsletterDescription: 'קבלו עדכונים, מבצעים וחדשות במייל.',
+    recentOrders: 'הזמנות אחרונות',
+    viewAll: 'צפה בהכל',
+    noOrdersYet: 'אין הזמנות עדיין',
+    startShopping: 'התחל לקנות',
+    orderNumber: (n: string) => `הזמנה #${n}`,
+    itemsCount: (n: number) => `${n} פריט${n === 1 ? '' : 'ים'}`,
+    pointsHistory: 'היסטוריית נקודות',
+    pointsHelp: 'צברו 5% בחזרה כנקודות על כל רכישה. השתמשו בנקודות להזמנות עתידיות!',
+    noPointsActivityYet: 'אין פעילות נקודות עדיין',
+    earnedPoints: 'נקודות שנצברו',
+    spentPoints: 'נקודות שנוצלו',
+    favorites: 'מועדפים',
+    viewAllWithCount: (n: number) => `צפה בהכל (${n})`,
+    noFavoritesYet: 'אין מועדפים עדיין',
+    browseProducts: 'עיינו במוצרים',
+    removeFromFavorites: 'הסר מהמועדפים',
+    accountActions: 'פעולות חשבון',
+    logOut: 'התנתקות',
+    signInDifferentAccount: 'התחבר עם חשבון אחר',
+    logoutInfo:
+      'התנתקות תנקה את העגלה, המועדפים והקופונים במכשיר זה. היסטוריית ההזמנות והנקודות נשמרות בחשבון ויהיו זמינות כשתתחברו שוב.',
+    closeDialog: 'סגור חלון',
+    logoutDialogTitle: 'להתנתק ולהמשיך כאורח?',
+    logoutDialogDescription:
+      'זה ינקה את העגלה, המועדפים והקופונים במכשיר זה. הפרופיל, היסטוריית ההזמנות והנקודות נשמרים בחשבון ויהיו זמינים כשתתחברו שוב.',
+    // Validation
+    firstNameRequired: 'שם פרטי הוא חובה',
+    lastNameRequired: 'שם משפחה הוא חובה',
+    phoneRequired: 'מספר טלפון הוא חובה',
+    languageRequired: 'שפה היא חובה',
+    memberSince: (value: string) => `חבר מאז ${value}`
+    ,
+    failedToLoadOrders: 'לא ניתן לטעון הזמנות',
+    failedToLoadPoints: 'לא ניתן לטעון נקודות',
+    unableToSaveProfile: 'לא ניתן לשמור את הפרופיל',
+    failedToLogout: 'ההתנתקות נכשלה. נסו שוב.'
+  }
+} as const
 
 type ApiUser = {
   id: string
@@ -93,9 +258,12 @@ export default function ProfilePage() {
   const router = useRouter()
   const params = useParams()
   const lng = (params?.lng as string) || 'en'
+  const t = (translations as any)[lng] || translations.en
+  const locale = lng === 'he' ? 'he-IL' : 'en-US'
 
-  const { user: firebaseUser, loading: authLoading } = useAuth()
-  const { favorites: favoriteKeys, toggleFavorite } = useFavorites()
+  const { user: firebaseUser, loading: authLoading, logout } = useAuth()
+  const { favorites: favoriteKeys, toggleFavorite, clearAllLocal: clearFavorites } = useFavorites()
+  const { clearCart } = useCart()
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -127,20 +295,28 @@ export default function ProfilePage() {
 
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
+  // Logout state
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const isLoggingOutRef = useRef(false)
+  const cancelLogoutButtonRef = useRef<HTMLButtonElement | null>(null)
+
   const requiredErrors = useMemo(() => {
     const errors: Record<string, string> = {}
-    if (!firstName.trim()) errors.firstName = 'First name is required'
-    if (!lastName.trim()) errors.lastName = 'Last name is required'
-    if (!phone.trim()) errors.phone = 'Phone is required'
-    if (!language.trim()) errors.language = 'Language is required'
+    if (!firstName.trim()) errors.firstName = t.firstNameRequired
+    if (!lastName.trim()) errors.lastName = t.lastNameRequired
+    if (!phone.trim()) errors.phone = t.phoneRequired
+    if (!language.trim()) errors.language = t.languageRequired
     return errors
-  }, [firstName, lastName, phone, language])
+  }, [firstName, lastName, phone, language, t])
 
   // Load user profile
   useEffect(() => {
     if (authLoading) return
     if (!firebaseUser) {
-      router.replace(`/${lng}/signin`)
+      // Don't redirect to signin if we're in the process of logging out to guest mode
+      if (!isLoggingOutRef.current) {
+        router.replace(`/${lng}/signin`)
+      }
       return
     }
 
@@ -175,7 +351,7 @@ export default function ProfilePage() {
         setAddressApt(json.user.addressApt ?? '')
         setIsNewsletter(Boolean(json.user.isNewsletter))
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Unable to load profile')
+        if (!cancelled) setError(e?.message || t.unableToLoadProfile)
       } finally {
         if (!cancelled) setBusy(false)
       }
@@ -202,7 +378,7 @@ export default function ProfilePage() {
 
         const json = await res.json()
         if (!res.ok || !json || json.error) {
-          throw new Error(json?.error || 'Failed to load orders')
+          throw new Error(json?.error || t.failedToLoadOrders)
         }
 
         if (!cancelled) setOrders(json.orders || [])
@@ -234,7 +410,7 @@ export default function ProfilePage() {
 
         const json = await res.json()
         if (!res.ok || !json || json.error) {
-          throw new Error(json?.error || 'Failed to load points')
+          throw new Error(json?.error || t.failedToLoadPoints)
         }
 
         if (!cancelled) setPointsHistory(json.pointsHistory || [])
@@ -354,7 +530,7 @@ export default function ProfilePage() {
       setLoadedUser(json.user)
       setIsEditing(false)
     } catch (e: any) {
-      setError(e?.message || 'Unable to save profile')
+      setError(e?.message || t.unableToSaveProfile)
     } finally {
       setBusy(false)
     }
@@ -377,9 +553,46 @@ export default function ProfilePage() {
     setError(null)
   }
 
+  async function handleLogoutToGuest() {
+    setShowLogoutConfirm(false)
+    isLoggingOutRef.current = true
+    
+    try {
+      // 1. Clear React state for favorites and cart (this will also trigger localStorage removal)
+      clearFavorites()
+      clearCart()
+      
+      // 2. Clear remaining localStorage (coupons, etc.)
+      clearGuestStateStorage()
+      
+      // 3. Sign out from Firebase
+      await logout()
+      
+      // 4. Redirect to home as guest
+      router.replace(`/${lng}`)
+    } catch (error) {
+      console.error('Error during logout:', error)
+      isLoggingOutRef.current = false
+      setError(t.failedToLogout)
+    }
+  }
+
+  // Basic dialog UX: ESC closes, focus cancel on open
+  useEffect(() => {
+    if (!showLogoutConfirm) return
+
+    cancelLogoutButtonRef.current?.focus()
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowLogoutConfirm(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [showLogoutConfirm])
+
   if (authLoading || !loadedUser) {
     return (
-      <ProfileShell title="My Profile" subtitle="Loading...">
+      <ProfileShell title={t.pageTitle} subtitle={t.loading}>
         <div className="animate-pulse space-y-4">
           <div className="h-8 bg-gray-200 rounded w-3/4"></div>
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
@@ -388,13 +601,16 @@ export default function ProfilePage() {
     )
   }
 
-  const memberSince = new Date(loadedUser.createdAt).toLocaleDateString('en-US', {
+  const memberSince = new Date(loadedUser.createdAt).toLocaleDateString(locale, {
     month: 'long',
     year: 'numeric'
   })
 
   return (
-    <ProfileShell title="My Profile" subtitle={`Welcome back, ${firstName || 'User'}!`}>
+    <ProfileShell
+      title={t.pageTitle}
+      subtitle={t.welcomeBack(firstName || t.userFallback)}
+    >
       <div className="space-y-8">
         {/* Profile Header */}
         <div className={profileTheme.section}>
@@ -406,11 +622,11 @@ export default function ProfilePage() {
               <p className="text-sm text-gray-500">{email}</p>
               <p className="text-xs text-gray-400 flex items-center mt-1">
                 <CalendarIcon className="h-4 w-4 mr-1" />
-                Member since {memberSince}
+                {t.memberSince(memberSince)}
               </p>
             </div>
             <div className="text-right">
-              <div className="text-sm text-gray-500">Points Balance</div>
+              <div className="text-sm text-gray-500">{t.pointsBalance}</div>
               <div className="text-3xl font-bold text-indigo-600 flex items-center">
                 <SparklesIcon className="h-6 w-6 mr-1" />
                 {loadedUser.pointsBalance}
@@ -428,14 +644,14 @@ export default function ProfilePage() {
         {/* Personal Information */}
         <div className={profileTheme.section}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={profileTheme.sectionTitle}>Personal Information</h3>
+            <h3 className={profileTheme.sectionTitle}>{t.personalInformation}</h3>
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
                 className="flex items-center text-sm text-indigo-600 hover:text-indigo-700"
               >
                 <PencilIcon className="h-4 w-4 mr-1" />
-                Edit
+                {t.edit}
               </button>
             ) : (
               <div className="flex gap-2">
@@ -445,7 +661,7 @@ export default function ProfilePage() {
                   className="flex items-center text-sm text-gray-600 hover:text-gray-700"
                 >
                   <XMarkIcon className="h-4 w-4 mr-1" />
-                  Cancel
+                  {t.cancel}
                 </button>
                 <button
                   onClick={handleSaveProfile}
@@ -453,7 +669,7 @@ export default function ProfilePage() {
                   className="flex items-center text-sm text-green-600 hover:text-green-700 disabled:opacity-50"
                 >
                   <CheckIcon className="h-4 w-4 mr-1" />
-                  {busy ? 'Saving...' : 'Save'}
+                  {busy ? t.saving : t.save}
                 </button>
               </div>
             )}
@@ -461,7 +677,7 @@ export default function ProfilePage() {
 
           <div className={profileTheme.grid}>
             <Field
-              label="First Name"
+              label={t.firstName}
               error={touched.firstName ? requiredErrors.firstName : null}
             >
               <TextInput
@@ -471,11 +687,11 @@ export default function ProfilePage() {
                   setFirstName(v)
                 }}
                 disabled={!isEditing}
-                placeholder="First name"
+                placeholder={t.firstNamePlaceholder}
               />
             </Field>
 
-            <Field label="Last Name" error={touched.lastName ? requiredErrors.lastName : null}>
+            <Field label={t.lastName} error={touched.lastName ? requiredErrors.lastName : null}>
               <TextInput
                 value={lastName}
                 onChange={(v) => {
@@ -483,15 +699,15 @@ export default function ProfilePage() {
                   setLastName(v)
                 }}
                 disabled={!isEditing}
-                placeholder="Last name"
+                placeholder={t.lastNamePlaceholder}
               />
             </Field>
 
-            <Field label="Email Address" hint="Cannot be changed">
-              <TextInput value={email} onChange={() => {}} disabled placeholder="Email" />
+            <Field label={t.emailAddress} hint={t.cannotBeChanged}>
+              <TextInput value={email} onChange={() => {}} disabled placeholder={t.emailPlaceholder} />
             </Field>
 
-            <Field label="Phone Number" error={touched.phone ? requiredErrors.phone : null}>
+            <Field label={t.phoneNumber} error={touched.phone ? requiredErrors.phone : null}>
               <TextInput
                 value={phone}
                 onChange={(v) => {
@@ -499,13 +715,13 @@ export default function ProfilePage() {
                   setPhone(v)
                 }}
                 disabled={!isEditing}
-                placeholder="+972..."
+                placeholder={t.phonePlaceholder}
                 inputMode="tel"
               />
             </Field>
 
             <Field
-              label="Preferred Language"
+              label={t.preferredLanguage}
               error={touched.language ? requiredErrors.language : null}
             >
               <SelectInput
@@ -515,25 +731,25 @@ export default function ProfilePage() {
                   setLanguage(v)
                 }}
                 disabled={!isEditing}
-                placeholder="Select Language"
+                placeholder={t.selectLanguage}
                 options={[
-                  { value: 'en', label: 'English' },
-                  { value: 'he', label: 'Hebrew' }
+                  { value: 'en', label: t.english },
+                  { value: 'he', label: t.hebrew }
                 ]}
               />
             </Field>
 
             <div className="sm:col-span-2">
-              <Field label="Gender" hint="Optional">
+              <Field label={t.gender} hint={t.optional}>
                 <RadioGroup
                   value={gender}
                   onChange={setGender}
                   disabled={!isEditing}
                   options={[
-                    { value: 'Male', label: 'Male' },
-                    { value: 'Female', label: 'Female' },
-                    { value: 'Other', label: 'Other' },
-                    { value: 'Prefer not to say', label: 'Prefer not to say' }
+                    { value: 'Male', label: t.male },
+                    { value: 'Female', label: t.female },
+                    { value: 'Other', label: t.other },
+                    { value: 'Prefer not to say', label: t.preferNotToSay }
                   ]}
                 />
               </Field>
@@ -542,41 +758,41 @@ export default function ProfilePage() {
 
           {/* Address Section */}
           <div className="mt-6">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">Address</h4>
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">{t.address}</h4>
             <div className={profileTheme.grid}>
-              <Field label="Street Address">
+              <Field label={t.streetAddress}>
                 <TextInput
                   value={addressStreet}
                   onChange={setAddressStreet}
                   disabled={!isEditing}
-                  placeholder="e.g., Ben Yehuda"
+                  placeholder={t.streetAddressPlaceholder}
                 />
               </Field>
 
-              <Field label="Street Number">
+              <Field label={t.streetNumber}>
                 <TextInput
                   value={addressStreetNumber}
                   onChange={setAddressStreetNumber}
                   disabled={!isEditing}
-                  placeholder="e.g., 12"
+                  placeholder={t.streetNumberPlaceholder}
                 />
               </Field>
 
-              <Field label="Floor">
+              <Field label={t.floor}>
                 <TextInput
                   value={addressFloor}
                   onChange={setAddressFloor}
                   disabled={!isEditing}
-                  placeholder="e.g., 3"
+                  placeholder={t.floorPlaceholder}
                 />
               </Field>
 
-              <Field label="Apt">
+              <Field label={t.apt}>
                 <TextInput
                   value={addressApt}
                   onChange={setAddressApt}
                   disabled={!isEditing}
-                  placeholder="e.g., 8"
+                  placeholder={t.aptPlaceholder}
                 />
               </Field>
             </div>
@@ -588,8 +804,8 @@ export default function ProfilePage() {
               checked={isNewsletter}
               onChange={setIsNewsletter}
               disabled={!isEditing}
-              label="Newsletter Subscription"
-              description="Receive updates, offers, and news via email."
+              label={t.newsletterSubscription}
+              description={t.newsletterDescription}
             />
           </div>
         </div>
@@ -597,13 +813,13 @@ export default function ProfilePage() {
         {/* Order History */}
         <div className={profileTheme.section}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={profileTheme.sectionTitle}>Recent Orders</h3>
+            <h3 className={profileTheme.sectionTitle}>{t.recentOrders}</h3>
             {orders.length > 0 && (
               <Link
                 href={`/${lng}/orders`}
                 className="text-sm text-indigo-600 hover:text-indigo-700"
               >
-                View All
+                {t.viewAll}
               </Link>
             )}
           </div>
@@ -617,12 +833,12 @@ export default function ProfilePage() {
           ) : orders.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <ShoppingBagIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-              <p>No orders yet</p>
+              <p>{t.noOrdersYet}</p>
               <Link
                 href={`/${lng}`}
                 className="text-indigo-600 hover:text-indigo-700 text-sm mt-2 inline-block"
               >
-                Start Shopping
+                {t.startShopping}
               </Link>
             </div>
           ) : (
@@ -635,10 +851,10 @@ export default function ProfilePage() {
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="font-semibold text-gray-900">
-                        Order #{order.orderNumber}
+                        {t.orderNumber(order.orderNumber)}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {new Date(order.createdAt).toLocaleDateString('en-US', {
+                        {new Date(order.createdAt).toLocaleDateString(locale, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric'
@@ -654,7 +870,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">
-                    {order.orderItems.length} item{order.orderItems.length !== 1 ? 's' : ''}
+                    {t.itemsCount(order.orderItems.length)}
                   </p>
                 </div>
               ))}
@@ -664,9 +880,9 @@ export default function ProfilePage() {
 
         {/* Points History */}
         <div className={profileTheme.section}>
-          <h3 className={profileTheme.sectionTitle}>Points History</h3>
+          <h3 className={profileTheme.sectionTitle}>{t.pointsHistory}</h3>
           <p className="text-sm text-gray-600 mb-4">
-            Earn 5% back in points on every purchase. Use points towards future orders!
+            {t.pointsHelp}
           </p>
 
           {pointsLoading ? (
@@ -678,7 +894,7 @@ export default function ProfilePage() {
           ) : pointsHistory.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <SparklesIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-              <p>No points activity yet</p>
+              <p>{t.noPointsActivityYet}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -689,15 +905,15 @@ export default function ProfilePage() {
                 >
                   <div>
                     <p className="text-sm font-medium text-gray-900">
-                      {transaction.kind === 'EARN' ? 'Earned' : 'Spent'} Points
+                      {transaction.kind === 'EARN' ? t.earnedPoints : t.spentPoints}
                     </p>
                     {transaction.order && (
                       <p className="text-xs text-gray-500">
-                        Order #{transaction.order.orderNumber}
+                        {t.orderNumber(transaction.order.orderNumber)}
                       </p>
                     )}
                     <p className="text-xs text-gray-400">
-                      {new Date(transaction.createdAt).toLocaleDateString('en-US', {
+                      {new Date(transaction.createdAt).toLocaleDateString(locale, {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric'
@@ -721,13 +937,13 @@ export default function ProfilePage() {
         {/* Favorites Preview */}
         <div className={profileTheme.section}>
           <div className="flex items-center justify-between mb-4">
-            <h3 className={profileTheme.sectionTitle}>Favorites</h3>
+            <h3 className={profileTheme.sectionTitle}>{t.favorites}</h3>
             {favoriteProducts.length > 0 && (
               <Link
                 href={`/${lng}/favorites`}
                 className="text-sm text-indigo-600 hover:text-indigo-700"
               >
-                View All ({favoriteKeys.length})
+                {t.viewAllWithCount(favoriteKeys.length)}
               </Link>
             )}
           </div>
@@ -744,12 +960,12 @@ export default function ProfilePage() {
           ) : favoriteProducts.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <HeartIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-              <p>No favorites yet</p>
+              <p>{t.noFavoritesYet}</p>
               <Link
                 href={`/${lng}`}
                 className="text-indigo-600 hover:text-indigo-700 text-sm mt-2 inline-block"
               >
-                Browse Products
+                {t.browseProducts}
               </Link>
             </div>
           ) : (
@@ -789,7 +1005,7 @@ export default function ProfilePage() {
                       <button
                         onClick={() => void toggleFavorite(product.favoriteKey)}
                         className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md hover:shadow-lg transition-shadow z-10"
-                        aria-label="Remove from favorites"
+                        aria-label={t.removeFromFavorites}
                       >
                         <HeartSolidIcon className="h-4 w-4 text-red-500" />
                       </button>
@@ -810,7 +1026,74 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {/* Account Actions */}
+        <div className={profileTheme.section}>
+          <h3 className={profileTheme.sectionTitle}>{t.accountActions}</h3>
+          <div className="space-y-4">
+            <button
+              onClick={() => setShowLogoutConfirm(true)}
+              className={cn(profileTheme.buttonPrimary, 'gap-2')}
+            >
+              <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              {t.logOut}
+            </button>
+            
+            <p className="text-sm text-slate-500">
+              {t.logoutInfo}
+            </p>
+          </div>
+        </div>
       </div>
+
+      {/* Logout Confirmation Dialog */}
+      {showLogoutConfirm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="logout-confirm-title"
+          aria-describedby="logout-confirm-desc"
+        >
+          <button
+            type="button"
+            className="fixed inset-0 bg-black/20 backdrop-blur-[1px]"
+            aria-label={t.closeDialog}
+            onClick={() => setShowLogoutConfirm(false)}
+          />
+          <div
+            className={cn(
+              'relative w-full max-w-md rounded-xl bg-white p-6 shadow-xl ring-1 ring-black/5'
+            )}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="logout-confirm-title" className="text-base font-semibold text-slate-900">
+              {t.logoutDialogTitle}
+            </h3>
+            <p id="logout-confirm-desc" className="mt-2 text-sm leading-6 text-slate-600">
+              {t.logoutDialogDescription}
+            </p>
+
+            <div className={cn(profileTheme.actions, 'mt-6')}>
+              <button
+                ref={cancelLogoutButtonRef}
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className={cn(profileTheme.buttonSecondary, 'w-full sm:w-auto')}
+              >
+                {t.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={handleLogoutToGuest}
+                className={cn(profileTheme.buttonPrimary, 'w-full sm:w-auto')}
+              >
+                {t.logOut}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProfileShell>
   )
 }

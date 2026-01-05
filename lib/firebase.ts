@@ -2,7 +2,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, Query, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, verifyPasswordResetCode, confirmPasswordReset, User as FirebaseUser } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 // Your web app's Firebase configuration
@@ -1972,6 +1972,41 @@ export const authService = {
   // Listen to auth state changes
   onAuthStateChanged(callback: (user: FirebaseUser | null) => void) {
     return onAuthStateChanged(auth, callback);
+  },
+
+  // Send password reset email
+  async sendPasswordResetEmail(email: string, continueUrl: string): Promise<void> {
+    try {
+      const actionCodeSettings = {
+        url: continueUrl,
+        handleCodeInApp: true
+      };
+      await sendPasswordResetEmail(auth, email, actionCodeSettings);
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      throw error;
+    }
+  },
+
+  // Verify password reset code
+  async verifyPasswordResetCode(code: string): Promise<string> {
+    try {
+      const email = await verifyPasswordResetCode(auth, code);
+      return email;
+    } catch (error) {
+      console.error('Error verifying password reset code:', error);
+      throw error;
+    }
+  },
+
+  // Confirm password reset
+  async confirmPasswordReset(code: string, newPassword: string): Promise<void> {
+    try {
+      await confirmPasswordReset(auth, code, newPassword);
+    } catch (error) {
+      console.error('Error confirming password reset:', error);
+      throw error;
+    }
   }
 };
 

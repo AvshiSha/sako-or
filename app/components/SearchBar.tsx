@@ -37,7 +37,7 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
         const response = await fetch(
           `/api/products/search?q=${encodeURIComponent(searchQuery)}&limit=8`
         )
-        const data = await response.json()
+        const data = await response.json().catch(() => ({}))
         setSearchResults(data.items || [])
         setShowResults(true)
       } catch (error) {

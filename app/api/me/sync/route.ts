@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
 
+function normalizeEmail(raw: string) {
+  return raw.trim().toLowerCase()
+}
+
+function toIsraeliLocalPhoneDigits(rawE164OrAny: string | null | undefined) {
+  if (!rawE164OrAny) return null
+  const digits = String(rawE164OrAny).trim().replace(/\D/g, '')
+  // If Firebase gives +972..., convert to local 0XXXXXXXXX
+  if (digits.startsWith('972')) {
+    const local = `0${digits.slice(3)}`
+    return local
+  }
+  return digits
+}
+
+function isValidIsraeliLocalPhoneDigits(digits: string) {
+  if (digits.startsWith('972')) return false
+  if (!digits.startsWith('0')) return false
+  return digits.length === 9 || digits.length === 10
+}
+
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization') || ''
   const match = authHeader.match(/^Bearer\s+(.+)$/i)
@@ -47,8 +68,11 @@ export async function POST(request: NextRequest) {
 
     const firebaseUser = await adminAuth.getUser(firebaseUid)
 
-    const email = firebaseUser.email ?? decoded.email ?? null
-    const phone = firebaseUser.phoneNumber ?? null
+    const emailRaw = firebaseUser.email ?? decoded.email ?? null
+    const email = emailRaw ? normalizeEmail(emailRaw) : null
+
+    const phoneCandidate = toIsraeliLocalPhoneDigits(firebaseUser.phoneNumber)
+    const phone = phoneCandidate && isValidIsraeliLocalPhoneDigits(phoneCandidate) ? phoneCandidate : null
     const emailVerified = firebaseUser.emailVerified ?? (decoded.email_verified ?? false)
 
     const providerIds =
@@ -67,26 +91,41 @@ export async function POST(request: NextRequest) {
     if (parsedFirstName) nameUpdate.firstName = parsedFirstName
     if (parsedLastName) nameUpdate.lastName = parsedLastName
 
-    const user = await prisma.user.upsert({
+    // Find existing user - do NOT create on sync
+    const existingUser = await prisma.user.findUnique({
+      where: { firebaseUid }
+    })
+
+    // If user doesn't exist in DB yet, return early with needsProfileCompletion = true
+    // The user will be created when they submit the profile form via /api/me/profile PATCH
+    if (!existingUser) {
+      return NextResponse.json(
+        {
+          ok: true,
+          needsProfileCompletion: true,
+          user: null,
+          id: null,
+          firebaseUid,
+          email,
+          role: 'USER',
+          lastLoginAt: null,
+          createdAt: null,
+          updatedAt: null
+        },
+        { status: 200 }
+      )
+    }
+
+    // User exists - update login metadata
+    const user = await prisma.user.update({
       where: { firebaseUid },
-      update: {
+      data: {
         lastLoginAt: now,
         ...(email ? { email } : {}),
         ...(phone ? { phone } : {}),
         emailVerified,
         ...(authProvider ? { authProvider } : {}),
         ...nameUpdate,
-        isDelete: false
-      },
-      create: {
-        firebaseUid,
-        email,
-        emailVerified,
-        ...(phone ? { phone } : {}),
-        ...(authProvider ? { authProvider } : {}),
-        ...nameUpdate,
-        role: 'USER',
-        lastLoginAt: now,
         isDelete: false
       }
     })
@@ -114,6 +153,22 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error: any) {
+    // Prisma unique constraint violation
+    if (error?.code === 'P2002') {
+      const target = error?.meta?.target
+      const targetStr = Array.isArray(target) ? target.join(',') : String(target ?? '')
+      if (targetStr.includes('email')) {
+        return NextResponse.json({ error: 'Email is already in use' }, { status: 409 })
+      }
+      if (targetStr.includes('phone')) {
+        return NextResponse.json({ error: 'Phone number is already in use' }, { status: 409 })
+      }
+      if (targetStr.includes('firebaseUid') || targetStr.includes('firebase_uid')) {
+        return NextResponse.json({ error: 'User already exists' }, { status: 409 })
+      }
+      return NextResponse.json({ error: 'Conflict: unique constraint violation' }, { status: 409 })
+    }
+
     console.error('[ME_SYNC_ERROR]', error)
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to sync user'

@@ -200,7 +200,7 @@ export default function Home() {
         body: JSON.stringify({ email: email.trim() }),
       })
       
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
       
       if (data.success) {
         setSubscribedEmail(email.trim())

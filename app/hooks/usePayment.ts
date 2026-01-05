@@ -31,7 +31,7 @@ export function usePayment() {
         body: JSON.stringify(paymentData),
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to create payment');

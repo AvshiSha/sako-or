@@ -4,7 +4,7 @@ import { CheckoutFormData } from '../../types/checkout';
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CheckoutFormData = await request.json();
+    const body: CheckoutFormData = await request.json().catch(() => ({}));
     console.log('Checkout form submission received:', JSON.stringify(body, null, 2));
     
     // Validate required fields

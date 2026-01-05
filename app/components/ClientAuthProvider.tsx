@@ -2,6 +2,7 @@
 
 import { AuthProvider } from '@/app/contexts/AuthContext'
 import { FavoritesProvider } from '@/app/contexts/FavoritesContext'
+import ProfileCompletionGate from '@/app/components/ProfileCompletionGate'
 
 export default function ClientAuthProvider({
   children,
@@ -10,7 +11,9 @@ export default function ClientAuthProvider({
 }) {
   return (
     <AuthProvider>
-      <FavoritesProvider>{children}</FavoritesProvider>
+      <ProfileCompletionGate>
+        <FavoritesProvider>{children}</FavoritesProvider>
+      </ProfileCompletionGate>
     </AuthProvider>
   )
 }

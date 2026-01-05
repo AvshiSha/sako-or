@@ -52,7 +52,7 @@ async function fetchJson<T>(input: RequestInfo, init?: RequestInit): Promise<T> 
 function safeReadFavoritesFromStorage(): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
+    if (!raw || !raw.trim()) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
     return parsed.filter((k) => typeof k === 'string').map((k) => k.trim()).filter(Boolean)

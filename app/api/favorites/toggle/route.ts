@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     })
     if (!neonUser) {
       return NextResponse.json(
-        { error: 'Neon user not found; call /api/me/sync first.' },
+        { error: 'Profile not found. Please complete your profile first.' },
         { status: 404 }
       )
     }

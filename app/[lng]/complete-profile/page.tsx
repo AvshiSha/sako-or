@@ -321,14 +321,6 @@ export default function CompleteProfilePage() {
           <div className={profileTheme.actions}>
             <button
               type="button"
-              className={profileTheme.buttonSecondary}
-              onClick={() => router.replace(`/${lng}/profile`)}
-              disabled={busy}
-            >
-              Skip for now
-            </button>
-            <button
-              type="button"
               className={profileTheme.buttonPrimary}
               onClick={handleSubmit}
               disabled={!canSubmit}

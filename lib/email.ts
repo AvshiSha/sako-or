@@ -4,6 +4,7 @@ import { OrderConfirmationEmailHebrew } from '../app/emails/order-confirmation-h
 import { prisma } from './prisma';
 import { OrderConfirmationTeamEmail } from '../app/emails/order-confirmation-team-mail';
 import { ResetPasswordEmail } from '../app/emails/reset-password';
+import { EmailOtp } from '../app/emails/email-otp';
 
 let resendClient: Resend | null = null;
 function getResendClient(): Resend {
@@ -69,6 +70,14 @@ export interface PasswordResetEmailData {
   brandName?: string;
 }
 
+export interface EmailOtpData {
+  to: string;
+  otpCode: string;
+  userFirstname?: string;
+  isHebrew?: boolean;
+  brandName?: string;
+}
+
 export async function sendPasswordResetEmail(data: PasswordResetEmailData) {
   const resend = getResendClient();
 
@@ -87,6 +96,39 @@ export async function sendPasswordResetEmail(data: PasswordResetEmailData) {
       react: ResetPasswordEmail({
         userFirstname: data.userFirstname,
         resetPasswordLink: data.resetPasswordLink,
+        isHebrew: data.isHebrew,
+        brandName: data.brandName ?? 'Sako Or',
+      }),
+      text,
+    },
+    { idempotencyKey }
+  );
+
+  const { data: emailData, error } = result as { data?: any; error?: any };
+  if (error) {
+    throw error;
+  }
+  return { messageId: emailData?.id, idempotencyKey };
+}
+
+export async function sendEmailOtp(data: EmailOtpData) {
+  const resend = getResendClient();
+
+  const subject = data.isHebrew ? 'קוד אימות - Sako Or' : 'Verification code - Sako Or';
+  const idempotencyKey = `email-otp-${data.to}-${Date.now()}`;
+
+  const text = data.isHebrew
+    ? `קיבלנו בקשה להתחברות.\n\nקוד האימות שלך: ${data.otpCode}\n\nקוד זה תקף למשך 5 דקות.\n\nאם לא ביקשת להתחבר, אפשר להתעלם מהמייל הזה.`
+    : `We received a request to sign in.\n\nYour verification code: ${data.otpCode}\n\nThis code expires in 5 minutes.\n\nIf you didn't request to sign in, you can ignore this email.`;
+
+  const result = await resend.emails.send(
+    {
+      from: 'Sako Or <info@sako-or.com>',
+      to: [data.to],
+      subject,
+      react: EmailOtp({
+        userFirstname: data.userFirstname,
+        otpCode: data.otpCode,
         isHebrew: data.isHebrew,
         brandName: data.brandName ?? 'Sako Or',
       }),

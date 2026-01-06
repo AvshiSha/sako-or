@@ -10,7 +10,26 @@ const Select = SelectPrimitive.Root
 
 const SelectGroup = SelectPrimitive.Group
 
-const SelectValue = SelectPrimitive.Value
+const SelectValue = React.forwardRef<
+  React.ElementRef<typeof SelectPrimitive.Value>,
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Value>
+>(({ className, ...props }, ref) => (
+  <SelectPrimitive.Value
+    ref={ref}
+    className={cn(
+      "block w-full font-medium",
+      // Default: selected value styling (dark, visible) - this applies when NOT a placeholder
+      "text-slate-900 opacity-100",
+      // Placeholder styling (lighter, semi-transparent) - only when data-placeholder attribute exists
+      "[&[data-placeholder]]:!text-slate-600 [&[data-placeholder]]:!font-normal [&[data-placeholder]]:!opacity-70",
+      // Ensure selected text is always visible
+      "[&:not([data-placeholder])]:!text-slate-900 [&:not([data-placeholder])]:!opacity-100",
+      className
+    )}
+    {...props}
+  />
+))
+SelectValue.displayName = SelectPrimitive.Value.displayName
 
 interface SelectTriggerProps extends React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> {
   dir?: "ltr" | "rtl";
@@ -24,17 +43,24 @@ const SelectTrigger = React.forwardRef<
     ref={ref}
     dir={dir}
     className={cn(
-      "flex h-10 w-full items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-black focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 [&>span]:line-clamp-1",
-      dir === "rtl" && "flex-row justify-end [&>span]:text-right [&>span]:flex-1",
-      dir === "ltr" && "justify-between [&>span]:text-left [&>span]:flex-1",
+      "flex h-10 w-full items-center rounded-md border border-[#856D55]/70 bg-[#E1DBD7]/70 px-3 py-2 text-sm ring-offset-white focus:outline-none focus:ring-2 focus:ring-[#856D55] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200",
+      dir === "rtl" && "flex-row gap-2 [&>span]:flex-1 [&>span]:min-w-0 [&>span]:text-right [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span]:whitespace-nowrap [&>span]:block [&>span]:text-slate-900",
+      dir === "ltr" && "flex-row gap-2 [&>span]:flex-1 [&>span]:min-w-0 [&>span]:text-left [&>span]:overflow-hidden [&>span]:text-ellipsis [&>span]:whitespace-nowrap [&>span]:block [&>span]:text-slate-900",
       className
     )}
     {...props}
   >
+    {dir === "ltr" && (
+      <SelectPrimitive.Icon asChild>
+        <ChevronDown className="h-5 w-5 text-[#856D55] transition-transform duration-300 ease-in-out [&[data-state=open]]:rotate-180 shrink-0 flex-shrink-0" />
+      </SelectPrimitive.Icon>
+    )}
     {children}
-    <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50 transition-transform duration-300 ease-in-out [&[data-state=open]]:rotate-180 shrink-0" />
-    </SelectPrimitive.Icon>
+    {dir === "rtl" && (
+      <SelectPrimitive.Icon asChild>
+        <ChevronDown className="h-5 w-5 text-[#856D55] transition-transform duration-300 ease-in-out [&[data-state=open]]:rotate-180 shrink-0 flex-shrink-0" />
+      </SelectPrimitive.Icon>
+    )}
   </SelectPrimitive.Trigger>
 ))
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
@@ -135,7 +161,7 @@ const SelectItem = React.forwardRef<
     ref={ref}
     dir={dir}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 text-sm outline-none focus:bg-gray-100 focus:text-gray-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors duration-150",
+      "relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 text-sm outline-none focus:bg-gray-100 focus:text-gray-900 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 transition-colors duration-150 hover:bg-gray-50",
       dir === "rtl" ? "pr-8 pl-2" : "pl-8 pr-2",
       className
     )}

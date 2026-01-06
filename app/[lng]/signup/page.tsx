@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   GoogleAuthProvider,
-  createUserWithEmailAndPassword,
   getRedirectResult,
   signInWithPopup,
   signInWithRedirect,
@@ -14,14 +13,20 @@ import { auth } from '@/lib/firebase'
 import { useAuth } from '@/app/contexts/AuthContext'
 import ProfileShell from '@/app/components/profile/ProfileShell'
 import { profileTheme } from '@/app/components/profile/profileTheme'
-import {
-  Checkbox,
-  Field,
-  RadioGroup,
-  SelectInput,
-  TextInput
-} from '@/app/components/profile/ProfileFormFields'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
+import { getLanguageDirection } from '@/i18n/settings'
+import { Input } from '@/app/components/ui/input'
+import { Button } from '@/app/components/ui/button'
+import { Label } from '@/app/components/ui/label'
+import { Checkbox } from '@/app/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/app/components/ui/select'
+import { cn } from '@/lib/utils'
 
 type SyncResponse =
   | { ok: true; needsProfileCompletion: boolean }
@@ -41,23 +46,25 @@ const translations = {
     passwordPlaceholder: 'At least 6 characters',
     phone: 'Phone Number',
     phonePlaceholder: '+972501234567',
-    gender: 'Gender',
-    male: 'Male',
-    female: 'Female',
-    other: 'Other',
+    prefferedStyle: 'I am primarily interested in:',
+    mens: 'Mens',
+    womens: 'Womens',
+    other: 'Both',
     preferredLanguage: 'Preferred Language',
     selectLanguage: 'Select Language',
     english: 'English',
     hebrew: 'Hebrew',
+    birthday: 'Birthday',
+    selectDate: 'Select date',
+    selectYear: 'Year',
+    selectMonth: 'Month',
+    selectDay: 'Day',
     address: 'Address',
-    streetAddress: 'Street Address',
-    streetPlaceholder: 'e.g., 123 Main St',
-    aptFloor: 'Apt / Floor',
-    aptPlaceholder: 'Apt 5 / Floor 2',
     city: 'City',
-    cityPlaceholder: 'e.g., New York',
-    postalCode: 'Postal Code',
-    postalPlaceholder: 'e.g., 10001',
+    streetName: 'Street Name',
+    streetNumber: 'Street Number',
+    floor: 'Floor',
+    apt: 'Apt',
     newsletter: 'Subscribe to Newsletter',
     newsletterDescription: 'Yes, send me updates and offers',
     googleSignIn: 'Sign up with Google',
@@ -76,10 +83,16 @@ const translations = {
     passwordRequired: 'Password must be at least 6 characters',
     phoneRequired: 'Phone number is required',
     phoneInvalid: 'Enter a valid Israeli phone number: +972 followed by 8-9 digits (e.g., +972501234567)',
-    languageRequired: 'Preferred language is required'
+    languageRequired: 'Preferred language is required',
+    birthdayRequired: 'Birthday is required',
+    cityPlaceholder: 'e.g., Tel Aviv',
+    streetNamePlaceholder: 'e.g., Rothschild Boulevard',
+    streetNumberPlaceholder: 'e.g., 123',
+    floorPlaceholder: 'e.g., 2',
+    aptPlaceholder: 'e.g., 5'
   },
   he: {
-    title: 'הרשמה',
+    title: 'קצת פרטים כדי שנכיר אותך :)',
     subtitle: 'צרו את החשבון שלכם כדי להתחיל',
     personalInfo: 'מידע אישי',
     firstName: 'שם פרטי',
@@ -89,24 +102,26 @@ const translations = {
     password: 'סיסמה',
     passwordPlaceholder: 'לפחות 6 תווים',
     phone: 'מספר טלפון',
-    phonePlaceholder: '972501234567+',
-    gender: 'מגדר',
-    male: 'זכר',
-    female: 'נקבה',
-    other: 'אחר',
+    phonePlaceholder: '+972501234567',
+    prefferedStyle: 'בעיקר מתעניין ב:',
+    mens: 'מוצרים לגבר',
+    womens: 'מוצרים לנשים',
+    other: 'גם וגם',
     preferredLanguage: 'שפה מועדפת',
     selectLanguage: 'בחר שפה',
     english: 'אנגלית',
     hebrew: 'עברית',
+    birthday: 'תאריך לידה',
+    selectDate: 'בחר תאריך',
+    selectYear: 'שנה',
+    selectMonth: 'חודש',
+    selectDay: 'יום',
     address: 'כתובת',
-    streetAddress: 'רחוב',
-    streetPlaceholder: 'לדוגמה, רחוב הרצל 123',
-    aptFloor: 'דירה / קומה',
-    aptPlaceholder: 'דירה 5 / קומה 2',
     city: 'עיר',
-    cityPlaceholder: 'לדוגמה, תל אביב',
-    postalCode: 'מיקוד',
-    postalPlaceholder: 'לדוגמה, 12345',
+    streetName: 'שם רחוב',
+    streetNumber: 'מספר בית',
+    floor: 'קומה',
+    apt: 'דירה',
     newsletter: 'הרשמה לניוזלטר',
     newsletterDescription: 'כן, שלחו לי עדכונים והצעות',
     googleSignIn: 'הרשמה עם Google',
@@ -125,7 +140,13 @@ const translations = {
     passwordRequired: 'סיסמה חייבת להיות לפחות 6 תווים',
     phoneRequired: 'מספר טלפון הוא חובה',
     phoneInvalid: 'הזינו מספר ישראלי תקין: 972+ ואחריו 8-9 ספרות (לדוגמה: 972501234567+)',
-    languageRequired: 'שפה מועדפת היא חובה'
+    languageRequired: 'שפה מועדפת היא חובה',
+    birthdayRequired: 'תאריך לידה הוא חובה',
+    cityPlaceholder: 'לדוגמה, תל אביב',
+    streetNamePlaceholder: 'לדוגמה, שדרות רוטשילד',
+    streetNumberPlaceholder: 'לדוגמה, 123',
+    floorPlaceholder: 'לדוגמה, 2',
+    aptPlaceholder: 'לדוגמה, 5'
   }
 }
 
@@ -137,6 +158,8 @@ export default function SignUpPage() {
   const params = useParams()
   const lng = (params?.lng as string) || 'en'
   const t = translations[lng as keyof typeof translations] || translations.en
+  const isRTL = lng === 'he'
+  const direction = isRTL ? 'rtl' : 'ltr'
 
   const { user: firebaseUser, loading: authLoading, logout } = useAuth()
 
@@ -148,16 +171,18 @@ export default function SignUpPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [confirmEmail, setConfirmEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [phone, setPhone] = useState('')
   const [gender, setGender] = useState('')
   const [language, setLanguage] = useState('')
-  const [addressStreet, setAddressStreet] = useState('')
-  const [addressApt, setAddressApt] = useState('')
+  const [birthYear, setBirthYear] = useState('')
+  const [birthMonth, setBirthMonth] = useState('')
+  const [birthDay, setBirthDay] = useState('')
   const [city, setCity] = useState('')
-  const [postalCode, setPostalCode] = useState('')
-  const [isNewsletter, setIsNewsletter] = useState(false)
+  const [streetName, setStreetName] = useState('')
+  const [streetNumber, setStreetNumber] = useState('')
+  const [floor, setFloor] = useState('')
+  const [apt, setApt] = useState('')
+  const [isNewsletter, setIsNewsletter] = useState(true) // Default to true
   
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -166,17 +191,58 @@ export default function SignUpPage() {
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
 
-  // #region agent log
-  useEffect(() => {
-  }, [busy])
-  // #endregion
-
   const syncedUidRef = useRef<string | null>(null)
 
-  // #region agent log
+  // Helper function to get days in a month (handles leap years)
+  const getDaysInMonth = (year: number, month: number): number => {
+    return new Date(year, month, 0).getDate()
+  }
+
+  // Helper function to validate date
+  const isValidDate = (year: string, month: string, day: string): boolean => {
+    if (!year || !month || !day) return false
+    const y = parseInt(year, 10)
+    const m = parseInt(month, 10)
+    const d = parseInt(day, 10)
+    if (isNaN(y) || isNaN(m) || isNaN(d)) return false
+    const daysInMonth = getDaysInMonth(y, m)
+    return d >= 1 && d <= daysInMonth
+  }
+
+  // Generate year options (1940-2020)
+  const yearOptions = Array.from({ length: 2020 - 1940 + 1 }, (_, i) => 1940 + i).reverse()
+
+  // Generate month options (1-12)
+  const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
+
+  // Get day options based on selected year and month
+  const dayOptions = useMemo(() => {
+    if (!birthYear || !birthMonth) {
+      return Array.from({ length: 31 }, (_, i) => i + 1)
+    }
+    const year = parseInt(birthYear, 10)
+    const month = parseInt(birthMonth, 10)
+    if (isNaN(year) || isNaN(month)) {
+      return Array.from({ length: 31 }, (_, i) => i + 1)
+    }
+    const daysInMonth = getDaysInMonth(year, month)
+    return Array.from({ length: daysInMonth }, (_, i) => i + 1)
+  }, [birthYear, birthMonth])
+
+  // Reset day if it's invalid for the selected month/year
   useEffect(() => {
-  }, [])
-  // #endregion
+    if (birthYear && birthMonth && birthDay) {
+      const year = parseInt(birthYear, 10)
+      const month = parseInt(birthMonth, 10)
+      const day = parseInt(birthDay, 10)
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+        const daysInMonth = getDaysInMonth(year, month)
+        if (day > daysInMonth) {
+          setBirthDay('')
+        }
+      }
+    }
+  }, [birthYear, birthMonth, birthDay])
 
   // Validation
   const validationErrors = useMemo(() => {
@@ -191,31 +257,27 @@ export default function SignUpPage() {
     } else if (!isValidEmail(normalizeEmail(email))) {
       errors.email = t.emailInvalid
     }
-    if (!isSignedInWithGoogle && showEmailForm) {
-      if (!confirmEmail.trim()) {
-        errors.confirmEmail = t.confirmEmailRequired
-      } else if (normalizeEmail(confirmEmail) !== normalizeEmail(email)) {
-        errors.confirmEmail = t.emailMismatch
-      }
-    }
-    if (!isSignedInWithGoogle && password.length < 6) errors.password = t.passwordRequired
     if (!phone.trim()) {
       errors.phone = t.phoneRequired
     } else if (!isValidIsraelE164(normalizeIsraelE164(phone))) {
       errors.phone = t.phoneInvalid
     }
     if (!language.trim()) errors.language = t.languageRequired
+    if (!birthYear || !birthMonth || !birthDay) {
+      errors.birthday = t.birthdayRequired
+    } else if (!isValidDate(birthYear, birthMonth, birthDay)) {
+      errors.birthday = t.birthdayRequired
+    }
     return errors
-  }, [firstName, lastName, email, confirmEmail, password, phone, language, isSignedInWithGoogle, showEmailForm, t])
+  }, [firstName, lastName, email, phone, language, birthYear, birthMonth, birthDay, t])
 
   const canSubmit = useMemo(() => {
     return (
       Object.keys(validationErrors).length === 0 &&
       Object.keys(serverFieldErrors).length === 0 &&
-      !busy &&
-      (isSignedInWithGoogle || password.length >= 6)
+      !busy
     )
-  }, [validationErrors, serverFieldErrors, busy, isSignedInWithGoogle, password])
+  }, [validationErrors, serverFieldErrors, busy])
 
   function formatAuthError(e: any, fallback: string) {
     const code = typeof e?.code === 'string' ? e.code : ''
@@ -249,9 +311,8 @@ export default function SignUpPage() {
       return 'redirecting'
     }
 
-    // New user or incomplete profile - keep them on the form
-    setShowEmailForm(false)
-    return 'needs_form'
+      // New user or incomplete profile - keep them on the form
+      return 'needs_form'
   }
 
   function isGoogleAccount(user: User) {
@@ -268,10 +329,14 @@ export default function SignUpPage() {
       phone: normalizedPhone,
       language: language === 'he' || language === 'en' ? language : 'en',
       gender: gender || undefined,
-      addressStreet: addressStreet || undefined,
-      addressStreetNumber: undefined,
-      addressFloor: undefined,
-      addressApt: addressApt || undefined,
+      birthday: birthYear && birthMonth && birthDay 
+        ? new Date(parseInt(birthYear, 10), parseInt(birthMonth, 10) - 1, parseInt(birthDay, 10)).toISOString()
+        : undefined,
+      city: city || undefined,
+      streetName: streetName || undefined,
+      streetNumber: streetNumber || undefined,
+      floor: floor || undefined,
+      apt: apt || undefined,
       isNewsletter
     }
 
@@ -283,38 +348,27 @@ export default function SignUpPage() {
 
   // Complete Google redirect sign-in (fallback when popups are blocked)
   useEffect(() => {
-    // #region agent log
-    // #endregion
     if (redirectChecked) return
     redirectChecked = true
 
     let cancelled = false
     ;(async () => {
       try {
-        // #region agent log
-        // #endregion
         setError(null)
         const result = await getRedirectResult(auth)
-        // #region agent log
-        // #endregion
         if (cancelled) return
         
         if (result?.user) {
           // Redirect result found! Populate email and show form
-          // #region agent log
-          // #endregion
           setBusy(true)
           setProfileGate('checking')
-          setEmail(result.user.email || '')
-          setIsSignedInWithGoogle(isGoogleAccount(result.user))
-          setShowEmailForm(false)
-          const next = await checkProfileAndRedirect(result.user)
+        setEmail(result.user.email || '')
+        setIsSignedInWithGoogle(isGoogleAccount(result.user))
+        const next = await checkProfileAndRedirect(result.user)
           if (!cancelled) setProfileGate(next === 'needs_form' ? 'needs_form' : 'redirecting')
           if (!cancelled) setBusy(false)
         }
       } catch (e: any) {
-        // #region agent log
-        // #endregion
         if (cancelled) return
         // If there was no redirect in progress, Firebase may throw depending on version.
         const msg = formatAuthError(e, 'Google redirect sign-in failed')
@@ -333,30 +387,22 @@ export default function SignUpPage() {
     })()
 
     return () => {
-      // #region agent log
-      // #endregion
       cancelled = true
     }
   }, [])
 
   // Populate email from existing Firebase session (safety net for when redirect result is consumed elsewhere)
   useEffect(() => {
-    // #region agent log
-    // #endregion
     if (authLoading) return
     if (!firebaseUser) return
     if (syncedUidRef.current === firebaseUser.uid) return
     syncedUidRef.current = firebaseUser.uid
-
-    // #region agent log
-    // #endregion
 
     // Populate email and show form if signed in
     setBusy(true)
     setProfileGate('checking')
     setEmail(firebaseUser.email || '')
     setIsSignedInWithGoogle(isGoogleAccount(firebaseUser))
-    setShowEmailForm(false)
     void (async () => {
       try {
         const next = await checkProfileAndRedirect(firebaseUser)
@@ -365,43 +411,27 @@ export default function SignUpPage() {
         setBusy(false)
       }
     })()
-    
-    // #region agent log
-    // #endregion
   }, [firebaseUser, authLoading])
 
   async function handleGoogleSignIn() {
-    // #region agent log
-    // #endregion
     setBusy(true)
     setError(null)
     try {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
       try {
-        // #region agent log
-        // #endregion
         const cred = await signInWithPopup(auth, provider)
-        // #region agent log
-        // #endregion
         setEmail(cred.user.email || '')
         setIsSignedInWithGoogle(true)
-        setShowEmailForm(false)
         await checkProfileAndRedirect(cred.user)
-        // #region agent log
-        // #endregion
         return
       } catch (e: any) {
         const code = typeof e?.code === 'string' ? e.code : ''
-        // #region agent log
-        // #endregion
         if (
           code === 'auth/popup-blocked' ||
           code === 'auth/popup-closed-by-user' ||
           code === 'auth/cancelled-popup-request'
         ) {
-          // #region agent log
-          // #endregion
           await signInWithRedirect(auth, provider)
           return
         }
@@ -409,15 +439,7 @@ export default function SignUpPage() {
       }
     } catch (e: any) {
       const code = typeof e?.code === 'string' ? e.code : ''
-      // #region agent log
-      // #endregion
-      if (code === 'auth/account-exists-with-different-credential') {
-        setError(
-          'An account already exists with the same email but a different sign-in method. Please sign in with Email/Password first.'
-        )
-      } else {
-        setError(formatAuthError(e, 'Google sign in failed'))
-      }
+      setError(formatAuthError(e, 'Google sign in failed'))
     } finally {
       setBusy(false)
     }
@@ -429,10 +451,9 @@ export default function SignUpPage() {
       firstName: true,
       lastName: true,
       email: true,
-      confirmEmail: !isSignedInWithGoogle && showEmailForm,
-      password: !isSignedInWithGoogle,
       phone: true,
-      language: true
+      language: true,
+      birthday: true
     })
 
     // Check if there are validation errors
@@ -474,10 +495,33 @@ export default function SignUpPage() {
         return
       }
 
-      // If not already signed in with Google, create/sign in with email
+      // If not signed in with Google, we'll create the account server-side during SMS verification
+      // For now, we'll proceed with the email-only flow
       if (!isSignedInWithGoogle && !firebaseUser) {
-        const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, password)
-        user = cred.user
+        // Store the signup data and proceed to SMS verification
+        // The account will be created server-side during SMS verification
+        const normalizedPhone = normalizeIsraelE164(phone) || ''
+        const pendingSignup = {
+          email: normalizedEmail,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone: normalizedPhone,
+          language: language === 'he' || language === 'en' ? language : 'en',
+          gender: gender || undefined,
+          birthday: birthYear && birthMonth && birthDay 
+        ? new Date(parseInt(birthYear, 10), parseInt(birthMonth, 10) - 1, parseInt(birthDay, 10)).toISOString()
+        : undefined,
+          city: city || undefined,
+          streetName: streetName || undefined,
+          streetNumber: streetNumber || undefined,
+          floor: floor || undefined,
+          apt: apt || undefined,
+          isNewsletter
+        }
+
+        sessionStorage.setItem('pendingSignup', JSON.stringify(pendingSignup))
+        router.push(`/${lng}/verify-sms`)
+        return
       }
 
       if (!user) {
@@ -502,17 +546,20 @@ export default function SignUpPage() {
       setIsSignedInWithGoogle(false)
       setShowEmailForm(false)
       setEmail('')
-      setConfirmEmail('')
       setFirstName('')
       setLastName('')
       setPhone('')
       setGender('')
       setLanguage('')
-      setAddressStreet('')
-      setAddressApt('')
+      setBirthYear('')
+      setBirthMonth('')
+      setBirthDay('')
       setCity('')
-      setPostalCode('')
-      setIsNewsletter(false)
+      setStreetName('')
+      setStreetNumber('')
+      setFloor('')
+      setApt('')
+      setIsNewsletter(true)
       setServerFieldErrors({})
     } catch (e: any) {
       setError(formatAuthError(e, 'Sign out failed'))
@@ -551,13 +598,9 @@ export default function SignUpPage() {
     }
   }
 
-  // #region agent log
   const renderButtonsOnly = !isSignedInWithGoogle && !firebaseUser && !showEmailForm
   const shouldGateExistingUser = Boolean(firebaseUser) && profileGate !== 'needs_form'
   const renderForm = (isSignedInWithGoogle || firebaseUser || showEmailForm) && !shouldGateExistingUser
-  useEffect(() => {
-  }, [renderButtonsOnly, renderForm, isSignedInWithGoogle, firebaseUser, showEmailForm, busy])
-  // #endregion
 
   // While Firebase session is resolving, avoid UI flicker.
   if (authLoading) {
@@ -575,11 +618,10 @@ export default function SignUpPage() {
   }
 
   return (
-    <ProfileShell
-      title={t.title}
-      subtitle={t.subtitle}
-    >
-      <div className={profileTheme.section}>
+      <ProfileShell
+        title={t.title}
+      >
+      <div className={profileTheme.section} dir={direction}>
         {error ? (
           <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
@@ -596,13 +638,14 @@ export default function SignUpPage() {
         ) : null}
 
         {/* Google Sign-In or Email Option */}
-        {!isSignedInWithGoogle && !firebaseUser && !showEmailForm && (
+        {renderButtonsOnly && (
           <div className="space-y-4">
-            <button
+            <Button
               type="button"
               onClick={handleGoogleSignIn}
               disabled={busy}
-              className="w-full flex items-center justify-center gap-3 rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              variant="outline"
+              className="w-full text-slate-900 hover:text-slate-900"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -611,7 +654,7 @@ export default function SignUpPage() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
               {busy ? t.working : t.googleSignIn}
-            </button>
+            </Button>
 
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center">
@@ -622,199 +665,386 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            <button
+            <Button
               type="button"
               onClick={() => setShowEmailForm(true)}
               disabled={busy}
-              className="w-full flex items-center justify-center gap-3 rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              variant="outline"
+              className="w-full text-slate-900 hover:text-slate-900"
             >
               {t.continueWithEmail}
-            </button>
+            </Button>
           </div>
         )}
 
         {/* Profile Form - shown after Google auth or email option selected */}
-        {!shouldGateExistingUser && (isSignedInWithGoogle || firebaseUser || showEmailForm) && (
+        {renderForm && (
           <div className="space-y-8">
             {/* Personal Information Section */}
             <section>
               <h2 className={profileTheme.sectionTitle}>{t.personalInfo}</h2>
-              <div className={profileTheme.grid}>
-                <Field
-                  label={t.firstName}
-                  error={touched.firstName ? validationErrors.firstName : null}
-                >
-                  <TextInput
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-sm font-medium text-slate-900">
+                    {t.firstName} <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="firstName"
                     value={firstName}
-                    onChange={(v) => {
+                    onChange={(e) => {
                       setTouched((t) => ({ ...t, firstName: true }))
-                      setFirstName(v)
+                      setFirstName(e.target.value)
                     }}
-                    placeholder=""
+                    className={cn(
+                      'text-slate-900',
+                      touched.firstName && validationErrors.firstName ? 'border-red-500' : ''
+                    )}
                   />
-                </Field>
-
-                <Field label={t.lastName} error={touched.lastName ? validationErrors.lastName : null}>
-                  <TextInput
-                    value={lastName}
-                    onChange={(v) => {
-                      setTouched((t) => ({ ...t, lastName: true }))
-                      setLastName(v)
-                    }}
-                    placeholder=""
-                  />
-                </Field>
-
-                <div className="sm:col-span-2">
-                  <Field
-                    label={t.email}
-                    error={
-                      touched.email
-                        ? validationErrors.email || serverFieldErrors.email || null
-                        : null
-                    }
-                  >
-                    <div className="relative">
-                      <TextInput
-                        value={email}
-                        onChange={(v) => {
-                          setTouched((prev) => ({ ...prev, email: true }))
-                          setEmail(v)
-                          setServerFieldErrors((prev) => {
-                            const next = { ...prev }
-                            delete next.email
-                            return next
-                          })
-                        }}
-                        disabled={isSignedInWithGoogle}
-                        placeholder=""
-                      />
-                      {isSignedInWithGoogle && (
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-slate-500 bg-white px-2 py-0.5 rounded">
-                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                          </svg>
-                          <span>{t.signedInWithGoogle}</span>
-                        </div>
-                      )}
-                    </div>
-                  </Field>
+                  {touched.firstName && validationErrors.firstName && (
+                    <p className="text-xs text-red-600">{validationErrors.firstName}</p>
+                  )}
                 </div>
 
-                {!isSignedInWithGoogle && showEmailForm && (
-                  <div className="sm:col-span-2">
-                    <Field
-                      label={t.confirmEmail}
-                      error={
-                        touched.confirmEmail
-                          ? validationErrors.confirmEmail || serverFieldErrors.confirmEmail || null
-                          : null
-                      }
-                    >
-                      <TextInput
-                        value={confirmEmail}
-                        onChange={(v) => {
-                          setTouched((prev) => ({ ...prev, confirmEmail: true }))
-                          setConfirmEmail(v)
-                          setServerFieldErrors((prev) => {
-                            const next = { ...prev }
-                            delete next.confirmEmail
-                            return next
-                          })
-                        }}
-                        placeholder=""
-                      />
-                    </Field>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-sm font-medium text-slate-900">
+                    {t.lastName} <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="lastName"
+                    value={lastName}
+                    onChange={(e) => {
+                      setTouched((t) => ({ ...t, lastName: true }))
+                      setLastName(e.target.value)
+                    }}
+                    className={cn(
+                      'text-slate-900',
+                      touched.lastName && validationErrors.lastName ? 'border-red-500' : ''
+                    )}
+                  />
+                  {touched.lastName && validationErrors.lastName && (
+                    <p className="text-xs text-red-600">{validationErrors.lastName}</p>
+                  )}
+                </div>
 
-                {!isSignedInWithGoogle && showEmailForm && (
-                  <div className="sm:col-span-2">
-                    <Field
-                      label={t.password}
-                      error={touched.password ? validationErrors.password : null}
-                    >
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => {
-                          setTouched((prev) => ({ ...prev, password: true }))
-                          setPassword(e.target.value)
-                        }}
-                        placeholder={t.passwordPlaceholder}
-                        className={profileTheme.input}
-                      />
-                    </Field>
-                  </div>
-                )}
-
-                <div className="sm:col-span-2">
-                  <Field
-                    label={t.phone}
-                    error={
-                      touched.phone
-                        ? validationErrors.phone || serverFieldErrors.phone || null
-                        : null
-                    }
-                  >
-                    <TextInput
-                      value={phone}
-                      onChange={(v) => {
-                        setTouched((prev) => ({ ...prev, phone: true }))
-                        setPhone(v)
+                <div className="sm:col-span-2 space-y-2">
+                  <Label htmlFor="email" className="text-sm font-medium text-slate-900">
+                    {t.email} <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setTouched((prev) => ({ ...prev, email: true }))
+                        setEmail(e.target.value)
                         setServerFieldErrors((prev) => {
                           const next = { ...prev }
-                          delete next.phone
+                          delete next.email
                           return next
                         })
                       }}
-                      placeholder={t.phonePlaceholder}
-                      inputMode="tel"
+                      disabled={isSignedInWithGoogle}
+                      className={cn(
+                        'text-slate-900',
+                        touched.email && (validationErrors.email || serverFieldErrors.email) ? 'border-red-500' : '',
+                        isSignedInWithGoogle && 'bg-slate-50'
+                      )}
                     />
-                  </Field>
+                    {isSignedInWithGoogle && (
+                      <div className={cn(
+                        "absolute top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-slate-500 bg-white px-2 py-0.5 rounded",
+                        isRTL ? 'left-3' : 'right-3'
+                      )}>
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
+                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <span>{t.signedInWithGoogle}</span>
+                      </div>
+                    )}
+                  </div>
+                  {touched.email && (validationErrors.email || serverFieldErrors.email) && (
+                    <p className="text-xs text-red-600">{validationErrors.email || serverFieldErrors.email}</p>
+                  )}
                 </div>
-              </div>
-            </section>
 
-            {/* Gender Section */}
-            <section>
-              <h2 className={profileTheme.sectionTitle}>{t.gender}</h2>
-              <RadioGroup
-                value={gender}
-                onChange={setGender}
-                options={[
-                  { value: 'Male', label: t.male },
-                  { value: 'Female', label: t.female },
-                  { value: 'Other', label: t.other }
-                ]}
-              />
-            </section>
+                {!isSignedInWithGoogle && showEmailForm && (
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-slate-500">
+                      {lng === 'he' 
+                        ? 'החשבון ייווצר לאחר אימות SMS'
+                        : 'Your account will be created after SMS verification'}
+                    </p>
+                  </div>
+                )}
 
-            {/* Preferred Language Section */}
-            <section>
-              <h2 className={profileTheme.sectionTitle}>{t.preferredLanguage}</h2>
-              <div className={profileTheme.grid}>
-                <div className="sm:col-span-2">
-                  <Field
-                    label={t.preferredLanguage}
-                  error={touched.language ? validationErrors.language : null}
+                <div className="sm:col-span-2 space-y-2">
+                  <Label htmlFor="phone" className="text-sm font-medium text-slate-900">
+                    {t.phone} <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => {
+                      setTouched((prev) => ({ ...prev, phone: true }))
+                      setPhone(e.target.value)
+                      setServerFieldErrors((prev) => {
+                        const next = { ...prev }
+                        delete next.phone
+                        return next
+                      })
+                    }}
+                    placeholder={t.phonePlaceholder}
+                    className={cn(
+                      'text-slate-900',
+                      direction === "rtl" ? "text-right" : "text-left",
+                      touched.phone && (validationErrors.phone || serverFieldErrors.phone) ? 'border-red-500' : ''
+                    )}
+                  />
+                  {touched.phone && (validationErrors.phone || serverFieldErrors.phone) && (
+                    <p className="text-xs text-red-600">{validationErrors.phone || serverFieldErrors.phone}</p>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2 space-y-2">
+                  <Label htmlFor="gender" className="text-sm font-medium text-slate-900">
+                    {t.prefferedStyle}
+                  </Label>
+                  <Select 
+                    value={gender} 
+                    onValueChange={setGender} 
+                    dir={direction}
                   >
-                    <SelectInput
-                      value={language}
-                      onChange={(v) => {
-                        setTouched((prev) => ({ ...prev, language: true }))
-                        setLanguage(v)
-                      }}
-                      placeholder={t.selectLanguage}
-                      options={[
-                        { value: 'en', label: t.english },
-                        { value: 'he', label: t.hebrew }
-                      ]}
-                    />
-                  </Field>
+                    <SelectTrigger id="gender" dir={direction}>
+                      <SelectValue placeholder={t.prefferedStyle} />
+                    </SelectTrigger>
+                    <SelectContent dir={direction}>
+                      <SelectItem value="mens" dir={direction}>{t.mens}</SelectItem>
+                      <SelectItem value="womens" dir={direction}>{t.womens}</SelectItem>
+                      <SelectItem value="other" dir={direction}>{t.other}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="sm:col-span-2 space-y-2">
+                  <Label htmlFor="language" className="text-sm font-medium text-slate-900">
+                    {t.preferredLanguage} <span className="text-red-500">*</span>
+                  </Label>
+                  <Select 
+                    value={language} 
+                    onValueChange={(v) => {
+                      setTouched((prev) => ({ ...prev, language: true }))
+                      setLanguage(v)
+                    }} 
+                    dir={direction}
+                  >
+                    <SelectTrigger id="language" dir={direction} className={touched.language && validationErrors.language ? 'border-red-500' : ''}>
+                      <SelectValue placeholder={t.selectLanguage} />
+                    </SelectTrigger>
+                    <SelectContent dir={direction}>
+                      <SelectItem value="he" dir={direction}>{t.hebrew}</SelectItem>
+                      <SelectItem value="en" dir={direction}>{t.english}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {touched.language && validationErrors.language && (
+                    <p className="text-xs text-red-600">{validationErrors.language}</p>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2 space-y-2">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-slate-900">
+                      {t.birthday} <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {isRTL ? (
+                        <>
+                          {/* RTL: Year, Month, Day */}
+                          <div className="space-y-2">
+                            <Label htmlFor="birthYear" className="text-xs text-slate-600">
+                              {t.selectYear}
+                            </Label>
+                            <Select
+                              value={birthYear}
+                              onValueChange={(value) => {
+                                setTouched((prev) => ({ ...prev, birthday: true }))
+                                setBirthYear(value)
+                              }}
+                              dir={direction}
+                            >
+                              <SelectTrigger 
+                                id="birthYear" 
+                                dir={direction}
+                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
+                              >
+                                <SelectValue placeholder={t.selectYear} />
+                              </SelectTrigger>
+                              <SelectContent dir={direction}>
+                                {yearOptions.map((year) => (
+                                  <SelectItem key={year} value={year.toString()} dir={direction}>
+                                    {year}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="birthMonth" className="text-xs text-slate-600">
+                              {t.selectMonth}
+                            </Label>
+                            <Select
+                              value={birthMonth}
+                              onValueChange={(value) => {
+                                setTouched((prev) => ({ ...prev, birthday: true }))
+                                setBirthMonth(value)
+                              }}
+                              dir={direction}
+                            >
+                              <SelectTrigger 
+                                id="birthMonth" 
+                                dir={direction}
+                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
+                              >
+                                <SelectValue placeholder={t.selectMonth} />
+                              </SelectTrigger>
+                              <SelectContent dir={direction}>
+                                {monthOptions.map((month) => (
+                                  <SelectItem key={month} value={month.toString()} dir={direction}>
+                                    {month}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="birthDay" className="text-xs text-slate-600">
+                              {t.selectDay}
+                            </Label>
+                            <Select
+                              value={birthDay}
+                              onValueChange={(value) => {
+                                setTouched((prev) => ({ ...prev, birthday: true }))
+                                setBirthDay(value)
+                              }}
+                              dir={direction}
+                              disabled={!birthYear || !birthMonth}
+                            >
+                              <SelectTrigger 
+                                id="birthDay" 
+                                dir={direction}
+                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
+                              >
+                                <SelectValue placeholder={t.selectDay} />
+                              </SelectTrigger>
+                              <SelectContent dir={direction}>
+                                {dayOptions.map((day) => (
+                                  <SelectItem key={day} value={day.toString()} dir={direction}>
+                                    {day}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {/* LTR: Day, Month, Year */}
+                          <div className="space-y-2">
+                            <Label htmlFor="birthDay" className="text-xs text-slate-600">
+                              {t.selectDay}
+                            </Label>
+                            <Select
+                              value={birthDay}
+                              onValueChange={(value) => {
+                                setTouched((prev) => ({ ...prev, birthday: true }))
+                                setBirthDay(value)
+                              }}
+                              dir={direction}
+                              disabled={!birthYear || !birthMonth}
+                            >
+                              <SelectTrigger 
+                                id="birthDay" 
+                                dir={direction}
+                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
+                              >
+                                <SelectValue placeholder={t.selectDay} />
+                              </SelectTrigger>
+                              <SelectContent dir={direction}>
+                                {dayOptions.map((day) => (
+                                  <SelectItem key={day} value={day.toString()} dir={direction}>
+                                    {day}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="birthMonth" className="text-xs text-slate-600">
+                              {t.selectMonth}
+                            </Label>
+                            <Select
+                              value={birthMonth}
+                              onValueChange={(value) => {
+                                setTouched((prev) => ({ ...prev, birthday: true }))
+                                setBirthMonth(value)
+                              }}
+                              dir={direction}
+                            >
+                              <SelectTrigger 
+                                id="birthMonth" 
+                                dir={direction}
+                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
+                              >
+                                <SelectValue placeholder={t.selectMonth} />
+                              </SelectTrigger>
+                              <SelectContent dir={direction}>
+                                {monthOptions.map((month) => (
+                                  <SelectItem key={month} value={month.toString()} dir={direction}>
+                                    {month}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="birthYear" className="text-xs text-slate-600">
+                              {t.selectYear}
+                            </Label>
+                            <Select
+                              value={birthYear}
+                              onValueChange={(value) => {
+                                setTouched((prev) => ({ ...prev, birthday: true }))
+                                setBirthYear(value)
+                              }}
+                              dir={direction}
+                            >
+                              <SelectTrigger 
+                                id="birthYear" 
+                                dir={direction}
+                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
+                              >
+                                <SelectValue placeholder={t.selectYear} />
+                              </SelectTrigger>
+                              <SelectContent dir={direction}>
+                                {yearOptions.map((year) => (
+                                  <SelectItem key={year} value={year.toString()} dir={direction}>
+                                    {year}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {touched.birthday && validationErrors.birthday && (
+                      <p className="text-xs text-red-600">{validationErrors.birthday}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </section>
@@ -822,71 +1052,127 @@ export default function SignUpPage() {
             {/* Address Section */}
             <section>
               <h2 className={profileTheme.sectionTitle}>{t.address}</h2>
-              <div className={profileTheme.grid}>
-                <Field label={t.streetAddress}>
-                  <TextInput
-                    value={addressStreet}
-                    onChange={setAddressStreet}
-                    placeholder={t.streetPlaceholder}
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2 space-y-2">
+                  <Label htmlFor="city" className="text-sm font-medium text-slate-900">
+                    {t.city}
+                  </Label>
+                  <Input
+                    id="city"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder={t.cityPlaceholder}
+                    className="text-slate-900"
                   />
-                </Field>
+                </div>
 
-                <Field label={t.aptFloor}>
-                  <TextInput
-                    value={addressApt}
-                    onChange={setAddressApt}
+                <div className="sm:col-span-2 space-y-2">
+                  <Label htmlFor="streetName" className="text-sm font-medium text-slate-900">
+                    {t.streetName}
+                  </Label>
+                  <Input
+                    id="streetName"
+                    value={streetName}
+                    onChange={(e) => setStreetName(e.target.value)}
+                    placeholder={t.streetNamePlaceholder}
+                    className="text-slate-900"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="streetNumber" className="text-sm font-medium text-slate-900">
+                    {t.streetNumber}
+                  </Label>
+                  <Input
+                    id="streetNumber"
+                    type="text"
+                    value={streetNumber}
+                    onChange={(e) => setStreetNumber(e.target.value)}
+                    placeholder={t.streetNumberPlaceholder}
+                    className="text-slate-900"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="floor" className="text-sm font-medium text-slate-900">
+                    {t.floor}
+                  </Label>
+                  <Input
+                    id="floor"
+                    type="text"
+                    value={floor}
+                    onChange={(e) => setFloor(e.target.value)}
+                    placeholder={t.floorPlaceholder}
+                    className="text-slate-900"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 space-y-2">
+                  <Label htmlFor="apt" className="text-sm font-medium text-slate-900">
+                    {t.apt}
+                  </Label>
+                  <Input
+                    id="apt"
+                    type="text"
+                    value={apt}
+                    onChange={(e) => setApt(e.target.value)}
                     placeholder={t.aptPlaceholder}
+                    className="text-slate-900"
                   />
-                </Field>
-
-                <Field label={t.city}>
-                  <TextInput value={city} onChange={setCity} placeholder={t.cityPlaceholder} />
-                </Field>
-
-                <Field label={t.postalCode}>
-                  <TextInput
-                    value={postalCode}
-                    onChange={setPostalCode}
-                    placeholder={t.postalPlaceholder}
-                  />
-                </Field>
+                </div>
               </div>
             </section>
 
             {/* Newsletter Section */}
             <section>
-              <Checkbox
-                checked={isNewsletter}
-                onChange={setIsNewsletter}
-                label={t.newsletter}
-                description={t.newsletterDescription}
-              />
+              <div className={cn("flex items-start gap-2", isRTL ? "flex-row" : "")}>
+                <Checkbox
+                  id="newsletter"
+                  checked={isNewsletter}
+                  onCheckedChange={(checked) => {
+                    setIsNewsletter(checked === true)
+                  }}
+                  className="mt-1 cursor-pointer"
+                />
+                <div className="space-y-1 leading-none">
+                  <Label
+                    htmlFor="newsletter"
+                    className="text-sm font-medium cursor-pointer text-slate-900"
+                  >
+                    {t.newsletter}
+                  </Label>
+                  <p className="text-xs text-slate-500">
+                    {t.newsletterDescription}
+                  </p>
+                </div>
+              </div>
             </section>
           </div>
         )}
 
         {/* Save Profile Button */}
-        {!shouldGateExistingUser && (isSignedInWithGoogle || firebaseUser || showEmailForm) && (
+        {renderForm && (
           <div className="mt-8 border-t border-slate-200 pt-6">
-            <div className={profileTheme.actions}>
-              <button
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <Button
                 type="button"
-                className={profileTheme.buttonPrimary}
                 onClick={handleSubmit}
                 disabled={!canSubmit}
+                className="w-full sm:w-auto bg-[#856D55] text-white hover:bg-[#856D55]/90"
               >
                 {busy ? t.saving : t.saveProfile}
-              </button>
+              </Button>
               
               {(isSignedInWithGoogle || firebaseUser) && (
-                <button
+                <Button
                   type="button"
                   onClick={handleCancelSignup}
                   disabled={busy}
-                  className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="ghost"
+                  className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:bg-red-50"
                 >
                   {lng === 'he' ? 'ביטול הרשמה' : 'Cancel Signup'}
-                </button>
+                </Button>
               )}
             </div>
           </div>

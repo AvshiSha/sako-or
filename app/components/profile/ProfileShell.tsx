@@ -1,6 +1,8 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
+import { cn } from '@/lib/utils'
 import { profileTheme } from './profileTheme'
 
 type Props = {
@@ -14,13 +16,22 @@ export default function ProfileShell({ title, subtitle, children }: Props) {
     <div className={profileTheme.pageBg}>
       <div className={profileTheme.shell}>
         <div className={profileTheme.card}>
-          <div className={profileTheme.header}>
-            <div className={profileTheme.avatar} aria-hidden="true">
-              <div className="h-9 w-9 rounded-full bg-slate-200" />
-            </div>
-            <div>
-              <h1 className={profileTheme.title}>{title}</h1>
-              {subtitle ? <p className={profileTheme.subtitle}>{subtitle}</p> : null}
+          <div className={cn(profileTheme.header, "flex flex-col items-center justify-center")}>
+            <div className="flex flex-col items-center gap-4 w-full">
+              <div className="h-40 w-40 relative flex-shrink-0">
+                <Image
+                  src="/images/logo/sako-logo.png"
+                  alt="Sako Logo"
+                  width={200}
+                  height={200}
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <div className="text-center">
+                <h1 className={profileTheme.title}>{title}</h1>
+                {subtitle ? <p className={profileTheme.subtitle}>{subtitle}</p> : null}
+              </div>
             </div>
           </div>
           {children}

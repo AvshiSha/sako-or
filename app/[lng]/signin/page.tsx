@@ -397,21 +397,21 @@ function SignInClient() {
 
   return (
     <div className={profileTheme.pageBg} dir={lng === 'he' ? 'rtl' : 'ltr'}>
-      <div className="mx-auto w-full max-w-md px-4 pt-24 pb-12">
+      <div className="mx-auto w-full max-w-md px-2 pt-20 pb-8">
         <div className="flex justify-center">
           <Image
             src="/images/logo/sako-logo.png"
             alt="Sako-Or"
             width={180}
-            height={60}
+            height={180}
             priority
           />
         </div>
 
-        <h1 className="mt-6 text-center text-2xl font-bold text-slate-900">{t.title}</h1>
-        <p className="mt-2 text-center text-sm text-slate-500">{t.subtitle}</p>
+        <h1 className="mt-1 text-center text-2xl font-bold text-slate-900">{t.title}</h1>
+        <p className="mt-1 text-center text-sm text-slate-500">{t.subtitle}</p>
 
-        <div className="mt-8 rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur p-6">
+        <div className="mt-4 rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur p-6">
           {resetSuccessBanner ? (
             <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
               {lng === 'he'

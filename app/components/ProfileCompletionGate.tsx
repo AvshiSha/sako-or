@@ -56,7 +56,17 @@ export default function ProfileCompletionGate({ children }: { children: React.Re
 
     ;(async () => {
       try {
-        const token = await user.getIdToken()
+        const token = await user.getIdToken().catch((err) => {
+          console.warn('[ProfileCompletionGate] Failed to get ID token:', err?.message || err)
+          return null
+        })
+        
+        if (!token) {
+          // If we can't get a token, allow navigation (might be API key issue)
+          if (!cancelled) setChecking(false)
+          return
+        }
+        
         const res = await fetch('/api/me/sync', {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` }
@@ -66,14 +76,29 @@ export default function ProfileCompletionGate({ children }: { children: React.Re
 
         if (cancelled) return
 
+        // If sync fails with 400, it might be API key issue - allow navigation
+        if (res.status === 400) {
+          console.warn('[ProfileCompletionGate] Sync returned 400 - may be API key/domain issue, allowing navigation')
+          if (!cancelled) setChecking(false)
+          return
+        }
+
         // If sync fails or user needs profile completion, redirect to signup
         if (!res.ok || !json || 'error' in json || json.needsProfileCompletion === true) {
           router.replace(`/${lng}/signup`)
         }
         // Otherwise, profile is complete - allow navigation
-      } catch (error) {
+      } catch (error: any) {
+        // If it's a 400 error, allow navigation (API key issue)
+        const is400Error = error?.message?.includes('400') || error?.code === 'auth/network-request-failed'
+        if (is400Error) {
+          console.warn('[ProfileCompletionGate] 400 error during profile check - may be API key issue, allowing navigation')
+          if (!cancelled) setChecking(false)
+          return
+        }
+        
         console.error('[ProfileCompletionGate] Error checking profile completion:', error)
-        // On error, redirect to signup to be safe
+        // On other errors, redirect to signup to be safe
         if (!cancelled) {
           router.replace(`/${lng}/signup`)
         }

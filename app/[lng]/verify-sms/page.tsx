@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import ProfileShell from '@/app/components/profile/ProfileShell'
@@ -32,7 +32,11 @@ const translations = {
     tooManyAttempts: 'Too many attempts. Please try again later.',
     errorSendingSms: 'Error sending SMS. Please try again.',
     errorVerifying: 'Error verifying code. Please try again.',
-    cancelConfirm: 'Are you sure? This will delete your account and you\'ll need to sign up again from scratch.'
+    cancelConfirm: 'Are you sure? This will delete your account and you\'ll need to sign up again from scratch.',
+    invalidAppCredential: 'Phone verification setup error. Please ensure your domain is authorized in Firebase Console and billing is enabled.',
+    recaptchaError: 'Security verification failed. Please refresh the page and try again.',
+    testModeInfo: 'If you added this phone as a test number in Firebase Console, use the test code you set (e.g., 123456) instead of waiting for SMS.',
+    noSmsReceived: 'SMS not received? Check: 1) Firebase Console → Phone → Test numbers (use test code), 2) Billing plan is Blaze, 3) Check Firebase Console logs for errors.'
   },
   he: {
     title: 'אימות מספר טלפון',
@@ -53,7 +57,11 @@ const translations = {
     tooManyAttempts: 'יותר מדי ניסיונות. נסו שוב מאוחר יותר.',
     errorSendingSms: 'שגיאה בשליחת SMS. נסו שוב.',
     errorVerifying: 'שגיאה באימות הקוד. נסו שוב.',
-    cancelConfirm: 'האם אתם בטוחים? פעולה זו תמחק את החשבון שלכם ותצטרכו להירשם מחדש מההתחלה.'
+    cancelConfirm: 'האם אתם בטוחים? פעולה זו תמחק את החשבון שלכם ותצטרכו להירשם מחדש מההתחלה.',
+    invalidAppCredential: 'שגיאה בהגדרת אימות טלפון. אנא ודאו שהדומיין מורשה ב-Firebase Console ושבילינג מופעל.',
+    recaptchaError: 'אימות אבטחה נכשל. אנא רעננו את הדף ונסו שוב.',
+    testModeInfo: 'אם הוספתם את המספר הזה כמספר בדיקה ב-Firebase Console, השתמשו בקוד הבדיקה שקבעתם (למשל, 123456) במקום לחכות ל-SMS.',
+    noSmsReceived: 'לא קיבלתם SMS? בדקו: 1) Firebase Console → Phone → Test numbers (השתמשו בקוד בדיקה), 2) תוכנית הבילינג היא Blaze, 3) בדקו את הלוגים ב-Firebase Console.'
   }
 }
 
@@ -86,6 +94,7 @@ export default function VerifySmsPage() {
   const [error, setError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null)
+  const hasAttemptedSendRef = useRef(false)
 
   // Cooldown timer
   useEffect(() => {
@@ -113,7 +122,6 @@ export default function VerifySmsPage() {
     try {
       const parsed = JSON.parse(stored) as PendingSignup
       if (parsed.uid !== firebaseUser.uid) {
-        // UID mismatch - clear and redirect
         sessionStorage.removeItem('pendingSignup')
         router.replace(`/${lng}/signup`)
         return
@@ -125,51 +133,199 @@ export default function VerifySmsPage() {
     }
   }, [firebaseUser, authLoading, router, lng])
 
-  // Initialize recaptcha once we have pending signup
+  // Initialize recaptcha verifier once
   useEffect(() => {
-    if (!pendingSignup || recaptchaVerifier) return
+    // Wait for container to be in DOM
+    const initVerifier = () => {
+      let container = document.getElementById('recaptcha-container')
+      
+      // Create container if it doesn't exist
+      if (!container) {
+        container = document.createElement('div')
+        container.id = 'recaptcha-container'
+        container.style.display = 'none'
+        document.body.appendChild(container)
+      }
 
-    try {
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          // reCAPTCHA solved - allow SMS
+      try {
+        console.log('🔵 [RECAPTCHA] Initializing RecaptchaVerifier')
+        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible'
+        })
+        console.log('✅ [RECAPTCHA] RecaptchaVerifier created')
+
+        setRecaptchaVerifier(verifier)
+
+        return () => {
+          try {
+            verifier.clear()
+          } catch {
+            // Ignore cleanup errors
+          }
         }
-      })
-      setRecaptchaVerifier(verifier)
-    } catch (err) {
-      console.error('Error initializing recaptcha:', err)
+      } catch (err) {
+        console.error('Error initializing RecaptchaVerifier:', err)
+        return undefined
+      }
     }
-  }, [pendingSignup, recaptchaVerifier])
 
-  // Auto-send SMS when component is ready
+    // Try immediately, then retry after a short delay if needed
+    let cleanup = initVerifier()
+    if (!cleanup) {
+      const timer = setTimeout(() => {
+        cleanup = initVerifier()
+      }, 100)
+      return () => {
+        clearTimeout(timer)
+        if (cleanup) cleanup()
+      }
+    }
+
+    return cleanup
+  }, [])
+
+  // Auto-send SMS when component is ready (only once)
   useEffect(() => {
-    if (!pendingSignup || !recaptchaVerifier || verificationId || busy) return
+    console.log('🔵 [AUTO-SEND] Effect triggered', {
+      pendingSignup: !!pendingSignup,
+      verificationId: !!verificationId,
+      busy,
+      hasAttemptedSend: hasAttemptedSendRef.current,
+      recaptchaVerifier: !!recaptchaVerifier
+    })
 
-    void sendSmsCode()
+    if (!pendingSignup || verificationId || busy || hasAttemptedSendRef.current || !recaptchaVerifier) {
+      console.log('🔵 [AUTO-SEND] Skipping - conditions not met')
+      return
+    }
+
+    console.log('🔵 [AUTO-SEND] Setting up timer to send SMS')
+    const timer = setTimeout(() => {
+      if (!hasAttemptedSendRef.current && recaptchaVerifier) {
+        console.log('🔵 [AUTO-SEND] Timer fired - calling sendSmsCode')
+        hasAttemptedSendRef.current = true
+        void sendSmsCode()
+      }
+    }, 500)
+
+    return () => {
+      console.log('🔵 [AUTO-SEND] Cleanup - clearing timer')
+      clearTimeout(timer)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingSignup, recaptchaVerifier])
+  }, [pendingSignup, verificationId, busy, recaptchaVerifier])
 
   async function sendSmsCode() {
-    if (!firebaseUser || !pendingSignup || !recaptchaVerifier) return
+    console.log('🔵 [SEND-SMS] sendSmsCode called', {
+      firebaseUser: !!firebaseUser,
+      pendingSignup: !!pendingSignup,
+      phone: pendingSignup?.phone,
+      recaptchaVerifier: !!recaptchaVerifier,
+      hasAttemptedSend: hasAttemptedSendRef.current
+    })
 
+    if (!firebaseUser || !pendingSignup || !recaptchaVerifier) {
+      console.log('❌ [SEND-SMS] Missing required values, returning')
+      return
+    }
+
+    console.log('🔵 [SEND-SMS] Setting busy=true, clearing error')
     setBusy(true)
     setError(null)
 
     try {
-      // Phone is already in E.164 format from signup
-      const e164Phone = pendingSignup.phone
-
+      console.log('🔵 [SEND-SMS] Creating PhoneAuthProvider')
+      console.log('🔵 [SEND-SMS] Current origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A')
+      console.log('🔵 [SEND-SMS] Auth domain:', auth.app.options.authDomain)
+      console.log('🔵 [SEND-SMS] RecaptchaVerifier state:', {
+        type: recaptchaVerifier?.type,
+        destroyed: (recaptchaVerifier as any)?._destroyed
+      })
+      
+      // Ensure reCAPTCHA is rendered first (for invisible, this is usually automatic but let's be explicit)
+      try {
+        console.log('🔵 [SEND-SMS] Rendering reCAPTCHA verifier...')
+        await recaptchaVerifier.render()
+        console.log('✅ [SEND-SMS] reCAPTCHA rendered successfully')
+      } catch (renderErr: any) {
+        console.warn('⚠️ [SEND-SMS] reCAPTCHA render warning (may be already rendered):', renderErr?.message)
+        // Continue anyway - it might already be rendered
+      }
+      
       const provider = new PhoneAuthProvider(auth)
-      const verId = await provider.verifyPhoneNumber(e164Phone, recaptchaVerifier)
+      console.log('🔵 [SEND-SMS] Calling verifyPhoneNumber', { 
+        phone: pendingSignup.phone,
+        providerCreated: !!provider
+      })
+      
+      // Add timeout to detect hanging requests
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('verifyPhoneNumber timeout after 30s')), 30000)
+      })
+      
+      console.log('🔵 [SEND-SMS] Starting verifyPhoneNumber with timeout...')
+      const verId = await Promise.race([
+        provider.verifyPhoneNumber(pendingSignup.phone, recaptchaVerifier),
+        timeoutPromise
+      ]) as string
+      
+      console.log('✅ [SEND-SMS] verifyPhoneNumber succeeded!', { 
+        verificationId: verId?.substring(0, 20) + '...',
+        fullLength: verId?.length
+      })
 
       setVerificationId(verId)
       setResendCooldown(60)
     } catch (err: any) {
-      console.error('Error sending SMS:', err)
+      console.error('❌ [SEND-SMS] Error sending SMS:', err)
+      console.error('❌ [SEND-SMS] Error details:', {
+        name: err?.name,
+        message: err?.message,
+        code: err?.code,
+        stack: err?.stack?.substring(0, 300),
+        customData: err?.customData,
+        response: err?.response,
+        serverResponse: err?.serverResponse,
+        // Try to extract more details from Firebase error
+        errorInfo: err?.errorInfo
+      })
+      
+      // Try to get the actual error response body if available
+      if (err?.customData?.serverResponse) {
+        try {
+          const serverResponse = typeof err.customData.serverResponse === 'string' 
+            ? JSON.parse(err.customData.serverResponse)
+            : err.customData.serverResponse
+          console.error('❌ [SEND-SMS] Server response:', serverResponse)
+        } catch (e) {
+          console.error('❌ [SEND-SMS] Raw server response:', err.customData.serverResponse)
+        }
+      }
+      
       const code = typeof err?.code === 'string' ? err.code : ''
-      if (code === 'auth/too-many-requests') {
+      const msg = typeof err?.message === 'string' ? err.message : ''
+      
+      // Check for specific error patterns
+      if (msg.includes('400') || msg.includes('Bad Request') || code === 'auth/invalid-app-credential') {
+        console.error('❌ [SEND-SMS] 400 Bad Request - This might indicate:')
+        console.error('  1. Invalid API key or API key restrictions')
+        console.error('  2. Domain not authorized in Firebase Console')
+        console.error('  3. reCAPTCHA Enterprise not properly configured')
+        console.error('  4. reCAPTCHA site key mismatch')
+        console.error('  5. Check Firebase Console → Authentication → Settings → reCAPTCHA')
+      }
+
+      if (code === 'auth/invalid-app-credential') {
+        setError(t.invalidAppCredential)
+      } else if (code === 'auth/too-many-requests') {
         setError(t.tooManyAttempts)
+        hasAttemptedSendRef.current = true
+        setResendCooldown(60)
+      } else if (code === 'auth/internal-error' || msg.includes('recaptcha') || msg.includes('already been rendered')) {
+        setError(t.recaptchaError)
+      } else if (msg.includes('400') || msg.includes('Bad Request') || code === 'auth/network-request-failed') {
+        // 400 Bad Request usually means API key restrictions or domain issues
+        setError('Phone verification failed. Please check: 1) API key restrictions in Firebase Console, 2) Domain authorization (localhost), 3) reCAPTCHA configuration.')
       } else {
         setError(t.errorSendingSms)
       }
@@ -185,13 +341,9 @@ export default function VerifySmsPage() {
     setError(null)
 
     try {
-      // Create phone credential
       const credential = PhoneAuthProvider.credential(verificationId, code.trim())
-
-      // Update user's phone number in Firebase
       await updatePhoneNumber(firebaseUser, credential)
 
-      // Call backend to create Neon user
       const token = await firebaseUser.getIdToken()
       const res = await fetch('/api/auth/complete-signup', {
         method: 'POST',
@@ -219,10 +371,7 @@ export default function VerifySmsPage() {
         throw new Error(json?.error || `HTTP ${res.status}`)
       }
 
-      // Clear pending signup
       sessionStorage.removeItem('pendingSignup')
-
-      // Redirect to profile
       router.replace(`/${lng}/profile`)
     } catch (err: any) {
       console.error('Error verifying code:', err)
@@ -259,10 +408,7 @@ export default function VerifySmsPage() {
         headers: { Authorization: `Bearer ${token}` }
       })
 
-      // Clear pending signup
       sessionStorage.removeItem('pendingSignup')
-
-      // Redirect to home
       router.replace(`/${lng}`)
     } catch (err: any) {
       console.error('Error cancelling signup:', err)
@@ -304,6 +450,12 @@ export default function VerifySmsPage() {
           <div className="text-center">
             <h2 className="text-xl font-semibold text-slate-900">{greeting}</h2>
             <p className="mt-2 text-sm text-slate-600">{smsSent}</p>
+            {verificationId && (
+              <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                <p className="font-medium mb-1">💡 {t.testModeInfo}</p>
+                <p className="text-xs mt-1">{t.noSmsReceived}</p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
@@ -334,8 +486,11 @@ export default function VerifySmsPage() {
             <div className="flex items-center justify-between border-t border-slate-200 pt-4">
               <button
                 type="button"
-                onClick={sendSmsCode}
-                disabled={busy || resendCooldown > 0}
+                onClick={() => {
+                  hasAttemptedSendRef.current = false
+                  void sendSmsCode()
+                }}
+                disabled={busy || resendCooldown > 0 || !recaptchaVerifier}
                 className="text-sm font-medium text-slate-700 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {busy
@@ -358,9 +513,8 @@ export default function VerifySmsPage() {
         </div>
 
         {/* Hidden recaptcha container */}
-        <div id="recaptcha-container" />
+        <div id="recaptcha-container" style={{ display: 'none' }} />
       </div>
     </ProfileShell>
   )
 }
-

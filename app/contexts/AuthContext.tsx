@@ -37,7 +37,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const syncUserToNeon = async (firebaseUser: User) => {
     try {
-      const token = await firebaseUser.getIdToken()
+      const token = await firebaseUser.getIdToken().catch((err) => {
+        // Handle token retrieval errors gracefully
+        console.warn('[AUTH_CONTEXT] Failed to get ID token:', err?.message || err)
+        return null
+      })
+      
+      if (!token) {
+        console.warn('[AUTH_CONTEXT] Skipping Neon sync - no token available')
+        return
+      }
+      
       const res = await fetch('/api/me/sync', {
         method: 'POST',
         headers: {
@@ -48,10 +58,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
         const errorMessage = errorData.error || `HTTP ${res.status}`
-        console.error(
-          `[AUTH_CONTEXT] Failed to sync user to Neon: ${errorMessage}`,
-          { uid: firebaseUser.uid, status: res.status, errorData }
-        )
+        // Only log as error if it's not a 400 Bad Request (which might be API key issues)
+        if (res.status === 400) {
+          console.warn(
+            `[AUTH_CONTEXT] Sync failed (400) - may be API key/domain issue: ${errorMessage}`,
+            { uid: firebaseUser.uid, status: res.status }
+          )
+        } else {
+          console.error(
+            `[AUTH_CONTEXT] Failed to sync user to Neon: ${errorMessage}`,
+            { uid: firebaseUser.uid, status: res.status, errorData }
+          )
+        }
         return
       }
 
@@ -60,13 +78,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         uid: firebaseUser.uid, 
         neonId: data.id 
       })
-    } catch (error) {
-      // Network errors or other exceptions - log as error, not warning
-      console.error(
-        '[AUTH_CONTEXT] Network/system error during Neon sync:',
-        error,
-        { uid: firebaseUser.uid }
-      )
+    } catch (error: any) {
+      // Network errors or other exceptions - log as warning for 400 errors
+      const is400Error = error?.message?.includes('400') || error?.code === 'auth/network-request-failed'
+      if (is400Error) {
+        console.warn(
+          '[AUTH_CONTEXT] Sync error (400) - may be API key/domain configuration issue:',
+          error?.message || error,
+          { uid: firebaseUser.uid }
+        )
+      } else {
+        console.error(
+          '[AUTH_CONTEXT] Network/system error during Neon sync:',
+          error,
+          { uid: firebaseUser.uid }
+        )
+      }
     }
   }
 

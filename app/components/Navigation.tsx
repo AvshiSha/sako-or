@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import SearchBar from './SearchBar'
+import MobileAuthGreeting from './MobileAuthGreeting'
 import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -736,6 +737,11 @@ export default function Navigation({ lng }: { lng: string }) {
                   )
                 })}
               </Accordion>
+              
+              {/* Mobile Auth Greeting Component */}
+              <div className="pt-2">
+                <MobileAuthGreeting lng={lng} />
+              </div>
             </div>
           </ScrollArea>
         </SheetContent>

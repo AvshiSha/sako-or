@@ -14,6 +14,7 @@ import ProductCard from "@/app/components/ProductCard";
 import { trackViewItemList } from "@/lib/dataLayer";
 import { getColorName, getColorHex } from "@/lib/colors";
 import { cn } from "@/lib/utils";
+import ScrollToTopButton from "@/app/components/ScrollToTopButton";
 import {
   Accordion,
   AccordionContent,
@@ -976,6 +977,9 @@ export default function CollectionClient({
         </div>
         )}
       </AnimatePresence>
+
+      {/* Scroll to Top Button */}
+      <ScrollToTopButton lng={lng as 'en' | 'he'} />
     </div>
   );
 }

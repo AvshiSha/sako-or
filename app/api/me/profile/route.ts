@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
-
-function normalizeIsraeliLocalPhoneDigits(raw: string) {
-  return raw.trim().replace(/\D/g, '')
-}
-
-function isValidIsraeliLocalPhoneDigits(digits: string) {
-  if (digits.startsWith('972')) return false
-  if (!digits.startsWith('0')) return false
-  return digits.length === 9 || digits.length === 10
-}
+import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
 
 function getBearerToken(req: NextRequest): string | null {
   const authHeader = req.headers.get('authorization') || ''
@@ -36,9 +27,9 @@ const ProfilePatchSchema = z.object({
     .trim()
     .min(1)
     .max(30)
-    .transform((raw) => normalizeIsraeliLocalPhoneDigits(raw))
-    .refine((digits) => isValidIsraeliLocalPhoneDigits(digits), {
-      message: 'Invalid phone. Use an Israeli local number starting with 0 (9–10 digits), no +972.'
+    .transform((raw) => normalizeIsraelE164(raw))
+    .refine((e164) => e164 && isValidIsraelE164(e164), {
+      message: 'Invalid phone. Use Israeli E.164 format: +972501234567'
     })
     .optional(),
   language: z.enum(['en', 'he']).optional(),

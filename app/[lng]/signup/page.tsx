@@ -611,15 +611,12 @@ export default function SignUpPage() {
   // While Firebase session is resolving, avoid UI flicker.
   if (authLoading) {
     return (
-      <ProfileShell title={t.title} subtitle={t.subtitle}>
-        <div className={profileTheme.section}>
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-2/3" />
-            <div className="h-4 bg-gray-200 rounded w-1/2" />
-            <div className="h-10 bg-gray-200 rounded w-full" />
-          </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
+          <p className="mt-4 text-gray-600">{lng === 'he' ? 'טוען...' : 'Loading...'}</p>
         </div>
-      </ProfileShell>
+      </div>
     )
   }
 

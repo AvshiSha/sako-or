@@ -47,9 +47,9 @@ export function OtpInput({
       const newOtp = value.slice(0, index) + value.slice(index + 1)
       onChange(newOtp)
       
-      // Focus previous input
+      // Focus previous input (always left-to-right, regardless of dir)
       if (index > 0) {
-        const prevIndex = dir === 'rtl' ? index + 1 : index - 1
+        const prevIndex = index - 1
         inputRefs.current[prevIndex]?.focus()
       }
       return
@@ -60,9 +60,9 @@ export function OtpInput({
       const newOtp = value.slice(0, index) + digit + value.slice(index + 1)
       onChange(newOtp.slice(0, length))
       
-      // Focus next input
+      // Focus next input (always left-to-right, regardless of dir)
       if (index < length - 1) {
-        const nextIndex = dir === 'rtl' ? index - 1 : index + 1
+        const nextIndex = index + 1
         inputRefs.current[nextIndex]?.focus()
       }
     }
@@ -70,16 +70,18 @@ export function OtpInput({
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace' && !value[index] && index > 0) {
-      // Focus previous on backspace when current is empty
-      const prevIndex = dir === 'rtl' ? index + 1 : index - 1
+      // Focus previous on backspace when current is empty (always left-to-right)
+      const prevIndex = index - 1
       inputRefs.current[prevIndex]?.focus()
     } else if (e.key === 'ArrowLeft' && index > 0) {
       e.preventDefault()
-      const prevIndex = dir === 'rtl' ? index + 1 : index - 1
+      // Arrow left always goes to previous index (left-to-right)
+      const prevIndex = index - 1
       inputRefs.current[prevIndex]?.focus()
     } else if (e.key === 'ArrowRight' && index < length - 1) {
       e.preventDefault()
-      const nextIndex = dir === 'rtl' ? index - 1 : index + 1
+      // Arrow right always goes to next index (left-to-right)
+      const nextIndex = index + 1
       inputRefs.current[nextIndex]?.focus()
     }
   }
@@ -98,7 +100,7 @@ export function OtpInput({
   return (
     <div
       className={cn('flex gap-2 justify-center', className)}
-      dir={dir}
+      dir="ltr"
       onPaste={handlePaste}
     >
       {Array.from({ length }).map((_, index) => (

@@ -592,12 +592,12 @@ export default function ProfilePage() {
 
   if (authLoading || !loadedUser) {
     return (
-      <ProfileShell title={t.pageTitle} subtitle={t.loading}>
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-3/4"></div>
-          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
+          <p className="mt-4 text-gray-600">{lng === 'he' ? 'טוען...' : 'Loading...'}</p>
         </div>
-      </ProfileShell>
+      </div>
     )
   }
 

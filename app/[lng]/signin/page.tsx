@@ -71,6 +71,8 @@ const translations = {
     errorSendingCode: 'Error sending code. Please try again.',
     errorVerifying: 'Error verifying code. Please try again.',
     tooManyAttempts: 'Too many attempts. Please try again later.',
+    emailNotRegistered: 'This email address is not registered',
+    phoneNotRegistered: 'This phone number is not registered',
   },
   he: {
     title: 'התחברות',
@@ -118,6 +120,8 @@ const translations = {
     errorSendingCode: 'שגיאה בשליחת קוד. נסו שוב.',
     errorVerifying: 'שגיאה באימות הקוד. נסו שוב.',
     tooManyAttempts: 'יותר מדי ניסיונות. נסו שוב מאוחר יותר.',
+    emailNotRegistered: 'כתובת אימייל זו לא רשומה',
+    phoneNotRegistered: 'מספר טלפון זה לא רשום',
   }
 }
 
@@ -183,6 +187,8 @@ function SignInClient() {
   // Shared state
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [gate, setGate] = useState<'idle' | 'checking' | 'redirecting'>('idle')
   const [resetSuccessBanner, setResetSuccessBanner] = useState(false)
@@ -273,6 +279,8 @@ function SignInClient() {
   // Reset state when switching tabs
   useEffect(() => {
     setError(null)
+    setPhoneError(null)
+    setEmailError(null)
     if (activeTab === 'phone') {
       setPhoneCode('')
       setPhoneConfirmationResult(null)
@@ -281,6 +289,20 @@ function SignInClient() {
       setEmailOtpSent(false)
     }
   }, [activeTab])
+
+  // Clear phone error when phone number changes
+  useEffect(() => {
+    if (phoneError) {
+      setPhoneError(null)
+    }
+  }, [phoneLocalNumber]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear email error when email changes
+  useEffect(() => {
+    if (emailError) {
+      setEmailError(null)
+    }
+  }, [email]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function formatAuthError(e: any, fallback: string) {
     const code = typeof e?.code === 'string' ? e.code : ''
@@ -380,7 +402,7 @@ function SignInClient() {
   // Phone authentication handlers
   async function handleSendPhoneCode() {
     if (!phoneLocalNumber || phoneLocalNumber.length < 8 || !recaptchaVerifier) {
-      setError('Please enter a valid phone number')
+      setPhoneError('Please enter a valid phone number')
       return
     }
 
@@ -390,8 +412,28 @@ function SignInClient() {
 
     setBusy(true)
     setError(null)
+    setPhoneError(null)
 
     try {
+      // First, check if user exists
+      const checkRes = await fetch('/api/auth/check-phone-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: fullPhoneNumber }),
+      })
+
+      const checkData = await checkRes.json().catch(() => null)
+
+      if (!checkRes.ok) {
+        if (checkRes.status === 404 && checkData?.error === 'USER_NOT_FOUND') {
+          setPhoneError(t.phoneNotRegistered)
+        } else {
+          setPhoneError(checkData?.message || t.errorSendingCode)
+        }
+        return
+      }
+
+      // User exists, proceed with Firebase phone auth
       await verifier.render()
       const confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier)
       setPhoneConfirmationResult(confirmationResult)
@@ -399,12 +441,12 @@ function SignInClient() {
     } catch (err: any) {
       const code = typeof err?.code === 'string' ? err.code : ''
       if (code === 'auth/invalid-phone-number') {
-        setError('Invalid phone number. Please check and try again.')
+        setPhoneError('Invalid phone number. Please check and try again.')
       } else if (code === 'auth/too-many-requests') {
-        setError(t.tooManyAttempts)
+        setPhoneError(t.tooManyAttempts)
         setResendCooldown(60)
       } else {
-        setError(formatAuthError(err, t.errorSendingCode))
+        setPhoneError(formatAuthError(err, t.errorSendingCode))
       }
     } finally {
       setBusy(false)
@@ -444,17 +486,18 @@ function SignInClient() {
     const trimmedEmail = email.trim()
     
     if (!trimmedEmail || !trimmedEmail.includes('@')) {
-      setError(t.invalidEmail)
+      setEmailError(t.invalidEmail)
       return
     }
 
     if (resendCooldown > 0) {
-      setError(t.cooldownMessage.replace('{seconds}', String(resendCooldown)))
+      setEmailError(t.cooldownMessage.replace('{seconds}', String(resendCooldown)))
       return
     }
 
     setBusy(true)
     setError(null)
+    setEmailError(null)
 
     try {
       const res = await fetch('/api/auth/send-email-otp', {
@@ -463,14 +506,28 @@ function SignInClient() {
         body: JSON.stringify({ email: trimmedEmail, lng }),
       })
 
+      const data = await res.json().catch(() => null)
+
       if (!res.ok) {
-        throw new Error('Failed to send code')
+        // Handle specific error codes
+        if (res.status === 404 && data?.error === 'USER_NOT_FOUND') {
+          setEmailError(t.emailNotRegistered)
+        } else if (res.status === 429) {
+          if (data?.error === 'COOLDOWN') {
+            setEmailError(data.message || t.cooldownMessage.replace('{seconds}', String(resendCooldown)))
+          } else {
+            setEmailError(data?.message || t.tooManyAttempts)
+          }
+        } else {
+          setEmailError(data?.message || t.errorSendingCode)
+        }
+        return
       }
 
       setEmailOtpSent(true)
       setResendCooldown(60)
     } catch (err: any) {
-      setError(formatAuthError(err, t.errorSendingCode))
+      setEmailError(formatAuthError(err, t.errorSendingCode))
     } finally {
       setBusy(false)
     }
@@ -726,6 +783,11 @@ function SignInClient() {
                         dir={isRTL ? 'rtl' : 'ltr'}
                       />
                     </div>
+                    {phoneError && (
+                      <p className="mt-1.5 text-sm text-red-600" dir={isRTL ? 'rtl' : 'ltr'}>
+                        {phoneError}
+                      </p>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -789,6 +851,11 @@ function SignInClient() {
                       className={profileTheme.input}
                       disabled={busy}
                     />
+                    {emailError && (
+                      <p className="mt-1.5 text-sm text-red-600" dir={isRTL ? 'rtl' : 'ltr'}>
+                        {emailError}
+                      </p>
+                    )}
                   </div>
                   <button
                     type="button"

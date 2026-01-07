@@ -1,26 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
+import { normalizeIsraelE164 } from '@/lib/phone'
 
 function normalizeEmail(raw: string) {
   return raw.trim().toLowerCase()
-}
-
-function toIsraeliLocalPhoneDigits(rawE164OrAny: string | null | undefined) {
-  if (!rawE164OrAny) return null
-  const digits = String(rawE164OrAny).trim().replace(/\D/g, '')
-  // If Firebase gives +972..., convert to local 0XXXXXXXXX
-  if (digits.startsWith('972')) {
-    const local = `0${digits.slice(3)}`
-    return local
-  }
-  return digits
-}
-
-function isValidIsraeliLocalPhoneDigits(digits: string) {
-  if (digits.startsWith('972')) return false
-  if (!digits.startsWith('0')) return false
-  return digits.length === 9 || digits.length === 10
 }
 
 function getBearerToken(req: NextRequest): string | null {
@@ -71,8 +55,8 @@ export async function POST(request: NextRequest) {
     const emailRaw = firebaseUser.email ?? decoded.email ?? null
     const email = emailRaw ? normalizeEmail(emailRaw) : null
 
-    const phoneCandidate = toIsraeliLocalPhoneDigits(firebaseUser.phoneNumber)
-    const phone = phoneCandidate && isValidIsraeliLocalPhoneDigits(phoneCandidate) ? phoneCandidate : null
+    // Normalize phone to E.164 format for consistency
+    const phone = normalizeIsraelE164(firebaseUser.phoneNumber)
     const emailVerified = firebaseUser.emailVerified ?? (decoded.email_verified ?? false)
 
     const providerIds =

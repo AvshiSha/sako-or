@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
+import { Slider } from '@/app/components/ui/slider';
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -54,6 +55,7 @@ const translations = {
     price: "Price",
     minPrice: "Min Price",
     maxPrice: "Max Price",
+    priceRange: "Price: ₪{min} – ₪{max}",
     colors: "Colors",
     sizes: "Sizes",
     clearAllFilters: "Clear All Filters",
@@ -94,6 +96,7 @@ const translations = {
     price: "מחיר",
     minPrice: "מחיר מינימלי",
     maxPrice: "מחיר מקסימלי",
+    priceRange: "מחיר: ₪{min} – ₪{max}",
     colors: "צבעים",
     sizes: "מידות",
     clearAllFilters: "נקה את כל המסננים",
@@ -334,6 +337,30 @@ export default function CollectionClient({
 
   const handlePriceChange = (field: 'min' | 'max', value: string) => {
     setPriceRange(prev => ({ ...prev, [field]: value }));
+    // Also update slider values if valid numbers
+    const numValue = parseFloat(value);
+    if (!isNaN(numValue)) {
+      setSliderValues(prev => {
+        if (field === 'min') {
+          return [numValue, prev[1]];
+        } else {
+          return [prev[0], numValue];
+        }
+      });
+    }
+  };
+
+  const handleSliderChange = (values: number[]) => {
+    // Ensure min <= max and enforce minimum gap if needed
+    const [min, max] = values;
+    const validatedMin = Math.min(min, max);
+    const validatedMax = Math.max(min, max);
+    setSliderValues([validatedMin, validatedMax]);
+  };
+
+  const handlePriceReset = () => {
+    setSliderValues([priceRangeBounds.min, priceRangeBounds.max]);
+    setPriceRange({ min: '', max: '' });
   };
 
   const handleSortChange = (newSort: string) => {
@@ -350,6 +377,7 @@ export default function CollectionClient({
   const handleClearFilters = () => {
     setSelectedColors([]);
     setSelectedSizes([]);
+    setSliderValues([priceRangeBounds.min, priceRangeBounds.max]);
     setPriceRange({ min: '', max: '' });
     setSortBy('relevance');
     // Use updateURL to ensure all params are properly cleared
@@ -481,6 +509,91 @@ export default function CollectionClient({
   const numericSizes = allSizes.filter(size => /^\d+(\.\d+)?$/.test(size)).sort((a, b) => parseFloat(a) - parseFloat(b));
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
 
+  // Calculate price range from products
+  const priceRangeBounds = useMemo(() => {
+    if (initialProducts.length === 0) {
+      return { min: 0, max: 1000 };
+    }
+
+    const prices: number[] = [];
+    
+    initialProducts.forEach((product) => {
+      if (product.colorVariants && Object.keys(product.colorVariants).length > 0) {
+        // Get prices from all active variants
+        Object.values(product.colorVariants)
+          .filter(v => v.isActive !== false)
+          .forEach((variant) => {
+            // Priority: variant.salePrice > product.salePrice > variant.priceOverride > product.price
+            if ((variant as any).salePrice && (variant as any).salePrice > 0) {
+              prices.push((variant as any).salePrice);
+            } else if (product.salePrice && product.salePrice > 0) {
+              prices.push(product.salePrice);
+            } else if ((variant as any).priceOverride && (variant as any).priceOverride > 0) {
+              prices.push((variant as any).priceOverride);
+            } else {
+              prices.push(product.price);
+            }
+          });
+      } else {
+        // No variants, use product-level price
+        const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
+        prices.push(productPrice);
+      }
+    });
+
+    if (prices.length === 0) {
+      return { min: 0, max: 1000 };
+    }
+
+    const min = Math.floor(Math.min(...prices));
+    const max = Math.ceil(Math.max(...prices));
+    
+    // Round to nice numbers
+    const minRounded = Math.floor(min / 10) * 10;
+    const maxRounded = Math.ceil(max / 10) * 10;
+    
+    return { min: minRounded, max: maxRounded };
+  }, [initialProducts]);
+
+  // Slider values state (as numbers) - defaults to full range
+  const [sliderValues, setSliderValues] = useState<[number, number]>(() => {
+    // If URL has price params, use them; otherwise use full range bounds
+    const min = priceRange.min ? parseFloat(priceRange.min) : (priceRangeBounds?.min ?? 0);
+    const max = priceRange.max ? parseFloat(priceRange.max) : (priceRangeBounds?.max ?? 1000);
+    // Ensure min <= max and values are valid numbers
+    const validMin = isNaN(min) ? (priceRangeBounds?.min ?? 0) : min;
+    const validMax = isNaN(max) ? (priceRangeBounds?.max ?? 1000) : max;
+    return [Math.min(validMin, validMax), Math.max(validMin, validMax)];
+  });
+
+  // Update slider values when priceRangeBounds change or URL params change
+  useEffect(() => {
+    // If URL has price params, use them; otherwise use full range bounds (default)
+    const min = priceRange.min ? parseFloat(priceRange.min) : (priceRangeBounds?.min ?? 0);
+    const max = priceRange.max ? parseFloat(priceRange.max) : (priceRangeBounds?.max ?? 1000);
+    // Ensure min <= max and values are valid numbers
+    const validMin = isNaN(min) ? (priceRangeBounds?.min ?? 0) : min;
+    const validMax = isNaN(max) ? (priceRangeBounds?.max ?? 1000) : max;
+    const validatedMin = Math.min(validMin, validMax);
+    const validatedMax = Math.max(validMin, validMax);
+    setSliderValues([validatedMin, validatedMax]);
+  }, [priceRangeBounds?.min, priceRangeBounds?.max, priceRange.min, priceRange.max]);
+
+  // Debounced slider update effect (200-400ms range)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      // Only update if values are different from bounds (i.e., user has filtered)
+      const minStr = sliderValues[0] === priceRangeBounds.min ? '' : Math.round(sliderValues[0]).toString();
+      const maxStr = sliderValues[1] === priceRangeBounds.max ? '' : Math.round(sliderValues[1]).toString();
+      
+      if (minStr !== priceRange.min || maxStr !== priceRange.max) {
+        setPriceRange({ min: minStr, max: maxStr });
+      }
+    }, 300); // 300ms debounce for slider (within 200-400ms range)
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sliderValues]);
+
   return (
     <div className="min-h-screen pt-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pt-20 md:pb-16 relative">
@@ -609,7 +722,7 @@ export default function CollectionClient({
         {desktopFiltersOpen && (
           <>
             {/* Desktop Filter Overlay */}
-            <div className="fixed inset-0 z-40 lg:hidden">
+            <div className="fixed inset-0 z-[68] lg:hidden">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -620,7 +733,7 @@ export default function CollectionClient({
               />
             </div>
             
-            <div className="fixed inset-0 z-40 hidden lg:block">
+            <div className="fixed inset-0 z-[68] hidden lg:block">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -637,7 +750,7 @@ export default function CollectionClient({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-50"
+              className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-[70]"
             >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -663,31 +776,34 @@ export default function CollectionClient({
                   <h3 className="text-sm font-medium text-black">{t.price}</h3>
                 </AccordionTrigger>
                 <AccordionContent className="px-4 pb-4">
-                  <div className="space-y-3 pt-3 border-t border-gray-100">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        {t.minPrice}
-                      </label>
-                      <input
-                        type="number"
-                        value={priceRange.min}
-                        onChange={(e) => handlePriceChange('min', e.target.value)}
-                        placeholder="0"
-                        className="w-full px-3 text-gray-600 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                  <div className="space-y-4 pt-3 border-t border-gray-100">
+                    {/* Price Range Label */}
+                    <div className="text-sm font-medium text-gray-900">
+                      ₪{sliderValues[0].toLocaleString()} - ₪{sliderValues[1].toLocaleString()}
+                    </div>
+                    
+                    {/* Price Range Slider */}
+                    <div className="px-2">
+                      <Slider
+                        value={sliderValues}
+                        onValueChange={handleSliderChange}
+                        min={priceRangeBounds.min}
+                        max={priceRangeBounds.max}
+                        step={10}
+                        className="w-full"
+                        dir={lng === 'he' ? 'rtl' : 'ltr'}
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        {t.maxPrice}
-                      </label>
-                      <input
-                        type="number"
-                        value={priceRange.max}
-                        onChange={(e) => handlePriceChange('max', e.target.value)}
-                        placeholder="10,000"
-                        className="w-full px-3 text-gray-600 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                      />
-                    </div>
+
+                    {/* Reset Button */}
+                    {(sliderValues[0] !== priceRangeBounds.min || sliderValues[1] !== priceRangeBounds.max) && (
+                      <button
+                        onClick={handlePriceReset}
+                        className="text-xs text-gray-600 hover:text-gray-800 underline"
+                      >
+                        {lng === 'he' ? 'איפוס' : 'Reset'}
+                      </button>
+                    )}
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -789,7 +905,7 @@ export default function CollectionClient({
           <div className="p-6 border-t border-gray-100">
             <button
               onClick={() => setDesktopFiltersOpen(false)}
-              className="w-full py-3 px-4 bg-black text-white text-sm font-light tracking-wider uppercase hover:bg-gray-800 transition-colors duration-200"
+              className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200"
             >
               {t.applyFilters}
             </button>
@@ -844,31 +960,34 @@ export default function CollectionClient({
                       <h3 className="text-sm font-medium text-black">{t.price}</h3>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-3 pt-3 border-t border-gray-100">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            {t.minPrice}
-                          </label>
-                          <input
-                            type="number"
-                            value={priceRange.min}
-                            onChange={(e) => handlePriceChange('min', e.target.value)}
-                            placeholder="0"
-                            className="w-full px-3 text-gray-600 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
+                      <div className="space-y-4 pt-3 border-t border-gray-100">
+                        {/* Price Range Label */}
+                        <div className="text-sm font-medium text-gray-900">
+                          ₪{sliderValues[0].toLocaleString()} - ₪{sliderValues[1].toLocaleString()}
+                        </div>
+                        
+                        {/* Price Range Slider */}
+                        <div className="px-2">
+                          <Slider
+                            value={sliderValues}
+                            onValueChange={handleSliderChange}
+                            min={priceRangeBounds.min}
+                            max={priceRangeBounds.max}
+                            step={10}
+                            className="w-full"
+                            dir={lng === 'he' ? 'rtl' : 'ltr'}
                           />
                         </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            {t.maxPrice}
-                          </label>
-                          <input
-                            type="number"
-                            value={priceRange.max}
-                            onChange={(e) => handlePriceChange('max', e.target.value)}
-                            placeholder="10,000"
-                            className="w-full px-3 text-gray-600 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-                          />
-                        </div>
+
+                        {/* Reset Button */}
+                        {(sliderValues[0] !== priceRangeBounds.min || sliderValues[1] !== priceRangeBounds.max) && (
+                          <button
+                            onClick={handlePriceReset}
+                            className="text-xs text-gray-600 hover:text-gray-800 underline"
+                          >
+                            {lng === 'he' ? 'איפוס' : 'Reset'}
+                          </button>
+                        )}
                       </div>
                     </AccordionContent>
                   </AccordionItem>
@@ -967,7 +1086,7 @@ export default function CollectionClient({
               <div className="p-6 border-t border-gray-100">
                 <button
                   onClick={() => setMobileFiltersOpen(false)}
-                  className="w-full py-3 px-4 bg-black text-white text-sm font-light tracking-wider uppercase hover:bg-gray-800 transition-colors duration-200"
+                  className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200"
                 >
                   {t.applyFilters}
                 </button>

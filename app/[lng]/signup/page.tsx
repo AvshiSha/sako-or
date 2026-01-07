@@ -18,6 +18,7 @@ import { getLanguageDirection } from '@/i18n/settings'
 import { Input } from '@/app/components/ui/input'
 import { Button } from '@/app/components/ui/button'
 import { Label } from '@/app/components/ui/label'
+import { IsraelPhoneInput } from '@/app/components/ui/israel-phone-input'
 import { Checkbox } from '@/app/components/ui/checkbox'
 import {
   Select,
@@ -45,7 +46,7 @@ const translations = {
     password: 'Password',
     passwordPlaceholder: 'At least 6 characters',
     phone: 'Phone Number',
-    phonePlaceholder: '+972501234567',
+    phonePlaceholder: '501234567',
     prefferedStyle: 'I am primarily interested in:',
     mens: 'Mens',
     womens: 'Womens',
@@ -102,7 +103,7 @@ const translations = {
     password: 'סיסמה',
     passwordPlaceholder: 'לפחות 6 תווים',
     phone: 'מספר טלפון',
-    phonePlaceholder: '+972501234567',
+    phonePlaceholder: '501234567',
     prefferedStyle: 'בעיקר מתעניין ב:',
     mens: 'מוצרים לגבר',
     womens: 'מוצרים לנשים',
@@ -171,7 +172,7 @@ export default function SignUpPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
+  const [phoneLocalNumber, setPhoneLocalNumber] = useState('') // Local number only (8-9 digits)
   const [gender, setGender] = useState('')
   const [language, setLanguage] = useState('')
   const [birthYear, setBirthYear] = useState('')
@@ -257,9 +258,11 @@ export default function SignUpPage() {
     } else if (!isValidEmail(normalizeEmail(email))) {
       errors.email = t.emailInvalid
     }
-    if (!phone.trim()) {
+    // Construct full E.164 number from local number
+    const fullPhone = phoneLocalNumber ? `+972${phoneLocalNumber}` : ''
+    if (!phoneLocalNumber.trim()) {
       errors.phone = t.phoneRequired
-    } else if (!isValidIsraelE164(normalizeIsraelE164(phone))) {
+    } else if (!isValidIsraelE164(fullPhone)) {
       errors.phone = t.phoneInvalid
     }
     if (!language.trim()) errors.language = t.languageRequired
@@ -269,7 +272,7 @@ export default function SignUpPage() {
       errors.birthday = t.birthdayRequired
     }
     return errors
-  }, [firstName, lastName, email, phone, language, birthYear, birthMonth, birthDay, t])
+  }, [firstName, lastName, email, phoneLocalNumber, language, birthYear, birthMonth, birthDay, t])
 
   const canSubmit = useMemo(() => {
     return (
@@ -321,7 +324,8 @@ export default function SignUpPage() {
 
   async function storeSignupDataAndRedirectToSmsVerify(user: User) {
     // Store pending signup data in sessionStorage
-    const normalizedPhone = normalizeIsraelE164(phone) || ''
+    const fullPhone = phoneLocalNumber ? `+972${phoneLocalNumber}` : ''
+    const normalizedPhone = normalizeIsraelE164(fullPhone) || ''
     const pendingSignup = {
       uid: user.uid,
       firstName: firstName.trim(),
@@ -468,7 +472,8 @@ export default function SignUpPage() {
       let user: User | null = firebaseUser
 
       const normalizedEmail = email.trim().toLowerCase()
-      const normalizedPhone = normalizeIsraelE164(phone)
+      const fullPhone = phoneLocalNumber ? `+972${phoneLocalNumber}` : ''
+      const normalizedPhone = normalizeIsraelE164(fullPhone)
 
       if (!normalizedPhone) {
         setError('Invalid phone number format')
@@ -500,7 +505,8 @@ export default function SignUpPage() {
       if (!isSignedInWithGoogle && !firebaseUser) {
         // Store the signup data and proceed to SMS verification
         // The account will be created server-side during SMS verification
-        const normalizedPhone = normalizeIsraelE164(phone) || ''
+        const fullPhone = phoneLocalNumber ? `+972${phoneLocalNumber}` : ''
+        const normalizedPhone = normalizeIsraelE164(fullPhone) || ''
         const pendingSignup = {
           email: normalizedEmail,
           firstName: firstName.trim(),
@@ -548,7 +554,7 @@ export default function SignUpPage() {
       setEmail('')
       setFirstName('')
       setLastName('')
-      setPhone('')
+      setPhoneLocalNumber('')
       setGender('')
       setLanguage('')
       setBirthYear('')
@@ -639,13 +645,13 @@ export default function SignUpPage() {
 
         {/* Google Sign-In or Email Option */}
         {renderButtonsOnly && (
-          <div className="space-y-4">
+          <div className="space-y-2">
             <Button
               type="button"
               onClick={handleGoogleSignIn}
               disabled={busy}
               variant="outline"
-              className="w-full text-slate-900 hover:text-slate-900"
+              className="w-full text-slate-900 hover:text-slate-900 border-[#856D55]/70"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -670,7 +676,7 @@ export default function SignUpPage() {
               onClick={() => setShowEmailForm(true)}
               disabled={busy}
               variant="outline"
-              className="w-full text-slate-900 hover:text-slate-900"
+              className="w-full text-slate-900 hover:text-slate-900 border-[#856D55]/70"
             >
               {t.continueWithEmail}
             </Button>
@@ -785,13 +791,11 @@ export default function SignUpPage() {
                   <Label htmlFor="phone" className="text-sm font-medium text-slate-900">
                     {t.phone} <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => {
+                  <IsraelPhoneInput
+                    value={phoneLocalNumber}
+                    onChange={(value) => {
                       setTouched((prev) => ({ ...prev, phone: true }))
-                      setPhone(e.target.value)
+                      setPhoneLocalNumber(value)
                       setServerFieldErrors((prev) => {
                         const next = { ...prev }
                         delete next.phone
@@ -799,11 +803,9 @@ export default function SignUpPage() {
                       })
                     }}
                     placeholder={t.phonePlaceholder}
-                    className={cn(
-                      'text-slate-900',
-                      direction === "rtl" ? "text-right" : "text-left",
-                      touched.phone && (validationErrors.phone || serverFieldErrors.phone) ? 'border-red-500' : ''
-                    )}
+                    disabled={busy}
+                    dir={direction}
+                    className={touched.phone && (validationErrors.phone || serverFieldErrors.phone) ? 'border-red-500' : ''}
                   />
                   {touched.phone && (validationErrors.phone || serverFieldErrors.phone) && (
                     <p className="text-xs text-red-600">{validationErrors.phone || serverFieldErrors.phone}</p>

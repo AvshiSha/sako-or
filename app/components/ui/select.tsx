@@ -20,8 +20,8 @@ const SelectValue = React.forwardRef<
       "block w-full font-medium",
       // Default: selected value styling (dark, visible) - this applies when NOT a placeholder
       "text-slate-900 opacity-100",
-      // Placeholder styling (lighter, semi-transparent) - only when data-placeholder attribute exists
-      "[&[data-placeholder]]:!text-slate-600 [&[data-placeholder]]:!font-normal [&[data-placeholder]]:!opacity-70",
+      // Placeholder styling (lighter, more visible) - only when data-placeholder attribute exists
+      "[&[data-placeholder]]:!text-slate-400 [&[data-placeholder]]:!font-normal [&[data-placeholder]]:!opacity-100",
       // Ensure selected text is always visible
       "[&:not([data-placeholder])]:!text-slate-900 [&:not([data-placeholder])]:!opacity-100",
       className

@@ -7,7 +7,7 @@ datasource db {
   provider = "postgresql" // PostgreSQL for production
   url      = env("DATABASE_URL")
   // Optional: use a non-pooled connection for migrations if you have it.
-  directUrl = env("DIRECT_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -20,17 +20,19 @@ model User {
   firstName String? @map("first_name")
   lastName  String? @map("last_name")
   language  String?
-  gender    String?
+  interestedIn String? @map("interested_in")
+
+  // Date-only (no timezone). Display formatting is handled in the UI.
+  birthday DateTime @db.Date
 
   addressStreet       String? @map("address_street")
   addressStreetNumber String? @map("address_street_number")
   addressFloor        String? @map("address_floor")
   addressApt          String? @map("address_apt")
+  addressCity         String? @map("address_city")
 
   authProvider      String?   @map("auth_provider")
   emailVerified     Boolean   @default(false) @map("email_verified")
-  passwordHash      String?   @map("password_hash")
-  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
   
   phoneVerifiedAt   DateTime? @map("phone_verified_at") @db.Timestamptz(6)
   signupCompletedAt DateTime? @map("signup_completed_at") @db.Timestamptz(6)

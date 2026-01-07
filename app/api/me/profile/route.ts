@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
-
-function getBearerToken(req: NextRequest): string | null {
-  const authHeader = req.headers.get('authorization') || ''
-  const match = authHeader.match(/^Bearer\s+(.+)$/i)
-  return match?.[1] ?? null
-}
+import { requireUserAuth } from '@/lib/server/auth'
 
 function computeNeedsProfileCompletion(user: {
   firstName: string | null
@@ -33,28 +27,28 @@ const ProfilePatchSchema = z.object({
     })
     .optional(),
   language: z.enum(['en', 'he']).optional(),
-  gender: z.string().trim().max(30).optional().nullable(),
+  birthday: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid birthday format (expected YYYY-MM-DD)')
+    .transform((s) => new Date(`${s}T00:00:00.000Z`))
+    .optional(),
+  interestedIn: z.string().trim().max(30).optional().nullable(),
 
   addressStreet: z.string().trim().max(120).optional().nullable(),
   addressStreetNumber: z.string().trim().max(20).optional().nullable(),
   addressFloor: z.string().trim().max(20).optional().nullable(),
   addressApt: z.string().trim().max(20).optional().nullable(),
+  addressCity: z.string().trim().max(100).optional().nullable(),
 
   isNewsletter: z.boolean().optional()
 })
 
 export async function GET(request: NextRequest) {
   try {
-    const token = getBearerToken(request)
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Missing Authorization Bearer token' },
-        { status: 401 }
-      )
-    }
-
-    const decoded = await adminAuth.verifyIdToken(token)
-    const firebaseUid = decoded.uid
+    const auth = await requireUserAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const firebaseUid = auth.firebaseUid
 
     const user = await prisma.user.findUnique({
       where: { firebaseUid }
@@ -88,16 +82,10 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const token = getBearerToken(request)
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Missing Authorization Bearer token' },
-        { status: 401 }
-      )
-    }
-
-    const decoded = await adminAuth.verifyIdToken(token)
-    const firebaseUid = decoded.uid
+    const auth = await requireUserAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const decoded = auth.decoded
+    const firebaseUid = auth.firebaseUid
 
     const json = await request.json().catch(() => ({}))
     const parsed = ProfilePatchSchema.safeParse(json)
@@ -108,7 +96,7 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // Normalize nullable string fields: treat "" as null for optional address/gender.
+    // Normalize nullable string fields: treat "" as null for optional address/interestedIn.
     const data = parsed.data
     const normalizeNullable = (v: string | null | undefined) => {
       if (v === undefined) return undefined
@@ -120,9 +108,9 @@ export async function PATCH(request: NextRequest) {
     const updateData = {
       ...(data.firstName !== undefined ? { firstName: data.firstName } : {}),
       ...(data.lastName !== undefined ? { lastName: data.lastName } : {}),
-      ...(data.phone !== undefined ? { phone: data.phone } : {}),
+      // phone and birthday are locked for existing users (can only be set during initial creation)
       ...(data.language !== undefined ? { language: data.language } : {}),
-      ...(data.gender !== undefined ? { gender: normalizeNullable(data.gender) } : {}),
+      ...(data.interestedIn !== undefined ? { interestedIn: normalizeNullable(data.interestedIn) } : {}),
 
       ...(data.addressStreet !== undefined
         ? { addressStreet: normalizeNullable(data.addressStreet) }
@@ -135,6 +123,9 @@ export async function PATCH(request: NextRequest) {
         : {}),
       ...(data.addressApt !== undefined
         ? { addressApt: normalizeNullable(data.addressApt) }
+        : {}),
+      ...(data.addressCity !== undefined
+        ? { addressCity: normalizeNullable(data.addressCity) }
         : {}),
 
       ...(data.isNewsletter !== undefined ? { isNewsletter: data.isNewsletter } : {})
@@ -149,15 +140,16 @@ export async function PATCH(request: NextRequest) {
     if (!existingUser) {
       // User doesn't exist yet - this is their first profile save (onboarding)
       // Validate that all required fields are present
-      if (!data.firstName || !data.lastName || !data.phone || !data.language) {
+      if (!data.firstName || !data.lastName || !data.phone || !data.language || !data.birthday) {
         return NextResponse.json(
           {
-            error: 'Required fields missing. firstName, lastName, phone, and language are required.',
+            error: 'Required fields missing. firstName, lastName, phone, language, and birthday are required.',
             issues: [
               ...(!data.firstName ? [{ path: ['firstName'], message: 'First name is required' }] : []),
               ...(!data.lastName ? [{ path: ['lastName'], message: 'Last name is required' }] : []),
               ...(!data.phone ? [{ path: ['phone'], message: 'Phone is required' }] : []),
-              ...(!data.language ? [{ path: ['language'], message: 'Language is required' }] : [])
+              ...(!data.language ? [{ path: ['language'], message: 'Language is required' }] : []),
+              ...(!data.birthday ? [{ path: ['birthday'], message: 'Birthday is required' }] : [])
             ]
           },
           { status: 400 }
@@ -165,16 +157,11 @@ export async function PATCH(request: NextRequest) {
       }
 
       // Get additional fields from Firebase for the initial user creation
-      const firebaseUser = await adminAuth.getUser(firebaseUid)
+      const firebaseUser = auth.firebaseUser
       const emailRaw = firebaseUser.email ?? decoded.email ?? null
       const email = emailRaw ? emailRaw.trim().toLowerCase() : null
 
-      const providerIds =
-        firebaseUser.providerData?.map((p) => p.providerId).filter(Boolean) ?? []
-      const authProvider =
-        providerIds.length > 0
-          ? providerIds[0]
-          : ((decoded as any)?.firebase?.sign_in_provider as string | undefined) ?? 'firebase'
+      const authProvider = auth.authProvider
 
       const emailVerified = firebaseUser.emailVerified ?? (decoded.email_verified ?? false)
 
@@ -189,11 +176,13 @@ export async function PATCH(request: NextRequest) {
           lastName: data.lastName,
           phone: data.phone,
           language: data.language,
-          gender: normalizeNullable(data.gender),
+          birthday: data.birthday!,
+          interestedIn: normalizeNullable(data.interestedIn),
           addressStreet: normalizeNullable(data.addressStreet),
           addressStreetNumber: normalizeNullable(data.addressStreetNumber),
           addressFloor: normalizeNullable(data.addressFloor),
           addressApt: normalizeNullable(data.addressApt),
+          addressCity: normalizeNullable(data.addressCity),
           isNewsletter: data.isNewsletter ?? false,
           role: 'USER',
           lastLoginAt: new Date(),

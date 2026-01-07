@@ -41,9 +41,7 @@ export default function ProfileCompletionGate({ children }: { children: React.Re
     const allowedRoutes = [
       `/${lng}/signup`,
       `/${lng}/signin`,
-      `/${lng}/reset-password`,
       `/${lng}/verify-sms`,
-      `/${lng}/auth` // debug/test page
     ]
 
     const isOnAllowedRoute = allowedRoutes.some((route) => pathname?.startsWith(route))

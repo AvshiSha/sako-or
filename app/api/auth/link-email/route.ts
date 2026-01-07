@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth } from '@/lib/firebase-admin'
-import { auth } from '@/lib/firebase'
 import { z } from 'zod'
+import { requireUserAuth } from '@/lib/server/auth'
 
 const LinkEmailSchema = z.object({
   email: z.string().trim().email().toLowerCase()
@@ -15,20 +15,9 @@ const LinkEmailSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get Firebase user token from Authorization header
-    const authHeader = request.headers.get('authorization') || ''
-    const match = authHeader.match(/^Bearer\s+(.+)$/i)
-    const token = match?.[1] ?? null
-
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Authorization token required' },
-        { status: 401 }
-      )
-    }
-
-    const decoded = await adminAuth.verifyIdToken(token)
-    const firebaseUid = decoded.uid
+    const auth = await requireUserAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const firebaseUid = auth.firebaseUid
 
     const json = await request.json().catch(() => ({}))
     const parsed = LinkEmailSchema.safeParse(json)

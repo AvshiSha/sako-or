@@ -36,9 +36,7 @@ const translations = {
     errorVerifying: 'Error verifying code. Please try again.',
     cancelConfirm: 'Are you sure? This will delete your account and you\'ll need to sign up again from scratch.',
     invalidAppCredential: 'Phone verification setup error. Please ensure your domain is authorized in Firebase Console and billing is enabled.',
-    recaptchaError: 'Security verification failed. Please refresh the page and try again.',
-    testModeInfo: 'If you added this phone as a test number in Firebase Console, use the test code you set (e.g., 123456) instead of waiting for SMS.',
-    noSmsReceived: 'SMS not received? Check: 1) Firebase Console → Phone → Test numbers (use test code), 2) Billing plan is Blaze, 3) Check Firebase Console logs for errors.'
+    recaptchaError: 'Security verification failed. Please refresh the page and try again.'
   },
   he: {
     title: 'אימות מספר טלפון',
@@ -61,9 +59,7 @@ const translations = {
     errorVerifying: 'שגיאה באימות הקוד. נסו שוב.',
     cancelConfirm: 'האם אתם בטוחים? פעולה זו תמחק את החשבון שלכם ותצטרכו להירשם מחדש מההתחלה.',
     invalidAppCredential: 'שגיאה בהגדרת אימות טלפון. אנא ודאו שהדומיין מורשה ב-Firebase Console ושבילינג מופעל.',
-    recaptchaError: 'אימות אבטחה נכשל. אנא רעננו את הדף ונסו שוב.',
-    testModeInfo: 'אם הוספתם את המספר הזה כמספר בדיקה ב-Firebase Console, השתמשו בקוד הבדיקה שקבעתם (למשל, 123456) במקום לחכות ל-SMS.',
-    noSmsReceived: 'לא קיבלתם SMS? בדקו: 1) Firebase Console → Phone → Test numbers (השתמשו בקוד בדיקה), 2) תוכנית הבילינג היא Blaze, 3) בדקו את הלוגים ב-Firebase Console.'
+    recaptchaError: 'אימות אבטחה נכשל. אנא רעננו את הדף ונסו שוב.'
   }
 }
 
@@ -74,6 +70,7 @@ type PendingSignup = {
   lastName: string
   phone: string
   language: string
+  birthday?: string // YYYY-MM-DD format
   gender?: string
   city?: string
   streetName?: string
@@ -85,6 +82,38 @@ type PendingSignup = {
   addressFloor?: string // Legacy field name
   addressApt?: string // Legacy field name
   isNewsletter: boolean
+}
+
+function firebasePhoneVerifyErrorToMessage(err: any): string | null {
+  const code = typeof err?.code === 'string' ? err.code : ''
+  if (!code.startsWith('auth/')) return null
+
+  switch (code) {
+    case 'auth/invalid-verification-code':
+      return "That code isn’t correct. Please try again."
+    case 'auth/code-expired':
+      return 'That code expired. Please request a new code.'
+    case 'auth/missing-verification-code':
+      return 'Enter the 6-digit code to continue.'
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a bit and try again.'
+    case 'auth/network-request-failed':
+      return 'We couldn’t verify the code due to a connection issue. Check your internet and try again.'
+    case 'auth/invalid-verification-id':
+      return 'This verification session is no longer valid. Please request a new code.'
+    case 'auth/missing-verification-id':
+      return 'We couldn’t continue verification. Please request a new code.'
+    case 'auth/session-expired':
+      return 'Your verification session expired. Please request a new code.'
+    case 'auth/requires-recent-login':
+      return 'For security, please sign in again and retry verification.'
+    case 'auth/user-disabled':
+      return 'This account is disabled. Contact support if you think this is a mistake.'
+    case 'auth/credential-already-in-use':
+      return 'That phone number is already linked to another account. Try a different number or sign in.'
+    default:
+      return 'We couldn’t verify the code right now. Please try again.'
+  }
 }
 
 export default function VerifySmsPage() {
@@ -438,6 +467,7 @@ export default function VerifySmsPage() {
       const addressStreetNumber = pendingSignup.streetNumber || pendingSignup.addressStreetNumber || null
       const addressFloor = pendingSignup.floor || pendingSignup.addressFloor || null
       const addressApt = pendingSignup.apt || pendingSignup.addressApt || null
+      const addressCity = pendingSignup.city || null
 
       console.log('🔵 [VERIFY] Calling complete-signup API...')
       const res = await fetch('/api/auth/complete-signup', {
@@ -451,11 +481,13 @@ export default function VerifySmsPage() {
           lastName: pendingSignup.lastName,
           phone: pendingSignup.phone,
           language: pendingSignup.language,
-          gender: pendingSignup.gender || null,
+          birthday: pendingSignup.birthday,
+          interestedIn: pendingSignup.gender || null,
           addressStreet,
           addressStreetNumber,
           addressFloor,
           addressApt,
+          addressCity,
           isNewsletter: pendingSignup.isNewsletter
         })
       })
@@ -471,13 +503,12 @@ export default function VerifySmsPage() {
       router.replace(`/${lng}/profile`)
     } catch (err: any) {
       console.error('❌ [VERIFY] Error verifying code:', err)
-      const code = typeof err?.code === 'string' ? err.code : ''
       const msg = typeof err?.message === 'string' ? err.message : ''
 
-      if (code === 'auth/invalid-verification-code') {
-        setError(t.invalidCode)
-      } else if (code === 'auth/code-expired') {
-        setError(t.codeExpired)
+      const firebaseMsg = firebasePhoneVerifyErrorToMessage(err)
+      if (firebaseMsg) {
+        // Per product decision: show these explicit messages in English even for Hebrew UI.
+        setError(firebaseMsg)
       } else if (msg.includes('Phone number is already in use')) {
         setError('Phone number is already in use')
       } else {
@@ -547,12 +578,6 @@ export default function VerifySmsPage() {
           <div className="text-center">
             <h2 className="text-xl font-semibold text-slate-900">{greeting}</h2>
             <p className="mt-2 text-sm text-slate-600">{smsSent}</p>
-            {(confirmationResult || verificationId) && (
-              <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                <p className="font-medium mb-1">💡 {t.testModeInfo}</p>
-                <p className="text-xs mt-1">{t.noSmsReceived}</p>
-              </div>
-            )}
           </div>
 
           <div className="space-y-4">

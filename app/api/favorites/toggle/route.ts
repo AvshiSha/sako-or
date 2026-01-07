@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
-
-function getBearerToken(req: NextRequest): string | null {
-  const authHeader = req.headers.get('authorization') || ''
-  const match = authHeader.match(/^Bearer\s+(.+)$/i)
-  return match?.[1] ?? null
-}
+import { requireUserAuth } from '@/lib/server/auth'
 
 function parseFavoriteKey(favoriteKey: string): { productBaseSku: string; colorSlug: string } {
   const key = (favoriteKey || '').trim()
@@ -33,16 +27,9 @@ function favoriteKeyFromParts(productBaseSku: string, colorSlug: string): string
 
 export async function POST(request: NextRequest) {
   try {
-    const token = getBearerToken(request)
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Missing Authorization Bearer token' },
-        { status: 401 }
-      )
-    }
-
-    const decoded = await adminAuth.verifyIdToken(token)
-    const firebaseUid = decoded.uid
+    const auth = await requireUserAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const firebaseUid = auth.firebaseUid
     const neonUser = await prisma.user.findUnique({
       where: { firebaseUid },
       select: { id: true }

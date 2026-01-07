@@ -21,7 +21,8 @@ type ApiUser = {
   firstName: string | null
   lastName: string | null
   language: string | null
-  gender: string | null
+  birthday: string | null
+  interestedIn: string | null
   addressStreet: string | null
   addressStreetNumber: string | null
   addressFloor: string | null
@@ -58,8 +59,9 @@ export default function CompleteProfilePage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [language, setLanguage] = useState('')
-  const [gender, setGender] = useState('') // '', 'Male', 'Female', 'Other', 'Prefer not to say'
+  const [interestedIn, setInterestedIn] = useState('') // '', 'mens', 'womens', 'both'
 
   const [addressStreet, setAddressStreet] = useState('')
   const [addressStreetNumber, setAddressStreetNumber] = useState('')
@@ -74,9 +76,10 @@ export default function CompleteProfilePage() {
     if (!firstName.trim()) errors.firstName = 'First name is required'
     if (!lastName.trim()) errors.lastName = 'Last name is required'
     if (!phone.trim()) errors.phone = 'Phone is required'
+    if (!birthday.trim()) errors.birthday = 'Birthday is required'
     if (!language.trim()) errors.language = 'Preferred language is required'
     return errors
-  }, [firstName, lastName, phone, language])
+  }, [firstName, lastName, phone, birthday, language])
 
   const canSubmit = useMemo(() => {
     return Object.keys(requiredErrors).length === 0 && !busy
@@ -112,8 +115,9 @@ export default function CompleteProfilePage() {
         setFirstName(json.user.firstName ?? '')
         setLastName(json.user.lastName ?? '')
         setPhone(json.user.phone ?? '')
+        setBirthday(json.user.birthday ? json.user.birthday.split('T')[0] : '')
         setLanguage(json.user.language ?? lng ?? '')
-        setGender(json.user.gender ?? '')
+        setInterestedIn(json.user.interestedIn ?? '')
         setAddressStreet(json.user.addressStreet ?? '')
         setAddressStreetNumber(json.user.addressStreetNumber ?? '')
         setAddressFloor(json.user.addressFloor ?? '')
@@ -137,6 +141,7 @@ export default function CompleteProfilePage() {
       firstName: true,
       lastName: true,
       phone: true,
+      birthday: true,
       language: true
     })
     if (Object.keys(requiredErrors).length > 0) return
@@ -150,8 +155,9 @@ export default function CompleteProfilePage() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phone: phone.trim(),
+        birthday: birthday.trim(),
         language: language === 'he' || language === 'en' ? language : undefined,
-        gender: gender ? gender : null,
+        interestedIn: interestedIn ? interestedIn : null,
         addressStreet: addressStreet ? addressStreet : null,
         addressStreetNumber: addressStreetNumber ? addressStreetNumber : null,
         addressFloor: addressFloor ? addressFloor : null,
@@ -237,6 +243,18 @@ export default function CompleteProfilePage() {
                   inputMode="tel"
                 />
               </Field>
+
+              <Field label="Birthday" error={touched.birthday ? requiredErrors.birthday : null}>
+                <TextInput
+                  value={birthday}
+                  onChange={(v) => {
+                    setTouched((t) => ({ ...t, birthday: true }))
+                    setBirthday(v)
+                  }}
+                  placeholder="YYYY-MM-DD"
+                  inputMode="text"
+                />
+              </Field>
             </div>
           </section>
 
@@ -262,15 +280,14 @@ export default function CompleteProfilePage() {
               </Field>
 
               <div className="sm:col-span-2">
-                <Field label="Gender" hint="Optional">
+                <Field label="I am primarily interested in" hint="Optional">
                   <RadioGroup
-                    value={gender}
-                    onChange={setGender}
+                    value={interestedIn}
+                    onChange={setInterestedIn}
                     options={[
-                      { value: 'Male', label: 'Male' },
-                      { value: 'Female', label: 'Female' },
-                      { value: 'Other', label: 'Other' },
-                      { value: 'Prefer not to say', label: 'Prefer not to say' }
+                      { value: 'mens', label: 'Mens' },
+                      { value: 'womens', label: 'Womens' },
+                      { value: 'both', label: 'Both' }
                     ]}
                   />
                 </Field>

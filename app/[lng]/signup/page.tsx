@@ -173,7 +173,7 @@ export default function SignUpPage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [phoneLocalNumber, setPhoneLocalNumber] = useState('') // Local number only (8-9 digits)
-  const [gender, setGender] = useState('')
+  const [interestedIn, setInterestedIn] = useState('')
   const [language, setLanguage] = useState('')
   const [birthYear, setBirthYear] = useState('')
   const [birthMonth, setBirthMonth] = useState('')
@@ -332,9 +332,9 @@ export default function SignUpPage() {
       lastName: lastName.trim(),
       phone: normalizedPhone,
       language: language === 'he' || language === 'en' ? language : 'en',
-      gender: gender || undefined,
+      gender: interestedIn || undefined,
       birthday: birthYear && birthMonth && birthDay 
-        ? new Date(parseInt(birthYear, 10), parseInt(birthMonth, 10) - 1, parseInt(birthDay, 10)).toISOString()
+        ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
         : undefined,
       city: city || undefined,
       streetName: streetName || undefined,
@@ -513,9 +513,9 @@ export default function SignUpPage() {
           lastName: lastName.trim(),
           phone: normalizedPhone,
           language: language === 'he' || language === 'en' ? language : 'en',
-          gender: gender || undefined,
+          gender: interestedIn || undefined,
           birthday: birthYear && birthMonth && birthDay 
-        ? new Date(parseInt(birthYear, 10), parseInt(birthMonth, 10) - 1, parseInt(birthDay, 10)).toISOString()
+        ? `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`
         : undefined,
           city: city || undefined,
           streetName: streetName || undefined,
@@ -555,7 +555,7 @@ export default function SignUpPage() {
       setFirstName('')
       setLastName('')
       setPhoneLocalNumber('')
-      setGender('')
+      setInterestedIn('')
       setLanguage('')
       setBirthYear('')
       setBirthMonth('')
@@ -810,21 +810,21 @@ export default function SignUpPage() {
                 </div>
 
                 <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="gender" className="text-sm font-medium text-slate-900">
+                  <Label htmlFor="interestedIn" className="text-sm font-medium text-slate-900">
                     {t.prefferedStyle}
                   </Label>
                   <Select 
-                    value={gender} 
-                    onValueChange={setGender} 
+                    value={interestedIn} 
+                    onValueChange={setInterestedIn} 
                     dir={direction}
                   >
-                    <SelectTrigger id="gender" dir={direction}>
+                    <SelectTrigger id="interestedIn" dir={direction}>
                       <SelectValue placeholder={t.prefferedStyle} />
                     </SelectTrigger>
                     <SelectContent dir={direction}>
                       <SelectItem value="mens" dir={direction}>{t.mens}</SelectItem>
                       <SelectItem value="womens" dir={direction}>{t.womens}</SelectItem>
-                      <SelectItem value="other" dir={direction}>{t.other}</SelectItem>
+                      <SelectItem value="both" dir={direction}>{t.other}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

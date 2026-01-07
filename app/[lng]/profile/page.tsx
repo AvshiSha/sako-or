@@ -60,16 +60,17 @@ const translations = {
     cannotBeChanged: 'Cannot be changed',
     phoneNumber: 'Phone Number',
     phonePlaceholder: '+972...',
+    birthday: 'Birthday',
+    birthdayPlaceholder: 'YYYY-MM-DD',
     preferredLanguage: 'Preferred Language',
     selectLanguage: 'Select Language',
     english: 'English',
     hebrew: 'Hebrew',
-    gender: 'Gender',
+    interestedIn: 'I am primarily interested in',
     optional: 'Optional',
-    male: 'Male',
-    female: 'Female',
-    other: 'Other',
-    preferNotToSay: 'Prefer not to say',
+    mens: 'Mens',
+    womens: 'Womens',
+    both: 'Both',
     address: 'Address',
     streetAddress: 'Street Address',
     streetAddressPlaceholder: 'e.g., Ben Yehuda',
@@ -79,6 +80,8 @@ const translations = {
     floorPlaceholder: 'e.g., 3',
     apt: 'Apt',
     aptPlaceholder: 'e.g., 8',
+    city: 'City',
+    cityPlaceholder: 'e.g., Tel Aviv',
     newsletterSubscription: 'Newsletter Subscription',
     newsletterDescription: 'Receive updates, offers, and news via email.',
     recentOrders: 'Recent Orders',
@@ -139,16 +142,17 @@ const translations = {
     cannotBeChanged: 'לא ניתן לשינוי',
     phoneNumber: 'מספר טלפון',
     phonePlaceholder: '+972...',
+    birthday: 'תאריך לידה',
+    birthdayPlaceholder: 'YYYY-MM-DD',
     preferredLanguage: 'שפה מועדפת',
     selectLanguage: 'בחר שפה',
     english: 'אנגלית',
     hebrew: 'עברית',
-    gender: 'מגדר',
+    interestedIn: 'בעיקר מתעניין ב',
     optional: 'אופציונלי',
-    male: 'זכר',
-    female: 'נקבה',
-    other: 'אחר',
-    preferNotToSay: 'מעדיף/ה לא לציין',
+    mens: 'מוצרים לגבר',
+    womens: 'מוצרים לנשים',
+    both: 'גם וגם',
     address: 'כתובת',
     streetAddress: 'רחוב',
     streetAddressPlaceholder: 'לדוגמה, בן יהודה',
@@ -158,6 +162,8 @@ const translations = {
     floorPlaceholder: 'לדוגמה, 3',
     apt: 'דירה',
     aptPlaceholder: 'לדוגמה, 8',
+    city: 'עיר',
+    cityPlaceholder: 'לדוגמה, תל אביב',
     newsletterSubscription: 'הרשמה לניוזלטר',
     newsletterDescription: 'קבלו עדכונים, מבצעים וחדשות במייל.',
     recentOrders: 'הזמנות אחרונות',
@@ -207,11 +213,13 @@ type ApiUser = {
   firstName: string | null
   lastName: string | null
   language: string | null
-  gender: string | null
+  birthday: string | null
+  interestedIn: string | null
   addressStreet: string | null
   addressStreetNumber: string | null
   addressFloor: string | null
   addressApt: string | null
+  addressCity: string | null
   isNewsletter: boolean
   pointsBalance: number
   role: string
@@ -275,12 +283,14 @@ export default function ProfilePage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [language, setLanguage] = useState('')
-  const [gender, setGender] = useState('')
+  const [interestedIn, setInterestedIn] = useState('')
   const [addressStreet, setAddressStreet] = useState('')
   const [addressStreetNumber, setAddressStreetNumber] = useState('')
   const [addressFloor, setAddressFloor] = useState('')
   const [addressApt, setAddressApt] = useState('')
+  const [addressCity, setAddressCity] = useState('')
   const [isNewsletter, setIsNewsletter] = useState(false)
 
   // Orders and points
@@ -304,10 +314,9 @@ export default function ProfilePage() {
     const errors: Record<string, string> = {}
     if (!firstName.trim()) errors.firstName = t.firstNameRequired
     if (!lastName.trim()) errors.lastName = t.lastNameRequired
-    if (!phone.trim()) errors.phone = t.phoneRequired
     if (!language.trim()) errors.language = t.languageRequired
     return errors
-  }, [firstName, lastName, phone, language, t])
+  }, [firstName, lastName, language, t])
 
   // Load user profile
   useEffect(() => {
@@ -343,12 +352,14 @@ export default function ProfilePage() {
         setFirstName(json.user.firstName ?? '')
         setLastName(json.user.lastName ?? '')
         setPhone(json.user.phone ?? '')
+        setBirthday(json.user.birthday ? json.user.birthday.split('T')[0] : '')
         setLanguage(json.user.language ?? lng ?? '')
-        setGender(json.user.gender ?? '')
+        setInterestedIn(json.user.interestedIn ?? '')
         setAddressStreet(json.user.addressStreet ?? '')
         setAddressStreetNumber(json.user.addressStreetNumber ?? '')
         setAddressFloor(json.user.addressFloor ?? '')
         setAddressApt(json.user.addressApt ?? '')
+        setAddressCity(json.user.addressCity ?? '')
         setIsNewsletter(Boolean(json.user.isNewsletter))
       } catch (e: any) {
         if (!cancelled) setError(e?.message || t.unableToLoadProfile)
@@ -490,7 +501,6 @@ export default function ProfilePage() {
     setTouched({
       firstName: true,
       lastName: true,
-      phone: true,
       language: true
     })
     if (Object.keys(requiredErrors).length > 0) return
@@ -503,13 +513,13 @@ export default function ProfilePage() {
       const payload = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phone: phone.trim(),
         language: language === 'he' || language === 'en' ? language : undefined,
-        gender: gender ? gender : null,
+        interestedIn: interestedIn ? interestedIn : null,
         addressStreet: addressStreet ? addressStreet : null,
         addressStreetNumber: addressStreetNumber ? addressStreetNumber : null,
         addressFloor: addressFloor ? addressFloor : null,
         addressApt: addressApt ? addressApt : null,
+        addressCity: addressCity ? addressCity : null,
         isNewsletter
       }
 
@@ -541,12 +551,14 @@ export default function ProfilePage() {
     setFirstName(loadedUser.firstName ?? '')
     setLastName(loadedUser.lastName ?? '')
     setPhone(loadedUser.phone ?? '')
+    setBirthday(loadedUser.birthday ? loadedUser.birthday.split('T')[0] : '')
     setLanguage(loadedUser.language ?? lng ?? '')
-    setGender(loadedUser.gender ?? '')
+    setInterestedIn(loadedUser.interestedIn ?? '')
     setAddressStreet(loadedUser.addressStreet ?? '')
     setAddressStreetNumber(loadedUser.addressStreetNumber ?? '')
     setAddressFloor(loadedUser.addressFloor ?? '')
     setAddressApt(loadedUser.addressApt ?? '')
+    setAddressCity(loadedUser.addressCity ?? '')
     setIsNewsletter(Boolean(loadedUser.isNewsletter))
     setIsEditing(false)
     setTouched({})
@@ -707,16 +719,22 @@ export default function ProfilePage() {
               <TextInput value={email} onChange={() => {}} disabled placeholder={t.emailPlaceholder} />
             </Field>
 
-            <Field label={t.phoneNumber} error={touched.phone ? requiredErrors.phone : null}>
+            <Field label={t.phoneNumber} hint={t.cannotBeChanged}>
               <TextInput
                 value={phone}
-                onChange={(v) => {
-                  setTouched((t) => ({ ...t, phone: true }))
-                  setPhone(v)
-                }}
-                disabled={!isEditing}
+                onChange={() => {}}
+                disabled
                 placeholder={t.phonePlaceholder}
                 inputMode="tel"
+              />
+            </Field>
+
+            <Field label={t.birthday} hint={t.cannotBeChanged}>
+              <TextInput
+                value={birthday}
+                onChange={() => {}}
+                disabled
+                placeholder={t.birthdayPlaceholder}
               />
             </Field>
 
@@ -740,16 +758,15 @@ export default function ProfilePage() {
             </Field>
 
             <div className="sm:col-span-2">
-              <Field label={t.gender} hint={t.optional}>
+              <Field label={t.interestedIn} hint={t.optional}>
                 <RadioGroup
-                  value={gender}
-                  onChange={setGender}
+                  value={interestedIn}
+                  onChange={setInterestedIn}
                   disabled={!isEditing}
                   options={[
-                    { value: 'Male', label: t.male },
-                    { value: 'Female', label: t.female },
-                    { value: 'Other', label: t.other },
-                    { value: 'Prefer not to say', label: t.preferNotToSay }
+                    { value: 'mens', label: t.mens },
+                    { value: 'womens', label: t.womens },
+                    { value: 'both', label: t.both }
                   ]}
                 />
               </Field>
@@ -793,6 +810,15 @@ export default function ProfilePage() {
                   onChange={setAddressApt}
                   disabled={!isEditing}
                   placeholder={t.aptPlaceholder}
+                />
+              </Field>
+
+              <Field label={t.city}>
+                <TextInput
+                  value={addressCity}
+                  onChange={setAddressCity}
+                  disabled={!isEditing}
+                  placeholder={t.cityPlaceholder}
                 />
               </Field>
             </div>

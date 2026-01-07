@@ -57,14 +57,6 @@ const translations = {
     orDivider: 'OR',
     notRegisteredYet: 'Not registered yet?',
     signUp: 'Sign up',
-    // Forgot password (preserved)
-    forgotPassword: 'Forgot password?',
-    resetPasswordTitle: 'Reset Password',
-    resetPasswordMessage: 'Enter your email address and we\'ll send you a link to reset your password.',
-    sendResetLink: 'Send Reset Link',
-    resetEmailSent: 'Reset link sent!',
-    resetEmailSentMessage: 'If an account exists with this email, you will receive a password reset link shortly. Please check your inbox.',
-    cancel: 'Cancel',
     invalidEmail: 'Please enter a valid email address',
     cooldownMessage: 'Please wait {seconds}s before requesting another code',
     // Errors
@@ -106,14 +98,6 @@ const translations = {
     orDivider: 'או',
     notRegisteredYet: 'עדיין לא נרשמת?',
     signUp: 'הרשמה',
-    // Forgot password (preserved)
-    forgotPassword: 'שכחתי סיסמה',
-    resetPasswordTitle: 'איפוס סיסמה',
-    resetPasswordMessage: 'הזינו את כתובת האימייל שלכם ונשלח לכם קישור לאיפוס הסיסמה.',
-    sendResetLink: 'שליחת קישור איפוס',
-    resetEmailSent: 'קישור איפוס נשלח!',
-    resetEmailSentMessage: 'אם קיים חשבון עם אימייל זה, תקבלו קישור לאיפוס סיסמה בקרוב. אנא בדקו את תיבת הדואר שלכם.',
-    cancel: 'ביטול',
     invalidEmail: 'אנא הזינו כתובת אימייל תקינה',
     cooldownMessage: 'אנא המתינו {seconds} שניות לפני בקשת קוד נוסף',
     // Errors
@@ -191,27 +175,11 @@ function SignInClient() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [gate, setGate] = useState<'idle' | 'checking' | 'redirecting'>('idle')
-  const [resetSuccessBanner, setResetSuccessBanner] = useState(false)
-  const [showForgotPassword, setShowForgotPassword] = useState(false)
-  const [resetEmailSent, setResetEmailSent] = useState(false)
-  const [resetCooldown, setResetCooldown] = useState(0)
 
   const syncedUidRef = useRef<string | null>(null)
 
   // Handle query params (reset success + auto-open forgot password)
   useEffect(() => {
-    const reset = searchParams?.get('reset')
-    const forgot = searchParams?.get('forgotPassword')
-    const emailParam = searchParams?.get('email')
-
-    if (reset === 'success') {
-      setResetSuccessBanner(true)
-    }
-
-    if (forgot === '1') {
-      setShowForgotPassword(true)
-      if (emailParam) setEmail(emailParam)
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
@@ -222,13 +190,6 @@ function SignInClient() {
       return () => clearTimeout(timer)
     }
   }, [resendCooldown])
-
-  useEffect(() => {
-    if (resetCooldown > 0) {
-      const timer = setTimeout(() => setResetCooldown(resetCooldown - 1), 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [resetCooldown])
 
   // Initialize recaptcha verifier for phone auth
   useEffect(() => {
@@ -607,62 +568,6 @@ function SignInClient() {
     }
   }
 
-  // Forgot password handler (preserved)
-  async function handleForgotPassword() {
-    const trimmedEmail = email.trim()
-    
-    if (!trimmedEmail || !trimmedEmail.includes('@')) {
-      setError(t.invalidEmail)
-      return
-    }
-
-    if (resetCooldown > 0) {
-      setError(t.cooldownMessage.replace('{seconds}', String(resetCooldown)))
-      return
-    }
-
-    setBusy(true)
-    setError(null)
-    
-    try {
-      const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:'
-      const host = typeof window !== 'undefined' ? window.location.host : ''
-      const continueUrl = `${protocol}//${host}/${lng}/reset-password`
-
-      await fetch('/api/auth/password-reset', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          email: trimmedEmail,
-          continueUrl,
-          lng,
-        }),
-      })
-      
-      setResetEmailSent(true)
-      setResetCooldown(60)
-      
-      setTimeout(() => {
-        setShowForgotPassword(false)
-        setResetEmailSent(false)
-      }, 5000)
-    } catch (e: any) {
-      const code = typeof e?.code === 'string' ? e.code : ''
-      if (code === 'auth/too-many-requests') {
-        setError('Too many requests. Please try again later.')
-      } else {
-        setResetEmailSent(true)
-        setResetCooldown(60)
-        setTimeout(() => {
-          setShowForgotPassword(false)
-          setResetEmailSent(false)
-        }, 5000)
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
   if (authLoading || gate === 'checking' || gate === 'redirecting') {
     return (
       <div className={profileTheme.pageBg} dir={isRTL ? 'rtl' : 'ltr'}>
@@ -704,64 +609,11 @@ function SignInClient() {
         <p className="mt-1 text-center text-sm text-slate-500">{t.subtitle}</p>
 
         <div className="mt-4 rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur p-6">
-          {resetSuccessBanner ? (
-            <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {isRTL
-                ? 'הסיסמה עודכנה בהצלחה. עכשיו אפשר להתחבר עם הסיסמה החדשה.'
-                : 'Password updated successfully. You can now sign in with your new password.'}
-            </div>
-          ) : null}
           {error ? (
             <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
             </div>
           ) : null}
-
-          {showForgotPassword && (
-            <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-              <h3 className="text-sm font-semibold text-slate-900 mb-2">{t.resetPasswordTitle}</h3>
-              <p className="text-xs text-slate-600 mb-4">{t.resetPasswordMessage}</p>
-              
-              {resetEmailSent ? (
-                <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-                  <div className="font-semibold">{t.resetEmailSent}</div>
-                  <div className="mt-1 text-xs">{t.resetEmailSentMessage}</div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t.emailPlaceholder}
-                    className={profileTheme.input}
-                    disabled={busy || resetCooldown > 0}
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleForgotPassword}
-                      disabled={busy || resetCooldown > 0 || !email.trim()}
-                      className="flex-1 inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {busy ? t.working : resetCooldown > 0 ? `${t.sendResetLink} (${resetCooldown}s)` : t.sendResetLink}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowForgotPassword(false)
-                        setError(null)
-                      }}
-                      disabled={busy}
-                      className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900 disabled:opacity-50"
-                    >
-                      {t.cancel}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'phone' | 'email')} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">

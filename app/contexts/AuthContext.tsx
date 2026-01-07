@@ -9,6 +9,7 @@ import {
   createUserWithEmailAndPassword
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { isAdminEmail } from '@/lib/admin'
 
 interface AuthContextType {
   user: User | null
@@ -21,19 +22,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// List of admin emails - in production, this should be stored in Firestore
-const ADMIN_EMAILS = [
-  'admin@sako-or.com',
-  'manager@sako-or.com',
-  'avshisakoor@gmail.com', // Firebase emails are always lowercase
-  // Add more admin emails here
-]
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const isAdmin = user ? ADMIN_EMAILS.includes((user.email || '').toLowerCase()) : false
+  const isAdmin = user ? isAdminEmail(user.email) : false
 
   const syncUserToNeon = async (firebaseUser: User) => {
     try {

@@ -3,7 +3,6 @@ import { OrderConfirmationEmail } from '../app/emails/order-confirmation';
 import { OrderConfirmationEmailHebrew } from '../app/emails/order-confirmation-hebrew';
 import { prisma } from './prisma';
 import { OrderConfirmationTeamEmail } from '../app/emails/order-confirmation-team-mail';
-import { ResetPasswordEmail } from '../app/emails/reset-password';
 import { EmailOtp } from '../app/emails/email-otp';
 
 let resendClient: Resend | null = null;
@@ -62,53 +61,12 @@ export interface OrderEmailData {
   }>;
 }
 
-export interface PasswordResetEmailData {
-  to: string;
-  resetPasswordLink: string;
-  userFirstname?: string;
-  isHebrew?: boolean;
-  brandName?: string;
-}
-
 export interface EmailOtpData {
   to: string;
   otpCode: string;
   userFirstname?: string;
   isHebrew?: boolean;
   brandName?: string;
-}
-
-export async function sendPasswordResetEmail(data: PasswordResetEmailData) {
-  const resend = getResendClient();
-
-  const subject = data.isHebrew ? 'איפוס סיסמה - Sako Or' : 'Reset your password - Sako Or';
-  const idempotencyKey = `password-reset-${data.to}-${Date.now()}`;
-
-  const text = data.isHebrew
-    ? `קיבלנו בקשה לאיפוס הסיסמה.\n\nאיפוס סיסמה: ${data.resetPasswordLink}\n\nאם לא ביקשת לאפס סיסמה, אפשר להתעלם מהמייל הזה.`
-    : `We received a request to reset your password.\n\nReset password: ${data.resetPasswordLink}\n\nIf you didn’t request this, you can ignore this email.`;
-
-  const result = await resend.emails.send(
-    {
-      from: 'Sako Or <info@sako-or.com>',
-      to: [data.to],
-      subject,
-      react: ResetPasswordEmail({
-        userFirstname: data.userFirstname,
-        resetPasswordLink: data.resetPasswordLink,
-        isHebrew: data.isHebrew,
-        brandName: data.brandName ?? 'Sako Or',
-      }),
-      text,
-    },
-    { idempotencyKey }
-  );
-
-  const { data: emailData, error } = result as { data?: any; error?: any };
-  if (error) {
-    throw error;
-  }
-  return { messageId: emailData?.id, idempotencyKey };
 }
 
 export async function sendEmailOtp(data: EmailOtpData) {

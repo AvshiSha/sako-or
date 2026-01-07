@@ -3,12 +3,7 @@ import { z } from 'zod'
 import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
-
-function getBearerToken(req: NextRequest): string | null {
-  const authHeader = req.headers.get('authorization') || ''
-  const match = authHeader.match(/^Bearer\s+(.+)$/i)
-  return match?.[1] ?? null
-}
+import { requireUserAuth } from '@/lib/server/auth'
 
 const CompleteSignupSchema = z.object({
   firstName: z.string().trim().min(1).max(50),
@@ -23,11 +18,17 @@ const CompleteSignupSchema = z.object({
       message: 'Invalid phone. Use Israeli E.164 format: +972501234567'
     }),
   language: z.enum(['en', 'he']),
-  gender: z.string().trim().max(30).optional().nullable(),
+  birthday: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid birthday format (expected YYYY-MM-DD)')
+    .transform((s) => new Date(`${s}T00:00:00.000Z`)),
+  interestedIn: z.string().trim().max(30).optional().nullable(),
   addressStreet: z.string().trim().max(120).optional().nullable(),
   addressStreetNumber: z.string().trim().max(20).optional().nullable(),
   addressFloor: z.string().trim().max(20).optional().nullable(),
   addressApt: z.string().trim().max(20).optional().nullable(),
+  addressCity: z.string().trim().max(100).optional().nullable(),
   isNewsletter: z.boolean().optional()
 })
 
@@ -42,16 +43,10 @@ const CompleteSignupSchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
-    const token = getBearerToken(request)
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Missing Authorization Bearer token' },
-        { status: 401 }
-      )
-    }
-
-    const decoded = await adminAuth.verifyIdToken(token)
-    const firebaseUid = decoded.uid
+    const auth = await requireUserAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const decoded = auth.decoded
+    const firebaseUid = auth.firebaseUid
 
     // Parse and validate request body
     const json = await request.json().catch(() => ({}))
@@ -66,7 +61,7 @@ export async function POST(request: NextRequest) {
     const data = parsed.data
 
     // Fetch Firebase user to verify phone number is attached
-    const firebaseUser = await adminAuth.getUser(firebaseUid)
+    const firebaseUser = auth.firebaseUser
     
     if (!firebaseUser.phoneNumber) {
       return NextResponse.json(
@@ -110,11 +105,13 @@ export async function POST(request: NextRequest) {
           lastName: data.lastName,
           phone: data.phone,
           language: data.language,
-          gender: data.gender || null,
+          birthday: data.birthday,
+          interestedIn: data.interestedIn || null,
           addressStreet: data.addressStreet || null,
           addressStreetNumber: data.addressStreetNumber || null,
           addressFloor: data.addressFloor || null,
           addressApt: data.addressApt || null,
+          addressCity: data.addressCity || null,
           isNewsletter: data.isNewsletter ?? false,
           phoneVerifiedAt: now,
           signupCompletedAt: now,
@@ -133,12 +130,7 @@ export async function POST(request: NextRequest) {
     const email = emailRaw ? emailRaw.trim().toLowerCase() : null
     const emailVerified = firebaseUser.emailVerified ?? (decoded.email_verified ?? false)
 
-    const providerIds =
-      firebaseUser.providerData?.map((p) => p.providerId).filter(Boolean) ?? []
-    const authProvider =
-      providerIds.length > 0
-        ? providerIds[0]
-        : ((decoded as any)?.firebase?.sign_in_provider as string | undefined) ?? 'firebase'
+    const authProvider = auth.authProvider
 
     const now = new Date()
     const user = await prisma.user.create({
@@ -151,11 +143,13 @@ export async function POST(request: NextRequest) {
         lastName: data.lastName,
         phone: data.phone,
         language: data.language,
-        gender: data.gender || null,
+        birthday: data.birthday,
+        interestedIn: data.interestedIn || null,
         addressStreet: data.addressStreet || null,
         addressStreetNumber: data.addressStreetNumber || null,
         addressFloor: data.addressFloor || null,
         addressApt: data.addressApt || null,
+        addressCity: data.addressCity || null,
         isNewsletter: data.isNewsletter ?? false,
         phoneVerifiedAt: now,
         signupCompletedAt: now,

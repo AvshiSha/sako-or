@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164 } from '@/lib/phone'
+import { requireUserAuth } from '@/lib/server/auth'
 
 function normalizeEmail(raw: string) {
   return raw.trim().toLowerCase()
-}
-
-function getBearerToken(req: NextRequest): string | null {
-  const authHeader = req.headers.get('authorization') || ''
-  const match = authHeader.match(/^Bearer\s+(.+)$/i)
-  return match?.[1] ?? null
 }
 
 function parseDisplayName(displayName: string | null | undefined): {
@@ -38,19 +32,13 @@ function computeNeedsProfileCompletion(user: {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = getBearerToken(request)
-    if (!token) {
-      return NextResponse.json(
-        { error: 'Missing Authorization Bearer token' },
-        { status: 401 }
-      )
-    }
-
-    const decoded = await adminAuth.verifyIdToken(token)
-    const firebaseUid = decoded.uid
+    const auth = await requireUserAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const decoded = auth.decoded
+    const firebaseUid = auth.firebaseUid
     const now = new Date()
 
-    const firebaseUser = await adminAuth.getUser(firebaseUid)
+    const firebaseUser = auth.firebaseUser
 
     const emailRaw = firebaseUser.email ?? decoded.email ?? null
     const email = emailRaw ? normalizeEmail(emailRaw) : null
@@ -59,13 +47,7 @@ export async function POST(request: NextRequest) {
     const phone = normalizeIsraelE164(firebaseUser.phoneNumber)
     const emailVerified = firebaseUser.emailVerified ?? (decoded.email_verified ?? false)
 
-    const providerIds =
-      firebaseUser.providerData?.map((p) => p.providerId).filter(Boolean) ?? []
-    const authProvider =
-      providerIds.length > 0
-        ? providerIds[0]
-        : ((decoded as any)?.firebase?.sign_in_provider as string | undefined) ??
-          'firebase'
+    const authProvider = auth.authProvider
 
     const { firstName: parsedFirstName, lastName: parsedLastName } =
       parseDisplayName(firebaseUser.displayName)

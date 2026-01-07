@@ -9,7 +9,7 @@ interface IsraelPhoneInputProps {
   placeholder?: string
   disabled?: boolean
   className?: string
-  dir?: 'ltr' | 'rtl'
+  dir?: 'ltr' | 'rtl' // Ignored - phone numbers are always LTR
 }
 
 export function IsraelPhoneInput({
@@ -18,7 +18,7 @@ export function IsraelPhoneInput({
   placeholder = '50-123-4567',
   disabled = false,
   className,
-  dir = 'ltr',
+  dir = 'ltr', // Ignored - always use LTR for phone numbers
 }: IsraelPhoneInputProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
 
@@ -35,24 +35,22 @@ export function IsraelPhoneInput({
     }
   }
 
-  const isRTL = dir === 'rtl'
-
+  // Always use LTR for phone numbers - +972 should always be on the left
   return (
     <div
       className={cn(
-        'flex h-10 w-full rounded-md border border-[#856D55]/70 bg-[#E1DBD7]/70 ring-offset-background focus-within:ring-[#856D55] focus-within:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        'flex flex-row h-10 w-full rounded-md border border-[#856D55]/70 bg-[#E1DBD7]/70 ring-offset-background focus-within:ring-[#856D55] focus-within:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
-      dir={dir}
+      dir="ltr"
+      style={{ direction: 'ltr', unicodeBidi: 'embed' }}
     >
       {/* Fixed +972 prefix - always on the left */}
-      <div
-        className={cn(
-          'flex items-center px-3 py-2 text-sm font-medium text-slate-900 select-none border-r border-[#856D55]/70 text-left',
-          isRTL && 'order-2 border-r-0 border-l'
-        )}
+      <div 
+        className="flex items-center px-3 py-2 text-sm font-medium text-slate-900 select-none border-r border-[#856D55]/70"
+        style={{ direction: 'ltr' }}
       >
-        972+
+        +972
       </div>
       
       {/* Local number input */}
@@ -66,11 +64,8 @@ export function IsraelPhoneInput({
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
-        className={cn(
-          'flex-1 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400',
-          'disabled:cursor-not-allowed',
-          isRTL && 'order-1'
-        )}
+        className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+        style={{ direction: 'ltr', textAlign: 'left' }}
         maxLength={9}
       />
     </div>

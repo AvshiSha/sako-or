@@ -3,8 +3,8 @@ import { CardComAPI, createPaymentSessionRequest } from '../../../../lib/cardcom
 import { CreateLowProfileRequest } from '../../../../app/types/checkout';
 import { createOrder, generateOrderNumber } from '../../../../lib/orders';
 import { prisma } from '../../../../lib/prisma';
-import { adminAuth } from '../../../../lib/firebase-admin';
 import { spendPointsForOrder } from '../../../../lib/points';
+import { getBearerToken, requireUserAuth } from '@/lib/server/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,15 +13,14 @@ export async function POST(request: NextRequest) {
 
     // Optional auth: if a Firebase bearer token is provided, link the order to that user.
     // Only link to existing confirmed users - do NOT create partial users here.
-    const authHeader = request.headers.get('authorization') || '';
-    const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
-    const bearerToken = tokenMatch?.[1] ?? null;
+    const bearerToken = getBearerToken(request);
     let userId: string | undefined = undefined;
 
     if (bearerToken) {
       try {
-        const decoded = await adminAuth.verifyIdToken(bearerToken);
-        const firebaseUid = decoded.uid;
+        const auth = await requireUserAuth(request)
+        if (auth instanceof NextResponse) return auth
+        const firebaseUid = auth.firebaseUid;
 
         // Read-only lookup: only link order to existing confirmed user
         const user = await prisma.user.findUnique({

@@ -2,10 +2,8 @@
 
 import Link from 'next/link';
 import { FaFacebook, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa';
-import { useState, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal';
-import { fbqTrackSubscribe } from '@/lib/facebookPixel';
 import { languageMetadata } from '../../i18n/settings';
 import {
   Accordion,
@@ -77,73 +75,11 @@ const translations = {
 }
 
 function FooterInner({ lng }: { lng: string }) {
-  const [email, setEmail] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [subscribedEmail, setSubscribedEmail] = useState('')
-  const [emailError, setEmailError] = useState('')
-  
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   
   const t = translations[lng as keyof typeof translations]
-
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
-
-  const handleNewsletterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Clear previous errors
-    setEmailError('')
-    
-    if (!email.trim()) {
-      setEmailError(t.emailRequired || 'Email is required')
-      return
-    }
-    
-    if (!validateEmail(email.trim())) {
-      setEmailError(t.emailInvalid || 'Please enter a valid email address')
-      return
-    }
-    
-    setIsSubmitting(true)
-    
-    try {
-      const response = await fetch('/api/newsletter/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-      
-      const data = await response.json().catch(() => ({}))
-      
-      if (data.success) {
-        setSubscribedEmail(email.trim())
-        setShowSuccessModal(true)
-        setEmail('') // Clear the form
-        setEmailError('') // Clear any errors
-
-        fbqTrackSubscribe({
-          subscription_type: 'newsletter',
-          placement: 'footer_form',
-          email: email.trim(),
-        })
-      } else {
-        setEmailError(data.error || t.subscriptionError || 'Failed to subscribe. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error subscribing to newsletter:', error)
-      setEmailError(t.subscriptionError || 'Failed to subscribe. Please try again.')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   const handleLanguageChange = (newLanguage: string) => {
     if (!pathname) return
@@ -483,14 +419,6 @@ function FooterInner({ lng }: { lng: string }) {
           </div>
         </div>
       </footer>
-
-      {/* Newsletter Success Modal */}
-      <NewsletterSuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        email={subscribedEmail}
-        lng={lng}
-      />
     </>
   )
 }

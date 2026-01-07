@@ -8,7 +8,9 @@ import { profileTheme } from '@/app/components/profile/profileTheme'
 import {
   PhoneAuthProvider,
   RecaptchaVerifier,
-  updatePhoneNumber
+  signInWithPhoneNumber,
+  updatePhoneNumber,
+  ConfirmationResult
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 
@@ -66,16 +68,22 @@ const translations = {
 }
 
 type PendingSignup = {
-  uid: string
+  uid?: string // Optional - only present for Google signup flow
+  email?: string // Required for email-only signup flow
   firstName: string
   lastName: string
   phone: string
   language: string
   gender?: string
-  addressStreet?: string
-  addressStreetNumber?: string
-  addressFloor?: string
-  addressApt?: string
+  city?: string
+  streetName?: string
+  streetNumber?: string
+  floor?: string
+  apt?: string
+  addressStreet?: string // Legacy field name
+  addressStreetNumber?: string // Legacy field name
+  addressFloor?: string // Legacy field name
+  addressApt?: string // Legacy field name
   isNewsletter: boolean
 }
 
@@ -88,7 +96,8 @@ export default function VerifySmsPage() {
   const { user: firebaseUser, loading: authLoading } = useAuth()
 
   const [pendingSignup, setPendingSignup] = useState<PendingSignup | null>(null)
-  const [verificationId, setVerificationId] = useState<string | null>(null)
+  const [verificationId, setVerificationId] = useState<string | null>(null) // For Google signup flow
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null) // For email-only flow
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -108,11 +117,6 @@ export default function VerifySmsPage() {
   useEffect(() => {
     if (authLoading) return
 
-    if (!firebaseUser) {
-      router.replace(`/${lng}/signup`)
-      return
-    }
-
     const stored = sessionStorage.getItem('pendingSignup')
     if (!stored) {
       router.replace(`/${lng}/signup`)
@@ -121,11 +125,21 @@ export default function VerifySmsPage() {
 
     try {
       const parsed = JSON.parse(stored) as PendingSignup
-      if (parsed.uid !== firebaseUser.uid) {
+      
+      // For Google signup flow, verify UID matches if both exist
+      if (parsed.uid && firebaseUser && parsed.uid !== firebaseUser.uid) {
         sessionStorage.removeItem('pendingSignup')
         router.replace(`/${lng}/signup`)
         return
       }
+      
+      // For email-only flow, email is required
+      if (!parsed.uid && !parsed.email) {
+        sessionStorage.removeItem('pendingSignup')
+        router.replace(`/${lng}/signup`)
+        return
+      }
+      
       setPendingSignup(parsed)
     } catch {
       sessionStorage.removeItem('pendingSignup')
@@ -189,12 +203,13 @@ export default function VerifySmsPage() {
     console.log('🔵 [AUTO-SEND] Effect triggered', {
       pendingSignup: !!pendingSignup,
       verificationId: !!verificationId,
+      confirmationResult: !!confirmationResult,
       busy,
       hasAttemptedSend: hasAttemptedSendRef.current,
       recaptchaVerifier: !!recaptchaVerifier
     })
 
-    if (!pendingSignup || verificationId || busy || hasAttemptedSendRef.current || !recaptchaVerifier) {
+    if (!pendingSignup || verificationId || confirmationResult || busy || hasAttemptedSendRef.current || !recaptchaVerifier) {
       console.log('🔵 [AUTO-SEND] Skipping - conditions not met')
       return
     }
@@ -213,28 +228,31 @@ export default function VerifySmsPage() {
       clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingSignup, verificationId, busy, recaptchaVerifier])
+  }, [pendingSignup, verificationId, confirmationResult, busy, recaptchaVerifier])
 
   async function sendSmsCode() {
     console.log('🔵 [SEND-SMS] sendSmsCode called', {
       firebaseUser: !!firebaseUser,
       pendingSignup: !!pendingSignup,
+      hasUid: !!pendingSignup?.uid,
       phone: pendingSignup?.phone,
       recaptchaVerifier: !!recaptchaVerifier,
       hasAttemptedSend: hasAttemptedSendRef.current
     })
 
-    if (!firebaseUser || !pendingSignup || !recaptchaVerifier) {
+    if (!pendingSignup || !recaptchaVerifier) {
       console.log('❌ [SEND-SMS] Missing required values, returning')
       return
     }
+
+    // Determine flow: Google signup (has uid and firebaseUser) vs email-only (no uid)
+    const isGoogleSignup = pendingSignup.uid && firebaseUser && pendingSignup.uid === firebaseUser.uid
 
     console.log('🔵 [SEND-SMS] Setting busy=true, clearing error')
     setBusy(true)
     setError(null)
 
     try {
-      console.log('🔵 [SEND-SMS] Creating PhoneAuthProvider')
       console.log('🔵 [SEND-SMS] Current origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A')
       console.log('🔵 [SEND-SMS] Auth domain:', auth.app.options.authDomain)
       console.log('🔵 [SEND-SMS] RecaptchaVerifier state:', {
@@ -252,29 +270,43 @@ export default function VerifySmsPage() {
         // Continue anyway - it might already be rendered
       }
       
-      const provider = new PhoneAuthProvider(auth)
-      console.log('🔵 [SEND-SMS] Calling verifyPhoneNumber', { 
-        phone: pendingSignup.phone,
-        providerCreated: !!provider
-      })
+      if (isGoogleSignup) {
+        // Google signup flow: user exists, use PhoneAuthProvider to update phone
+        console.log('🔵 [SEND-SMS] Google signup flow - using PhoneAuthProvider.verifyPhoneNumber')
+        const provider = new PhoneAuthProvider(auth)
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('verifyPhoneNumber timeout after 30s')), 30000)
+        })
+        
+        const verId = await Promise.race([
+          provider.verifyPhoneNumber(pendingSignup.phone, recaptchaVerifier),
+          timeoutPromise
+        ]) as string
+        
+        console.log('✅ [SEND-SMS] verifyPhoneNumber succeeded!')
+        setVerificationId(verId)
+      } else {
+        // Email-only flow: no user exists, use signInWithPhoneNumber to create user
+        console.log('🔵 [SEND-SMS] Email-only flow - using signInWithPhoneNumber', { 
+          phone: pendingSignup.phone
+        })
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('signInWithPhoneNumber timeout after 30s')), 30000)
+        })
+        
+        const confirmation = await Promise.race([
+          signInWithPhoneNumber(auth, pendingSignup.phone, recaptchaVerifier),
+          timeoutPromise
+        ]) as ConfirmationResult
+        
+        console.log('✅ [SEND-SMS] signInWithPhoneNumber succeeded!', { 
+          confirmationResult: !!confirmation
+        })
+        setConfirmationResult(confirmation)
+      }
       
-      // Add timeout to detect hanging requests
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('verifyPhoneNumber timeout after 30s')), 30000)
-      })
-      
-      console.log('🔵 [SEND-SMS] Starting verifyPhoneNumber with timeout...')
-      const verId = await Promise.race([
-        provider.verifyPhoneNumber(pendingSignup.phone, recaptchaVerifier),
-        timeoutPromise
-      ]) as string
-      
-      console.log('✅ [SEND-SMS] verifyPhoneNumber succeeded!', { 
-        verificationId: verId?.substring(0, 20) + '...',
-        fullLength: verId?.length
-      })
-
-      setVerificationId(verId)
       setResendCooldown(60)
     } catch (err: any) {
       console.error('❌ [SEND-SMS] Error sending SMS:', err)
@@ -286,7 +318,6 @@ export default function VerifySmsPage() {
         customData: err?.customData,
         response: err?.response,
         serverResponse: err?.serverResponse,
-        // Try to extract more details from Firebase error
         errorInfo: err?.errorInfo
       })
       
@@ -324,7 +355,6 @@ export default function VerifySmsPage() {
       } else if (code === 'auth/internal-error' || msg.includes('recaptcha') || msg.includes('already been rendered')) {
         setError(t.recaptchaError)
       } else if (msg.includes('400') || msg.includes('Bad Request') || code === 'auth/network-request-failed') {
-        // 400 Bad Request usually means API key restrictions or domain issues
         setError('Phone verification failed. Please check: 1) API key restrictions in Firebase Console, 2) Domain authorization (localhost), 3) reCAPTCHA configuration.')
       } else {
         setError(t.errorSendingSms)
@@ -335,16 +365,81 @@ export default function VerifySmsPage() {
   }
 
   async function handleVerifyCode() {
-    if (!firebaseUser || !pendingSignup || !verificationId || !code.trim()) return
+    if (!pendingSignup || !code.trim()) return
+    
+    // Check which flow we're in
+    const isGoogleSignup = pendingSignup.uid && firebaseUser && pendingSignup.uid === firebaseUser.uid
+    
+    if (isGoogleSignup && !verificationId) return
+    if (!isGoogleSignup && !confirmationResult) return
 
     setBusy(true)
     setError(null)
 
     try {
-      const credential = PhoneAuthProvider.credential(verificationId, code.trim())
-      await updatePhoneNumber(firebaseUser, credential)
+      let verifiedUser: typeof firebaseUser
+      let token: string
 
-      const token = await firebaseUser.getIdToken()
+      if (isGoogleSignup) {
+        // Google signup flow: update phone number on existing user
+        console.log('🔵 [VERIFY] Google signup flow - updating phone number...')
+        if (!firebaseUser) {
+          throw new Error('Firebase user not found')
+        }
+        
+        const credential = PhoneAuthProvider.credential(verificationId!, code.trim())
+        await updatePhoneNumber(firebaseUser, credential)
+        verifiedUser = firebaseUser
+        token = await verifiedUser.getIdToken()
+        console.log('✅ [VERIFY] Phone number updated on existing user:', verifiedUser.uid)
+      } else {
+        // Email-only flow: verify phone code - this creates/signs in the Firebase user
+        console.log('🔵 [VERIFY] Email-only flow - confirming phone code...')
+        const userCredential = await confirmationResult!.confirm(code.trim())
+        verifiedUser = userCredential.user
+        console.log('✅ [VERIFY] Phone verified, user signed in:', verifiedUser.uid)
+
+        // Get token for API calls
+        token = await verifiedUser.getIdToken()
+
+        // Link email to the phone-authenticated user if email exists
+        if (pendingSignup.email && !verifiedUser.email) {
+          console.log('🔵 [VERIFY] Linking email to user...')
+          try {
+            const linkRes = await fetch('/api/auth/link-email', {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                email: pendingSignup.email
+              })
+            })
+
+            const linkJson = await linkRes.json().catch(() => null)
+            if (!linkRes.ok || !linkJson?.ok) {
+              console.warn('⚠️ [VERIFY] Email linking failed, but continuing:', linkJson?.error)
+              // Continue anyway - email can be added later
+            } else {
+              console.log('✅ [VERIFY] Email linked successfully')
+              // Refresh token to get updated user info
+              token = await verifiedUser.getIdToken(true)
+            }
+          } catch (linkErr) {
+            console.warn('⚠️ [VERIFY] Email linking error, but continuing:', linkErr)
+            // Continue anyway - email can be added later
+          }
+        }
+      }
+
+      // Prepare address fields (support both new and legacy field names)
+      const addressStreet = pendingSignup.streetName || pendingSignup.addressStreet || null
+      const addressStreetNumber = pendingSignup.streetNumber || pendingSignup.addressStreetNumber || null
+      const addressFloor = pendingSignup.floor || pendingSignup.addressFloor || null
+      const addressApt = pendingSignup.apt || pendingSignup.addressApt || null
+
+      console.log('🔵 [VERIFY] Calling complete-signup API...')
       const res = await fetch('/api/auth/complete-signup', {
         method: 'POST',
         headers: {
@@ -357,10 +452,10 @@ export default function VerifySmsPage() {
           phone: pendingSignup.phone,
           language: pendingSignup.language,
           gender: pendingSignup.gender || null,
-          addressStreet: pendingSignup.addressStreet || null,
-          addressStreetNumber: pendingSignup.addressStreetNumber || null,
-          addressFloor: pendingSignup.addressFloor || null,
-          addressApt: pendingSignup.addressApt || null,
+          addressStreet,
+          addressStreetNumber,
+          addressFloor,
+          addressApt,
           isNewsletter: pendingSignup.isNewsletter
         })
       })
@@ -371,10 +466,11 @@ export default function VerifySmsPage() {
         throw new Error(json?.error || `HTTP ${res.status}`)
       }
 
+      console.log('✅ [VERIFY] Signup completed successfully')
       sessionStorage.removeItem('pendingSignup')
       router.replace(`/${lng}/profile`)
     } catch (err: any) {
-      console.error('Error verifying code:', err)
+      console.error('❌ [VERIFY] Error verifying code:', err)
       const code = typeof err?.code === 'string' ? err.code : ''
       const msg = typeof err?.message === 'string' ? err.message : ''
 
@@ -393,8 +489,6 @@ export default function VerifySmsPage() {
   }
 
   async function handleCancelSignup() {
-    if (!firebaseUser) return
-
     const confirmed = window.confirm(t.cancelConfirm)
     if (!confirmed) return
 
@@ -402,11 +496,14 @@ export default function VerifySmsPage() {
     setError(null)
 
     try {
-      const token = await firebaseUser.getIdToken()
-      await fetch('/api/auth/cancel-signup', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      // If user is signed in (after phone verification), cancel via API
+      if (firebaseUser) {
+        const token = await firebaseUser.getIdToken()
+        await fetch('/api/auth/cancel-signup', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      }
 
       sessionStorage.removeItem('pendingSignup')
       router.replace(`/${lng}`)
@@ -450,7 +547,7 @@ export default function VerifySmsPage() {
           <div className="text-center">
             <h2 className="text-xl font-semibold text-slate-900">{greeting}</h2>
             <p className="mt-2 text-sm text-slate-600">{smsSent}</p>
-            {verificationId && (
+            {(confirmationResult || verificationId) && (
               <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
                 <p className="font-medium mb-1">💡 {t.testModeInfo}</p>
                 <p className="text-xs mt-1">{t.noSmsReceived}</p>
@@ -469,7 +566,7 @@ export default function VerifySmsPage() {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 placeholder={t.codePlaceholder}
                 className={profileTheme.input}
-                disabled={busy || !verificationId}
+                disabled={busy || (!confirmationResult && !verificationId)}
                 autoComplete="one-time-code"
               />
             </div>
@@ -477,7 +574,7 @@ export default function VerifySmsPage() {
             <button
               type="button"
               onClick={handleVerifyCode}
-              disabled={!code.trim() || code.length !== 6 || busy || !verificationId}
+              disabled={!code.trim() || code.length !== 6 || busy || (!confirmationResult && !verificationId)}
               className={profileTheme.buttonPrimary}
             >
               {busy ? t.verifying : t.verify}
@@ -488,6 +585,8 @@ export default function VerifySmsPage() {
                 type="button"
                 onClick={() => {
                   hasAttemptedSendRef.current = false
+                  setConfirmationResult(null)
+                  setVerificationId(null)
                   void sendSmsCode()
                 }}
                 disabled={busy || resendCooldown > 0 || !recaptchaVerifier}

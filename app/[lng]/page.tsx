@@ -6,11 +6,11 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
 import { getImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl, getSakoOrMobileVideoUrl } from '@/lib/image-urls'
-import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
 import CountdownPopup from '@/app/components/CountdownPopup'
 import ProductCarousel from '@/app/components/ProductCarousel'
 import { productService } from '@/lib/firebase'
 import { Product } from '@/lib/firebase'
+import CollectionTiles from '@/app/components/CollectionTiles'
 
 
 // Hardcoded translations for build-time rendering
@@ -64,11 +64,6 @@ const translations = {
 export default function Home() {
   const params = useParams()
   const pathname = usePathname()
-  const [email, setEmail] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [subscribedEmail, setSubscribedEmail] = useState('')
-  const [emailError, setEmailError] = useState('')
   const [showCountdownPopup, setShowCountdownPopup] = useState(false)
   const [bestSellers, setBestSellers] = useState<Product[]>([])
   const [sakoOrProducts, setSakoOrProducts] = useState<Product[]>([])
@@ -167,56 +162,6 @@ export default function Home() {
   const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
   const heroMobileVideoSrc = getHeroMobileVideoUrl()
   const sakoOrMobileVideoSrc = getSakoOrMobileVideoUrl()
-
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
-
-  const handleNewsletterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Clear previous errors
-    setEmailError('')
-    
-    if (!email.trim()) {
-      setEmailError(t.emailRequired || 'Email is required')
-      return
-    }
-    
-    if (!validateEmail(email.trim())) {
-      setEmailError(t.emailInvalid || 'Please enter a valid email address')
-      return
-    }
-    
-    setIsSubmitting(true)
-    
-    try {
-      const response = await fetch('/api/newsletter/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-      
-      const data = await response.json().catch(() => ({}))
-      
-      if (data.success) {
-        setSubscribedEmail(email.trim())
-        setShowSuccessModal(true)
-        setEmail('') // Clear the form
-        setEmailError('') // Clear any errors
-      } else {
-        setEmailError(data.error || t.subscriptionError || 'Failed to subscribe. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error subscribing to newsletter:', error)
-      setEmailError(t.subscriptionError || 'Failed to subscribe. Please try again.')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   return (
     <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
@@ -330,56 +275,8 @@ export default function Home() {
         />
       )}
 
-      {/* Newsletter Section */}
-      <div style={{ backgroundColor: '#E1DBD7' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="max-w-xl mx-auto text-center">
-            <h2 className="text-3xl font-light text-black mb-4">{t.newsletterTitle}</h2>
-            <p className="text-black mb-8">
-              {t.newsletterDescription}
-            </p>
-            <form onSubmit={handleNewsletterSubmit} className="max-w-md mx-auto">
-              <div className="flex gap-4">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value)
-                    if (emailError) setEmailError('') // Clear error when user types
-                  }}
-                  placeholder={t.emailPlaceholder}
-                  required
-                  disabled={isSubmitting}
-                  className={`flex-1 px-4 py-3 border text-gray-900 focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    emailError ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-gray-900'
-                  }`}
-                />
-                <button
-                  onClick={() => track('subscribe_to_newsletter_button')}
-                  type="submit"
-                  disabled={isSubmitting || !email.trim()}
-                  className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? '...' : t.subscribeButton}
-                </button>
-              </div>
-              {emailError && (
-                <p className="mt-2 text-sm text-red-600 text-center">
-                  {emailError}
-                </p>
-              )}
-            </form>
-          </div>
-        </div>
-      </div>
-
-      {/* Newsletter Success Modal */}
-      <NewsletterSuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        email={subscribedEmail}
-        lng={lng}
-      />
+      {/* Collection Tiles - under Hero #2 */}
+      <CollectionTiles lng={lng} />
 
       {/* Countdown Popup */}
       {/* <CountdownPopup

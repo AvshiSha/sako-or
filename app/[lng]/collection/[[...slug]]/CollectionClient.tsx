@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
@@ -319,47 +319,60 @@ export default function CollectionClient({
     });
   };
 
-  // Debounced price update effect
+  // Sync priceRange state from URL when URL changes (to keep it in sync)
+  // This ensures priceRange state matches URL after router.push updates
+  const lastPriceRangeUrlRef = useRef<string>('');
   useEffect(() => {
-    // Always update URL when price values change, even if they're empty (to remove from URL)
-    const timeoutId = setTimeout(() => {
-      updateURL({ 
-        minPrice: priceRange.min, 
-        maxPrice: priceRange.max, 
-        colors: selectedColors, 
-        sizes: selectedSizes, 
-        sort: sortBy 
-      });
-    }, 500);
-    return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [priceRange.min, priceRange.max]);
+    const urlMin = safeSearchParams.get('minPrice') || '';
+    const urlMax = safeSearchParams.get('maxPrice') || '';
+    const currentUrlPrice = `${urlMin}|${urlMax}`;
+    
+    // Only update if URL price params actually changed
+    if (currentUrlPrice === lastPriceRangeUrlRef.current) {
+      return;
+    }
+    
+    lastPriceRangeUrlRef.current = currentUrlPrice;
+    
+    // Only update if different from current (avoid feedback loops)
+    if (priceRange.min !== urlMin || priceRange.max !== urlMax) {
+      setPriceRange({ min: urlMin, max: urlMax });
+    }
+  }, [safeSearchParams, priceRange.min, priceRange.max]);
 
   const handlePriceChange = (field: 'min' | 'max', value: string) => {
     setPriceRange(prev => ({ ...prev, [field]: value }));
-    // Also update slider values if valid numbers
+    // Also update selected price range if valid numbers
     const numValue = parseFloat(value);
     if (!isNaN(numValue)) {
-      setSliderValues(prev => {
-        if (field === 'min') {
-          return [numValue, prev[1]];
-        } else {
-          return [prev[0], numValue];
-        }
+      setSelectedPriceRange(prev => {
+        const collectionMin = collectionPriceBounds?.min ?? 0;
+        const collectionMax = collectionPriceBounds?.max ?? 1000;
+        const newMin = field === 'min' ? Math.max(collectionMin, Math.min(numValue, collectionMax)) : prev[0];
+        const newMax = field === 'max' ? Math.min(collectionMax, Math.max(numValue, collectionMin)) : prev[1];
+        return [Math.min(newMin, newMax), Math.max(newMin, newMax)];
       });
     }
   };
 
   const handleSliderChange = (values: number[]) => {
-    // Ensure min <= max and enforce minimum gap if needed
+    // Update selected range when user drags slider
+    // Clamp values to collection bounds to prevent out-of-range values
     const [min, max] = values;
-    const validatedMin = Math.min(min, max);
-    const validatedMax = Math.max(min, max);
-    setSliderValues([validatedMin, validatedMax]);
+    const collectionMin = collectionPriceBounds?.min ?? 0;
+    const collectionMax = collectionPriceBounds?.max ?? 1000;
+    
+    // Ensure min <= max and clamp to collection bounds
+    const validatedMin = Math.max(collectionMin, Math.min(Math.min(min, max), collectionMax));
+    const validatedMax = Math.min(collectionMax, Math.max(Math.max(min, max), collectionMin));
+    setSelectedPriceRange([validatedMin, validatedMax]);
   };
 
   const handlePriceReset = () => {
-    setSliderValues([priceRangeBounds.min, priceRangeBounds.max]);
+    // Reset to full collection bounds
+    const collectionMin = collectionPriceBounds?.min ?? 0;
+    const collectionMax = collectionPriceBounds?.max ?? 1000;
+    setSelectedPriceRange([collectionMin, collectionMax]);
     setPriceRange({ min: '', max: '' });
   };
 
@@ -377,7 +390,9 @@ export default function CollectionClient({
   const handleClearFilters = () => {
     setSelectedColors([]);
     setSelectedSizes([]);
-    setSliderValues([priceRangeBounds.min, priceRangeBounds.max]);
+    const collectionMin = collectionPriceBounds?.min ?? 0;
+    const collectionMax = collectionPriceBounds?.max ?? 1000;
+    setSelectedPriceRange([collectionMin, collectionMax]);
     setPriceRange({ min: '', max: '' });
     setSortBy('relevance');
     // Use updateURL to ensure all params are properly cleared
@@ -509,8 +524,9 @@ export default function CollectionClient({
   const numericSizes = allSizes.filter(size => /^\d+(\.\d+)?$/.test(size)).sort((a, b) => parseFloat(a) - parseFloat(b));
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
 
-  // Calculate price range from products
-  const priceRangeBounds = useMemo(() => {
+  // STATIC: Collection Price Bounds - calculated from ALL products in collection
+  // These represent the full available range and NEVER change when user drags slider
+  const collectionPriceBounds = useMemo(() => {
     if (initialProducts.length === 0) {
       return { min: 0, max: 1000 };
     }
@@ -555,44 +571,137 @@ export default function CollectionClient({
     return { min: minRounded, max: maxRounded };
   }, [initialProducts]);
 
-  // Slider values state (as numbers) - defaults to full range
-  const [sliderValues, setSliderValues] = useState<[number, number]>(() => {
-    // If URL has price params, use them; otherwise use full range bounds
-    const min = priceRange.min ? parseFloat(priceRange.min) : (priceRangeBounds?.min ?? 0);
-    const max = priceRange.max ? parseFloat(priceRange.max) : (priceRangeBounds?.max ?? 1000);
+  // DYNAMIC: Selected Price Range - what the user is filtering by
+  // Initialized from URL params or defaults to full collection bounds
+  const [selectedPriceRange, setSelectedPriceRange] = useState<[number, number]>(() => {
+    // If URL has price params, use them; otherwise use full collection bounds
+    const min = priceRange.min ? parseFloat(priceRange.min) : (collectionPriceBounds?.min ?? 0);
+    const max = priceRange.max ? parseFloat(priceRange.max) : (collectionPriceBounds?.max ?? 1000);
     // Ensure min <= max and values are valid numbers
-    const validMin = isNaN(min) ? (priceRangeBounds?.min ?? 0) : min;
-    const validMax = isNaN(max) ? (priceRangeBounds?.max ?? 1000) : max;
-    return [Math.min(validMin, validMax), Math.max(validMin, validMax)];
+    const validMin = isNaN(min) ? (collectionPriceBounds?.min ?? 0) : min;
+    const validMax = isNaN(max) ? (collectionPriceBounds?.max ?? 1000) : max;
+    // Clamp to collection bounds
+    const clampedMin = Math.max(collectionPriceBounds?.min ?? 0, Math.min(validMin, collectionPriceBounds?.max ?? 1000));
+    const clampedMax = Math.min(collectionPriceBounds?.max ?? 1000, Math.max(validMax, collectionPriceBounds?.min ?? 0));
+    return [Math.min(clampedMin, clampedMax), Math.max(clampedMin, clampedMax)];
   });
 
-  // Update slider values when priceRangeBounds change or URL params change
+  // Sync selected range from URL params ONLY when URL changes from external source
+  // (not when we update it ourselves via slider)
+  // We track the last URL price params to detect actual changes
+  const lastUrlPriceParamsRef = useRef<string>('');
+  const isInternalUpdateRef = useRef(false);
+  
   useEffect(() => {
-    // If URL has price params, use them; otherwise use full range bounds (default)
-    const min = priceRange.min ? parseFloat(priceRange.min) : (priceRangeBounds?.min ?? 0);
-    const max = priceRange.max ? parseFloat(priceRange.max) : (priceRangeBounds?.max ?? 1000);
-    // Ensure min <= max and values are valid numbers
-    const validMin = isNaN(min) ? (priceRangeBounds?.min ?? 0) : min;
-    const validMax = isNaN(max) ? (priceRangeBounds?.max ?? 1000) : max;
-    const validatedMin = Math.min(validMin, validMax);
-    const validatedMax = Math.max(validMin, validMax);
-    setSliderValues([validatedMin, validatedMax]);
-  }, [priceRangeBounds?.min, priceRangeBounds?.max, priceRange.min, priceRange.max]);
+    // Extract only price-related params for comparison
+    const urlMin = safeSearchParams.get('minPrice') || '';
+    const urlMax = safeSearchParams.get('maxPrice') || '';
+    const currentPriceParams = `${urlMin}|${urlMax}`;
+    
+    // If this is an internal update (we just updated the URL), don't sync back
+    // The slider should stay where the user left it
+    if (isInternalUpdateRef.current) {
+      // Update the ref to match current URL, but don't sync slider
+      lastUrlPriceParamsRef.current = currentPriceParams;
+      // Reset flag after a delay to allow URL to fully update
+      setTimeout(() => {
+        isInternalUpdateRef.current = false;
+      }, 200);
+      return;
+    }
+    
+    // Only sync if URL price params actually changed
+    if (currentPriceParams === lastUrlPriceParamsRef.current) {
+      return;
+    }
+    
+    lastUrlPriceParamsRef.current = currentPriceParams;
+    
+    // This is an external URL change (browser navigation, initial load, etc.)
+    // Parse URL values and sync slider
+    const min = urlMin ? parseFloat(urlMin) : null;
+    const max = urlMax ? parseFloat(urlMax) : null;
+    
+    // Calculate the target values based on URL
+    // If URL has params, use them; otherwise use full collection bounds
+    const targetMin = min !== null && !isNaN(min) ? min : (collectionPriceBounds?.min ?? 0);
+    const targetMax = max !== null && !isNaN(max) ? max : (collectionPriceBounds?.max ?? 1000);
+    
+    // Clamp to collection bounds
+    const collectionMin = collectionPriceBounds?.min ?? 0;
+    const collectionMax = collectionPriceBounds?.max ?? 1000;
+    const clampedMin = Math.max(collectionMin, Math.min(targetMin, collectionMax));
+    const clampedMax = Math.min(collectionMax, Math.max(targetMax, collectionMin));
+    const validatedMin = Math.min(clampedMin, clampedMax);
+    const validatedMax = Math.max(clampedMin, clampedMax);
+    
+    // Only update if significantly different (avoid tiny adjustments)
+    const tolerance = 1; // 1 shekel tolerance
+    const minDiff = Math.abs(selectedPriceRange[0] - validatedMin);
+    const maxDiff = Math.abs(selectedPriceRange[1] - validatedMax);
+    
+    if (minDiff > tolerance || maxDiff > tolerance) {
+      // Reset the last sent ref when URL changes externally
+      lastSentPriceRangeRef.current = null;
+      setSelectedPriceRange([validatedMin, validatedMax]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeSearchParams, collectionPriceBounds?.min, collectionPriceBounds?.max]);
 
-  // Debounced slider update effect (200-400ms range)
+  // Clamp selected range when collection bounds change (edge case: other filters change collection)
+  useEffect(() => {
+    const [currentMin, currentMax] = selectedPriceRange;
+    const collectionMin = collectionPriceBounds?.min ?? 0;
+    const collectionMax = collectionPriceBounds?.max ?? 1000;
+    
+    // Only clamp if values are out of bounds
+    if (currentMin < collectionMin || currentMax > collectionMax || currentMin > collectionMax || currentMax < collectionMin) {
+      const clampedMin = Math.max(collectionMin, Math.min(currentMin, collectionMax));
+      const clampedMax = Math.min(collectionMax, Math.max(currentMax, collectionMin));
+      setSelectedPriceRange([Math.min(clampedMin, clampedMax), Math.max(clampedMin, clampedMax)]);
+    }
+  }, [collectionPriceBounds?.min, collectionPriceBounds?.max]);
+
+  // Debounced filter update effect (200-400ms range)
+  // Updates URL directly when user drags slider
+  // We track the last sent values to avoid sending duplicate updates
+  const lastSentPriceRangeRef = useRef<[number, number] | null>(null);
+  
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      // Only update if values are different from bounds (i.e., user has filtered)
-      const minStr = sliderValues[0] === priceRangeBounds.min ? '' : Math.round(sliderValues[0]).toString();
-      const maxStr = sliderValues[1] === priceRangeBounds.max ? '' : Math.round(sliderValues[1]).toString();
+      const [selectedMin, selectedMax] = selectedPriceRange;
+      const collectionMin = collectionPriceBounds?.min ?? 0;
+      const collectionMax = collectionPriceBounds?.max ?? 1000;
       
-      if (minStr !== priceRange.min || maxStr !== priceRange.max) {
-        setPriceRange({ min: minStr, max: maxStr });
+      // Only set filter params if different from full collection bounds
+      const minStr = selectedMin === collectionMin ? '' : Math.round(selectedMin).toString();
+      const maxStr = selectedMax === collectionMax ? '' : Math.round(selectedMax).toString();
+      
+      // Check if we already sent this exact range (avoid duplicate updates)
+      const currentRange: [number, number] = [selectedMin, selectedMax];
+      if (lastSentPriceRangeRef.current && 
+          Math.abs(lastSentPriceRangeRef.current[0] - currentRange[0]) < 0.01 &&
+          Math.abs(lastSentPriceRangeRef.current[1] - currentRange[1]) < 0.01) {
+        return; // Already sent this range, skip
       }
+      
+      lastSentPriceRangeRef.current = currentRange;
+      
+      // Set flag to indicate we're updating URL ourselves (prevent sync back)
+      isInternalUpdateRef.current = true;
+      
+      // Update URL directly
+      updateURL({ 
+        minPrice: minStr, 
+        maxPrice: maxStr, 
+        colors: selectedColors, 
+        sizes: selectedSizes, 
+        sort: sortBy 
+      });
     }, 300); // 300ms debounce for slider (within 200-400ms range)
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sliderValues]);
+  }, [selectedPriceRange]);
 
   return (
     <div className="min-h-screen pt-20 bg-white">
@@ -779,16 +888,16 @@ export default function CollectionClient({
                   <div className="space-y-4 pt-3 border-t border-gray-100">
                     {/* Price Range Label */}
                     <div className="text-sm font-medium text-gray-900">
-                      ₪{sliderValues[0].toLocaleString()} - ₪{sliderValues[1].toLocaleString()}
+                      ₪{selectedPriceRange[0].toLocaleString()} - ₪{selectedPriceRange[1].toLocaleString()}
                     </div>
                     
                     {/* Price Range Slider */}
                     <div className="px-2">
                       <Slider
-                        value={sliderValues}
+                        value={selectedPriceRange}
                         onValueChange={handleSliderChange}
-                        min={priceRangeBounds.min}
-                        max={priceRangeBounds.max}
+                        min={collectionPriceBounds.min}
+                        max={collectionPriceBounds.max}
                         step={10}
                         className="w-full"
                         dir={lng === 'he' ? 'rtl' : 'ltr'}
@@ -796,7 +905,7 @@ export default function CollectionClient({
                     </div>
 
                     {/* Reset Button */}
-                    {(sliderValues[0] !== priceRangeBounds.min || sliderValues[1] !== priceRangeBounds.max) && (
+                    {(selectedPriceRange[0] !== collectionPriceBounds.min || selectedPriceRange[1] !== collectionPriceBounds.max) && (
                       <button
                         onClick={handlePriceReset}
                         className="text-xs text-gray-600 hover:text-gray-800 underline"
@@ -963,16 +1072,16 @@ export default function CollectionClient({
                       <div className="space-y-4 pt-3 border-t border-gray-100">
                         {/* Price Range Label */}
                         <div className="text-sm font-medium text-gray-900">
-                          ₪{sliderValues[0].toLocaleString()} - ₪{sliderValues[1].toLocaleString()}
+                          ₪{selectedPriceRange[0].toLocaleString()} - ₪{selectedPriceRange[1].toLocaleString()}
                         </div>
                         
                         {/* Price Range Slider */}
                         <div className="px-2">
                           <Slider
-                            value={sliderValues}
+                            value={selectedPriceRange}
                             onValueChange={handleSliderChange}
-                            min={priceRangeBounds.min}
-                            max={priceRangeBounds.max}
+                            min={collectionPriceBounds.min}
+                            max={collectionPriceBounds.max}
                             step={10}
                             className="w-full"
                             dir={lng === 'he' ? 'rtl' : 'ltr'}
@@ -980,7 +1089,7 @@ export default function CollectionClient({
                         </div>
 
                         {/* Reset Button */}
-                        {(sliderValues[0] !== priceRangeBounds.min || sliderValues[1] !== priceRangeBounds.max) && (
+                        {(selectedPriceRange[0] !== collectionPriceBounds.min || selectedPriceRange[1] !== collectionPriceBounds.max) && (
                           <button
                             onClick={handlePriceReset}
                             className="text-xs text-gray-600 hover:text-gray-800 underline"

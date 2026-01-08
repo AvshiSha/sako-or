@@ -1,75 +1,56 @@
 generator client {
   provider = "prisma-client-js"
-  // Force regeneration for production
 }
 
 datasource db {
-  provider = "postgresql" // PostgreSQL for production
+  provider = "postgresql"
   url      = env("DATABASE_URL")
-  // Optional: use a non-pooled connection for migrations if you have it.
-  // directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id          String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  firebaseUid String? @unique @map("firebase_uid")
-
-  email String? @unique
-  phone String? @unique
-
-  firstName String? @map("first_name")
-  lastName  String? @map("last_name")
-  language  String?
-  interestedIn String? @map("interested_in")
-
-  // Date-only (no timezone). Display formatting is handled in the UI.
-  birthday DateTime @db.Date
-
-  addressStreet       String? @map("address_street")
-  addressStreetNumber String? @map("address_street_number")
-  addressFloor        String? @map("address_floor")
-  addressApt          String? @map("address_apt")
-  addressCity         String? @map("address_city")
-
-  authProvider      String?   @map("auth_provider")
-  emailVerified     Boolean   @default(false) @map("email_verified")
-  
-  phoneVerifiedAt   DateTime? @map("phone_verified_at") @db.Timestamptz(6)
-  signupCompletedAt DateTime? @map("signup_completed_at") @db.Timestamptz(6)
-
-  role          String  @default("USER")
-  isNewsletter  Boolean @default(false) @map("is_newsletter")
-  pointsBalance Int     @default(0) @map("points_balance")
-  isDelete      Boolean @default(false) @map("is_delete")
-
-  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  orders    Order[]
-  points    Points[]
-  favorites Favorite[]
+  email               String?    @unique
+  role                String     @default("USER")
+  addressApt          String?    @map("address_apt")
+  addressFloor        String?    @map("address_floor")
+  addressStreet       String?    @map("address_street")
+  addressStreetNumber String?    @map("address_street_number")
+  authProvider        String?    @map("auth_provider")
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  emailVerified       Boolean    @default(false) @map("email_verified")
+  firebaseUid         String?    @unique @map("firebase_uid")
+  firstName           String?    @map("first_name")
+  interestedIn        String?    @map("interested_in")
+  isDelete            Boolean    @default(false) @map("is_delete")
+  isNewsletter        Boolean    @default(false) @map("is_newsletter")
+  language            String?
+  lastName            String?    @map("last_name")
+  phone               String?    @unique
+  pointsBalance       Int        @default(0) @map("points_balance")
+  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lastLoginAt         DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  phoneVerifiedAt     DateTime?  @map("phone_verified_at") @db.Timestamptz(6)
+  signupCompletedAt   DateTime?  @map("signup_completed_at") @db.Timestamptz(6)
+  birthday            DateTime   @db.Date
+  addressCity         String?    @map("address_city")
+  favorites           Favorite[]
+  orders              Order[]
+  points              Points[]
 
   @@map("users")
 }
 
 model Favorite {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String @map("user_id") @db.Uuid
-  productBaseSku String @map("product_base_sku")
-  // Empty string means: favorited without a specific color context.
-  // We use '' instead of NULL so we can enforce uniqueness via @@unique.
-  colorSlug      String @default("") @map("color_slug")
-
-  isActive      Boolean   @default(true) @map("is_active")
-  favoritedAt   DateTime  @default(now()) @map("favorited_at") @db.Timestamptz(6)
-  unfavoritedAt DateTime? @map("unfavorited_at") @db.Timestamptz(6)
-
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  productBaseSku String    @map("product_base_sku")
+  colorSlug      String    @default("") @map("color_slug")
+  isActive       Boolean   @default(true) @map("is_active")
+  favoritedAt    DateTime  @default(now()) @map("favorited_at") @db.Timestamptz(6)
+  unfavoritedAt  DateTime? @map("unfavorited_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, productBaseSku, colorSlug])
   @@index([userId, isActive])
@@ -87,83 +68,76 @@ model NewsletterEmails {
 
 model Category {
   id          String     @id @default(cuid())
-  name_en     String     @unique
-  name_he     String     @unique
-  slug_en     String     @unique
-  slug_he     String     @unique
   description String?
   image       String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  products    Product[]  @relation("CategoryProducts")
   isEnabled   Boolean    @default(true)
-  sortOrder   Int        @default(0)
   level       Int        @default(0)
+  name_en     String     @unique
+  name_he     String     @unique
   parentId    String?
+  slug_en     String     @unique
+  slug_he     String     @unique
+  sortOrder   Int        @default(0)
   parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
   children    Category[] @relation("CategoryHierarchy")
+  products    Product[]  @relation("CategoryProducts")
 
   @@map("categories")
 }
 
 model Product {
-  id                   String       @id @default(cuid())
-  // Bilingual fields
-  title_en             String
-  title_he             String
-  description_en       String
-  description_he       String
-  // Core product fields
-  sku                  String       @unique
+  id                   String                   @id @default(cuid())
+  featured             Boolean                  @default(false)
+  isNew                Boolean                  @default(false)
+  isActive             Boolean                  @default(true)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  categoryId           String
   brand                String
-  price                Float
-  salePrice            Float?
-  currency             String       @default("ILS")
-  // Category and path
-  category             String
-  subCategory          String?
-  subSubCategory       String?
-  category_he          String?
-  subCategory_he       String?
-  subSubCategory_he    String?
   categories_path      String[]
   categories_path_id   String[]
-  categoryId           String
-  // Status flags
-  isEnabled            Boolean      @default(true)
-  isDeleted            Boolean      @default(false)
-  featured             Boolean      @default(false)
-  isNew                Boolean      @default(false)
-  isActive             Boolean      @default(true)
-  // SEO fields
-  seo_title_en         String?
-  seo_title_he         String?
+  category             String
+  currency             String                   @default("ILS")
+  description_en       String
+  description_he       String
+  heelHeight_en        String?
+  heelHeight_he        String?
+  isDeleted            Boolean                  @default(false)
+  isEnabled            Boolean                  @default(true)
+  lining_en            String?
+  lining_he            String?
+  materialInnerSole_en String?
+  materialInnerSole_he String?
+  price                Float
+  salePrice            Float?
+  searchKeywords       String[]
   seo_description_en   String?
   seo_description_he   String?
   seo_slug             String?
-  searchKeywords       String[]
-  // Material & Care (bilingual)
-  upperMaterial_en     String?
-  upperMaterial_he     String?
-  materialInnerSole_en String?
-  materialInnerSole_he String?
-  lining_en            String?
-  lining_he            String?
-  sole_en              String?
-  sole_he              String?
-  heelHeight_en        String?
-  heelHeight_he        String?
+  seo_title_en         String?
+  seo_title_he         String?
   shippingReturns_en   String?
   shippingReturns_he   String?
-  // Timestamps
-  createdAt            DateTime     @default(now())
-  updatedAt            DateTime     @updatedAt
-  // Color variants as embedded JSON (from Firebase)
-  colorVariants        Json?        @default("{}")
-  // Relations
+  sku                  String                   @unique
+  sole_en              String?
+  sole_he              String?
+  subCategory          String?
+  subSubCategory       String?
+  title_en             String
+  title_he             String
+  upperMaterial_en     String?
+  upperMaterial_he     String?
+  colorVariants        Json?                    @default("{}")
+  category_he          String?
+  subCategory_he       String?
+  subSubCategory_he    String?
+  search_vector        Unsupported("tsvector")? @default(dbgenerated("(((((((((((((((((((((setweight(to_tsvector('english'::regconfig, COALESCE(title_en, ''::text)), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, COALESCE(description_en, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(title_he, ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(description_he, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(sku, ''::text)), 'A'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(\"upperMaterial_en\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(\"materialInnerSole_en\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(lining_en, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(sole_en, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(\"heelHeight_en\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"upperMaterial_he\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"materialInnerSole_he\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(lining_he, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(sole_he, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"heelHeight_he\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(category, ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"subCategory\", ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"subSubCategory\", ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(category_he, ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"subCategory_he\", ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"subSubCategory_he\", ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(brand, ''::text)), 'B'::\"char\"))"))
   tags                 ProductTag[]
-  categoryRelation     Category     @relation("CategoryProducts", fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryRelation     Category                 @relation("CategoryProducts", fields: [categoryId], references: [id], onDelete: Cascade)
 
+  @@index([search_vector], map: "products_search_vector_gin", type: Gin)
   @@map("products")
 }
 
@@ -193,9 +167,6 @@ model Order {
   orderNumber          String        @unique
   status               String        @default("pending")
   total                Float
-  subtotal             Float?
-  discountTotal        Float         @default(0)
-  deliveryFee          Float         @default(0)
   currency             String        @default("ILS")
   customerName         String?
   customerEmail        String?
@@ -205,17 +176,19 @@ model Order {
   paymentData          String?
   cardcomLowProfileId  String?
   cardcomTransactionId String?
-  emailSentAt          DateTime?
-  emailMessageId       String?
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
-  orderItems           OrderItem[]
-  payments             Payment[]
+  emailMessageId       String?
+  emailSentAt          DateTime?
+  subtotal             Float?
+  discountTotal        Float         @default(0)
+  deliveryFee          Float         @default(0)
+  userId               String?       @map("user_id") @db.Uuid
   appliedCoupons       OrderCoupon[]
-
-  userId String?  @map("user_id") @db.Uuid
-  user   User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  points Points[]
+  orderItems           OrderItem[]
+  user                 User?         @relation(fields: [userId], references: [id])
+  payments             Payment[]
+  points               Points[]
 
   @@index([userId])
   @@map("orders")
@@ -301,23 +274,10 @@ model ContactMessage {
   fullName  String
   email     String
   subject   String
-  message   String   @db.Text
+  message   String
   createdAt DateTime @default(now())
-  // idempotencyKey String?  @unique // Temporarily disabled - column doesn't exist in DB
 
   @@map("contact_messages")
-}
-
-enum CouponDiscountType {
-  percent_all
-  percent_specific
-  fixed
-  bogo
-}
-
-enum PointsKind {
-  EARN
-  SPEND
 }
 
 model Coupon {
@@ -342,11 +302,11 @@ model Coupon {
   bogoBuyQuantity    Int                @default(1)
   bogoGetQuantity    Int                @default(1)
   bogoEligibleSkus   String[]           @default([])
-  bogoBuySkus        String[]           @default([])
-  bogoGetSkus        String[]           @default([])
   isActive           Boolean            @default(true)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
+  bogoBuySkus        String[]           @default([])
+  bogoGetSkus        String[]           @default([])
   redemptions        CouponRedemption[]
   orderCoupons       OrderCoupon[]
 
@@ -378,7 +338,7 @@ model OrderCoupon {
   description    String?
   metadata       Json?
   createdAt      DateTime           @default(now())
-  coupon         Coupon?            @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  coupon         Coupon?            @relation(fields: [couponId], references: [id])
   order          Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([code])
@@ -391,13 +351,24 @@ model Points {
   orderId   String?    @map("order_id")
   kind      PointsKind
   delta     Int
-  reason    String     @db.Text
+  reason    String
   createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order Order? @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order     Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([orderId, kind])
   @@index([userId, createdAt])
   @@map("points")
+}
+
+enum CouponDiscountType {
+  percent_all
+  percent_specific
+  fixed
+  bogo
+}
+
+enum PointsKind {
+  EARN
+  SPEND
 }

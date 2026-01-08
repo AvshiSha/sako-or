@@ -1460,15 +1460,6 @@ export const categoryService = {
         ...doc.data()
       })) as Category[];
       
-      console.log(`Retrieved ${categories.length} categories from Firebase:`, 
-        categories.map(cat => ({
-          id: cat.id,
-          name: typeof cat.name === 'object' ? cat.name?.en : cat.name,
-          level: cat.level,
-          parentId: cat.parentId
-        }))
-      );
-      
       return categories;
     } catch (error) {
       console.error('Error fetching categories:', error);

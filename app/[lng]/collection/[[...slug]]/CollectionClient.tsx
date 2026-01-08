@@ -284,13 +284,11 @@ export default function CollectionClient({
     });
   };
 
-  // Helper to convert range to URL params (removes params if equal to bounds)
+  // Helper to convert range to URL params
+  // Always use the actual range values - server will handle filtering
   const rangeToUrlParams = (range: [number, number]) => {
-    const boundsMin = collectionPriceBounds?.min ?? 0;
-    const boundsMax = collectionPriceBounds?.max ?? 1000;
-    
-    const minStr = range[0] <= boundsMin ? "" : String(Math.round(range[0]));
-    const maxStr = range[1] >= boundsMax ? "" : String(Math.round(range[1]));
+    const minStr = String(Math.round(range[0]));
+    const maxStr = String(Math.round(range[1]));
     
     return { minStr, maxStr };
   };
@@ -298,12 +296,11 @@ export default function CollectionClient({
   // LIVE UI: Update slider and label instantly while dragging (no URL update)
   const handleSliderChange = (values: number[]) => {
     const [min, max] = values;
-    const boundsMin = collectionPriceBounds?.min ?? 0;
-    const boundsMax = collectionPriceBounds?.max ?? 1000;
     
-    // Clamp to bounds and ensure min <= max
-    const validatedMin = Math.max(boundsMin, Math.min(Math.min(min, max), boundsMax));
-    const validatedMax = Math.min(boundsMax, Math.max(Math.max(min, max), boundsMin));
+    // Only ensure min <= max (do NOT clamp to collection bounds)
+    // Allow user to set values outside collection range
+    const validatedMin = Math.min(min, max);
+    const validatedMax = Math.max(min, max);
     
     // Update UI state immediately (slider moves smoothly)
     setUiRange([validatedMin, validatedMax]);
@@ -312,16 +309,12 @@ export default function CollectionClient({
   // COMMIT: Update URL when user releases slider (only place URL is updated)
   const handleSliderCommit = (values: number[]) => {
     const [min, max] = values as [number, number];
-    const boundsMin = collectionPriceBounds?.min ?? 0;
-    const boundsMax = collectionPriceBounds?.max ?? 1000;
     
-    // Final validation and clamp
-    const validatedMin = Math.max(boundsMin, Math.min(min, boundsMax));
-    const validatedMax = Math.min(boundsMax, Math.max(max, boundsMin));
-    
+    // Only ensure min <= max (do NOT clamp to collection bounds)
+    // Allow user to set values outside collection range
     const finalRange: [number, number] = [
-      Math.min(validatedMin, validatedMax),
-      Math.max(validatedMin, validatedMax),
+      Math.min(min, max),
+      Math.max(min, max),
     ];
     
     // Update UI state to final range
@@ -569,20 +562,50 @@ export default function CollectionClient({
   // Single source of truth for slider UI - no separate draft/applied states
   const [uiRange, setUiRange] = useState<[number, number]>(() => {
     // Initialize from URL params or default to full collection bounds
+    // DO NOT clamp to bounds - allow user to set values outside collection range
     const urlMinStr = safeSearchParams.get('minPrice') || '';
     const urlMaxStr = safeSearchParams.get('maxPrice') || '';
     const boundsMin = collectionPriceBounds?.min ?? 0;
     const boundsMax = collectionPriceBounds?.max ?? 1000;
     
+    // Use URL values directly, or default to bounds if not set
     const urlMin = urlMinStr ? parseFloat(urlMinStr) : boundsMin;
     const urlMax = urlMaxStr ? parseFloat(urlMaxStr) : boundsMax;
     
-    // Clamp to bounds
-    const validMin = isNaN(urlMin) ? boundsMin : Math.max(boundsMin, Math.min(urlMin, boundsMax));
-    const validMax = isNaN(urlMax) ? boundsMax : Math.min(boundsMax, Math.max(urlMax, boundsMin));
+    // Only validate that values are numbers and min <= max (no clamping to bounds)
+    const validMin = isNaN(urlMin) ? boundsMin : urlMin;
+    const validMax = isNaN(urlMax) ? boundsMax : urlMax;
     
     return [Math.min(validMin, validMax), Math.max(validMin, validMax)];
   });
+
+  // Re-initialize uiRange when collectionPriceBounds becomes available (if it was undefined during initial render)
+  useEffect(() => {
+    if (!collectionPriceBounds) return; // Wait for bounds to be computed
+    
+    const urlMinStr = safeSearchParams.get('minPrice') || '';
+    const urlMaxStr = safeSearchParams.get('maxPrice') || '';
+    const boundsMin = collectionPriceBounds.min;
+    const boundsMax = collectionPriceBounds.max;
+    
+    // Use URL values directly, or default to bounds if not set
+    const urlMin = urlMinStr ? parseFloat(urlMinStr) : boundsMin;
+    const urlMax = urlMaxStr ? parseFloat(urlMaxStr) : boundsMax;
+    
+    // Only validate that values are numbers and min <= max (no clamping to bounds)
+    const validMin = isNaN(urlMin) ? boundsMin : urlMin;
+    const validMax = isNaN(urlMax) ? boundsMax : urlMax;
+    const next: [number, number] = [Math.min(validMin, validMax), Math.max(validMin, validMax)];
+    
+    // Only update if different (prevents unnecessary updates)
+    if (
+      Math.abs(uiRange[0] - next[0]) > 0.01 ||
+      Math.abs(uiRange[1] - next[1]) > 0.01
+    ) {
+      setUiRange(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectionPriceBounds?.min, collectionPriceBounds?.max]);
 
   // Track if we're currently committing (to prevent sync loop)
   const isCommittingRef = useRef(false);
@@ -603,15 +626,17 @@ export default function CollectionClient({
     const boundsMin = collectionPriceBounds?.min ?? 0;
     const boundsMax = collectionPriceBounds?.max ?? 1000;
     
+    // Use URL values directly, or default to bounds if not set
     const urlMin = urlMinStr ? parseFloat(urlMinStr) : boundsMin;
     const urlMax = urlMaxStr ? parseFloat(urlMaxStr) : boundsMax;
     
-    const clampedMin = Math.max(boundsMin, Math.min(urlMin, boundsMax));
-    const clampedMax = Math.min(boundsMax, Math.max(urlMax, boundsMin));
+    // Only validate that values are numbers and min <= max (no clamping to bounds)
+    const validMin = isNaN(urlMin) ? boundsMin : urlMin;
+    const validMax = isNaN(urlMax) ? boundsMax : urlMax;
     
     const next: [number, number] = [
-      Math.min(clampedMin, clampedMax),
-      Math.max(clampedMin, clampedMax),
+      Math.min(validMin, validMax),
+      Math.max(validMin, validMax),
     ];
     
     // Only update if changed (tolerance for floating point)
@@ -623,20 +648,6 @@ export default function CollectionClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlKey, collectionPriceBounds?.min, collectionPriceBounds?.max]);
-
-  // Clamp UI range when collection bounds change
-  useEffect(() => {
-    const [currentMin, currentMax] = uiRange;
-    const boundsMin = collectionPriceBounds?.min ?? 0;
-    const boundsMax = collectionPriceBounds?.max ?? 1000;
-    
-    // Clamp if out of bounds
-    if (currentMin < boundsMin || currentMax > boundsMax || currentMin > boundsMax || currentMax < boundsMin) {
-      const clampedMin = Math.max(boundsMin, Math.min(currentMin, boundsMax));
-      const clampedMax = Math.min(boundsMax, Math.max(currentMax, boundsMin));
-      setUiRange([Math.min(clampedMin, clampedMax), Math.max(clampedMin, clampedMax)]);
-    }
-  }, [uiRange, collectionPriceBounds?.min, collectionPriceBounds?.max]);
 
 
   return (
@@ -853,8 +864,8 @@ export default function CollectionClient({
                         value={uiRange}
                         onValueChange={handleSliderChange}
                         onValueCommit={handleSliderCommit}
-                        min={collectionPriceBounds.min}
-                        max={collectionPriceBounds.max}
+                        min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)}
+                        max={Math.ceil((collectionPriceBounds.max + 200) / 10) * 10}
                         step={10}
                         className="w-full"
                         dir={lng === 'he' ? 'rtl' : 'ltr'}
@@ -1041,19 +1052,19 @@ export default function CollectionClient({
                           ₪{uiRange[0].toLocaleString()} - ₪{uiRange[1].toLocaleString()}
                         </div>
                         
-                        {/* Price Range Slider */}
-                        <div className="px-2">
-                          <Slider
-                            value={uiRange}
-                            onValueChange={handleSliderChange}
-                            onValueCommit={handleSliderCommit}
-                            min={collectionPriceBounds.min}
-                            max={collectionPriceBounds.max}
-                            step={10}
-                            className="w-full"
-                            dir={lng === 'he' ? 'rtl' : 'ltr'}
-                          />
-                        </div>
+                         {/* Price Range Slider */}
+                         <div className="px-2">
+                           <Slider
+                             value={uiRange}
+                             onValueChange={handleSliderChange}
+                             onValueCommit={handleSliderCommit}
+                             min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)}
+                             max={Math.ceil((collectionPriceBounds.max + 200) / 10) * 10}
+                             step={10}
+                             className="w-full"
+                             dir={lng === 'he' ? 'rtl' : 'ltr'}
+                           />
+                         </div>
 
                         {/* Reset Button */}
                         {(uiRange[0] !== collectionPriceBounds.min || uiRange[1] !== collectionPriceBounds.max) && (

@@ -72,8 +72,12 @@ export default function Navigation({ lng }: { lng: string }) {
 
   const { items } = useCart()
   const { favorites } = useFavorites()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const pathname = usePathname()
+
+  // Desktop greeting state
+  const [greetingName, setGreetingName] = useState<string | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
 
   // Close menu on route change
   useEffect(() => {
@@ -219,6 +223,59 @@ export default function Navigation({ lng }: { lng: string }) {
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [hoverTimeout, openTimeout]) // Both timeouts are needed for cleanup
+
+  // Fetch user profile to get firstName for desktop greeting
+  useEffect(() => {
+    if (!user || authLoading) {
+      setGreetingName(null)
+      return
+    }
+
+    let cancelled = false
+    setProfileLoading(true)
+
+    ;(async () => {
+      try {
+        const token = await user.getIdToken()
+        const res = await fetch('/api/me/profile', {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || !json || json.error) {
+          // If profile fetch fails, try displayName or email fallback
+          if (!cancelled) {
+            const fallbackName = user.displayName || (user.email ? user.email.split('@')[0] : null)
+            setGreetingName(fallbackName)
+          }
+          return
+        }
+
+        if (!cancelled) {
+          // Priority: firstName > displayName > email prefix
+          const firstName = json.user?.firstName
+          const displayName = user.displayName
+          const emailPrefix = user.email ? user.email.split('@')[0] : null
+          setGreetingName(firstName || displayName || emailPrefix || null)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          // Fallback to displayName or email prefix
+          const fallbackName = user.displayName || (user.email ? user.email.split('@')[0] : null)
+          setGreetingName(fallbackName)
+        }
+      } finally {
+        if (!cancelled) {
+          setProfileLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, authLoading])
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)
@@ -536,22 +593,29 @@ export default function Navigation({ lng }: { lng: string }) {
             {/* Desktop: Search Bar, User, Cart, Favorites, Language Switcher */}
             <div className="hidden md:flex items-center space-x-4">
               <SearchBar language={lng} />
-              <Link
-                href={user ? `/${lng}/profile` : `/${lng}/signin`}
-                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-                aria-label={
-                  user
-                    ? translations[lng as keyof typeof translations].myProfile
-                    : translations[lng as keyof typeof translations].signIn
-                }
-                title={
-                  user
-                    ? translations[lng as keyof typeof translations].myProfile
-                    : translations[lng as keyof typeof translations].signIn
-                }
-              >
-                <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" />
-              </Link>
+              <div className="flex flex-col items-center gap-0.5">
+                <Link
+                  href={user ? `/${lng}/profile` : `/${lng}/signin`}
+                  className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50 flex items-center justify-center"
+                  aria-label={
+                    user
+                      ? translations[lng as keyof typeof translations].myProfile
+                      : translations[lng as keyof typeof translations].signIn
+                  }
+                  title={
+                    user
+                      ? translations[lng as keyof typeof translations].myProfile
+                      : translations[lng as keyof typeof translations].signIn
+                  }
+                >
+                  <User strokeWidth={1.5} className="h-6 w-6" />
+                </Link>
+                {user && !authLoading && !profileLoading && greetingName && (
+                  <span className="text-[11px] text-gray-500 leading-none whitespace-nowrap">
+                    {lng === 'he' ? `היי, ${greetingName}` : `Hi, ${greetingName}`}
+                  </span>
+                )}
+              </div>
               <Link
                 href={`/${lng}/cart`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"

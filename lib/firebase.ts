@@ -931,6 +931,7 @@ export type ProductFilters = {
   categoryId?: string;          // Category ID to filter by (single level)
   categoryLevel?: number;        // Level in the path (0, 1, or 2) where categoryId should match
   categoryIds?: string[];       // Array of category IDs for hierarchical filtering [womenId, shoesId, sneakersId]
+  subSubCategoryIds?: string[]; // Array of sub-subcategory IDs to filter by (level 2 categories)
   color?: string | string[];
   size?: string | string[];
   minPrice?: number;
@@ -1182,6 +1183,20 @@ export async function getFilteredProducts(
       });
     }
 
+    // Sub-subcategory filtering (client-side)
+    // Filter products where categories_path_id[2] (level 2) matches any of the selected sub-subcategory IDs
+    if (filters.subSubCategoryIds && filters.subSubCategoryIds.length > 0) {
+      const subSubCategoryIds = filters.subSubCategoryIds;
+      filteredProducts = filteredProducts.filter((product) => {
+        if (!product.categories_path_id || product.categories_path_id.length < 3) {
+          return false; // Product doesn't have a sub-subcategory
+        }
+        // Check if the product's sub-subcategory (index 2) is in the selected list
+        const productSubSubCategoryId = product.categories_path_id[2];
+        return subSubCategoryIds.includes(productSubSubCategoryId);
+      });
+    }
+
     // SKU exclusion (client-side since Firestore doesn't support NOT IN easily)
     if (filters.excludeSkus && filters.excludeSkus.length > 0) {
       filteredProducts = filteredProducts.filter(
@@ -1227,22 +1242,13 @@ export async function getFilteredProducts(
 
     // Price filtering (client-side to handle salePrice and variant prices)
     // The actual displayed price can be: variant.salePrice > product.salePrice > variant.priceOverride > product.price
-    const productsBeforePriceFilter = filteredProducts.length;
-    console.log('[Price Filter] Products before price filtering:', productsBeforePriceFilter);
-    console.log('[Price Filter] Filter values:', { minPrice: filters.minPrice, maxPrice: filters.maxPrice });
-    
     if (filters.minPrice !== undefined && filters.minPrice > 0) {
-      console.log('[Price Filter] Applying minPrice filter:', filters.minPrice);
       filteredProducts = filteredProducts.filter((product) => {
         // Get the minimum price across all active variants
         if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
           // No variants, use product-level price
           const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          const passes = productPrice >= filters.minPrice!;
-          if (!passes) {
-            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice: productPrice=${productPrice}, minPrice=${filters.minPrice}, basePrice=${product.price}, salePrice=${product.salePrice}`);
-          }
-          return passes;
+          return productPrice >= filters.minPrice!;
         }
 
         // Check all active variants to find the minimum price
@@ -1258,36 +1264,22 @@ export async function getFilteredProducts(
 
         if (variantPrices.length === 0) {
           const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          const passes = productPrice >= filters.minPrice!;
-          if (!passes) {
-            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice (no active variants): productPrice=${productPrice}, minPrice=${filters.minPrice}`);
-          }
-          return passes;
+          return productPrice >= filters.minPrice!;
         }
 
         // Product matches if any variant's price is >= minPrice
         const minVariantPrice = Math.min(...variantPrices);
-        const passes = minVariantPrice >= filters.minPrice!;
-        if (!passes) {
-          console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice: minVariantPrice=${minVariantPrice}, minPrice=${filters.minPrice}, variantPrices=[${variantPrices.join(', ')}], basePrice=${product.price}, salePrice=${product.salePrice}`);
-        }
-        return passes;
+        return minVariantPrice >= filters.minPrice!;
       });
-      console.log('[Price Filter] Products after minPrice filter:', filteredProducts.length);
     }
 
     if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
-      console.log('[Price Filter] Applying maxPrice filter:', filters.maxPrice);
       filteredProducts = filteredProducts.filter((product) => {
         // Get the minimum price across all active variants (we show the lowest price)
         if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
           // No variants, use product-level price
           const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          const passes = productPrice <= filters.maxPrice!;
-          if (!passes) {
-            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice: productPrice=${productPrice}, maxPrice=${filters.maxPrice}, basePrice=${product.price}, salePrice=${product.salePrice}`);
-          }
-          return passes;
+          return productPrice <= filters.maxPrice!;
         }
 
         // Check all active variants to find the minimum price (what's displayed)
@@ -1303,25 +1295,14 @@ export async function getFilteredProducts(
 
         if (variantPrices.length === 0) {
           const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          const passes = productPrice <= filters.maxPrice!;
-          if (!passes) {
-            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice (no active variants): productPrice=${productPrice}, maxPrice=${filters.maxPrice}`);
-          }
-          return passes;
+          return productPrice <= filters.maxPrice!;
         }
 
         // Product matches if the minimum variant price is <= maxPrice
         const minVariantPrice = Math.min(...variantPrices);
-        const passes = minVariantPrice <= filters.maxPrice!;
-        if (!passes) {
-          console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice: minVariantPrice=${minVariantPrice}, maxPrice=${filters.maxPrice}, variantPrices=[${variantPrices.join(', ')}], basePrice=${product.price}, salePrice=${product.salePrice}`);
-        }
-        return passes;
+        return minVariantPrice <= filters.maxPrice!;
       });
-      console.log('[Price Filter] Products after maxPrice filter:', filteredProducts.length);
     }
-    
-    console.log('[Price Filter] Final product count:', filteredProducts.length, '(started with', productsBeforePriceFilter, ')');
 
     return {
       products: filteredProducts,
@@ -1390,10 +1371,22 @@ export async function getCollectionProducts(
     }
   }
 
+  // Sub-subcategory filter
+  const subSubCategoriesParam = searchParams.subSubCategories;
+  if (subSubCategoriesParam) {
+    const subSubCategoryIds = typeof subSubCategoriesParam === 'string'
+      ? subSubCategoriesParam.split(',').filter(Boolean)
+      : Array.isArray(subSubCategoriesParam)
+        ? subSubCategoriesParam.flatMap(id => id.split(',')).filter(Boolean)
+        : [];
+    if (subSubCategoryIds.length > 0) {
+      filters.subSubCategoryIds = subSubCategoryIds;
+    }
+  }
+
   // Price range
   const minPriceParam = searchParams.minPrice;
   const maxPriceParam = searchParams.maxPrice;
-  console.log('[Price Filter] Raw params:', { minPriceParam, maxPriceParam });
   
   if (minPriceParam) {
     const minPrice = typeof minPriceParam === 'string' 
@@ -1401,10 +1394,8 @@ export async function getCollectionProducts(
       : Array.isArray(minPriceParam) 
         ? parseFloat(minPriceParam[0]) 
         : undefined;
-    console.log('[Price Filter] Parsed minPrice:', minPrice, 'isNaN:', isNaN(minPrice!));
     if (!isNaN(minPrice!) && minPrice! > 0) {
       filters.minPrice = minPrice;
-      console.log('[Price Filter] Set filters.minPrice to:', filters.minPrice);
     }
   }
   if (maxPriceParam) {
@@ -1413,14 +1404,10 @@ export async function getCollectionProducts(
       : Array.isArray(maxPriceParam)
         ? parseFloat(maxPriceParam[0])
         : undefined;
-    console.log('[Price Filter] Parsed maxPrice:', maxPrice, 'isNaN:', isNaN(maxPrice!));
     if (!isNaN(maxPrice!) && maxPrice! > 0) {
       filters.maxPrice = maxPrice;
-      console.log('[Price Filter] Set filters.maxPrice to:', filters.maxPrice);
     }
   }
-  
-  console.log('[Price Filter] Final filters object:', { minPrice: filters.minPrice, maxPrice: filters.maxPrice });
 
   // Sort option - map from URL params to internal sort values
   const sortParam = searchParams.sort;

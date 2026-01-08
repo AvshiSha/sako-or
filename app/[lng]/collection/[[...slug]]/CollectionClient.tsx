@@ -149,6 +149,11 @@ export default function CollectionClient({
   const searchParams = useSearchParams();
   const t = translations[lng as keyof typeof translations] || translations.en;
 
+  // Determine current collection level from slug
+  const slug = params?.slug as string[] | undefined;
+  const collectionLevel = slug ? slug.length : 0; // 0 = all/main, 1 = level 0, 2 = level 1, 3+ = level 2+
+  const showSubSubCategoryFilter = collectionLevel <= 2; // Show only on level 0 and level 1 pages
+
   // Construct current collection URL for return navigation
   const currentUrl = `/${lng}/collection${categoryPath ? `/${categoryPath}` : ''}`;
 
@@ -186,6 +191,11 @@ export default function CollectionClient({
     return sizesParam ? sizesParam.split(',').filter(Boolean) : [];
   });
 
+  // Add state for selected sub-sub categories
+  const [selectedSubSubCategories, setSelectedSubSubCategories] = useState<string[]>(() => {
+    const subSubCategoriesParam = safeSearchParams.get('subSubCategories');
+    return subSubCategoriesParam ? subSubCategoriesParam.split(',').filter(Boolean) : [];
+  });
 
   const [sortBy, setSortBy] = useState<string>(() => {
     return safeSearchParams.get('sort') || 'relevance';
@@ -208,6 +218,7 @@ export default function CollectionClient({
     minPrice?: string;
     maxPrice?: string;
     sort?: string;
+    subSubCategories?: string[];
   }) => {
     // Start with current search params to preserve search query and page number
     const urlParams = new URLSearchParams(safeSearchParams.toString());
@@ -218,6 +229,7 @@ export default function CollectionClient({
     urlParams.delete('minPrice');
     urlParams.delete('maxPrice');
     urlParams.delete('sort');
+    urlParams.delete('subSubCategories');
     
     // Add back only the filter params that have values
     if (newFilters.colors && newFilters.colors.length > 0) {
@@ -225,6 +237,9 @@ export default function CollectionClient({
     }
     if (newFilters.sizes && newFilters.sizes.length > 0) {
       urlParams.set('sizes', newFilters.sizes.join(','));
+    }
+    if (newFilters.subSubCategories && newFilters.subSubCategories.length > 0) {
+      urlParams.set('subSubCategories', newFilters.subSubCategories.join(','));
     }
     // Explicitly handle price params - if they're provided (even as empty string), set or remove them
     if (newFilters.minPrice !== undefined) {
@@ -244,7 +259,6 @@ export default function CollectionClient({
     }
     
     const queryString = urlParams.toString();
-    const slug = params?.slug as string[] | undefined;
     const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
     const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
     
@@ -264,7 +278,8 @@ export default function CollectionClient({
       maxPrice: maxStr, 
       colors: newColors, 
       sizes: selectedSizes, 
-      sort: sortBy 
+      sort: sortBy,
+      subSubCategories: selectedSubSubCategories
     });
   };
 
@@ -280,7 +295,26 @@ export default function CollectionClient({
       maxPrice: maxStr, 
       colors: selectedColors, 
       sizes: newSizes, 
-      sort: sortBy 
+      sort: sortBy,
+      subSubCategories: selectedSubSubCategories
+    });
+  };
+
+  // Handle sub-sub category toggle
+  const handleSubSubCategoryToggle = (categoryId: string) => {
+    const newSubSubCategories = selectedSubSubCategories.includes(categoryId)
+      ? selectedSubSubCategories.filter((id) => id !== categoryId)
+      : [...selectedSubSubCategories, categoryId];
+    setSelectedSubSubCategories(newSubSubCategories);
+    // Use current UI range for URL update
+    const { minStr, maxStr } = rangeToUrlParams(uiRange);
+    updateURL({ 
+      minPrice: minStr, 
+      maxPrice: maxStr, 
+      colors: selectedColors, 
+      sizes: selectedSizes, 
+      sort: sortBy,
+      subSubCategories: newSubSubCategories
     });
   };
 
@@ -332,6 +366,7 @@ export default function CollectionClient({
       colors: selectedColors,
       sizes: selectedSizes,
       sort: sortBy,
+      subSubCategories: selectedSubSubCategories,
     });
   };
 
@@ -354,6 +389,7 @@ export default function CollectionClient({
       colors: selectedColors,
       sizes: selectedSizes,
       sort: sortBy,
+      subSubCategories: selectedSubSubCategories,
     });
   };
 
@@ -366,13 +402,15 @@ export default function CollectionClient({
       maxPrice: maxStr, 
       colors: selectedColors, 
       sizes: selectedSizes, 
-      sort: newSort 
+      sort: newSort,
+      subSubCategories: selectedSubSubCategories
     });
   };
 
   const handleClearFilters = () => {
     setSelectedColors([]);
     setSelectedSizes([]);
+    setSelectedSubSubCategories([]);
     setSortBy('relevance');
     
     const boundsMin = collectionPriceBounds?.min ?? 0;
@@ -388,7 +426,8 @@ export default function CollectionClient({
       maxPrice: '', 
       colors: [], 
       sizes: [], 
-      sort: 'relevance' 
+      sort: 'relevance',
+      subSubCategories: []
     });
   };
 
@@ -510,6 +549,66 @@ export default function CollectionClient({
   // Separate numeric sizes (shoes) from alpha sizes (clothing)
   const numericSizes = allSizes.filter(size => /^\d+(\.\d+)?$/.test(size)).sort((a, b) => parseFloat(a) - parseFloat(b));
   const alphaSizes = allSizes.filter(size => !/^\d+(\.\d+)?$/.test(size)).sort();
+
+  // Get all sub-sub categories (level 2) grouped by parent
+  const subSubCategoriesByParent = useMemo(() => {
+    const grouped: Record<string, Category[]> = {};
+    
+    // On level 1 pages, find the current subcategory ID to filter sub-subcategories
+    let currentSubcategoryId: string | undefined;
+    if (collectionLevel === 2 && selectedSubcategory) {
+      // Find the subcategory by matching slug (case-insensitive)
+      const subcategorySlug = selectedSubcategory.toLowerCase();
+      const foundSubcategory = categories.find(cat => {
+        if (cat.level !== 1 || !cat.isEnabled) return false;
+        const slugEn = typeof cat.slug === 'object' ? cat.slug.en : cat.slug;
+        const slugHe = typeof cat.slug === 'object' ? cat.slug.he : cat.slug;
+        return slugEn?.toLowerCase() === subcategorySlug || slugHe?.toLowerCase() === subcategorySlug;
+      });
+      currentSubcategoryId = foundSubcategory?.id;
+    }
+    
+    // Get all sub-sub categories (level 2) that are enabled
+    let subSubCategories = categories.filter(
+      cat => cat.level === 2 && cat.isEnabled && cat.id
+    );
+    
+    // On level 1 pages, filter to only show sub-subcategories of the current subcategory
+    if (collectionLevel === 2 && currentSubcategoryId) {
+      subSubCategories = subSubCategories.filter(
+        cat => cat.parentId === currentSubcategoryId
+      );
+    }
+    
+    // Group by parent category
+    subSubCategories.forEach(cat => {
+      if (cat.parentId) {
+        if (!grouped[cat.parentId]) {
+          grouped[cat.parentId] = [];
+        }
+        grouped[cat.parentId].push(cat);
+      }
+    });
+    
+    // Sort each group by sortOrder
+    Object.keys(grouped).forEach(parentId => {
+      grouped[parentId].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    });
+    
+    return grouped;
+  }, [categories, collectionLevel, selectedSubcategory]);
+
+  // Get parent category name for display
+  const getParentCategoryName = (parentId: string): string => {
+    const parent = categories.find(cat => cat.id === parentId);
+    if (!parent) return '';
+    return lng === 'he' ? parent.name.he : parent.name.en;
+  };
+
+  // Get sub-sub category name based on language
+  const getSubSubCategoryName = (category: Category): string => {
+    return lng === 'he' ? category.name.he : category.name.en;
+  };
 
   // STATIC: Collection Price Bounds - calculated from ALL products in collection
   // These represent the full available range and NEVER change when user drags slider
@@ -674,7 +773,7 @@ export default function CollectionClient({
                 const boundsMin = collectionPriceBounds?.min ?? 0;
                 const boundsMax = collectionPriceBounds?.max ?? 1000;
                 const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-                const activeFilterCount = selectedColors.length + selectedSizes.length + (hasPriceFilter ? 1 : 0);
+                const activeFilterCount = selectedColors.length + selectedSizes.length + selectedSubSubCategories.length + (hasPriceFilter ? 1 : 0);
                 if (activeFilterCount > 0) {
                   return (
                     <span className={cn("bg-black text-white text-xs rounded-full px-2 py-1", lng === 'he' ? 'mr-2' : 'ml-2')}>
@@ -698,7 +797,7 @@ export default function CollectionClient({
                 const boundsMin = collectionPriceBounds?.min ?? 0;
                 const boundsMax = collectionPriceBounds?.max ?? 1000;
                 const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-                const activeFilterCount = selectedColors.length + selectedSizes.length + (hasPriceFilter ? 1 : 0);
+                const activeFilterCount = selectedColors.length + selectedSizes.length + selectedSubSubCategories.length + (hasPriceFilter ? 1 : 0);
                 if (activeFilterCount > 0) {
                   return (
                     <span className={cn("bg-black text-white text-xs rounded-full px-2 py-1", lng === 'he' ? 'mr-2' : 'ml-2')}>
@@ -964,6 +1063,45 @@ export default function CollectionClient({
                   </div>
                 </AccordionContent>
               </AccordionItem>
+
+              {/* Sub-Sub Categories */}
+              {showSubSubCategoryFilter && Object.keys(subSubCategoriesByParent).length > 0 && (
+                <AccordionItem value="subSubCategories" className="border border-gray-200 rounded-lg">
+                  <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
+                    <h3 className="text-sm font-medium text-black">
+                      {lng === 'he' ? 'תת-קטגוריות' : 'Sub-Categories'}
+                    </h3>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    <div className="space-y-4 pt-3 border-t border-gray-100">
+                      {Object.entries(subSubCategoriesByParent).map(([parentId, subSubCats]) => (
+                        <div key={parentId} className="space-y-2">
+                          <h4 className="text-xs font-medium text-gray-600 mb-2">
+                            {getParentCategoryName(parentId)}
+                          </h4>
+                          <div className="space-y-2">
+                            {subSubCats.map((category) => (
+                              <button
+                                key={category.id}
+                                onClick={() => handleSubSubCategoryToggle(category.id!)}
+                                className={`w-full flex items-center p-2 rounded-sm transition-all duration-200 ${
+                                  selectedSubSubCategories.includes(category.id!)
+                                    ? 'bg-gray-100 border border-gray-300'
+                                    : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                                }`}
+                              >
+                                <span className="text-sm font-light text-black">
+                                  {getSubSubCategoryName(category)}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )}
             </Accordion>
 
             {/* Clear Filters Button */}
@@ -972,7 +1110,7 @@ export default function CollectionClient({
               const boundsMin = collectionPriceBounds?.min ?? 0;
               const boundsMax = collectionPriceBounds?.max ?? 1000;
               const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-              if (selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) {
+              if (selectedColors.length > 0 || selectedSizes.length > 0 || selectedSubSubCategories.length > 0 || hasPriceFilter) {
                 return (
                   <div className="mb-6">
                     <button
@@ -1156,6 +1294,45 @@ export default function CollectionClient({
                       </div>
                     </AccordionContent>
                   </AccordionItem>
+
+                  {/* Sub-Sub Categories - Mobile */}
+                  {showSubSubCategoryFilter && Object.keys(subSubCategoriesByParent).length > 0 && (
+                    <AccordionItem value="subSubCategories" className="border border-gray-200 rounded-lg">
+                      <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
+                        <h3 className="text-sm font-medium text-black">
+                          {lng === 'he' ? 'תת-קטגוריות' : 'Sub-Categories'}
+                        </h3>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-4 pt-3 border-t border-gray-100">
+                          {Object.entries(subSubCategoriesByParent).map(([parentId, subSubCats]) => (
+                            <div key={parentId} className="space-y-2">
+                              <h4 className="text-xs font-medium text-gray-600 mb-2">
+                                {getParentCategoryName(parentId)}
+                              </h4>
+                              <div className="space-y-2">
+                                {subSubCats.map((category) => (
+                                  <button
+                                    key={category.id}
+                                    onClick={() => handleSubSubCategoryToggle(category.id!)}
+                                    className={`w-full flex items-center p-2 rounded-sm transition-all duration-200 ${
+                                      selectedSubSubCategories.includes(category.id!)
+                                        ? 'bg-gray-100 border border-gray-300'
+                                        : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
+                                    }`}
+                                  >
+                                    <span className="text-sm font-light text-black">
+                                      {getSubSubCategoryName(category)}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  )}
                 </Accordion>
 
                 {/* Clear Filters Button */}
@@ -1164,7 +1341,7 @@ export default function CollectionClient({
                   const boundsMin = collectionPriceBounds?.min ?? 0;
                   const boundsMax = collectionPriceBounds?.max ?? 1000;
                   const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-                  if (selectedColors.length > 0 || selectedSizes.length > 0 || hasPriceFilter) {
+                  if (selectedColors.length > 0 || selectedSizes.length > 0 || selectedSubSubCategories.length > 0 || hasPriceFilter) {
                     return (
                       <div className="mb-6">
                         <button

@@ -112,3 +112,20 @@ export function formatIsraelE164ForDisplay(e164: string | null | undefined): str
   }
 }
 
+/**
+ * Converts Israel E.164 phone to local format with leading 0 (digits only).
+ * 
+ * Examples:
+ *   +972542543044 -> 0542543044
+ *   +97236001234 -> 036001234
+ * 
+ * Returns the original string if not a valid Israel E.164 number.
+ */
+export function formatIsraelE164ToLocalDigits(e164: string | null | undefined): string {
+  if (!e164 || !isValidIsraelE164(e164)) return e164 || ''
+  
+  // Extract digits after +972 and prepend 0
+  const afterCountryCode = e164.slice(4)
+  return `0${afterCountryCode}`
+}
+

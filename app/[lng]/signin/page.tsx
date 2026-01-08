@@ -594,7 +594,7 @@ function SignInClient() {
 
   return (
     <div className={profileTheme.pageBg} dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="mx-auto w-full max-w-md px-2 pt-20 pb-8">
+      <div className="mx-auto w-full max-w-md px-2 pt-34 pb-8">
         <div className="flex justify-center">
           <Image
             src="/images/logo/sako-logo.png"
@@ -605,7 +605,7 @@ function SignInClient() {
           />
         </div>
 
-        <h1 className="mt-1 text-center text-2xl font-bold text-slate-900">{t.title}</h1>
+        <h1 className="mt-8 text-center text-2xl font-bold text-slate-900">{t.title}</h1>
         <p className="mt-1 text-center text-sm text-slate-500">{t.subtitle}</p>
 
         <div className="mt-4 rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur p-6">

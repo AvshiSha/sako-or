@@ -69,12 +69,15 @@ export default function ProfileFavoritesPage() {
       return
     }
 
+    // Cancellation flag to prevent race conditions
+    let cancelled = false
+
     const loadFavorites = async () => {
       try {
         setLoading(true)
 
         if (!favoriteKeys || favoriteKeys.length === 0) {
-          setFavorites([])
+          if (!cancelled) setFavorites([])
           return
         }
 
@@ -84,6 +87,9 @@ export default function ProfileFavoritesPage() {
         const inactiveFavoriteKeysToRemove: string[] = []
 
         for (const favoriteKey of favoriteKeys) {
+          // Early exit if this effect has been cancelled
+          if (cancelled) return
+
           const { baseSku, colorSlug } = parseFavoriteKey(favoriteKey)
           if (!baseSku) continue
 
@@ -119,12 +125,15 @@ export default function ProfileFavoritesPage() {
           }
         }
 
-        setFavorites(favoriteItems)
+        // Only update state if not cancelled
+        if (!cancelled) {
+          setFavorites(favoriteItems)
+        }
 
         // Best-effort cleanup (avoid loops by tracking keys we've already cleaned)
         const uniqueToRemove = Array.from(new Set(inactiveFavoriteKeysToRemove))
           .filter((k) => k && !cleanedFavoriteKeysRef.current.has(k))
-        if (uniqueToRemove.length > 0) {
+        if (uniqueToRemove.length > 0 && !cancelled) {
           uniqueToRemove.forEach((k) => cleanedFavoriteKeysRef.current.add(k))
           await Promise.all(
             uniqueToRemove.map(async (k) => {
@@ -137,14 +146,21 @@ export default function ProfileFavoritesPage() {
           )
         }
       } catch (error) {
-        console.error('Error loading favorites:', error)
+        console.error('[ProfileFavoritesPage] Error loading favorites:', error)
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
 
     void loadFavorites()
-  }, [isClient, favoritesLoading, favoriteKeys, toggleFavorite])
+
+    // Cleanup function to cancel ongoing operations
+    return () => {
+      cancelled = true
+    }
+  }, [isClient, favoritesLoading, favoriteKeys])
 
   // Show loading state
   if (!isClient || loading) {
@@ -159,15 +175,15 @@ export default function ProfileFavoritesPage() {
   }
 
   return (
-    <div className="pb-20 md:pb-6" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="pt-6 pb-20 md:pb-6" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-4">
-          <HeartSolidIcon className="h-8 w-8 text-red-500" />
+      <div className="mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <HeartSolidIcon className="h-7 w-7 md:h-8 md:w-8 text-red-500" />
           {t.pageTitle}
         </h1>
         {favorites.length > 0 && (
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600 mt-3 text-sm md:text-base">
             {favorites.length} {t.totalItems}
           </p>
         )}
@@ -176,23 +192,23 @@ export default function ProfileFavoritesPage() {
       {/* Favorites Grid */}
       {favorites.length === 0 ? (
         /* Empty State */
-        <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-          <HeartIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+        <div className="bg-white rounded-xl shadow-sm p-8 md:p-12 text-center">
+          <HeartIcon className="h-14 w-14 md:h-16 md:w-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
             {t.emptyTitle}
           </h2>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+          <p className="text-sm md:text-base text-gray-600 mb-6 max-w-md mx-auto">
             {t.emptyDescription}
           </p>
           <Link
             href={`/${lng}`}
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#856D55] hover:bg-[#856D55]/90"
+            className="inline-flex items-center px-5 py-2.5 md:px-6 md:py-3 border border-transparent text-sm md:text-base font-medium rounded-md text-white bg-[#856D55] hover:bg-[#856D55]/90 transition-colors"
           >
             {t.browseProducts}
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 lg:gap-5">
           {favorites.map((product) => {
             // Pass selectedColors to prioritize the favorited color
             const selectedColors = product.favoriteColorSlug ? [product.favoriteColorSlug] : undefined

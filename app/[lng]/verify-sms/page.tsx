@@ -563,7 +563,13 @@ export default function VerifySmsPage() {
   const greeting = t.greeting
     .replace('{firstName}', pendingSignup.firstName)
     .replace('{lastName}', pendingSignup.lastName)
-  const smsSent = t.smsSent.replace('{phone}', pendingSignup.phone)
+  
+  // Format phone for display: convert +972XXXXXXXX to 0XXXXXXXX
+  const displayPhone = pendingSignup.phone.startsWith('+972') 
+    ? '0' + pendingSignup.phone.slice(4) 
+    : pendingSignup.phone
+  
+  const smsSent = t.smsSent.replace('{phone}', displayPhone)
 
   return (
     <ProfileShell title={t.title} subtitle={t.subtitle}>

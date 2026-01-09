@@ -27,22 +27,22 @@ export default function OrdersPage() {
   const t = (translations as any)[lng] || translations.en
 
   return (
-    <div className="pb-20 md:pb-6">
-      <Card>
+    <div className="pt-6 pb-20 md:pb-6">
+      <Card className="shadow-[0_4px_20px_rgba(15,23,42,0.08)]">
         <CardHeader>
-          <CardTitle>{t.pageTitle}</CardTitle>
+          <CardTitle className="text-xl md:text-2xl">{t.pageTitle}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <ShoppingBagIcon className="h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <div className="flex flex-col items-center justify-center py-10 md:py-12 text-center">
+            <ShoppingBagIcon className="h-14 w-14 md:h-16 md:w-16 text-gray-400 mb-4" />
+            <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
               {t.comingSoon}
             </h3>
-            <p className="text-gray-600 mb-6 max-w-md">
+            <p className="text-sm md:text-base text-gray-600 mb-6 max-w-md px-4">
               {t.description}
             </p>
             <Link href={`/${lng}/profile`}>
-              <Button variant="outline">
+              <Button variant="outline" className="text-sm md:text-base">
                 {t.backToProfile}
               </Button>
             </Link>

@@ -321,16 +321,16 @@ export default function PersonalDetailsPage() {
   }
 
   return (
-    <div className="pb-20 md:pb-6">
+    <div className="pt-6 pb-20 md:pb-6">
       <div className={profileTheme.card}>
         <div className={profileTheme.section}>
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">{t.pageTitle}</h1>
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">{t.pageTitle}</h1>
             <div className="flex gap-2">
               <button
                 onClick={handleCancel}
                 disabled={busy}
-                className="flex items-center text-sm text-gray-600 hover:text-gray-700 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50"
+                className="flex items-center text-xs md:text-sm text-gray-600 hover:text-gray-700 px-3 md:px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors"
               >
                 <XMarkIcon className="h-4 w-4 mr-1" />
                 {t.cancel}
@@ -338,7 +338,7 @@ export default function PersonalDetailsPage() {
               <button
                 onClick={handleSaveProfile}
                 disabled={busy || Object.keys(requiredErrors).length > 0}
-                className="flex items-center text-sm text-white bg-[#856D55] hover:bg-[#856D55]/90 disabled:opacity-50 px-4 py-2 rounded-md"
+                className="flex items-center text-xs md:text-sm text-white bg-[#856D55] hover:bg-[#856D55]/90 disabled:opacity-50 px-3 md:px-4 py-2 rounded-md transition-colors"
               >
                 <CheckIcon className="h-4 w-4 mr-1" />
                 {busy ? t.saving : t.save}

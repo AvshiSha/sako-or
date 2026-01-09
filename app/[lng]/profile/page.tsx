@@ -288,14 +288,14 @@ export default function ProfileOverviewPage() {
   const displayName = getDisplayName()
 
   return (
-    <div className="space-y-6 pb-20 md:pb-6">
+    <div className="pt-6 space-y-5 md:space-y-6 pb-20 md:pb-6">
       {/* Welcome Back Header */}
       <div className={`${profileTheme.card} overflow-hidden`}>
-        <div className="px-6 py-8 sm:px-8 sm:py-10 text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight mb-3">
+        <div className="px-5 py-7 sm:px-8 sm:py-9 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-2">
             WELCOME BACK
           </h2>
-          <p className="text-xl sm:text-2xl text-gray-700 font-medium">
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-700 font-medium">
             {displayName}
           </p>
         </div>
@@ -304,21 +304,21 @@ export default function ProfileOverviewPage() {
       {/* Header */}
       <div className={profileTheme.card}>
         <div className={profileTheme.section}>
-          <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
                 {loadedUser.firstName} {loadedUser.lastName}
               </h1>
-              <p className="text-sm text-gray-500">{loadedUser.email}</p>
-              <p className="text-xs text-gray-400 flex items-center mt-1">
-                <CalendarIcon className="h-4 w-4 mr-1" />
+              <p className="text-sm text-gray-500 mt-1">{loadedUser.email}</p>
+              <p className="text-xs text-gray-400 flex items-center mt-1.5">
+                <CalendarIcon className="h-3.5 w-3.5 mr-1" />
                 {t.memberSince(memberSince)}
               </p>
             </div>
             <div className="text-right">
-              <div className="text-sm text-gray-500">{t.pointsBalance}</div>
-              <div className="text-3xl font-bold text-indigo-600 flex items-center">
-                <SparklesIcon className="h-6 w-6 mr-1" />
+              <div className="text-xs md:text-sm text-gray-500 mb-1">{t.pointsBalance}</div>
+              <div className="text-2xl md:text-3xl font-bold text-indigo-600 flex items-center justify-end">
+                <SparklesIcon className="h-5 w-5 md:h-6 md:w-6 mr-1" />
                 {loadedUser.pointsBalance}
               </div>
             </div>

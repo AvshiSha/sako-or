@@ -13,6 +13,8 @@ export interface FavoritesHook {
   loading: boolean
 }
 
+type FavoritesMode = 'guest' | 'logged_in'
+
 const STORAGE_KEY = 'favorites'
 
 class HttpError extends Error {
@@ -71,18 +73,15 @@ const FavoritesContext = createContext<FavoritesHook | undefined>(undefined)
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
   const [favorites, setFavorites] = useState<string[]>([])
-  const [canUseNeon, setCanUseNeon] = useState(false)
+  const [mode, setMode] = useState<FavoritesMode>('guest')
   const [loading, setLoading] = useState(true)
 
-  // Seed from localStorage once (guest buffer / initial hydration).
-  useEffect(() => {
-    const stored = safeReadFavoritesFromStorage()
-    if (stored.length > 0) setFavorites(stored)
-  }, [])
+  const lastSeenUidRef = useRef<string | null>(null)
+  const completedUidRef = useRef<string | null>(null)
 
-  // Persist local-only favorites.
+  // Persist to localStorage ONLY in guest mode
   useEffect(() => {
-    if (!loading && (!user || !canUseNeon)) {
+    if (!loading && mode === 'guest') {
       try {
         if (favorites.length === 0) {
           localStorage.removeItem(STORAGE_KEY)
@@ -93,113 +92,161 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         console.error('Error saving favorites:', error)
       }
     }
-  }, [favorites, loading, user, canUseNeon])
+  }, [favorites, loading, mode])
 
-  // Ensure we only run init once per uid change (prevents accidental duplicate inits).
-  const lastInitUidRef = useRef<string | null>(null)
-
-  // Decide whether to use Neon (DB) vs local-only, then load/merge accordingly.
+  // Main mode determination and data loading
   useEffect(() => {
     let cancelled = false
     const uid = user?.uid ?? null
 
-    if (lastInitUidRef.current === uid) return
-    lastInitUidRef.current = uid
+    // Only skip if we've COMPLETED initialization for this uid before
+    if (completedUidRef.current === uid) {
+      return
+    }
+    
+    const previousUid = lastSeenUidRef.current
+    lastSeenUidRef.current = uid
 
-    async function syncSourceAndLoad() {
+    async function determineMode() {
+      console.log('[FavoritesContext] determineMode START', { hasUser: !!user, uid: user?.uid, previousUid })
+      
+      // No user -> guest mode
       if (!user) {
-        setCanUseNeon(false)
-        // When user signs out, revert to guest favorites from localStorage.
-        // This prevents leaking signed-in favorites into local guest storage.
-        setFavorites(safeReadFavoritesFromStorage())
+        console.log('[FavoritesContext] No user, setting guest mode')
+        setMode('guest')
+        
+        // Logout transition: clear everything
+        if (previousUid !== null) {
+          setFavorites([])
+          try {
+            localStorage.removeItem(STORAGE_KEY)
+          } catch {
+            // ignore
+          }
+        } else {
+          // Initial guest session: seed from localStorage
+          const guestFavorites = safeReadFavoritesFromStorage()
+          if (guestFavorites.length > 0) {
+            setFavorites(guestFavorites)
+          }
+        }
+        
         setLoading(false)
         return
       }
 
+      // User exists - check profile status
+      console.log('[FavoritesContext] User exists, checking profile...')
       setLoading(true)
       try {
-        // Don’t force refresh for every init; it’s expensive and can be rate-limited.
         const token = await user.getIdToken()
         if (!token) {
-          setCanUseNeon(false)
+          setMode('guest')
+          setLoading(false)
           return
         }
 
-        // Check whether Neon user exists.
-        // Note: Auth flows may call /api/me/sync asynchronously; we retry briefly to avoid race conditions.
-        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-        let profileRes: Response | null = null
-        for (let attempt = 0; attempt < 3; attempt++) {
-          if (cancelled) return
-          if (attempt > 0) await sleep(300 * attempt)
-          profileRes = await fetch('/api/me/profile', {
-            method: 'GET',
+        // User authenticated -> use database mode immediately
+        console.log('[FavoritesContext] User authenticated, setting logged_in mode')
+        setMode('logged_in')
+
+        // Clear favorites first to avoid localStorage flash in UI
+        setFavorites([])
+
+        // Merge any guest favorites into DB
+        const guestKeys = safeReadFavoritesFromStorage()
+        console.log('[FavoritesContext] Guest keys to merge:', guestKeys.length)
+        if (Array.isArray(guestKeys) && guestKeys.length > 0) {
+          try {
+            const mergeResult = await fetchJson<{ merged: number }>('/api/favorites/merge', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ favoriteKeys: guestKeys })
+            })
+            console.log('[FavoritesContext] Merge result:', mergeResult)
+            localStorage.removeItem(STORAGE_KEY)
+          } catch (mergeError) {
+            console.error('[FavoritesContext] Error merging guest favorites:', mergeError)
+            // If it's a 404, the user profile doesn't exist yet - that's OK
+            if (mergeError instanceof HttpError && mergeError.status === 404) {
+              console.log('[FavoritesContext] Profile not found yet, guest favorites will merge later')
+            }
+            // Continue anyway
+          }
+        }
+
+        // Load favorites from DB
+        console.log('[FavoritesContext] Loading favorites from DB...')
+        try {
+          const data = await fetchJson<{
+            favorites: Array<{ favoriteKey: string; isActive?: boolean | null }>
+          }>('/api/favorites', {
             headers: { Authorization: `Bearer ${token}` }
           })
-          if (profileRes.status !== 404) break
-        }
 
-        if (!profileRes) {
-          setCanUseNeon(false)
-          return
-        }
-        if (profileRes.status === 404) {
-          setCanUseNeon(false)
-          return
-        }
-        if (!profileRes.ok) {
-          console.error('Error checking Neon user existence:', profileRes.status)
-          setCanUseNeon(false)
-          return
-        }
+          console.log('[FavoritesContext] Favorites loaded from DB:', data.favorites?.length || 0)
 
-        // Neon user exists -> merge any local favorites, then load from DB
-        setCanUseNeon(true)
-
-        const guestKeys = safeReadFavoritesFromStorage()
-        if (Array.isArray(guestKeys) && guestKeys.length > 0) {
-          await fetchJson<{ merged: number }>('/api/favorites/merge', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`
-            },
-            body: JSON.stringify({ favoriteKeys: guestKeys })
-          })
-          localStorage.removeItem(STORAGE_KEY)
-        }
-
-        const data = await fetchJson<{
-          favorites: Array<{ favoriteKey: string; isActive?: boolean | null }>
-        }>('/api/favorites', {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-
-        if (!cancelled) {
-          setFavorites(
-            data.favorites
+          if (!cancelled) {
+            const favoritesArray = data.favorites || []
+            const filteredFavorites = favoritesArray
               .filter((f) => f && typeof f.favoriteKey === 'string' && f.isActive !== false)
               .map((f) => f.favoriteKey)
-          )
+            console.log('[FavoritesContext] Setting favorites:', filteredFavorites.length)
+            setFavorites(filteredFavorites)
+          }
+        } catch (favoritesError) {
+          // If profile doesn't exist yet (404), that's OK - no favorites to load
+          if (favoritesError instanceof HttpError && favoritesError.status === 404) {
+            console.log('[FavoritesContext] Profile not found yet (404) - starting with empty favorites')
+            setFavorites([])
+          } else {
+            // Re-throw other errors to be caught by outer catch
+            throw favoritesError
+          }
         }
       } catch (error) {
-        // Expected cases: auth expired / missing token / user not synced yet.
-        if (error instanceof HttpError && (error.status === 401 || error.status === 403)) {
-          setCanUseNeon(false)
+        // 404 means user profile doesn't exist yet (new signup) - that's OK
+        if (error instanceof HttpError && error.status === 404) {
+          console.log('[FavoritesContext] Profile not found (404) - user may be signing up. Will retry on next check.')
+          // Stay in guest mode temporarily, will switch when profile is created
+          setMode('guest')
+          setLoading(false)
           return
         }
-        console.error('Error syncing favorites source:', error)
-        setCanUseNeon(false)
+        
+        // Auth errors -> guest mode
+        if (error instanceof HttpError && (error.status === 401 || error.status === 403)) {
+          console.log('[FavoritesContext] Auth error, falling back to guest mode:', error.status)
+          setMode('guest')
+          setLoading(false)
+          return
+        }
+        
+        // Other errors -> log and fall back to guest mode
+        console.error('[FavoritesContext] ERROR determining mode - falling back to guest:', error)
+        console.error('[FavoritesContext] Error details:', {
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          type: error instanceof HttpError ? 'HttpError' : typeof error,
+          status: error instanceof HttpError ? error.status : 'N/A'
+        })
+        setMode('guest')
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          completedUidRef.current = uid
+        }
       }
     }
 
-    void syncSourceAndLoad()
+    void determineMode()
     return () => {
       cancelled = true
     }
-  }, [user?.uid]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [user?.uid]) // Re-run when Firebase user changes
 
   const clearAllLocal = useCallback(() => {
     setFavorites([])
@@ -222,7 +269,11 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       const key = (favoriteKey || '').trim()
       if (!key) return
 
-      if (!user || !canUseNeon) {
+      console.log('[FavoritesContext] toggleFavorite called', { key, mode, hasUser: !!user })
+
+      // Guest mode: local only
+      if (mode === 'guest') {
+        console.log('[FavoritesContext] Using guest mode - localStorage only')
         setFavorites((prev) => {
           if (prev.includes(key)) return prev.filter((k) => k !== key)
           return [...prev, key]
@@ -230,7 +281,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // Logged-in toggle (Neon) with optimistic UI.
+      // Logged-in mode: DB with optimistic UI
+      console.log('[FavoritesContext] Using logged_in mode - will call API')
       let removed = false
       setFavorites((prev) => {
         const has = prev.includes(key)
@@ -239,12 +291,11 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       })
 
       try {
-        const token = await user.getIdToken()
+        const token = await user?.getIdToken()
         if (!token) {
           throw new Error('Failed to get authentication token. Please try logging in again.')
         }
 
-        // Idempotent request: avoid "double toggle" bugs by telling the server the desired state.
         const desiredIsActive = !removed
         const data = await fetchJson<{ favoriteKey: string; isActive: boolean }>('/api/favorites/toggle', {
           method: 'POST',
@@ -255,6 +306,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({ favoriteKey: key, isActive: desiredIsActive })
         })
 
+        // Reconcile with server response
         setFavorites((prev) => {
           const has = prev.includes(data.favoriteKey)
           if (data.isActive) return has ? prev : [...prev, data.favoriteKey]
@@ -262,8 +314,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         })
       } catch (error) {
         if (error instanceof HttpError && error.status === 404) {
-          // Neon user doesn't exist -> fall back to local-only mode and keep the optimistic toggle.
-          setCanUseNeon(false)
+          // Profile no longer exists -> fall back to guest mode
+          setMode('guest')
           return
         }
 
@@ -278,7 +330,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         })
       }
     },
-    [user, canUseNeon]
+    [mode, user]
   )
 
   const addToFavorites = useCallback(
@@ -310,6 +362,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     clearAllLocal,
     loading
   }
+
+  console.log('[FavoritesContext] Render state:', { mode, loading, favoritesCount: favorites.length, hasUser: !!user })
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>
 }

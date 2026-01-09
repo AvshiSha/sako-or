@@ -8,6 +8,8 @@ import OrderSummary from './OrderSummary';
 import { trackBeginCheckout } from '@/lib/dataLayer';
 import { CartItem } from '../hooks/useCart';
 import { ArrowLeftIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { formatIsraelE164ToLocalDigits } from '@/lib/phone';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -78,7 +80,9 @@ export default function CheckoutModal({
   const checkoutTrackedSignatureRef = useRef<string | null>(null);
   const historyStateRef = useRef<number | null>(null);
   const shouldPopHistoryRef = useRef(false);
+  const profilePrefilledRef = useRef(false);
 
+  const { user: firebaseUser } = useAuth();
   const isHebrew = language === 'he';
   const isRTL = isHebrew;
 
@@ -130,6 +134,7 @@ export default function CheckoutModal({
       setError(null);
       setIsLoading(false);
       setIsOrderSummaryOpen(false);
+      profilePrefilledRef.current = false; // Reset prefill flag when modal opens
       
       // Push state to history for browser back button
       if (typeof window !== 'undefined') {
@@ -139,6 +144,88 @@ export default function CheckoutModal({
       }
     }
   }, [isOpen]);
+
+  // Prefill form from user profile (one-time per modal open)
+  useEffect(() => {
+    if (!isOpen || profilePrefilledRef.current || !firebaseUser) return;
+
+    profilePrefilledRef.current = true;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const token = await firebaseUser.getIdToken().catch((err) => {
+          console.warn('[CheckoutModal] Failed to get ID token for profile prefill:', err?.message || err);
+          return null;
+        });
+
+        if (!token || cancelled) return;
+
+        const res = await fetch('/api/me/profile', {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!res.ok || cancelled) return;
+
+        const json = await res.json().catch(() => null);
+        if (!json || !json.user || cancelled) return;
+
+        const profileUser = json.user;
+
+        // Merge profile data into formData only for empty fields
+        setFormData((prevData) => {
+          const newPayer = { ...prevData.payer };
+          const newDeliveryAddress = { ...prevData.deliveryAddress };
+
+          // Prefill payer details (only if empty)
+          if (!newPayer.firstName.trim() && profileUser.firstName) {
+            newPayer.firstName = profileUser.firstName;
+          }
+          if (!newPayer.lastName.trim() && profileUser.lastName) {
+            newPayer.lastName = profileUser.lastName;
+          }
+          if (!newPayer.email.trim() && (profileUser.email || firebaseUser.email)) {
+            newPayer.email = profileUser.email || firebaseUser.email || '';
+          }
+          if (!newPayer.mobile.trim() && profileUser.phone) {
+            newPayer.mobile = formatIsraelE164ToLocalDigits(profileUser.phone);
+          }
+
+          // Prefill delivery address (only if empty)
+          if (!newDeliveryAddress.city.trim() && profileUser.addressCity) {
+            newDeliveryAddress.city = profileUser.addressCity;
+          }
+          if (!newDeliveryAddress.streetName.trim() && profileUser.addressStreet) {
+            newDeliveryAddress.streetName = profileUser.addressStreet;
+          }
+          if (!newDeliveryAddress.streetNumber.trim() && profileUser.addressStreetNumber) {
+            newDeliveryAddress.streetNumber = profileUser.addressStreetNumber;
+          }
+          if (!newDeliveryAddress.floor?.trim() && profileUser.addressFloor) {
+            newDeliveryAddress.floor = profileUser.addressFloor;
+          }
+          if (!newDeliveryAddress.apartmentNumber?.trim() && profileUser.addressApt) {
+            newDeliveryAddress.apartmentNumber = profileUser.addressApt;
+          }
+
+          return {
+            ...prevData,
+            payer: newPayer,
+            deliveryAddress: newDeliveryAddress
+          };
+        });
+      } catch (error) {
+        // Silently fail - checkout still works with blank fields
+        console.warn('[CheckoutModal] Profile prefill failed:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, firebaseUser]);
 
   // Handle browser back button
   useEffect(() => {

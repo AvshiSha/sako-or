@@ -72,16 +72,16 @@ const FavoritesContext = createContext<FavoritesHook | undefined>(undefined)
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const [favorites, setFavorites] = useState<string[]>([])
+  const [favorites, setFavorites] = useState<string[]>(() => safeReadFavoritesFromStorage())
   const [mode, setMode] = useState<FavoritesMode>('guest')
   const [loading, setLoading] = useState(true)
 
   const lastSeenUidRef = useRef<string | null>(null)
-  const completedUidRef = useRef<string | null>(null)
+  const completedUidRef = useRef<string | null | undefined>(undefined)
 
   // Persist to localStorage ONLY in guest mode
   useEffect(() => {
-    if (!loading && mode === 'guest') {
+    if (mode === 'guest') {
       try {
         if (favorites.length === 0) {
           localStorage.removeItem(STORAGE_KEY)
@@ -100,7 +100,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     const uid = user?.uid ?? null
 
     // Only skip if we've COMPLETED initialization for this uid before
-    if (completedUidRef.current === uid) {
+    if (completedUidRef.current !== undefined && completedUidRef.current === uid) {
       return
     }
     
@@ -131,7 +131,10 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
           }
         }
         
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+          completedUidRef.current = uid
+        }
         return
       }
 
@@ -149,9 +152,6 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         // User authenticated -> use database mode immediately
         console.log('[FavoritesContext] User authenticated, setting logged_in mode')
         setMode('logged_in')
-
-        // Clear favorites first to avoid localStorage flash in UI
-        setFavorites([])
 
         // Merge any guest favorites into DB
         const guestKeys = safeReadFavoritesFromStorage()

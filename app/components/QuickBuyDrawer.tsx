@@ -302,10 +302,10 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                       </div>
 
                       {/* Color Selection */}
-                      {product.colorVariants && Object.values(product.colorVariants).filter(v => v.isActive !== false).length > 1 && (
+                      {product.colorVariants && Object.values(product.colorVariants).filter(v => v.isActive !== false).length >= 1 && (
                         <div className="mb-8">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-900">
+                            <div className={`flex items-center justify-between mb-4 ${language === 'he' ? 'flex-row-reverse' : ''}`}>
+                              <h3 className={`text-sm font-medium text-gray-900`}>
                               {language === 'he' ? 'צבע' : 'Color'}: {getColorName(activeVariant.colorSlug, language)}
                             </h3>
                           </div>

@@ -138,12 +138,15 @@ export default function FavoritesPage() {
       return
     }
 
+    // Cancellation flag to prevent race conditions
+    let cancelled = false
+
     const loadFavorites = async () => {
       try {
         setLoading(true)
 
         if (!favoriteKeys || favoriteKeys.length === 0) {
-          setFavorites([])
+          if (!cancelled) setFavorites([])
           return
         }
 
@@ -153,6 +156,9 @@ export default function FavoritesPage() {
         const inactiveFavoriteKeysToRemove: string[] = []
 
         for (const favoriteKey of favoriteKeys) {
+          // Early exit if this effect has been cancelled
+          if (cancelled) return
+
           const { baseSku, colorSlug } = parseFavoriteKey(favoriteKey)
           if (!baseSku) continue
 
@@ -194,12 +200,15 @@ export default function FavoritesPage() {
           }
         }
 
-        setFavorites(favoriteItems)
+        // Only update state if not cancelled
+        if (!cancelled) {
+          setFavorites(favoriteItems)
+        }
 
         // Best-effort cleanup (avoid loops by tracking keys we've already cleaned).
         const uniqueToRemove = Array.from(new Set(inactiveFavoriteKeysToRemove))
           .filter((k) => k && !cleanedFavoriteKeysRef.current.has(k))
-        if (uniqueToRemove.length > 0) {
+        if (uniqueToRemove.length > 0 && !cancelled) {
           uniqueToRemove.forEach((k) => cleanedFavoriteKeysRef.current.add(k))
           await Promise.all(
             uniqueToRemove.map(async (k) => {
@@ -214,11 +223,18 @@ export default function FavoritesPage() {
       } catch (error) {
         console.error('❌ Error loading favorites:', error)
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
 
     void loadFavorites()
+
+    // Cleanup function to cancel ongoing operations
+    return () => {
+      cancelled = true
+    }
   }, [isClient, favoritesLoading, favoriteKeys])
 
   // Update selected image index when carousel changes for each product

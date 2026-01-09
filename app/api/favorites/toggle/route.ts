@@ -59,8 +59,17 @@ export async function POST(request: NextRequest) {
 
     // Idempotent "set" mode
     if (desiredIsActive !== null) {
+      console.log('[Toggle API] Idempotent mode:', { 
+        userId, 
+        productBaseSku, 
+        colorSlug, 
+        desiredIsActive, 
+        existingRecord: existing ? { isActive: existing.isActive } : null 
+      })
+
       if (!existing) {
         if (!desiredIsActive) {
+          console.log('[Toggle API] No existing record and desiredIsActive=false, returning early')
           return NextResponse.json(
             {
               favoriteKey: favoriteKeyFromParts(productBaseSku, colorSlug),
@@ -81,6 +90,7 @@ export async function POST(request: NextRequest) {
           }
         })
 
+        console.log('[Toggle API] Created new favorite:', { isActive: created.isActive })
         return NextResponse.json(
           {
             favoriteKey: favoriteKeyFromParts(created.productBaseSku, created.colorSlug),
@@ -97,6 +107,7 @@ export async function POST(request: NextRequest) {
           : { isActive: false, unfavoritedAt: now }
       })
 
+      console.log('[Toggle API] Updated favorite:', { isActive: updated.isActive })
       return NextResponse.json(
         {
           favoriteKey: favoriteKeyFromParts(updated.productBaseSku, updated.colorSlug),
@@ -107,6 +118,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Legacy toggle mode (kept for backwards compatibility)
+    console.log('[Toggle API] Legacy toggle mode:', { 
+      userId, 
+      productBaseSku, 
+      colorSlug, 
+      existingRecord: existing ? { isActive: existing.isActive } : null 
+    })
+
     if (!existing) {
       const created = await prisma.favorite.create({
         data: {
@@ -119,6 +137,7 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      console.log('[Toggle API] Created new favorite (legacy):', { isActive: created.isActive })
       return NextResponse.json(
         {
           favoriteKey: favoriteKeyFromParts(created.productBaseSku, created.colorSlug),
@@ -136,6 +155,10 @@ export async function POST(request: NextRequest) {
         : { isActive: false, unfavoritedAt: now }
     })
 
+    console.log('[Toggle API] Updated favorite (legacy):', { 
+      wasActive: existing.isActive, 
+      nowActive: updated.isActive 
+    })
     return NextResponse.json(
       {
         favoriteKey: favoriteKeyFromParts(updated.productBaseSku, updated.colorSlug),

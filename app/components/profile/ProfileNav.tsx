@@ -2,15 +2,17 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Menu } from 'lucide-react'
 import { 
   UserIcon, 
   ShoppingBagIcon, 
   SparklesIcon, 
   HeartIcon,
-  HomeIcon
+  HomeIcon,
+  ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline'
+import { useAuth } from '@/app/contexts/AuthContext'
 import {
   Sheet,
   SheetContent,
@@ -39,11 +41,14 @@ interface ProfileNavProps {
     myPoints: string
     myFavorites: string
     menu: string
+    logout: string
   }
 }
 
 export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { logout } = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const isRTL = lng === 'he'
 
@@ -62,10 +67,19 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
     return pathname?.startsWith(href) || false
   }
 
+  const handleLogout = async () => {
+    try {
+      await logout()
+      router.push(`/${lng}/signin`)
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
+
   // Desktop Navigation
   const DesktopNav = () => (
-    <nav className="hidden md:block md:w-72 lg:w-80 flex-shrink-0">
-      <div className="sticky top-24 space-y-1">
+    <nav className="hidden md:block md:w-64 lg:w-72 flex-shrink-0">
+      <div className="sticky top-24 space-y-2">
         {navItems.map((item) => {
           const active = isActive(item.href)
           const Icon = item.icon
@@ -74,9 +88,9 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-5 py-3.5 rounded-lg transition-colors md:text-base ${
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm md:text-base ${
                 active
-                  ? 'bg-[#856D55] text-white'
+                  ? 'bg-[#856D55] text-white shadow-sm'
                   : 'text-gray-700 hover:bg-gray-100'
               } ${isRTL ? 'flex-row-reverse justify-end text-right' : ''}`}
             >
@@ -85,6 +99,17 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
             </Link>
           )
         })}
+        
+        {/* Logout Button */}
+        <button
+          onClick={handleLogout}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm md:text-base text-gray-700 hover:bg-gray-100 ${
+            isRTL ? 'flex-row-reverse justify-end text-right' : ''
+          }`}
+        >
+          <ArrowRightOnRectangleIcon className="h-5 w-5" />
+          <span className="font-medium">{t.logout}</span>
+        </button>
       </div>
     </nav>
   )
@@ -131,6 +156,18 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
                 </SheetClose>
               )
             })}
+            
+            {/* Logout Button */}
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false)
+                handleLogout()
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-100"
+            >
+              <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              <span className="font-medium">{t.logout}</span>
+            </button>
           </nav>
         </SheetContent>
       </Sheet>

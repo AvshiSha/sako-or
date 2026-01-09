@@ -13,7 +13,8 @@ const translations = {
     myPoints: 'My Points',
     myFavorites: 'My Favorites',
     menu: 'Menu',
-    loading: 'Loading...'
+    loading: 'Loading...',
+    logout: 'Logout'
   },
   he: {
     overview: 'סקירה כללית',
@@ -22,7 +23,8 @@ const translations = {
     myPoints: 'הנקודות שלי',
     myFavorites: 'המועדפים שלי',
     menu: 'תפריט',
-    loading: 'טוען...'
+    loading: 'טוען...',
+    logout: 'התנתק'
   }
 } as const
 
@@ -66,13 +68,13 @@ export default function ProfileLayout({
       className="min-h-screen bg-gradient-to-b from-[#eef5ff] via-[#f4f7ff] to-white pt-20 pb-12"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row gap-8">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col md:flex-row gap-6 lg:gap-8">
           {/* Sidebar Navigation */}
           <ProfileNav lng={lng} translations={t} />
           
           {/* Main Content */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 max-w-full">
             {children}
           </div>
         </div>

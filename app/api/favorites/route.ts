@@ -29,20 +29,21 @@ export async function GET(request: NextRequest) {
       orderBy: { favoritedAt: 'desc' },
       select: {
         productBaseSku: true,
-        colorSlug: true
+        colorSlug: true,
+        isActive: true
       }
     })
 
-    return NextResponse.json(
-      {
-        favorites: favorites.map((f) => ({
-          favoriteKey: favoriteKeyFromParts(f.productBaseSku, f.colorSlug),
-          productBaseSku: f.productBaseSku,
-          colorSlug: f.colorSlug || null
-        }))
-      },
-      { status: 200 }
-    )
+    const response = {
+      favorites: favorites.map((f) => ({
+        favoriteKey: favoriteKeyFromParts(f.productBaseSku, f.colorSlug),
+        productBaseSku: f.productBaseSku,
+        colorSlug: f.colorSlug || null,
+        isActive: f.isActive
+      }))
+    }
+
+    return NextResponse.json(response, { status: 200 })
   } catch (error: any) {
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to load favorites'

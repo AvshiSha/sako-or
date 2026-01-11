@@ -32,6 +32,10 @@ const translations = {
     phoneNumber: 'Phone Number',
     address: 'Address',
     noAddressSaved: 'No address saved yet',
+    city: 'City',
+    street: 'Street',
+    floor: 'Floor',
+    apt: 'Apartment',
     newsletterSubscription: 'Newsletter Subscription',
     newsletterDescription: 'Receive updates, offers, and news via email.',
     pointsHistory: 'Points History',
@@ -64,6 +68,10 @@ const translations = {
     phoneNumber: 'מספר טלפון',
     address: 'כתובת',
     noAddressSaved: 'לא נשמרה כתובת עדיין',
+    city: 'עיר',
+    street: 'רחוב',
+    floor: 'קומה',
+    apt: 'דירה',
     newsletterSubscription: 'הרשמה לניוזלטר',
     newsletterDescription: 'קבלו עדכונים, מבצעים וחדשות במייל.',
     pointsHistory: 'היסטוריית נקודות',
@@ -381,8 +389,27 @@ export default function ProfileOverviewPage() {
             </Link>
           </div>
 
-          <div className="text-sm text-gray-900">
-            {formatAddress()}
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-500">{t.city}:</span>
+              <span className="text-sm font-medium text-gray-900">{loadedUser.addressCity || '—'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-500">{t.street}:</span>
+              <span className="text-sm font-medium text-gray-900">
+                {loadedUser.addressStreet 
+                  ? `${loadedUser.addressStreet}${loadedUser.addressStreetNumber ? ' ' + loadedUser.addressStreetNumber : ''}`
+                  : '—'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-500">{t.floor}:</span>
+              <span className="text-sm font-medium text-gray-900">{loadedUser.addressFloor || '—'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-500">{t.apt}:</span>
+              <span className="text-sm font-medium text-gray-900">{loadedUser.addressApt || '—'}</span>
+            </div>
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
 import { sendOrderConfirmationEmailIdempotent } from '../../../../lib/email';
 import { stringifyPaymentData } from '../../../../lib/orders';
+import { buildCartKey } from '../../../../lib/cart';
 
 export async function POST(request: NextRequest) {
   try {
@@ -137,10 +138,88 @@ async function updateOrderStatus(
         },
       });
     }
+
+    // Mark matching cart items as PURCHASED (Option 2: match order items only)
+    if (status === 'completed') {
+      await markCartItemsAsPurchased(orderId);
+    }
     
   } catch (error) {
     console.error('Failed to update order status:', error);
     throw error;
+  }
+}
+
+/**
+ * Mark cart items as PURCHASED for order items (Option 2: match only what was bought)
+ */
+async function markCartItemsAsPurchased(orderId: string) {
+  try {
+    // Fetch the order with user and items
+    const order = await prisma.order.findUnique({
+      where: { orderNumber: orderId },
+      include: { orderItems: true },
+      select: {
+        orderNumber: true,
+        userId: true,
+        orderItems: {
+          select: {
+            productSku: true,
+            colorName: true,
+            size: true,
+            quantity: true
+          }
+        }
+      }
+    });
+
+    if (!order || !order.userId) {
+      // Guest checkout or order not found - no cart persistence
+      console.log('[markCartItemsAsPurchased] Order has no userId (guest checkout), skipping cart update');
+      return;
+    }
+
+    const userId = order.userId;
+    const now = new Date();
+
+    // For each order item, compute cartKey and update matching cart row
+    for (const orderItem of order.orderItems) {
+      const baseSku = orderItem.productSku;
+      const colorSlug = orderItem.colorName || null;
+      const sizeSlug = orderItem.size || null;
+      const cartKey = buildCartKey(baseSku, colorSlug, sizeSlug);
+
+      if (!cartKey) continue;
+
+      try {
+        // Update matching cart item to PURCHASED (idempotent)
+        const result = await prisma.cartItem.updateMany({
+          where: {
+            userId,
+            cartKey,
+            // Only update if currently IN_CART (idempotent - won't re-mark already PURCHASED)
+            status: 'IN_CART'
+          },
+          data: {
+            status: 'PURCHASED',
+            orderId: order.orderNumber,
+            quantity: orderItem.quantity,
+            removedAt: null,
+            updatedAt: now
+          }
+        });
+
+        if (result.count > 0) {
+          console.log(`[markCartItemsAsPurchased] Marked cart item as PURCHASED: ${cartKey} (order: ${orderId})`);
+        }
+      } catch (itemError) {
+        console.warn(`[markCartItemsAsPurchased] Failed to update cart item ${cartKey}:`, itemError);
+        // Continue with other items
+      }
+    }
+  } catch (error) {
+    console.error('[markCartItemsAsPurchased] Error marking cart items as purchased:', error);
+    // Don't throw - this is best-effort cleanup
   }
 }
 

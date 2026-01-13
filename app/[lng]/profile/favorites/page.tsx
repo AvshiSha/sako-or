@@ -175,7 +175,7 @@ export default function ProfileFavoritesPage() {
   }
 
   return (
-    <div className="pt-6 pb-20 md:pb-6" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="pt-6 pb-20 md:pb-6 mt-4" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">

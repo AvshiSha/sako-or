@@ -473,7 +473,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           {/* )} */}
         </div>
 
-        <div className="text-sm font-medium text-gray-900">{product.sku}</div>
+        <div className="text-sm font-medium text-gray-900">{language === 'he' ? 'מספר דגם: ' : 'SKU: '}{product.sku}</div>
         
         <div className="text-sm font-medium text-gray-900">
           {hasSalePrice() && salePrice && salePrice < originalPrice ? (

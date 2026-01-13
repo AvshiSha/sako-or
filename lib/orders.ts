@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { parseSku } from './sku-parser';
 import { CouponDiscountType } from '@prisma/client';
+import { markCartItemsAsCheckedOut } from './cart-status';
 
 export interface CreateOrderData {
   orderNumber: string;
@@ -87,6 +88,11 @@ export async function createOrder(data: CreateOrderData) {
       },
     });
 
+    // Mark cart items as CHECKED_OUT for signed-in users
+    if (data.userId) {
+      await markCartItemsAsCheckedOut(order.orderNumber, data.userId);
+    }
+
     return order;
   } catch (error) {
     console.error('Failed to create order:', error);
@@ -164,3 +170,4 @@ export function stringifyPaymentData(data: any): string | null {
     return null;
   }
 }
+

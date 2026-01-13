@@ -372,11 +372,26 @@ export default function CheckoutModal({
       }
     };
 
+    // Get auth token if user is signed in
+    let authHeaders: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (firebaseUser) {
+      try {
+        const token = await firebaseUser.getIdToken();
+        if (token) {
+          authHeaders['Authorization'] = `Bearer ${token}`;
+        }
+      } catch (tokenError) {
+        console.warn('[CheckoutModal] Failed to get auth token for order creation:', tokenError);
+        // Continue without token - will be treated as guest checkout
+      }
+    }
+
     const response = await fetch('/api/payments/create-low-profile', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders,
       body: JSON.stringify(payload),
     });
 
@@ -408,6 +423,27 @@ export default function CheckoutModal({
     setError(null);
 
     try {
+      // Mark cart items as CHECKED_OUT for signed-in users
+      if (firebaseUser) {
+        try {
+          const token = await firebaseUser.getIdToken();
+          if (token) {
+            await fetch('/api/cart/checkout', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+              },
+              body: JSON.stringify({ orderId })
+            });
+            // Don't fail if this errors - it's best effort
+          }
+        } catch (checkoutError) {
+          console.warn('[CheckoutModal] Failed to mark cart as checked out:', checkoutError);
+          // Continue anyway - cart will be marked when order is created
+        }
+      }
+
       const checkoutId = await saveCheckoutInfo();
       const result = await createPaymentSession();
       

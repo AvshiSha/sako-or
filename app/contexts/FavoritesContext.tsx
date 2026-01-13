@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '@/app/contexts/AuthContext'
 
 export interface FavoritesHook {
@@ -108,11 +108,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     lastSeenUidRef.current = uid
 
     async function determineMode() {
-      console.log('[FavoritesContext] determineMode START', { hasUser: !!user, uid: user?.uid, previousUid })
-      
       // No user -> guest mode
       if (!user) {
-        console.log('[FavoritesContext] No user, setting guest mode')
         setMode('guest')
         
         // Logout transition: clear everything
@@ -139,7 +136,6 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       }
 
       // User exists - check profile status
-      console.log('[FavoritesContext] User exists, checking profile...')
       setLoading(true)
       try {
         const token = await user.getIdToken()
@@ -150,12 +146,10 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         }
 
         // User authenticated -> use database mode immediately
-        console.log('[FavoritesContext] User authenticated, setting logged_in mode')
         setMode('logged_in')
 
         // Merge any guest favorites into DB
         const guestKeys = safeReadFavoritesFromStorage()
-        console.log('[FavoritesContext] Guest keys to merge:', guestKeys.length)
         if (Array.isArray(guestKeys) && guestKeys.length > 0) {
           try {
             const mergeResult = await fetchJson<{ merged: number }>('/api/favorites/merge', {
@@ -166,20 +160,18 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
               },
               body: JSON.stringify({ favoriteKeys: guestKeys })
             })
-            console.log('[FavoritesContext] Merge result:', mergeResult)
             localStorage.removeItem(STORAGE_KEY)
           } catch (mergeError) {
             console.error('[FavoritesContext] Error merging guest favorites:', mergeError)
             // If it's a 404, the user profile doesn't exist yet - that's OK
             if (mergeError instanceof HttpError && mergeError.status === 404) {
-              console.log('[FavoritesContext] Profile not found yet, guest favorites will merge later')
+              // Profile not found yet, guest favorites will merge later
             }
             // Continue anyway
           }
         }
 
         // Load favorites from DB
-        console.log('[FavoritesContext] Loading favorites from DB...')
         try {
           const data = await fetchJson<{
             favorites: Array<{ favoriteKey: string; isActive?: boolean | null }>
@@ -187,20 +179,16 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
             headers: { Authorization: `Bearer ${token}` }
           })
 
-          console.log('[FavoritesContext] Favorites loaded from DB:', data.favorites?.length || 0)
-
           if (!cancelled) {
             const favoritesArray = data.favorites || []
             const filteredFavorites = favoritesArray
               .filter((f) => f && typeof f.favoriteKey === 'string' && f.isActive !== false)
               .map((f) => f.favoriteKey)
-            console.log('[FavoritesContext] Setting favorites:', filteredFavorites.length)
             setFavorites(filteredFavorites)
           }
         } catch (favoritesError) {
           // If profile doesn't exist yet (404), that's OK - no favorites to load
           if (favoritesError instanceof HttpError && favoritesError.status === 404) {
-            console.log('[FavoritesContext] Profile not found yet (404) - starting with empty favorites')
             setFavorites([])
           } else {
             // Re-throw other errors to be caught by outer catch
@@ -210,7 +198,6 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         // 404 means user profile doesn't exist yet (new signup) - that's OK
         if (error instanceof HttpError && error.status === 404) {
-          console.log('[FavoritesContext] Profile not found (404) - user may be signing up. Will retry on next check.')
           // Stay in guest mode temporarily, will switch when profile is created
           setMode('guest')
           setLoading(false)
@@ -219,7 +206,6 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
         
         // Auth errors -> guest mode
         if (error instanceof HttpError && (error.status === 401 || error.status === 403)) {
-          console.log('[FavoritesContext] Auth error, falling back to guest mode:', error.status)
           setMode('guest')
           setLoading(false)
           return
@@ -269,11 +255,8 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       const key = (favoriteKey || '').trim()
       if (!key) return
 
-      console.log('[FavoritesContext] toggleFavorite called', { key, mode, hasUser: !!user })
-
       // Guest mode: local only
       if (mode === 'guest') {
-        console.log('[FavoritesContext] Using guest mode - localStorage only')
         setFavorites((prev) => {
           if (prev.includes(key)) return prev.filter((k) => k !== key)
           return [...prev, key]
@@ -282,7 +265,6 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Logged-in mode: DB with optimistic UI
-      console.log('[FavoritesContext] Using logged_in mode - will call API')
       let removed = false
       setFavorites((prev) => {
         const has = prev.includes(key)
@@ -353,7 +335,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     [favorites, toggleFavorite]
   )
 
-  const value: FavoritesHook = {
+  const value: FavoritesHook = useMemo(() => ({
     favorites,
     isFavorite,
     addToFavorites,
@@ -361,9 +343,7 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
     toggleFavorite,
     clearAllLocal,
     loading
-  }
-
-  console.log('[FavoritesContext] Render state:', { mode, loading, favoritesCount: favorites.length, hasUser: !!user })
+  }), [favorites, isFavorite, addToFavorites, removeFromFavorites, toggleFavorite, clearAllLocal, loading])
 
   return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>
 }

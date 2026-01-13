@@ -41,6 +41,9 @@ export function useCart(): CartHook {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
   const loadedFromNeonRef = useRef(false)
+  
+  // Session storage key to track if cart was loaded in this session
+  const SESSION_LOADED_KEY = 'cart_loaded_from_neon'
 
   const normalizeCartItem = useCallback((item: CartItem): CartItem => {
     if (!item?.sku) return item
@@ -162,6 +165,127 @@ export function useCart(): CartHook {
     }
   }, [areItemArraysEqual, normalizeCartItem])
 
+  // Listen for cart reload event (triggered after purchase to reload from Neon)
+  useEffect(() => {
+    const handleCartReload = async () => {
+      if (!user) return
+
+      // Clear the loaded flag to force reload from Neon
+      loadedFromNeonRef.current = false
+      
+      // Clear sessionStorage flag
+      try {
+        const sessionKey = `${SESSION_LOADED_KEY}_${user.uid}`
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem(sessionKey)
+        }
+      } catch (e) {
+        // Ignore sessionStorage errors
+      }
+
+      // Reload cart from Neon (which will exclude PURCHASED items)
+      try {
+        const token = await user.getIdToken()
+        if (!token) return
+
+        const response = await fetch('/api/cart', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (response.status === 404) {
+          // Profile not found - clear cart
+          setItems([])
+          return
+        }
+
+        if (!response.ok) {
+          console.warn('[useCart] Failed to reload cart from Neon:', response.status)
+          return
+        }
+
+        const data = await response.json()
+        const cartRows = data.cartItems || []
+
+        if (cartRows.length === 0) {
+          setItems([])
+          return
+        }
+
+        // Hydrate cart items from Firestore
+        const productCache = new Map<string, any>()
+        const hydratedItems: CartItem[] = []
+
+        for (const row of cartRows) {
+          const { baseSku, colorSlug, sizeSlug, quantity, unitPrice } = row
+
+          let product = productCache.get(baseSku)
+          if (!product) {
+            try {
+              product = await productService.getProductByBaseSku(baseSku)
+              if (!product) {
+                product = await productService.getProductBySku(baseSku)
+              }
+            } catch (error) {
+              console.error(`[useCart] Error fetching product ${baseSku}:`, error)
+              product = null
+            }
+            productCache.set(baseSku, product)
+          }
+
+          if (!product || !product.isEnabled) continue
+
+          const variant = colorSlug && product.colorVariants?.[colorSlug]
+          const stockBySize = variant?.stockBySize || {}
+          const maxStock = sizeSlug ? (stockBySize[sizeSlug] || 0) : 
+            Object.values(stockBySize).reduce((sum: number, stock: any) => sum + (stock || 0), 0)
+
+          const currentPrice = variant?.priceOverride || product.price
+          const currentSalePrice = variant?.salePrice || product.salePrice
+          const effectivePrice = unitPrice ? Number(unitPrice) : (currentSalePrice || currentPrice)
+          
+          const showAsSale = unitPrice && currentPrice && Number(unitPrice) < currentPrice
+
+          hydratedItems.push({
+            sku: baseSku,
+            name: {
+              en: product.title_en || '',
+              he: product.title_he || ''
+            },
+            price: currentPrice,
+            salePrice: showAsSale ? effectivePrice : (currentSalePrice || undefined),
+            currency: product.currency || 'ILS',
+            image: variant?.primaryImage || variant?.images?.[0] || '',
+            size: sizeSlug || undefined,
+            color: colorSlug || undefined,
+            quantity: quantity,
+            maxStock: maxStock
+          })
+        }
+
+        setItems(hydratedItems)
+        
+        // Mark as loaded again
+        loadedFromNeonRef.current = true
+        try {
+          const sessionKey = `${SESSION_LOADED_KEY}_${user.uid}`
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(sessionKey, 'true')
+          }
+        } catch (e) {
+          // Ignore sessionStorage errors
+        }
+      } catch (error) {
+        console.error('[useCart] Error reloading cart from Neon:', error)
+      }
+    }
+
+    window.addEventListener('cartReload', handleCartReload as EventListener)
+    
+    return () => {
+      window.removeEventListener('cartReload', handleCartReload as EventListener)
+    }
+  }, [user?.uid])
+
   // Load cart from Neon for signed-in users (Favorites-style hydration)
   useEffect(() => {
     let cancelled = false
@@ -172,9 +296,22 @@ export function useCart(): CartHook {
         return
       }
 
-      // Only load once per sign-in session
-      if (loadedFromNeonRef.current) return
+      // Check both ref and sessionStorage to prevent multiple loads
+      const sessionKey = `${SESSION_LOADED_KEY}_${user.uid}`
+      const alreadyLoaded = loadedFromNeonRef.current || 
+        (typeof window !== 'undefined' && sessionStorage.getItem(sessionKey) === 'true')
+      
+      if (alreadyLoaded) return
+      
       loadedFromNeonRef.current = true
+      // Mark as loaded in sessionStorage to persist across remounts
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(sessionKey, 'true')
+        }
+      } catch (e) {
+        // Ignore sessionStorage errors (e.g., in private browsing)
+      }
 
       try {
         const token = await user.getIdToken()
@@ -274,7 +411,7 @@ export function useCart(): CartHook {
     return () => {
       cancelled = true
     }
-  }, [user?.uid, normalizeCartItem])
+  }, [user?.uid])
 
   // Helper to sync cart item to Neon (fire-and-forget)
   const syncCartItemToNeon = useCallback(async (

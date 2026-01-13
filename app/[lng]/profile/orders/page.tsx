@@ -27,7 +27,7 @@ export default function OrdersPage() {
   const t = (translations as any)[lng] || translations.en
 
   return (
-    <div className="pt-6 pb-20 md:pb-6">
+    <div className="pt-6 pb-20 md:pb-6 mt-4">
       <Card className="shadow-[0_4px_20px_rgba(15,23,42,0.08)]">
         <CardHeader>
           <CardTitle className="text-xl md:text-2xl">{t.pageTitle}</CardTitle>

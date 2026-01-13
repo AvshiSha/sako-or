@@ -33,7 +33,16 @@ export async function POST(request: NextRequest) {
           userId = user.id;
           console.log('[CREATE_LOW_PROFILE] Linked order to confirmed user:', userId);
         } else {
-          console.log('[CREATE_LOW_PROFILE] User not confirmed or incomplete, treating as guest');
+          const missingFields = [];
+          if (!user) {
+            missingFields.push('user not found in Neon');
+          } else {
+            if (!user.firstName) missingFields.push('firstName');
+            if (!user.lastName) missingFields.push('lastName');
+            if (!user.phone) missingFields.push('phone');
+            if (!user.language) missingFields.push('language');
+          }
+          console.log('[CREATE_LOW_PROFILE] User not confirmed or incomplete, treating as guest. Missing fields:', missingFields);
         }
       } catch {
         // Treat invalid/expired token as guest checkout

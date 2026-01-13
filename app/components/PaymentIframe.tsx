@@ -44,15 +44,28 @@ export default function PaymentIframe({
   };
 
   const updateOrderBeforeRedirect = async (orderNumber?: string) => {
-    if (!orderNumber) return;
+    if (!orderNumber) {
+      console.warn('[PaymentIframe] No order number provided for status check');
+      return;
+    }
     try {
-      await fetch('/api/payments/check-status', {
+      console.log('[PaymentIframe] Checking payment status for order:', orderNumber);
+      const response = await fetch('/api/payments/check-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId: orderNumber }),
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('[PaymentIframe] Status check failed:', response.status, errorData);
+      } else {
+        const result = await response.json().catch(() => ({}));
+        console.log('[PaymentIframe] Status check completed:', result);
+      }
     } catch (updateError) {
-      console.warn('Failed to pre-update order before redirect', updateError);
+      console.error('[PaymentIframe] Failed to pre-update order before redirect', updateError);
+      // Don't throw - webhook will handle it as fallback
     }
   };
 
@@ -72,7 +85,14 @@ export default function PaymentIframe({
       const effectiveOrderId = derived.orderId || orderId;
       const effectiveLpid = derived.lpid || lowProfileId || '';
 
-      await updateOrderBeforeRedirect(effectiveOrderId);
+      // Wait for check-status to complete before redirecting
+      try {
+        await updateOrderBeforeRedirect(effectiveOrderId);
+        console.log('[PaymentIframe] Order status updated before redirect');
+      } catch (updateError) {
+        console.error('[PaymentIframe] Failed to update order status:', updateError);
+        // Continue anyway - webhook will handle it
+      }
 
       if (derived.status) {
         onPaymentComplete({
@@ -82,6 +102,9 @@ export default function PaymentIframe({
         });
       }
 
+      // Small delay to ensure status update completes and webhook can process
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       window.location.href = redirectValue;
     };
 
@@ -186,7 +209,7 @@ export default function PaymentIframe({
         src={redirectUrl}
         className={`w-full flex-1 border-0 rounded-lg ${isLoading || error ? 'hidden' : 'block'}`}
         allow="payment *; clipboard-write"
-        sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"
+        sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation" // remove allow-same-origin
         title={isHebrew ? 'דף תשלום מאובטח' : 'Secure Payment Page'}
         onLoad={() => setIsLoading(false)}
         onError={() => {

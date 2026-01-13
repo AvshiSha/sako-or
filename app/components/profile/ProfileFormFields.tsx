@@ -99,6 +99,7 @@ export function RadioGroup({
             checked={value === opt.value}
             onChange={() => onChange(opt.value)}
             disabled={disabled}
+            className="accent-[#856D55] rounded-sm"
           />
           {opt.label}
         </label>
@@ -124,7 +125,7 @@ export function Checkbox({
     <label className="flex items-start gap-3">
       <input
         type="checkbox"
-        className="mt-1 h-4 w-4"
+        className="mt-1 h-4 w-4 accent-[#856D55] rounded-sm"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         disabled={disabled}

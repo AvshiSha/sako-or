@@ -4,9 +4,12 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { trackPurchase, PurchaseUserProperties } from '@/lib/dataLayer';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { clearCartAfterPurchase } from '@/lib/cart-clear';
 
 function SuccessPageContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [orderInfo, setOrderInfo] = useState<{
     orderId?: string;
@@ -14,6 +17,7 @@ function SuccessPageContent() {
     currency?: string;
   }>({});
   const [hasTracked, setHasTracked] = useState(false);
+  const [hasClearedCart, setHasClearedCart] = useState(false);
 
   useEffect(() => {
     // Extract parameters from URL
@@ -21,6 +25,7 @@ function SuccessPageContent() {
     const orderId = searchParams?.get('orderId') || searchParams?.get('ReturnValue'); // CardCom uses ReturnValue
     const amount = searchParams?.get('amount');
     const currency = searchParams?.get('currency');
+    const responseCode = searchParams?.get('ResponseCode') || searchParams?.get('ResponeCode'); // CardCom response code (0 = success)
     
     // Debug: log all URL parameters
     console.log('Success page URL parameters:', {
@@ -28,6 +33,7 @@ function SuccessPageContent() {
       orderId,
       amount,
       currency,
+      responseCode,
       allParams: Object.fromEntries(searchParams?.entries() || [])
     });
 
@@ -42,9 +48,16 @@ function SuccessPageContent() {
       window.parent.postMessage(message, window.location.origin);
     }
 
-    if (lpid) {
-      // Verify payment status with your backend
-      verifyPaymentStatus(lpid, orderId);
+    // If ResponseCode is 0, payment was successful - verify and update status
+    if (responseCode === '0' && (lpid || orderId)) {
+      if (lpid) {
+        verifyPaymentStatus(lpid, orderId, true); // Pass paymentSucceededFromUrl flag
+      } else if (orderId) {
+        verifyPaymentStatus('', orderId, true); // Pass paymentSucceededFromUrl flag
+      }
+    } else if (lpid) {
+      // Even without ResponseCode, try to verify if we have LPID
+      verifyPaymentStatus(lpid, orderId, false);
     }
 
     setOrderInfo({
@@ -163,15 +176,75 @@ function SuccessPageContent() {
     setIsLoading(false);
   }, [searchParams, hasTracked]);
 
-  const verifyPaymentStatus = async (lpid: string, orderId?: string | null) => {
+  const verifyPaymentStatus = async (lpid: string, orderId?: string | null, paymentSucceededFromUrl: boolean = false) => {
     try {
-      console.log('Verifying payment status:', { lpid, orderId });
+      console.log('Verifying payment status:', { lpid, orderId, paymentSucceededFromUrl });
       
-      if (orderId) {
-        // Note: Email is already sent by webhook when payment completes
-        // This page is just for user confirmation - no need to send email again
-        console.log('Success page reached for order:', orderId);
-        console.log('Email should already be sent via webhook');
+      let paymentConfirmed = false;
+      
+      // First, get the order to find the orderNumber
+      if (lpid) {
+        try {
+          const statusResponse = await fetch(`/api/payments/by-low-profile-id?lpid=${encodeURIComponent(lpid)}`);
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json();
+            const orderNumber = statusData?.order?.orderNumber;
+            
+            if (orderNumber) {
+              // Call check-status with paymentSucceeded flag (we're on Success page, so payment succeeded)
+              console.log('Calling check-status for order:', orderNumber);
+              const checkStatusResponse = await fetch('/api/payments/check-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  orderId: orderNumber,
+                  paymentSucceeded: paymentSucceededFromUrl // Flag indicating payment succeeded (from Success page)
+                }),
+              }).catch(err => {
+                console.warn('Failed to check/update payment status:', err);
+                return null;
+              });
+              
+              if (checkStatusResponse?.ok) {
+                const checkStatusData = await checkStatusResponse.json().catch(() => ({}));
+                // Payment is confirmed if status is completed or if we got a successful response
+                paymentConfirmed = checkStatusData?.status === 'completed' || paymentSucceededFromUrl;
+              }
+            }
+          }
+        } catch (fetchError) {
+          console.error('Failed to verify payment status:', fetchError);
+        }
+      } else if (orderId) {
+        // If we have orderId directly, use it
+        console.log('Calling check-status for order:', orderId);
+        const checkStatusResponse = await fetch('/api/payments/check-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            orderId,
+            paymentSucceeded: paymentSucceededFromUrl // Flag indicating payment succeeded (from Success page)
+          }),
+        }).catch(err => {
+          console.warn('Failed to check/update payment status:', err);
+          return null;
+        });
+        
+        if (checkStatusResponse?.ok) {
+          const checkStatusData = await checkStatusResponse.json().catch(() => ({}));
+          // Payment is confirmed if status is completed or if we got a successful response
+          paymentConfirmed = checkStatusData?.status === 'completed' || paymentSucceededFromUrl;
+        }
+      }
+      
+      // Clear cart after payment is confirmed (only once)
+      // Also clear if paymentSucceededFromUrl is true (ResponseCode === '0') even if check-status hasn't completed
+      if ((paymentConfirmed || paymentSucceededFromUrl) && !hasClearedCart) {
+        setHasClearedCart(true);
+        // Small delay to ensure database updates are complete
+        setTimeout(() => {
+          clearCartAfterPurchase(user?.uid);
+        }, 1000);
       }
       
     } catch (error) {

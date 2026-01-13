@@ -1,3 +1,20 @@
+/**
+ * Cart Item API - Create/Update cart items
+ * 
+ * IMPORTANT: Cart Item Status Immutability Rules
+ * 
+ * - IN_CART, REMOVED, CHECKED_OUT: Mutable statuses - can be updated or reused
+ * - PURCHASED: Immutable/historical status - once set, never modified or reused
+ * 
+ * When adding items to cart:
+ * - Only search for items with mutable statuses (IN_CART, REMOVED, CHECKED_OUT)
+ * - Never update or reuse PURCHASED items
+ * - If no mutable item exists, create a new one
+ * - If creation fails due to unique constraint (PURCHASED item exists), handle gracefully
+ * 
+ * This ensures data integrity for purchase history, analytics, and automations.
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireUserAuth } from '@/lib/server/auth'
@@ -46,12 +63,37 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const where = {
-      userId_cartKey: { userId, cartKey }
-    } as const
-
-    const existing = await prisma.cartItem.findUnique({ where })
     const now = new Date()
+
+    // IMPORTANT: Only search for mutable cart items (IN_CART, REMOVED, CHECKED_OUT)
+    // PURCHASED items are immutable/historical and must never be updated or reused
+    const existing = await prisma.cartItem.findFirst({
+      where: {
+        userId,
+        cartKey,
+        // Only consider mutable statuses - PURCHASED items are immutable
+        status: {
+          in: ['IN_CART', 'REMOVED', 'CHECKED_OUT']
+        }
+      }
+    })
+
+    // Check if a PURCHASED item exists (for better error handling)
+    let purchasedItem = null
+    if (!existing) {
+      try {
+        purchasedItem = await prisma.cartItem.findFirst({
+          where: {
+            userId,
+            cartKey,
+            status: 'PURCHASED'
+          }
+        })
+      } catch (checkError) {
+        // If check fails, log but continue - we'll handle the create error if it occurs
+        console.warn('[cart/item] Error checking for PURCHASED item:', checkError)
+      }
+    }
 
     let finalQuantity: number
 
@@ -67,44 +109,163 @@ export async function POST(request: NextRequest) {
     finalQuantity = Math.max(0, finalQuantity)
 
     if (!existing) {
-      // Create new row
-      if (finalQuantity <= 0) {
-        // Create as REMOVED
-        await prisma.cartItem.create({
-          data: {
-            userId,
-            cartKey,
-            baseSku,
-            colorSlug,
-            sizeSlug,
-            quantity: 0,
-            unitPrice: unitPrice,
-            status: 'REMOVED',
-            removedAt: now
+      // No mutable cart item exists - check if PURCHASED item exists
+      if (purchasedItem) {
+        // A PURCHASED item exists - we need to create a new cart item with a modified cartKey
+        // to work around the unique constraint while preserving the original cartKey for matching
+        // Append timestamp to make it unique: {originalCartKey}::{timestamp}
+        const timestamp = Date.now()
+        const uniqueCartKey = `${cartKey}::${timestamp}`
+        
+        console.log(`[cart/item] PURCHASED item exists with cartKey: ${cartKey}. Creating new item with unique cartKey: ${uniqueCartKey}`);
+        
+        try {
+          if (finalQuantity <= 0) {
+            // Create as REMOVED
+            await prisma.cartItem.create({
+              data: {
+                userId,
+                cartKey: uniqueCartKey, // Use modified cartKey
+                baseSku,
+                colorSlug,
+                sizeSlug,
+                quantity: 0,
+                unitPrice: unitPrice,
+                status: 'REMOVED',
+                removedAt: now
+              }
+            })
+          } else {
+            // Create as IN_CART
+            await prisma.cartItem.create({
+              data: {
+                userId,
+                cartKey: uniqueCartKey, // Use modified cartKey
+                baseSku,
+                colorSlug,
+                sizeSlug,
+                quantity: finalQuantity,
+                unitPrice: unitPrice,
+                status: 'IN_CART',
+                removedAt: null
+              }
+            })
           }
+        } catch (createError: any) {
+          console.error('[cart/item] Error creating item with unique cartKey:', {
+            code: createError?.code,
+            message: createError?.message,
+            meta: createError?.meta,
+            uniqueCartKey,
+            userId
+          })
+          throw createError
+        }
+        
+        return NextResponse.json({ 
+          success: true,
+          message: 'Item added to cart (previous purchase exists as historical record)'
+        }, { status: 200 })
+      }
+
+      // No item exists at all - create a new one with original cartKey
+      try {
+        if (finalQuantity <= 0) {
+          // Create as REMOVED
+          await prisma.cartItem.create({
+            data: {
+              userId,
+              cartKey,
+              baseSku,
+              colorSlug,
+              sizeSlug,
+              quantity: 0,
+              unitPrice: unitPrice,
+              status: 'REMOVED',
+              removedAt: now
+            }
+          })
+        } else {
+          // Create as IN_CART
+          await prisma.cartItem.create({
+            data: {
+              userId,
+              cartKey,
+              baseSku,
+              colorSlug,
+              sizeSlug,
+              quantity: finalQuantity,
+              unitPrice: unitPrice,
+              status: 'IN_CART',
+              removedAt: null
+            }
+          })
+        }
+      } catch (createError: any) {
+        // Log the error for debugging
+        console.error('[cart/item] Create error:', {
+          code: createError?.code,
+          message: createError?.message,
+          meta: createError?.meta,
+          cartKey,
+          userId
         })
-      } else {
-        // Create as IN_CART
-        await prisma.cartItem.create({
-          data: {
-            userId,
-            cartKey,
-            baseSku,
-            colorSlug,
-            sizeSlug,
-            quantity: finalQuantity,
-            unitPrice: unitPrice,
-            status: 'IN_CART',
-            removedAt: null
+
+        // Fallback: If creation fails due to unique constraint, handle it
+        // This could happen if a PURCHASED item was created between our check and create
+        if (createError?.code === 'P2002') {
+          const target = createError?.meta?.target
+          const targetStr = Array.isArray(target) ? target.join(',') : String(target ?? '')
+          
+          // Check if it's the userId_cartKey constraint
+          if (targetStr.includes('userId') && targetStr.includes('cartKey')) {
+            // Race condition: PURCHASED item was created between check and create
+            // Retry with unique cartKey
+            const timestamp = Date.now()
+            const uniqueCartKey = `${cartKey}::${timestamp}`
+            console.log(`[cart/item] Race condition detected - retrying with unique cartKey: ${uniqueCartKey}`);
+            
+            try {
+              await prisma.cartItem.create({
+                data: {
+                  userId,
+                  cartKey: uniqueCartKey,
+                  baseSku,
+                  colorSlug,
+                  sizeSlug,
+                  quantity: finalQuantity,
+                  unitPrice: unitPrice,
+                  status: 'IN_CART',
+                  removedAt: null
+                }
+              })
+              return NextResponse.json({ 
+                success: true,
+                message: 'Item added to cart'
+              }, { status: 200 })
+            } catch (retryError) {
+              console.error('[cart/item] Retry with unique cartKey also failed:', retryError)
+              throw retryError
+            }
           }
-        })
+          
+          // Other unique constraint - return conflict
+          return NextResponse.json(
+            { error: 'Conflict: unique constraint violation', details: targetStr },
+            { status: 409 }
+          )
+        }
+        
+        // Re-throw if it's not a unique constraint error we can handle
+        throw createError
       }
     } else {
-      // Update existing row
+      // Update existing mutable cart item
+      // This will never be a PURCHASED item due to the where clause above
       if (finalQuantity <= 0) {
         // Mark as REMOVED
         await prisma.cartItem.update({
-          where,
+          where: { id: existing.id },
           data: {
             quantity: 0,
             status: 'REMOVED',
@@ -115,7 +276,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Update as IN_CART
         await prisma.cartItem.update({
-          where,
+          where: { id: existing.id },
           data: {
             quantity: finalQuantity,
             unitPrice: unitPrice !== null ? unitPrice : existing.unitPrice,
@@ -129,6 +290,36 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 200 })
   } catch (error: any) {
+    // Log the full error for debugging
+    console.error('[cart/item] Error:', {
+      code: error?.code,
+      message: error?.message,
+      meta: error?.meta,
+      stack: error?.stack
+    })
+
+    // Handle Prisma unique constraint violations
+    if (error?.code === 'P2002') {
+      const target = error?.meta?.target
+      const targetStr = Array.isArray(target) ? target.join(',') : String(target ?? '')
+      
+      if (targetStr.includes('userId') && targetStr.includes('cartKey')) {
+        // Unique constraint on userId + cartKey - likely a PURCHASED item exists
+        console.warn(`[cart/item] Unique constraint violation - PURCHASED item may exist with cartKey`);
+        return NextResponse.json({ 
+          success: true,
+          message: 'Item was previously purchased. Historical record exists.',
+          purchased: true
+        }, { status: 200 })
+      }
+      
+      // Other unique constraint violations
+      return NextResponse.json(
+        { error: 'Conflict: unique constraint violation' },
+        { status: 409 }
+      )
+    }
+
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to update cart item'
     const status = message.includes('Bearer token') ? 401 : 400

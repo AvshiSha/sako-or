@@ -78,7 +78,7 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
 
   // Desktop Navigation
   const DesktopNav = () => (
-    <nav className="hidden md:block md:w-64 lg:w-72 flex-shrink-0">
+    <nav className="hidden md:block md:w-64 lg:w-72 flex-shrink-0 mt-12">
       <div className="sticky top-24 space-y-2">
         {navItems.map((item) => {
           const active = isActive(item.href)

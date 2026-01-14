@@ -203,6 +203,8 @@ model Order {
   updatedAt            DateTime      @updatedAt
   emailMessageId       String?
   emailSentAt          DateTime?
+  smsSentAt            DateTime?
+  smsMessageId         String?
   subtotal             Float?
   discountTotal        Float         @default(0)
   deliveryFee          Float         @default(0)

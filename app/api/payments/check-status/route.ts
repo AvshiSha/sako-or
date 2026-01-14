@@ -4,6 +4,7 @@ import { prisma } from '../../../../lib/prisma';
 import { stringifyPaymentData } from '../../../../lib/orders';
 import { awardPointsForOrder } from '../../../../lib/points';
 import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
+import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -101,6 +102,10 @@ export async function POST(request: NextRequest) {
           }
           
           await markCartItemsAsPurchased(order.orderNumber);
+          
+          // Send confirmation email and SMS (idempotent - safe to call multiple times)
+          await handlePostPaymentActions(order.orderNumber, request.url);
+          
           return NextResponse.json({
             success: true,
             status: 'completed',
@@ -121,6 +126,10 @@ export async function POST(request: NextRequest) {
             },
           });
           await markCartItemsAsPurchased(order.orderNumber);
+          
+          // Send confirmation email and SMS (idempotent - safe to call multiple times)
+          await handlePostPaymentActions(order.orderNumber, request.url);
+          
           return NextResponse.json({
             success: true,
             status: 'completed',
@@ -228,6 +237,9 @@ export async function POST(request: NextRequest) {
 
       // Mark cart items as PURCHASED when payment is confirmed
       await markCartItemsAsPurchased(order.orderNumber);
+
+      // Send confirmation email and SMS (idempotent - safe to call multiple times)
+      await handlePostPaymentActions(order.orderNumber, request.url);
 
       return NextResponse.json({
         success: true,

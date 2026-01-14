@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
-import { sendOrderConfirmationEmailIdempotent } from '../../../../lib/email';
 import { stringifyPaymentData } from '../../../../lib/orders';
 import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
+import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,8 +73,8 @@ export async function POST(request: NextRequest) {
       await savePaymentToken(orderId, body.TokenInfo);
     }
 
-    // Send confirmation email
-    await handlePostPaymentActions(orderId, transactionData, request.url);
+    // Send confirmation email and SMS
+    await handlePostPaymentActions(orderId, request.url);
 
     return NextResponse.json({ success: true });
 
@@ -179,110 +179,3 @@ async function savePaymentToken(orderId: string, tokenInfo: any) {
   }
 }
 
-/**
- * Handle post-payment actions (emails, notifications, etc.)
- */
-async function handlePostPaymentActions(orderId: string, transactionData: any, requestUrl: string) {
-  try {
-
-    // Fetch order with items
-    const order = await prisma.order.findUnique({
-      where: { orderNumber: orderId },
-      include: { 
-        orderItems: true,
-        appliedCoupons: true
-      },
-    });
-
-    if (!order || !order.customerEmail) {
-      return;
-    }
-
-    // Fetch checkout data separately using customer email
-    const checkout = await prisma.checkout.findFirst({
-      where: { customerEmail: order.customerEmail },
-      orderBy: { createdAt: 'desc' }, // Get the most recent checkout
-    });
-
-    // Build items for template
-    const items = order.orderItems.map((item: any) => ({
-      name: item.productName,
-      quantity: item.quantity,
-      price: item.price,
-      size: item.size,
-      sku: item.productSku,
-      colorName: item.colorName || undefined,
-    }));
-
-    // Extract language from webhook URL parameters
-    const url = new URL(requestUrl);
-    const langParam = url.searchParams.get('lang');
-    const if_he = langParam === 'he' || !langParam;
-
-    // Extract customer and delivery data from checkout
-    const payer = checkout ? {
-      firstName: checkout.customerFirstName,
-      lastName: checkout.customerLastName,
-      email: checkout.customerEmail,
-      mobile: checkout.customerPhone,
-      idNumber: checkout.customerID || ''
-    } : {
-      firstName: '',
-      lastName: '',
-      email: order.customerEmail,
-      mobile: '',
-      idNumber: ''
-    };
-
-    const deliveryAddress = checkout ? {
-      city: checkout.customerCity,
-      streetName: checkout.customerStreetName,
-      streetNumber: checkout.customerStreetNumber,
-      floor: checkout.customerFloor || '',
-      apartmentNumber: checkout.customerApartment || '',
-      zipCode: checkout.customerZip || ''
-    } : {
-      city: '',
-      streetName: '',
-      streetNumber: '',
-      floor: '',
-      apartmentNumber: '',
-      zipCode: ''
-    };
-
-    // Send confirmation email with Resend (idempotent)
-    console.log(`[WEBHOOK] Processing order ${orderId} confirmation`);
-
-    const emailResult = await sendOrderConfirmationEmailIdempotent({
-      customerEmail: order.customerEmail,
-      customerName: order.customerName || '',
-      orderNumber: order.orderNumber,
-      orderDate: new Date(order.createdAt).toLocaleDateString(),
-      items: items,
-      total: order.total,
-      subtotal: order.subtotal ?? undefined,
-      deliveryFee: order.deliveryFee ?? undefined,
-      discountTotal: order.discountTotal ?? undefined,
-      coupons: order.appliedCoupons.map(coupon => ({
-        code: coupon.code,
-        discountAmount: coupon.discountAmount,
-        discountLabel: coupon.description ?? undefined,
-      })),
-      payer: payer,
-      deliveryAddress: deliveryAddress,
-      notes: checkout?.customerDeliveryNotes || undefined,
-      isHebrew: if_he,
-    }, orderId);
-
-    if (!emailResult.success) {
-      console.error(`[WEBHOOK] Failed to send email for order ${orderId}:`, 'error' in emailResult ? emailResult.error : 'Unknown error');
-    } else if ('skipped' in emailResult && emailResult.skipped) {
-      console.log(`[WEBHOOK] Email skipped for order ${orderId} - already sent`);
-    } else {
-      console.log(`[WEBHOOK] Order ${orderId} confirmation processed successfully`);
-    }
-    
-  } catch (error) {
-    console.error('Failed to handle post-payment actions:', error);
-  }
-}

@@ -8,7 +8,7 @@ import { profileTheme } from '@/app/components/profile/profileTheme'
 import ProfilePointsBlock from '@/app/components/profile/ProfilePointsBlock'
 import NewsletterSubscriptionBlock from '@/app/components/profile/NewsletterSubscriptionBlock'
 import Toast, { useToast } from '@/app/components/Toast'
-import { PencilIcon, SparklesIcon, CalendarIcon, ShoppingBagIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+import { PencilIcon, SparklesIcon, CalendarIcon, ShoppingBagIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { formatIsraelE164ToLocalDigits } from '@/lib/phone'
 
 const translations = {
@@ -20,7 +20,7 @@ const translations = {
     pointsBalance: 'Points Balance',
     personalInformation: 'Personal Information',
     addressInformation: 'Address Information',
-    recentOrders: 'Recent Orders',
+    recentOrders: 'Recent Orders on the site',
     viewAllOrders: 'View All Orders',
     noOrdersYet: 'No orders yet',
     startShopping: 'Start Shopping',
@@ -56,7 +56,7 @@ const translations = {
     pointsBalance: 'יתרת נקודות',
     personalInformation: 'מידע אישי',
     addressInformation: 'מידע כתובת',
-    recentOrders: 'הזמנות אחרונות',
+    recentOrders: 'הזמנות אחרונות באתר',
     viewAllOrders: 'צפה בכל ההזמנות',
     noOrdersYet: 'אין הזמנות עדיין',
     startShopping: 'התחל לקנות',
@@ -421,10 +421,10 @@ export default function ProfileOverviewPage() {
             <h3 className={profileTheme.sectionTitle}>{t.recentOrders}</h3>
             <Link
               href={`/${lng}/profile/orders`}
-              className="flex items-center text-sm text-indigo-600 hover:text-indigo-700"
+              className="flex items-center text-sm text-indigo-600 hover:text-indigo-700 gap-1"
             >
               {t.viewAllOrders}
-              <ArrowRightIcon className="h-4 w-4 ml-1" />
+              {lng === 'he' ? <ArrowLeftIcon className="h-4 w-4" /> : <ArrowRightIcon className="h-4 w-4" />}
             </Link>
           </div>
 

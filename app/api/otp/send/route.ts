@@ -1,12 +1,38 @@
 import { z } from 'zod';
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone';
 import { userExistsByPhone, userExistsByEmail } from '@/lib/user-check';
+import { NextRequest } from 'next/server';
 
 const requestSchema = z.object({
   otpType: z.enum(['sms', 'email']),
   otpValue: z.string().trim().min(1),
   checkUserExists: z.boolean().optional(),
+  turnstileToken: z.string().optional(),
 });
+
+// 🔐 Verify Cloudflare Turnstile token
+async function validateTurnstile(token: string, remoteip?: string) {
+  const params = new URLSearchParams();
+  params.append('secret', process.env.TURNSTILE_SECRET_KEY || '');
+  params.append('response', token);
+  if (remoteip) params.append('remoteip', remoteip);
+
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: params.toString()
+    });
+
+    const data = await resp.json();
+    return data;
+  } catch (err) {
+    console.error('[OTP SEND] Turnstile validation error:', err);
+    return { success: false, 'error-codes': ['http-error'] };
+  }
+}
 
 const INFORU_API_URL = 'https://capi.inforu.co.il/api/Otp/SendOtp';
 const INFORU_USERNAME = process.env.INFORU_USERNAME;
@@ -17,7 +43,7 @@ const COOLDOWN_MS = 60 * 1000; // 60 seconds
 // Simple in-memory cooldown store (keyed by otpValue)
 const cooldownStore = new Map<string, number>();
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const json = await request.json().catch(() => ({}));
     const parsed = requestSchema.safeParse(json);
@@ -29,7 +55,40 @@ export async function POST(request: Request) {
       );
     }
 
-    const { otpType, otpValue, checkUserExists } = parsed.data;
+    const { otpType, otpValue, checkUserExists, turnstileToken } = parsed.data;
+
+    // Check if running on localhost (skip Turnstile validation in development)
+    const host = request.headers.get('host') || '';
+    const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1') || process.env.NODE_ENV === 'development';
+
+    // 🔐 VERIFY TURNSTILE TOKEN (skip on localhost)
+    if (!isLocalhost) {
+      if (!turnstileToken) {
+        console.warn('[OTP SEND] No Turnstile token provided');
+        return Response.json(
+          { error: 'Security verification required. Please complete the verification.' },
+          { status: 400 }
+        );
+      }
+
+      // Extract client IP for Turnstile validation
+      const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+                 request.headers.get('x-real-ip') || 
+                 'unknown';
+
+      // 🔐 TURNSTILE VERIFICATION
+      const validation = await validateTurnstile(turnstileToken, ip);
+
+      if (!validation.success) {
+        console.error('[OTP SEND] Invalid Turnstile token:', validation['error-codes']);
+        return Response.json(
+          { error: 'Invalid verification. Please try again.' },
+          { status: 400 }
+        );
+      }
+    } else {
+      console.log('[OTP SEND] Skipping Turnstile validation on localhost');
+    }
 
     // Validate environment variables
     if (!INFORU_USERNAME || !INFORU_TOKEN) {

@@ -101,10 +101,11 @@ export default function OrderHistory({
   if (loading) {
     return (
       <div className={profileTheme.section} dir={dir}>
-        <div className="animate-pulse space-y-4">
-          {[...Array(variant === 'single' ? 1 : 3)].map((_, i) => (
-            <div key={i} className="h-48 bg-gray-100 rounded"></div>
-          ))}
+        <div className="min-h-[400px] flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
+            <p className="mt-4 text-gray-600">{lng === 'he' ? 'טוען…' : 'Loading…'}</p>
+          </div>
         </div>
       </div>
     )
@@ -136,16 +137,20 @@ export default function OrderHistory({
 
       {variant === 'list' && (
         <div className="space-y-8 md:space-y-10">
-          {orders.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              formatDate={formatDate}
-              formatPrice={formatPrice}
-              isRTL={isRTL}
-              translations={t}
-              lng={lng}
-            />
+          {orders.map((order, index) => (
+            <div key={order.id}>
+              <OrderCard
+                order={order}
+                formatDate={formatDate}
+                formatPrice={formatPrice}
+                isRTL={isRTL}
+                translations={t}
+                lng={lng}
+              />
+              {index < orders.length - 1 && (
+                <div className="mt-8 md:mt-10" style={{ borderTop: '2px solid #E1DBD7' }}></div>
+              )}
+            </div>
           ))}
         </div>
       )}
@@ -177,7 +182,7 @@ function OrderCard({
   return (
     <div className="bg-white rounded-xl overflow-hidden">
       {/* Order Header - Elegant and Spacious */}
-      <div className={`px-6 py-5 ${flexDirection} justify-between items-start border-b`} style={{ borderColor: '#EFEFEF' }}>
+      <div className={`px-2 py-3 ${flexDirection} justify-between items-start border-b`} style={{ borderColor: '#EFEFEF' }}>
         <div className={textAlign}>
           <p className="font-medium text-base tracking-tight uppercase" style={{ color: '#1C1C1C' }}>
             {t.orderNumber(order.orderNumber)}
@@ -200,7 +205,7 @@ function OrderCard({
           <h4 className={`text-xs mt-1 font-medium uppercase tracking-wider mb-6 ${textAlign}`} style={{ color: '#8A8A8A' }}>
             {t.products}
           </h4>
-          <div className="space-y-8">
+          <div className={`grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6 ${isRTL ? 'md:grid-flow-row' : 'md:grid-flow-row'}`}>
             {order.orderItems.map((item) => {
               // Get translated color name using colors.ts
               const translatedColor = item.colorName ? getColorName(item.colorName, lng) : null
@@ -208,22 +213,22 @@ function OrderCard({
               const sku = item.productSku || item.modelNumber
               
               return (
-                <div key={item.id} className={`${flexDirection} gap-6 ${order.orderItems.length > 1 ? 'pb-8 border-b last:border-0 last:pb-0' : ''}`} style={{ borderColor: '#EFEFEF' }}>
-                  {/* Product Image - Catalog Style, Anchored to Outer Side */}
+                <div key={item.id} className="flex flex-col bg-white rounded-xl overflow-hidden" style={{ border: '1px solid #EFEFEF' }}>
+                  {/* Product Image - At Top */}
                   {item.primaryImage && (
-                    <div className="relative w-36 h-36 md:w-40 md:h-40 flex-shrink-0 rounded-xl overflow-hidden" style={{ backgroundColor: '#FAFAFA' }}>
+                    <div className="relative w-full aspect-square rounded-t-xl overflow-hidden" style={{ backgroundColor: '#FAFAFA' }}>
                       <Image
                         src={item.primaryImage}
                         alt={item.productName}
                         fill
                         className="object-cover"
-                        sizes="160px"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       />
                     </div>
                   )}
 
                   {/* Product Details - Vertically Stacked */}
-                  <div className={`flex-1 min-w-0 ${textAlign} space-y-1.5`}>
+                  <div className={`flex-1 flex flex-col p-4 ${textAlign} space-y-2`}>
                     {/* Product Name */}
                     <p className="font-normal text-base leading-relaxed" style={{ color: '#1C1C1C', fontWeight: 400 }}>
                       {item.productName}
@@ -233,12 +238,12 @@ function OrderCard({
                     {(sku || translatedColor) && (
                       <div className="space-y-0.5">
                         {sku && (
-                          <p className="text-sm mt-0.5 font-medium" style={{ color: '#8A8A8A', fontWeight: 300 }}>
+                          <p className="text-xs font-light" style={{ color: '#8A8A8A', fontWeight: 300 }}>
                             {t.modelNumber} {sku}
                           </p>
                         )}
                         {translatedColor && (
-                          <p className="text-sm mt-0.5 font-medium" style={{ color: '#8A8A8A', fontWeight: 300 }}>
+                          <p className="text-xs font-light" style={{ color: '#8A8A8A', fontWeight: 300 }}>
                             {t.color}: {translatedColor}
                           </p>
                         )}
@@ -248,32 +253,32 @@ function OrderCard({
                     {/* Size & Quantity - Stacked Vertically */}
                     <div className="space-y-0.5">
                       {item.size && (
-                        <p className="text-sm mt-0.5 font-medium" style={{ color: '#8A8A8A', fontWeight: 300 }}>
+                        <p className="text-xs font-light" style={{ color: '#8A8A8A', fontWeight: 300 }}>
                           {t.size} {item.size}
                         </p>
                       )}
-                      <p className="text-sm mt-0.5 font-medium" style={{ color: '#8A8A8A', fontWeight: 300 }}>
+                      <p className="text-xs font-light" style={{ color: '#8A8A8A', fontWeight: 300 }}>
                         {t.quantity} {item.quantity}
                       </p>
                     </div>
-                  </div>
 
-                  {/* Price - On Outer Side (Right for LTR, Left for RTL) */}
-                  <div className={`flex-shrink-0 ${priceAlign}`}>
-                    {item.salePrice && item.salePrice < item.price ? (
-                      <div className="space-y-0.5">
-                        <span className="text-xs line-through font-light block" style={{ color: '#8A8A8A' }}>
+                    {/* Price - At Bottom */}
+                    <div className={`mt-auto pt-3 ${textAlign}`}>
+                      {item.salePrice && item.salePrice < item.price ? (
+                        <div className={`space-y-0.5 ${textAlign}`}>
+                          <span className="text-xs line-through font-light block" style={{ color: '#8A8A8A' }}>
+                            {formatPrice(item.price, order.currency)}
+                          </span>
+                          <span className="text-base font-medium tracking-tight" style={{ color: '#1C1C1C', fontWeight: 500 }}>
+                            {formatPrice(item.salePrice, order.currency)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-base font-medium tracking-tight" style={{ color: '#1C1C1C', fontWeight: 500 }}>
                           {formatPrice(item.price, order.currency)}
                         </span>
-                        <span className="text-sm font-medium tracking-tight" style={{ color: '#1C1C1C', fontWeight: 500 }}>
-                          {formatPrice(item.salePrice, order.currency)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-sm font-medium tracking-tight" style={{ color: '#1C1C1C', fontWeight: 500 }}>
-                        {formatPrice(item.price, order.currency)}
-                      </span>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               )
@@ -282,14 +287,14 @@ function OrderCard({
         </div>
 
         {/* Side Column: Order Summary - Sticky on Desktop (Left for RTL, Right for LTR) */}
-        <div className={`mt-8 lg:mt-4 ${isRTL ? 'lg:order-2' : 'lg:order-2'}`}>
+        <div className={`mt-6 lg:mt-10 ${isRTL ? 'lg:order-2' : 'lg:order-2'}`}>
           <div className="lg:sticky lg:top-6">
-            <div className="bg-white rounded-lg p-12 -mx-6" style={{ border: '1px solid #EFEFEF' }}>
+            <div className="bg-white rounded-lg py-12 px-8 -mx-6 border-b" style={{ border: '4px solid #E1DBD7' }}>
               <h4 className={`text-md font-medium uppercase tracking-wider mb-6  ${textAlign}`} style={{ color: '#8A8A8A' }}>
                 {t.total}
               </h4>
               
-              <div className={`space-y-3 ${textAlign}`}>
+              <div className={`space-y-4 ${textAlign}`}>
                 {order.subtotal !== null && (
                   <div className={`${flexDirection} justify-between text-sm`}>
                     <span className="font-light" style={{ color: '#8A8A8A' }}>{t.subtotal}</span>
@@ -341,7 +346,7 @@ function OrderCard({
                 </div>
 
                 {/* Final Total - Thin Divider, Refined Emphasis */}
-                <div className={`${flexDirection} justify-between pt-4 mt-4`} style={{ borderTop: '1px solid #EFEFEF' }}>
+                <div className={`${flexDirection} justify-between mt-6`} style={{ borderTop: '1px solid #EFEFEF' }}>
                   <span className="font-semibold text-base" style={{ color: '#1C1C1C' }}>{t.total}</span>
                   <span className="font-semibold text-base tracking-tight" style={{ color: '#1C1C1C', fontWeight: 600 }}>
                     {formatPrice(order.total, order.currency)}

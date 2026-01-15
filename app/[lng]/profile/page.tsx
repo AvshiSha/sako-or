@@ -481,12 +481,12 @@ export default function ProfileOverviewPage() {
 
       {/* Order History Section */}
       <div className={profileTheme.card}>
-        <div className="flex items-center justify-between mb-4 px-5 pt-5 sm:px-6 sm:pt-6 md:px-8 md:pt-6">
-          <h3 className={profileTheme.sectionTitle}>{t.orderHistory}</h3>
+        <div className="flex items-center justify-between flex-nowrap mb-2 px-4 pt-4 sm:px-6 sm:pt-6 md:px-8 md:pt-4 gap-2">
+          <h3 className={`${profileTheme.sectionTitle} mb-0 flex-shrink-0`}>{t.orderHistory}</h3>
           {orders.length > 0 && (
             <Link
               href={`/${lng}/profile/orders`}
-              className="flex items-center text-sm text-indigo-600 hover:text-indigo-700 gap-1"
+              className="flex items-center text-sm text-indigo-600 hover:text-indigo-700 gap-0.5 flex-shrink-0 whitespace-nowrap"
             >
               {t.viewAllOrders}
               {lng === 'he' ? <ArrowLeftIcon className="h-4 w-4" /> : <ArrowRightIcon className="h-4 w-4" />}

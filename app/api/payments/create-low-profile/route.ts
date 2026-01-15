@@ -139,7 +139,8 @@ export async function POST(request: NextRequest) {
             // Parse SKU to get base SKU
             const parsedSku = parseSku(item.productSku);
             const baseSku = parsedSku.baseSku || item.productSku;
-            const colorSlug = item.color || parsedSku.colorSlug;
+            // Convert colorName to colorSlug (lowercase, for Firebase lookup)
+            const colorSlug = item.color || (parsedSku.colorName ? parsedSku.colorName.toLowerCase() : null);
 
             // Fetch product from Firebase
             const product = await productService.getProductByBaseSku(baseSku);

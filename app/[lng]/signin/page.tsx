@@ -9,11 +9,8 @@ import {
   getRedirectResult,
   signInWithPopup,
   signInWithRedirect,
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
   signInWithCustomToken,
   type User,
-  type ConfirmationResult
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -34,7 +31,7 @@ const translations = {
     tabGoogle: 'Google',
     // Phone
     phoneLabel: 'Phone number',
-    phonePlaceholder: 'Enter phone number',
+    phonePlaceholder: '0501234567 or 501234567',
     sendCodeToPhone: 'Send code to phone',
     codeSentToPhone: 'Code sent to {phone}',
     // Email
@@ -75,7 +72,7 @@ const translations = {
     tabGoogle: 'Google',
     // Phone
     phoneLabel: 'מספר טלפון',
-    phonePlaceholder: 'הזינו מספר טלפון',
+    phonePlaceholder: '0501234567',
     sendCodeToPhone: 'שלח קוד לטלפון',
     codeSentToPhone: 'קוד נשלח ל-{phone}',
     // Email
@@ -159,9 +156,8 @@ function SignInClient() {
 
   // Phone state
   const [phoneLocalNumber, setPhoneLocalNumber] = useState('') // Local number only (8-9 digits)
-  const [phoneConfirmationResult, setPhoneConfirmationResult] = useState<ConfirmationResult | null>(null)
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false)
   const [phoneCode, setPhoneCode] = useState('')
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null)
 
   // Email state
   const [email, setEmail] = useState('')
@@ -191,51 +187,7 @@ function SignInClient() {
     }
   }, [resendCooldown])
 
-  // Initialize recaptcha verifier for phone auth
-  useEffect(() => {
-    if (activeTab !== 'phone') return
-
-    const initVerifier = () => {
-      let container = document.getElementById('recaptcha-container')
-      
-      if (!container) {
-        container = document.createElement('div')
-        container.id = 'recaptcha-container'
-        container.style.display = 'none'
-        document.body.appendChild(container)
-      }
-
-      try {
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible'
-        })
-        setRecaptchaVerifier(verifier)
-        return () => {
-          try {
-            verifier.clear()
-          } catch {
-            // Ignore cleanup errors
-          }
-        }
-      } catch (err) {
-        console.error('Error initializing RecaptchaVerifier:', err)
-        return undefined
-      }
-    }
-
-    let cleanup = initVerifier()
-    if (!cleanup) {
-      const timer = setTimeout(() => {
-        cleanup = initVerifier()
-      }, 100)
-      return () => {
-        clearTimeout(timer)
-        if (cleanup) cleanup()
-      }
-    }
-
-    return cleanup
-  }, [activeTab])
+  // No longer need recaptcha verifier for Inforu OTP
 
   // Reset state when switching tabs
   useEffect(() => {
@@ -244,7 +196,7 @@ function SignInClient() {
     setEmailError(null)
     if (activeTab === 'phone') {
       setPhoneCode('')
-      setPhoneConfirmationResult(null)
+      setPhoneOtpSent(false)
     } else if (activeTab === 'email') {
       setEmailCode('')
       setEmailOtpSent(false)
@@ -362,77 +314,115 @@ function SignInClient() {
 
   // Phone authentication handlers
   async function handleSendPhoneCode() {
-    if (!phoneLocalNumber || phoneLocalNumber.length < 8 || !recaptchaVerifier) {
+    // Validate: 8-9 digits without 0 prefix, or 9-10 digits with 0 prefix
+    const digitsOnly = phoneLocalNumber.replace(/\D/g, '')
+    const hasZeroPrefix = digitsOnly.startsWith('0')
+    const digitCount = digitsOnly.length
+    
+    if (!phoneLocalNumber || (hasZeroPrefix && (digitCount < 9 || digitCount > 10)) || (!hasZeroPrefix && (digitCount < 8 || digitCount > 9))) {
       setPhoneError('Please enter a valid phone number')
       return
     }
 
-    // Construct full E.164 number: +972 + local number
-    const fullPhoneNumber = `+972${phoneLocalNumber}`
-    const verifier = recaptchaVerifier // Type narrowing
+    if (resendCooldown > 0) {
+      setPhoneError(t.cooldownMessage.replace('{seconds}', String(resendCooldown)))
+      return
+    }
+
+    // Use phone as-is (may have 0 prefix or not) - Inforu accepts both formats
+    const phoneForInforu = phoneLocalNumber.startsWith('0') ? phoneLocalNumber : `0${phoneLocalNumber}`
 
     setBusy(true)
     setError(null)
     setPhoneError(null)
 
     try {
-      // First, check if user exists
-      const checkRes = await fetch('/api/auth/check-phone-user', {
+      // Call Inforu OTP send endpoint with user existence check (sign-in requires existing user)
+      const res = await fetch('/api/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhoneNumber }),
+        body: JSON.stringify({ 
+          otpType: 'sms', 
+          otpValue: phoneForInforu,
+          checkUserExists: true // Sign-in requires existing user
+        }),
       })
 
-      const checkData = await checkRes.json().catch(() => null)
+      const data = await res.json().catch(() => null)
 
-      if (!checkRes.ok) {
-        if (checkRes.status === 404 && checkData?.error === 'USER_NOT_FOUND') {
+      if (!res.ok) {
+        // Handle specific error codes
+        if (res.status === 404 && data?.error === 'USER_NOT_FOUND') {
           setPhoneError(t.phoneNotRegistered)
+        } else if (res.status === 429) {
+          if (data?.error === 'COOLDOWN') {
+            const cooldownSeconds = data.message?.match(/\d+/)?.[0] || '60'
+            setResendCooldown(parseInt(cooldownSeconds))
+            setPhoneError(data.message || t.cooldownMessage.replace('{seconds}', cooldownSeconds))
+          } else {
+            setPhoneError(data?.message || t.tooManyAttempts)
+          }
         } else {
-          setPhoneError(checkData?.message || t.errorSendingCode)
+          setPhoneError(data?.message || t.errorSendingCode)
         }
         return
       }
 
-      // User exists, proceed with Firebase phone auth
-      await verifier.render()
-      const confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier)
-      setPhoneConfirmationResult(confirmationResult)
+      setPhoneOtpSent(true)
       setResendCooldown(60)
     } catch (err: any) {
-      const code = typeof err?.code === 'string' ? err.code : ''
-      if (code === 'auth/invalid-phone-number') {
-        setPhoneError('Invalid phone number. Please check and try again.')
-      } else if (code === 'auth/too-many-requests') {
-        setPhoneError(t.tooManyAttempts)
-        setResendCooldown(60)
-      } else {
-        setPhoneError(formatAuthError(err, t.errorSendingCode))
-      }
+      setPhoneError(formatAuthError(err, t.errorSendingCode))
     } finally {
       setBusy(false)
     }
   }
 
   async function handleVerifyPhoneCode() {
-    if (!phoneConfirmationResult || !phoneCode || phoneCode.length !== 6) {
+    if (!phoneCode || phoneCode.length !== 6) {
       setError('Please enter the 6-digit code')
       return
     }
+
+    // Use phone as-is (may have 0 prefix or not) - Inforu accepts both formats
+    const phoneForInforu = phoneLocalNumber.startsWith('0') ? phoneLocalNumber : `0${phoneLocalNumber}`
 
     setBusy(true)
     setError(null)
 
     try {
-      const userCredential = await phoneConfirmationResult.confirm(phoneCode)
+      const res = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          otpType: 'sms', 
+          otpValue: phoneForInforu,
+          otpCode: phoneCode,
+          requireUserExists: true // Sign-in requires existing user
+        }),
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok || !data || !data.ok) {
+        // Check for expired code specifically
+        if (data?.error === 'CODE_EXPIRED') {
+          throw new Error('CODE_EXPIRED')
+        }
+        throw new Error(data?.error || 'Failed to verify code')
+      }
+
+      // Sign in with custom token
+      const userCredential = await signInWithCustomToken(auth, data.customToken)
       setGate('checking')
       await postLoginRedirect(userCredential.user)
     } catch (err: any) {
-      const code = typeof err?.code === 'string' ? err.code : ''
-      if (code === 'auth/invalid-verification-code') {
-        setError(t.invalidCode)
-      } else if (code === 'auth/code-expired') {
+      const msg = typeof err?.message === 'string' ? err.message : ''
+      if (msg === 'CODE_EXPIRED' || msg.includes('CODE_EXPIRED')) {
         setError(t.codeExpired)
+      } else if (msg.includes('Invalid') || msg.includes('expired')) {
+        setError(t.invalidCode)
+      } else if (msg.includes('not registered')) {
+        setError(t.phoneNotRegistered)
       } else {
         setError(formatAuthError(err, t.errorVerifying))
       }
@@ -461,10 +451,15 @@ function SignInClient() {
     setEmailError(null)
 
     try {
-      const res = await fetch('/api/auth/send-email-otp', {
+      // Call Inforu OTP send endpoint with user existence check (sign-in requires existing user)
+      const res = await fetch('/api/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: trimmedEmail, lng }),
+        body: JSON.stringify({ 
+          otpType: 'email', 
+          otpValue: trimmedEmail,
+          checkUserExists: true // Sign-in requires existing user
+        }),
       })
 
       const data = await res.json().catch(() => null)
@@ -475,7 +470,9 @@ function SignInClient() {
           setEmailError(t.emailNotRegistered)
         } else if (res.status === 429) {
           if (data?.error === 'COOLDOWN') {
-            setEmailError(data.message || t.cooldownMessage.replace('{seconds}', String(resendCooldown)))
+            const cooldownSeconds = data.message?.match(/\d+/)?.[0] || '60'
+            setResendCooldown(parseInt(cooldownSeconds))
+            setEmailError(data.message || t.cooldownMessage.replace('{seconds}', cooldownSeconds))
           } else {
             setEmailError(data?.message || t.tooManyAttempts)
           }
@@ -504,15 +501,24 @@ function SignInClient() {
     setError(null)
 
     try {
-      const res = await fetch('/api/auth/verify-email-otp', {
+      const res = await fetch('/api/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), code: emailCode }),
+        body: JSON.stringify({ 
+          otpType: 'email', 
+          otpValue: email.trim(), 
+          otpCode: emailCode,
+          requireUserExists: true // Sign-in requires existing user
+        }),
       })
 
       const data = await res.json().catch(() => null)
 
       if (!res.ok || !data || !data.ok) {
+        // Check for expired code specifically
+        if (data?.error === 'CODE_EXPIRED') {
+          throw new Error('CODE_EXPIRED')
+        }
         throw new Error(data?.error || 'Failed to verify code')
       }
 
@@ -521,7 +527,16 @@ function SignInClient() {
       setGate('checking')
       await postLoginRedirect(userCredential.user)
     } catch (err: any) {
-      setError(formatAuthError(err, t.errorVerifying))
+      const msg = typeof err?.message === 'string' ? err.message : ''
+      if (msg === 'CODE_EXPIRED' || msg.includes('CODE_EXPIRED')) {
+        setError(t.codeExpired)
+      } else if (msg.includes('Invalid') || msg.includes('expired')) {
+        setError(t.invalidCode)
+      } else if (msg.includes('not registered')) {
+        setError(t.emailNotRegistered)
+      } else {
+        setError(formatAuthError(err, t.errorVerifying))
+      }
       setGate('idle')
     } finally {
       setBusy(false)
@@ -610,7 +625,7 @@ function SignInClient() {
 
         <div className="mt-4 rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur p-6">
           {error ? (
-            <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className={`mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
               {error}
             </div>
           ) : null}
@@ -622,7 +637,7 @@ function SignInClient() {
             </TabsList>
 
             <TabsContent value="phone" className="space-y-4">
-              {!phoneConfirmationResult ? (
+              {!phoneOtpSent ? (
                 <>
                   <div>
                     <label className={profileTheme.label} dir={isRTL ? 'rtl' : 'ltr'}>{t.phoneLabel}</label>
@@ -636,7 +651,7 @@ function SignInClient() {
                       />
                     </div>
                     {phoneError && (
-                      <p className="mt-1.5 text-sm text-red-600" dir={isRTL ? 'rtl' : 'ltr'}>
+                      <p className={`mt-1.5 text-sm text-red-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
                         {phoneError}
                       </p>
                     )}
@@ -644,7 +659,7 @@ function SignInClient() {
                   <button
                     type="button"
                     onClick={handleSendPhoneCode}
-                    disabled={busy || !phoneLocalNumber || phoneLocalNumber.length < 8}
+                    disabled={busy || !phoneLocalNumber || (phoneLocalNumber.replace(/\D/g, '').length < 8)}
                     className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {busy ? t.sending : t.sendCodeToPhone}
@@ -652,8 +667,8 @@ function SignInClient() {
                 </>
               ) : (
                 <>
-                  <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                    {t.codeSentToPhone.replace('{phone}', phoneLocalNumber ? `+972${phoneLocalNumber}` : '')}
+                  <div className={`rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                    {t.codeSentToPhone.replace('{phone}', phoneLocalNumber ? (phoneLocalNumber.startsWith('0') ? phoneLocalNumber : `0${phoneLocalNumber}`) : '')}
                   </div>
                   <div>
                     <label className={profileTheme.label} dir={isRTL ? 'rtl' : 'ltr'}>{t.enterCode}</label>
@@ -704,7 +719,7 @@ function SignInClient() {
                       disabled={busy}
                     />
                     {emailError && (
-                      <p className="mt-1.5 text-sm text-red-600" dir={isRTL ? 'rtl' : 'ltr'}>
+                      <p className={`mt-1.5 text-sm text-red-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
                         {emailError}
                       </p>
                     )}
@@ -720,7 +735,7 @@ function SignInClient() {
                 </>
               ) : (
                 <>
-                  <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                  <div className={`rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
                     {t.codeSentToEmail.replace('{email}', email)}
                   </div>
                   <div>
@@ -806,7 +821,6 @@ function SignInClient() {
           </div>
         </div>
       </div>
-      <div id="recaptcha-container" style={{ display: 'none' }} />
     </div>
   )
 }

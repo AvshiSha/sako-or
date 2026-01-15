@@ -44,9 +44,9 @@ const translations = {
     email: 'Email Address',
     confirmEmail: 'Confirm Email Address',
     password: 'Password',
-    passwordPlaceholder: 'At least 6 characters',
+    emailPlaceholder: 'name@example.com',
     phone: 'Phone Number',
-    phonePlaceholder: '501234567',
+    phonePlaceholder: '0501234567',
     prefferedStyle: 'I am primarily interested in:',
     mens: 'Mens',
     womens: 'Womens',
@@ -101,9 +101,9 @@ const translations = {
     email: 'כתובת אימייל',
     confirmEmail: 'אימות כתובת אימייל',
     password: 'סיסמה',
-    passwordPlaceholder: 'לפחות 6 תווים',
+    emailPlaceholder: 'name@example.com',
     phone: 'מספר טלפון',
-    phonePlaceholder: '501234567',
+    phonePlaceholder: '0501234567',
     prefferedStyle: 'בעיקר מתעניין ב:',
     mens: 'מוצרים לגבר',
     womens: 'מוצרים לנשים',
@@ -246,6 +246,15 @@ export default function SignUpPage() {
   }, [birthYear, birthMonth, birthDay])
 
   // Validation
+  // Helper function to normalize phone number (handles both 0-prefixed and non-prefixed)
+  const normalizePhoneForValidation = (phone: string): string | null => {
+    if (!phone.trim()) return null
+    // If phone starts with 0, use it as-is; otherwise add 0 prefix
+    const phoneWithZero = phone.startsWith('0') ? phone : `0${phone}`
+    // normalizeIsraelE164 handles 0XXXXXXXXX format and converts to +972XXXXXXXXX
+    return normalizeIsraelE164(phoneWithZero)
+  }
+
   const validationErrors = useMemo(() => {
     const normalizeEmail = (v: string) => v.trim().toLowerCase()
     const isValidEmail = (v: string) => /\S+@\S+\.\S+/.test(v)
@@ -258,12 +267,14 @@ export default function SignUpPage() {
     } else if (!isValidEmail(normalizeEmail(email))) {
       errors.email = t.emailInvalid
     }
-    // Construct full E.164 number from local number
-    const fullPhone = phoneLocalNumber ? `+972${phoneLocalNumber}` : ''
+    // Validate phone number (handles both 0-prefixed and non-prefixed)
     if (!phoneLocalNumber.trim()) {
       errors.phone = t.phoneRequired
-    } else if (!isValidIsraelE164(fullPhone)) {
-      errors.phone = t.phoneInvalid
+    } else {
+      const normalizedPhone = normalizePhoneForValidation(phoneLocalNumber)
+      if (!normalizedPhone) {
+        errors.phone = t.phoneInvalid
+      }
     }
     if (!language.trim()) errors.language = t.languageRequired
     if (!birthYear || !birthMonth || !birthDay) {
@@ -324,8 +335,8 @@ export default function SignUpPage() {
 
   async function storeSignupDataAndRedirectToSmsVerify(user: User) {
     // Store pending signup data in sessionStorage
-    const fullPhone = phoneLocalNumber ? `+972${phoneLocalNumber}` : ''
-    const normalizedPhone = normalizeIsraelE164(fullPhone) || ''
+    // Normalize phone (handles both 0-prefixed and non-prefixed)
+    const normalizedPhone = normalizePhoneForValidation(phoneLocalNumber) || ''
     const pendingSignup = {
       uid: user.uid,
       firstName: firstName.trim(),
@@ -472,8 +483,8 @@ export default function SignUpPage() {
       let user: User | null = firebaseUser
 
       const normalizedEmail = email.trim().toLowerCase()
-      const fullPhone = phoneLocalNumber ? `+972${phoneLocalNumber}` : ''
-      const normalizedPhone = normalizeIsraelE164(fullPhone)
+      // Normalize phone (handles both 0-prefixed and non-prefixed)
+      const normalizedPhone = normalizePhoneForValidation(phoneLocalNumber)
 
       if (!normalizedPhone) {
         setError('Invalid phone number format')
@@ -505,8 +516,8 @@ export default function SignUpPage() {
       if (!isSignedInWithGoogle && !firebaseUser) {
         // Store the signup data and proceed to SMS verification
         // The account will be created server-side during SMS verification
-        const fullPhone = phoneLocalNumber ? `+972${phoneLocalNumber}` : ''
-        const normalizedPhone = normalizeIsraelE164(fullPhone) || ''
+        // Normalize phone (handles both 0-prefixed and non-prefixed)
+        const normalizedPhone = normalizePhoneForValidation(phoneLocalNumber) || ''
         const pendingSignup = {
           email: normalizedEmail,
           firstName: firstName.trim(),
@@ -738,6 +749,9 @@ export default function SignUpPage() {
                       id="email"
                       type="email"
                       value={email}
+                      placeholder={t.emailPlaceholder}
+                      dir="ltr"
+                      style={{ direction: 'ltr', textAlign: 'left' }}
                       onChange={(e) => {
                         setTouched((prev) => ({ ...prev, email: true }))
                         setEmail(e.target.value)

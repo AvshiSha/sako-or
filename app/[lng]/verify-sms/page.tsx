@@ -5,13 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import ProfileShell from '@/app/components/profile/ProfileShell'
 import { profileTheme } from '@/app/components/profile/profileTheme'
-import {
-  PhoneAuthProvider,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  updatePhoneNumber,
-  ConfirmationResult
-} from 'firebase/auth'
+import { signInWithCustomToken } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 
 const translations = {
@@ -121,17 +115,16 @@ export default function VerifySmsPage() {
   const params = useParams()
   const lng = (params?.lng as string) || 'en'
   const t = translations[lng as keyof typeof translations] || translations.en
+  const isRTL = lng === 'he'
 
   const { user: firebaseUser, loading: authLoading } = useAuth()
 
   const [pendingSignup, setPendingSignup] = useState<PendingSignup | null>(null)
-  const [verificationId, setVerificationId] = useState<string | null>(null) // For Google signup flow
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null) // For email-only flow
+  const [otpSent, setOtpSent] = useState(false)
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState<RecaptchaVerifier | null>(null)
   const hasAttemptedSendRef = useRef(false)
 
   // Cooldown timer
@@ -176,289 +169,159 @@ export default function VerifySmsPage() {
     }
   }, [firebaseUser, authLoading, router, lng])
 
-  // Initialize recaptcha verifier once
-  useEffect(() => {
-    // Wait for container to be in DOM
-    const initVerifier = () => {
-      let container = document.getElementById('recaptcha-container')
-      
-      // Create container if it doesn't exist
-      if (!container) {
-        container = document.createElement('div')
-        container.id = 'recaptcha-container'
-        container.style.display = 'none'
-        document.body.appendChild(container)
-      }
-
-      try {
-        console.log('🔵 [RECAPTCHA] Initializing RecaptchaVerifier')
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-          size: 'invisible'
-        })
-        console.log('✅ [RECAPTCHA] RecaptchaVerifier created')
-
-        setRecaptchaVerifier(verifier)
-
-        return () => {
-          try {
-            verifier.clear()
-          } catch {
-            // Ignore cleanup errors
-          }
-        }
-      } catch (err) {
-        console.error('Error initializing RecaptchaVerifier:', err)
-        return undefined
-      }
-    }
-
-    // Try immediately, then retry after a short delay if needed
-    let cleanup = initVerifier()
-    if (!cleanup) {
-      const timer = setTimeout(() => {
-        cleanup = initVerifier()
-      }, 100)
-      return () => {
-        clearTimeout(timer)
-        if (cleanup) cleanup()
-      }
-    }
-
-    return cleanup
-  }, [])
+  // No longer need recaptcha verifier for Inforu OTP
 
   // Auto-send SMS when component is ready (only once)
   useEffect(() => {
-    console.log('🔵 [AUTO-SEND] Effect triggered', {
-      pendingSignup: !!pendingSignup,
-      verificationId: !!verificationId,
-      confirmationResult: !!confirmationResult,
-      busy,
-      hasAttemptedSend: hasAttemptedSendRef.current,
-      recaptchaVerifier: !!recaptchaVerifier
-    })
-
-    if (!pendingSignup || verificationId || confirmationResult || busy || hasAttemptedSendRef.current || !recaptchaVerifier) {
-      console.log('🔵 [AUTO-SEND] Skipping - conditions not met')
+    if (!pendingSignup || otpSent || busy || hasAttemptedSendRef.current) {
       return
     }
 
-    console.log('🔵 [AUTO-SEND] Setting up timer to send SMS')
     const timer = setTimeout(() => {
-      if (!hasAttemptedSendRef.current && recaptchaVerifier) {
-        console.log('🔵 [AUTO-SEND] Timer fired - calling sendSmsCode')
+      if (!hasAttemptedSendRef.current) {
         hasAttemptedSendRef.current = true
         void sendSmsCode()
       }
     }, 500)
 
     return () => {
-      console.log('🔵 [AUTO-SEND] Cleanup - clearing timer')
       clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingSignup, verificationId, confirmationResult, busy, recaptchaVerifier])
+  }, [pendingSignup, otpSent, busy])
 
   async function sendSmsCode() {
-    console.log('🔵 [SEND-SMS] sendSmsCode called', {
-      firebaseUser: !!firebaseUser,
-      pendingSignup: !!pendingSignup,
-      hasUid: !!pendingSignup?.uid,
-      phone: pendingSignup?.phone,
-      recaptchaVerifier: !!recaptchaVerifier,
-      hasAttemptedSend: hasAttemptedSendRef.current
-    })
-
-    if (!pendingSignup || !recaptchaVerifier) {
-      console.log('❌ [SEND-SMS] Missing required values, returning')
+    if (!pendingSignup) {
       return
     }
 
-    // Determine flow: Google signup (has uid and firebaseUser) vs email-only (no uid)
-    const isGoogleSignup = pendingSignup.uid && firebaseUser && pendingSignup.uid === firebaseUser.uid
+    if (resendCooldown > 0) {
+      return
+    }
 
-    console.log('🔵 [SEND-SMS] Setting busy=true, clearing error')
     setBusy(true)
     setError(null)
 
     try {
-      console.log('🔵 [SEND-SMS] Current origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A')
-      console.log('🔵 [SEND-SMS] Auth domain:', auth.app.options.authDomain)
-      console.log('🔵 [SEND-SMS] RecaptchaVerifier state:', {
-        type: recaptchaVerifier?.type,
-        destroyed: (recaptchaVerifier as any)?._destroyed
-      })
-      
-      // Ensure reCAPTCHA is rendered first (for invisible, this is usually automatic but let's be explicit)
-      try {
-        console.log('🔵 [SEND-SMS] Rendering reCAPTCHA verifier...')
-        await recaptchaVerifier.render()
-        console.log('✅ [SEND-SMS] reCAPTCHA rendered successfully')
-      } catch (renderErr: any) {
-        console.warn('⚠️ [SEND-SMS] reCAPTCHA render warning (may be already rendered):', renderErr?.message)
-        // Continue anyway - it might already be rendered
-      }
-      
-      if (isGoogleSignup) {
-        // Google signup flow: user exists, use PhoneAuthProvider to update phone
-        console.log('🔵 [SEND-SMS] Google signup flow - using PhoneAuthProvider.verifyPhoneNumber')
-        const provider = new PhoneAuthProvider(auth)
-        
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('verifyPhoneNumber timeout after 30s')), 30000)
-        })
-        
-        const verId = await Promise.race([
-          provider.verifyPhoneNumber(pendingSignup.phone, recaptchaVerifier),
-          timeoutPromise
-        ]) as string
-        
-        console.log('✅ [SEND-SMS] verifyPhoneNumber succeeded!')
-        setVerificationId(verId)
-      } else {
-        // Email-only flow: no user exists, use signInWithPhoneNumber to create user
-        console.log('🔵 [SEND-SMS] Email-only flow - using signInWithPhoneNumber', { 
-          phone: pendingSignup.phone
-        })
-        
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('signInWithPhoneNumber timeout after 30s')), 30000)
-        })
-        
-        const confirmation = await Promise.race([
-          signInWithPhoneNumber(auth, pendingSignup.phone, recaptchaVerifier),
-          timeoutPromise
-        ]) as ConfirmationResult
-        
-        console.log('✅ [SEND-SMS] signInWithPhoneNumber succeeded!', { 
-          confirmationResult: !!confirmation
-        })
-        setConfirmationResult(confirmation)
-      }
-      
-      setResendCooldown(60)
-    } catch (err: any) {
-      console.error('❌ [SEND-SMS] Error sending SMS:', err)
-      console.error('❌ [SEND-SMS] Error details:', {
-        name: err?.name,
-        message: err?.message,
-        code: err?.code,
-        stack: err?.stack?.substring(0, 300),
-        customData: err?.customData,
-        response: err?.response,
-        serverResponse: err?.serverResponse,
-        errorInfo: err?.errorInfo
-      })
-      
-      // Try to get the actual error response body if available
-      if (err?.customData?.serverResponse) {
-        try {
-          const serverResponse = typeof err.customData.serverResponse === 'string' 
-            ? JSON.parse(err.customData.serverResponse)
-            : err.customData.serverResponse
-          console.error('❌ [SEND-SMS] Server response:', serverResponse)
-        } catch (e) {
-          console.error('❌ [SEND-SMS] Raw server response:', err.customData.serverResponse)
-        }
-      }
-      
-      const code = typeof err?.code === 'string' ? err.code : ''
-      const msg = typeof err?.message === 'string' ? err.message : ''
-      
-      // Check for specific error patterns
-      if (msg.includes('400') || msg.includes('Bad Request') || code === 'auth/invalid-app-credential') {
-        console.error('❌ [SEND-SMS] 400 Bad Request - This might indicate:')
-        console.error('  1. Invalid API key or API key restrictions')
-        console.error('  2. Domain not authorized in Firebase Console')
-        console.error('  3. reCAPTCHA Enterprise not properly configured')
-        console.error('  4. reCAPTCHA site key mismatch')
-        console.error('  5. Check Firebase Console → Authentication → Settings → reCAPTCHA')
+      // Convert phone to local format if needed (Inforu accepts both formats)
+      // pendingSignup.phone is already in E.164 format (+972XXXXXXXXX)
+      // Convert to local format (0XXXXXXXXX) for Inforu
+      let phoneForInforu = pendingSignup.phone
+      if (phoneForInforu.startsWith('+972')) {
+        phoneForInforu = '0' + phoneForInforu.slice(4)
       }
 
-      if (code === 'auth/invalid-app-credential') {
-        setError(t.invalidAppCredential)
-      } else if (code === 'auth/too-many-requests') {
-        setError(t.tooManyAttempts)
-        hasAttemptedSendRef.current = true
-        setResendCooldown(60)
-      } else if (code === 'auth/internal-error' || msg.includes('recaptcha') || msg.includes('already been rendered')) {
-        setError(t.recaptchaError)
-      } else if (msg.includes('400') || msg.includes('Bad Request') || code === 'auth/network-request-failed') {
-        setError('Phone verification failed. Please check: 1) API key restrictions in Firebase Console, 2) Domain authorization (localhost), 3) reCAPTCHA configuration.')
-      } else {
-        setError(t.errorSendingSms)
+      // Call Inforu OTP send endpoint (no user existence check for signup flow)
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          otpType: 'sms', 
+          otpValue: phoneForInforu,
+          checkUserExists: false // Signup flow - user may not exist
+        }),
+      })
+
+      const data = await res.json().catch(() => null)
+
+      if (!res.ok) {
+        if (res.status === 429) {
+          if (data?.error === 'COOLDOWN') {
+            const cooldownSeconds = data.message?.match(/\d+/)?.[0] || '60'
+            setResendCooldown(parseInt(cooldownSeconds))
+            setError(data.message || t.waitSeconds.replace('{seconds}', cooldownSeconds))
+          } else {
+            setError(data?.message || t.tooManyAttempts)
+            setResendCooldown(60)
+          }
+        } else {
+          setError(data?.message || t.errorSendingSms)
+        }
+        return
       }
+
+      setOtpSent(true)
+      setResendCooldown(60)
+    } catch (err: any) {
+      console.error('[SEND-SMS] Error:', err)
+      setError(t.errorSendingSms)
     } finally {
       setBusy(false)
     }
   }
 
   async function handleVerifyCode() {
-    if (!pendingSignup || !code.trim()) return
-    
-    // Check which flow we're in
-    const isGoogleSignup = pendingSignup.uid && firebaseUser && pendingSignup.uid === firebaseUser.uid
-    
-    if (isGoogleSignup && !verificationId) return
-    if (!isGoogleSignup && !confirmationResult) return
+    if (!pendingSignup || !code.trim() || code.length !== 6) return
 
     setBusy(true)
     setError(null)
 
     try {
-      let verifiedUser: typeof firebaseUser
-      let token: string
+      // Convert phone to local format if needed (Inforu accepts both formats)
+      let phoneForInforu = pendingSignup.phone
+      if (phoneForInforu.startsWith('+972')) {
+        phoneForInforu = '0' + phoneForInforu.slice(4)
+      }
 
-      if (isGoogleSignup) {
-        // Google signup flow: update phone number on existing user
-        console.log('🔵 [VERIFY] Google signup flow - updating phone number...')
-        if (!firebaseUser) {
-          throw new Error('Firebase user not found')
+      // Determine flow: Google signup (has uid and firebaseUser) vs email-only (no uid)
+      const isGoogleSignup = pendingSignup.uid && firebaseUser && pendingSignup.uid === firebaseUser.uid
+
+      // Call Inforu OTP verify endpoint
+      const verifyRes = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          otpType: 'sms', 
+          otpValue: phoneForInforu,
+          otpCode: code.trim(),
+          requireUserExists: false, // For Google signup, we're adding phone, not checking if it exists
+          existingFirebaseUid: isGoogleSignup ? pendingSignup.uid : undefined // Pass UID for Google signup
+        }),
+      })
+
+      const data = await verifyRes.json().catch(() => null)
+
+      if (!verifyRes.ok || !data || !data.ok) {
+        // Check for expired code specifically
+        if (data?.error === 'CODE_EXPIRED') {
+          throw new Error('CODE_EXPIRED')
         }
-        
-        const credential = PhoneAuthProvider.credential(verificationId!, code.trim())
-        await updatePhoneNumber(firebaseUser, credential)
-        verifiedUser = firebaseUser
-        token = await verifiedUser.getIdToken()
-        console.log('✅ [VERIFY] Phone number updated on existing user:', verifiedUser.uid)
-      } else {
-        // Email-only flow: verify phone code - this creates/signs in the Firebase user
-        console.log('🔵 [VERIFY] Email-only flow - confirming phone code...')
-        const userCredential = await confirmationResult!.confirm(code.trim())
-        verifiedUser = userCredential.user
-        console.log('✅ [VERIFY] Phone verified, user signed in:', verifiedUser.uid)
+        throw new Error(data?.error || 'Failed to verify code')
+      }
 
-        // Get token for API calls
-        token = await verifiedUser.getIdToken()
+      // Sign in with custom token
+      const userCredential = await signInWithCustomToken(auth, data.customToken)
+      const verifiedUser = userCredential.user
+      let token = await verifiedUser.getIdToken()
 
-        // Link email to the phone-authenticated user if email exists
-        if (pendingSignup.email && !verifiedUser.email) {
-          console.log('🔵 [VERIFY] Linking email to user...')
-          try {
-            const linkRes = await fetch('/api/auth/link-email', {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                email: pendingSignup.email
-              })
+      // For Google signup flow, user already exists - just need to ensure phone is updated
+      // For email-only flow, user was just created
+      
+      // Link email to the phone-authenticated user if email exists and not already linked
+      if (pendingSignup.email && !verifiedUser.email) {
+        try {
+          const linkRes = await fetch('/api/auth/link-email', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email: pendingSignup.email
             })
+          })
 
-            const linkJson = await linkRes.json().catch(() => null)
-            if (!linkRes.ok || !linkJson?.ok) {
-              console.warn('⚠️ [VERIFY] Email linking failed, but continuing:', linkJson?.error)
-              // Continue anyway - email can be added later
-            } else {
-              console.log('✅ [VERIFY] Email linked successfully')
-              // Refresh token to get updated user info
-              token = await verifiedUser.getIdToken(true)
-            }
-          } catch (linkErr) {
-            console.warn('⚠️ [VERIFY] Email linking error, but continuing:', linkErr)
+          const linkJson = await linkRes.json().catch(() => null)
+          if (!linkRes.ok || !linkJson?.ok) {
+            console.warn('[VERIFY] Email linking failed, but continuing:', linkJson?.error)
             // Continue anyway - email can be added later
+          } else {
+            // Refresh token to get updated user info
+            token = await verifiedUser.getIdToken(true)
           }
+        } catch (linkErr) {
+          console.warn('[VERIFY] Email linking error, but continuing:', linkErr)
+          // Continue anyway - email can be added later
         }
       }
 
@@ -500,15 +363,43 @@ export default function VerifySmsPage() {
 
       console.log('✅ [VERIFY] Signup completed successfully')
       sessionStorage.removeItem('pendingSignup')
+      
+      // Refresh token to get latest user info
+      token = await verifiedUser.getIdToken(true)
+      
+      // Sync profile before redirecting to ensure ProfileCompletionGate sees complete profile
+      const syncRes = await fetch('/api/me/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const syncJson = (await syncRes.json().catch(() => null)) as 
+        | { ok: true; needsProfileCompletion: boolean }
+        | { error: string }
+        | null
+
+      if (!syncRes.ok || !syncJson || 'error' in syncJson) {
+        console.warn('[VERIFY] Sync failed, but redirecting anyway:', syncJson)
+        // Continue anyway - profile should be complete after complete-signup
+      } else if (syncJson.needsProfileCompletion === true) {
+        // This shouldn't happen after complete-signup, but redirect to signup if needed
+        console.warn('[VERIFY] Profile still incomplete after signup, redirecting to signup')
+        router.replace(`/${lng}/signup`)
+        return
+      }
+      
+      // Wait a moment for AuthContext to update with the new user state
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      // Profile is complete - redirect to profile page
       router.replace(`/${lng}/profile`)
     } catch (err: any) {
       console.error('❌ [VERIFY] Error verifying code:', err)
       const msg = typeof err?.message === 'string' ? err.message : ''
 
-      const firebaseMsg = firebasePhoneVerifyErrorToMessage(err)
-      if (firebaseMsg) {
-        // Per product decision: show these explicit messages in English even for Hebrew UI.
-        setError(firebaseMsg)
+      if (msg === 'CODE_EXPIRED' || msg.includes('CODE_EXPIRED')) {
+        setError(t.codeExpired)
+      } else if (msg.includes('Invalid') || msg.includes('expired')) {
+        setError(t.invalidCode)
       } else if (msg.includes('Phone number is already in use')) {
         setError('Phone number is already in use')
       } else {
@@ -575,13 +466,13 @@ export default function VerifySmsPage() {
     <ProfileShell title={t.title} subtitle={t.subtitle}>
       <div className={profileTheme.section}>
         {error && (
-          <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className={`mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
             {error}
           </div>
         )}
 
         <div className="space-y-6">
-          <div className="text-center">
+          <div className="text-center" dir={isRTL ? 'rtl' : 'ltr'}>
             <h2 className="text-xl font-semibold text-slate-900">{greeting}</h2>
             <p className="mt-2 text-sm text-slate-600">{smsSent}</p>
           </div>
@@ -597,7 +488,7 @@ export default function VerifySmsPage() {
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                 placeholder={t.codePlaceholder}
                 className={profileTheme.input}
-                disabled={busy || (!confirmationResult && !verificationId)}
+                disabled={busy || !otpSent}
                 autoComplete="one-time-code"
               />
             </div>
@@ -605,7 +496,7 @@ export default function VerifySmsPage() {
             <button
               type="button"
               onClick={handleVerifyCode}
-              disabled={!code.trim() || code.length !== 6 || busy || (!confirmationResult && !verificationId)}
+              disabled={!code.trim() || code.length !== 6 || busy || !otpSent}
               className={profileTheme.buttonPrimary}
             >
               {busy ? t.verifying : t.verify}
@@ -616,11 +507,10 @@ export default function VerifySmsPage() {
                 type="button"
                 onClick={() => {
                   hasAttemptedSendRef.current = false
-                  setConfirmationResult(null)
-                  setVerificationId(null)
+                  setOtpSent(false)
                   void sendSmsCode()
                 }}
-                disabled={busy || resendCooldown > 0 || !recaptchaVerifier}
+                disabled={busy || resendCooldown > 0}
                 className="text-sm font-medium text-slate-700 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {busy
@@ -642,8 +532,6 @@ export default function VerifySmsPage() {
           </div>
         </div>
 
-        {/* Hidden recaptcha container */}
-        <div id="recaptcha-container" style={{ display: 'none' }} />
       </div>
     </ProfileShell>
   )

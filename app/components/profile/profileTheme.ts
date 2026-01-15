@@ -9,8 +9,8 @@ export const profileTheme = {
   title: 'text-lg md:text-xl lg:text-2xl font-semibold tracking-tight text-slate-900',
   subtitle: 'mt-1 text-xs sm:text-sm text-slate-500',
 
-  section: 'px-5 py-5 sm:px-6 sm:py-6 md:px-8 md:py-6',
-  sectionTitle: 'text-sm md:text-base font-semibold text-slate-900 mb-3 md:mb-4',
+  section: 'px-5 py-4 sm:px-6 sm:py-6 md:px-8 md:py-4',
+  sectionTitle: 'text-sm md:text-base font-semibold text-slate-900 mb-2 md:mb-4',
   grid: 'mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2',
 
   label: 'block text-sm font-medium text-slate-700 mb-1.5 rtl:text-right ltr:text-left',

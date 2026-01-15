@@ -21,6 +21,9 @@ export interface CreateOrderData {
     size?: string;
     quantity: number;
     price: number;
+    primaryImage?: string;
+    salePrice?: number;
+    modelNumber?: string;
   }[];
   coupons?: Array<{
     code: string;
@@ -58,6 +61,11 @@ export async function createOrder(data: CreateOrderData) {
 
             console.log(`[ORDER] Parsing SKU: ${item.productSku} -> Base: ${baseSku}, Color: ${colorName}, Size: ${size}`);
 
+            // Generate model number: baseSku + colorName (e.g., "SKU-123-BLACK")
+            const modelNumber = colorName 
+              ? `${baseSku}-${colorName.toUpperCase()}` 
+              : baseSku;
+
             return {
               quantity: item.quantity,
               price: item.price,
@@ -66,6 +74,9 @@ export async function createOrder(data: CreateOrderData) {
               productSku: baseSku, // Store only the base SKU
               colorName: colorName,
               size: size,
+              primaryImage: item.primaryImage || null,
+              salePrice: item.salePrice || null,
+              modelNumber: item.modelNumber || modelNumber,
             };
           }),
         },

@@ -5,6 +5,8 @@ import { prisma } from '../../../../lib/prisma';
 import { stringifyPaymentData } from '../../../../lib/orders';
 import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
 import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
+import { productService } from '../../../../lib/firebase';
+import { parseSku } from '../../../../lib/sku-parser';
 
 export async function POST(request: NextRequest) {
   try {
@@ -142,11 +144,98 @@ async function updateOrderStatus(
     // Mark matching cart items as PURCHASED (Option 2: match order items only)
     if (status === 'completed') {
       await markCartItemsAsPurchased(orderId);
+      // Ensure order items have all required data
+      await ensureOrderItemsComplete(orderId);
     }
     
   } catch (error) {
     console.error('Failed to update order status:', error);
     throw error;
+  }
+}
+
+/**
+ * Ensure order items have all required data (primaryImage, salePrice, modelNumber)
+ * Fetches missing data from Firebase if needed
+ */
+async function ensureOrderItemsComplete(orderId: string) {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { orderNumber: orderId },
+      include: { orderItems: true }
+    });
+
+    if (!order) {
+      console.warn(`[ensureOrderItemsComplete] Order not found: ${orderId}`);
+      return;
+    }
+
+    // Check if any items are missing required data
+    const itemsNeedingUpdate = order.orderItems.filter(
+      item => !item.primaryImage || !item.modelNumber
+    );
+
+    if (itemsNeedingUpdate.length === 0) {
+      return; // All items already have required data
+    }
+
+    console.log(`[ensureOrderItemsComplete] Updating ${itemsNeedingUpdate.length} items for order ${orderId}`);
+
+    // Update each item that needs data
+    for (const item of itemsNeedingUpdate) {
+      try {
+        const parsedSku = parseSku(item.productSku);
+        const baseSku = parsedSku.baseSku || item.productSku;
+        // Convert colorName to colorSlug (lowercase, for Firebase lookup)
+        const itemColorName = item.colorName || parsedSku.colorName;
+        const colorSlug = itemColorName ? itemColorName.toLowerCase() : null;
+
+        // Fetch product from Firebase
+        const product = await productService.getProductByBaseSku(baseSku);
+        
+        if (!product) {
+          console.warn(`[ensureOrderItemsComplete] Product not found for SKU: ${baseSku}`);
+          continue;
+        }
+
+        const variant = colorSlug && product.colorVariants?.[colorSlug] 
+          ? product.colorVariants[colorSlug] 
+          : null;
+        
+        // Get primary image
+        const primaryImage = variant?.primaryImage || (variant && Array.isArray(variant.images) && variant.images.length > 0 ? variant.images[0] : null) || null;
+        
+        // Get sale price
+        const salePrice = variant?.salePrice || product.salePrice || null;
+
+        // Generate model number
+        const modelColorName = variant && variant.colorSlug
+          ? variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1)
+          : itemColorName;
+        
+        const modelNumber = modelColorName 
+          ? `${baseSku}-${modelColorName.toUpperCase()}` 
+          : baseSku;
+
+        // Update the order item
+        await prisma.orderItem.update({
+          where: { id: item.id },
+          data: {
+            primaryImage: item.primaryImage || primaryImage,
+            salePrice: item.salePrice !== null ? item.salePrice : salePrice,
+            modelNumber: item.modelNumber || modelNumber
+          }
+        });
+
+        console.log(`[ensureOrderItemsComplete] Updated item ${item.id} for order ${orderId}`);
+      } catch (itemError) {
+        console.error(`[ensureOrderItemsComplete] Error updating item ${item.id}:`, itemError);
+        // Continue with other items
+      }
+    }
+  } catch (error) {
+    console.error(`[ensureOrderItemsComplete] Error ensuring order items complete for ${orderId}:`, error);
+    // Don't throw - this is best-effort data enrichment
   }
 }
 

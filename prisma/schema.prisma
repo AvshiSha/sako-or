@@ -228,6 +228,9 @@ model OrderItem {
   productSku  String
   colorName   String?
   size        String?
+  primaryImage String?
+  salePrice   Float?
+  modelNumber String?
   createdAt   DateTime @default(now())
   orderId     String
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)

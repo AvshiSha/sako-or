@@ -171,8 +171,86 @@ function SignInClient() {
   const [emailError, setEmailError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [gate, setGate] = useState<'idle' | 'checking' | 'redirecting'>('idle')
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const [isMounted, setIsMounted] = useState(false)
 
   const syncedUidRef = useRef<string | null>(null)
+
+  // Check if running on localhost (skip Turnstile in development)
+  const isLocalhost = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.includes('localhost')
+  )
+
+  // Client-side mount detection
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  // Turnstile - explicit render when script loads or tab changes
+  useEffect(() => {
+    if (!isMounted || isLocalhost) return
+
+    // Reset token when switching tabs
+    setTurnstileToken('')
+
+    const renderTurnstile = () => {
+      // Find the visible Turnstile container (based on active tab)
+      const containerId = activeTab === 'phone' ? '#cf-turnstile-phone' : '#cf-turnstile-email'
+      const container = document.querySelector(containerId)
+      
+      if (!container) return
+
+      // Remove any existing widget first
+      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+        try {
+          (window as any).turnstile.remove((window as any).turnstileWidgetId)
+        } catch (e) {
+          // Ignore errors if widget doesn't exist
+        }
+      }
+
+      if ((window as any).turnstile) {
+        try {
+          const widgetId = (window as any).turnstile.render(containerId, {
+            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+            theme: 'light',
+            size: 'normal',
+            callback: (token: string) => {
+              setTurnstileToken(token)
+              console.log('[Sign In] Turnstile token received:', token)
+            },
+            'error-callback': () => {
+              console.error('Turnstile verification failed')
+              setTurnstileToken('')
+            }
+          })
+          ; (window as any).turnstileWidgetId = widgetId
+        } catch (error) {
+          console.error('Turnstile render error:', error)
+        }
+      } else {
+        // Retry after 500ms if script not loaded yet
+        setTimeout(renderTurnstile, 500)
+      }
+    }
+
+    // Small delay to ensure DOM is ready after tab switch
+    const timer = setTimeout(renderTurnstile, 100)
+
+    return () => {
+      clearTimeout(timer)
+      // Clean up widget when component unmounts or tab changes
+      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+        try {
+          (window as any).turnstile.remove((window as any).turnstileWidgetId)
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    }
+  }, [isMounted, activeTab])
 
   // Handle query params (reset success + auto-open forgot password)
   useEffect(() => {
@@ -329,6 +407,12 @@ function SignInClient() {
       return
     }
 
+    // Skip Turnstile validation on localhost
+    if (!isLocalhost && !turnstileToken) {
+      setPhoneError(lng === 'he' ? 'נא להשלים את האימות' : 'Please complete the verification')
+      return
+    }
+
     // Use phone as-is (may have 0 prefix or not) - Inforu accepts both formats
     const phoneForInforu = phoneLocalNumber.startsWith('0') ? phoneLocalNumber : `0${phoneLocalNumber}`
 
@@ -344,7 +428,8 @@ function SignInClient() {
         body: JSON.stringify({ 
           otpType: 'sms', 
           otpValue: phoneForInforu,
-          checkUserExists: true // Sign-in requires existing user
+          checkUserExists: true, // Sign-in requires existing user
+          ...(turnstileToken && { turnstileToken })
         }),
       })
 
@@ -365,13 +450,43 @@ function SignInClient() {
         } else {
           setPhoneError(data?.message || t.errorSendingCode)
         }
+        
+        // Reset Turnstile widget on error
+        if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+          try {
+            (window as any).turnstile.reset((window as any).turnstileWidgetId)
+          } catch (e) {
+            // Ignore errors
+          }
+        }
+        setTurnstileToken('')
         return
       }
 
       setPhoneOtpSent(true)
       setResendCooldown(60)
+      
+      // Reset Turnstile widget after successful send
+      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+        try {
+          (window as any).turnstile.reset((window as any).turnstileWidgetId)
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+      setTurnstileToken('')
     } catch (err: any) {
       setPhoneError(formatAuthError(err, t.errorSendingCode))
+      
+      // Reset Turnstile widget on error
+      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+        try {
+          (window as any).turnstile.reset((window as any).turnstileWidgetId)
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+      setTurnstileToken('')
     } finally {
       setBusy(false)
     }
@@ -446,6 +561,12 @@ function SignInClient() {
       return
     }
 
+    // Skip Turnstile validation on localhost
+    if (!isLocalhost && !turnstileToken) {
+      setEmailError(lng === 'he' ? 'נא להשלים את האימות' : 'Please complete the verification')
+      return
+    }
+
     setBusy(true)
     setError(null)
     setEmailError(null)
@@ -458,7 +579,8 @@ function SignInClient() {
         body: JSON.stringify({ 
           otpType: 'email', 
           otpValue: trimmedEmail,
-          checkUserExists: true // Sign-in requires existing user
+          checkUserExists: true, // Sign-in requires existing user
+          ...(turnstileToken && { turnstileToken })
         }),
       })
 
@@ -479,13 +601,43 @@ function SignInClient() {
         } else {
           setEmailError(data?.message || t.errorSendingCode)
         }
+        
+        // Reset Turnstile widget on error
+        if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+          try {
+            (window as any).turnstile.reset((window as any).turnstileWidgetId)
+          } catch (e) {
+            // Ignore errors
+          }
+        }
+        setTurnstileToken('')
         return
       }
 
       setEmailOtpSent(true)
       setResendCooldown(60)
+      
+      // Reset Turnstile widget after successful send
+      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+        try {
+          (window as any).turnstile.reset((window as any).turnstileWidgetId)
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+      setTurnstileToken('')
     } catch (err: any) {
       setEmailError(formatAuthError(err, t.errorSendingCode))
+      
+      // Reset Turnstile widget on error
+      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+        try {
+          (window as any).turnstile.reset((window as any).turnstileWidgetId)
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+      setTurnstileToken('')
     } finally {
       setBusy(false)
     }
@@ -656,14 +808,22 @@ function SignInClient() {
                       </p>
                     )}
                   </div>
+
                   <button
                     type="button"
                     onClick={handleSendPhoneCode}
-                    disabled={busy || !phoneLocalNumber || (phoneLocalNumber.replace(/\D/g, '').length < 8)}
+                    disabled={busy || !phoneLocalNumber || (phoneLocalNumber.replace(/\D/g, '').length < 8) || (!isLocalhost && !turnstileToken)}
                     className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {busy ? t.sending : t.sendCodeToPhone}
                   </button>
+                  
+                  {/* Cloudflare Turnstile Widget - Hidden on localhost */}
+                  {isMounted && !isLocalhost && (
+                    <div className="flex justify-center">
+                      <div id="cf-turnstile-phone"></div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -724,10 +884,18 @@ function SignInClient() {
                       </p>
                     )}
                   </div>
+                  
+                  {/* Cloudflare Turnstile Widget - Hidden on localhost */}
+                  {isMounted && !isLocalhost && (
+                    <div className="flex justify-center">
+                      <div id="cf-turnstile-email"></div>
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     onClick={handleSendEmailCode}
-                    disabled={busy || !email.trim() || resendCooldown > 0}
+                    disabled={busy || !email.trim() || resendCooldown > 0 || (!isLocalhost && !turnstileToken)}
                     className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {busy ? t.sending : resendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(resendCooldown)) : t.sendCodeToEmail}

@@ -46,10 +46,11 @@ export default function ProfilePointsBlock({
       </p>
 
       {pointsLoading ? (
-        <div className="animate-pulse space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 bg-gray-100 rounded"></div>
-          ))}
+        <div className="min-h-[400px] flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
+            <p className="mt-4 text-gray-600">{locale.startsWith('he') ? 'טוען…' : 'Loading…'}</p>
+          </div>
         </div>
       ) : pointsHistory.length === 0 ? (
         <div className="text-center py-8 text-gray-500">

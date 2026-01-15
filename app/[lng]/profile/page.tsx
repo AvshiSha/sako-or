@@ -7,6 +7,7 @@ import { useAuth } from '@/app/contexts/AuthContext'
 import { profileTheme } from '@/app/components/profile/profileTheme'
 import ProfilePointsBlock from '@/app/components/profile/ProfilePointsBlock'
 import NewsletterSubscriptionBlock from '@/app/components/profile/NewsletterSubscriptionBlock'
+import OrderHistory from '@/app/components/profile/OrderHistory'
 import Toast, { useToast } from '@/app/components/Toast'
 import { PencilIcon, SparklesIcon, CalendarIcon, ShoppingBagIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { formatIsraelE164ToLocalDigits } from '@/lib/phone'
@@ -21,9 +22,24 @@ const translations = {
     personalInformation: 'Personal Information',
     addressInformation: 'Address Information',
     recentOrders: 'Recent Orders on the site',
+    orderHistory: 'Order History',
     viewAllOrders: 'View All Orders',
     noOrdersYet: 'No orders yet',
     startShopping: 'Start Shopping',
+    orderNumber: (n: string) => `Order #${n}`,
+    orderDate: 'Order Date',
+    products: 'Products',
+    quantity: 'Quantity',
+    size: 'Size: ',
+    price: 'Price: ',
+    total: 'Total: ',
+    subtotal: 'Subtotal: ',
+    shipping: 'Shipping',
+    discount: 'Discount: ',
+    couponsApplied: 'Coupons Applied',
+    loyaltyPointsUsed: 'Loyalty Points Used: ',
+    modelNumber: 'Model Number: ',
+    color: 'Color: ',
     edit: 'Edit',
     loading: 'Loading…',
     firstName: 'First Name',
@@ -43,7 +59,6 @@ const translations = {
     noPointsActivityYet: 'No points activity yet',
     earnedPoints: 'Earned Points',
     spentPoints: 'Spent Points',
-    orderNumber: (n: string) => `Order #${n}`,
     memberSince: (value: string) => `Member since ${value}`,
     unableToSaveProfile: 'Unable to save profile',
     profileUpdated: 'Profile updated successfully'
@@ -57,9 +72,24 @@ const translations = {
     personalInformation: 'מידע אישי',
     addressInformation: 'מידע כתובת',
     recentOrders: 'הזמנות אחרונות באתר',
+    orderHistory: 'היסטוריית הזמנות',
     viewAllOrders: 'צפה בכל ההזמנות',
     noOrdersYet: 'אין הזמנות עדיין',
     startShopping: 'התחל לקנות',
+    orderNumber: (n: string) => `הזמנה: ${n}`,
+    orderDate: 'תאריך הזמנה',
+    products: 'מוצרים',
+    quantity: 'כמות: ',
+    size: 'מידה: ',
+    price: 'מחיר',
+    total: 'סה"כ: ',
+    subtotal: 'סכום ביניים: ',
+    shipping: 'משלוח: ',
+    discount: 'הנחה',
+    couponsApplied: 'קופונים שהופעלו: ',
+    loyaltyPointsUsed: 'נקודות נאמנות שנוצלו: ',
+    modelNumber: 'מספר דגם: ',
+    color: 'צבע: ',
     edit: 'עריכה',
     loading: 'טוען…',
     firstName: 'שם פרטי',
@@ -79,7 +109,6 @@ const translations = {
     noPointsActivityYet: 'אין פעילות נקודות עדיין',
     earnedPoints: 'נקודות שנצברו',
     spentPoints: 'נקודות שנוצלו',
-    orderNumber: (n: string) => `הזמנה #${n}`,
     memberSince: (value: string) => `חבר מאז ${value}`,
     unableToSaveProfile: 'לא ניתן לשמור את הפרופיל',
     profileUpdated: 'הפרופיל עודכן בהצלחה'
@@ -139,6 +168,10 @@ export default function ProfileOverviewPage() {
   // Points state
   const [pointsHistory, setPointsHistory] = useState<PointsTransaction[]>([])
   const [pointsLoading, setPointsLoading] = useState(true)
+
+  // Orders state
+  const [orders, setOrders] = useState<any[]>([])
+  const [ordersLoading, setOrdersLoading] = useState(true)
 
   // Load user profile
   useEffect(() => {
@@ -202,6 +235,38 @@ export default function ProfileOverviewPage() {
         console.error('Error loading points:', e)
       } finally {
         if (!cancelled) setPointsLoading(false)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [firebaseUser, loadedUser])
+
+  // Load most recent order
+  useEffect(() => {
+    if (!firebaseUser || !loadedUser) return
+
+    let cancelled = false
+    ;(async () => {
+      setOrdersLoading(true)
+      try {
+        const token = await firebaseUser.getIdToken()
+        const res = await fetch('/api/me/orders?limit=1', {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || !json || json.error) {
+          throw new Error(json?.error || 'Failed to load orders')
+        }
+
+        if (!cancelled) setOrders(json.orders || [])
+      } catch (e: any) {
+        console.error('Error loading orders:', e)
+      } finally {
+        if (!cancelled) setOrdersLoading(false)
       }
     })()
 
@@ -414,11 +479,11 @@ export default function ProfileOverviewPage() {
         </div>
       </div>
 
-      {/* Recent Orders Section */}
+      {/* Order History Section */}
       <div className={profileTheme.card}>
-        <div className={profileTheme.section}>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={profileTheme.sectionTitle}>{t.recentOrders}</h3>
+        <div className="flex items-center justify-between mb-4 px-5 pt-5 sm:px-6 sm:pt-6 md:px-8 md:pt-6">
+          <h3 className={profileTheme.sectionTitle}>{t.orderHistory}</h3>
+          {orders.length > 0 && (
             <Link
               href={`/${lng}/profile/orders`}
               className="flex items-center text-sm text-indigo-600 hover:text-indigo-700 gap-1"
@@ -426,48 +491,34 @@ export default function ProfileOverviewPage() {
               {t.viewAllOrders}
               {lng === 'he' ? <ArrowLeftIcon className="h-4 w-4" /> : <ArrowRightIcon className="h-4 w-4" />}
             </Link>
-          </div>
-
-          {/* Placeholder for orders - will be replaced with actual orders later */}
-          <div className="text-center py-8 text-gray-500">
-            <ShoppingBagIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-            <p className="mb-4">{t.noOrdersYet}</p>
-            <Link
-              href={`/${lng}`}
-              className="inline-flex items-center text-sm text-indigo-600 hover:text-indigo-700"
-            >
-              {t.startShopping}
-            </Link>
-          </div>
-
-          {/* TODO: Replace above placeholder with actual orders display
-          <div className="space-y-3">
-            {orders.slice(0, 3).map((order) => (
-              <div
-                key={order.id}
-                className="border border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition-colors"
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {t.orderNumber(order.orderNumber)}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(order.createdAt).toLocaleDateString(locale)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900">
-                      ₪{order.total.toFixed(2)}
-                    </p>
-                    <p className="text-xs text-gray-500 capitalize">{order.status}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          */}
+          )}
         </div>
+        <OrderHistory
+          orders={orders}
+          loading={ordersLoading}
+          locale={locale}
+          lng={lng as 'en' | 'he'}
+          variant="single"
+          translations={{
+            orderHistory: t.orderHistory,
+            orderNumber: t.orderNumber,
+            orderDate: t.orderDate,
+            noOrdersYet: t.noOrdersYet,
+            startShopping: t.startShopping,
+            products: t.products,
+            quantity: t.quantity,
+            size: t.size,
+            price: t.price,
+            total: t.total,
+            subtotal: t.subtotal,
+            shipping: t.shipping,
+            discount: t.discount,
+            couponsApplied: t.couponsApplied,
+            loyaltyPointsUsed: t.loyaltyPointsUsed,
+            modelNumber: t.modelNumber,
+            color: t.color
+          }}
+        />
       </div>
 
       {/* Points Block */}

@@ -23,18 +23,31 @@ export async function GET(request: NextRequest) {
 
     // Get pagination params
     const { searchParams } = new URL(request.url)
-    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50)
+    const limitParam = searchParams.get('limit')
+    const limit = limitParam ? Math.min(parseInt(limitParam), 100) : undefined
     const offset = Math.max(parseInt(searchParams.get('offset') || '0'), 0)
 
-    // Fetch orders with items
+    // Fetch orders with all related data
     const [orders, totalCount] = await Promise.all([
       prisma.order.findMany({
         where: { userId: user.id },
         include: {
-          orderItems: true
+          orderItems: {
+            orderBy: { createdAt: 'asc' }
+          },
+          appliedCoupons: {
+            orderBy: { createdAt: 'asc' }
+          },
+          points: {
+            where: { kind: 'SPEND' }, // Only get points spent, not earned
+            select: {
+              delta: true,
+              createdAt: true
+            }
+          }
         },
         orderBy: { createdAt: 'desc' },
-        take: limit,
+        ...(limit ? { take: limit } : {}),
         skip: offset
       }),
       prisma.order.count({
@@ -42,15 +55,55 @@ export async function GET(request: NextRequest) {
       })
     ])
 
+    // Format orders for display
+    const formattedOrders = orders.map(order => {
+      // Calculate total loyalty points used
+      const pointsUsed = order.points.reduce((sum, point) => sum + Math.abs(point.delta), 0)
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        total: order.total,
+        currency: order.currency,
+        subtotal: order.subtotal,
+        discountTotal: order.discountTotal,
+        deliveryFee: order.deliveryFee,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        orderItems: order.orderItems.map(item => ({
+          id: item.id,
+          productName: item.productName,
+          productSku: item.productSku,
+          modelNumber: item.modelNumber,
+          colorName: item.colorName,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          salePrice: item.salePrice,
+          total: item.total,
+          primaryImage: item.primaryImage
+        })),
+        appliedCoupons: order.appliedCoupons.map(coupon => ({
+          code: coupon.code,
+          discountAmount: coupon.discountAmount,
+          discountType: coupon.discountType,
+          description: coupon.description
+        })),
+        pointsUsed: pointsUsed > 0 ? pointsUsed : null
+      }
+    })
+
     return NextResponse.json(
       {
         ok: true,
-        orders,
+        orders: formattedOrders,
         pagination: {
           total: totalCount,
-          limit,
+          limit: limit || totalCount,
           offset,
-          hasMore: offset + limit < totalCount
+          hasMore: limit ? offset + limit < totalCount : false
         }
       },
       { status: 200 }

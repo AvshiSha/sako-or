@@ -5,6 +5,8 @@ import { createOrder, generateOrderNumber } from '../../../../lib/orders';
 import { prisma } from '../../../../lib/prisma';
 import { spendPointsForOrder } from '../../../../lib/points';
 import { getBearerToken, requireUserAuth } from '@/lib/server/auth';
+import { productService } from '../../../../lib/firebase';
+import { parseSku } from '../../../../lib/sku-parser';
 
 export async function POST(request: NextRequest) {
   try {
@@ -118,21 +120,105 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare order items - use items array if provided, otherwise fallback to single product
-    const orderItems = body.items && body.items.length > 0
-      ? body.items.map(item => ({
-          productName: item.productName,
-          productSku: item.productSku,
-          quantity: item.quantity,
-          price: item.price, // Price per unit
-          colorName: item.color,
-          size: item.size,
-        }))
-      : [{
-          productName: body.productName || 'Sako Order',
-          productSku: body.productSku || 'UNKNOWN',
-          quantity: body.quantity || 1,
-          price: body.amount / (body.quantity || 1), // Calculate unit price from total
-        }];
+    // Fetch product data to capture images and pricing
+    const prepareOrderItems = async () => {
+      const items = body.items && body.items.length > 0
+        ? body.items
+        : [{
+            productName: body.productName || 'Sako Order',
+            productSku: body.productSku || 'UNKNOWN',
+            quantity: body.quantity || 1,
+            price: body.amount / (body.quantity || 1),
+            color: undefined,
+            size: undefined,
+          }];
+
+      const enrichedItems = await Promise.all(
+        items.map(async (item) => {
+          try {
+            // Parse SKU to get base SKU
+            const parsedSku = parseSku(item.productSku);
+            const baseSku = parsedSku.baseSku || item.productSku;
+            const colorSlug = item.color || parsedSku.colorSlug;
+
+            // Fetch product from Firebase
+            const product = await productService.getProductByBaseSku(baseSku);
+            
+            let primaryImage: string | undefined;
+            let salePrice: number | undefined;
+            let modelNumber: string | undefined;
+
+            if (product) {
+              // Get color variant if color is specified
+              const variant = colorSlug && product.colorVariants?.[colorSlug];
+              
+              // Get primary image from variant or product
+              if (variant) {
+                primaryImage = variant.primaryImage || variant.images?.[0];
+                salePrice = variant.salePrice;
+              }
+              
+              // Fallback to product-level pricing if variant doesn't have sale price
+              if (!salePrice) {
+                salePrice = product.salePrice;
+              }
+
+              // Generate model number: baseSku + colorName
+              const colorName = variant?.colorSlug 
+                ? variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1)
+                : item.color || parsedSku.colorName;
+              
+              modelNumber = colorName 
+                ? `${baseSku}-${colorName.toUpperCase()}` 
+                : baseSku;
+            } else {
+              // If product not found, generate model number from available data
+              const colorName = item.color || parsedSku.colorName;
+              modelNumber = colorName 
+                ? `${baseSku}-${colorName.toUpperCase()}` 
+                : baseSku;
+            }
+
+            return {
+              productName: item.productName,
+              productSku: item.productSku,
+              quantity: item.quantity,
+              price: item.price,
+              colorName: item.color,
+              size: item.size,
+              primaryImage,
+              salePrice,
+              modelNumber,
+            };
+          } catch (error) {
+            console.error(`[CREATE_LOW_PROFILE] Error fetching product data for ${item.productSku}:`, error);
+            // Return item without enrichment if fetch fails
+            const parsedSku = parseSku(item.productSku);
+            const baseSku = parsedSku.baseSku || item.productSku;
+            const colorName = item.color || parsedSku.colorName;
+            const modelNumber = colorName 
+              ? `${baseSku}-${colorName.toUpperCase()}` 
+              : baseSku;
+            
+            return {
+              productName: item.productName,
+              productSku: item.productSku,
+              quantity: item.quantity,
+              price: item.price,
+              colorName: item.color,
+              size: item.size,
+              primaryImage: undefined,
+              salePrice: undefined,
+              modelNumber,
+            };
+          }
+        })
+      );
+
+      return enrichedItems;
+    };
+
+    const orderItems = await prepareOrderItems();
 
     const requestedCouponCodes = body.coupons?.map(coupon => coupon.code.toUpperCase()) ?? [];
     const couponRecords = requestedCouponCodes.length > 0

@@ -4,7 +4,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 
 interface IsraelPhoneInputProps {
-  value: string // Local number only (8-9 digits), without +972
+  value: string // Local number (8-9 digits) or with 0 prefix (0XXXXXXXXX), without +972
   onChange: (localNumber: string) => void
   placeholder?: string
   disabled?: boolean
@@ -15,7 +15,7 @@ interface IsraelPhoneInputProps {
 export function IsraelPhoneInput({
   value,
   onChange,
-  placeholder = '50-123-4567',
+  placeholder = '0501234567 או 501234567',
   disabled = false,
   className,
   dir = 'ltr', // Ignored - always use LTR for phone numbers
@@ -23,19 +23,22 @@ export function IsraelPhoneInput({
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow digits, max 9 digits (Israeli phone numbers are 8-9 digits)
-    const digits = e.target.value.replace(/\D/g, '').slice(0, 9)
+    // Allow digits, accept both 0-prefixed (0XXXXXXXXX) and non-prefixed (XXXXXXXXX) formats
+    // Max 10 digits if starting with 0, max 9 digits otherwise
+    let digits = e.target.value.replace(/\D/g, '')
+    
+    // If starts with 0, allow up to 10 digits (0 + 8-9 digits)
+    // Otherwise, allow up to 9 digits (8-9 digits)
+    if (digits.startsWith('0')) {
+      digits = digits.slice(0, 10)
+    } else {
+      digits = digits.slice(0, 9)
+    }
+    
     onChange(digits)
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    // Prevent backspace from deleting the prefix
-    if (e.key === 'Backspace' && inputRef.current?.selectionStart === 0) {
-      e.preventDefault()
-    }
-  }
-
-  // Always use LTR for phone numbers - +972 should always be on the left
+  // Always use LTR for phone numbers
   return (
     <div
       className={cn(
@@ -45,15 +48,7 @@ export function IsraelPhoneInput({
       dir="ltr"
       style={{ direction: 'ltr', unicodeBidi: 'embed' }}
     >
-      {/* Fixed +972 prefix - always on the left */}
-      <div 
-        className="flex items-center px-3 py-2 text-sm font-medium text-slate-900 select-none border-r border-[#856D55]/70"
-        style={{ direction: 'ltr' }}
-      >
-        +972
-      </div>
-      
-      {/* Local number input */}
+      {/* Phone number input - users can type with 0 prefix or without */}
       <input
         ref={inputRef}
         type="tel"
@@ -61,12 +56,11 @@ export function IsraelPhoneInput({
         pattern="[0-9]*"
         value={value}
         onChange={handleChange}
-        onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
         className="flex-1 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
         style={{ direction: 'ltr', textAlign: 'left' }}
-        maxLength={9}
+        maxLength={10}
       />
     </div>
   )

@@ -884,13 +884,6 @@ function SignInClient() {
                       </p>
                     )}
                   </div>
-                  
-                  {/* Cloudflare Turnstile Widget - Hidden on localhost */}
-                  {isMounted && !isLocalhost && (
-                    <div className="flex justify-center">
-                      <div id="cf-turnstile-email"></div>
-                    </div>
-                  )}
 
                   <button
                     type="button"
@@ -900,6 +893,13 @@ function SignInClient() {
                   >
                     {busy ? t.sending : resendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(resendCooldown)) : t.sendCodeToEmail}
                   </button>
+                  
+                  {/* Cloudflare Turnstile Widget - Hidden on localhost */}
+                  {isMounted && !isLocalhost && (
+                    <div className="flex justify-center">
+                      <div id="cf-turnstile-email"></div>
+                    </div>
+                  )}
                 </>
               ) : (
                 <>

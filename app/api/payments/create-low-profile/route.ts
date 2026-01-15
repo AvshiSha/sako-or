@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
               const variant = colorSlug && product.colorVariants?.[colorSlug];
               
               // Get primary image from variant or product
-              if (variant) {
+              if (variant && typeof variant === 'object' && variant !== null && 'colorSlug' in variant) {
                 primaryImage = variant.primaryImage || variant.images?.[0];
                 salePrice = variant.salePrice;
               }
@@ -165,9 +165,12 @@ export async function POST(request: NextRequest) {
               }
 
               // Generate model number: baseSku + colorName
-              const colorName = variant?.colorSlug 
-                ? variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1)
-                : item.color || parsedSku.colorName;
+              let colorName: string | null = null;
+              if (variant && typeof variant === 'object' && variant !== null && 'colorSlug' in variant && variant.colorSlug) {
+                colorName = variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1);
+              } else {
+                colorName = item.color || parsedSku.colorName;
+              }
               
               modelNumber = colorName 
                 ? `${baseSku}-${colorName.toUpperCase()}` 

@@ -32,8 +32,8 @@ const translations = {
     loading: 'Loading…'
   },
   he: {
-    pageTitle: 'ההזמנות שלי',
-    orderHistory: 'היסטוריית הזמנות',
+    pageTitle: 'ההזמנות שלי באתר',
+    orderHistory: 'היסטוריית הזמנות באתר',
     orderNumber: (n: string) => `הזמנה: ${n}`,
     orderDate: 'תאריך הזמנה',
     noOrdersYet: 'אין הזמנות עדיין',
@@ -120,11 +120,11 @@ export default function OrdersPage() {
           <h1 className={profileTheme.sectionTitle}>{t.pageTitle}</h1>
           <Link
             href={`/${lng}/profile`}
-            className="flex items-center text-sm text-indigo-600 hover:text-indigo-700 gap-1"
+            className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1"
           >
-            {isRTL && <ArrowLeftIcon className="h-4 w-4" />}
-            {t.backToProfile}
             {!isRTL && <ArrowLeftIcon className="h-4 w-4" />}
+            {t.backToProfile}
+            {isRTL && <ArrowLeftIcon className="h-4 w-4" />}
           </Link>
         </div>
         <OrderHistory

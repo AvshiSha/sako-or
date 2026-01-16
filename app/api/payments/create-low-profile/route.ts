@@ -82,6 +82,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate points balance if points are being used (but don't deduct yet - that happens after payment success)
+    if (pointsToSpend > 0 && userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { pointsBalance: true }
+      });
+      if (!user || user.pointsBalance < pointsToSpend) {
+        return NextResponse.json(
+          { error: 'Insufficient points balance' },
+          { status: 400 }
+        );
+      }
+    }
+
     if (!body.deliveryAddress.city || !body.deliveryAddress.streetName || !body.deliveryAddress.streetNumber) {
       return NextResponse.json(
         { error: 'Missing required delivery address information' },
@@ -297,27 +311,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // If points were used as a discount, create a SPEND row linked to the order and update user balance.
-    if (pointsToSpend > 0 && userId) {
-      try {
-        await spendPointsForOrder({
-          userId,
-          orderId: order.id,
-          pointsToSpend
-        });
-      } catch (pointsError: any) {
-        console.error('[POINTS_SPEND_ERROR]', pointsError);
-        // Avoid leaving an order in a discounted state if spend failed
-        await prisma.order.delete({ where: { id: order.id } });
-        return NextResponse.json(
-          {
-            error: 'Failed to spend points for order',
-            details: typeof pointsError?.message === 'string' ? pointsError.message : 'Unknown error'
-          },
-          { status: 400 }
-        );
-      }
-    }
+    // Store pointsToSpend in paymentData metadata for later deduction after payment success
+    // Points are NOT deducted here - they are only deducted after successful payment in check-status route
+    const paymentMetadata = pointsToSpend > 0 ? { pointsToSpend } : {};
 
     // Prepare Cardcom products - use items array if provided, otherwise fallback to single product
     const cardcomProducts = body.items && body.items.length > 0
@@ -419,13 +415,14 @@ export async function POST(request: NextRequest) {
     const cardcomAPI = new CardComAPI();
     const cardcomResponse = await cardcomAPI.createLowProfile(cardcomRequest);
 
-    // Update order with CardCom Low Profile ID
+    // Update order with CardCom Low Profile ID and store pointsToSpend in paymentData metadata
     await prisma.order.update({
       where: { id: order.id },
       data: {
         cardcomLowProfileId: cardcomResponse.LowProfileId,
         status: 'processing',
         paymentStatus: 'processing',
+        paymentData: pointsToSpend > 0 ? JSON.stringify({ pointsToSpend }) : null,
       },
     });
 

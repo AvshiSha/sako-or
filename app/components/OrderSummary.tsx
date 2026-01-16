@@ -25,6 +25,7 @@ interface OrderSummaryProps {
   onCouponInputChange?: (value: string) => void;
   couponLoading?: boolean;
   couponStatus?: { type: 'success' | 'error' | 'info'; message: string } | null;
+  pointsDiscount?: number;
 }
 
 export default function OrderSummary({
@@ -40,11 +41,12 @@ export default function OrderSummary({
   couponInput = '',
   onCouponInputChange,
   couponLoading = false,
-  couponStatus
+  couponStatus,
+  pointsDiscount = 0
 }: OrderSummaryProps) {
   const isHebrew = language === 'he';
   const isRTL = isHebrew;
-  const discountedSubtotal = Math.max(subtotal - discountTotal, 0);
+  const discountedSubtotal = Math.max(subtotal - discountTotal - pointsDiscount, 0);
   const finalTotal = Math.max(discountedSubtotal + deliveryFee, 0);
 
   const couponStrings = {
@@ -185,6 +187,13 @@ export default function OrderSummary({
               <span>₪{discountedSubtotal.toFixed(2)}</span>
             </div>
           </>
+        )}
+
+        {pointsDiscount > 0 && (
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>{language === 'he' ? 'הנחת נקודות' : 'Points discount'}</span>
+            <span>₪{pointsDiscount.toFixed(2)}</span>
+          </div>
         )}
 
         {deliveryFee > 0 ? (

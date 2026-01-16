@@ -52,11 +52,6 @@ export async function POST(request: NextRequest) {
     const { firstName: parsedFirstName, lastName: parsedLastName } =
       parseDisplayName(firebaseUser.displayName)
 
-    // Only set parsed name if present; do not blank existing values.
-    const nameUpdate: { firstName?: string; lastName?: string } = {}
-    if (parsedFirstName) nameUpdate.firstName = parsedFirstName
-    if (parsedLastName) nameUpdate.lastName = parsedLastName
-
     // Find existing user - do NOT create on sync
     const existingUser = await prisma.user.findUnique({
       where: { firebaseUid }
@@ -64,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     // If user doesn't exist in DB yet, return early with needsProfileCompletion = true
     // The user will be created when they submit the profile form via /api/me/profile PATCH
+    // Include parsed names from Google so frontend can use them as placeholders
     if (!existingUser) {
       return NextResponse.json(
         {
@@ -76,13 +72,25 @@ export async function POST(request: NextRequest) {
           role: 'USER',
           lastLoginAt: null,
           createdAt: null,
-          updatedAt: null
+          updatedAt: null,
+          // Include Google names for frontend to use as placeholders
+          googleFirstName: parsedFirstName,
+          googleLastName: parsedLastName
         },
         { status: 200 }
       )
     }
 
     // User exists - update login metadata
+    // Only update names from Google if they are currently null/empty (never override user-chosen names)
+    const nameUpdate: { firstName?: string; lastName?: string } = {}
+    if (parsedFirstName && !existingUser.firstName) {
+      nameUpdate.firstName = parsedFirstName
+    }
+    if (parsedLastName && !existingUser.lastName) {
+      nameUpdate.lastName = parsedLastName
+    }
+
     const user = await prisma.user.update({
       where: { firebaseUid },
       data: {

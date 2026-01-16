@@ -191,6 +191,9 @@ export default function SignUpPage() {
   const [isSignedInWithGoogle, setIsSignedInWithGoogle] = useState(false)
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+  // Google name placeholders (not pre-filled values)
+  const [googleFirstNamePlaceholder, setGoogleFirstNamePlaceholder] = useState<string>('')
+  const [googleLastNamePlaceholder, setGoogleLastNamePlaceholder] = useState<string>('')
 
   const syncedUidRef = useRef<string | null>(null)
 
@@ -309,13 +312,19 @@ export default function SignUpPage() {
       headers: { Authorization: `Bearer ${token}` }
     })
     const syncJson = (await syncRes.json().catch(() => null)) as
-      | { ok: true; needsProfileCompletion: boolean }
+      | { ok: true; needsProfileCompletion: boolean; googleFirstName?: string | null; googleLastName?: string | null }
       | { error: string }
       | null
 
     if (!syncRes.ok || !syncJson || 'error' in syncJson) {
       // If sync fails, fall back to current page behavior (show form).
       return 'needs_form'
+    }
+
+    // Extract Google names for use as placeholders (only for new users)
+    if ('googleFirstName' in syncJson || 'googleLastName' in syncJson) {
+      setGoogleFirstNamePlaceholder(syncJson.googleFirstName || '')
+      setGoogleLastNamePlaceholder(syncJson.googleLastName || '')
     }
 
     if (syncJson.needsProfileCompletion === false) {
@@ -331,6 +340,21 @@ export default function SignUpPage() {
 
   function isGoogleAccount(user: User) {
     return (user.providerData || []).some((p) => p.providerId === 'google.com')
+  }
+
+  // Helper to parse Google displayName into firstName/lastName (for fallback)
+  function parseGoogleDisplayName(displayName: string | null | undefined): {
+    firstName: string | null
+    lastName: string | null
+  } {
+    if (!displayName) return { firstName: null, lastName: null }
+    const parts = displayName
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+    if (parts.length === 0) return { firstName: null, lastName: null }
+    if (parts.length === 1) return { firstName: parts[0], lastName: null }
+    return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
   }
 
   async function storeSignupDataAndRedirectToSmsVerify(user: User) {
@@ -377,9 +401,18 @@ export default function SignUpPage() {
           // Redirect result found! Populate email and show form
           setBusy(true)
           setProfileGate('checking')
-        setEmail(result.user.email || '')
-        setIsSignedInWithGoogle(isGoogleAccount(result.user))
-        const next = await checkProfileAndRedirect(result.user)
+          setEmail(result.user.email || '')
+          const isGoogle = isGoogleAccount(result.user)
+          setIsSignedInWithGoogle(isGoogle)
+          
+          // If Google user and sync doesn't provide names, parse from displayName as fallback
+          if (isGoogle && result.user.displayName) {
+            const parsed = parseGoogleDisplayName(result.user.displayName)
+            if (parsed.firstName) setGoogleFirstNamePlaceholder(parsed.firstName)
+            if (parsed.lastName) setGoogleLastNamePlaceholder(parsed.lastName)
+          }
+          
+          const next = await checkProfileAndRedirect(result.user)
           if (!cancelled) setProfileGate(next === 'needs_form' ? 'needs_form' : 'redirecting')
           if (!cancelled) setBusy(false)
         }
@@ -417,7 +450,16 @@ export default function SignUpPage() {
     setBusy(true)
     setProfileGate('checking')
     setEmail(firebaseUser.email || '')
-    setIsSignedInWithGoogle(isGoogleAccount(firebaseUser))
+    const isGoogle = isGoogleAccount(firebaseUser)
+    setIsSignedInWithGoogle(isGoogle)
+    
+    // If Google user, parse names from displayName as fallback
+    if (isGoogle && firebaseUser.displayName) {
+      const parsed = parseGoogleDisplayName(firebaseUser.displayName)
+      if (parsed.firstName) setGoogleFirstNamePlaceholder(parsed.firstName)
+      if (parsed.lastName) setGoogleLastNamePlaceholder(parsed.lastName)
+    }
+    
     void (async () => {
       try {
         const next = await checkProfileAndRedirect(firebaseUser)
@@ -438,6 +480,14 @@ export default function SignUpPage() {
         const cred = await signInWithPopup(auth, provider)
         setEmail(cred.user.email || '')
         setIsSignedInWithGoogle(true)
+        
+        // Parse Google names from displayName as fallback (sync will also provide them)
+        if (cred.user.displayName) {
+          const parsed = parseGoogleDisplayName(cred.user.displayName)
+          if (parsed.firstName) setGoogleFirstNamePlaceholder(parsed.firstName)
+          if (parsed.lastName) setGoogleLastNamePlaceholder(parsed.lastName)
+        }
+        
         await checkProfileAndRedirect(cred.user)
         return
       } catch (e: any) {
@@ -709,6 +759,7 @@ export default function SignUpPage() {
                       setTouched((t) => ({ ...t, firstName: true }))
                       setFirstName(e.target.value)
                     }}
+                    placeholder={googleFirstNamePlaceholder || t.firstName}
                     className={cn(
                       'text-slate-900',
                       touched.firstName && validationErrors.firstName ? 'border-red-500' : ''
@@ -730,6 +781,7 @@ export default function SignUpPage() {
                       setTouched((t) => ({ ...t, lastName: true }))
                       setLastName(e.target.value)
                     }}
+                    placeholder={googleLastNamePlaceholder || t.lastName}
                     className={cn(
                       'text-slate-900',
                       touched.lastName && validationErrors.lastName ? 'border-red-500' : ''

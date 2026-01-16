@@ -33,6 +33,7 @@ interface CheckoutModalProps {
     description?: string;
     discountLabel?: { en: string; he: string };
   }>;
+  pointsToSpend?: number;
 }
 
 export default function CheckoutModal({
@@ -49,7 +50,8 @@ export default function CheckoutModal({
   quantity = 1,
   language = 'he',
   items = [],
-  appliedCoupons = []
+  appliedCoupons = [],
+  pointsToSpend = 0
 }: CheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>('INFO');
   const [formData, setFormData] = useState<CheckoutFormData>({
@@ -86,11 +88,12 @@ export default function CheckoutModal({
   const isHebrew = language === 'he';
   const isRTL = isHebrew;
 
-  // Calculate final total
+  // Calculate final total (including points discount)
+  const pointsDiscount = pointsToSpend || 0; // 1 point = 1 ILS
   const finalTotal = useMemo(() => {
-    const discountedSubtotal = Math.max((subtotal || 0) - (discountTotal || 0), 0);
+    const discountedSubtotal = Math.max((subtotal || 0) - (discountTotal || 0) - pointsDiscount, 0);
     return Math.max(discountedSubtotal + (deliveryFee || 0), 0);
-  }, [subtotal, discountTotal, deliveryFee]);
+  }, [subtotal, discountTotal, deliveryFee, pointsDiscount]);
 
   const checkoutItems = useMemo(() => {
     if (!items?.length) return [];
@@ -340,7 +343,7 @@ export default function CheckoutModal({
 
     const payload: CreateLowProfileRequest = {
       orderId,
-      amount,
+      amount: finalTotal, // Use finalTotal which includes points discount
       currencyIso: currency === 'USD' ? 2 : 1,
       language: isHebrew ? 'he' : 'en',
       productName,
@@ -369,7 +372,8 @@ export default function CheckoutModal({
         threeDSecureState: 'Auto',
         minNumOfPayments: 1,
         maxNumOfPayments: 1
-      }
+      },
+      pointsToSpend: pointsToSpend > 0 ? pointsToSpend : undefined
     };
 
     // Get auth token if user is signed in
@@ -723,6 +727,7 @@ export default function CheckoutModal({
                   appliedCoupons={appliedCoupons}
                   language={language}
                   showPromoCode={false}
+                  pointsDiscount={pointsDiscount}
                 />
               </div>
             </div>

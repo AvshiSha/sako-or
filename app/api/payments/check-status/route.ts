@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { prisma } from '../../../../lib/prisma';
-import { stringifyPaymentData } from '../../../../lib/orders';
-import { awardPointsForOrder } from '../../../../lib/points';
+import { stringifyPaymentData, parsePaymentData } from '../../../../lib/orders';
+import { awardPointsForOrder, spendPointsForOrder } from '../../../../lib/points';
 import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
 import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
 import { productService } from '../../../../lib/firebase';
@@ -94,9 +94,27 @@ export async function POST(request: NextRequest) {
             });
           }
           
-          // Award points if not already awarded
-          if (order.paymentStatus !== 'completed') {
+          // Handle points: first deduct points if used, then award points earned
+          if (order.paymentStatus !== 'completed' && order.userId) {
             try {
+              // First, deduct points if they were used in this order
+              const paymentMetadata = parsePaymentData(order.paymentData);
+              const pointsToSpend = paymentMetadata?.pointsToSpend;
+              
+              if (pointsToSpend && pointsToSpend > 0) {
+                try {
+                  await spendPointsForOrder({
+                    userId: order.userId,
+                    orderId: order.id,
+                    pointsToSpend: pointsToSpend
+                  });
+                  console.log(`[POINTS_SPEND] Deducted ${pointsToSpend} points for order ${order.orderNumber}`);
+                } catch (spendError: any) {
+                  console.error('[POINTS_SPEND_ERROR] Failed to deduct points for order', order.id, spendError);
+                }
+              }
+
+              // Then, award points earned
               await awardPointsForOrder(order.id);
             } catch (pointsError) {
               console.warn('[POINTS_AWARD_ERROR] Failed to award points for order', order.id, pointsError);
@@ -230,10 +248,30 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Award points once, after payment is completed (idempotent by DB uniqueness).
-      // `Order.total` is already the final total after discounts/points, so we award based on that.
-      if (order.paymentStatus !== 'completed') {
+      // Handle points: first deduct points if used, then award points earned
+      // This creates two separate ledger entries (SPEND and EARN) for the same order
+      if (order.paymentStatus !== 'completed' && order.userId) {
         try {
+          // First, deduct points if they were used in this order
+          const paymentMetadata = parsePaymentData(order.paymentData);
+          const pointsToSpend = paymentMetadata?.pointsToSpend;
+          
+          if (pointsToSpend && pointsToSpend > 0) {
+            try {
+              await spendPointsForOrder({
+                userId: order.userId,
+                orderId: order.id,
+                pointsToSpend: pointsToSpend
+              });
+              console.log(`[POINTS_SPEND] Deducted ${pointsToSpend} points for order ${order.orderNumber}`);
+            } catch (spendError: any) {
+              console.error('[POINTS_SPEND_ERROR] Failed to deduct points for order', order.id, spendError);
+              // Don't fail the entire payment - log and continue
+            }
+          }
+
+          // Then, award points earned (5% of final order total, rounded down)
+          // `Order.total` is already the final total after discounts/points, so we award based on that.
           await awardPointsForOrder(order.id);
         } catch (pointsError) {
           console.warn('[POINTS_AWARD_ERROR] Failed to award points for order', order.id, pointsError);

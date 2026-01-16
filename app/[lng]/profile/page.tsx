@@ -72,7 +72,7 @@ const translations = {
     personalInformation: 'מידע אישי',
     addressInformation: 'מידע כתובת',
     recentOrders: 'הזמנות אחרונות באתר',
-    orderHistory: 'היסטוריית הזמנות',
+    orderHistory: 'היסטוריית הזמנות באתר',
     viewAllOrders: 'צפה בכל ההזמנות',
     noOrdersYet: 'אין הזמנות עדיין',
     startShopping: 'התחל לקנות',
@@ -104,9 +104,9 @@ const translations = {
     apt: 'דירה',
     newsletterSubscription: 'הרשמה לניוזלטר',
     newsletterDescription: 'קבלו עדכונים, מבצעים וחדשות במייל.',
-    pointsHistory: 'היסטוריית נקודות',
+    pointsHistory: 'היסטוריית נקודות באתר',
     pointsHelp: 'צברו 5% בחזרה כנקודות על כל רכישה. השתמשו בנקודות להזמנות עתידיות!',
-    noPointsActivityYet: 'אין פעילות נקודות עדיין',
+    noPointsActivityYet: 'אין פעילות נקודות עדיין. נקודות יופיעו כאן לאחר שתשלים הזמנות.',
     earnedPoints: 'נקודות שנצברו',
     spentPoints: 'נקודות שנוצלו',
     memberSince: (value: string) => `חבר מאז ${value}`,
@@ -390,7 +390,7 @@ export default function ProfileOverviewPage() {
             </div>
             <div className="text-right">
               <div className="text-xs md:text-sm text-gray-500 mb-1">{t.pointsBalance}</div>
-              <div className="text-2xl md:text-3xl font-bold text-indigo-600 flex items-center justify-end">
+              <div className="text-2xl md:text-3xl font-bold text-[#856D55] flex items-center justify-end">
                 <SparklesIcon className="h-5 w-5 md:h-6 md:w-6 mr-1" />
                 {loadedUser.pointsBalance}
               </div>
@@ -412,10 +412,19 @@ export default function ProfileOverviewPage() {
             <h3 className={profileTheme.sectionTitle}>{t.personalInformation}</h3>
             <Link
               href={`/${lng}/profile/personal`}
-              className="flex items-center text-sm text-indigo-600 hover:text-indigo-700"
+              className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1"
             >
-              <PencilIcon className="h-4 w-4 mr-1" />
-              {t.edit}
+              {lng === 'he' ? (
+                <>
+                  {t.edit}
+                  <PencilIcon className="h-4 w-4 ml-1" />
+                </>
+              ) : (
+                <>
+                  <PencilIcon className="h-4 w-4 mr-1" />
+                  {t.edit}
+                </>
+              )}
             </Link>
           </div>
 
@@ -447,10 +456,19 @@ export default function ProfileOverviewPage() {
             <h3 className={profileTheme.sectionTitle}>{t.addressInformation}</h3>
             <Link
               href={`/${lng}/profile/personal`}
-              className="flex items-center text-sm text-indigo-600 hover:text-indigo-700"
+              className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1"
             >
-              <PencilIcon className="h-4 w-4 mr-1" />
-              {t.edit}
+              {lng === 'he' ? (
+                <>
+                  {t.edit}
+                  <PencilIcon className="h-4 w-4 ml-1" />
+                </>
+              ) : (
+                <>
+                  <PencilIcon className="h-4 w-4 mr-1" />
+                  {t.edit}
+                </>
+              )}
             </Link>
           </div>
 
@@ -486,7 +504,7 @@ export default function ProfileOverviewPage() {
           {orders.length > 0 && (
             <Link
               href={`/${lng}/profile/orders`}
-              className="flex items-center text-sm text-indigo-600 hover:text-indigo-700 gap-0.5 flex-shrink-0 whitespace-nowrap"
+              className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-0.5 flex-shrink-0 whitespace-nowrap"
             >
               {t.viewAllOrders}
               {lng === 'he' ? <ArrowLeftIcon className="h-4 w-4" /> : <ArrowRightIcon className="h-4 w-4" />}
@@ -535,20 +553,6 @@ export default function ProfileOverviewPage() {
             spentPoints: t.spentPoints,
             orderNumber: t.orderNumber
           }}
-        />
-      </div>
-
-      {/* Newsletter Block */}
-      <div className={profileTheme.card}>
-        <NewsletterSubscriptionBlock
-          isNewsletter={loadedUser.isNewsletter}
-          onUpdate={handleNewsletterUpdate}
-          translations={{
-            newsletterSubscription: t.newsletterSubscription,
-            newsletterDescription: t.newsletterDescription,
-            unableToSaveProfile: t.unableToSaveProfile
-          }}
-          showAsSection={true}
         />
       </div>
 

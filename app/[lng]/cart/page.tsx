@@ -13,6 +13,7 @@ import {
 import { useCart } from '@/app/hooks/useCart'
 import CheckoutModal from '@/app/components/CheckoutModal'
 import Accordion from '@/app/components/Accordion'
+import PointsUsage from '@/app/components/PointsUsage'
 import { trackViewCart } from '@/lib/dataLayer'
 import { CouponValidationSuccess } from '@/lib/coupons'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -106,6 +107,11 @@ const lastCartSignatureRef = useRef<string | null>(null)
 const urlCouponAttemptedRef = useRef<string | null>(null)
 const searchParamsObj = useSearchParams()
 const { user } = useAuth()
+
+// Points state
+const [pointsBalance, setPointsBalance] = useState(0)
+const [pointsToUse, setPointsToUse] = useState(0)
+const [pointsLoading, setPointsLoading] = useState(false)
 const appliedCodes = useMemo(() => appliedCoupons.map(coupon => coupon.coupon.code), [appliedCoupons])
 const userIdentifier = user?.email ? user.email.toLowerCase() : undefined
 const cartCurrency = useMemo(() => {
@@ -480,6 +486,49 @@ useEffect(() => {
   autoApply()
 }, [applyCouponCode, appliedCoupons.length, autoApplyAttempted, cartCurrency, cartItemsPayload, couponStrings.autoApplied, lng, loading, userIdentifier])
 
+// Fetch points balance when user is signed in
+useEffect(() => {
+  if (!user || !isClient) {
+    setPointsBalance(0)
+    setPointsToUse(0)
+    return
+  }
+
+  let cancelled = false
+  ;(async () => {
+    setPointsLoading(true)
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch('/api/me/points?limit=1', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json || json.error) {
+        throw new Error(json?.error || 'Failed to load points')
+      }
+
+      if (!cancelled) {
+        setPointsBalance(json.pointsBalance || 0)
+      }
+    } catch (e: any) {
+      console.error('Error loading points:', e)
+      if (!cancelled) {
+        setPointsBalance(0)
+      }
+    } finally {
+      if (!cancelled) {
+        setPointsLoading(false)
+      }
+    }
+  })()
+
+  return () => {
+    cancelled = true
+  }
+}, [user, isClient])
+
 useEffect(() => {
   if (!isClient || loading || items.length === 0) return
 
@@ -515,7 +564,8 @@ if (!isClient || loading) {
   const subtotal = getTotalPrice()
   const deliveryFee = getDeliveryFee()
   const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
-  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0)
+  const pointsDiscount = pointsToUse // 1 point = 1 ILS
+  const discountedSubtotal = Math.max(subtotal - totalDiscount - pointsDiscount, 0)
   const finalTotal = Math.max(discountedSubtotal + deliveryFee, 0)
   const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
@@ -724,6 +774,18 @@ if (!isClient || loading) {
                   </div>
                 </Accordion>
 
+                {/* Points Usage */}
+                {user && (
+                  <div className="mt-4">
+                    <PointsUsage
+                      pointsBalance={pointsBalance}
+                      onPointsChange={setPointsToUse}
+                      language={lng as 'he' | 'en'}
+                      disabled={pointsLoading}
+                    />
+                  </div>
+                )}
+
                 <hr className="my-6 border-gray-200" />
                 
                 <div className="mt-6 space-y-3">
@@ -757,7 +819,7 @@ if (!isClient || loading) {
                     <span>₪{subtotal.toFixed(2)}</span>
                   </div>
 
-                  {totalDiscount > 0 && (
+                  {(totalDiscount > 0 || pointsDiscount > 0) && (
                     <>
                       {appliedCoupons.map(coupon => (
                         <div key={coupon.coupon.code} className="flex justify-between text-xs text-green-600">
@@ -765,6 +827,12 @@ if (!isClient || loading) {
                           <span>-₪{coupon.discountAmount.toFixed(2)}</span>
                         </div>
                       ))}
+                      {pointsDiscount > 0 && (
+                        <div className="flex justify-between text-xs text-green-600">
+                          <span>{lng === 'he' ? 'הנחת נקודות' : 'Points discount'}</span>
+                          <span>-₪{pointsDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>{lng === 'he' ? 'סכום לאחר הנחות' : 'Subtotal after discounts'}</span>
                         <span>₪{discountedSubtotal.toFixed(2)}</span>
@@ -831,6 +899,7 @@ if (!isClient || loading) {
           description: coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined,
           discountLabel: coupon.coupon.discountLabel
         }))}
+        pointsToSpend={pointsToUse > 0 ? pointsToUse : undefined}
       />
     </div>
   )

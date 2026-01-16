@@ -1,9 +1,9 @@
 import { prisma } from './prisma';
 import { PointsKind } from '@prisma/client';
 
-function roundToNearestInt(value: number): number {
-  // Avoid surprises from floating point by rounding to nearest int.
-  return Math.round(value);
+function floorPoints(value: number): number {
+  // Calculate 5% of order total, rounded down (floored) to nearest integer.
+  return Math.floor(value);
 }
 
 export async function spendPointsForOrder(params: {
@@ -47,7 +47,7 @@ export async function spendPointsForOrder(params: {
         orderId: params.orderId,
         kind: PointsKind.SPEND,
         delta: -pointsToSpend,
-        reason: `SPEND: -${pointsToSpend} for orderNumber=${order?.orderNumber ?? 'unknown'}`
+        reason: `Used points in order ${order?.orderNumber ?? 'unknown'}`
       }
     });
   });
@@ -77,7 +77,7 @@ export async function awardPointsForOrder(orderId: string) {
       return null;
     }
 
-    const earnedPoints = roundToNearestInt(order.total * 0.05);
+    const earnedPoints = floorPoints(order.total * 0.05);
 
     const pointsRow = await tx.points.create({
       data: {
@@ -85,7 +85,7 @@ export async function awardPointsForOrder(orderId: string) {
         orderId: order.id,
         kind: PointsKind.EARN,
         delta: earnedPoints,
-        reason: `EARN: +${earnedPoints} (5% of ${order.total} ${order.currency}) for orderNumber=${order.orderNumber}`
+        reason: `Points earned from order ${order.orderNumber}`
       }
     });
 

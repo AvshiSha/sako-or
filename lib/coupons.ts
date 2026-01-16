@@ -395,9 +395,17 @@ function computeBogoDiscount(
   const discountPercent =
     Math.min(Math.max(coupon.discountValue ?? 100, 0), 100) / 100
 
-  const itemsWithEligibility = cartItems.map(item => {
-    const skuLower = item.sku.toLowerCase()
-    const product = productMap.get(item.sku)
+  // Collect all eligible items (either buy or get eligible)
+  const eligibleItems: Array<{
+    item: CouponCartItemInput
+    unitPrice: number
+    buyEligible: boolean
+    getEligible: boolean
+  }> = []
+
+  cartItems.forEach(cartItem => {
+    const skuLower = cartItem.sku.toLowerCase()
+    const product = productMap.get(cartItem.sku)
     const matchesCategory =
       eligibleCategories.size > 0 && hasCategoryMatch(product ?? null, eligibleCategories)
 
@@ -411,54 +419,81 @@ function computeBogoDiscount(
     const buyEligible = fallbackAll || isBuySku || matchesCategory
     const getEligible = fallbackAll || isGetSku || matchesCategory
 
-    return {
-      item,
-      product,
-      buyEligible,
-      getEligible
+    // Only include items that are eligible for either buy or get
+    if (buyEligible || getEligible) {
+      const unitPrice = getUnitPrice(cartItem)
+      const quantity = Math.max(cartItem.quantity, 0)
+      
+      // Expand items into individual units
+      for (let i = 0; i < quantity; i++) {
+        eligibleItems.push({
+          item: cartItem,
+          unitPrice,
+          buyEligible,
+          getEligible
+        })
+      }
     }
   })
 
-  const totalBuyUnits = itemsWithEligibility.reduce((total, entry) => {
-    return entry.buyEligible ? total + Math.max(entry.item.quantity, 0) : total
-  }, 0)
+  // Sort all units by price (highest to lowest)
+  eligibleItems.sort((a, b) => b.unitPrice - a.unitPrice)
 
-  const groups = Math.floor(totalBuyUnits / buyQty)
-  const totalFreeUnits = groups * getQty
+  // Calculate how many groups we can form
+  const totalEligibleUnits = eligibleItems.length
+  const unitsPerGroup = buyQty + getQty
+  const groups = Math.floor(totalEligibleUnits / unitsPerGroup)
 
-  if (totalFreeUnits <= 0) {
+  if (groups <= 0) {
     return { discountAmount: 0, discountedItems: [] }
   }
 
-  let remainingFreeUnits = totalFreeUnits
+  // For each group: highest items are "buy" (no discount), lowest items are "get" (with discount)
   let discountAmount = 0
-  const discountedItems: CouponDiscountedItem[] = []
+  const discountedItemsMap = new Map<string, { quantity: number; unitPrice: number; discountAmount: number }>()
 
-  for (const entry of itemsWithEligibility) {
-    if (!entry.getEligible || remainingFreeUnits <= 0) continue
+  for (let groupIndex = 0; groupIndex < groups; groupIndex++) {
+    const groupStart = groupIndex * unitsPerGroup
+    const buyStart = groupStart
+    const buyEnd = groupStart + buyQty
+    const getStart = buyEnd
+    const getEnd = groupStart + unitsPerGroup
 
-    const availableUnits = Math.max(entry.item.quantity, 0)
-    if (availableUnits <= 0) continue
+    // Items from getStart to getEnd are the "get" items (lowest priced in the group)
+    for (let i = getStart; i < getEnd; i++) {
+      const eligibleItem = eligibleItems[i]
+      // When fallbackAll is true, all items are eligible, so we can skip the getEligible check
+      if (!fallbackAll && !eligibleItem.getEligible) continue
 
-    const freeUnitsForItem = Math.min(availableUnits, remainingFreeUnits)
-    if (freeUnitsForItem <= 0) continue
+      const itemDiscount = eligibleItem.unitPrice * discountPercent
 
-    const unitPrice = getUnitPrice(entry.item)
-    const itemDiscount = freeUnitsForItem * unitPrice * discountPercent
+      if (itemDiscount > 0) {
+        discountAmount += itemDiscount
 
-    if (itemDiscount > 0) {
-      discountAmount += itemDiscount
-      discountedItems.push({
-        sku: entry.item.sku,
-        quantity: freeUnitsForItem,
-        unitPrice,
-        discountAmount: itemDiscount
-      })
-      remainingFreeUnits -= freeUnitsForItem
+        const existing = discountedItemsMap.get(eligibleItem.item.sku)
+        if (existing) {
+          existing.quantity += 1
+          existing.discountAmount += itemDiscount
+        } else {
+          discountedItemsMap.set(eligibleItem.item.sku, {
+            quantity: 1,
+            unitPrice: eligibleItem.unitPrice,
+            discountAmount: itemDiscount
+          })
+        }
+      }
     }
-
-    if (remainingFreeUnits <= 0) break
   }
+
+  // Convert map to array
+  const discountedItems: CouponDiscountedItem[] = Array.from(discountedItemsMap.entries()).map(
+    ([sku, data]) => ({
+      sku,
+      quantity: data.quantity,
+      unitPrice: data.unitPrice,
+      discountAmount: data.discountAmount
+    })
+  )
 
   return {
     discountAmount,

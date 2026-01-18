@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
 import { requireUserAuth } from '@/lib/server/auth'
+import { triggerInforuAutomation, e164ToLocalPhone } from '@/lib/inforu'
 
 function computeNeedsProfileCompletion(user: {
   firstName: string | null
@@ -43,6 +44,84 @@ const ProfilePatchSchema = z.object({
 
   isNewsletter: z.boolean().optional()
 })
+
+type User = {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  phone: string | null
+  birthday: Date
+  interestedIn: string | null
+  isNewsletter: boolean
+}
+
+/**
+ * Triggers Inforu isNewsletter automation event
+ * @param user - The updated user record from database
+ */
+async function triggerInforuNewsletterEvent(user: User): Promise<void> {
+  try {
+    // Convert phone from E.164 format to local format (0XXXXXXXXX)
+    const localPhone = e164ToLocalPhone(user.phone)
+    if (!localPhone) {
+      console.warn('[INFORU NEWSLETTER] Cannot trigger - invalid phone number:', user.phone)
+      return
+    }
+
+    // Map interestedIn to GenderId
+    // mens → 1 (male), womens → 2 (female), both/null → omit
+    let genderId: number | undefined
+    if (user.interestedIn === 'mens') {
+      genderId = 1
+    } else if (user.interestedIn === 'womens') {
+      genderId = 2
+    }
+    // Omit GenderId for 'both' or null
+
+    // Format birthday as YYYY-MM-DD string
+    const birthDate = user.birthday instanceof Date
+      ? user.birthday.toISOString().split('T')[0]
+      : undefined
+
+    // Convert isNewsletter boolean to string "true" or "false"
+    const isNewsletterString = user.isNewsletter ? 'true' : 'false'
+
+    // Prepare contact data for Inforu
+    const contact = {
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
+      email: user.email || undefined,
+      phoneNumber: localPhone,
+      genderId: genderId,
+      birthDate: birthDate,
+      is_newsletter: isNewsletterString,
+    }
+
+    console.log('[INFORU NEWSLETTER] Prepared contact data:', {
+      phoneNumber: contact.phoneNumber,
+      email: contact.email,
+      is_newsletter: contact.is_newsletter,
+      genderId: contact.genderId,
+      birthDate: contact.birthDate
+    })
+
+    // Trigger Inforu automation
+    const result = await triggerInforuAutomation({
+      apiEventName: 'isNewsletter',
+      contacts: [contact],
+    })
+
+    if (result.success) {
+      console.log('[INFORU NEWSLETTER] Successfully triggered isNewsletter event for user:', user.id, `newsletter: ${isNewsletterString}`)
+    } else {
+      console.error('[INFORU NEWSLETTER] Failed to trigger isNewsletter event:', result.error)
+    }
+  } catch (error) {
+    console.error('[INFORU NEWSLETTER] Error triggering isNewsletter event:', error)
+    throw error // Re-throw so caller can handle it
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -136,6 +215,9 @@ export async function PATCH(request: NextRequest) {
       where: { firebaseUid }
     })
 
+    // Track old newsletter value for change detection
+    const oldIsNewsletter = existingUser?.isNewsletter ?? false
+
     let user
     if (!existingUser) {
       // User doesn't exist yet - this is their first profile save (onboarding)
@@ -203,6 +285,28 @@ export async function PATCH(request: NextRequest) {
       phone: user.phone,
       language: user.language
     })
+
+    // Trigger Inforu isNewsletter event if newsletter value changed (only for existing users)
+    if (existingUser && data.isNewsletter !== undefined) {
+      const newIsNewsletter = user.isNewsletter ?? false
+      const newsletterChanged = oldIsNewsletter !== newIsNewsletter
+
+      console.log('[ME_PROFILE] Newsletter change detection:', {
+        oldIsNewsletter,
+        newIsNewsletter,
+        newsletterChanged,
+        userId: user.id
+      })
+
+      if (newsletterChanged) {
+        try {
+          await triggerInforuNewsletterEvent(user)
+        } catch (error) {
+          // Log error but don't fail the profile update process
+          console.error('[ME_PROFILE] Failed to trigger Inforu newsletter event:', error)
+        }
+      }
+    }
 
     return NextResponse.json(
       { ok: true, user, needsProfileCompletion },

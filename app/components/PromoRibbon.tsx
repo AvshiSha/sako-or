@@ -7,9 +7,9 @@ interface PromoRibbonProps {
 }
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
-  const text = lng === 'he' 
-    ? 'עד מוצש! 15% הנחה על הזוג השני בהקלדת קופון: BOG15' 
-    : 'Until January 17th! 15% discount on the second pair when using coupon: BOG15'
+  const text = lng === 'he'
+    ? 'משלוח חינם בכל הארץ בהזמנה מעל ₪300 🚚'
+    : '🚚 Free shipping in Israel on orders over ₪300'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-black to-gray-900 text-white h-10 z-[60]">

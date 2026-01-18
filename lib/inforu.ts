@@ -16,6 +16,9 @@ export interface InforuContact {
   email?: string;
   phoneNumber: string; // Local format (0XXXXXXXXX)
   contactRefId?: string;
+  genderId?: number; // 1 for male (mens), 2 for female (womens)
+  birthDate?: string; // YYYY-MM-DD format
+  is_newsletter?: string; // "true" or "false" as string
 }
 
 export interface InforuTriggerData {
@@ -122,6 +125,15 @@ export async function triggerInforuAutomation(
           }
           if (contact.contactRefId) {
             contactData.ContactRefId = contact.contactRefId;
+          }
+          if (contact.genderId !== undefined && contact.genderId !== null) {
+            contactData.GenderId = contact.genderId;
+          }
+          if (contact.birthDate) {
+            contactData.BirthDate = contact.birthDate;
+          }
+          if (contact.is_newsletter !== undefined) {
+            contactData.is_newsletter = contact.is_newsletter;
           }
 
           return contactData;

@@ -4,6 +4,7 @@ import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
 import { requireUserAuth } from '@/lib/server/auth'
+import { triggerInforuAutomation, e164ToLocalPhone } from '@/lib/inforu'
 
 const CompleteSignupSchema = z.object({
   firstName: z.string().trim().min(1).max(50),
@@ -31,6 +32,81 @@ const CompleteSignupSchema = z.object({
   addressCity: z.string().trim().max(100).optional().nullable(),
   isNewsletter: z.boolean().optional()
 })
+
+type User = {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  email: string | null
+  phone: string | null
+  birthday: Date
+  interestedIn: string | null
+  isNewsletter: boolean
+}
+
+type SignupData = z.infer<typeof CompleteSignupSchema>
+
+/**
+ * Triggers Inforu welcomeCustomerClub automation event
+ * @param user - The completed user record from database
+ * @param data - The signup data from request
+ */
+async function triggerInforuWelcomeEvent(user: User, data: SignupData): Promise<void> {
+  try {
+    // Convert phone from E.164 format to local format (0XXXXXXXXX)
+    const localPhone = e164ToLocalPhone(user.phone || data.phone)
+    if (!localPhone) {
+      console.warn('[INFORU WELCOME] Cannot trigger - invalid phone number:', user.phone)
+      return
+    }
+
+    // Map interestedIn to GenderId
+    // mens → 1 (male), womens → 2 (female), both/null → omit
+    let genderId: number | undefined
+    if (user.interestedIn === 'mens') {
+      genderId = 1
+    } else if (user.interestedIn === 'womens') {
+      genderId = 2
+    }
+    // Omit GenderId for 'both' or null
+
+    // Format birthday as YYYY-MM-DD string
+    const birthDate = user.birthday instanceof Date 
+      ? user.birthday.toISOString().split('T')[0]
+      : data.birthday instanceof Date
+        ? data.birthday.toISOString().split('T')[0]
+        : undefined
+
+    // Convert isNewsletter boolean to string "true" or "false"
+    const isNewsletterString = (user.isNewsletter ?? data.isNewsletter ?? false) ? 'true' : 'false'
+
+    // Prepare contact data for Inforu
+    const contact = {
+      firstName: user.firstName || undefined,
+      lastName: user.lastName || undefined,
+      email: user.email || undefined,
+      phoneNumber: localPhone,
+      genderId: genderId,
+      birthDate: birthDate,
+      is_newsletter: isNewsletterString,
+    }
+
+    // Trigger Inforu automation
+    const result = await triggerInforuAutomation({
+      apiEventName: 'welcomeCustomerClub',
+      contacts: [contact],
+    })
+
+    if (result.success) {
+      console.log('[INFORU WELCOME] Successfully triggered welcomeCustomerClub event for user:', user.id)
+    } else {
+      console.error('[INFORU WELCOME] Failed to trigger welcomeCustomerClub event:', result.error)
+    }
+  } catch (error) {
+    console.error('[INFORU WELCOME] Error triggering welcomeCustomerClub event:', error)
+    throw error // Re-throw so caller can handle it
+  }
+}
 
 /**
  * POST /api/auth/complete-signup
@@ -87,6 +163,9 @@ export async function POST(request: NextRequest) {
       where: { firebaseUid }
     })
 
+    // Track if this is a new completion (for Inforu trigger)
+    const wasAlreadyCompleted = existingUser?.signupCompletedAt !== null && existingUser?.signupCompletedAt !== undefined
+
     if (existingUser) {
       // If user already exists and is confirmed, return success
       if (existingUser.signupCompletedAt) {
@@ -118,6 +197,16 @@ export async function POST(request: NextRequest) {
           lastLoginAt: now
         }
       })
+
+      // Trigger Inforu welcome event for newly completed signup
+      if (!wasAlreadyCompleted) {
+        try {
+          await triggerInforuWelcomeEvent(user, data)
+        } catch (error) {
+          // Log error but don't fail the signup process
+          console.error('[COMPLETE_SIGNUP] Failed to trigger Inforu welcome event:', error)
+        }
+      }
 
       return NextResponse.json(
         { ok: true, user },
@@ -158,6 +247,14 @@ export async function POST(request: NextRequest) {
         isDelete: false
       }
     })
+
+    // Trigger Inforu welcome event for newly completed signup
+    try {
+      await triggerInforuWelcomeEvent(user, data)
+    } catch (error) {
+      // Log error but don't fail the signup process
+      console.error('[COMPLETE_SIGNUP] Failed to trigger Inforu welcome event:', error)
+    }
 
     return NextResponse.json(
       { ok: true, user },

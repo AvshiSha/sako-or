@@ -5,7 +5,7 @@ import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, usePathname } from 'next/navigation'
-import { getImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl, getSakoOrMobileVideoUrl } from '@/lib/image-urls'
+import { getImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl, getSakoOrMobileVideoUrl, getSakoOrDesktopVideoUrl } from '@/lib/image-urls'
 import CountdownPopup from '@/app/components/CountdownPopup'
 import ProductCarousel from '@/app/components/ProductCarousel'
 import { productService } from '@/lib/firebase'
@@ -42,8 +42,8 @@ const translations = {
     holidayCollection: 'קולקציית החגים',
     forHer: 'לנשים',
     forHim: 'לגברים',
-    heroDescription:  'מבצעי סוף עונה על כל קולקציית החורף!',   //'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
-    exploreCollections:  'מבצעי סוף העונה',  //'לקולקציה החדשה',
+    heroDescription: 'מבצעי סוף עונה על כל קולקציית החורף!',   //'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
+    exploreCollections: 'מבצעי סוף העונה',  //'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
     collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
     viewCollection: 'צפה באוסף',
@@ -121,14 +121,14 @@ export default function Home() {
           brand: 'SAKO-OR',
           limit: 50, // Fetch more for better randomness
         })
-        
+
         // Shuffle array using Fisher-Yates algorithm
         const shuffled = [...allProducts]
         for (let i = shuffled.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
         }
-        
+
         // Take first 15 after shuffling
         setSakoOrProducts(shuffled.slice(0, 15))
       } catch (error) {
@@ -148,13 +148,13 @@ export default function Home() {
       const timer = setTimeout(() => {
         setShowCountdownPopup(true)
       }, 500) // 500ms delay to ensure everything is ready
-      
+
       return () => clearTimeout(timer)
     }
   }, [])
 
   const isRTL = lng === 'he'
-  
+
   // Get translations for current language
   const t = translations[lng]
 
@@ -162,6 +162,7 @@ export default function Home() {
   const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
   const heroMobileVideoSrc = getHeroMobileVideoUrl()
   const sakoOrMobileVideoSrc = getSakoOrMobileVideoUrl()
+  const sakoOrDesktopVideoSrc = getSakoOrDesktopVideoUrl()
 
   return (
     <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
@@ -240,7 +241,7 @@ export default function Home() {
             // poster={heroImageSrc}
             aria-hidden="true"
           >
-            <source src={heroDesktopVideoSrc} type="video/mp4" />
+            <source src={sakoOrDesktopVideoSrc} type="video/mp4" />
           </video>
           <video
             className="block md:hidden h-full w-full object-cover"
@@ -257,13 +258,13 @@ export default function Home() {
           </video>
           <div className="absolute inset-0 bg-neutral-900/60" aria-hidden="true" />
         </div>
-         <div className="relative h-full flex items-center justify-center text-center">
+        <div className="relative h-full flex items-center justify-center text-center">
           <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase hero-text-fade-in" style={{ fontFamily: 'Assistant, sans-serif', opacity: 0 }}>
               SAKO OR EXCLUSIVE
             </h1>
-            </div>
-            </div>
+          </div>
+        </div>
       </div>
 
       {/* Product Carousel - SAKO-OR Products - Second */}

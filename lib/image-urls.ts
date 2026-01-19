@@ -17,8 +17,9 @@ const imageUrlMappings: Record<string, string> = {
 
 const videoUrlMappings: Record<string, string> = {
   "/videos/hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_desktop_fix.mp4?alt=media&token=67c85ea8-4a10-4ccd-8ab3-1b96d9b98425",
-  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_mobile.mp4?alt=media&token=27de529b-9234-4560-8029-612d03794cef",
-  "/videos/sako-or-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fexa_v2.mp4?alt=media&token=33a2da44-fff6-4f61-be5e-616c965ae1c9"
+  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fsako_exclusive_mobile.mp4?alt=media&token=5d771fff-7cfb-4d3f-a733-0e2d1dabf160",
+  "/videos/sako-or-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION_mobile.mp4?alt=media&token=c816cf11-042a-49a0-a1c9-a0f1b7f63322",
+  "/videos/sako-or-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION.mp4?alt=media&token=84b2745c-0008-4c91-9c88-ea251489954c"
 };
 
 /**
@@ -67,6 +68,10 @@ export function getSakoOrMobileVideoUrl(): string {
   return getVideoUrl("/videos/sako-or-mobile.mp4");
 }
 
+export function getSakoOrDesktopVideoUrl(): string {
+  return getVideoUrl("/videos/sako-or-desktop.mp4");
+}
+
 /**
  * Get Firebase Storage URL for logo
  */
@@ -83,7 +88,7 @@ export function getCollectionImageUrl(collectionName: string): string {
     "Designer Boots": "/images/collections/low-boots-collection.webp",
     "Classic Oxford": "/images/collections/oxford-collection.webp"
   };
-  
+
   const localPath = collectionMap[collectionName];
   return localPath ? getImageUrl(localPath) : getImageUrl("/images/placeholder.svg");
 }
@@ -97,7 +102,7 @@ export function getProductImageUrl(productName: string): string {
     "Chic Ankle Boots": "/images/products/4926-2356.webp",
     "Suede Cowboy Boots": "/images/products/4925-2901.webp"
   };
-  
+
   const localPath = productMap[productName];
   return localPath ? getImageUrl(localPath) : getImageUrl("/images/placeholder.svg");
 }

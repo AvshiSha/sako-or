@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
 import { requireUserAuth } from '@/lib/server/auth'
 import { triggerInforuAutomation, e164ToLocalPhone } from '@/lib/inforu'
+import { getVerifoneCustomerByCellular } from '@/lib/verifone'
 
 const CompleteSignupSchema = z.object({
   firstName: z.string().trim().min(1).max(50),
@@ -39,6 +40,7 @@ type User = {
   lastName: string | null
   email: string | null
   phone: string | null
+  pointsBalance: number
   birthday: Date
   interestedIn: string | null
   isNewsletter: boolean
@@ -71,7 +73,7 @@ async function triggerInforuWelcomeEvent(user: User, data: SignupData): Promise<
     // Omit GenderId for 'both' or null
 
     // Format birthday as YYYY-MM-DD string
-    const birthDate = user.birthday instanceof Date 
+    const birthDate = user.birthday instanceof Date
       ? user.birthday.toISOString().split('T')[0]
       : data.birthday instanceof Date
         ? data.birthday.toISOString().split('T')[0]
@@ -138,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch Firebase user to verify phone number is attached
     const firebaseUser = auth.firebaseUser
-    
+
     if (!firebaseUser.phoneNumber) {
       return NextResponse.json(
         { error: 'Phone number not verified. Please complete SMS verification first.' },
@@ -150,7 +152,7 @@ export async function POST(request: NextRequest) {
     const firebasePhoneE164 = normalizeIsraelE164(firebaseUser.phoneNumber || '')
     if (!firebasePhoneE164 || firebasePhoneE164 !== data.phone) {
       return NextResponse.json(
-        { 
+        {
           error: 'Phone number mismatch. The verified phone does not match the provided phone.',
           details: { firebasePhone: firebasePhoneE164, providedPhone: data.phone }
         },
@@ -169,12 +171,14 @@ export async function POST(request: NextRequest) {
     if (existingUser) {
       // If user already exists and is confirmed, return success
       if (existingUser.signupCompletedAt) {
+        // Return a new custom token for client-side re-authentication
+        const customToken = await adminAuth.createCustomToken(firebaseUid)
         return NextResponse.json(
-          { ok: true, user: existingUser, message: 'User already exists' },
+          { ok: true, user: existingUser, message: 'User already exists', customToken },
           { status: 200 }
         )
       }
-      
+
       // User exists but isn't confirmed - update it
       const now = new Date()
       const user = await prisma.user.update({
@@ -198,6 +202,63 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      // Sync Verifone club points for this user (non-blocking on failure)
+      try {
+        const verifoneResult = await getVerifoneCustomerByCellular(user.phone)
+
+        if (
+          verifoneResult.success &&
+          verifoneResult.customer &&
+          verifoneResult.customer.isClubMember
+        ) {
+          const verifonePoints = Math.max(
+            0,
+            verifoneResult.customer.creditPoints || 0
+          )
+
+          if (verifonePoints > 0) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { pointsBalance: verifonePoints }
+            })
+
+            console.log(
+              '[VERIFONE_GET_CUSTOMERS] Synced points for existing user',
+              {
+                userId: user.id,
+                verifonePoints,
+                status: verifoneResult.status,
+                statusDescription: verifoneResult.statusDescription
+              }
+            )
+          } else {
+            console.log(
+              '[VERIFONE_GET_CUSTOMERS] Club member with zero points for existing user',
+              {
+                userId: user.id,
+                status: verifoneResult.status,
+                statusDescription: verifoneResult.statusDescription
+              }
+            )
+          }
+        } else {
+          console.log(
+            '[VERIFONE_GET_CUSTOMERS] No Verifone club customer or lookup failed for existing user',
+            {
+              userId: user.id,
+              hasCustomer: !!verifoneResult.customer,
+              status: verifoneResult.status,
+              statusDescription: verifoneResult.statusDescription
+            }
+          )
+        }
+      } catch (verifoneError) {
+        console.error(
+          '[VERIFONE_GET_CUSTOMERS] Error syncing points for existing user',
+          verifoneError
+        )
+      }
+
       // Trigger Inforu welcome event for newly completed signup
       if (!wasAlreadyCompleted) {
         try {
@@ -208,8 +269,12 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Return a new custom token for client-side re-authentication
+      // This helps if the client auth was cleared after signInWithCustomToken
+      const customToken = await adminAuth.createCustomToken(firebaseUid)
+
       return NextResponse.json(
-        { ok: true, user },
+        { ok: true, user, customToken },
         { status: 200 }
       )
     }
@@ -222,6 +287,8 @@ export async function POST(request: NextRequest) {
     const authProvider = auth.authProvider
 
     const now = new Date()
+    // Create new user in Neon with initial zero points; we may overwrite
+    // pointsBalance with Verifone data right after creation.
     const user = await prisma.user.create({
       data: {
         firebaseUid,
@@ -248,6 +315,63 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Sync Verifone club points for this newly created user (non-blocking on failure)
+    try {
+      const verifoneResult = await getVerifoneCustomerByCellular(user.phone)
+
+      if (
+        verifoneResult.success &&
+        verifoneResult.customer &&
+        verifoneResult.customer.isClubMember
+      ) {
+        const verifonePoints = Math.max(
+          0,
+          verifoneResult.customer.creditPoints || 0
+        )
+
+        if (verifonePoints > 0) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { pointsBalance: verifonePoints }
+          })
+
+          console.log(
+            '[VERIFONE_GET_CUSTOMERS] Synced points for new user',
+            {
+              userId: user.id,
+              verifonePoints,
+              status: verifoneResult.status,
+              statusDescription: verifoneResult.statusDescription
+            }
+          )
+        } else {
+          console.log(
+            '[VERIFONE_GET_CUSTOMERS] Club member with zero points for new user',
+            {
+              userId: user.id,
+              status: verifoneResult.status,
+              statusDescription: verifoneResult.statusDescription
+            }
+          )
+        }
+      } else {
+        console.log(
+          '[VERIFONE_GET_CUSTOMERS] No Verifone club customer or lookup failed for new user',
+          {
+            userId: user.id,
+            hasCustomer: !!verifoneResult.customer,
+            status: verifoneResult.status,
+            statusDescription: verifoneResult.statusDescription
+          }
+        )
+      }
+    } catch (verifoneError) {
+      console.error(
+        '[VERIFONE_GET_CUSTOMERS] Error syncing points for new user',
+        verifoneError
+      )
+    }
+
     // Trigger Inforu welcome event for newly completed signup
     try {
       await triggerInforuWelcomeEvent(user, data)
@@ -256,8 +380,12 @@ export async function POST(request: NextRequest) {
       console.error('[COMPLETE_SIGNUP] Failed to trigger Inforu welcome event:', error)
     }
 
+    // Return a new custom token for client-side re-authentication
+    // This helps if the client auth was cleared after signInWithCustomToken
+    const customToken = await adminAuth.createCustomToken(firebaseUid)
+
     return NextResponse.json(
-      { ok: true, user },
+      { ok: true, user, customToken },
       { status: 201 }
     )
   } catch (error: any) {

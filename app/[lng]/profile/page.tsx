@@ -182,29 +182,29 @@ export default function ProfileOverviewPage() {
     }
 
     let cancelled = false
-    ;(async () => {
-      setBusy(true)
-      setError(null)
-      try {
-        const token = await firebaseUser.getIdToken()
-        const res = await fetch('/api/me/profile', {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      ; (async () => {
+        setBusy(true)
+        setError(null)
+        try {
+          const token = await firebaseUser.getIdToken()
+          const res = await fetch('/api/me/profile', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+          })
 
-        const json = await res.json().catch(() => ({}))
-        if (!res.ok || !json || json.error) {
-          throw new Error(json?.error || `HTTP ${res.status}`)
+          const json = await res.json().catch(() => ({}))
+          if (!res.ok || !json || json.error) {
+            throw new Error(json?.error || `HTTP ${res.status}`)
+          }
+
+          if (cancelled) return
+          setLoadedUser(json.user)
+        } catch (e: any) {
+          if (!cancelled) setError(e?.message || t.unableToLoadProfile)
+        } finally {
+          if (!cancelled) setBusy(false)
         }
-
-        if (cancelled) return
-        setLoadedUser(json.user)
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || t.unableToLoadProfile)
-      } finally {
-        if (!cancelled) setBusy(false)
-      }
-    })()
+      })()
 
     return () => {
       cancelled = true
@@ -216,27 +216,27 @@ export default function ProfileOverviewPage() {
     if (!firebaseUser || !loadedUser) return
 
     let cancelled = false
-    ;(async () => {
-      setPointsLoading(true)
-      try {
-        const token = await firebaseUser.getIdToken()
-        const res = await fetch('/api/me/points?limit=5', {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      ; (async () => {
+        setPointsLoading(true)
+        try {
+          const token = await firebaseUser.getIdToken()
+          const res = await fetch('/api/me/points?limit=5', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+          })
 
-        const json = await res.json().catch(() => ({}))
-        if (!res.ok || !json || json.error) {
-          throw new Error(json?.error || 'Failed to load points')
+          const json = await res.json().catch(() => ({}))
+          if (!res.ok || !json || json.error) {
+            throw new Error(json?.error || 'Failed to load points')
+          }
+
+          if (!cancelled) setPointsHistory(json.pointsHistory || [])
+        } catch (e: any) {
+          console.error('Error loading points:', e)
+        } finally {
+          if (!cancelled) setPointsLoading(false)
         }
-
-        if (!cancelled) setPointsHistory(json.pointsHistory || [])
-      } catch (e: any) {
-        console.error('Error loading points:', e)
-      } finally {
-        if (!cancelled) setPointsLoading(false)
-      }
-    })()
+      })()
 
     return () => {
       cancelled = true
@@ -248,27 +248,27 @@ export default function ProfileOverviewPage() {
     if (!firebaseUser || !loadedUser) return
 
     let cancelled = false
-    ;(async () => {
-      setOrdersLoading(true)
-      try {
-        const token = await firebaseUser.getIdToken()
-        const res = await fetch('/api/me/orders?limit=1', {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` }
-        })
+      ; (async () => {
+        setOrdersLoading(true)
+        try {
+          const token = await firebaseUser.getIdToken()
+          const res = await fetch('/api/me/orders?limit=1', {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${token}` }
+          })
 
-        const json = await res.json().catch(() => ({}))
-        if (!res.ok || !json || json.error) {
-          throw new Error(json?.error || 'Failed to load orders')
+          const json = await res.json().catch(() => ({}))
+          if (!res.ok || !json || json.error) {
+            throw new Error(json?.error || 'Failed to load orders')
+          }
+
+          if (!cancelled) setOrders(json.orders || [])
+        } catch (e: any) {
+          console.error('Error loading orders:', e)
+        } finally {
+          if (!cancelled) setOrdersLoading(false)
         }
-
-        if (!cancelled) setOrders(json.orders || [])
-      } catch (e: any) {
-        console.error('Error loading orders:', e)
-      } finally {
-        if (!cancelled) setOrdersLoading(false)
-      }
-    })()
+      })()
 
     return () => {
       cancelled = true
@@ -341,19 +341,19 @@ export default function ProfileOverviewPage() {
     if (loadedUser.firstName?.trim()) {
       return loadedUser.firstName.trim()
     }
-    
+
     // 2. Try displayName from Firebase user
     if (firebaseUser?.displayName?.trim()) {
       return firebaseUser.displayName.trim()
     }
-    
+
     // 3. Try email prefix
     const email = loadedUser.email || firebaseUser?.email
     if (email) {
       const prefix = email.split('@')[0]
       if (prefix) return prefix
     }
-    
+
     // 4. Fallback
     return lng === 'he' ? 'שם משתמש' : 'User'
   }
@@ -480,7 +480,7 @@ export default function ProfileOverviewPage() {
             <div className="flex justify-between">
               <span className="text-sm text-gray-500">{t.street}:</span>
               <span className="text-sm font-medium text-gray-900">
-                {loadedUser.addressStreet 
+                {loadedUser.addressStreet
                   ? `${loadedUser.addressStreet}${loadedUser.addressStreetNumber ? ' ' + loadedUser.addressStreetNumber : ''}`
                   : '—'}
               </span>

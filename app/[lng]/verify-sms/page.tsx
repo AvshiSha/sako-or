@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import ProfileShell from '@/app/components/profile/ProfileShell'
 import { profileTheme } from '@/app/components/profile/profileTheme'
-import { signInWithCustomToken } from 'firebase/auth'
+import { signInWithCustomToken, onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 
 const translations = {
@@ -147,21 +147,21 @@ export default function VerifySmsPage() {
 
     try {
       const parsed = JSON.parse(stored) as PendingSignup
-      
+
       // For Google signup flow, verify UID matches if both exist
       if (parsed.uid && firebaseUser && parsed.uid !== firebaseUser.uid) {
         sessionStorage.removeItem('pendingSignup')
         router.replace(`/${lng}/signup`)
         return
       }
-      
+
       // For email-only flow, email is required
       if (!parsed.uid && !parsed.email) {
         sessionStorage.removeItem('pendingSignup')
         router.replace(`/${lng}/signup`)
         return
       }
-      
+
       setPendingSignup(parsed)
     } catch {
       sessionStorage.removeItem('pendingSignup')
@@ -215,8 +215,8 @@ export default function VerifySmsPage() {
       const res = await fetch('/api/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          otpType: 'sms', 
+        body: JSON.stringify({
+          otpType: 'sms',
           otpValue: phoneForInforu,
           checkUserExists: false // Signup flow - user may not exist
         }),
@@ -270,8 +270,8 @@ export default function VerifySmsPage() {
       const verifyRes = await fetch('/api/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          otpType: 'sms', 
+        body: JSON.stringify({
+          otpType: 'sms',
           otpValue: phoneForInforu,
           otpCode: code.trim(),
           requireUserExists: false, // For Google signup, we're adding phone, not checking if it exists
@@ -292,11 +292,22 @@ export default function VerifySmsPage() {
       // Sign in with custom token
       const userCredential = await signInWithCustomToken(auth, data.customToken)
       const verifiedUser = userCredential.user
-      let token = await verifiedUser.getIdToken()
+
+      // Immediately exchange custom token for ID token to ensure proper persistence
+      // Force refresh to get a fresh ID token that will persist
+      let token = await verifiedUser.getIdToken(true)
+
+      // Verify auth.currentUser is still set after token refresh
+      if (!auth.currentUser || auth.currentUser.uid !== verifiedUser.uid) {
+        throw new Error('Authentication lost after sign-in')
+      }
+
+      // Small delay to let Firebase persist the auth state
+      await new Promise(resolve => setTimeout(resolve, 200))
 
       // For Google signup flow, user already exists - just need to ensure phone is updated
       // For email-only flow, user was just created
-      
+
       // Link email to the phone-authenticated user if email exists and not already linked
       if (pendingSignup.email && !verifiedUser.email) {
         try {
@@ -363,34 +374,96 @@ export default function VerifySmsPage() {
 
       console.log('✅ [VERIFY] Signup completed successfully')
       sessionStorage.removeItem('pendingSignup')
-      
-      // Refresh token to get latest user info
-      token = await verifiedUser.getIdToken(true)
-      
-      // Sync profile before redirecting to ensure ProfileCompletionGate sees complete profile
-      const syncRes = await fetch('/api/me/sync', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      const syncJson = (await syncRes.json().catch(() => null)) as 
-        | { ok: true; needsProfileCompletion: boolean }
-        | { error: string }
-        | null
 
-      if (!syncRes.ok || !syncJson || 'error' in syncJson) {
-        console.warn('[VERIFY] Sync failed, but redirecting anyway:', syncJson)
-        // Continue anyway - profile should be complete after complete-signup
-      } else if (syncJson.needsProfileCompletion === true) {
-        // This shouldn't happen after complete-signup, but redirect to signup if needed
-        console.warn('[VERIFY] Profile still incomplete after signup, redirecting to signup')
-        router.replace(`/${lng}/signup`)
-        return
+      // Store the custom token from complete-signup for potential re-authentication
+      const completeSignupCustomToken = json.customToken || null
+
+      // Attempt to sync profile (best effort - non-fatal)
+      // This helps ProfileCompletionGate see the complete profile, but failure shouldn't block redirect
+      try {
+        // Use existing token instead of forcing refresh to avoid auth/user-token-expired errors
+        // The token we already have is valid and sufficient for sync
+        const syncToken = token || await verifiedUser.getIdToken()
+
+        const syncRes = await fetch('/api/me/sync', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${syncToken}` }
+        })
+        const syncJson = (await syncRes.json().catch(() => null)) as
+          | { ok: true; needsProfileCompletion: boolean }
+          | { error: string }
+          | null
+
+        if (!syncRes.ok || !syncJson || 'error' in syncJson) {
+          console.warn('[VERIFY] Sync failed, but continuing anyway:', syncJson)
+          // Continue anyway - profile should be complete after complete-signup
+        } else if (syncJson.needsProfileCompletion === true) {
+          // This shouldn't happen after complete-signup, but log it
+          console.warn('[VERIFY] Profile still marked incomplete after signup (unexpected)')
+          // Still redirect to profile - complete-signup succeeded, so user should be fine
+        }
+      } catch (syncErr: any) {
+        // Token refresh or sync failed - log but don't block redirect
+        // AuthContext will also sync on auth state change, so this is not critical
+        console.warn('[VERIFY] Post-signup sync failed (non-fatal):', syncErr?.message || syncErr)
       }
-      
-      // Wait a moment for AuthContext to update with the new user state
-      await new Promise(resolve => setTimeout(resolve, 200))
-      
-      // Profile is complete - redirect to profile page
+
+      // Wait for auth state to stabilize using onAuthStateChanged listener
+      // This is more reliable than polling auth.currentUser
+      const waitForAuth = (): Promise<boolean> => {
+        return new Promise((resolve) => {
+          // If already authenticated, resolve immediately
+          if (auth.currentUser?.uid === verifiedUser.uid) {
+            resolve(true)
+            return
+          }
+
+          let resolved = false
+          const timeout = setTimeout(() => {
+            if (!resolved) {
+              resolved = true
+              unsubscribe()
+              resolve(false)
+            }
+          }, 4000) // 4 second timeout
+
+          const unsubscribe = onAuthStateChanged(auth, (user: any) => {
+            if (resolved) return
+
+            if (user?.uid === verifiedUser.uid) {
+              resolved = true
+              clearTimeout(timeout)
+              unsubscribe()
+              // Wait a moment to ensure stability
+              setTimeout(() => {
+                resolve(true)
+              }, 200)
+            }
+          })
+        })
+      }
+
+      const authRestored = await waitForAuth()
+
+      // Final check - if auth is cleared after complete-signup, re-authenticate
+      // Since complete-signup succeeded, the user exists in the database
+      // If auth was cleared, we need to re-authenticate before redirecting
+      let finalAuthCheck = auth.currentUser?.uid
+
+      // If auth was cleared but complete-signup succeeded, re-authenticate with the custom token from complete-signup
+      if (!finalAuthCheck && completeSignupCustomToken) {
+        try {
+          // Re-authenticate with the custom token from complete-signup
+          // This restores the client-side auth session after it was cleared
+          const reAuthCredential = await signInWithCustomToken(auth, completeSignupCustomToken)
+          finalAuthCheck = reAuthCredential.user.uid
+        } catch (reAuthErr: any) {
+          // Log but continue - profile layout will handle it with grace period
+          console.warn('[VERIFY] Re-auth failed, continuing anyway:', reAuthErr)
+        }
+      }
+
+      // Proceed with redirect - auth should now be restored or profile layout will handle it
       router.replace(`/${lng}/profile`)
     } catch (err: any) {
       console.error('❌ [VERIFY] Error verifying code:', err)
@@ -454,12 +527,12 @@ export default function VerifySmsPage() {
   const greeting = t.greeting
     .replace('{firstName}', pendingSignup.firstName)
     .replace('{lastName}', pendingSignup.lastName)
-  
+
   // Format phone for display: convert +972XXXXXXXX to 0XXXXXXXX
-  const displayPhone = pendingSignup.phone.startsWith('+972') 
-    ? '0' + pendingSignup.phone.slice(4) 
+  const displayPhone = pendingSignup.phone.startsWith('+972')
+    ? '0' + pendingSignup.phone.slice(4)
     : pendingSignup.phone
-  
+
   const smsSent = t.smsSent.replace('{phone}', displayPhone)
 
   return (
@@ -516,8 +589,8 @@ export default function VerifySmsPage() {
                 {busy
                   ? t.resending
                   : resendCooldown > 0
-                  ? t.waitSeconds.replace('{seconds}', String(resendCooldown))
-                  : t.resend}
+                    ? t.waitSeconds.replace('{seconds}', String(resendCooldown))
+                    : t.resend}
               </button>
 
               <button

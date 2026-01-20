@@ -1,10 +1,10 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { 
-  User, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import {
+  User,
+  signInWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
   createUserWithEmailAndPassword
 } from 'firebase/auth'
@@ -35,19 +35,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('[AUTH_CONTEXT] Failed to get ID token:', err?.message || err)
         return null
       })
-      
+
       if (!token) {
         console.warn('[AUTH_CONTEXT] Skipping Neon sync - no token available')
         return
       }
-      
+
       const res = await fetch('/api/me/sync', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`
         }
       })
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
         const errorMessage = errorData.error || `HTTP ${res.status}`
@@ -67,9 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json().catch(() => ({}))
-      console.log('[AUTH_CONTEXT] User synced to Neon successfully:', { 
-        uid: firebaseUser.uid, 
-        neonId: data.id 
+      console.log('[AUTH_CONTEXT] User synced to Neon successfully:', {
+        uid: firebaseUser.uid,
+        neonId: data.id
       })
     } catch (error: any) {
       // Network errors or other exceptions - log as warning for 400 errors
@@ -93,6 +93,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user)
+      setLoading(false)
+    }, (error) => {
+      console.error('[AUTH_CONTEXT] onAuthStateChanged error:', error)
       setLoading(false)
     })
 

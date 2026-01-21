@@ -14,6 +14,9 @@ const VERIFON_PASSWORD = process.env.VERIFON_PASSWORD
 const VERIFONE_CREATE_OR_UPDATE_SOAP_ACTION =
   'http://tempuri.org/CreateOrUpdateCustomer'
 
+const VERIFONE_GET_STOCK_BY_MODEL_SOAP_ACTION =
+  'http://tempuri.org/GetStockByModel'
+
 export type VerifoneCustomer = {
   isClubMember: boolean
   creditPoints: number
@@ -127,6 +130,71 @@ export type VerifoneCreateOrUpdateCustomerResult = {
   status?: number
   statusDescription?: string
   customerNo?: string | null
+}
+
+export type VerifoneItemStock = {
+  productCode: string // Full ProductCode (e.g., "4924-66500135")
+  sku: string // Base SKU (e.g., "4924-6650")
+  colorCode: string // Color code (e.g., "01")
+  size: string // Size (e.g., "35")
+  quantity: number // Available quantity
+}
+
+export type VerifoneGetStockByModelResult = {
+  success: boolean
+  status?: number
+  statusDescription?: string
+  items?: VerifoneItemStock[] // Array of inventory items
+}
+
+function buildGetStockByModelEnvelope(itemCode: string): string | null {
+  if (!VERIFON_CHAIN_ID || !VERIFON_USER_NAME || !VERIFON_PASSWORD) {
+    console.error(
+      '[VERIFONE_GET_STOCK_BY_MODEL] Missing Verifone env vars: VERIFON_CHAIN_ID / VERIFON_USER_NAME / VERIFON_PASSWORD'
+    )
+    return null
+  }
+
+  return `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <GetStockByModel xmlns="http://tempuri.org/">
+      <User>
+        <ChainID>${VERIFON_CHAIN_ID}</ChainID>
+        <Username>${VERIFON_USER_NAME}</Username>
+        <Password>${VERIFON_PASSWORD}</Password>
+      </User>
+      <Request>
+        <ItemCode>${itemCode}</ItemCode>
+        <StoreId>13</StoreId>
+      </Request>
+    </GetStockByModel>
+  </soap:Body>
+</soap:Envelope>`
+}
+
+function extractGetStockByModelPayload(parsed: any) {
+  try {
+    const envelope = parsed['soap:Envelope'] ?? parsed.Envelope
+    const body = envelope?.['soap:Body'] ?? envelope?.Body
+    if (!body) return null
+
+    const response =
+      body['GetStockByModelResponse'] ??
+      body['GetStockByModelResult'] ??
+      Object.values(body)[0]
+
+    const result =
+      response?.['GetStockByModelResult'] ??
+      response ??
+      body['GetStockByModelResult']
+
+    return result ?? null
+  } catch {
+    return null
+  }
 }
 
 function buildCreateOrUpdateCustomerEnvelope(
@@ -599,6 +667,265 @@ export async function createOrUpdateVerifoneCustomer(
   } catch (err) {
     console.error(
       '[VERIFONE_CREATE_OR_UPDATE] Failed to parse Verifone XML response',
+      err
+    )
+    return {
+      success: false,
+      statusDescription: 'Failed to parse Verifone XML response'
+    }
+  }
+}
+
+export async function getStockByModel(
+  itemCode: string
+): Promise<VerifoneGetStockByModelResult> {
+  if (!VERIFON_CHAIN_ID || !VERIFON_USER_NAME || !VERIFON_PASSWORD) {
+    console.error(
+      '[VERIFONE_GET_STOCK_BY_MODEL] Missing Verifone env vars: VERIFON_CHAIN_ID / VERIFON_USER_NAME / VERIFON_PASSWORD'
+    )
+    return { success: false, statusDescription: 'Missing Verifone credentials' }
+  }
+
+  if (!itemCode || !itemCode.trim()) {
+    console.warn(
+      '[VERIFONE_GET_STOCK_BY_MODEL] Skipping lookup - missing itemCode'
+    )
+    return { success: false, statusDescription: 'Missing item code' }
+  }
+
+  const soapEnvelope = buildGetStockByModelEnvelope(itemCode.trim())
+  if (!soapEnvelope) {
+    return {
+      success: false,
+      statusDescription: 'Failed to build SOAP envelope'
+    }
+  }
+
+  const timeoutMs = 10_000
+
+  console.log('[VERIFONE_GET_STOCK_BY_MODEL] Requesting stock by model', {
+    endpoint: VERIFONE_ENDPOINT,
+    itemCode: itemCode.trim()
+  })
+
+  const fetchPromise = fetch(VERIFONE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/xml; charset=utf-8',
+      SOAPAction: VERIFONE_GET_STOCK_BY_MODEL_SOAP_ACTION
+    },
+    body: soapEnvelope
+  })
+
+  let response: Response
+  try {
+    response = (await Promise.race([
+      fetchPromise,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              `[VERIFONE_GET_STOCK_BY_MODEL] Timeout after ${timeoutMs}ms calling Verifone`
+            )
+          )
+        }, timeoutMs)
+      })
+    ])) as Response
+  } catch (err) {
+    console.error('[VERIFONE_GET_STOCK_BY_MODEL] Network/timeout error', err)
+    return {
+      success: false,
+      statusDescription:
+        err instanceof Error ? err.message : 'Verifone request failed'
+    }
+  }
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    console.error(
+      '[VERIFONE_GET_STOCK_BY_MODEL] HTTP error from Verifone',
+      response.status,
+      text
+    )
+    return {
+      success: false,
+      statusDescription: `HTTP ${response.status}`
+    }
+  }
+
+  const xmlText = await response.text()
+
+  try {
+    const parsed = xmlParser.parse(xmlText)
+    const payload = extractGetStockByModelPayload(parsed)
+
+    if (!payload) {
+      console.error(
+        '[VERIFONE_GET_STOCK_BY_MODEL] Unable to extract GetStockByModelResult payload',
+        parsed
+      )
+      return {
+        success: false,
+        statusDescription: 'Malformed Verifone response'
+      }
+    }
+
+    // Extract RequestResult
+    const requestResult = payload.RequestResult ?? payload['RequestResult'] ?? payload
+
+    const isSuccess = toBoolean(
+      requestResult.IsSuccess ??
+      requestResult['IsSuccess'] ??
+      requestResult['Success']
+    )
+    const status = toInt(requestResult.Status ?? requestResult['Status'])
+    const statusDescription =
+      requestResult.StatusDescription ??
+      requestResult['StatusDescription'] ??
+      requestResult['Message'] ??
+      undefined
+
+    console.log('[VERIFONE_GET_STOCK_BY_MODEL] Verifone response meta', {
+      isSuccess,
+      status,
+      statusDescription
+    })
+
+    if (!isSuccess || status !== 0) {
+      return {
+        success: false,
+        status,
+        statusDescription
+      }
+    }
+
+    // Extract Data -> Stores -> StoreModelStock -> Items -> ItemStock[]
+    const data = payload.Data ?? payload['Data']
+    if (!data) {
+      console.log(
+        '[VERIFONE_GET_STOCK_BY_MODEL] No Data node in response, treating as empty'
+      )
+      return {
+        success: true,
+        status,
+        statusDescription,
+        items: []
+      }
+    }
+
+    const stores = data.Stores ?? data['Stores']
+    if (!stores) {
+      console.log(
+        '[VERIFONE_GET_STOCK_BY_MODEL] No Stores node in response, treating as empty'
+      )
+      return {
+        success: true,
+        status,
+        statusDescription,
+        items: []
+      }
+    }
+
+    // Get StoreModelStock (could be array or single object)
+    let storeModelStock = stores.StoreModelStock ?? stores['StoreModelStock']
+    if (!storeModelStock) {
+      console.log(
+        '[VERIFONE_GET_STOCK_BY_MODEL] No StoreModelStock node in response, treating as empty'
+      )
+      return {
+        success: true,
+        status,
+        statusDescription,
+        items: []
+      }
+    }
+
+    // Handle array case - find StoreId 13 or use first
+    if (Array.isArray(storeModelStock)) {
+      storeModelStock =
+        storeModelStock.find(
+          (s: any) =>
+            toInt(s.StoreId ?? s['StoreId']) === 13 ||
+            toInt(s.StoreID ?? s['StoreID']) === 13
+        ) ?? storeModelStock[0]
+    }
+
+    const items = storeModelStock.Items ?? storeModelStock['Items']
+    if (!items) {
+      console.log(
+        '[VERIFONE_GET_STOCK_BY_MODEL] No Items node in response, treating as empty'
+      )
+      return {
+        success: true,
+        status,
+        statusDescription,
+        items: []
+      }
+    }
+
+    // Get ItemStock array
+    let itemStockList = items.ItemStock ?? items['ItemStock']
+    if (!itemStockList) {
+      console.log(
+        '[VERIFONE_GET_STOCK_BY_MODEL] No ItemStock in response, treating as empty'
+      )
+      return {
+        success: true,
+        status,
+        statusDescription,
+        items: []
+      }
+    }
+
+    // Ensure it's an array
+    if (!Array.isArray(itemStockList)) {
+      itemStockList = [itemStockList]
+    }
+
+    // Parse each ItemStock entry
+    const parsedItems: VerifoneItemStock[] = []
+    for (const item of itemStockList) {
+      const productCode =
+        String(item.ProductCode ?? item['ProductCode'] ?? '').trim()
+      const qty = toInt(item.Qty ?? item['Qty'] ?? 0)
+
+      if (!productCode || productCode.length < 12) {
+        console.warn(
+          `[VERIFONE_GET_STOCK_BY_MODEL] Skipping invalid ProductCode: ${productCode}`
+        )
+        continue
+      }
+
+      // Parse ProductCode format: xxxx-xxxxYYZZ
+      // First 9 chars (including dash) = SKU
+      // Next 2 chars = Color code
+      // Last 2 chars = Size
+      const sku = productCode.substring(0, 9)
+      const colorCode = productCode.substring(9, 11)
+      const size = productCode.substring(11, 13)
+
+      parsedItems.push({
+        productCode,
+        sku,
+        colorCode,
+        size,
+        quantity: qty < 0 ? 0 : qty
+      })
+    }
+
+    console.log(
+      `[VERIFONE_GET_STOCK_BY_MODEL] Parsed ${parsedItems.length} inventory items from Verifone`
+    )
+
+    return {
+      success: true,
+      status,
+      statusDescription,
+      items: parsedItems
+    }
+  } catch (err) {
+    console.error(
+      '[VERIFONE_GET_STOCK_BY_MODEL] Failed to parse Verifone XML response',
       err
     )
     return {

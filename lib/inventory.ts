@@ -17,6 +17,7 @@
 import { db } from './firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { prisma } from './prisma';
+import { getStockByModel } from './verifone';
 
 // Color code to slug mapping
 // This maps 2-digit codes to their color slugs used in the database
@@ -47,10 +48,10 @@ export const COLOR_CODE_MAP: Record<string, string> = {
   '29': 'ligh-blue',
   '33': 'olive',
   '35': 'gray',
-  '37':'turquoise',
+  '37': 'turquoise',
   '57': 'purple',
   '61': 'dark-gray',
-  '69':'camel',
+  '69': 'camel',
   '89': 'natural',
   '91': 'multi-color',
   '95': 'black-white',
@@ -204,8 +205,8 @@ export async function updateInventoryFromCsv(
   // Parse all SKUs first
   const parsedRows = rows.map((row) => {
     const parsed = parseInventorySku(row.sku);
-    
-    
+
+
     return {
       ...row,
       parsed,
@@ -216,7 +217,7 @@ export async function updateInventoryFromCsv(
 
   // Group by product SKU for batch updates
   const productGroups = new Map<string, InventoryUpdateRow[]>();
-  
+
   for (const row of parsedRows) {
     if (row.parsed?.isValid) {
       const productSku = row.parsed.productSku;
@@ -236,7 +237,7 @@ export async function updateInventoryFromCsv(
     try {
       // Update Firebase
       await updateFirebaseInventory(productSku, productRows);
-      
+
       // Update Neon (PostgreSQL)
       await updateNeonInventory(productSku, productRows);
 
@@ -245,18 +246,18 @@ export async function updateInventoryFromCsv(
         row.status = 'success';
         result.success++;
       }
-      
+
       result.details.push(...productRows);
     } catch (error) {
       // Mark all rows for this product as failed
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       for (const row of productRows) {
         row.status = 'error';
         row.error = errorMessage;
         result.failed++;
       }
-      
+
       result.errors.push(`Failed to update product ${productSku}: ${errorMessage}`);
       result.details.push(...productRows);
     }
@@ -285,15 +286,15 @@ async function updateFirebaseInventory(
 
     const productDoc = querySnapshot.docs[0];
     const productData = productDoc.data();
-    
+
     // Get existing colorVariants
     const colorVariants = productData.colorVariants || {};
 
     // Update stock for each row
     for (const row of rows) {
       const { colorSlug, size } = row.parsed!;
-      
-      
+
+
       // Initialize color variant if it doesn't exist
       if (!colorVariants[colorSlug]) {
         const availableColors = Object.keys(colorVariants).join(', ') || 'none';
@@ -402,7 +403,7 @@ export function parseCsvContent(csvContent: string): InventoryUpdateRow[] {
 
   // Parse header
   const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-  
+
   const skuIndex = headers.indexOf('sku');
   const quantityIndex = headers.indexOf('quantity');
 
@@ -462,5 +463,192 @@ export function buildInventorySku(
   const paddedSize = size.padStart(2, '0');
 
   return `${productSku}${colorCode}${paddedSize}`;
+}
+
+/**
+ * Sync inventory from Verifone SOAP API for all products
+ * Iterates over all products in Neon and updates inventory from Verifone
+ */
+export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult> {
+  const result: InventoryUpdateResult = {
+    total: 0,
+    success: 0,
+    failed: 0,
+    skipped: 0,
+    errors: [],
+    details: [],
+  };
+
+  console.log('[INVENTORY_SYNC] Starting inventory sync from Verifone...');
+
+  try {
+    // Fetch all products from Neon (only SKU field needed)
+    const products = await prisma.product.findMany({
+      select: {
+        sku: true,
+      },
+    });
+
+    console.log(`[INVENTORY_SYNC] Found ${products.length} products to sync`);
+
+    if (products.length === 0) {
+      console.warn('[INVENTORY_SYNC] No products found in database');
+      return result;
+    }
+
+    // Collect all inventory rows from all products
+    const allInventoryRows: InventoryUpdateRow[] = [];
+
+    // Process each product
+    for (const product of products) {
+      const productSku = product.sku;
+
+      if (!productSku) {
+        console.warn(`[INVENTORY_SYNC] Skipping product with empty SKU`);
+        result.skipped++;
+        continue;
+      }
+
+      try {
+        // Call Verifone SOAP API to get stock for this product
+        const verifoneResult = await getStockByModel(productSku);
+
+        if (!verifoneResult.success) {
+          const errorMsg = `Failed to get stock from Verifone for SKU ${productSku}: ${verifoneResult.statusDescription || 'Unknown error'}`;
+          console.error(`[INVENTORY_SYNC] ${errorMsg}`);
+          result.failed++;
+          result.errors.push(errorMsg);
+          continue;
+        }
+
+        // If no items returned, skip (product might not exist in Verifone)
+        if (!verifoneResult.items || verifoneResult.items.length === 0) {
+          console.log(`[INVENTORY_SYNC] No inventory items found for SKU ${productSku}`);
+          result.skipped++;
+          continue;
+        }
+
+        // Convert Verifone items to InventoryUpdateRow format
+        for (const item of verifoneResult.items) {
+          // Build full SKU: productSku + colorCode + size
+          const fullSku = `${item.sku}${item.colorCode}${item.size}`;
+
+          // Validate and parse the SKU
+          const parsed = parseInventorySku(fullSku);
+
+          if (!parsed.isValid) {
+            const errorMsg = `Invalid SKU format for ${fullSku}: ${parsed.error}`;
+            console.warn(`[INVENTORY_SYNC] ${errorMsg}`);
+            result.failed++;
+            result.errors.push(errorMsg);
+            continue;
+          }
+
+          // Add to inventory rows
+          allInventoryRows.push({
+            sku: fullSku,
+            quantity: item.quantity,
+            parsed,
+            status: 'pending',
+          });
+        }
+
+        console.log(
+          `[INVENTORY_SYNC] Processed ${verifoneResult.items.length} inventory items for SKU ${productSku}`
+        );
+      } catch (error) {
+        const errorMsg = `Error processing product ${productSku}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        console.error(`[INVENTORY_SYNC] ${errorMsg}`, error);
+        result.failed++;
+        result.errors.push(errorMsg);
+        // Continue with next product
+        continue;
+      }
+    }
+
+    result.total = allInventoryRows.length;
+
+    if (allInventoryRows.length === 0) {
+      console.log('[INVENTORY_SYNC] No inventory rows to update');
+      return result;
+    }
+
+    // Group inventory rows by product SKU for batch updates
+    const productGroups = new Map<string, InventoryUpdateRow[]>();
+
+    for (const row of allInventoryRows) {
+      if (row.parsed?.isValid) {
+        const productSku = row.parsed.productSku;
+        if (!productGroups.has(productSku)) {
+          productGroups.set(productSku, []);
+        }
+        productGroups.get(productSku)!.push(row);
+      } else {
+        result.failed++;
+        const errorMsg = `Skipped invalid SKU: ${row.sku} - ${row.parsed?.error || 'Unknown error'}`;
+        result.errors.push(errorMsg);
+        result.details.push(row);
+      }
+    }
+
+    console.log(
+      `[INVENTORY_SYNC] Processing ${productGroups.size} product groups for update`
+    );
+
+    // Process each product group
+    for (const [productSku, productRows] of productGroups.entries()) {
+      try {
+        // Update Firebase
+        await updateFirebaseInventory(productSku, productRows);
+
+        // Update Neon (PostgreSQL)
+        await updateNeonInventory(productSku, productRows);
+
+        // Mark all rows for this product as success
+        for (const row of productRows) {
+          row.status = 'success';
+          result.success++;
+        }
+
+        result.details.push(...productRows);
+
+        console.log(
+          `[INVENTORY_SYNC] Successfully updated inventory for product ${productSku} (${productRows.length} variants)`
+        );
+      } catch (error) {
+        // Mark all rows for this product as failed
+        const errorMessage =
+          error instanceof Error ? error.message : 'Unknown error';
+
+        for (const row of productRows) {
+          row.status = 'error';
+          row.error = errorMessage;
+          result.failed++;
+        }
+
+        const errorMsg = `Failed to update product ${productSku}: ${errorMessage}`;
+        result.errors.push(errorMsg);
+        result.details.push(...productRows);
+
+        console.error(`[INVENTORY_SYNC] ${errorMsg}`);
+        // Continue with next product
+        continue;
+      }
+    }
+
+    console.log('[INVENTORY_SYNC] Inventory sync completed', {
+      total: result.total,
+      success: result.success,
+      failed: result.failed,
+      skipped: result.skipped,
+    });
+
+    return result;
+  } catch (error) {
+    const errorMsg = `Fatal error during inventory sync: ${error instanceof Error ? error.message : 'Unknown error'}`;
+    console.error(`[INVENTORY_SYNC] ${errorMsg}`, error);
+    result.errors.push(errorMsg);
+    return result;
+  }
 }
 

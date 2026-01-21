@@ -1,5 +1,8 @@
-﻿import Image from 'next/image'
+import Image from 'next/image'
 import { getImageUrl } from '@/lib/image-urls'
+import { buildMetadata } from '@/lib/seo'
+import type { Metadata } from 'next'
+import { languages } from '@/i18n/settings'
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -35,6 +38,43 @@ const translations = {
     todayText: 'כיום, תחת ניהולו של משה שהרבני, סכו עור ממשיכה להוביל בתחום עם מוצרים באיכות הגבוהה ביותר, עיצוב מוקפד וטכנולוגיה מתקדמת, ומלווה את לקוחותיה בכל רגע בחיי היום-יום – מהליכה בעיר ועד לאירועים מיוחדים.',
     closing: 'סכו עור – הבחירה של מי שמעריך איכות, עיצוב ומסורת.'
   }
+}
+
+// Generate metadata for about page
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lng: string }>
+}): Promise<Metadata> {
+  const { lng } = await params
+  const locale = lng as 'en' | 'he'
+  const t = translations[locale as keyof typeof translations]
+
+  const title = locale === 'he' ? 'אודות סכו עור | SAKO-OR' : 'About SAKO-OR | SAKO-OR'
+  const description = t.subtitle || 
+    (locale === 'he' 
+      ? 'שם שמייצג איכות, סטייל ומסורת של למעלה מ-45 שנה בתחום האופנה'
+      : 'A name that represents quality, style, and tradition of over 45 years in the fashion industry')
+
+  const url = `/${lng}/about`
+
+  // Build alternate locales
+  const alternateLocales = languages
+    .filter(l => l !== locale)
+    .map(altLng => ({
+      locale: altLng,
+      url: `/${altLng}/about`,
+    }))
+
+  return buildMetadata({
+    title,
+    description,
+    url,
+    image: getImageUrl('/images/about/crafting(2).webp'),
+    type: 'website',
+    locale,
+    alternateLocales,
+  })
 }
 
 export default async function About({ params }: { params: Promise<{ lng: string }> }) {

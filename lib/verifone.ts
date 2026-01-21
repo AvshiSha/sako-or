@@ -563,17 +563,14 @@ export async function createOrUpdateVerifoneCustomer(
     let customerNo: string | null = null
     const dataNode = payload.Data ?? payload['Data']
     if (dataNode) {
-      const customerNode = dataNode.Customer ?? dataNode['Customer']
-      if (customerNode) {
-        const rawCustomerNo =
-          customerNode.CustomerNo ?? customerNode['CustomerNo'] ?? null
-        if (
-          rawCustomerNo !== null &&
-          typeof rawCustomerNo !== 'undefined' &&
-          String(rawCustomerNo).trim() !== ''
-        ) {
-          customerNo = String(rawCustomerNo).trim()
-        }
+      // CustomerNo is a direct child of Data, not nested under Customer
+      const rawCustomerNo = dataNode.CustomerNo ?? dataNode['CustomerNo'] ?? null
+      if (
+        rawCustomerNo !== null &&
+        typeof rawCustomerNo !== 'undefined' &&
+        String(rawCustomerNo).trim() !== ''
+      ) {
+        customerNo = String(rawCustomerNo).trim()
       }
     }
 

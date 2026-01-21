@@ -1,6 +1,9 @@
 import { getCollectionProducts, categoryService } from "@/lib/firebase";
 import CollectionClient from "./CollectionClient";
 import { searchProducts } from "@/lib/search-products";
+import { buildMetadata, buildAbsoluteUrl } from "@/lib/seo";
+import type { Metadata } from 'next';
+import { languages } from '@/i18n/settings';
 
 // Helper to serialize Firestore timestamps or other complex objects
 const serializeValue = (value: any): any => {
@@ -40,6 +43,120 @@ interface CollectionPageProps {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+// Generate metadata for collection pages
+export async function generateMetadata({
+  params,
+  searchParams,
+}: CollectionPageProps): Promise<Metadata> {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { lng, slug } = resolvedParams;
+  const locale = lng as 'en' | 'he';
+
+  // Check for search query - if searching, use default collection metadata
+  const searchQuery = typeof resolvedSearchParams.search === 'string'
+    ? resolvedSearchParams.search.trim()
+    : undefined;
+
+  if (searchQuery) {
+    // For search results, use generic collection metadata
+    const title = locale === 'he' ? 'חיפוש מוצרים | SAKO-OR' : 'Search Products | SAKO-OR';
+    const description = locale === 'he'
+      ? 'חפשו מוצרים באיכות גבוהה מבית סכו עור'
+      : 'Search for high-quality products from SAKO-OR';
+    const url = `/${lng}/collection${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`;
+
+    return buildMetadata({
+      title,
+      description,
+      url,
+      locale,
+      alternateLocales: languages
+        .filter(l => l !== locale)
+        .map(altLng => ({
+          locale: altLng,
+          url: `/${altLng}/collection${searchQuery ? `?search=${encodeURIComponent(searchQuery)}` : ''}`,
+        })),
+    });
+  }
+
+  // Build category path from slug
+  let categoryPath: string | undefined;
+  if (slug && slug.length > 0) {
+    categoryPath = slug.map(s => decodeURIComponent(s)).join('/');
+  }
+
+  // Get category information
+  let categoryName = locale === 'he' ? 'כל המוצרים' : 'All Products';
+  let categoryDescription = locale === 'he'
+    ? 'גלה את כל המוצרים שלנו - נעליים, תיקים ואביזרי אופנה באיכות גבוהה'
+    : 'Discover all our products - shoes, bags, and fashion accessories of the highest quality';
+  let categoryImage: string | undefined;
+
+  if (categoryPath) {
+    try {
+      // Get category IDs from path
+      const categoryIdsResult = await categoryService.getCategoryIdsFromPath(categoryPath, locale);
+
+      if (categoryIdsResult && categoryIdsResult.categoryIds.length > 0) {
+        // Get the deepest category (target level)
+        const targetCategoryId = categoryIdsResult.categoryIds[categoryIdsResult.categoryIds.length - 1];
+        const category = await categoryService.getCategoryById(targetCategoryId);
+
+        if (category) {
+          categoryName = category.name[locale] || category.name.en || categoryName;
+
+          // If we are on a level-2 category page, prepend the parent (level-1) category name.
+          // Example: women/shoes/boots -> "Shoes Boots" (localized)
+          if (categoryIdsResult.targetLevel === 2 && categoryIdsResult.categoryIds.length >= 2) {
+            const parentCategoryId = categoryIdsResult.categoryIds[1];
+            const parentCategory = await categoryService.getCategoryById(parentCategoryId);
+            if (parentCategory) {
+              const parentName = parentCategory.name[locale] || parentCategory.name.en;
+              if (parentName) {
+                categoryName = `${parentName} ${categoryName}`.trim();
+              }
+            }
+          }
+
+          categoryDescription = category.description?.[locale] ||
+            category.description?.en ||
+            categoryDescription;
+          categoryImage = category.image;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching category for metadata:', error);
+      // Fall back to default values
+    }
+  }
+
+  // Build URL
+  const url = `/${lng}/collection${categoryPath ? `/${categoryPath}` : ''}`;
+
+  // Generate title and description
+  const title = `${categoryName} | SAKO-OR`;
+  const description = categoryDescription;
+
+  // Build alternate locales
+  const alternateLocales = languages
+    .filter(l => l !== locale)
+    .map(altLng => ({
+      locale: altLng,
+      url: `/${altLng}/collection${categoryPath ? `/${categoryPath}` : ''}`,
+    }));
+
+  return buildMetadata({
+    title,
+    description,
+    url,
+    image: categoryImage,
+    type: 'website',
+    locale,
+    alternateLocales,
+  });
+}
+
 export default async function CollectionSlugPage({
   params,
   searchParams,
@@ -50,8 +167,8 @@ export default async function CollectionSlugPage({
   const { lng, slug } = resolvedParams;
 
   // Check for search query parameter
-  const searchQuery = typeof resolvedSearchParams.search === 'string' 
-    ? resolvedSearchParams.search.trim() 
+  const searchQuery = typeof resolvedSearchParams.search === 'string'
+    ? resolvedSearchParams.search.trim()
     : undefined;
 
   let products: any[] = [];
@@ -73,7 +190,7 @@ export default async function CollectionSlugPage({
           page = parsedPage;
         }
       }
-      
+
       // Call search function directly instead of making HTTP request
       // This avoids Vercel Deployment Protection issues
       const searchData = await searchProducts(searchQuery, page, 24);
@@ -87,7 +204,7 @@ export default async function CollectionSlugPage({
     // Build category path from slug
     if (slug && slug.length > 0) {
       categoryPath = slug.map(s => decodeURIComponent(s)).join('/');
-      
+
       if (slug.length === 1) {
         // URL: /en/collection/women
         selectedCategory = decodeURIComponent(slug[0]);

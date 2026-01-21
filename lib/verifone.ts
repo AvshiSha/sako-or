@@ -11,9 +11,13 @@ const VERIFON_CHAIN_ID = process.env.VERIFON_CHAIN_ID
 const VERIFON_USER_NAME = process.env.VERIFON_USER_NAME
 const VERIFON_PASSWORD = process.env.VERIFON_PASSWORD
 
+const VERIFONE_CREATE_OR_UPDATE_SOAP_ACTION =
+  'http://tempuri.org/CreateOrUpdateCustomer'
+
 export type VerifoneCustomer = {
   isClubMember: boolean
   creditPoints: number
+  customerNo?: string | null
 }
 
 export type VerifoneGetCustomersResult = {
@@ -86,6 +90,130 @@ function extractGetCustomersPayload(parsed: any) {
       response?.['GetCustomersResult'] ??
       response ??
       body['GetCustomersResult']
+
+    return result ?? null
+  } catch {
+    return null
+  }
+}
+
+function formatDateYYYYMMDD(date: Date | null | undefined): string | null {
+  if (!date || !(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return null
+  }
+  const year = date.getUTCFullYear()
+  const month = `${date.getUTCMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getUTCDate()}`.padStart(2, '0')
+  return `${year}${month}${day}`
+}
+
+type VerifoneCreateOrUpdateCustomerInput = {
+  customerNo: string | number
+  firstName: string | null
+  lastName: string | null
+  phoneE164: string | null
+  email: string | null
+  addressCity: string | null
+  addressStreet: string | null
+  addressStreetNumber: string | null
+  addressApt: string | null
+  addressFloor: string | null
+  birthday: Date | null
+  isNewsletter: boolean
+}
+
+export type VerifoneCreateOrUpdateCustomerResult = {
+  success: boolean
+  status?: number
+  statusDescription?: string
+  customerNo?: string | null
+}
+
+function buildCreateOrUpdateCustomerEnvelope(
+  input: VerifoneCreateOrUpdateCustomerInput
+): string | null {
+  if (!VERIFON_CHAIN_ID || !VERIFON_USER_NAME || !VERIFON_PASSWORD) {
+    console.error(
+      '[VERIFONE_CREATE_OR_UPDATE] Missing Verifone env vars: VERIFON_CHAIN_ID / VERIFON_USER_NAME / VERIFON_PASSWORD'
+    )
+    return null
+  }
+
+  const localPhone = input.phoneE164 ? e164ToLocalPhone(input.phoneE164) : null
+  if (!localPhone) {
+    console.warn(
+      '[VERIFONE_CREATE_OR_UPDATE] Skipping - cannot convert phone to local format',
+      { phoneE164: input.phoneE164 }
+    )
+    return null
+  }
+
+  const birthDate = formatDateYYYYMMDD(input.birthday)
+
+  // Marketing permissions mapping from isNewsletter
+  const marketingFlag = input.isNewsletter ? 1 : 0
+
+  const customerNoStr = String(input.customerNo ?? '0')
+
+  return `<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+  <soap:Body>
+    <CreateOrUpdateCustomer xmlns="http://tempuri.org/">
+      <User>
+        <ChainID>${VERIFON_CHAIN_ID}</ChainID>
+        <Username>${VERIFON_USER_NAME}</Username>
+        <Password>${VERIFON_PASSWORD}</Password>
+      </User>
+      <Request>
+        <Customer>
+          <CustomerNo>${customerNoStr}</CustomerNo>
+
+          <FirstName>${input.firstName ?? ''}</FirstName>
+          <LastName>${input.lastName ?? ''}</LastName>
+          <CustomerName>${(input.firstName || '')} ${(input.lastName || '')}</CustomerName>
+
+          <CellPhone>${localPhone}</CellPhone>
+          <Email>${input.email ?? ''}</Email>
+
+          <City>${input.addressCity ?? ''}</City>
+          <Street>${input.addressStreet ?? ''}</Street>
+          <HouseNumber>${input.addressStreetNumber ?? ''}</HouseNumber>
+          <Apartment>${input.addressApt ?? ''}</Apartment>
+          <Floor>${input.addressFloor ?? ''}</Floor>
+          <Country>10</Country>
+
+          <BirthDate>${birthDate ?? ''}</BirthDate>
+
+          <IsEmailAccept>${marketingFlag}</IsEmailAccept>
+          <IsSMSAccepts>${marketingFlag}</IsSMSAccepts>
+          <IsMailAccept>${marketingFlag}</IsMailAccept>
+
+          <ChainNo>${VERIFON_CHAIN_ID}</ChainNo>
+          <StoreNo>90</StoreNo>
+        </Customer>
+      </Request>
+    </CreateOrUpdateCustomer>
+  </soap:Body>
+</soap:Envelope>`
+}
+
+function extractCreateOrUpdateCustomerPayload(parsed: any) {
+  try {
+    const envelope = parsed['soap:Envelope'] ?? parsed.Envelope
+    const body = envelope?.['soap:Body'] ?? envelope?.Body
+    if (!body) return null
+
+    const response =
+      body['CreateOrUpdateCustomerResponse'] ??
+      body['CreateOrUpdateCustomerResult'] ??
+      Object.values(body)[0]
+
+    const result =
+      response?.['CreateOrUpdateCustomerResult'] ??
+      response ??
+      body['CreateOrUpdateCustomerResult']
 
     return result ?? null
   } catch {
@@ -290,17 +418,26 @@ export async function getVerifoneCustomerByCellular(
     const creditPoints = toInt(
       customer.CreditPoints ?? customer['CreditPoints']
     )
+    const customerNo = (customer.CustomerNo ?? customer['CustomerNo'] ?? null) as
+      | string
+      | number
+      | null
 
     const resultCustomer: VerifoneCustomer = {
       isClubMember,
-      creditPoints: creditPoints < 0 ? 0 : creditPoints
+      creditPoints: creditPoints < 0 ? 0 : creditPoints,
+      customerNo:
+        customerNo === null || typeof customerNo === 'undefined'
+          ? null
+          : String(customerNo)
     }
 
     console.log(
       '[VERIFONE_GET_CUSTOMERS] Parsed customer from Verifone response',
       {
         isClubMember: resultCustomer.isClubMember,
-        creditPoints: resultCustomer.creditPoints
+        creditPoints: resultCustomer.creditPoints,
+        customerNo: resultCustomer.customerNo
       }
     )
 
@@ -313,6 +450,158 @@ export async function getVerifoneCustomerByCellular(
   } catch (err) {
     console.error(
       '[VERIFONE_GET_CUSTOMERS] Failed to parse Verifone XML response',
+      err
+    )
+    return {
+      success: false,
+      statusDescription: 'Failed to parse Verifone XML response'
+    }
+  }
+}
+
+export async function createOrUpdateVerifoneCustomer(
+  input: VerifoneCreateOrUpdateCustomerInput
+): Promise<VerifoneCreateOrUpdateCustomerResult> {
+  const envelope = buildCreateOrUpdateCustomerEnvelope(input)
+  if (!envelope) {
+    return {
+      success: false,
+      statusDescription:
+        'Missing credentials, invalid phone, or failed to build SOAP envelope'
+    }
+  }
+
+  const timeoutMs = 10_000
+
+  console.log('[VERIFONE_CREATE_OR_UPDATE] Sending CreateOrUpdateCustomer', {
+    hasBirthday: !!input.birthday,
+    hasEmail: !!input.email,
+    hasAddress: !!(
+      input.addressCity ||
+      input.addressStreet ||
+      input.addressStreetNumber
+    ),
+    customerNo: input.customerNo
+  })
+
+  const fetchPromise = fetch(VERIFONE_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/xml; charset=utf-8',
+      SOAPAction: VERIFONE_CREATE_OR_UPDATE_SOAP_ACTION
+    },
+    body: envelope
+  })
+
+  let response: Response
+  try {
+    response = (await Promise.race([
+      fetchPromise,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              `[VERIFONE_CREATE_OR_UPDATE] Timeout after ${timeoutMs}ms calling Verifone`
+            )
+          )
+        }, timeoutMs)
+      })
+    ])) as Response
+  } catch (err) {
+    console.error('[VERIFONE_CREATE_OR_UPDATE] Network/timeout error', err)
+    return {
+      success: false,
+      statusDescription:
+        err instanceof Error ? err.message : 'Verifone request failed'
+    }
+  }
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '')
+    console.error(
+      '[VERIFONE_CREATE_OR_UPDATE] HTTP error from Verifone',
+      response.status,
+      text
+    )
+    return {
+      success: false,
+      statusDescription: `HTTP ${response.status}`
+    }
+  }
+
+  const xmlText = await response.text()
+
+  try {
+    const parsed = xmlParser.parse(xmlText)
+    const payload = extractCreateOrUpdateCustomerPayload(parsed)
+
+    if (!payload) {
+      console.error(
+        '[VERIFONE_CREATE_OR_UPDATE] Unable to extract CreateOrUpdateCustomerResult payload',
+        parsed
+      )
+      return {
+        success: false,
+        statusDescription: 'Malformed Verifone response'
+      }
+    }
+
+    const requestResult = payload.RequestResult ?? payload['RequestResult'] ?? payload
+
+    const isSuccess = toBoolean(
+      requestResult.IsSuccess ??
+      requestResult['IsSuccess'] ??
+      requestResult['Success']
+    )
+    const status = toInt(requestResult.Status ?? requestResult['Status'])
+    const statusDescription =
+      requestResult.StatusDescription ??
+      requestResult['StatusDescription'] ??
+      requestResult['Message'] ??
+      undefined
+
+    let customerNo: string | null = null
+    const dataNode = payload.Data ?? payload['Data']
+    if (dataNode) {
+      const customerNode = dataNode.Customer ?? dataNode['Customer']
+      if (customerNode) {
+        const rawCustomerNo =
+          customerNode.CustomerNo ?? customerNode['CustomerNo'] ?? null
+        if (
+          rawCustomerNo !== null &&
+          typeof rawCustomerNo !== 'undefined' &&
+          String(rawCustomerNo).trim() !== ''
+        ) {
+          customerNo = String(rawCustomerNo).trim()
+        }
+      }
+    }
+
+    console.log('[VERIFONE_CREATE_OR_UPDATE] Verifone response meta', {
+      isSuccess,
+      status,
+      statusDescription,
+      customerNo
+    })
+
+    if (!isSuccess || status !== 0) {
+      return {
+        success: false,
+        status,
+        statusDescription,
+        customerNo
+      }
+    }
+
+    return {
+      success: true,
+      status,
+      statusDescription,
+      customerNo
+    }
+  } catch (err) {
+    console.error(
+      '[VERIFONE_CREATE_OR_UPDATE] Failed to parse Verifone XML response',
       err
     )
     return {

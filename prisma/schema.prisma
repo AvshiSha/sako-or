@@ -8,31 +8,32 @@ datasource db {
 }
 
 model User {
-  email               String?     @unique
-  role                String      @default("USER")
-  addressApt          String?     @map("address_apt")
-  addressFloor        String?     @map("address_floor")
-  addressStreet       String?     @map("address_street")
-  addressStreetNumber String?     @map("address_street_number")
-  authProvider        String?     @map("auth_provider")
-  createdAt           DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  emailVerified       Boolean     @default(false) @map("email_verified")
-  firebaseUid         String?     @unique @map("firebase_uid")
-  firstName           String?     @map("first_name")
-  interestedIn        String?     @map("interested_in")
-  isDelete            Boolean     @default(false) @map("is_delete")
-  isNewsletter        Boolean     @default(false) @map("is_newsletter")
+  email               String?    @unique
+  role                String     @default("USER")
+  addressApt          String?    @map("address_apt")
+  addressFloor        String?    @map("address_floor")
+  addressStreet       String?    @map("address_street")
+  addressStreetNumber String?    @map("address_street_number")
+  authProvider        String?    @map("auth_provider")
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  emailVerified       Boolean    @default(false) @map("email_verified")
+  firebaseUid         String?    @unique @map("firebase_uid")
+  firstName           String?    @map("first_name")
+  interestedIn        String?    @map("interested_in")
+  isDelete            Boolean    @default(false) @map("is_delete")
+  isNewsletter        Boolean    @default(false) @map("is_newsletter")
   language            String?
-  lastName            String?     @map("last_name")
-  phone               String?     @unique
-  pointsBalance       Int         @default(0) @map("points_balance")
-  updatedAt           DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
-  id                  String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  lastLoginAt         DateTime?   @map("last_login_at") @db.Timestamptz(6)
-  phoneVerifiedAt     DateTime?   @map("phone_verified_at") @db.Timestamptz(6)
-  signupCompletedAt   DateTime?   @map("signup_completed_at") @db.Timestamptz(6)
-  birthday            DateTime    @db.Date
-  addressCity         String?     @map("address_city")
+  lastName            String?    @map("last_name")
+  phone               String?    @unique
+  pointsBalance       Int        @default(0) @map("points_balance")
+  updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  verifoneCustomerNo  String?    @map("verifone_customer_no")
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lastLoginAt         DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  phoneVerifiedAt     DateTime?  @map("phone_verified_at") @db.Timestamptz(6)
+  signupCompletedAt   DateTime?  @map("signup_completed_at") @db.Timestamptz(6)
+  birthday            DateTime   @db.Date
+  addressCity         String?    @map("address_city")
   cartItems           CartItem[]
   favorites           Favorite[]
   orders              Order[]
@@ -42,20 +43,20 @@ model User {
 }
 
 model CartItem {
-  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId     String         @map("user_id") @db.Uuid
-  cartKey    String         @map("cart_key")
-  baseSku    String         @map("base_sku")
-  colorSlug  String?        @map("color_slug")
-  sizeSlug   String?        @map("size_slug")
-  quantity   Int
-  unitPrice  Decimal?       @map("unit_price") @db.Decimal(10, 2)
-  status     CartItemStatus @default(IN_CART)
-  orderId    String?        @map("order_id")
-  removedAt  DateTime?      @map("removed_at") @db.Timestamptz(6)
-  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String         @map("user_id") @db.Uuid
+  cartKey   String         @map("cart_key")
+  baseSku   String         @map("base_sku")
+  colorSlug String?        @map("color_slug")
+  sizeSlug  String?        @map("size_slug")
+  quantity  Int
+  unitPrice Decimal?       @map("unit_price") @db.Decimal(10, 2)
+  status    CartItemStatus @default(IN_CART)
+  orderId   String?        @map("order_id")
+  removedAt DateTime?      @map("removed_at") @db.Timestamptz(6)
+  createdAt DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, cartKey])
   @@index([userId, status])
@@ -220,20 +221,20 @@ model Order {
 }
 
 model OrderItem {
-  id          String   @id @default(cuid())
-  quantity    Int
-  price       Float
-  total       Float
-  productName String
-  productSku  String
-  colorName   String?
-  size        String?
+  id           String   @id @default(cuid())
+  quantity     Int
+  price        Float
+  total        Float
+  productName  String
+  productSku   String
+  colorName    String?
+  size         String?
   primaryImage String?
-  salePrice   Float?
-  modelNumber String?
-  createdAt   DateTime @default(now())
-  orderId     String
-  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  salePrice    Float?
+  modelNumber  String?
+  createdAt    DateTime @default(now())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_items")
 }

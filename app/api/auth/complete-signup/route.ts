@@ -5,7 +5,10 @@ import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
 import { requireUserAuth } from '@/lib/server/auth'
 import { triggerInforuAutomation, e164ToLocalPhone } from '@/lib/inforu'
-import { getVerifoneCustomerByCellular } from '@/lib/verifone'
+import {
+  createOrUpdateVerifoneCustomer,
+  getVerifoneCustomerByCellular
+} from '@/lib/verifone'
 
 const CompleteSignupSchema = z.object({
   firstName: z.string().trim().min(1).max(50),
@@ -44,6 +47,12 @@ type User = {
   birthday: Date
   interestedIn: string | null
   isNewsletter: boolean
+  addressStreet: string | null
+  addressStreetNumber: string | null
+  addressFloor: string | null
+  addressApt: string | null
+  addressCity: string | null
+  verifoneCustomerNo?: string | null
 }
 
 type SignupData = z.infer<typeof CompleteSignupSchema>
@@ -181,7 +190,7 @@ export async function POST(request: NextRequest) {
 
       // User exists but isn't confirmed - update it
       const now = new Date()
-      const user = await prisma.user.update({
+      const userRecord = await prisma.user.update({
         where: { firebaseUid },
         data: {
           firstName: data.firstName,
@@ -202,10 +211,129 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Sync Verifone club points for this user (non-blocking on failure)
+      const user: User = {
+        id: userRecord.id,
+        firstName: userRecord.firstName,
+        lastName: userRecord.lastName,
+        email: userRecord.email,
+        phone: userRecord.phone,
+        pointsBalance: userRecord.pointsBalance,
+        birthday: userRecord.birthday,
+        interestedIn: userRecord.interestedIn,
+        isNewsletter: userRecord.isNewsletter,
+        addressStreet: userRecord.addressStreet,
+        addressStreetNumber: userRecord.addressStreetNumber,
+        addressFloor: userRecord.addressFloor,
+        addressApt: userRecord.addressApt,
+        addressCity: userRecord.addressCity,
+        verifoneCustomerNo: (userRecord as any).verifoneCustomerNo ?? null
+      }
+
+      // Sync Verifone customer (create/update) and club points for this user (non-blocking on failure)
       try {
         const verifoneResult = await getVerifoneCustomerByCellular(user.phone)
 
+        // If Verifone has the customer, ensure we persist CustomerNo and push updated details
+        if (verifoneResult.success && verifoneResult.customer) {
+          const existingCustomerNo = user.verifoneCustomerNo
+          const customerNoFromVerifone = verifoneResult.customer.customerNo
+          let effectiveCustomerNo = existingCustomerNo || customerNoFromVerifone || null
+
+          if (!existingCustomerNo && customerNoFromVerifone) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { verifoneCustomerNo: customerNoFromVerifone } as any
+            })
+            effectiveCustomerNo = customerNoFromVerifone
+
+            console.log(
+              '[VERIFONE_CREATE_OR_UPDATE] Saved Verifone CustomerNo for existing user',
+              {
+                userId: user.id,
+                customerNo: customerNoFromVerifone
+              }
+            )
+          }
+
+          if (effectiveCustomerNo) {
+            const createOrUpdateResult = await createOrUpdateVerifoneCustomer({
+              customerNo: effectiveCustomerNo,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              phoneE164: user.phone,
+              email: user.email,
+              addressCity: user.addressCity,
+              addressStreet: user.addressStreet,
+              addressStreetNumber: user.addressStreetNumber,
+              addressApt: user.addressApt,
+              addressFloor: user.addressFloor,
+              birthday: user.birthday,
+              isNewsletter: user.isNewsletter
+            })
+
+            console.log(
+              '[VERIFONE_CREATE_OR_UPDATE] Updated existing Verifone customer for existing user',
+              {
+                userId: user.id,
+                success: createOrUpdateResult.success,
+                status: createOrUpdateResult.status,
+                statusDescription: createOrUpdateResult.statusDescription
+              }
+            )
+          } else {
+            console.log(
+              '[VERIFONE_CREATE_OR_UPDATE] Skipping update - no CustomerNo available for existing user',
+              {
+                userId: user.id
+              }
+            )
+          }
+        }
+
+        // If Verifone does NOT have the customer (empty GetCustomers data), create it with CustomerNo=0
+        if (verifoneResult.success && !verifoneResult.customer) {
+          const createOrUpdateResult = await createOrUpdateVerifoneCustomer({
+            customerNo: 0,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phoneE164: user.phone,
+            email: user.email,
+            addressCity: user.addressCity,
+            addressStreet: user.addressStreet,
+            addressStreetNumber: user.addressStreetNumber,
+            addressApt: user.addressApt,
+            addressFloor: user.addressFloor,
+            birthday: user.birthday,
+            isNewsletter: user.isNewsletter
+          })
+
+          if (createOrUpdateResult.success && createOrUpdateResult.customerNo) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { verifoneCustomerNo: createOrUpdateResult.customerNo } as any
+            })
+
+            console.log(
+              '[VERIFONE_CREATE_OR_UPDATE] Created new Verifone customer for existing user',
+              {
+                userId: user.id,
+                customerNo: createOrUpdateResult.customerNo
+              }
+            )
+          } else {
+            console.log(
+              '[VERIFONE_CREATE_OR_UPDATE] Failed to create Verifone customer for existing user',
+              {
+                userId: user.id,
+                success: createOrUpdateResult.success,
+                status: createOrUpdateResult.status,
+                statusDescription: createOrUpdateResult.statusDescription
+              }
+            )
+          }
+        }
+
+        // Points sync flow remains as before - we only read points from GetCustomers
         if (
           verifoneResult.success &&
           verifoneResult.customer &&
@@ -254,7 +382,7 @@ export async function POST(request: NextRequest) {
         }
       } catch (verifoneError) {
         console.error(
-          '[VERIFONE_GET_CUSTOMERS] Error syncing points for existing user',
+          '[VERIFONE_GET_CUSTOMERS] Error syncing Verifone customer/points for existing user',
           verifoneError
         )
       }
@@ -289,7 +417,7 @@ export async function POST(request: NextRequest) {
     const now = new Date()
     // Create new user in Neon with initial zero points; we may overwrite
     // pointsBalance with Verifone data right after creation.
-    const user = await prisma.user.create({
+    const userRecord = await prisma.user.create({
       data: {
         firebaseUid,
         email,
@@ -315,10 +443,129 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Sync Verifone club points for this newly created user (non-blocking on failure)
+    const user: User = {
+      id: userRecord.id,
+      firstName: userRecord.firstName,
+      lastName: userRecord.lastName,
+      email: userRecord.email,
+      phone: userRecord.phone,
+      pointsBalance: userRecord.pointsBalance,
+      birthday: userRecord.birthday,
+      interestedIn: userRecord.interestedIn,
+      isNewsletter: userRecord.isNewsletter,
+      addressStreet: userRecord.addressStreet,
+      addressStreetNumber: userRecord.addressStreetNumber,
+      addressFloor: userRecord.addressFloor,
+      addressApt: userRecord.addressApt,
+      addressCity: userRecord.addressCity,
+      verifoneCustomerNo: (userRecord as any).verifoneCustomerNo ?? null
+    }
+
+    // Sync Verifone customer (create/update) and club points for this newly created user (non-blocking on failure)
     try {
       const verifoneResult = await getVerifoneCustomerByCellular(user.phone)
 
+      // If Verifone has the customer, ensure we persist CustomerNo and push updated details
+      if (verifoneResult.success && verifoneResult.customer) {
+        const existingCustomerNo = user.verifoneCustomerNo
+        const customerNoFromVerifone = verifoneResult.customer.customerNo
+        let effectiveCustomerNo = existingCustomerNo || customerNoFromVerifone || null
+
+        if (!existingCustomerNo && customerNoFromVerifone) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { verifoneCustomerNo: customerNoFromVerifone } as any
+          })
+          effectiveCustomerNo = customerNoFromVerifone
+
+          console.log(
+            '[VERIFONE_CREATE_OR_UPDATE] Saved Verifone CustomerNo for new user',
+            {
+              userId: user.id,
+              customerNo: customerNoFromVerifone
+            }
+          )
+        }
+
+        if (effectiveCustomerNo) {
+          const createOrUpdateResult = await createOrUpdateVerifoneCustomer({
+            customerNo: effectiveCustomerNo,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            phoneE164: user.phone,
+            email: user.email,
+            addressCity: user.addressCity,
+            addressStreet: user.addressStreet,
+            addressStreetNumber: user.addressStreetNumber,
+            addressApt: user.addressApt,
+            addressFloor: user.addressFloor,
+            birthday: user.birthday,
+            isNewsletter: user.isNewsletter
+          })
+
+          console.log(
+            '[VERIFONE_CREATE_OR_UPDATE] Updated existing Verifone customer for new user',
+            {
+              userId: user.id,
+              success: createOrUpdateResult.success,
+              status: createOrUpdateResult.status,
+              statusDescription: createOrUpdateResult.statusDescription
+            }
+          )
+        } else {
+          console.log(
+            '[VERIFONE_CREATE_OR_UPDATE] Skipping update - no CustomerNo available for new user',
+            {
+              userId: user.id
+            }
+          )
+        }
+      }
+
+      // If Verifone does NOT have the customer (empty GetCustomers data), create it with CustomerNo=0
+      if (verifoneResult.success && !verifoneResult.customer) {
+        const createOrUpdateResult = await createOrUpdateVerifoneCustomer({
+          customerNo: 0,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          phoneE164: user.phone,
+          email: user.email,
+          addressCity: user.addressCity,
+          addressStreet: user.addressStreet,
+          addressStreetNumber: user.addressStreetNumber,
+          addressApt: user.addressApt,
+          addressFloor: user.addressFloor,
+          birthday: user.birthday,
+          isNewsletter: user.isNewsletter
+        })
+
+        if (createOrUpdateResult.success && createOrUpdateResult.customerNo) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { verifoneCustomerNo: createOrUpdateResult.customerNo } as any
+          })
+
+          console.log(
+            '[VERIFONE_CREATE_OR_UPDATE] Created new Verifone customer for new user',
+            {
+              userId: user.id,
+              customerNo: createOrUpdateResult.customerNo
+            }
+          )
+        } else {
+          console.log(
+            '[VERIFONE_CREATE_OR_UPDATE] Failed to create Verifone customer for new user',
+            {
+              userId: user.id,
+              success: createOrUpdateResult.success,
+              status: createOrUpdateResult.status,
+              statusDescription: createOrUpdateResult.statusDescription
+            }
+          )
+        }
+      }
+
+      // Points sync flow remains as before - we only read points from GetCustomers
       if (
         verifoneResult.success &&
         verifoneResult.customer &&
@@ -367,7 +614,7 @@ export async function POST(request: NextRequest) {
       }
     } catch (verifoneError) {
       console.error(
-        '[VERIFONE_GET_CUSTOMERS] Error syncing points for new user',
+        '[VERIFONE_GET_CUSTOMERS] Error syncing Verifone customer/points for new user',
         verifoneError
       )
     }
@@ -385,7 +632,7 @@ export async function POST(request: NextRequest) {
     const customToken = await adminAuth.createCustomToken(firebaseUid)
 
     return NextResponse.json(
-      { ok: true, user, customToken },
+      { ok: true, user: userRecord, customToken },
       { status: 201 }
     )
   } catch (error: any) {

@@ -8,6 +8,7 @@ import { FACEBOOK_PIXEL_ID, initFacebookPixel } from '@/lib/facebookPixel';
  * Note: noscript fallback is handled in layout.tsx (server component)
  * 
  * Uses a ref to prevent duplicate initialization even in React Strict Mode.
+ * In Israel, no consent is required - we just inform users about cookies.
  */
 export default function FacebookPixel() {
   const hasInitialized = useRef(false);

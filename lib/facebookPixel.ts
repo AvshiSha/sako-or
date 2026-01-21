@@ -29,6 +29,9 @@ function warnMissingFbq(eventName: string) {
   }
 }
 
+/**
+ * Initialize Facebook Pixel (no consent required in Israel - just inform users)
+ */
 export function initFacebookPixel(): void {
   if (typeof window === 'undefined') return;
   if (window.fbq) return;

@@ -14,8 +14,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
-import { productService, productHelpers, Product, ColorVariant } from '@/lib/firebase'
-import { analytics } from '@/lib/firebase'
+import { productService, productHelpers, Product, ColorVariant, analytics, logEvent } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
@@ -178,22 +177,18 @@ export default function ProductColorPage() {
         setSelectedImageIndex(0)
 
         // Fire Product View analytics event (Firebase)
-        if (analytics && typeof analytics.logEvent === 'function' && productData) {
-          try {
-            analytics.logEvent('view_item', {
-              currency: 'USD',
-              value: variant.salePrice || productData.price,
-              items: [{
-                item_id: `${baseSku}-${colorSlug}`,
-                item_name: `${baseSku} - ${variant.colorSlug}`,
-                item_category: productData.category || 'Unknown',
-                price: variant.salePrice || productData.price,
-                quantity: 1
-              }]
-            })
-          } catch (analyticsError) {
-            console.warn('Analytics error:', analyticsError)
-          }
+        if (productData) {
+          logEvent(analytics, 'view_item', {
+            currency: 'USD',
+            value: variant.salePrice || productData.price,
+            items: [{
+              item_id: `${baseSku}-${colorSlug}`,
+              item_name: `${baseSku} - ${variant.colorSlug}`,
+              item_category: productData.category || 'Unknown',
+              price: variant.salePrice || productData.price,
+              quantity: 1
+            }]
+          })
         }
 
         // Track view_item for GA4 data layer
@@ -356,24 +351,18 @@ export default function ProductColorPage() {
     const categories = product.categories_path || [product.category || 'Unknown']
 
     // Fire Add to Cart analytics event (Firebase)
-    if (analytics && typeof analytics.logEvent === 'function') {
-      try {
-        analytics.logEvent('add_to_cart', {
-          currency: 'USD',
-          value: currentPrice * quantity,
-          items: [{
-            item_id: variantItemId,
-            item_name: `${baseSku} - ${currentVariant.colorSlug}`,
-            item_category: product.category || 'Unknown',
-            item_variant: `${sizeLabel}-${currentVariant.colorSlug}`,
-            price: currentPrice,
-            quantity: quantity
-          }]
-        })
-      } catch (analyticsError) {
-        console.warn('Analytics error:', analyticsError)
-      }
-    }
+    logEvent(analytics, 'add_to_cart', {
+      currency: 'USD',
+      value: currentPrice * quantity,
+      items: [{
+        item_id: variantItemId,
+        item_name: `${baseSku} - ${currentVariant.colorSlug}`,
+        item_category: product.category || 'Unknown',
+        item_variant: `${sizeLabel}-${currentVariant.colorSlug}`,
+        price: currentPrice,
+        quantity: quantity
+      }]
+    })
 
     // Track add_to_cart for GA4 data layer
     try {

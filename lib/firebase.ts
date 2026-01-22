@@ -1,42 +1,102 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, Query, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { initializeApp, FirebaseApp } from "firebase/app";
+import { getAnalytics, logEvent as firebaseLogEvent, Analytics } from "firebase/analytics";
+import { getFirestore, Firestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, Query, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { getAuth, Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { getStorage, FirebaseStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
-// Your web app's Firebase configuration
-const defaultProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  // Keep authDomain consistent with the projectId by default (prevents redirect handler getting "stuck" on the wrong domain).
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: defaultProjectId,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-};
+// Lazy-init Firebase to avoid auth/invalid-api-key during Next.js build (when env may be missing).
+// Initialization runs on first use of db/auth/storage/app, not at import time.
+let _app: FirebaseApp | null = null;
+let _analytics: Analytics | null = null;
 
-const app = initializeApp(firebaseConfig);
+function getApp(): FirebaseApp {
+  if (_app) return _app;
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.length === 0) {
+    throw new Error(
+      'Firebase API key is not configured. Set NEXT_PUBLIC_FIREBASE_API_KEY (and other NEXT_PUBLIC_FIREBASE_* vars) in .env.local.'
+    );
+  }
+  const defaultProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const firebaseConfig = {
+    apiKey,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: defaultProjectId,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  };
+  _app = initializeApp(firebaseConfig);
+  return _app;
+}
 
-// Initialize analytics only on client side
-let analytics: any = null;
-if (typeof window !== 'undefined') {
+function getDb(): Firestore {
+  return getFirestore(getApp());
+}
+
+function getAuthInstance(): Auth {
+  return getAuth(getApp());
+}
+
+function getStorageInstance(): FirebaseStorage {
+  return getStorage(getApp());
+}
+
+function getAnalyticsInstance(): Analytics | null {
+  if (typeof window === 'undefined') return null;
+  if (_analytics) return _analytics;
   try {
-    analytics = getAnalytics(app);
+    _analytics = getAnalytics(getApp());
+    return _analytics;
   } catch (error) {
     console.warn('Analytics initialization failed:', error);
+    return null;
   }
 }
 
+function createLazyProxy<T extends object>(getter: () => T): T {
+  let instance: T | null = null;
+  return new Proxy({} as T, {
+    get(_, prop) {
+      if (!instance) instance = getter();
+      return (instance as Record<string | symbol, unknown>)[prop];
+    }
+  }) as T;
+}
 
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+const app = createLazyProxy(getApp);
+const db = createLazyProxy(getDb);
+const auth = createLazyProxy(getAuthInstance);
+const storage = createLazyProxy(getStorageInstance);
 
-// Export Firebase instances
+let analytics: Analytics | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    analytics = getAnalyticsInstance();
+  } catch {
+    analytics = null;
+  }
+}
+
+// Export Firebase instances (app, db, auth, storage are lazy; analytics is client-only)
 export { app, analytics, db, auth, storage };
+
+/** Use with modular API: logEvent(analytics, 'event_name', params). No-op if analytics is null. */
+export function logEvent(
+  analyticsInstance: Analytics | null,
+  eventName: string,
+  params?: Record<string, unknown>
+): void {
+  if (analyticsInstance) {
+    try {
+      firebaseLogEvent(analyticsInstance, eventName, params);
+    } catch (e) {
+      console.warn('Analytics logEvent error:', e);
+    }
+  }
+}
 
 
 

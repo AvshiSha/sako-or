@@ -9,6 +9,9 @@ import { getStorage, FirebaseStorage, ref, uploadBytes, getDownloadURL, deleteOb
 // Initialization runs on first use of db/auth/storage/app, not at import time.
 let _app: FirebaseApp | null = null;
 let _analytics: Analytics | null = null;
+let _db: Firestore | null = null;
+let _auth: Auth | null = null;
+let _storage: FirebaseStorage | null = null;
 
 function getApp(): FirebaseApp {
   if (_app) return _app;
@@ -33,15 +36,21 @@ function getApp(): FirebaseApp {
 }
 
 function getDb(): Firestore {
-  return getFirestore(getApp());
+  if (_db) return _db;
+  _db = getFirestore(getApp());
+  return _db;
 }
 
 function getAuthInstance(): Auth {
-  return getAuth(getApp());
+  if (_auth) return _auth;
+  _auth = getAuth(getApp());
+  return _auth;
 }
 
 function getStorageInstance(): FirebaseStorage {
-  return getStorage(getApp());
+  if (_storage) return _storage;
+  _storage = getStorage(getApp());
+  return _storage;
 }
 
 function getAnalyticsInstance(): Analytics | null {
@@ -67,9 +76,9 @@ function createLazyProxy<T extends object>(getter: () => T): T {
 }
 
 const app = createLazyProxy(getApp);
-const db = createLazyProxy(getDb);
-const auth = createLazyProxy(getAuthInstance);
-const storage = createLazyProxy(getStorageInstance);
+const db = getDb();
+const auth = getAuthInstance();
+const storage = getStorageInstance();
 
 let analytics: Analytics | null = null;
 if (typeof window !== 'undefined') {

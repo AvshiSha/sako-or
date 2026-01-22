@@ -29,15 +29,11 @@ export default function ProfileCompletionGate({ children }: { children: React.Re
       return
     }
 
-    // Already checked this user
-    if (checkedUidRef.current === user.uid) return
-    checkedUidRef.current = user.uid
-
     // Extract language from pathname (assumes /{lng}/... structure)
     const pathSegments = pathname?.split('/').filter(Boolean) || []
     const lng = pathSegments[0] && ['en', 'he'].includes(pathSegments[0]) ? pathSegments[0] : 'en'
 
-    // Allowlist: routes that incomplete users can access
+    // Allowlist: routes that incomplete users can access without profile check
     const allowedRoutes = [
       `/${lng}/signup`,
       `/${lng}/signin`,
@@ -47,7 +43,23 @@ export default function ProfileCompletionGate({ children }: { children: React.Re
     const isOnAllowedRoute = allowedRoutes.some((route) => pathname?.startsWith(route))
 
     // If user is already on an allowed route, don't interrupt them
+    // IMPORTANT: Return early BEFORE marking as checked, so we check again on other routes
     if (isOnAllowedRoute) return
+
+    // Only enforce profile completion check for profile routes
+    // This allows users to browse, add to cart, checkout, etc. without interruption
+    const isProfileRoute = pathname?.startsWith(`/${lng}/profile`)
+    
+    // If not trying to access profile, allow navigation without checking
+    if (!isProfileRoute) {
+      // Reset cache when leaving profile routes so we check again when returning
+      checkedUidRef.current = null
+      return
+    }
+
+    // Already checked this user (only cache after we know they're trying to access profile)
+    if (checkedUidRef.current === user.uid) return
+    checkedUidRef.current = user.uid
 
     let cancelled = false
     setChecking(true)

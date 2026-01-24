@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "db:setup:prod": "node scripts/setup-production-db.js",
     "seed:categories": "node scripts/seed-categories.js",
-    "email": "npx email dev --dir app/emails"
+    "email": "npx email dev --dir app/emails",
+    "fix-email": "tsx scripts/fix-user-email.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.1",
@@ -89,6 +90,7 @@
     "prisma": "^6.8.2",
     "react-email": "4.2.12",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

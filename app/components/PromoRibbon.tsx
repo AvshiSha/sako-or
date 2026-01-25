@@ -8,8 +8,8 @@ interface PromoRibbonProps {
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
   const text = lng === 'he'
-    ? '✨ סוף שבוע בסכו עור | 15% על הזוג השני | קוד: BOG15'
-    : '✨ End of week at Sako Or | 15% on the second pair | Code: BOG15'
+    ? 'משלוחים חינם לכל הארץ בהזמנה מעל 300₪ ✨'
+    : 'Free shipping for all orders over 300₪ ✨'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-black to-gray-900 text-white h-10 z-[60]">

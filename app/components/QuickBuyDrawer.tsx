@@ -228,7 +228,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                 leaveFrom="translate-x-0"
                 leaveTo="translate-x-full"
               >
-                <Dialog.Panel className="pointer-events-auto w-screen max-w-md">
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-md" data-testid="quick-buy-drawer">
                   <div className="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
                     {/* Header */}
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -322,6 +322,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                                   onClick={() => handleVariantSelect(variant)}
                                   className="flex-shrink-0 relative group"
                                   title={variant.colorSlug}
+                                  data-testid={`quick-buy-color-${variant.colorSlug}`}
                                 >
                                   {/* Product image thumbnail */}
                                   {variantImage && (
@@ -371,6 +372,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                                       ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
                                       : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
                                   }`}
+                                  data-testid={`quick-buy-size-${sizeObj.size}`}
                                 >
                                   {sizeObj.size}
                                 </button>
@@ -399,12 +401,13 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                               onClick={() => setQuantity(Math.max(1, quantity - 1))}
                               disabled={quantity <= 1}
                               className="p-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              data-testid="quick-buy-quantity-decrease"
                             >
                               <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                               </svg>
                             </button>
-                            <span className="text-lg font-medium min-w-[2rem] text-center text-gray-900">{quantity}</span>
+                            <span className="text-lg font-medium min-w-[2rem] text-center text-gray-900" data-testid="quick-buy-quantity-value">{quantity}</span>
                             <button
                               onClick={() => {
                                 const maxStock = availableSizes.find(s => s.size === selectedSize)?.stock || 0
@@ -412,6 +415,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                               }}
                               disabled={quantity >= (availableSizes.find(s => s.size === selectedSize)?.stock || 0)}
                               className="p-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                              data-testid="quick-buy-quantity-increase"
                             >
                               <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -432,6 +436,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                               : 'bg-[#856D55] text-white hover:bg-[#856D55]'
                           }`}
+                          data-testid="quick-buy-add-to-cart"
                         >
                           {isAddingToCart ? (
                             language === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'

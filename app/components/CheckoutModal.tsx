@@ -554,7 +554,7 @@ export default function CheckoutModal({
       
       {/* Modal */}
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full h-[85vh] flex flex-col">
+        <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full h-[85vh] flex flex-col" data-testid="checkout-modal">
           {/* Sticky Header */}
           <div className="sticky top-0 z-10 bg-white border-b border-gray-200 flex-shrink-0">
             {/* Row 1: Logo and Back Arrow */}
@@ -666,6 +666,7 @@ export default function CheckoutModal({
                       onClick={handlePaymentSubmit}
                       disabled={!isFormValid || isLoading}
                       className="px-6 py-2 bg-[#856D55]/90 text-white rounded-lg hover:bg-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                      data-testid="checkout-continue-button"
                     >
                       {isLoading 
                         ? (isHebrew ? 'יוצר תשלום...' : 'Creating payment...')

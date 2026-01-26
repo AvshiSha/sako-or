@@ -570,7 +570,7 @@ if (!isClient || loading) {
   const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
   return (
-    <div className="min-h-screen bg-[#E1DBD7] pt-16" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
+    <div className="min-h-screen bg-[#E1DBD7] pt-16" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }} data-testid="cart-page">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12">
         {/* Header */}
         <div className="mb-4 mt-6">
@@ -618,6 +618,7 @@ if (!isClient || loading) {
                     key={`${item.sku}-${item.size}-${item.color}-${index}`}
                     className="bg-white border border-gray-200 rounded-[12px] shadow-sm p-4"
                     style={{ fontFamily: cardFontFamily }}
+                    data-testid={`cart-item-${item.sku}-${item.size || ''}-${item.color || ''}`}
                   >
                     <div className={`flex ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-start gap-4`}>
                       <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -674,16 +675,17 @@ if (!isClient || loading) {
                     </div>
 
                     <div className={`mt-4 flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden">
+                      <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden" data-testid="cart-item-quantity-controls">
                         <button
                           onClick={() => updateQuantity(item.sku, item.quantity - 1, item.size, item.color)}
                           className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                           disabled={item.quantity <= 1}
                           aria-label={lng === 'he' ? 'הפחת כמות' : 'Decrease quantity'}
+                          data-testid="cart-item-quantity-decrease"
                         >
                           <MinusIcon className="h-4 w-4" />
                         </button>
-                        <span className="px-4 text-sm font-medium text-gray-800 min-w-[3rem] text-center">
+                        <span className="px-4 text-sm font-medium text-gray-800 min-w-[3rem] text-center" data-testid="cart-item-quantity-value">
                           {item.quantity}
                         </span>
                         <button
@@ -691,6 +693,7 @@ if (!isClient || loading) {
                           className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
                           disabled={item.quantity >= item.maxStock}
                           aria-label={lng === 'he' ? 'הגדל כמות' : 'Increase quantity'}
+                          data-testid="cart-item-quantity-increase"
                         >
                           <PlusIcon className="h-4 w-4" />
                         </button>
@@ -701,6 +704,7 @@ if (!isClient || loading) {
                         className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                         title={t.remove}
                         aria-label={t.remove}
+                        data-testid="cart-item-remove"
                       >
                         <TrashIcon className="h-5 w-5" />
                       </button>
@@ -712,7 +716,7 @@ if (!isClient || loading) {
 
             {/* Order Summary */}
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8">
+              <div className="bg-white rounded-lg shadow-sm p-6 sticky top-8" data-testid="cart-order-summary">
                 <h2 className="text-lg font-medium text-gray-900 mb-4">
                   {t.subtotal}
                 </h2>
@@ -727,6 +731,7 @@ if (!isClient || loading) {
                         placeholder={couponStrings.placeholder}
                         className={`flex-1 rounded-md border text-gray-900 py-2 px-2 shadow-sm focus:outline-none focus:ring-0.5 focus:ring-[#856D55]/90 ${isRTL ? 'text-right' : 'text-left'}`}
                         disabled={couponLoading}
+                        data-testid="cart-coupon-input"
                         style={{ 
                           borderColor: 'rgba(133, 109, 85, 0.2)',
                           borderRadius: '2px'
@@ -742,6 +747,7 @@ if (!isClient || loading) {
                         onClick={() => applyCouponCode(couponInput)}
                         disabled={couponLoading || !couponInput.trim()}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
+                        data-testid="cart-coupon-apply-button"
                       >
                         {couponLoading ? couponStrings.loading : couponStrings.apply}
                       </button>
@@ -764,6 +770,7 @@ if (!isClient || loading) {
                               onClick={() => removeCoupon(coupon.coupon.code)}
                               className={`${isRTL ? 'mr-2' : 'ml-2'} text-indigo-500 hover:text-indigo-700`}
                               aria-label={couponStrings.remove}
+                              data-testid={`cart-coupon-remove-${coupon.coupon.code}`}
                             >
                               ×
                             </button>
@@ -851,15 +858,16 @@ if (!isClient || loading) {
                     </div>
                   )}
 
-                  <div className="flex justify-between text-lg font-bold text-gray-700 border-t border-gray-200 pt-2">
+                  <div className="flex justify-between text-lg font-bold text-gray-700 border-t border-gray-200 pt-2" data-testid="cart-total">
                     <span>{t.total}</span>
-                    <span>₪{finalTotal.toFixed(2)}</span>
+                    <span data-testid="cart-total-amount">₪{finalTotal.toFixed(2)}</span>
                   </div>
                 </div>
 
                 <button
                   onClick={() => setIsCheckoutModalOpen(true)}
                   className="w-full mt-6 bg-[#856D55]/90 text-white py-3 px-6 rounded-lg hover:bg-[#856D55] transition-colors font-medium"
+                  data-testid="cart-checkout-button"
                 >
                   {t.checkout}
                 </button>

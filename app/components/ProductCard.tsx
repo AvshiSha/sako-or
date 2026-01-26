@@ -282,12 +282,13 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   }, [api, totalImages])
 
   return (
-    <div className="group relative bg-gray-100">
+    <div className="group relative bg-gray-100" data-testid="product-card">
       {/* Main Product Image Section - Clickable to go to selected variant */}
       <Link 
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
         className="relative aspect-square overflow-hidden bg-gray-50 block"
         onClick={handleLinkClick}
+        data-testid="product-card-link"
       >
         {/* Image Carousel Container */}
         <div className="w-full h-full relative">
@@ -337,6 +338,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                             {...(isPrimary ? {} : { loading: shouldPreload ? undefined : 'lazy' })}
                             draggable={false}
                             decoding={isActive ? 'sync' : 'async'}
+                            data-testid="product-card-image"
                           />
                         </div>
                       </CarouselItem>
@@ -394,6 +396,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                       <button
                         onClick={handleWishlistToggle}
                         className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
+                        data-testid="product-card-wishlist-button"
                       >
                         {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
                           <HeartSolidIcon className="h-4 w-4 text-red-500" />
@@ -406,6 +409,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                       <button
                         onClick={handleQuickBuy}
                         className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
+                        data-testid="product-card-quick-buy-button"
                       >
                         <ShoppingCartIcon className="h-4 w-4 text-gray-600" />
                       </button>
@@ -425,7 +429,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
         
         {/* Out of Stock Badge */}
         {isOutOfStock && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }} data-testid="product-card-out-of-stock">
             {language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
           </div>
         )}
@@ -456,6 +460,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           <button
             onClick={handleQuickBuy}
             className="w-full border border-[#856D55]/90 bg-white text-black font-medium py-2 px-4 hover:bg-[#856D55]/90 hover:text-white transition-colors duration-200"
+            data-testid="product-card-quick-buy-button"
           >
             {language === 'he' ? 'קניה מהירה' : 'Quick buy'}
           </button>
@@ -475,18 +480,18 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
 
         <div className="text-sm font-medium text-gray-900">{language === 'he' ? 'מספר דגם: ' : 'SKU: '}{product.sku}</div>
         
-        <div className="text-sm font-medium text-gray-900">
+        <div className="text-sm font-medium text-gray-900" data-testid="product-card-price">
           {hasSalePrice() && salePrice && salePrice < originalPrice ? (
             <div className="flex items-center gap-2">
-              <span className="text-gray-500 line-through">
+              <span className="text-gray-500 line-through" data-testid="product-card-original-price">
                 ₪{originalPrice.toFixed(2)}
               </span>
-              <span className="text-red-600 font-bold">
+              <span className="text-red-600 font-bold" data-testid="product-card-sale-price">
                 ₪{salePrice.toFixed(2)}
               </span>
             </div>
           ) : (
-            <span>₪{currentPrice.toFixed(2)}</span>
+            <span data-testid="product-card-regular-price">₪{currentPrice.toFixed(2)}</span>
           )}
         </div>
       </div>
@@ -507,6 +512,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                   onClick={(e) => handleVariantSelect(variant, e)}
                   className="flex-shrink-0 relative group"
                   title={getColorName(variant.colorSlug, language)}
+                  data-testid={`product-card-color-variant-${variant.colorSlug}`}
                 >
                   {/* Product image */}
                   {variantImage && (

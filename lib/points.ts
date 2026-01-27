@@ -1,5 +1,5 @@
 import { prisma } from './prisma';
-import { PointsKind } from '@prisma/client';
+import { PointsKind, Prisma } from '@prisma/client';
 import { getVerifoneCustomerByCellular } from './verifone';
 
 function roundPoints(value: number): number {
@@ -254,7 +254,11 @@ export async function syncAllUserPointsFromVerifone(
   });
 
   for (let batchIndex = 0; batchIndex < maxBatchesPerRun; batchIndex++) {
-    const users = await prisma.user.findMany({
+    const users: {
+      id: string;
+      phone: string | null;
+      pointsBalance: Prisma.Decimal | null;
+    }[] = await prisma.user.findMany({
       where: {
         phone: { not: null },
         signupCompletedAt: { not: null },
@@ -264,7 +268,7 @@ export async function syncAllUserPointsFromVerifone(
         id: true,
         phone: true,
         pointsBalance: true
-      } as const,
+      },
       orderBy: { id: 'asc' },
       take: batchSize,
       ...(lastUserId

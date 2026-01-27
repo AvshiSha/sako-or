@@ -389,10 +389,10 @@ export default function ProfileOverviewPage() {
               </p>
             </div>
             <div className="text-right">
-              <div className="text-xs md:text-sm text-gray-500 mb-1">{t.pointsBalance}</div>
+              <div className="text-xs md:text-sm text-gray-500 mb-1 text-center">{t.pointsBalance}</div>
               <div className="text-2xl md:text-3xl font-bold text-[#856D55] flex items-center justify-end">
                 <SparklesIcon className="h-5 w-5 md:h-6 md:w-6 mr-1" />
-                {loadedUser.pointsBalance}
+                {typeof loadedUser.pointsBalance === 'number' ? loadedUser.pointsBalance.toFixed(2) : Number(loadedUser.pointsBalance).toFixed(2)}
               </div>
             </div>
           </div>

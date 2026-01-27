@@ -162,7 +162,7 @@ export default function PointsPage() {
                   <div>
                     <p className="text-sm text-gray-600 mb-1">{t.currentBalance}</p>
                     <p className="text-3xl font-bold text-[#856D55]/80">
-                      {pointsBalance.toLocaleString()} {t.points}
+                      {pointsBalance.toFixed(2)} {t.points}
                     </p>
                   </div>
                   <SparklesIcon className="h-12 w-12 text-[#856D55]/80" />

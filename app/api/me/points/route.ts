@@ -52,8 +52,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         ok: true,
-        pointsBalance: user.pointsBalance,
-        pointsHistory,
+        pointsBalance: Number(user.pointsBalance),
+        pointsHistory: pointsHistory.map(p => ({
+          ...p,
+          delta: Number(p.delta)
+        })),
         pagination: {
           total: totalCount,
           limit,

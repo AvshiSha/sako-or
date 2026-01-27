@@ -170,11 +170,15 @@ export async function POST(request: NextRequest) {
               // Get primary image from variant or product
               if (variant && typeof variant === 'object' && variant !== null && 'colorSlug' in variant) {
                 primaryImage = variant.primaryImage || variant.images?.[0];
-                salePrice = variant.salePrice;
+                // Only use variant salePrice if it's a valid discount (less than regular price)
+                const variantSalePrice = variant.salePrice;
+                if (variantSalePrice != null && variantSalePrice > 0 && variantSalePrice < item.price) {
+                  salePrice = variantSalePrice;
+                }
               }
               
-              // Fallback to product-level pricing if variant doesn't have sale price
-              if (!salePrice) {
+              // Fallback to product-level pricing if variant doesn't have valid sale price
+              if (!salePrice && product.salePrice != null && product.salePrice > 0 && product.salePrice < item.price) {
                 salePrice = product.salePrice;
               }
 

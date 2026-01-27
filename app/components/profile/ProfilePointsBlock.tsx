@@ -87,7 +87,7 @@ export default function ProfilePointsBlock({
                 }`}
               >
                 {transaction.delta > 0 ? '+' : ''}
-                {transaction.delta}
+                {transaction.delta.toFixed(2)}
               </div>
             </div>
           ))}

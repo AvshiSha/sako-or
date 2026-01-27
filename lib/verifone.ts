@@ -78,6 +78,17 @@ function toInt(value: unknown): number {
   return 0
 }
 
+function toDecimal(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === 'string') {
+    const n = parseFloat(value.trim())
+    return Number.isFinite(n) ? n : 0
+  }
+  return 0
+}
+
 function extractGetCustomersPayload(parsed: any) {
   try {
     const envelope = parsed['soap:Envelope'] ?? parsed.Envelope
@@ -123,6 +134,7 @@ type VerifoneCreateOrUpdateCustomerInput = {
   addressFloor: string | null
   birthday: Date | null
   isNewsletter: boolean
+  ClassCode: string | null
 }
 
 export type VerifoneCreateOrUpdateCustomerResult = {
@@ -259,6 +271,7 @@ function buildCreateOrUpdateCustomerEnvelope(
           <IsMailAccept>${marketingFlag}</IsMailAccept>
 
           <ChainNo>${VERIFON_CHAIN_ID}</ChainNo>
+          <ClassCode>2</ClassCode>
           <StoreNo>90</StoreNo>
         </Customer>
       </Request>
@@ -483,9 +496,12 @@ export async function getVerifoneCustomerByCellular(
     const isClubMember = toBoolean(
       customer.IsClubMember ?? customer['IsClubMember']
     )
-    const creditPoints = toInt(
+    // Use toDecimal to preserve decimal precision (2 decimal places)
+    const creditPointsRaw = toDecimal(
       customer.CreditPoints ?? customer['CreditPoints']
     )
+    // Round to 2 decimal places
+    const creditPoints = Math.round(creditPointsRaw * 100) / 100
     const customerNo = (customer.CustomerNo ?? customer['CustomerNo'] ?? null) as
       | string
       | number

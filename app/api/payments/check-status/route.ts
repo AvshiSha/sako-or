@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { prisma } from '../../../../lib/prisma';
 import { stringifyPaymentData, parsePaymentData } from '../../../../lib/orders';
-import { awardPointsForOrder, spendPointsForOrder } from '../../../../lib/points';
+import { spendPointsForOrder } from '../../../../lib/points';
 import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
 import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
 import { productService } from '../../../../lib/firebase';
 import { parseSku } from '../../../../lib/sku-parser';
+import { createVerifoneInvoiceAsync } from '../../../../lib/verifone-invoice-job';
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,10 +95,11 @@ export async function POST(request: NextRequest) {
             });
           }
           
-          // Handle points: first deduct points if used, then award points earned
+          // Handle points: deduct points if used
+          // Points earning is now handled by Verifone sync after CreateInvoice succeeds
           if (order.paymentStatus !== 'completed' && order.userId) {
             try {
-              // First, deduct points if they were used in this order
+              // Deduct points if they were used in this order
               const paymentMetadata = parsePaymentData(order.paymentData);
               const pointsToSpend = paymentMetadata?.pointsToSpend;
               
@@ -113,15 +115,28 @@ export async function POST(request: NextRequest) {
                   console.error('[POINTS_SPEND_ERROR] Failed to deduct points for order', order.id, spendError);
                 }
               }
-
-              // Then, award points earned
-              await awardPointsForOrder(order.id);
+              // Note: Points earning is now handled by Verifone sync in createVerifoneInvoiceAsync
             } catch (pointsError) {
-              console.warn('[POINTS_AWARD_ERROR] Failed to award points for order', order.id, pointsError);
+              console.warn('[POINTS_SPEND_ERROR] Failed to handle points for order', order.id, pointsError);
             }
           }
           
           await markCartItemsAsPurchased(order.orderNumber);
+          
+          // Trigger Verifone invoice creation async (non-blocking)
+          // Extract transaction info from paymentData if available
+          const paymentData = parsePaymentData(order.paymentData);
+          const transactionInfo = paymentData?.transactionInfo || {};
+          console.log('[VERIFONE_INVOICE] Triggering Verifone invoice creation from check-status (paymentSucceeded path)', {
+            orderId: order.orderNumber,
+            hasTransactionInfo: !!transactionInfo && Object.keys(transactionInfo).length > 0
+          })
+          createVerifoneInvoiceAsync(order.orderNumber, {
+            transactionInfo: transactionInfo
+          }).catch(err => {
+            console.error('[VERIFONE_INVOICE] Failed to trigger invoice creation:', err);
+            // Don't fail payment check - order still succeeds
+          });
           
           // Send confirmation email and SMS (idempotent - safe to call multiple times)
           await handlePostPaymentActions(order.orderNumber, request.url);
@@ -149,6 +164,21 @@ export async function POST(request: NextRequest) {
           
           // Ensure order items have all required data
           await ensureOrderItemsComplete(order.orderNumber);
+          
+          // Trigger Verifone invoice creation async (non-blocking)
+          // Extract transaction info from paymentData if available
+          const paymentDataForInvoice = parsePaymentData(order.paymentData);
+          const transactionInfoForInvoice = paymentDataForInvoice?.transactionInfo || {};
+          console.log('[VERIFONE_INVOICE] Triggering Verifone invoice creation from check-status (payment record path)', {
+            orderId: order.orderNumber,
+            hasTransactionInfo: !!transactionInfoForInvoice && Object.keys(transactionInfoForInvoice).length > 0
+          })
+          createVerifoneInvoiceAsync(order.orderNumber, {
+            transactionInfo: transactionInfoForInvoice
+          }).catch(err => {
+            console.error('[VERIFONE_INVOICE] Failed to trigger invoice creation:', err);
+            // Don't fail payment check - order still succeeds
+          });
           
           // Send confirmation email and SMS (idempotent - safe to call multiple times)
           await handlePostPaymentActions(order.orderNumber, request.url);
@@ -248,11 +278,11 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Handle points: first deduct points if used, then award points earned
-      // This creates two separate ledger entries (SPEND and EARN) for the same order
+      // Handle points: deduct points if used
+      // Points earning is now handled by Verifone sync after CreateInvoice succeeds
       if (order.paymentStatus !== 'completed' && order.userId) {
         try {
-          // First, deduct points if they were used in this order
+          // Deduct points if they were used in this order
           const paymentMetadata = parsePaymentData(order.paymentData);
           const pointsToSpend = paymentMetadata?.pointsToSpend;
           
@@ -269,12 +299,9 @@ export async function POST(request: NextRequest) {
               // Don't fail the entire payment - log and continue
             }
           }
-
-          // Then, award points earned (5% of final order total, rounded down)
-          // `Order.total` is already the final total after discounts/points, so we award based on that.
-          await awardPointsForOrder(order.id);
+          // Note: Points earning is now handled by Verifone sync in createVerifoneInvoiceAsync
         } catch (pointsError) {
-          console.warn('[POINTS_AWARD_ERROR] Failed to award points for order', order.id, pointsError);
+          console.warn('[POINTS_SPEND_ERROR] Failed to handle points for order', order.id, pointsError);
         }
       }
 
@@ -283,6 +310,18 @@ export async function POST(request: NextRequest) {
       
       // Ensure order items have all required data
       await ensureOrderItemsComplete(order.orderNumber);
+      
+      // Trigger Verifone invoice creation async (non-blocking)
+      console.log('[VERIFONE_INVOICE] Triggering Verifone invoice creation from check-status', {
+        orderId: order.orderNumber,
+        hasTransactionInfo: !!statusResponse.TranzactionInfo
+      })
+      createVerifoneInvoiceAsync(order.orderNumber, {
+        transactionInfo: statusResponse.TranzactionInfo
+      }).catch(err => {
+        console.error('[VERIFONE_INVOICE] Failed to trigger invoice creation:', err);
+        // Don't fail payment check - order still succeeds
+      });
       
       // Send confirmation email and SMS (idempotent - safe to call multiple times)
       await handlePostPaymentActions(order.orderNumber, request.url);
@@ -376,8 +415,13 @@ async function ensureOrderItemsComplete(orderId: string) {
         // Get primary image
         const primaryImage = variant?.primaryImage || (variant && Array.isArray(variant.images) && variant.images.length > 0 ? variant.images[0] : null) || null;
         
-        // Get sale price
-        const salePrice = variant?.salePrice || product.salePrice || null;
+        // Get sale price - only use if it's a valid discount (less than regular price)
+        let salePrice = variant?.salePrice || product.salePrice || null;
+        // Validate: salePrice must be less than item.price to be a valid discount
+        if (salePrice != null && salePrice > 0 && salePrice >= item.price) {
+          console.warn(`[ensureOrderItemsComplete] Invalid salePrice (${salePrice}) >= price (${item.price}) for item ${item.id}, setting to null`);
+          salePrice = null;
+        }
 
         // Generate model number
         const modelColorName = variant && variant.colorSlug

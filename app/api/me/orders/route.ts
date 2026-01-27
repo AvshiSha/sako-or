@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     // Format orders for display
     const formattedOrders = orders.map(order => {
       // Calculate total loyalty points used
-      const pointsUsed = order.points.reduce((sum, point) => sum + Math.abs(point.delta), 0)
+      const pointsUsed = order.points.reduce((sum, point) => sum + Math.abs(Number(point.delta)), 0)
 
       return {
         id: order.id,

@@ -1,8 +1,8 @@
 import { prisma } from './prisma';
 import { PointsKind } from '@prisma/client';
+import { getVerifoneCustomerByCellular } from './verifone';
 
 function roundPoints(value: number): number {
-  // Calculate 5% of order total, rounded to 2 decimal places.
   return Math.round(value * 100) / 100;
 }
 
@@ -195,4 +195,215 @@ export async function syncPointsFromVerifone(params: {
   });
 }
 
+export type VerifonePointsSyncError = {
+  userId?: string;
+  phone?: string | null;
+  error: string;
+  status?: number;
+  statusDescription?: string;
+};
+
+export type VerifonePointsSyncSummary = {
+  totalProcessed: number;
+  updated: number;
+  skipped: number;
+  failed: number;
+  durationMs: number;
+  errors: VerifonePointsSyncError[];
+};
+
+type SyncAllUserPointsOptions = {
+  batchSize?: number;
+  maxBatchesPerRun?: number;
+  concurrency?: number;
+};
+
+/**
+ * Batch cron-sync of all users' pointsBalance from Verifone CreditPoints.
+ *
+ * - Verifone is treated as the source of truth for points.
+ * - Points are rounded to 2 decimal places.
+ * - Only writes to DB when the balance actually changes (idempotent).
+ * - Handles per-user failures without aborting the whole job.
+ */
+export async function syncAllUserPointsFromVerifone(
+  options: SyncAllUserPointsOptions = {}
+): Promise<VerifonePointsSyncSummary> {
+  const batchSize = options.batchSize && options.batchSize > 0 ? options.batchSize : 100;
+  const maxBatchesPerRun =
+    options.maxBatchesPerRun && options.maxBatchesPerRun > 0
+      ? options.maxBatchesPerRun
+      : 50;
+  const concurrency =
+    options.concurrency && options.concurrency > 0 ? options.concurrency : 5;
+
+  const startTime = Date.now();
+
+  let totalProcessed = 0;
+  let updated = 0;
+  let skipped = 0;
+  let failed = 0;
+  const errors: VerifonePointsSyncError[] = [];
+
+  let lastUserId: string | null = null;
+
+  console.log('[CRON_POINTS_SYNC] Starting Verifone points sync', {
+    batchSize,
+    maxBatchesPerRun,
+    concurrency
+  });
+
+  for (let batchIndex = 0; batchIndex < maxBatchesPerRun; batchIndex++) {
+    const users = await prisma.user.findMany({
+      where: {
+        phone: { not: null },
+        signupCompletedAt: { not: null },
+        isDelete: false
+      },
+      select: {
+        id: true,
+        phone: true,
+        pointsBalance: true
+      } as const,
+      orderBy: { id: 'asc' },
+      take: batchSize,
+      ...(lastUserId
+        ? {
+            skip: 1,
+            cursor: { id: lastUserId }
+          }
+        : {})
+    });
+
+    if (users.length === 0) {
+      break;
+    }
+
+    lastUserId = users[users.length - 1]!.id;
+
+    let index = 0;
+    while (index < users.length) {
+      const chunk = users.slice(index, index + concurrency);
+      index += concurrency;
+
+      await Promise.all(
+        chunk.map(async (user) => {
+          totalProcessed += 1;
+
+          try {
+            const phone = user.phone;
+            if (!phone) {
+              skipped += 1;
+              console.log(
+                '[CRON_POINTS_SYNC_USER] Skipping user without phone',
+                { userId: user.id }
+              );
+              return;
+            }
+
+            const verifoneResult = await getVerifoneCustomerByCellular(phone);
+
+            if (!verifoneResult.success) {
+              failed += 1;
+              const errorSummary: VerifonePointsSyncError = {
+                userId: user.id,
+                phone,
+                error:
+                  verifoneResult.statusDescription ||
+                  'Verifone GetCustomers call failed',
+                status: verifoneResult.status,
+                statusDescription: verifoneResult.statusDescription
+              };
+              errors.push(errorSummary);
+              console.error(
+                '[CRON_POINTS_SYNC_ERROR] Verifone lookup failed for user',
+                errorSummary
+              );
+              return;
+            }
+
+            const customer = verifoneResult.customer;
+            if (!customer || !customer.isClubMember) {
+              skipped += 1;
+              console.log(
+                '[CRON_POINTS_SYNC_USER] Skipping - no Verifone club customer',
+                {
+                  userId: user.id,
+                  phone,
+                  hasCustomer: !!customer,
+                  status: verifoneResult.status,
+                  statusDescription: verifoneResult.statusDescription
+                }
+              );
+              return;
+            }
+
+            const verifonePoints = roundPoints(
+              Math.max(0, customer.creditPoints || 0)
+            );
+            const currentBalance = roundPoints(
+              Number(user.pointsBalance ?? 0)
+            );
+
+            if (verifonePoints === currentBalance) {
+              skipped += 1;
+              return;
+            }
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { pointsBalance: verifonePoints }
+            });
+
+            updated += 1;
+
+            console.log('[CRON_POINTS_SYNC_USER] Updated points for user', {
+              userId: user.id,
+              phone,
+              previousBalance: currentBalance,
+              newBalance: verifonePoints
+            });
+          } catch (err) {
+            failed += 1;
+            const message =
+              err instanceof Error ? err.message : String(err ?? 'Unknown error');
+            const errorSummary: VerifonePointsSyncError = {
+              userId: user.id,
+              phone: user.phone,
+              error: message
+            };
+            errors.push(errorSummary);
+            console.error(
+              '[CRON_POINTS_SYNC_ERROR] Unexpected error while syncing user',
+              {
+                ...errorSummary,
+                rawError: err
+              }
+            );
+          }
+        })
+      );
+    }
+
+    if (users.length < batchSize) {
+      // No more users to process.
+      break;
+    }
+  }
+
+  const durationMs = Date.now() - startTime;
+
+  const summary: VerifonePointsSyncSummary = {
+    totalProcessed,
+    updated,
+    skipped,
+    failed,
+    durationMs,
+    errors
+  };
+
+  console.log('[CRON_POINTS_SYNC] Completed Verifone points sync', summary);
+
+  return summary;
+}
 

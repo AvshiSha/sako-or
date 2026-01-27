@@ -88,7 +88,17 @@ export async function POST(request: NextRequest) {
         where: { id: userId },
         select: { pointsBalance: true }
       });
-      if (!user || user.pointsBalance < pointsToSpend) {
+
+      // Prisma stores decimals as Decimal objects; convert to number before comparison
+      if (!user || user.pointsBalance === null) {
+        return NextResponse.json(
+          { error: 'Insufficient points balance' },
+          { status: 400 }
+        );
+      }
+
+      const pointsBalanceNumber = user.pointsBalance.toNumber();
+      if (pointsBalanceNumber < pointsToSpend) {
         return NextResponse.json(
           { error: 'Insufficient points balance' },
           { status: 400 }

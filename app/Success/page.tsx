@@ -174,7 +174,7 @@ function SuccessPageContent() {
     }
 
     setIsLoading(false);
-  }, [searchParams, hasTracked]);
+  }, [searchParams, hasTracked, user]);
 
   const verifyPaymentStatus = async (lpid: string, orderId?: string | null, paymentSucceededFromUrl: boolean = false) => {
     try {

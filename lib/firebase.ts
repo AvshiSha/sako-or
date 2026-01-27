@@ -303,6 +303,27 @@ export interface ColorVariantSize {
   updatedAt: Date;
 }
 
+/**
+ * VariantItem represents a single color variant of a product as a displayable item.
+ * Used for collection pages where each color variant gets its own card.
+ */
+export interface VariantItem {
+  product: Product;
+  variant: {
+    colorSlug: string;
+    isActive?: boolean;
+    priceOverride?: number;
+    salePrice?: number;
+    stockBySize: Record<string, number>;
+    metaTitle?: string;
+    metaDescription?: string;
+    images: string[];
+    primaryImage?: string;
+    videos?: string[];
+  };
+  variantKey: string; // Unique identifier: "productId-colorSlug"
+}
+
 export interface AppUser {
   id?: string;
   email: string;
@@ -1020,13 +1041,46 @@ export type PaginationOptions = {
 };
 
 export type FilteredProductsResult = {
-  products: Product[];
+  products: Product[]; // Keep for backward compatibility
+  variantItems?: VariantItem[]; // New: explicit variant items (one per color variant)
   hasMore: boolean;
-  total: number;  // Total matching products
+  total: number;  // Total matching variants (if variantItems) or products (if products)
   page: number;   // Current page number
   pageSize: number; // Page size used
   lastDocument?: QueryDocumentSnapshot<DocumentData>;
 };
+
+/**
+ * Expand products into variant items (one item per active color variant)
+ * Each variant item represents a single color variant that should be displayed as its own card.
+ */
+export function expandProductsToVariants(products: Product[]): VariantItem[] {
+  const variantItems: VariantItem[] = [];
+  
+  for (const product of products) {
+    if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
+      // Product with no variants - skip (products without variants won't be displayed)
+      continue;
+    }
+    
+    // Get all active variants
+    const activeVariants = Object.values(product.colorVariants)
+      .filter(v => v.isActive !== false);
+    
+    // Create one VariantItem per active variant
+    for (const variant of activeVariants) {
+      if (!variant.colorSlug) continue; // Skip variants without color slug
+      
+      variantItems.push({
+        product,
+        variant,
+        variantKey: `${product.id || product.sku}-${variant.colorSlug}`
+      });
+    }
+  }
+  
+  return variantItems;
+}
 
 /**
  * Get filtered products using Firestore queries
@@ -1527,7 +1581,69 @@ export async function getCollectionProducts(
   // Validate page number
   const validatedPage = Number.isInteger(page) && page > 0 ? page : 1;
 
-  return getFilteredProducts(filters, sort, { page: validatedPage, pageSize });
+  // Get filtered products (without pagination - we'll paginate after expanding to variants)
+  const filteredResult = await getFilteredProducts(filters, sort);
+  
+  // Expand products to variant items (one item per active color variant)
+  const allVariantItems = expandProductsToVariants(filteredResult.products);
+  
+  // Sort variant items
+  let sortedVariantItems = [...allVariantItems];
+  
+  if (sort === 'priceAsc' || sort === 'priceDesc') {
+    sortedVariantItems.sort((a, b) => {
+      // Get variant-specific price for comparison
+      const getVariantPrice = (item: VariantItem): number => {
+        if (item.variant.salePrice && item.variant.salePrice > 0) return item.variant.salePrice;
+        if (item.product.salePrice && item.product.salePrice > 0) return item.product.salePrice;
+        if (item.variant.priceOverride && item.variant.priceOverride > 0) return item.variant.priceOverride;
+        return item.product.price;
+      };
+      
+      const priceA = getVariantPrice(a);
+      const priceB = getVariantPrice(b);
+      
+      return sort === 'priceAsc' ? priceA - priceB : priceB - priceA;
+    });
+  } else if (sort === 'newest') {
+    // Sort by product createdAt (all variants of same product have same date)
+    sortedVariantItems.sort((a, b) => {
+      const dateA = a.product.createdAt ? new Date(a.product.createdAt).getTime() : 0;
+      const dateB = b.product.createdAt ? new Date(b.product.createdAt).getTime() : 0;
+      return dateB - dateA; // Newest first
+    });
+  }
+  // For 'relevance', keep the order from getFilteredProducts (already sorted by createdAt desc)
+  
+  // Calculate total count at variant level
+  const totalVariants = sortedVariantItems.length;
+  
+  // Paginate variant items
+  const startIndex = (validatedPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedVariantItems = sortedVariantItems.slice(startIndex, endIndex);
+  const hasMore = endIndex < totalVariants;
+  
+  // For backward compatibility, we still return products array
+  // But the primary data is in variantItems
+  // Extract products from paginated variant items (unique products only)
+  const uniqueProducts = new Map<string, Product>();
+  paginatedVariantItems.forEach(item => {
+    const productId = item.product.id || item.product.sku;
+    if (!uniqueProducts.has(productId)) {
+      uniqueProducts.set(productId, item.product);
+    }
+  });
+  
+  return {
+    products: Array.from(uniqueProducts.values()), // Backward compatibility
+    variantItems: paginatedVariantItems, // New: variant items for collection pages
+    hasMore,
+    total: totalVariants, // Total variant count
+    page: validatedPage,
+    pageSize,
+    lastDocument: filteredResult.lastDocument
+  };
 }
 
 // Category Services

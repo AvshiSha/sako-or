@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
       // Use collection products function
       const collectionData = await getCollectionProducts(categoryPath, urlSearchParams, language);
       result = {
-        items: collectionData.products || [],
+        items: collectionData.products || [], // Backward compatibility
+        variantItems: collectionData.variantItems || [], // New: variant items for collection pages
         total: collectionData.total || 0,
         page: collectionData.page || 1,
         pageSize: collectionData.pageSize || 24,

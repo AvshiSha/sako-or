@@ -9,7 +9,7 @@ import {
   XMarkIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
-import { Product, Category, productHelpers } from "@/lib/firebase";
+import { Product, Category, productHelpers, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
 import { trackViewItemList } from "@/lib/dataLayer";
 import { getColorName, getColorHex } from "@/lib/colors";
@@ -131,6 +131,7 @@ const translations = {
 
 interface CollectionClientProps {
   initialProducts: Product[];
+  initialVariantItems?: VariantItem[]; // New: variant items (one per color variant)
   categories: Category[];
   categoryPath: string | undefined;
   selectedCategory: string;
@@ -144,6 +145,7 @@ interface CollectionClientProps {
 
 export default function CollectionClient({
   initialProducts,
+  initialVariantItems,
   categories,
   categoryPath,
   selectedCategory,
@@ -162,10 +164,14 @@ export default function CollectionClient({
   // Determine current collection level from slug (needed early for handleLoadMore)
   const slug = params?.slug as string[] | undefined;
 
-  // Pagination state - accumulated products stream (never replaced, only appended)
+  // Use variantItems if available (collection pages), otherwise fall back to products (search)
+  const useVariantItems = initialVariantItems !== undefined && !searchQuery;
+  
+  // Pagination state - accumulated variant items or products stream (never replaced, only appended)
+  const [allVariantItems, setAllVariantItems] = useState<VariantItem[]>(initialVariantItems || []);
   const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
   const [currentPage, setCurrentPage] = useState(searchPage || 1);
-  const [totalProducts, setTotalProducts] = useState(searchTotal || initialProducts.length);
+  const [totalProducts, setTotalProducts] = useState(searchTotal || (useVariantItems ? (initialVariantItems?.length || 0) : initialProducts.length));
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -197,8 +203,8 @@ export default function CollectionClient({
     }
   }, []); // Empty deps - only run once on mount
 
-  // CRITICAL: Only reset products when filters/search actually change, NOT when page changes
-  // This prevents the accumulated product stream from being wiped when URL updates after Load More
+  // CRITICAL: Only reset products/variantItems when filters/search actually change, NOT when page changes
+  // This prevents the accumulated stream from being wiped when URL updates after Load More
   useEffect(() => {
     const filterChanged = prevFilterKeyRef.current !== filterKey;
     
@@ -209,30 +215,40 @@ export default function CollectionClient({
     const pageOnlyChanged = !filterChanged && prevFilterKeyRef.current !== '';
     
     if (filterChanged && !isLoadingMoreRef.current) {
-      // Filters/search changed - reset accumulated products to start fresh
-      setAllProducts(initialProducts);
+      // Filters/search changed - reset accumulated items to start fresh
+      if (useVariantItems && initialVariantItems) {
+        setAllVariantItems(initialVariantItems);
+        setTotalProducts(searchTotal || initialVariantItems.length);
+      } else {
+        setAllProducts(initialProducts);
+        setTotalProducts(searchTotal || initialProducts.length);
+      }
       setCurrentPage(searchPage || 1);
-      setTotalProducts(searchTotal || initialProducts.length);
       setHasMore(initialHasMore);
       prevFilterKeyRef.current = filterKey;
     } else if (pageOnlyChanged && !isLoadingMoreRef.current) {
       // Only page number changed (direct URL navigation like ?page=3)
-      // For direct navigation, we should show that page's products
-      // But if we already have more products loaded, keep them (user might have loaded more)
+      // For direct navigation, we should show that page's items
+      // But if we already have more items loaded, keep them (user might have loaded more)
       // Only reset if the requested page is less than what we have
       if (searchPage && searchPage < currentPage) {
         // Going backwards - reset to that page
-        setAllProducts(initialProducts);
+        if (useVariantItems && initialVariantItems) {
+          setAllVariantItems(initialVariantItems);
+          setTotalProducts(searchTotal || initialVariantItems.length);
+        } else {
+          setAllProducts(initialProducts);
+          setTotalProducts(searchTotal || initialProducts.length);
+        }
         setCurrentPage(searchPage);
-        setTotalProducts(searchTotal || initialProducts.length);
         setHasMore(initialHasMore);
       }
-      // If going forward (searchPage > currentPage), keep accumulated products
+      // If going forward (searchPage > currentPage), keep accumulated items
       // The server will have loaded that page, but we want to keep our stream
     }
     // If filterKey hasn't changed and we're loading more, DON'T RESET!
-    // The accumulated products stream should remain intact
-  }, [filterKey, initialProducts, searchPage, searchTotal, initialHasMore, currentPage]);
+    // The accumulated stream should remain intact
+  }, [filterKey, initialProducts, initialVariantItems, searchPage, searchTotal, initialHasMore, currentPage, useVariantItems]);
 
   // Scroll restoration: save scroll position and restore when returning from PDP
   useEffect(() => {
@@ -314,29 +330,58 @@ export default function CollectionClient({
       }
 
       const data = await response.json();
-      const newItems = data.items || [];
       
-      if (newItems.length === 0) {
-        // No new items - update hasMore and exit
-        setHasMore(false);
-        setIsLoadingMore(false);
-        return;
-      }
-      
-      // Prevent duplicates by checking existing product IDs
-      // This ensures stable stream even if API returns overlapping results
-      setAllProducts(prev => {
-        const existingIds = new Set(prev.map(p => p.id));
-        const uniqueNewItems = newItems.filter((item: Product) => !existingIds.has(item.id));
+      // Handle variantItems (collection pages) or items (search)
+      if (useVariantItems && data.variantItems) {
+        const newVariantItems = data.variantItems || [];
         
-        if (uniqueNewItems.length === 0) {
-          console.warn('All fetched items were duplicates, skipping append');
-          return prev; // Return unchanged if all duplicates
+        if (newVariantItems.length === 0) {
+          // No new items - update hasMore and exit
+          setHasMore(false);
+          setIsLoadingMore(false);
+          return;
         }
         
-        // CRITICAL: Append new products (NEVER replace!)
-        return [...prev, ...uniqueNewItems];
-      });
+        // Prevent duplicates by checking existing variant keys (Set-based deduplication)
+        // This ensures stable stream even if API returns overlapping results
+        setAllVariantItems(prev => {
+          const existingVariantKeys = new Set(prev.map(item => item.variantKey));
+          const uniqueNewItems = newVariantItems.filter((item: VariantItem) => !existingVariantKeys.has(item.variantKey));
+          
+          if (uniqueNewItems.length === 0) {
+            console.warn('All fetched variant items were duplicates, skipping append');
+            return prev; // Return unchanged if all duplicates
+          }
+          
+          // CRITICAL: Append new variant items (NEVER replace!)
+          return [...prev, ...uniqueNewItems];
+        });
+      } else {
+        // Fallback to products (for search)
+        const newItems = data.items || [];
+        
+        if (newItems.length === 0) {
+          // No new items - update hasMore and exit
+          setHasMore(false);
+          setIsLoadingMore(false);
+          return;
+        }
+        
+        // Prevent duplicates by checking existing product IDs
+        // This ensures stable stream even if API returns overlapping results
+        setAllProducts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNewItems = newItems.filter((item: Product) => !existingIds.has(item.id));
+          
+          if (uniqueNewItems.length === 0) {
+            console.warn('All fetched items were duplicates, skipping append');
+            return prev; // Return unchanged if all duplicates
+          }
+          
+          // CRITICAL: Append new products (NEVER replace!)
+          return [...prev, ...uniqueNewItems];
+        });
+      }
       
       // Set flag BEFORE updating URL to prevent useEffect from resetting
       isLoadingMoreRef.current = true;
@@ -395,7 +440,7 @@ export default function CollectionClient({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, currentPage, categoryPath, searchQuery, lng, searchParams, router, slug, totalProducts]);
+  }, [isLoadingMore, hasMore, currentPage, categoryPath, searchQuery, lng, searchParams, router, slug, totalProducts, useVariantItems]);
   const collectionLevel = slug ? slug.length : 0; // 0 = all/main, 1 = level 0, 2 = level 1, 3+ = level 2+
   const showSubSubCategoryFilter = collectionLevel <= 2; // Show only on level 0 and level 1 pages
 
@@ -682,119 +727,202 @@ export default function CollectionClient({
   };
 
 
-  // Apply sorting to products (products are already filtered server-side)
-  const sortedProducts = useMemo(() => {
-    const sorted = [...allProducts].sort((a, b) => {
-      const priceA = (a.salePrice && a.salePrice > 0) ? a.salePrice : a.price;
-      const priceB = (b.salePrice && b.salePrice > 0) ? b.salePrice : b.price;
-      
-      switch (sortBy) {
-        case "price-low":
-          return priceA - priceB;
-        case "price-high":
-          return priceB - priceA;
-        case "newest":
-          if (a.createdAt && b.createdAt) {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          }
-          const aId = typeof a.id === 'string' ? parseInt(a.id) : (typeof a.id === 'number' ? a.id : 0);
-          const bId = typeof b.id === 'string' ? parseInt(b.id) : (typeof b.id === 'number' ? b.id : 0);
-          return bId - aId;
-        case "relevance":
-        default:
-          return 0;
-      }
-    });
-    return sorted;
-  }, [allProducts, sortBy]);
+  // Apply sorting to variant items or products (items are already filtered server-side)
+  const sortedItems = useMemo(() => {
+    if (useVariantItems) {
+      // Sort variant items
+      const sorted = [...allVariantItems].sort((a, b) => {
+        // Get variant-specific price for comparison
+        const getVariantPrice = (item: VariantItem): number => {
+          if (item.variant.salePrice && item.variant.salePrice > 0) return item.variant.salePrice;
+          if (item.product.salePrice && item.product.salePrice > 0) return item.product.salePrice;
+          if (item.variant.priceOverride && item.variant.priceOverride > 0) return item.variant.priceOverride;
+          return item.product.price;
+        };
+        
+        switch (sortBy) {
+          case "price-low":
+            return getVariantPrice(a) - getVariantPrice(b);
+          case "price-high":
+            return getVariantPrice(b) - getVariantPrice(a);
+          case "newest":
+            // Sort by product createdAt (all variants of same product have same date)
+            const dateA = a.product.createdAt ? new Date(a.product.createdAt).getTime() : 0;
+            const dateB = b.product.createdAt ? new Date(b.product.createdAt).getTime() : 0;
+            return dateB - dateA; // Newest first
+          case "relevance":
+          default:
+            // Keep server-side order (already sorted by createdAt desc)
+            return 0;
+        }
+      });
+      return sorted;
+    } else {
+      // Sort products (for search)
+      const sorted = [...allProducts].sort((a, b) => {
+        const priceA = (a.salePrice && a.salePrice > 0) ? a.salePrice : a.price;
+        const priceB = (b.salePrice && b.salePrice > 0) ? b.salePrice : b.price;
+        
+        switch (sortBy) {
+          case "price-low":
+            return priceA - priceB;
+          case "price-high":
+            return priceB - priceA;
+          case "newest":
+            if (a.createdAt && b.createdAt) {
+              return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+            }
+            const aId = typeof a.id === 'string' ? parseInt(a.id) : (typeof a.id === 'number' ? a.id : 0);
+            const bId = typeof b.id === 'string' ? parseInt(b.id) : (typeof b.id === 'number' ? b.id : 0);
+            return bId - aId;
+          case "relevance":
+          default:
+            return 0;
+        }
+      });
+      return sorted;
+    }
+  }, [allVariantItems, allProducts, sortBy, useVariantItems]);
 
-  // Track view_item_list when products are displayed
+  // Track view_item_list when items are displayed
   useEffect(() => {
-    if (sortedProducts.length === 0) return;
+    if (sortedItems.length === 0) return;
 
     try {
       const listName = categoryPath || selectedCategory || 'All Products';
       const listId = categoryPath || selectedCategory || 'all_products';
       
-      const items = sortedProducts.map((product) => {
-        const firstVariant = product.colorVariants 
-          ? Object.values(product.colorVariants).find(v => v.isActive !== false)
-          : null;
-        
-        const price = firstVariant?.salePrice || firstVariant?.priceOverride || product.salePrice || product.price;
-        const variant = firstVariant?.colorSlug || '';
-        const productName = productHelpers.getField(product, 'name', lng as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product';
-        const categories = product.categories_path || [product.category || 'Unknown'];
-        
-        return {
-          name: productName,
-          id: product.sku || product.id || '',
-          price: price,
-          brand: product.brand,
-          categories: categories,
-          variant: variant
-        };
-      });
+      const items = useVariantItems
+        ? (sortedItems as VariantItem[]).map((item) => {
+            // Track each variant item separately
+            const price = item.variant.salePrice || item.product.salePrice || item.variant.priceOverride || item.product.price;
+            const productName = productHelpers.getField(item.product, 'name', lng as 'en' | 'he') || item.product.title_en || item.product.title_he || 'Unknown Product';
+            const categories = item.product.categories_path || [item.product.category || 'Unknown'];
+            
+            return {
+              name: productName,
+              id: `${item.product.sku || item.product.id || ''}-${item.variant.colorSlug}`,
+              price: price,
+              brand: item.product.brand,
+              categories: categories,
+              variant: item.variant.colorSlug
+            };
+          })
+        : (sortedItems as Product[]).map((product) => {
+            // Track products (for search)
+            const firstVariant = product.colorVariants 
+              ? Object.values(product.colorVariants).find(v => v.isActive !== false)
+              : null;
+            
+            const price = firstVariant?.salePrice || firstVariant?.priceOverride || product.salePrice || product.price;
+            const variant = firstVariant?.colorSlug || '';
+            const productName = productHelpers.getField(product, 'name', lng as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product';
+            const categories = product.categories_path || [product.category || 'Unknown'];
+            
+            return {
+              name: productName,
+              id: product.sku || product.id || '',
+              price: price,
+              brand: product.brand,
+              categories: categories,
+              variant: variant
+            };
+          });
 
       trackViewItemList(items, listName, listId, 'ILS');
     } catch (dataLayerError) {
       console.warn('Data layer tracking error:', dataLayerError);
     }
-  }, [sortedProducts, categoryPath, selectedCategory, lng]);
+  }, [sortedItems, categoryPath, selectedCategory, lng, useVariantItems]);
 
-  // Build dynamic color mapping from products (includes colorHex when available)
+  // Build dynamic color mapping from variant items or products (includes colorHex when available)
   // This prioritizes colorHex from variants, then falls back to getColorHex
   const colorSlugToHex = useMemo(() => {
     const map: Record<string, string> = {};
     
-    // Extract color info from products and add to map
-    initialProducts.forEach((product) => {
-      if (product.colorVariants) {
-        Object.values(product.colorVariants).forEach((variant) => {
-          if (variant.isActive !== false && variant.colorSlug) {
-            // Use colorHex from variant if available, otherwise use getColorHex
-            if ((variant as any).colorHex) {
-              map[variant.colorSlug] = (variant as any).colorHex;
-            } else {
-              map[variant.colorSlug] = getColorHex(variant.colorSlug);
-            }
+    if (useVariantItems && initialVariantItems) {
+      // Extract color info from variant items
+      initialVariantItems.forEach((item) => {
+        if (item.variant.isActive !== false && item.variant.colorSlug) {
+          // Use colorHex from variant if available, otherwise use getColorHex
+          if ((item.variant as any).colorHex) {
+            map[item.variant.colorSlug] = (item.variant as any).colorHex;
+          } else {
+            map[item.variant.colorSlug] = getColorHex(item.variant.colorSlug);
           }
-        });
-      }
-    });
+        }
+      });
+    } else {
+      // Extract color info from products (for search)
+      initialProducts.forEach((product) => {
+        if (product.colorVariants) {
+          Object.values(product.colorVariants).forEach((variant) => {
+            if (variant.isActive !== false && variant.colorSlug) {
+              // Use colorHex from variant if available, otherwise use getColorHex
+              if ((variant as any).colorHex) {
+                map[variant.colorSlug] = (variant as any).colorHex;
+              } else {
+                map[variant.colorSlug] = getColorHex(variant.colorSlug);
+              }
+            }
+          });
+        }
+      });
+    }
     
     return map;
-  }, [initialProducts]);
+  }, [initialProducts, initialVariantItems, useVariantItems]);
 
-  // Get all colors and sizes from the filtered products
+  // Get all colors and sizes from the filtered variant items or products
   const allColors = useMemo(() => {
-    return [
-      ...new Set([
-        ...initialProducts.flatMap((p) => 
-          p.colorVariants 
-            ? Object.values(p.colorVariants)
-                .filter(v => v.isActive !== false)
-                .map((v) => v.colorSlug)
-                .filter(Boolean)
-            : []
-        )
-      ]),
-    ] as string[];
-  }, [initialProducts]);
+    if (useVariantItems && initialVariantItems) {
+      return [
+        ...new Set(
+          initialVariantItems
+            .filter(item => item.variant.isActive !== false && item.variant.colorSlug)
+            .map(item => item.variant.colorSlug)
+            .filter(Boolean)
+        ),
+      ] as string[];
+    } else {
+      return [
+        ...new Set([
+          ...initialProducts.flatMap((p) => 
+            p.colorVariants 
+              ? Object.values(p.colorVariants)
+                  .filter(v => v.isActive !== false)
+                  .map((v) => v.colorSlug)
+                  .filter(Boolean)
+              : []
+          )
+        ]),
+      ] as string[];
+    }
+  }, [initialProducts, initialVariantItems, useVariantItems]);
 
   const allSizes = useMemo(() => {
-    return [
-      ...new Set([
-        ...initialProducts.flatMap((p) => 
-          p.colorVariants 
-            ? Object.values(p.colorVariants)
-                .filter(v => v.isActive !== false)
-                .flatMap((v) => Object.keys(v.stockBySize || {}))
-            : []
+    if (useVariantItems && initialVariantItems) {
+      return [
+        ...new Set(
+          initialVariantItems
+            .filter(item => item.variant.isActive !== false)
+            .flatMap((item) => Object.keys(item.variant.stockBySize || {}))
         ),
-      ]),
-    ] as string[];
-  }, [initialProducts]);
+      ] as string[];
+    } else {
+      return [
+        ...new Set([
+          ...initialProducts.flatMap((p) => 
+            p.colorVariants 
+              ? Object.values(p.colorVariants)
+                  .filter(v => v.isActive !== false)
+                  .flatMap((v) => Object.keys(v.stockBySize || {}))
+              : []
+          ),
+        ]),
+      ] as string[];
+    }
+  }, [initialProducts, initialVariantItems, useVariantItems]);
 
   // Separate numeric sizes (shoes) from alpha sizes (clothing)
   const numericSizes = allSizes.filter(size => /^\d+(\.\d+)?$/.test(size)).sort((a, b) => parseFloat(a) - parseFloat(b));
@@ -860,38 +988,61 @@ export default function CollectionClient({
     return lng === 'he' ? category.name.he : category.name.en;
   };
 
-  // STATIC: Collection Price Bounds - calculated from ALL products in collection
+  // STATIC: Collection Price Bounds - calculated from ALL variant items or products in collection
   // These represent the full available range and NEVER change when user drags slider
   const collectionPriceBounds = useMemo(() => {
-    if (initialProducts.length === 0) {
-      return { min: 0, max: 1000 };
-    }
-
     const prices: number[] = [];
     
-    initialProducts.forEach((product) => {
-      if (product.colorVariants && Object.keys(product.colorVariants).length > 0) {
-        // Get prices from all active variants
-        Object.values(product.colorVariants)
-          .filter(v => v.isActive !== false)
-          .forEach((variant) => {
-            // Priority: variant.salePrice > product.salePrice > variant.priceOverride > product.price
-            if ((variant as any).salePrice && (variant as any).salePrice > 0) {
-              prices.push((variant as any).salePrice);
-            } else if (product.salePrice && product.salePrice > 0) {
-              prices.push(product.salePrice);
-            } else if ((variant as any).priceOverride && (variant as any).priceOverride > 0) {
-              prices.push((variant as any).priceOverride);
-            } else {
-              prices.push(product.price);
-            }
-          });
-      } else {
-        // No variants, use product-level price
-        const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-        prices.push(productPrice);
+    if (useVariantItems && initialVariantItems) {
+      // Calculate from variant items
+      if (initialVariantItems.length === 0) {
+        return { min: 0, max: 1000 };
       }
-    });
+      
+      initialVariantItems.forEach((item) => {
+        if (item.variant.isActive !== false) {
+          // Priority: variant.salePrice > product.salePrice > variant.priceOverride > product.price
+          if (item.variant.salePrice && item.variant.salePrice > 0) {
+            prices.push(item.variant.salePrice);
+          } else if (item.product.salePrice && item.product.salePrice > 0) {
+            prices.push(item.product.salePrice);
+          } else if (item.variant.priceOverride && item.variant.priceOverride > 0) {
+            prices.push(item.variant.priceOverride);
+          } else {
+            prices.push(item.product.price);
+          }
+        }
+      });
+    } else {
+      // Calculate from products (for search)
+      if (initialProducts.length === 0) {
+        return { min: 0, max: 1000 };
+      }
+
+      initialProducts.forEach((product) => {
+        if (product.colorVariants && Object.keys(product.colorVariants).length > 0) {
+          // Get prices from all active variants
+          Object.values(product.colorVariants)
+            .filter(v => v.isActive !== false)
+            .forEach((variant) => {
+              // Priority: variant.salePrice > product.salePrice > variant.priceOverride > product.price
+              if ((variant as any).salePrice && (variant as any).salePrice > 0) {
+                prices.push((variant as any).salePrice);
+              } else if (product.salePrice && product.salePrice > 0) {
+                prices.push(product.salePrice);
+              } else if ((variant as any).priceOverride && (variant as any).priceOverride > 0) {
+                prices.push((variant as any).priceOverride);
+              } else {
+                prices.push(product.price);
+              }
+            });
+        } else {
+          // No variants, use product-level price
+          const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
+          prices.push(productPrice);
+        }
+      });
+    }
 
     if (prices.length === 0) {
       return { min: 0, max: 1000 };
@@ -905,7 +1056,7 @@ export default function CollectionClient({
     const maxRounded = Math.ceil(max / 10) * 10;
     
     return { min: minRounded, max: maxRounded };
-  }, [initialProducts]);
+  }, [initialProducts, initialVariantItems, useVariantItems]);
 
   // UI State: Live price range for slider (updates instantly while dragging)
   // Single source of truth for slider UI - no separate draft/applied states
@@ -1104,18 +1255,18 @@ export default function CollectionClient({
         )}
 
         {/* Showing X of Y counter */}
-        {sortedProducts.length > 0 && (
+        {sortedItems.length > 0 && (
           <div className="mb-4 text-sm text-gray-600">
             {lng === 'he' 
-              ? `${t.showing} ${allProducts.length} ${t.of} ${totalProducts} ${t.items}`
-              : `${t.showing} ${allProducts.length} ${t.of} ${totalProducts} ${t.items}`
+              ? `${t.showing} ${useVariantItems ? allVariantItems.length : allProducts.length} ${t.of} ${totalProducts} ${t.items}`
+              : `${t.showing} ${useVariantItems ? allVariantItems.length : allProducts.length} ${t.of} ${totalProducts} ${t.items}`
             }
           </div>
         )}
 
         {/* Products Grid - Full Width */}
         <div className="w-full">
-          {sortedProducts.length === 0 ? (
+          {sortedItems.length === 0 ? (
             <div className="text-center py-4">
               <CubeIcon className="mx-auto h-14 w-14 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -1134,27 +1285,50 @@ export default function CollectionClient({
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3 ">
-                {sortedProducts.map((product, index) => {
-                  // Calculate if product is above the fold (first 6-8 products)
-                  // Mobile: 2 rows = 4 products, Desktop: 1-2 rows = 3-6 products
-                  const isAboveFold = index < 6;
-                  
-                  return (
-                    <motion.div
-                      key={product.id}
-                      {...({ whileHover: { y: -4 } } as unknown as Record<string, unknown>)}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <ProductCard 
-                        product={product} 
-                        language={lng as 'en' | 'he'} 
-                        returnUrl={currentUrl}
-                        selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
-                        isAboveFold={isAboveFold}
-                      />
-                    </motion.div>
-                  );
-                })}
+                {useVariantItems
+                  ? (sortedItems as VariantItem[]).map((item, index) => {
+                      // Calculate if item is above the fold (first 6-8 items)
+                      // Mobile: 2 rows = 4 items, Desktop: 1-2 rows = 3-6 items
+                      const isAboveFold = index < 6;
+                      
+                      return (
+                        <motion.div
+                          key={item.variantKey}
+                          {...({ whileHover: { y: -4 } } as unknown as Record<string, unknown>)}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ProductCard 
+                            product={item.product} 
+                            language={lng as 'en' | 'he'} 
+                            returnUrl={currentUrl}
+                            selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+                            preselectedColorSlug={item.variant.colorSlug}
+                            isAboveFold={isAboveFold}
+                          />
+                        </motion.div>
+                      );
+                    })
+                  : (sortedItems as Product[]).map((product, index) => {
+                      // Calculate if product is above the fold (first 6-8 products)
+                      // Mobile: 2 rows = 4 products, Desktop: 1-2 rows = 3-6 products
+                      const isAboveFold = index < 6;
+                      
+                      return (
+                        <motion.div
+                          key={product.id}
+                          {...({ whileHover: { y: -4 } } as unknown as Record<string, unknown>)}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ProductCard 
+                            product={product} 
+                            language={lng as 'en' | 'he'} 
+                            returnUrl={currentUrl}
+                            selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+                            isAboveFold={isAboveFold}
+                          />
+                        </motion.div>
+                      );
+                    })}
               </div>
               
               {/* Load More Button */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
@@ -52,6 +52,10 @@ const translations = {
     tryAdjusting: "Try adjusting your filters or search criteria.",
     loadingProducts: "Loading products...",
     loading: "Loading...",
+    showing: "Showing",
+    of: "of",
+    items: "items",
+    loadMore: "Load More",
     price: "Price",
     minPrice: "Min Price",
     maxPrice: "Max Price",
@@ -93,6 +97,10 @@ const translations = {
     tryAdjusting: "נסו להתאים את המסננים או קריטריוני החיפוש.",
     loadingProducts: "טוען מוצרים...",
     loading: "טוען...",
+    showing: "מציג",
+    of: "מתוך",
+    items: "מוצרים",
+    loadMore: "טען עוד",
     price: "מחיר",
     minPrice: "מחיר מינימלי",
     maxPrice: "מחיר מקסימלי",
@@ -131,6 +139,7 @@ interface CollectionClientProps {
   searchQuery?: string;
   searchTotal?: number;
   searchPage?: number;
+  hasMore?: boolean;
 }
 
 export default function CollectionClient({
@@ -143,14 +152,250 @@ export default function CollectionClient({
   searchQuery,
   searchTotal,
   searchPage = 1,
+  hasMore: initialHasMore = false,
 }: CollectionClientProps) {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = translations[lng as keyof typeof translations] || translations.en;
 
-  // Determine current collection level from slug
+  // Determine current collection level from slug (needed early for handleLoadMore)
   const slug = params?.slug as string[] | undefined;
+
+  // Pagination state - accumulated products stream (never replaced, only appended)
+  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
+  const [currentPage, setCurrentPage] = useState(searchPage || 1);
+  const [totalProducts, setTotalProducts] = useState(searchTotal || initialProducts.length);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Track filter/search key to detect when filters actually change (not just page)
+  const filterKey = useMemo(() => {
+    const safeSearchParams = searchParams ?? new URLSearchParams();
+    // Build a key from all filter/search params except page
+    const keyParts: string[] = [];
+    if (categoryPath) keyParts.push(`cat:${categoryPath}`);
+    if (searchQuery) keyParts.push(`search:${searchQuery}`);
+    safeSearchParams.forEach((value, key) => {
+      if (key !== 'page' && key !== 'search') {
+        keyParts.push(`${key}:${value}`);
+      }
+    });
+    return keyParts.sort().join('|');
+  }, [categoryPath, searchQuery, searchParams]);
+
+  // Track previous filter key to detect filter changes (not page changes)
+  const prevFilterKeyRef = useRef<string>('');
+  const isInitialMountRef = useRef<boolean>(true);
+  const isLoadingMoreRef = useRef<boolean>(false);
+
+  // Initialize on mount only - set initial state
+  useEffect(() => {
+    if (isInitialMountRef.current) {
+      prevFilterKeyRef.current = filterKey;
+      isInitialMountRef.current = false;
+    }
+  }, []); // Empty deps - only run once on mount
+
+  // CRITICAL: Only reset products when filters/search actually change, NOT when page changes
+  // This prevents the accumulated product stream from being wiped when URL updates after Load More
+  useEffect(() => {
+    const filterChanged = prevFilterKeyRef.current !== filterKey;
+    
+    // Only reset if:
+    // 1. Filters actually changed (not just page number) 
+    // 2. We're NOT in the middle of loading more
+    // 3. This is not just a page number change (check if page is the only thing that changed)
+    const pageOnlyChanged = !filterChanged && prevFilterKeyRef.current !== '';
+    
+    if (filterChanged && !isLoadingMoreRef.current) {
+      // Filters/search changed - reset accumulated products to start fresh
+      setAllProducts(initialProducts);
+      setCurrentPage(searchPage || 1);
+      setTotalProducts(searchTotal || initialProducts.length);
+      setHasMore(initialHasMore);
+      prevFilterKeyRef.current = filterKey;
+    } else if (pageOnlyChanged && !isLoadingMoreRef.current) {
+      // Only page number changed (direct URL navigation like ?page=3)
+      // For direct navigation, we should show that page's products
+      // But if we already have more products loaded, keep them (user might have loaded more)
+      // Only reset if the requested page is less than what we have
+      if (searchPage && searchPage < currentPage) {
+        // Going backwards - reset to that page
+        setAllProducts(initialProducts);
+        setCurrentPage(searchPage);
+        setTotalProducts(searchTotal || initialProducts.length);
+        setHasMore(initialHasMore);
+      }
+      // If going forward (searchPage > currentPage), keep accumulated products
+      // The server will have loaded that page, but we want to keep our stream
+    }
+    // If filterKey hasn't changed and we're loading more, DON'T RESET!
+    // The accumulated products stream should remain intact
+  }, [filterKey, initialProducts, searchPage, searchTotal, initialHasMore, currentPage]);
+
+  // Scroll restoration: save scroll position and restore when returning from PDP
+  useEffect(() => {
+    const scrollKey = `scroll_${lng}_${categoryPath || 'all'}_${searchQuery || ''}_${currentPage}`;
+    
+    // Restore scroll position if returning from PDP
+    const savedScroll = sessionStorage.getItem(scrollKey);
+    if (savedScroll) {
+      const scrollPosition = parseInt(savedScroll, 10);
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollPosition);
+        // Clear after restoration
+        sessionStorage.removeItem(scrollKey);
+      });
+    }
+
+    // Save scroll position periodically and on scroll
+    const saveScrollPosition = () => {
+      sessionStorage.setItem(scrollKey, window.scrollY.toString());
+    };
+
+    // Save on scroll (throttled)
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(saveScrollPosition, 100);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    // Save on page unload (when navigating away)
+    window.addEventListener('beforeunload', saveScrollPosition);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('beforeunload', saveScrollPosition);
+      clearTimeout(scrollTimeout);
+    };
+  }, [lng, categoryPath, searchQuery, currentPage]);
+
+  // Load More handler
+  const handleLoadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+
+    // CRITICAL: Preserve scroll position before any DOM changes
+    // Store current scroll position to restore after new items are rendered
+    const scrollYBefore = window.scrollY;
+    const scrollXBefore = window.scrollX;
+
+    setIsLoadingMore(true);
+    try {
+      const nextPage = currentPage + 1;
+      
+      // Build API URL with all current filters
+      const apiUrl = new URL('/api/products/collection', window.location.origin);
+      apiUrl.searchParams.set('page', nextPage.toString());
+      apiUrl.searchParams.set('language', lng);
+      
+      if (categoryPath) {
+        apiUrl.searchParams.set('categoryPath', categoryPath);
+      }
+      
+      if (searchQuery) {
+        apiUrl.searchParams.set('search', searchQuery);
+      }
+
+      // Add all current filter params
+      const safeSearchParams = searchParams ?? new URLSearchParams();
+      safeSearchParams.forEach((value, key) => {
+        if (key !== 'page' && key !== 'search') {
+          apiUrl.searchParams.set(key, value);
+        }
+      });
+
+      const response = await fetch(apiUrl.toString());
+      if (!response.ok) {
+        throw new Error('Failed to load more products');
+      }
+
+      const data = await response.json();
+      const newItems = data.items || [];
+      
+      if (newItems.length === 0) {
+        // No new items - update hasMore and exit
+        setHasMore(false);
+        setIsLoadingMore(false);
+        return;
+      }
+      
+      // Prevent duplicates by checking existing product IDs
+      // This ensures stable stream even if API returns overlapping results
+      setAllProducts(prev => {
+        const existingIds = new Set(prev.map(p => p.id));
+        const uniqueNewItems = newItems.filter((item: Product) => !existingIds.has(item.id));
+        
+        if (uniqueNewItems.length === 0) {
+          console.warn('All fetched items were duplicates, skipping append');
+          return prev; // Return unchanged if all duplicates
+        }
+        
+        // CRITICAL: Append new products (NEVER replace!)
+        return [...prev, ...uniqueNewItems];
+      });
+      
+      // Set flag BEFORE updating URL to prevent useEffect from resetting
+      isLoadingMoreRef.current = true;
+      
+      // Update pagination metadata
+      setCurrentPage(data.page || nextPage);
+      setTotalProducts(data.total || totalProducts);
+      setHasMore(data.hasMore || false);
+
+      // Update URL with new page number - use window.history to avoid server re-render
+      // This keeps URL in sync for sharing/refresh without triggering Next.js server fetch
+      // Using replaceState prevents scroll restoration that Next.js router might trigger
+      const urlParams = new URLSearchParams(safeSearchParams.toString());
+      urlParams.set('page', nextPage.toString());
+      const queryString = urlParams.toString();
+      const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
+      const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
+      
+      // Use window.history.replaceState to update URL without triggering server re-render or scroll
+      // This is critical - router.replace() can trigger server re-fetch and scroll restoration
+      window.history.replaceState(
+        { ...window.history.state, as: newUrl, url: newUrl },
+        '',
+        newUrl
+      );
+      
+      // CRITICAL: Restore scroll position after React renders new items
+      // Use requestAnimationFrame to ensure DOM has updated with new products
+      // Multiple rAF calls ensure we restore after layout is complete
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Restore exact scroll position to prevent any jump
+          window.scrollTo({
+            top: scrollYBefore,
+            left: scrollXBefore,
+            behavior: 'auto' // Instant, no smooth scroll
+          });
+        });
+      });
+      
+      // Reset flag after URL update completes
+      // This allows useEffect to run normally for future filter changes
+      setTimeout(() => {
+        isLoadingMoreRef.current = false;
+      }, 200);
+    } catch (error) {
+      console.error('Error loading more products:', error);
+      // Restore scroll even on error
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          top: scrollYBefore,
+          left: scrollXBefore,
+          behavior: 'auto'
+        });
+      });
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, currentPage, categoryPath, searchQuery, lng, searchParams, router, slug, totalProducts]);
   const collectionLevel = slug ? slug.length : 0; // 0 = all/main, 1 = level 0, 2 = level 1, 3+ = level 2+
   const showSubSubCategoryFilter = collectionLevel <= 2; // Show only on level 0 and level 1 pages
 
@@ -219,9 +464,14 @@ export default function CollectionClient({
     maxPrice?: string;
     sort?: string;
     subSubCategories?: string[];
-  }) => {
-    // Start with current search params to preserve search query and page number
+  }, resetPage: boolean = true) => {
+    // Start with current search params to preserve search query
     const urlParams = new URLSearchParams(safeSearchParams.toString());
+    
+    // Reset page to 1 when filters change (user expects to see filtered results from start)
+    if (resetPage) {
+      urlParams.delete('page');
+    }
     
     // Remove filter params that we're about to update (so we can reset them)
     urlParams.delete('colors');
@@ -434,7 +684,7 @@ export default function CollectionClient({
 
   // Apply sorting to products (products are already filtered server-side)
   const sortedProducts = useMemo(() => {
-    const sorted = [...initialProducts].sort((a, b) => {
+    const sorted = [...allProducts].sort((a, b) => {
       const priceA = (a.salePrice && a.salePrice > 0) ? a.salePrice : a.price;
       const priceB = (b.salePrice && b.salePrice > 0) ? b.salePrice : b.price;
       
@@ -456,7 +706,7 @@ export default function CollectionClient({
       }
     });
     return sorted;
-  }, [initialProducts, sortBy]);
+  }, [allProducts, sortBy]);
 
   // Track view_item_list when products are displayed
   useEffect(() => {
@@ -840,16 +1090,26 @@ export default function CollectionClient({
                     : `Results for: "${searchQuery}"`
                   }
                 </h2>
-                {searchTotal !== undefined && (
+                {totalProducts !== undefined && (
                   <p className="text-sm text-gray-500 mt-1">
                     {lng === 'he'
-                      ? `נמצאו ${searchTotal} תוצאות`
-                      : `${searchTotal} result${searchTotal !== 1 ? 's' : ''} found`
+                      ? `נמצאו ${totalProducts} תוצאות`
+                      : `${totalProducts} result${totalProducts !== 1 ? 's' : ''} found`
                     }
                   </p>
                 )}
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Showing X of Y counter */}
+        {sortedProducts.length > 0 && (
+          <div className="mb-4 text-sm text-gray-600">
+            {lng === 'he' 
+              ? `${t.showing} ${allProducts.length} ${t.of} ${totalProducts} ${t.items}`
+              : `${t.showing} ${allProducts.length} ${t.of} ${totalProducts} ${t.items}`
+            }
           </div>
         )}
 
@@ -872,22 +1132,62 @@ export default function CollectionClient({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3 ">
-              {sortedProducts.map((product) => (
-                <motion.div
-                  key={product.id}
-                  {...({ whileHover: { y: -4 } } as unknown as Record<string, unknown>)}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ProductCard 
-                    product={product} 
-                    language={lng as 'en' | 'he'} 
-                    returnUrl={currentUrl}
-                    selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
-                  />
-                </motion.div>
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3 ">
+                {sortedProducts.map((product, index) => {
+                  // Calculate if product is above the fold (first 6-8 products)
+                  // Mobile: 2 rows = 4 products, Desktop: 1-2 rows = 3-6 products
+                  const isAboveFold = index < 6;
+                  
+                  return (
+                    <motion.div
+                      key={product.id}
+                      {...({ whileHover: { y: -4 } } as unknown as Record<string, unknown>)}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ProductCard 
+                        product={product} 
+                        language={lng as 'en' | 'he'} 
+                        returnUrl={currentUrl}
+                        selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+                        isAboveFold={isAboveFold}
+                      />
+                    </motion.div>
+                  );
+                })}
+              </div>
+              
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="mt-8 flex justify-center">
+                  <button
+                    type="button"
+                    disabled={isLoadingMore}
+                    onClick={(e) => {
+                      // Prevent any default behavior that might cause scroll
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleLoadMore();
+                    }}
+                    onMouseDown={(e) => {
+                      // Prevent focus on mousedown to avoid scroll jumps
+                      // This helps prevent browser from scrolling to button
+                      if (e.button === 0) {
+                        // Just prevent focus, don't prevent the click
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className={cn(
+                      "px-6 py-3 bg-[#856D55] text-white font-medium rounded-md transition-colors duration-200",
+                      "hover:bg-[#856D55]/90 disabled:opacity-50 disabled:cursor-not-allowed",
+                      isLoadingMore && "opacity-50 cursor-not-allowed"
+                    )}
+                  >
+                    {isLoadingMore ? t.loading : t.loadMore}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

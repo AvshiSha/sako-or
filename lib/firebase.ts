@@ -1022,6 +1022,9 @@ export type PaginationOptions = {
 export type FilteredProductsResult = {
   products: Product[];
   hasMore: boolean;
+  total: number;  // Total matching products
+  page: number;   // Current page number
+  pageSize: number; // Page size used
   lastDocument?: QueryDocumentSnapshot<DocumentData>;
 };
 
@@ -1109,7 +1112,9 @@ export async function getFilteredProducts(
       }
     }
 
-    // Sorting
+    // Sorting - Always use consistent orderBy for stable pagination
+    // Note: For stable sorting across pages, we always use the same field and direction
+    // Client-side sorting will handle salePrice logic and ensure consistency when loading more pages
     switch (sort) {
       case 'newest':
         constraints.push(orderBy('createdAt', 'desc'));
@@ -1150,12 +1155,10 @@ export async function getFilteredProducts(
     let lastDoc: QueryDocumentSnapshot<DocumentData> | undefined;
     let hasMore = false;
 
-    // Process results - fetch all documents (no pagination)
+    // Process results - fetch all documents first (we'll paginate after client-side filtering)
     const docs = querySnapshot.docs;
-    hasMore = false; // No pagination, so no "more" to fetch
-    const docsToProcess = docs; // Process all documents
 
-    for (const docSnapshot of docsToProcess) {
+    for (const docSnapshot of docs) {
       const docData = docSnapshot.data();
       const product = { id: docSnapshot.id, ...docData } as Product;
 
@@ -1372,9 +1375,32 @@ export async function getFilteredProducts(
       });
     }
 
+    // Calculate total count (before pagination)
+    const total = filteredProducts.length;
+
+    // Apply pagination if provided
+    let paginatedProducts = filteredProducts;
+    let currentPage = 1;
+    let currentPageSize = total; // Default: return all if no pagination
+    let calculatedHasMore = false;
+
+    if (pagination && pagination.page && pagination.pageSize) {
+      currentPage = pagination.page;
+      currentPageSize = pagination.pageSize;
+      const startIndex = (currentPage - 1) * currentPageSize;
+      const endIndex = startIndex + currentPageSize;
+      paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+      calculatedHasMore = endIndex < total;
+    } else {
+      calculatedHasMore = false;
+    }
+
     return {
-      products: filteredProducts,
-      hasMore,
+      products: paginatedProducts,
+      hasMore: calculatedHasMore,
+      total: total,
+      page: currentPage,
+      pageSize: currentPageSize,
       lastDocument: lastDoc
     };
   } catch (error) {
@@ -1496,9 +1522,12 @@ export async function getCollectionProducts(
   const page = pageParam
     ? (typeof pageParam === 'string' ? parseInt(pageParam) : Array.isArray(pageParam) ? parseInt(pageParam[0]) : 1)
     : 1;
-  const pageSize = 50; // Default page size
+  const pageSize = 24; // Mobile-first page size (24 products per page)
 
-  return getFilteredProducts(filters, sort, { page, pageSize });
+  // Validate page number
+  const validatedPage = Number.isInteger(page) && page > 0 ? page : 1;
+
+  return getFilteredProducts(filters, sort, { page: validatedPage, pageSize });
 }
 
 // Category Services

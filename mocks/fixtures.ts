@@ -48,6 +48,9 @@ export const mockProducts: Product[] = [
     isDeleted: false,
     newProduct: false,
     featuredProduct: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tags: [],
   },
   {
     id: 'product-2',
@@ -81,6 +84,9 @@ export const mockProducts: Product[] = [
     isDeleted: false,
     newProduct: true,
     featuredProduct: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    tags: [],
   },
 ]
 

@@ -7,6 +7,7 @@ import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
 import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
 import { productService } from '../../../../lib/firebase';
 import { parseSku } from '../../../../lib/sku-parser';
+import { createVerifoneInvoiceAsync } from '../../../../lib/verifone-invoice-job';
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,6 +75,18 @@ export async function POST(request: NextRequest) {
     if (body.TokenInfo && body.Operation?.includes('Token')) {
       await savePaymentToken(orderId, body.TokenInfo);
     }
+
+    // Trigger Verifone invoice creation async (non-blocking)
+    console.log('[VERIFONE_INVOICE] Triggering Verifone invoice creation from webhook', {
+      orderId,
+      hasTransactionInfo: !!body.TranzactionInfo
+    })
+    createVerifoneInvoiceAsync(orderId, {
+      transactionInfo: body.TranzactionInfo
+    }).catch(err => {
+      console.error('[VERIFONE_INVOICE] Failed to trigger invoice creation:', err);
+      // Don't fail webhook - order still succeeds
+    });
 
     // Send confirmation email and SMS
     await handlePostPaymentActions(orderId, request.url);
@@ -205,8 +218,13 @@ async function ensureOrderItemsComplete(orderId: string) {
         // Get primary image
         const primaryImage = variant?.primaryImage || (variant && Array.isArray(variant.images) && variant.images.length > 0 ? variant.images[0] : null) || null;
         
-        // Get sale price
-        const salePrice = variant?.salePrice || product.salePrice || null;
+        // Get sale price - only use if it's a valid discount (less than regular price)
+        let salePrice = variant?.salePrice || product.salePrice || null;
+        // Validate: salePrice must be less than item.price to be a valid discount
+        if (salePrice != null && salePrice > 0 && salePrice >= item.price) {
+          console.warn(`[ensureOrderItemsComplete] Invalid salePrice (${salePrice}) >= price (${item.price}) for item ${item.id}, setting to null`);
+          salePrice = null;
+        }
 
         // Generate model number
         const modelColorName = variant && variant.colorSlug

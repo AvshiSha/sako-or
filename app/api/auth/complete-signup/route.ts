@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
         lastName: userRecord.lastName,
         email: userRecord.email,
         phone: userRecord.phone,
-        pointsBalance: userRecord.pointsBalance,
+        pointsBalance: userRecord.pointsBalance.toNumber(),
         birthday: userRecord.birthday,
         interestedIn: userRecord.interestedIn,
         isNewsletter: userRecord.isNewsletter,
@@ -268,7 +268,8 @@ export async function POST(request: NextRequest) {
               addressApt: user.addressApt,
               addressFloor: user.addressFloor,
               birthday: user.birthday,
-              isNewsletter: user.isNewsletter
+              isNewsletter: user.isNewsletter,
+              ClassCode: '2'
             })
 
             console.log(
@@ -304,7 +305,8 @@ export async function POST(request: NextRequest) {
             addressApt: user.addressApt,
             addressFloor: user.addressFloor,
             birthday: user.birthday,
-            isNewsletter: user.isNewsletter
+            isNewsletter: user.isNewsletter,
+            ClassCode: '2'
           })
 
           if (createOrUpdateResult.success && createOrUpdateResult.customerNo) {
@@ -339,10 +341,9 @@ export async function POST(request: NextRequest) {
           verifoneResult.customer &&
           verifoneResult.customer.isClubMember
         ) {
-          const verifonePoints = Math.max(
-            0,
-            verifoneResult.customer.creditPoints || 0
-          )
+          const verifonePoints = Math.round(
+            Math.max(0, verifoneResult.customer.creditPoints || 0) * 100
+          ) / 100
 
           if (verifonePoints > 0) {
             await prisma.user.update({
@@ -449,7 +450,7 @@ export async function POST(request: NextRequest) {
       lastName: userRecord.lastName,
       email: userRecord.email,
       phone: userRecord.phone,
-      pointsBalance: userRecord.pointsBalance,
+      pointsBalance: userRecord.pointsBalance.toNumber(),
       birthday: userRecord.birthday,
       interestedIn: userRecord.interestedIn,
       isNewsletter: userRecord.isNewsletter,
@@ -500,7 +501,8 @@ export async function POST(request: NextRequest) {
             addressApt: user.addressApt,
             addressFloor: user.addressFloor,
             birthday: user.birthday,
-            isNewsletter: user.isNewsletter
+            isNewsletter: user.isNewsletter,
+            ClassCode: '2'
           })
 
           console.log(
@@ -536,7 +538,8 @@ export async function POST(request: NextRequest) {
           addressApt: user.addressApt,
           addressFloor: user.addressFloor,
           birthday: user.birthday,
-          isNewsletter: user.isNewsletter
+          isNewsletter: user.isNewsletter,
+          ClassCode: '2'
         })
 
         if (createOrUpdateResult.success && createOrUpdateResult.customerNo) {
@@ -571,10 +574,10 @@ export async function POST(request: NextRequest) {
         verifoneResult.customer &&
         verifoneResult.customer.isClubMember
       ) {
-        const verifonePoints = Math.max(
-          0,
-          verifoneResult.customer.creditPoints || 0
-        )
+        const verifonePoints = Math.round(
+          Math.max(0, verifoneResult.customer.creditPoints || 0) * 100
+        ) / 100
+
 
         if (verifonePoints > 0) {
           await prisma.user.update({

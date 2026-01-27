@@ -25,7 +25,7 @@ model User {
   language            String?
   lastName            String?    @map("last_name")
   phone               String?    @unique
-  pointsBalance       Int        @default(0) @map("points_balance")
+  pointsBalance       Decimal    @default(0) @map("points_balance") @db.Decimal(10, 2)
   updatedAt           DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
   verifoneCustomerNo  String?    @map("verifone_customer_no")
   id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -215,6 +215,13 @@ model Order {
   user                 User?         @relation(fields: [userId], references: [id])
   payments             Payment[]
   points               Points[]
+  verifoneInvoiceStatus        String?    @map("verifone_invoice_status")
+  verifoneInvoiceNo             String?    @map("verifone_invoice_no")
+  verifoneInvoiceRequest        String?    @map("verifone_invoice_request")
+  verifoneInvoiceResponse       String?    @map("verifone_invoice_response")
+  verifoneInvoiceAttemptedAt    DateTime?  @map("verifone_invoice_attempted_at")
+  verifoneInvoiceSyncedAt      DateTime?  @map("verifone_invoice_synced_at")
+  verifoneInvoiceError          String?    @map("verifone_invoice_error")
 
   @@index([userId])
   @@map("orders")
@@ -379,7 +386,7 @@ model Points {
   userId    String     @map("user_id") @db.Uuid
   orderId   String?    @map("order_id")
   kind      PointsKind
-  delta     Int
+  delta     Decimal   @db.Decimal(10, 2)
   reason    String
   createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   order     Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)

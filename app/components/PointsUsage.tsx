@@ -51,7 +51,7 @@ export default function PointsUsage({
     setPointsInput(value)
     setError(null)
 
-    const numValue = parseInt(value, 10)
+    const numValue = parseFloat(value)
     
     if (value === '' || value === '0') {
       // Clear points
@@ -70,22 +70,25 @@ export default function PointsUsage({
       return
     }
 
-    // Valid input
-    setAppliedPoints(numValue)
-    onPointsChange(numValue)
+    // Valid input - round to 2 decimal places
+    const roundedValue = Math.round(numValue * 100) / 100
+    setAppliedPoints(roundedValue)
+    onPointsChange(roundedValue)
     setError(null)
   }
 
   const handleApply = () => {
-    const numValue = parseInt(pointsInput, 10)
+    const numValue = parseFloat(pointsInput)
     
     if (isNaN(numValue) || numValue < 0 || numValue > pointsBalance) {
       setError(strings.invalid)
       return
     }
 
-    setAppliedPoints(numValue)
-    onPointsChange(numValue)
+    // Round to 2 decimal places
+    const roundedValue = Math.round(numValue * 100) / 100
+    setAppliedPoints(roundedValue)
+    onPointsChange(roundedValue)
     setError(null)
   }
 
@@ -109,11 +112,12 @@ export default function PointsUsage({
         ) : pointsBalance > 0 ? (
           <>
             <div className="mb-2 text-sm text-gray-600">
-              {strings.available}: <span className="font-medium">{pointsBalance}</span>
+              {strings.available}: <span className="font-medium">{pointsBalance.toFixed(2)}</span>
             </div>
             <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
-              <input
+                <input
                 type="number"
+                step="0.01"
                 min="0"
                 max={pointsBalance}
                 value={pointsInput}
@@ -134,7 +138,7 @@ export default function PointsUsage({
               />
               <button
                 onClick={handleApply}
-                disabled={disabled || pointsBalance <= 0 || !pointsInput.trim() || parseInt(pointsInput, 10) <= 0}
+                disabled={disabled || pointsBalance <= 0 || !pointsInput.trim() || parseFloat(pointsInput) <= 0}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
               >
                 {strings.apply}
@@ -149,7 +153,7 @@ export default function PointsUsage({
               <div className="mt-3">
                 <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
                   <span>
-                    {strings.discount}: -₪{discountAmount.toFixed(2)} ({appliedPoints} {language === 'he' ? 'נקודות' : 'points'})
+                    {strings.discount}: -₪{discountAmount.toFixed(2)} ({appliedPoints.toFixed(2)} {language === 'he' ? 'נקודות' : 'points'})
                   </span>
                   <button
                     onClick={handleRemove}

@@ -75,6 +75,14 @@ export interface TransactionInfo {
   Brand?: string;
   RRN?: string;
   AuthCode?: string;
+  // Verifone invoice required fields
+  FirstPaymentAmount?: number;
+  ConstPaymentAmount?: number;
+  NumberOfPayments?: number;
+  Last4CardDigitsString?: string;
+  CardMonth?: string;
+  CardYear?: string;
+  CardOwnerIdentityNumber?: string;
 }
 
 export interface DocumentInfo {

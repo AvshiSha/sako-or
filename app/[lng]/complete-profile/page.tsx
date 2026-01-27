@@ -347,7 +347,7 @@ export default function CompleteProfilePage() {
           </div>
           {loadedUser ? (
             <div className="mt-3 text-xs text-slate-400">
-              Your points: <span className="font-semibold">{loadedUser.pointsBalance ?? 0}</span>
+              Your points: <span className="font-semibold">{typeof loadedUser.pointsBalance === 'number' ? loadedUser.pointsBalance.toFixed(2) : Number(loadedUser.pointsBalance || 0).toFixed(2)}</span>
             </div>
           ) : null}
         </div>

@@ -84,6 +84,9 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => ({ size, stock: activeVariant.stockBySize[size] }))
     : []
   
+  // Check if the active variant is out of stock (no available sizes)
+  const isVariantOutOfStock = availableSizes.length === 0
+  
   // Handle color variant selection
   const handleVariantSelect = (variant: any) => {
     setSelectedVariant(variant)
@@ -113,6 +116,15 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     const sku = product.baseSku || product.sku || ''
     if (!sku) {
       console.error('No SKU found for product')
+      return
+    }
+    
+    // Check if variant is out of stock
+    if (isVariantOutOfStock) {
+      const errorMessage = language === 'he' 
+        ? 'פריט זה אזל מהמלאי'
+        : 'This item is out of stock'
+      showToast(errorMessage, 'error')
       return
     }
     
@@ -190,8 +202,22 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         // Fallback to main collection page if no category path
         router.push(`/${language}/collection`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding to cart:', error)
+      
+      // Show error message to user
+      let errorMessage = language === 'he' 
+        ? 'שגיאה בהוספה לעגלה'
+        : 'Error adding to cart'
+      
+      // Check if error has a specific message
+      if (error?.message) {
+        errorMessage = error.message
+      } else if (error?.error && typeof error.error === 'string') {
+        errorMessage = error.error
+      }
+      
+      showToast(errorMessage, 'error')
     } finally {
       setIsAddingToCart(false)
     }
@@ -380,6 +406,17 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                         </div>
                       )}
 
+                      {/* Out of Stock Message */}
+                      {isVariantOutOfStock && (
+                        <div className="mb-8">
+                          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                            <p className={`text-sm text-red-800 ${language === 'he' ? 'text-right' : ''}`}>
+                              {language === 'he' ? 'צבע זה אזל מהמלאי' : 'This color is out of stock'}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Quantity Selection based on the size the user chose*/}
                       {selectedSize && availableSizes.length > 0 && (
                         <div className="mb-8">
@@ -426,15 +463,17 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                         {/* Add to Shopping Cart Button */}
                         <button
                           onClick={handleAddToCart}
-                          disabled={availableSizes.length > 0 && !selectedSize || isAddingToCart}
+                          disabled={isVariantOutOfStock || (availableSizes.length > 0 && !selectedSize) || isAddingToCart}
                           className={`w-full font-medium py-3 px-4 transition-colors duration-200 ${
-                            availableSizes.length > 0 && !selectedSize || isAddingToCart
+                            isVariantOutOfStock || (availableSizes.length > 0 && !selectedSize) || isAddingToCart
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                               : 'bg-[#856D55] text-white hover:bg-[#856D55]'
                           }`}
                         >
                           {isAddingToCart ? (
                             language === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
+                          ) : isVariantOutOfStock ? (
+                            language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
                           ) : (
                             language === 'he' 
                               ? `הוסף ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`

@@ -1,6 +1,9 @@
 /// <reference types="next" />
 /// <reference types="next/image-types/global" />
 
+// Extend Jest's expect with @testing-library/jest-dom matchers
+import '@testing-library/jest-dom'
+
 declare global {
   interface FacebookPixel {
     (command: 'init' | 'track' | 'trackCustom', eventNameOrId: string, params?: Record<string, any>): void;

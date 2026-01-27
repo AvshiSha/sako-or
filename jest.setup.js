@@ -1,5 +1,19 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
+import { TextEncoder, TextDecoder } from 'util'
+
+// Polyfill TextEncoder/TextDecoder for libraries (like msw) that rely on them
+// in the Jest/jsdom environment.
+// @ts-ignore
+if (!global.TextEncoder) {
+  // @ts-ignore
+  global.TextEncoder = TextEncoder
+}
+// @ts-ignore
+if (!global.TextDecoder) {
+  // @ts-ignore
+  global.TextDecoder = TextDecoder
+}
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({

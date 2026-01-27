@@ -32,67 +32,67 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
-  
+
   // Carousel state
   const [api, setApi] = useState<CarouselApi>()
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const linkClickedRef = useRef(false)
-  
+
   // Get the default color variant for display
   // Priority: preselectedColorSlug > selectedColors filter > first active variant
   const getDefaultVariant = () => {
     if (!product.colorVariants) return null
-    
+
     const activeVariants = Object.values(product.colorVariants).filter(variant => variant.isActive !== false)
-    
+
     // If preselectedColorSlug is provided (from variant item), use that variant
     if (preselectedColorSlug) {
-      const preselectedVariant = activeVariants.find(variant => 
+      const preselectedVariant = activeVariants.find(variant =>
         variant.colorSlug === preselectedColorSlug
       )
       if (preselectedVariant) {
         return preselectedVariant
       }
     }
-    
+
     // If color filter is active, find matching variant
     if (selectedColors && selectedColors.length > 0) {
-      const matchingVariant = activeVariants.find(variant => 
+      const matchingVariant = activeVariants.find(variant =>
         variant.colorSlug && selectedColors.includes(variant.colorSlug)
       )
       if (matchingVariant) {
         return matchingVariant
       }
     }
-    
+
     // Fallback to first active variant
     return activeVariants[0] || null
   }
-  
+
   const defaultVariant = getDefaultVariant()
   const activeVariant = selectedVariant || defaultVariant
-  
+
   // Get all images from active variant
   const variantImages = useMemo(() => {
     if (!activeVariant) return []
     return activeVariant.images || []
   }, [activeVariant])
-  
+
   const totalImages = variantImages.length
-  
+
   // Find primary image index
   const primaryImageIndex = useMemo(() => {
     if (!activeVariant || totalImages === 0) return 0
     const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || null
     if (!primaryImage) return 0
-    
+
     // Find the index of the primary image in the images array
     // Images are always strings in product.colorVariants
     const index = variantImages.findIndex(img => img === primaryImage)
-    
+
     return index >= 0 ? index : 0
   }, [activeVariant, variantImages, totalImages])
-  
+
   // Update selected image index when carousel changes
   useEffect(() => {
     if (!api) return
@@ -103,7 +103,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
     const onSelect = () => {
       const selected = api.selectedScrollSnap()
       setSelectedImageIndex(selected)
-      
+
       // If the index changed, it means user swiped - prevent link click
       if (isScrolling) {
         linkClickedRef.current = true
@@ -145,7 +145,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       setSelectedImageIndex(initialIndex)
     }
   }, [api, activeVariant, totalImages, primaryImageIndex])
-  
+
   if (!activeVariant) {
     return null
   }
@@ -181,46 +181,46 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   const originalPrice = getOriginalPrice()
   const salePrice = getSalePrice()
   const productName = language === 'he' ? (product.title_he || product.title_en) : (product.title_en || product.title_he) || 'Unnamed Product'
-  
+
   // Get primary image from the active variant (for fallback)
   const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
-  
+
   // Get available sizes for the active variant (only sizes with stock > 0)
   // const availableSizes = 'stockBySize' in activeVariant ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => size) : []
-  
+
   // Calculate total stock for the active variant
   const totalStock = useMemo(() => {
     if (!activeVariant) return 0
-    
+
     if ('stockBySize' in activeVariant && activeVariant.stockBySize) {
       const stockValues = Object.values(activeVariant.stockBySize)
       return stockValues.reduce((total, stock) => total + (stock || 0), 0)
     }
-    
+
     return 0
   }, [activeVariant])
-  
+
   // Check if the active variant is out of stock
   const isOutOfStock = useMemo(() => {
     return totalStock <= 0
   }, [totalStock])
-  
+
   // Check if the active variant is in "last call" (stock between 1 and 4)
   const isLastCall = useMemo(() => {
     return totalStock > 0 && totalStock < 4
   }, [totalStock])
-  
+
   // Handle color variant selection - just change the display
   const handleVariantSelect = (variant: any, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent click from bubbling up to parent (e.g., SearchBar wrapper)
     setSelectedVariant(variant)
   }
-  
+
   // Handle wishlist toggle
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     // Save favorite as product + specific displayed color (when available)
     const baseSku = product.baseSku || product.sku || ''
     const colorSlug = activeVariant?.colorSlug || ''
@@ -229,7 +229,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       void toggleFavorite(favoriteKey)
     }
   }
-  
+
   // Handle quick buy
   const handleQuickBuy = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -243,7 +243,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       linkClickedRef.current = false
       return
     }
-    
+
     // Track select_item when product is clicked
     try {
       const productName = productHelpers.getField(product, 'name', language as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product';
@@ -252,7 +252,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       const categories = product.categories_path || [product.category || 'Unknown'];
       const listName = 'Product List';
       const listId = 'product_list';
-      
+
       trackSelectItem(
         productName,
         itemId,
@@ -276,17 +276,17 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   const handleArrowClick = useCallback((direction: 'prev' | 'next', e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     if (!api || totalImages <= 1) return
-    
+
     linkClickedRef.current = true // Prevent link navigation
-    
+
     if (direction === 'prev') {
       api.scrollPrev()
     } else {
       api.scrollNext()
     }
-    
+
     // Reset after a short delay to allow normal clicks again
     setTimeout(() => {
       linkClickedRef.current = false
@@ -296,7 +296,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   return (
     <div className="group relative bg-gray-100">
       {/* Main Product Image Section - Clickable to go to selected variant */}
-      <Link 
+      <Link
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
         className="relative aspect-square overflow-hidden bg-gray-50 block"
         onClick={handleLinkClick}
@@ -309,14 +309,13 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
               {Array.from({ length: totalImages }).map((_, index) => (
                 <div
                   key={index}
-                  className={`w-1 h-1 rounded-full transition-all duration-200 ${
-                    selectedImageIndex === index ? 'bg-[#E1DBD7]' : 'bg-[#E1DBD7]/50'
-                  }`}
+                  className={`w-1 h-1 rounded-full transition-all duration-200 ${selectedImageIndex === index ? 'bg-[#E1DBD7]' : 'bg-[#E1DBD7]/50'
+                    }`}
                 />
               ))}
             </div>
           )}
-          
+
           {/* Image Carousel */}
           {!disableImageCarousel && totalImages > 1 ? (
             <>
@@ -357,7 +356,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                   })}
                 </CarouselContent>
               </Carousel>
-              
+
               {/* Desktop Arrow Navigation - Only show when more than 1 image */}
               {totalImages > 1 && (
                 <>
@@ -369,7 +368,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
                   >
                     <ChevronLeftIcon className="h-5 w-5 text-gray-800" />
                   </button>
-                  
+
                   {/* Right Arrow (Next) */}
                   <button
                     onClick={(e) => handleArrowClick('next', e)}
@@ -402,70 +401,70 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
             </div>
           )}
         </div>
-        
-                    {/* Mobile Icons - Heart and Quick Buy */}
-                    <div className="absolute top-2 right-2 flex flex-col gap-1 md:hidden">
-                      {/* Wishlist Button */}
-                      <button
-                        onClick={handleWishlistToggle}
-                        className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
-                      >
-                        {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
-                          <HeartSolidIcon className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <HeartIcon className="h-4 w-4 text-gray-600" />
-                        )}
-                      </button>
-                      
-                      {/* Quick Buy Icon */}
-                      <button
-                        onClick={handleQuickBuy}
-                        className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
-                      >
-                        <ShoppingCartIcon className="h-4 w-4 text-gray-600" />
-                      </button>
-                    </div>
-                    
-                    {/* Desktop Wishlist Button */}
-                    <button
-                      onClick={handleWishlistToggle}
-                      className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"
-                    >
-                      {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
-                        <HeartSolidIcon className="h-4 w-4 text-red-500" />
-                      ) : (
-                        <HeartIcon className="h-4 w-4 text-gray-600" />
-                      )}
-                    </button>
-        
+
+        {/* Mobile Icons - Heart and Quick Buy */}
+        <div className="absolute top-2 right-2 flex flex-col gap-1 md:hidden">
+          {/* Wishlist Button */}
+          <button
+            onClick={handleWishlistToggle}
+            className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
+          >
+            {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
+              <HeartSolidIcon className="h-4 w-4 text-red-500" />
+            ) : (
+              <HeartIcon className="h-4 w-4 text-gray-600" />
+            )}
+          </button>
+
+          {/* Quick Buy Icon */}
+          <button
+            onClick={handleQuickBuy}
+            className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
+          >
+            <ShoppingCartIcon className="h-4 w-4 text-gray-600" />
+          </button>
+        </div>
+
+        {/* Desktop Wishlist Button */}
+        <button
+          onClick={handleWishlistToggle}
+          className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"
+        >
+          {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
+            <HeartSolidIcon className="h-4 w-4 text-red-500" />
+          ) : (
+            <HeartIcon className="h-4 w-4 text-gray-600" />
+          )}
+        </button>
+
         {/* Out of Stock Badge */}
         {isOutOfStock && (
           <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
             {language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
           </div>
         )}
-        
+
         {/* Last Call Badge - Show if stock is between 1 and 4 */}
         {!isOutOfStock && isLastCall && (
           <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#B2A28E]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
             {language === 'he' ? 'Last Call' : 'Last Call'}
           </div>
         )}
-        
-        {/* New Product Badge - Only show if not out of stock and not last call */}
-        {!isOutOfStock && !isLastCall && product.newProduct && (
+
+        {/* Sale Badge - Show if product has any sale price (product-level or variant-level) */}
+        {!isOutOfStock && !isLastCall && hasSalePrice() && (
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+            {language === 'he' ? 'SALE' : 'SALE'}
+          </div>
+        )}
+
+        {/* New Product Badge - Show if product is new, positioned after sale badge if both exist */}
+        {!isOutOfStock && !isLastCall && product.newProduct && !hasSalePrice() && (
           <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#856D55]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
             {language === 'he' ? 'NEW' : 'NEW'}
           </div>
         )}
-        
-        {/* Sale Badge */}
-        {activeVariant.salePrice && currentPrice === activeVariant.salePrice && (
-          <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-medium px-2 py-1 rounded z-10">
-            {language === 'he' ? 'מבצע' : 'Sale'}
-          </div>
-        )}
-        
+
         {/* Desktop Quick Buy Button - Overlay at bottom of image */}
         <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 hidden md:block">
           <button
@@ -476,7 +475,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           </button>
         </div>
       </Link>
-      
+
       {/* Product Information Section */}
       <div className="mt-0 bg-[#E1DBD7]/60 p-3 pb-1">
         <div className={`flex items-center justify-between mb-1 ${language === 'he' ? 'flex-row' : 'flex-row-reverse'}`}>
@@ -489,7 +488,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
         </div>
 
         <div className="text-sm font-medium text-gray-900">{language === 'he' ? 'מספר דגם: ' : 'SKU: '}{product.sku}</div>
-        
+
         <div className="text-sm font-medium text-gray-900">
           {hasSalePrice() && salePrice && salePrice < originalPrice ? (
             <div className="flex items-center gap-2">
@@ -505,7 +504,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           )}
         </div>
       </div>
-      
+
       {/* Color Variants Section */}
       {product.colorVariants && Object.keys(product.colorVariants).length >= 1 && (
         <div className="mt-0 bg-[#E1DBD7]/60 p-3 pt-1">
@@ -513,44 +512,43 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
             {Object.values(product.colorVariants)
               .filter(variant => variant.isActive !== false) // Filter out inactive variants
               .map((variant) => {
-              const variantImage = variant.primaryImage || variant.images?.[0]
-              const isSelected = variant.colorSlug === activeVariant.colorSlug
-              
-              return (
-                <button
-                  key={variant.colorSlug}
-                  onClick={(e) => handleVariantSelect(variant, e)}
-                  className="flex-shrink-0 relative group"
-                  title={getColorName(variant.colorSlug, language)}
-                >
-                  {/* Product image */}
-                  {variantImage && (
-                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-transparent">
-                      <Image
-                        src={variantImage}
-                        alt={variant.colorSlug}
-                        width={32}
-                        height={32}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Selection line indicator */}
-                  <div 
-                    className={`absolute -bottom-1 left-0 w-8 h-0.5 transition-all duration-200 ${
-                      isSelected 
-                        ? 'bg-[#856D55]/90' 
+                const variantImage = variant.primaryImage || variant.images?.[0]
+                const isSelected = variant.colorSlug === activeVariant.colorSlug
+
+                return (
+                  <button
+                    key={variant.colorSlug}
+                    onClick={(e) => handleVariantSelect(variant, e)}
+                    className="flex-shrink-0 relative group"
+                    title={getColorName(variant.colorSlug, language)}
+                  >
+                    {/* Product image */}
+                    {variantImage && (
+                      <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-transparent">
+                        <Image
+                          src={variantImage}
+                          alt={variant.colorSlug}
+                          width={32}
+                          height={32}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    {/* Selection line indicator */}
+                    <div
+                      className={`absolute -bottom-1 left-0 w-8 h-0.5 transition-all duration-200 ${isSelected
+                        ? 'bg-[#856D55]/90'
                         : 'bg-transparent group-hover:bg-gray-400'
-                    }`}
-                  />
-                </button>
-              )
-            })}
+                        }`}
+                    />
+                  </button>
+                )
+              })}
           </div>
         </div>
       )}
-      
+
       {/* Quick Buy Drawer */}
       <QuickBuyDrawer
         isOpen={isQuickBuyOpen}

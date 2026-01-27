@@ -1,4 +1,4 @@
-import { getCollectionProducts, categoryService } from "@/lib/firebase";
+import { getCollectionProducts, categoryService, VariantItem } from "@/lib/firebase";
 import CollectionClient from "./CollectionClient";
 import { searchProducts } from "@/lib/search-products";
 import { buildMetadata, buildAbsoluteUrl } from "@/lib/seo";
@@ -224,6 +224,7 @@ export default async function CollectionSlugPage({
   let collectionTotal = 0;
   let collectionPage = 1;
   let collectionHasMore = false;
+  let collectionVariantItems: VariantItem[] | undefined = undefined;
 
   // Parse page parameter (used for both search and collection)
   let page = 1;
@@ -276,6 +277,7 @@ export default async function CollectionSlugPage({
     collectionTotal = collectionData.total || 0;
     collectionPage = collectionData.page || 1;
     collectionHasMore = collectionData.hasMore || false;
+    collectionVariantItems = collectionData.variantItems; // Get variant items for collection pages
   }
 
   // Fetch categories for the client component (needed for breadcrumbs and other UI)
@@ -284,10 +286,21 @@ export default async function CollectionSlugPage({
   // Serialize Firestore timestamps before passing to client component
   const serializedProducts = products.map((product) => serializeValue(product));
   const serializedCategories = categories.map((category) => serializeValue(category));
+  
+  // Serialize variant items if available (for collection pages, not search)
+  let serializedVariantItems = undefined;
+  if (collectionVariantItems) {
+    serializedVariantItems = collectionVariantItems.map((item) => ({
+      product: serializeValue(item.product),
+      variant: serializeValue(item.variant),
+      variantKey: item.variantKey
+    }));
+  }
 
   return (
     <CollectionClient
       initialProducts={serializedProducts}
+      initialVariantItems={serializedVariantItems}
       categories={serializedCategories}
       categoryPath={searchQuery ? undefined : categoryPath}
       selectedCategory={searchQuery ? "All Products" : selectedCategory}

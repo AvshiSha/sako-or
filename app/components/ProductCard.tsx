@@ -23,11 +23,12 @@ interface ProductCardProps {
   language?: 'en' | 'he'
   returnUrl?: string
   selectedColors?: string[] // Color filter from collection page
+  preselectedColorSlug?: string // Preselected color variant (for variant items from collection pages)
   disableImageCarousel?: boolean // Disable image carousel (e.g., when inside ProductCarousel)
   isAboveFold?: boolean // Whether product is above the fold (for lazy loading)
 }
 
-export default function ProductCard({ product, language = 'en', returnUrl, selectedColors, disableImageCarousel = false, isAboveFold = false }: ProductCardProps) {
+export default function ProductCard({ product, language = 'en', returnUrl, selectedColors, preselectedColorSlug, disableImageCarousel = false, isAboveFold = false }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -38,11 +39,21 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   const linkClickedRef = useRef(false)
   
   // Get the default color variant for display
-  // If selectedColors filter is active, prioritize matching color variant
+  // Priority: preselectedColorSlug > selectedColors filter > first active variant
   const getDefaultVariant = () => {
     if (!product.colorVariants) return null
     
     const activeVariants = Object.values(product.colorVariants).filter(variant => variant.isActive !== false)
+    
+    // If preselectedColorSlug is provided (from variant item), use that variant
+    if (preselectedColorSlug) {
+      const preselectedVariant = activeVariants.find(variant => 
+        variant.colorSlug === preselectedColorSlug
+      )
+      if (preselectedVariant) {
+        return preselectedVariant
+      }
+    }
     
     // If color filter is active, find matching variant
     if (selectedColors && selectedColors.length > 0) {

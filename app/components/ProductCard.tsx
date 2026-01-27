@@ -24,9 +24,10 @@ interface ProductCardProps {
   returnUrl?: string
   selectedColors?: string[] // Color filter from collection page
   disableImageCarousel?: boolean // Disable image carousel (e.g., when inside ProductCarousel)
+  isAboveFold?: boolean // Whether product is above the fold (for lazy loading)
 }
 
-export default function ProductCard({ product, language = 'en', returnUrl, selectedColors, disableImageCarousel = false }: ProductCardProps) {
+export default function ProductCard({ product, language = 'en', returnUrl, selectedColors, disableImageCarousel = false, isAboveFold = false }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -325,18 +326,19 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
 
                     return (
                       <CarouselItem key={`image-${index}`} className={`h-full basis-full ${language === 'he' ? 'pr-0' : 'pl-0'}`}>
-                        <div className="w-full h-full relative">
+                        <div className="w-full h-full relative aspect-square">
                           <Image
                             src={typeof image === 'string' ? image : image?.url || ''}
                             alt={`${productName} - ${activeVariant.colorSlug}`}
                             width={500}
                             height={500}
                             className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
-                            priority={isPrimary}
+                            priority={isPrimary && isAboveFold}
                             unoptimized={true}
-                            {...(isPrimary ? {} : { loading: shouldPreload ? undefined : 'lazy' })}
+                            loading={isAboveFold && isPrimary ? undefined : (shouldPreload ? undefined : 'lazy')}
                             draggable={false}
                             decoding={isActive ? 'sync' : 'async'}
+                            style={{ aspectRatio: '1 / 1' }} // Ensure fixed aspect ratio to prevent layout shift
                           />
                         </div>
                       </CarouselItem>
@@ -369,16 +371,18 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
               )}
             </>
           ) : primaryImage ? (
-            <div className="w-full h-full relative">
+            <div className="w-full h-full relative aspect-square">
               <Image
                 src={typeof primaryImage === 'string' ? primaryImage : primaryImage?.url || ''}
                 alt={`${productName} - ${activeVariant.colorSlug}`}
                 width={500}
                 height={500}
                 className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
-                priority={true}
+                priority={isAboveFold}
                 unoptimized={true}
+                loading={isAboveFold ? undefined : 'lazy'}
                 draggable={false}
+                style={{ aspectRatio: '1 / 1' }} // Ensure fixed aspect ratio to prevent layout shift
               />
             </div>
           ) : (

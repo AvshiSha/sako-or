@@ -63,6 +63,123 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate stock availability before adding to cart
+    // Only validate if we're adding items (not removing)
+    const isAddingItems = (quantitySet !== null && quantitySet > 0) || 
+                          (quantityDelta !== null && quantityDelta > 0) ||
+                          (quantitySet === null && quantityDelta === null) // Default is +1
+    
+    if (isAddingItems && (colorSlug || sizeSlug)) {
+      try {
+        // Fetch product from database to check stock
+        const product = await prisma.product.findFirst({
+          where: { sku: baseSku },
+          select: {
+            id: true,
+            sku: true,
+            colorVariants: true,
+          },
+        })
+
+        if (!product) {
+          return NextResponse.json(
+            { error: 'Product not found' },
+            { status: 404 }
+          )
+        }
+
+        const colorVariants = (product.colorVariants as any) || {}
+
+        // Validate color variant exists
+        if (colorSlug && !colorVariants[colorSlug]) {
+          return NextResponse.json(
+            { error: `Color variant "${colorSlug}" not found for product ${baseSku}` },
+            { status: 400 }
+          )
+        }
+
+        // Check if color variant is active
+        if (colorSlug && colorVariants[colorSlug]?.isActive === false) {
+          return NextResponse.json(
+            { error: `Color variant "${colorSlug}" is not available` },
+            { status: 400 }
+          )
+        }
+
+        // Validate size and stock if size is specified
+        if (sizeSlug && colorSlug) {
+          const variant = colorVariants[colorSlug]
+          if (!variant) {
+            return NextResponse.json(
+              { error: `Color variant "${colorSlug}" not found` },
+              { status: 400 }
+            )
+          }
+
+          const stockBySize = variant.stockBySize || {}
+          const stock = stockBySize[sizeSlug]
+
+          if (stock === undefined) {
+            return NextResponse.json(
+              { error: `Size "${sizeSlug}" not found for color variant "${colorSlug}"` },
+              { status: 400 }
+            )
+          }
+
+          if (stock <= 0) {
+            return NextResponse.json(
+              { error: `Size "${sizeSlug}" for color "${colorSlug}" is out of stock` },
+              { status: 400 }
+            )
+          }
+
+          // Check if requested quantity exceeds available stock
+          const requestedQuantity = quantitySet !== null ? quantitySet : 
+                                    (quantityDelta !== null ? (existing?.quantity ?? 0) + quantityDelta : 1)
+          
+          if (requestedQuantity > stock) {
+            return NextResponse.json(
+              { error: `Insufficient stock. Only ${stock} ${stock === 1 ? 'item' : 'items'} available` },
+              { status: 400 }
+            )
+          }
+        } else if (colorSlug && !sizeSlug) {
+          // If color is specified but no size, check if color variant has any available sizes
+          const variant = colorVariants[colorSlug]
+          if (!variant) {
+            return NextResponse.json(
+              { error: `Color variant "${colorSlug}" not found` },
+              { status: 400 }
+            )
+          }
+
+          const stockBySize = variant.stockBySize || {}
+          const totalStock = Object.values(stockBySize).reduce((sum: number, stock: any) => sum + (Number(stock) || 0), 0)
+
+          if (totalStock <= 0) {
+            return NextResponse.json(
+              { error: `Color variant "${colorSlug}" is out of stock` },
+              { status: 400 }
+            )
+          }
+        }
+      } catch (stockValidationError: any) {
+        console.error('[cart/item] Stock validation error:', stockValidationError)
+        // If validation fails due to database error, log but don't block
+        // The UI should prevent this, but we log for monitoring
+        if (stockValidationError?.code === 'P2002' || stockValidationError?.code === 'P2025') {
+          // Prisma errors - continue with cart operation
+          // UI validation should have caught this
+        } else {
+          // Other errors - return error response
+          return NextResponse.json(
+            { error: 'Failed to validate stock availability' },
+            { status: 500 }
+          )
+        }
+      }
+    }
+
     const now = new Date()
 
     // IMPORTANT: Only search for mutable cart items (IN_CART, REMOVED, CHECKED_OUT)

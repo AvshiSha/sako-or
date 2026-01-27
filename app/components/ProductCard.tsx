@@ -234,6 +234,12 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   const handleQuickBuy = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    
+    // Prevent opening Quick Buy if the active variant is out of stock
+    if (isOutOfStock) {
+      return
+    }
+    
     setIsQuickBuyOpen(true)
   }
 
@@ -419,9 +425,15 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           {/* Quick Buy Icon */}
           <button
             onClick={handleQuickBuy}
-            className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
+            disabled={isOutOfStock}
+            className={`bg-white/80 rounded-full p-1.5 shadow-sm transition-colors ${
+              isOutOfStock 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:bg-white'
+            }`}
+            title={isOutOfStock ? (language === 'he' ? 'אזל מהמלאי' : 'Out of Stock') : (language === 'he' ? 'קניה מהירה' : 'Quick Buy')}
           >
-            <ShoppingCartIcon className="h-4 w-4 text-gray-600" />
+            <ShoppingCartIcon className={`h-4 w-4 ${isOutOfStock ? 'text-gray-400' : 'text-gray-600'}`} />
           </button>
         </div>
 
@@ -469,9 +481,17 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
         <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 hidden md:block">
           <button
             onClick={handleQuickBuy}
-            className="w-full border border-[#856D55]/90 bg-white text-black font-medium py-2 px-4 hover:bg-[#856D55]/90 hover:text-white transition-colors duration-200"
+            disabled={isOutOfStock}
+            className={`w-full border font-medium py-2 px-4 transition-colors duration-200 ${
+              isOutOfStock
+                ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'border-[#856D55]/90 bg-white text-black hover:bg-[#856D55]/90 hover:text-white'
+            }`}
           >
-            {language === 'he' ? 'קניה מהירה' : 'Quick buy'}
+            {isOutOfStock 
+              ? (language === 'he' ? 'אזל מהמלאי' : 'Out of Stock')
+              : (language === 'he' ? 'קניה מהירה' : 'Quick buy')
+            }
           </button>
         </div>
       </Link>

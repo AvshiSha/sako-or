@@ -8,10 +8,35 @@ import { useParams, usePathname } from 'next/navigation'
 import { getImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl, getSakoOrMobileVideoUrl, getSakoOrDesktopVideoUrl } from '@/lib/image-urls'
 import CountdownPopup from '@/app/components/CountdownPopup'
 import ProductCarousel from '@/app/components/ProductCarousel'
-import { productService } from '@/lib/firebase'
+import { productService, getFilteredProducts } from '@/lib/firebase'
 import { Product } from '@/lib/firebase'
 import CollectionTiles from '@/app/components/CollectionTiles'
 
+
+// Define the exact SKUs you want to feature as "Best Sellers"
+// You can edit this array as needed.
+const BEST_SELLER_SKUS: string[] = [
+  '4905-0036',
+  '4905-0012',
+  '4904-0003',
+  '4929-2318',
+  '4926-2356',
+  '4925-2901',
+  '4925-1309',
+  '4725-6119',
+  '4714-0006',
+  '4714-0001',
+  '4904-0001',
+  '4904-0007',
+  '4904-0010',
+  '4904-0050',
+  '4905-0001',
+  '4912-2168',
+  '4912-2170',
+  '4922-3151',
+  '4925-0310' ,
+  '4925-1205'
+]
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -89,17 +114,57 @@ export default function Home() {
     return 'en'
   }, [pathname, params?.lng])
 
-  // Fetch best sellers products
+  // Fetch best sellers products (by explicit SKU list)
   useEffect(() => {
     const fetchBestSellers = async () => {
       try {
         setLoadingProducts(true)
-        // Fetch featured products or newest products as best sellers
-        const products = await productService.getAllProducts({
-          isActive: true,
-          limit: 12, // Limit to 12 products for the carousel
-        })
-        setBestSellers(products)
+        console.log('Fetching best sellers, SKUs count:', BEST_SELLER_SKUS.length)
+        // If no SKUs configured, fall back to newest active products
+        if (BEST_SELLER_SKUS.length === 0) {
+          const products: Product[] = await productService.getAllProducts({
+            isActive: true,
+            limit: 12, // Limit to 12 products for the carousel
+          })
+          setBestSellers(products)
+          return
+        }
+
+        // Firestore `in` operator supports max 10 items – chunk SKUs
+        const chunkSize = 10
+        const skuChunks: string[][] = []
+        for (let i = 0; i < BEST_SELLER_SKUS.length; i += chunkSize) {
+          skuChunks.push(BEST_SELLER_SKUS.slice(i, i + chunkSize))
+        }
+
+        const results = await Promise.all(
+          skuChunks.map((chunk) =>
+            getFilteredProducts({
+              includeSkus: chunk,
+            })
+          )
+        )
+
+        // Merge and de-duplicate by SKU
+        const productBySku = new Map<string, Product>()
+        for (const result of results) {
+          for (const product of result.products as Product[]) {
+            if (product.sku) {
+              productBySku.set(product.sku, product)
+            }
+          }
+        }
+
+        // Preserve the order defined in BEST_SELLER_SKUS
+        const orderedBestSellers: Product[] = []
+        for (const sku of BEST_SELLER_SKUS) {
+          const product = productBySku.get(sku)
+          if (product) {
+            orderedBestSellers.push(product)
+          }
+        }
+
+        setBestSellers(orderedBestSellers)
       } catch (error) {
         console.error('Error fetching best sellers:', error)
       } finally {

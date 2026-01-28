@@ -59,6 +59,15 @@ export interface OrderEmailData {
     discountAmount: number;
     discountLabel?: string;
   }>;
+  /**
+   * Shipping method for this order: "delivery" or "pickup".
+   * Used to control how delivery vs pickup details are rendered in the email.
+   */
+  shippingMethod?: 'delivery' | 'pickup';
+  /**
+   * Pickup location when shippingMethod === "pickup".
+   */
+  pickupLocation?: string;
 }
 
 export interface EmailOtpData {

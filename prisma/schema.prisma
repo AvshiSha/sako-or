@@ -187,41 +187,45 @@ model ProductTag {
 }
 
 model Order {
-  id                   String        @id @default(cuid())
-  orderNumber          String        @unique
-  status               String        @default("pending")
-  total                Float
-  currency             String        @default("ILS")
-  customerName         String?
-  customerEmail        String?
-  customerPhone        String?
-  paymentStatus        String        @default("pending")
-  paymentMethod        String?
-  paymentData          String?
-  cardcomLowProfileId  String?
-  cardcomTransactionId String?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
-  emailMessageId       String?
-  emailSentAt          DateTime?
-  smsSentAt            DateTime?
-  smsMessageId         String?
-  subtotal             Float?
-  discountTotal        Float         @default(0)
-  deliveryFee          Float         @default(0)
-  userId               String?       @map("user_id") @db.Uuid
-  appliedCoupons       OrderCoupon[]
-  orderItems           OrderItem[]
-  user                 User?         @relation(fields: [userId], references: [id])
-  payments             Payment[]
-  points               Points[]
-  verifoneInvoiceStatus        String?    @map("verifone_invoice_status")
-  verifoneInvoiceNo             String?    @map("verifone_invoice_no")
-  verifoneInvoiceRequest        String?    @map("verifone_invoice_request")
-  verifoneInvoiceResponse       String?    @map("verifone_invoice_response")
-  verifoneInvoiceAttemptedAt    DateTime?  @map("verifone_invoice_attempted_at")
-  verifoneInvoiceSyncedAt      DateTime?  @map("verifone_invoice_synced_at")
-  verifoneInvoiceError          String?    @map("verifone_invoice_error")
+  id                         String        @id @default(cuid())
+  orderNumber                String        @unique
+  status                     String        @default("pending")
+  total                      Float
+  /// Shipping method for the order: "delivery" or "pickup"
+  shippingMethod             String        @default("delivery")
+  /// Pickup location for self-pickup orders (e.g. store address)
+  pickupLocation             String?
+  currency                   String        @default("ILS")
+  customerName               String?
+  customerEmail              String?
+  customerPhone              String?
+  paymentStatus              String        @default("pending")
+  paymentMethod              String?
+  paymentData                String?
+  cardcomLowProfileId        String?
+  cardcomTransactionId       String?
+  createdAt                  DateTime      @default(now())
+  updatedAt                  DateTime      @updatedAt
+  emailMessageId             String?
+  emailSentAt                DateTime?
+  smsSentAt                  DateTime?
+  smsMessageId               String?
+  subtotal                   Float?
+  discountTotal              Float         @default(0)
+  deliveryFee                Float         @default(0)
+  userId                     String?       @map("user_id") @db.Uuid
+  appliedCoupons             OrderCoupon[]
+  orderItems                 OrderItem[]
+  user                       User?         @relation(fields: [userId], references: [id])
+  payments                   Payment[]
+  points                     Points[]
+  verifoneInvoiceStatus      String?       @map("verifone_invoice_status")
+  verifoneInvoiceNo          String?       @map("verifone_invoice_no")
+  verifoneInvoiceRequest     String?       @map("verifone_invoice_request")
+  verifoneInvoiceResponse    String?       @map("verifone_invoice_response")
+  verifoneInvoiceAttemptedAt DateTime?     @map("verifone_invoice_attempted_at")
+  verifoneInvoiceSyncedAt    DateTime?     @map("verifone_invoice_synced_at")
+  verifoneInvoiceError       String?       @map("verifone_invoice_error")
 
   @@index([userId])
   @@map("orders")
@@ -301,6 +305,10 @@ model Checkout {
   customerCountry       String
   customerID            String?
   customerDeliveryNotes String?
+  /// Shipping method selected at checkout: "delivery" or "pickup"
+  shippingMethod        String   @default("delivery")
+  /// Pickup location for self-pickup checkouts (e.g. store address)
+  pickupLocation        String?
 
   @@map("checkouts")
 }
@@ -386,7 +394,7 @@ model Points {
   userId    String     @map("user_id") @db.Uuid
   orderId   String?    @map("order_id")
   kind      PointsKind
-  delta     Decimal   @db.Decimal(10, 2)
+  delta     Decimal    @db.Decimal(10, 2)
   reason    String
   createdAt DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   order     Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)

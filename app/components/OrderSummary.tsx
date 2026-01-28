@@ -18,6 +18,12 @@ interface OrderSummaryProps {
     discountLabel?: { en: string; he: string };
   }>;
   language: 'he' | 'en';
+  /**
+   * Shipping method for this order summary.
+   * - "delivery" (default): show regular delivery line
+   * - "pickup": show self-pickup text and helper
+   */
+  shippingMethod?: 'delivery' | 'pickup';
   showPromoCode?: boolean;
   onApplyCoupon?: (code: string) => void;
   onRemoveCoupon?: (code: string) => void;
@@ -35,6 +41,7 @@ export default function OrderSummary({
   deliveryFee,
   appliedCoupons,
   language,
+   shippingMethod = 'delivery',
   showPromoCode = false,
   onApplyCoupon,
   onRemoveCoupon,
@@ -73,6 +80,7 @@ export default function OrderSummary({
     color: isHebrew ? 'צבע' : 'Color',
     qty: isHebrew ? 'כמות' : 'Qty',
     subtotalAfterDiscounts: isHebrew ? 'סכום לאחר הנחות' : 'Subtotal after discounts',
+    pickup: isHebrew ? 'איסוף עצמי' : 'Pickup',
   };
 
   const handleCouponSubmit = (e?: React.FormEvent) => {
@@ -196,15 +204,30 @@ export default function OrderSummary({
           </div>
         )}
 
-        {deliveryFee > 0 ? (
-          <div className="flex justify-between text-sm text-gray-600">
-            <span>{t.delivery}</span>
-            <span>₪{deliveryFee.toFixed(2)}</span>
+        {shippingMethod === 'pickup' ? (
+          <div className="flex flex-col text-sm text-green-700">
+            <span>
+              {isHebrew ? 'איסוף עצמי – חינם' : 'Self pickup – ₪0'}
+            </span>
+            <span className="text-xs text-gray-600 mt-1">
+              {isHebrew
+                ? 'האיסוף יתבצע מהחנות ברחוב רוטשילד 51, ראשון לציון'
+                : 'Pickup from our store: Rothschild 51, Rishon Lezion'}
+            </span>
           </div>
         ) : (
-          <div className="text-sm text-green-600 font-medium">
-            {t.freeDelivery}
-          </div>
+          <>
+            {deliveryFee > 0 ? (
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>{t.delivery}</span>
+                <span>₪{deliveryFee.toFixed(2)}</span>
+              </div>
+            ) : (
+              <div className="text-sm text-green-600 font-medium">
+                {t.freeDelivery}
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex justify-between text-lg font-bold text-gray-700 border-t border-gray-200 pt-2">

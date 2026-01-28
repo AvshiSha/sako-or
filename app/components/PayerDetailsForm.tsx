@@ -205,7 +205,7 @@ export default function PayerDetailsForm({
               className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm ${
                 fieldErrors.firstName 
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  : 'border-gray-300 focus:ring-blue-500 focus:border-[#856D55]/80'
               }`}
               required
             />
@@ -227,7 +227,7 @@ export default function PayerDetailsForm({
               className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm ${
                 fieldErrors.lastName 
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  : 'border-gray-300 focus:ring-[#856D55] focus:border-[#856D55]/80'
               }`}
               required
             />
@@ -249,7 +249,7 @@ export default function PayerDetailsForm({
               className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm ${
                 fieldErrors.email 
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  : 'border-gray-300 focus:ring-[#856D55] focus:border-[#856D55]/80'
               }`}
               required
             />
@@ -271,7 +271,7 @@ export default function PayerDetailsForm({
               className={`mt-1 block w-full border rounded-md shadow-sm py-2 px-3 focus:outline-none sm:text-sm ${
                 fieldErrors.mobile 
                   ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                  : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  : 'border-gray-300 focus:ring-[#856D55] focus:border-[#856D55]/80'
               }`}
               placeholder={isHebrew ? '050-1234567' : '050-1234567'}
               required
@@ -291,7 +291,7 @@ export default function PayerDetailsForm({
               id="idNumber"
               value={formData.payer.idNumber || ''}
               onChange={handlePayerChange}
-              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
               placeholder={isHebrew ? '123456789' : '123456789'}
             />
           </div>
@@ -340,7 +340,7 @@ export default function PayerDetailsForm({
                   id="city"
                   value={formData.deliveryAddress.city}
                   onChange={handleDeliveryAddressChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
                   required
                 />
               </div>
@@ -355,7 +355,7 @@ export default function PayerDetailsForm({
                   id="streetName"
                   value={formData.deliveryAddress.streetName}
                   onChange={handleDeliveryAddressChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
                   required
                 />
               </div>
@@ -370,7 +370,7 @@ export default function PayerDetailsForm({
                   id="streetNumber"
                   value={formData.deliveryAddress.streetNumber}
                   onChange={handleDeliveryAddressChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
                   required
                 />
               </div>
@@ -385,7 +385,7 @@ export default function PayerDetailsForm({
                   id="floor"
                   value={formData.deliveryAddress.floor || ''}
                   onChange={handleDeliveryAddressChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
                 />
               </div>
               
@@ -399,7 +399,7 @@ export default function PayerDetailsForm({
                   id="apartmentNumber"
                   value={formData.deliveryAddress.apartmentNumber || ''}
                   onChange={handleDeliveryAddressChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
                 />
               </div>
               
@@ -413,7 +413,7 @@ export default function PayerDetailsForm({
                   id="zipCode"
                   value={formData.deliveryAddress.zipCode || ''}
                   onChange={handleDeliveryAddressChange}
-                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
                 />
               </div>
             </div>
@@ -431,7 +431,7 @@ export default function PayerDetailsForm({
             rows={3}
             value={formData.notes || ''}
             onChange={handleNotesChange}
-            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
             placeholder={
               isPickup
                 ? (isHebrew ? 'הערות נוספות להזמנה...' : 'Additional notes for your order...')

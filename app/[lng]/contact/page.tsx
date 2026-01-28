@@ -77,7 +77,7 @@ const translations = {
 }
 
 export default function ContactPage({ params }: { params: Promise<{ lng: string }> }) {
-  const [lng, setLng] = React.useState<string>('en')
+  const [lng, setLng] = React.useState<string>('he')
   const [formData, setFormData] = useState({
     name: '',
     email: '',

@@ -20,6 +20,11 @@ function SuccessPageContent() {
   const [hasClearedCart, setHasClearedCart] = useState(false);
 
   useEffect(() => {
+    // If we've already cleared the cart for this payment, avoid re-running verification logic
+    if (hasClearedCart) {
+      return;
+    }
+
     // Extract parameters from URL
     const lpid = searchParams?.get('lpid') || searchParams?.get('lowprofilecode'); // Low Profile ID
     const orderId = searchParams?.get('orderId') || searchParams?.get('ReturnValue'); // CardCom uses ReturnValue
@@ -174,7 +179,7 @@ function SuccessPageContent() {
     }
 
     setIsLoading(false);
-  }, [searchParams, hasTracked, user]);
+  }, [searchParams, hasClearedCart]);
 
   const verifyPaymentStatus = async (lpid: string, orderId?: string | null, paymentSucceededFromUrl: boolean = false) => {
     try {

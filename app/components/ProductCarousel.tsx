@@ -42,6 +42,7 @@ export default function ProductCarousel({ products, title, language = 'en', retu
             setApi={setApi}
             opts={{
               align: 'start',
+              loop: true,
               dragFree: false, // Disable free drag for stiffer, snappier behavior
               containScroll: 'trimSnaps',
               duration: 25, // Shorter duration for stiffer feel (default is 25)

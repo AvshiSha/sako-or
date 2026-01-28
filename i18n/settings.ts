@@ -9,14 +9,12 @@ export const languageMetadata = {
   en: {
     name: 'English',
     nativeName: 'English',
-    direction: 'ltr',
-    flag: '🇺🇸'
+    direction: 'ltr'
   },
   he: {
     name: 'Hebrew',
     nativeName: 'עברית',
-    direction: 'rtl',
-    flag: '🇮🇱'
+    direction: 'rtl'
   }
 } as const
 

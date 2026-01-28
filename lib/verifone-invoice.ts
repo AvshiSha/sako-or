@@ -97,6 +97,18 @@ function getColorCodeFromSlug(colorSlug: string | null | undefined): string {
 
 function formatSizeToTwoDigits(size: string | null | undefined): string {
   if (!size) return '00'
+
+  // Verifone expects "One size" as "OS" (two chars, not digits)
+  const normalized = `${size}`.trim().toLowerCase()
+  if (
+    normalized === 'one size' ||
+    normalized === 'one-size' ||
+    normalized === 'onesize' ||
+    normalized === 'os'
+  ) {
+    return 'OS'
+  }
+
   const num = parseInt(size, 10)
   if (Number.isNaN(num)) return '00'
   return `${num}`.padStart(2, '0')

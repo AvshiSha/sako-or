@@ -179,7 +179,7 @@ function SuccessPageContent() {
     }
 
     setIsLoading(false);
-  }, [searchParams, hasClearedCart]);
+  }, [searchParams, hasClearedCart, hasTracked]);
 
   const verifyPaymentStatus = async (lpid: string, orderId?: string | null, paymentSucceededFromUrl: boolean = false) => {
     try {

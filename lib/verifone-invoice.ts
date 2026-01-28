@@ -157,7 +157,7 @@ function calculateLineVAT(grossLineTotal: number, vatPercent: number = 18): {
   return { netLine, vatLine }
 }
 
-// Calculate invoice totals from document lines (VAT calculated at line level first)
+// Calculate invoice totals from order total (header values only)
 export function calculateInvoiceTotalsFromLines(
   documentLines: VerifoneInvoiceLine[],
   orderItems: Array<{
@@ -165,80 +165,30 @@ export function calculateInvoiceTotalsFromLines(
     price: number
     salePrice: number | null
   }>,
-  coupons: Array<{ discountAmount: number }>,
+  orderTotalPaid: number,
   pointsUsed: number,
   deliveryFee: number
 ): InvoiceTotals {
   const vatRate = 0.18
 
-  // Step 1: Calculate line-level VAT for all lines (AFTER discounts)
-  // NOTE: We need to separate points from actual product/delivery lines for discount calculation
-  let sumNetLinesAfterDiscount = 0
-  let sumVatLinesAfterDiscount = 0
-  let sumNetLinesAfterDiscountExcludingPoints = 0 // For discount calculation (points are payment, not discount)
-  let sumVatLinesAfterDiscountExcludingPoints = 0
-
-  for (const line of documentLines) {
-    const grossLineTotal = line.TotalPrice // VAT included (after discounts)
-    const { netLine, vatLine } = calculateLineVAT(Math.abs(grossLineTotal), line.VatPercent)
-
-    // For points line (negative), adjust signs for total calculation
-    if (line.Qty < 0) {
-      sumNetLinesAfterDiscount -= netLine
-      sumVatLinesAfterDiscount -= vatLine
-      // Points are NOT included in discount calculation (they're payment, not discount)
-    } else {
-      sumNetLinesAfterDiscount += netLine
-      sumVatLinesAfterDiscount += vatLine
-      // Include in discount calculation (products and delivery)
-      sumNetLinesAfterDiscountExcludingPoints += netLine
-      sumVatLinesAfterDiscountExcludingPoints += vatLine
-    }
-  }
-
-  // Step 2: Calculate net BEFORE discount (using full prices, excluding points)
-  // Points are payment method, not discount, so exclude from discount calculation
-  let sumNetLinesBeforeDiscount = 0
-
-  // Products at full price (before sale/coupon)
-  for (const item of orderItems) {
-    const fullUnitPrice = item.price
-    const qty = item.quantity
-    const grossBeforeDiscount = qty * fullUnitPrice
-    const { netLine } = calculateLineVAT(grossBeforeDiscount, 18)
-    sumNetLinesBeforeDiscount += netLine
-  }
-
-  // Delivery fee (no discount)
-  if (deliveryFee > 0) {
-    const { netLine } = calculateLineVAT(deliveryFee, 18)
-    sumNetLinesBeforeDiscount += netLine
-  }
-
-  // Step 3: Calculate totals
-  const TotalAfterDiscount_WithoutVAT = roundToTwoDecimals(sumNetLinesAfterDiscount)
-  const VAT = roundToTwoDecimals(sumVatLinesAfterDiscount)
-  const TotalPriceIncludeVAT = roundToTwoDecimals(TotalAfterDiscount_WithoutVAT + VAT)
-
-  // Discount calculation: compare BEFORE vs AFTER, EXCLUDING points (points are payment, not discount)
-  const TotalBeforeDiscount_WithoutVAT = roundToTwoDecimals(sumNetLinesBeforeDiscount)
-  const TotalAfterDiscountExcludingPoints_WithoutVAT = roundToTwoDecimals(sumNetLinesAfterDiscountExcludingPoints)
-  let Discount = roundToTwoDecimals(TotalBeforeDiscount_WithoutVAT - TotalAfterDiscountExcludingPoints_WithoutVAT)
-
-  // Discount should never be negative (rounding errors can cause this)
-  // If negative, it means there are no actual discounts, so set to 0
-  if (Discount < 0) {
-    Discount = 0
-  }
-
-  // DiscountPercent based on net before discount
-  const DiscountPercent = TotalBeforeDiscount_WithoutVAT > 0 && Discount > 0
-    ? roundToTwoDecimals((Discount / TotalBeforeDiscount_WithoutVAT) * 100)
-    : 0
+  // Header totals are now derived directly from the paid order total (CardCom amount)
+  const TotalPriceIncludeVAT = roundToTwoDecimals(orderTotalPaid)
+  const TotalBeforeDiscount_WithoutVAT = roundToTwoDecimals(
+    TotalPriceIncludeVAT / (1 + vatRate)
+  )
+  const Discount = 0
+  const DiscountPercent = 0
+  const TotalAfterDiscount_WithoutVAT = TotalBeforeDiscount_WithoutVAT
+  const VatPercent = 18
+  const VAT = roundToTwoDecimals(TotalBeforeDiscount_WithoutVAT * vatRate)
 
   // Count items
+  let productsCount = 0
+  for (const item of orderItems) {
+    productsCount += item.quantity
+  }
   const distinctProducts = orderItems.length
-  const TotalItems = distinctProducts + (pointsUsed > 0 ? -1 : 0) + (deliveryFee > 0 ? 1 : 0)
+  const TotalItems = productsCount + (pointsUsed > 0 ? -1 : 0) + (deliveryFee > 0 ? 1 : 0)
   const TotalLines = distinctProducts + (pointsUsed > 0 ? 1 : 0) + (deliveryFee > 0 ? 1 : 0)
 
   return {
@@ -246,7 +196,7 @@ export function calculateInvoiceTotalsFromLines(
     Discount,
     DiscountPercent,
     TotalAfterDiscount_WithoutVAT,
-    VatPercent: 18,
+    VatPercent,
     VAT,
     TotalPriceIncludeVAT,
     TotalItems,
@@ -385,7 +335,8 @@ export function buildDocumentLines(
     }
 
     // Calculate prices
-    const unitPrice = item.price // Full price before sale
+    const qty = item.quantity
+    const baseUnitPrice = item.price // Full price before sale
     // Use salePrice only if it exists, is > 0, AND is actually a discount (less than regular price)
     // If salePrice is higher than price, it's invalid data - use regular price instead
     const effectivePrice = (item.salePrice != null && item.salePrice > 0 && item.salePrice < item.price)
@@ -403,19 +354,17 @@ export function buildDocumentLines(
       })
     }
 
-    const qty = item.quantity
-
     // Debug logging to track price per item
     console.log(`[VERIFONE_INVOICE] Processing item ${i + 1}/${orderItems.length}:`, {
       itemID,
       productSku: item.productSku,
-      unitPrice,
+      baseUnitPrice,
       salePrice: item.salePrice,
       effectivePrice,
       quantity: qty
     })
 
-    const fullLineTotal = qty * unitPrice
+    const fullLineTotal = qty * baseUnitPrice
     const baseLineTotal = qty * effectivePrice
 
     // Apply coupon only to first product line
@@ -425,7 +374,7 @@ export function buildDocumentLines(
       couponRemaining -= couponApplied
     }
 
-    // Calculate line discount
+    // Calculate line discount (difference between full price and effective price, plus coupon)
     const lineDiscountFromSale = fullLineTotal - baseLineTotal
     const lineDiscountTotal = lineDiscountFromSale + couponApplied
     let lineDiscountPercent = fullLineTotal > 0
@@ -437,7 +386,7 @@ export function buildDocumentLines(
     if (lineDiscountPercent < 0) {
       console.warn(`[VERIFONE_INVOICE] Negative discount detected, setting to 0:`, {
         itemID,
-        unitPrice,
+        baseUnitPrice,
         effectivePrice,
         fullLineTotal,
         baseLineTotal,
@@ -449,15 +398,20 @@ export function buildDocumentLines(
       lineDiscountPercent = 0
     }
 
-    // TotalPrice for this line (VAT included) - use effectivePrice
-    const totalPrice = roundToTwoDecimals(baseLineTotal - couponApplied)
+    // Final per-unit price actually paid (gross, with VAT) after coupon distribution
+    const grossLinePaid = baseLineTotal - couponApplied
+    const itemPaidPrice =
+      qty > 0 ? roundToTwoDecimals(grossLinePaid / qty) : roundToTwoDecimals(effectivePrice)
+
+    // TotalPrice for this line (VAT included) - UnitPrice * Qty
+    const totalPrice = roundToTwoDecimals(itemPaidPrice * qty)
 
     lines.push({
       LineNo: lineNo++,
       ItemID: itemID,
-      UnitPrice: roundToTwoDecimals(effectivePrice), // Use effectivePrice (salePrice if exists, else unitPrice)
+      UnitPrice: itemPaidPrice, // Final per-unit price actually paid (with VAT)
       Qty: qty,
-      DiscountPercent: lineDiscountPercent,
+      DiscountPercent: 0,
       TotalPrice: totalPrice,
       VatPercent: 18,
       CreditPointsAccumPrecent: 5
@@ -554,7 +508,7 @@ export function buildCreateInvoiceEnvelope(
     order.deliveryFee || 0
   )
 
-  // Calculate totals from document lines (VAT calculated at line level)
+  // Calculate header totals from the paid order total (CardCom amount)
   const totals = calculateInvoiceTotalsFromLines(
     documentLines,
     order.orderItems.map(item => ({
@@ -562,10 +516,32 @@ export function buildCreateInvoiceEnvelope(
       price: item.price,
       salePrice: item.salePrice
     })),
-    order.appliedCoupons,
+    order.total,
     pointsUsed,
     order.deliveryFee || 0
   )
+
+  // Validation: ensure sums and header totals are internally consistent
+  const sumLinesWithVAT = roundToTwoDecimals(
+    documentLines.reduce((sum, line) => sum + line.TotalPrice, 0)
+  )
+  const headerTotalWithVAT = roundToTwoDecimals(
+    totals.TotalAfterDiscount_WithoutVAT + totals.VAT
+  )
+
+  if (
+    sumLinesWithVAT !== totals.TotalPriceIncludeVAT ||
+    headerTotalWithVAT !== totals.TotalPriceIncludeVAT
+  ) {
+    console.error('[VERIFONE_CREATE_INVOICE] Invoice totals validation failed', {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      expectedTotalPriceIncludeVAT: totals.TotalPriceIncludeVAT,
+      sumLinesWithVAT,
+      headerTotalWithVAT,
+      totals
+    })
+  }
 
   // Build receipt lines
   const receiptLine = buildReceiptLines(transactionInfo, totals.TotalPriceIncludeVAT)

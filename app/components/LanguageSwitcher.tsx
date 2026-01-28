@@ -19,7 +19,6 @@ export default function LanguageSwitcher({ currentLanguage }: LanguageSwitcherPr
           }`}
           title={`${meta.name} - ${meta.nativeName}`}
         >
-          <span className="mr-2">{meta.flag}</span>
           {code.toUpperCase()}
         </Link>
       ))}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { SparklesIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, SparklesIcon } from '@heroicons/react/24/outline'
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
 import { Button } from '@/app/components/ui/button'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -123,7 +123,17 @@ export default function PointsPage() {
       <div className="pt-6 pb-20 md:pb-6 mt-4">
         <Card className="shadow-[0_4px_20px_rgba(15,23,42,0.08)]">
           <CardHeader>
-            <CardTitle className="text-xl md:text-2xl">{t.pageTitle}</CardTitle>
+            <div className={`flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <CardTitle className="text-xl md:text-2xl">{t.pageTitle}</CardTitle>
+              <Link
+                href={`/${lng}/profile`}
+                className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1 whitespace-nowrap"
+              >
+                {!isRTL && <ArrowLeftIcon className="h-4 w-4" />}
+                {t.backToProfile}
+                {isRTL && <ArrowLeftIcon className="h-4 w-4" />}
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="min-h-[400px] flex items-center justify-center">
@@ -141,8 +151,24 @@ export default function PointsPage() {
   return (
     <div className="pt-6 pb-20 md:pb-6 mt-4">
       <Card className={profileTheme.card}>
-        <div className={profileTheme.section}>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">{t.pageTitle}</h1>
+        <div className={`${profileTheme.section} flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+          <h1
+            className={`text-xl md:text-2xl font-bold text-gray-900 ${
+              isRTL ? 'order-2' : 'order-1'
+            }`}
+          >
+            {t.pageTitle}
+          </h1>
+          <Link
+            href={`/${lng}/profile`}
+            className={`flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1 whitespace-nowrap ${
+              isRTL ? 'order-1' : 'order-2'
+            }`}
+          >
+            {!isRTL && <ArrowLeftIcon className="h-4 w-4" />}
+            {t.backToProfile}
+            {isRTL && <ArrowLeftIcon className="h-4 w-4" />}
+          </Link>
         </div>
         <div className={profileTheme.section}>
           {error ? (
@@ -158,14 +184,14 @@ export default function PointsPage() {
             <>
               {/* Current Balance */}
               <div className={`mb-6 p-4 rounded-lg ${profileTheme.section} bg-gradient-to-r from-[#856D55]/10 to-[#856D55]/5`}>
-                <div className="flex items-center justify-between">
+                <div className={`flex items-center justify-between ${isRTL ? '' : 'flex-row-reverse'}`}>
+                  <SparklesIcon className="h-12 w-12 text-[#856D55]/80" />
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">{t.currentBalance}</p>
+                    <p className="text-sm text-gray-600 mb-1 text-center">{t.currentBalance}</p>
                     <p className="text-3xl font-bold text-[#856D55]/80">
                       {pointsBalance.toFixed(2)} {t.points}
                     </p>
                   </div>
-                  <SparklesIcon className="h-12 w-12 text-[#856D55]/80" />
                 </div>
               </div>
 

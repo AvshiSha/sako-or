@@ -25,7 +25,7 @@ export interface CartItem {
 
 export interface CartHook {
   items: CartItem[]
-  addToCart: (item: Omit<CartItem, 'quantity'>) => void
+  addToCart: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void
   removeFromCart: (sku: string, size?: string, color?: string) => void
   updateQuantity: (sku: string, quantity: number, size?: string, color?: string) => void
   clearCart: () => void
@@ -455,7 +455,9 @@ export function useCart(): CartHook {
     }
   }, [user])
 
-  const addToCart = useCallback((newItem: Omit<CartItem, 'quantity'>) => {
+  const addToCart = useCallback((newItem: Omit<CartItem, 'quantity'>, quantityToAdd: number = 1) => {
+    const qty = Math.max(1, Math.floor(quantityToAdd))
+    let isMerge = false
     flushSync(() => {
       setItems(prevItems => {
         const existingItemIndex = prevItems.findIndex(item => 
@@ -465,13 +467,13 @@ export function useCart(): CartHook {
         )
 
         if (existingItemIndex >= 0) {
-          // Item exists, update quantity
+          isMerge = true
+          // Item exists, add to quantity
           const updatedItems = [...prevItems]
           const existingItem = updatedItems[existingItemIndex]
-          const newQuantity = existingItem.quantity + 1
+          const newQuantity = Math.min(existingItem.quantity + qty, existingItem.maxStock)
           
-          // Don't exceed max stock
-          if (newQuantity <= existingItem.maxStock) {
+          if (newQuantity > existingItem.quantity) {
             updatedItems[existingItemIndex] = {
               ...existingItem,
               quantity: newQuantity
@@ -479,16 +481,22 @@ export function useCart(): CartHook {
           }
           return updatedItems
         } else {
-          // New item, add with quantity 1
-          const newItems = [...prevItems, { ...newItem, quantity: 1 }]
+          // New item, add with requested quantity (capped at maxStock)
+          const initialQty = Math.min(qty, newItem.maxStock)
+          const newItems = [...prevItems, { ...newItem, quantity: initialQty }]
           return newItems
         }
       })
     })
 
-    // Sync to Neon if signed in
+    // Sync to Neon if signed in (single request with delta or set)
     const unitPrice = newItem.salePrice ?? newItem.price
-    void syncCartItemToNeon(newItem.sku, newItem.color, newItem.size, 1, undefined, unitPrice)
+    if (isMerge) {
+      void syncCartItemToNeon(newItem.sku, newItem.color, newItem.size, qty, undefined, unitPrice)
+    } else {
+      const initialQty = Math.min(qty, newItem.maxStock)
+      void syncCartItemToNeon(newItem.sku, newItem.color, newItem.size, undefined, initialQty, unitPrice)
+    }
   }, [syncCartItemToNeon])
 
   const removeFromCart = useCallback((sku: string, size?: string, color?: string) => {

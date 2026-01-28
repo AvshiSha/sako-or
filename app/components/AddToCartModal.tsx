@@ -116,9 +116,8 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
         console.warn('Data layer tracking error:', dataLayerError)
       }
 
-      // Add multiple items if quantity > 1
-      for (let i = 0; i < quantity; i++) {
-        addToCart({
+      addToCart(
+        {
           sku: product!.sku,
           name: product!.name,
           price: product!.price,
@@ -128,8 +127,9 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
           size: selectedSize || undefined,
           color: selectedColor || undefined,
           maxStock: currentStock
-        })
-      }
+        },
+        quantity
+      )
 
       const successMessage = lng === 'he'
         ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`

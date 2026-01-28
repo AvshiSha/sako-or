@@ -180,11 +180,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         console.warn('Data layer tracking error:', dataLayerError)
       }
       
-      // Respect the selected quantity by adding multiple units,
-      // reusing the same behavior as in AddToCartModal
-      for (let i = 0; i < quantity; i++) {
-        addToCart(cartItem)
-      }
+      addToCart(cartItem, quantity)
       
       // Show success toast
       const successMessage = language === 'he' 

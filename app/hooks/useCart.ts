@@ -5,6 +5,7 @@ import { flushSync } from 'react-dom'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { buildCartKey } from '@/lib/cart'
 import { productService } from '@/lib/firebase'
+import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '@/lib/pricing'
 
 export interface CartItem {
   sku: string
@@ -547,13 +548,13 @@ export function useCart(): CartHook {
   }, [items])
 
   const getDeliveryFee = useCallback(() => {
- // Calculate total directly to avoid dependency chain issues
+    // Calculate total directly to avoid dependency chain issues
     const total = items.reduce((sum, item) => {
       const price = item.salePrice || item.price
       return sum + (price * item.quantity)
     }, 0)
-    
-    return total < 300 ? 45 : 0
+
+    return total < FREE_DELIVERY_THRESHOLD_ILS ? DELIVERY_FEE_ILS : 0
   }, [items])
 
   const getTotalWithDelivery = useCallback(() => {

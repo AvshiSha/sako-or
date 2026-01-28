@@ -7,6 +7,7 @@ import { spendPointsForOrder } from '../../../../lib/points';
 import { getBearerToken, requireUserAuth } from '@/lib/server/auth';
 import { productService } from '../../../../lib/firebase';
 import { parseSku } from '../../../../lib/sku-parser';
+import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '../../../../lib/pricing';
 
 export async function POST(request: NextRequest) {
   try {
@@ -272,10 +273,31 @@ export async function POST(request: NextRequest) {
     });
 
     const computedSubtotal = body.subtotal ?? orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const rawDiscountTotal = body.discountTotal ?? 0;
+    const pointsDiscount = body.pointsToSpend ? Math.trunc(body.pointsToSpend) : 0;
+    const discountedSubtotal = Math.max(computedSubtotal - rawDiscountTotal - pointsDiscount, 0);
+    const hasPromotions = rawDiscountTotal > 0 || pointsDiscount > 0;
+
     // For pickup orders, delivery fee must always be 0
-    const computedDeliveryFee = shippingMethod === 'pickup'
-      ? 0
-      : (body.deliveryFee ?? Math.max(body.amount - (computedSubtotal - (body.discountTotal ?? 0)), 0));
+    let computedDeliveryFee: number;
+    if (shippingMethod === 'pickup') {
+      computedDeliveryFee = 0;
+    } else if (computedSubtotal >= FREE_DELIVERY_THRESHOLD_ILS) {
+      if (discountedSubtotal >= FREE_DELIVERY_THRESHOLD_ILS) {
+        // Still above threshold after discounts – keep free delivery
+        computedDeliveryFee = 0;
+      } else if (hasPromotions) {
+        // Qualified before discounts, dropped below with promos – charge delivery
+        computedDeliveryFee = DELIVERY_FEE_ILS;
+      } else {
+        // No promotions, above threshold – free delivery
+        computedDeliveryFee = 0;
+      }
+    } else {
+      // Below threshold before discounts – use base rule (delivery fee applies)
+      computedDeliveryFee = DELIVERY_FEE_ILS;
+    }
+
     const computedDiscountTotal = body.discountTotal ?? Math.max(computedSubtotal + computedDeliveryFee - body.amount, 0);
 
     // Create order in database

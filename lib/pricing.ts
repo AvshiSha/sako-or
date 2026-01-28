@@ -1,0 +1,3 @@
+export const FREE_DELIVERY_THRESHOLD_ILS = 300;
+export const DELIVERY_FEE_ILS = 45;
+

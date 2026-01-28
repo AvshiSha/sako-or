@@ -16,41 +16,59 @@ export async function spendPointsForOrder(params: {
     throw new Error('pointsToSpend must be a positive number');
   }
 
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.points.findUnique({
-      where: {
-        orderId_kind: { orderId: params.orderId, kind: PointsKind.SPEND }
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const existing = await tx.points.findUnique({
+        where: {
+          orderId_kind: { orderId: params.orderId, kind: PointsKind.SPEND }
+        }
+      });
+      if (existing) return existing;
+
+      const updated = await tx.user.updateMany({
+        where: {
+          id: params.userId,
+          pointsBalance: { gte: pointsToSpend }
+        },
+        data: { pointsBalance: { decrement: pointsToSpend } }
+      });
+
+      if (updated.count !== 1) {
+        throw new Error('Insufficient points balance');
       }
-    });
-    if (existing) return existing;
 
-    const updated = await tx.user.updateMany({
-      where: {
-        id: params.userId,
-        pointsBalance: { gte: pointsToSpend }
-      },
-      data: { pointsBalance: { decrement: pointsToSpend } }
-    });
+      const order = await tx.order.findUnique({
+        where: { id: params.orderId },
+        select: { orderNumber: true }
+      });
 
-    if (updated.count !== 1) {
-      throw new Error('Insufficient points balance');
+      return tx.points.create({
+        data: {
+          userId: params.userId,
+          orderId: params.orderId,
+          kind: PointsKind.SPEND,
+          delta: -pointsToSpend,
+          reason: `Used points in order ${order?.orderNumber ?? 'unknown'}`
+        }
+      });
+    });
+  } catch (err) {
+    // Handle concurrent calls that race on the unique (orderId, kind) constraint.
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002'
+    ) {
+      const existing = await prisma.points.findUnique({
+        where: {
+          orderId_kind: { orderId: params.orderId, kind: PointsKind.SPEND }
+        }
+      });
+      if (existing) {
+        return existing;
+      }
     }
-
-    const order = await tx.order.findUnique({
-      where: { id: params.orderId },
-      select: { orderNumber: true }
-    });
-
-    return tx.points.create({
-      data: {
-        userId: params.userId,
-        orderId: params.orderId,
-        kind: PointsKind.SPEND,
-        delta: -pointsToSpend,
-        reason: `Used points in order ${order?.orderNumber ?? 'unknown'}`
-      }
-    });
-  });
+    throw err;
+  }
 }
 
 export async function awardPointsForOrder(orderId: string) {
@@ -155,11 +173,17 @@ export async function syncPointsFromVerifone(params: {
 
     // Calculate new points earned for ledger entry
     // Formula: (Verifone points after) - (Verifone points before) + (points used)
-    const newPointsEarned = roundPoints(
+    const rawNewPointsEarned = roundPoints(
       roundedPointsAfter - roundedPointsBefore + roundedPointsUsed
     );
 
-    // Only create EARN entry if points were earned
+    // Clamp to 0 for "points earned" shown/stored for this order.
+    // If Verifone reduced the customer's points (expiry/manual adjustment),
+    // rawNewPointsEarned can be negative, but the user should not see
+    // "negative earned points" for a purchase.
+    const newPointsEarned = Math.max(0, rawNewPointsEarned);
+
+    // Only create EARN entry if points were earned (strictly positive)
     let pointsRow = null;
     if (newPointsEarned > 0) {
       pointsRow = await tx.points.create({
@@ -186,6 +210,7 @@ export async function syncPointsFromVerifone(params: {
         pointsBefore: roundedPointsBefore,
         pointsAfter: roundedPointsAfter,
         pointsUsed: roundedPointsUsed,
+        newPointsEarnedRaw: rawNewPointsEarned,
         newPointsEarned,
         pointsBalanceSetTo: roundedPointsAfter
       }

@@ -18,6 +18,7 @@ import { trackViewCart } from '@/lib/dataLayer'
 import { CouponValidationSuccess } from '@/lib/coupons'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { getColorName } from '@/lib/colors'
+import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '@/lib/pricing'
 
 const couponContent = {
   en: {
@@ -589,10 +590,22 @@ if (!isClient || loading) {
   const totalItems = getTotalItems()
   const subtotal = getTotalPrice()
   const baseDeliveryFee = getDeliveryFee()
-  const deliveryFee = shippingMethod === 'pickup' ? 0 : baseDeliveryFee
   const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
   const pointsDiscount = pointsToUse // 1 point = 1 ILS
   const discountedSubtotal = Math.max(subtotal - totalDiscount - pointsDiscount, 0)
+  const hasPromotions = totalDiscount > 0 || pointsDiscount > 0
+
+  const deliveryFee =
+    shippingMethod === 'pickup'
+      ? 0
+      : subtotal >= FREE_DELIVERY_THRESHOLD_ILS
+        ? discountedSubtotal >= FREE_DELIVERY_THRESHOLD_ILS
+          ? 0
+          : hasPromotions
+            ? DELIVERY_FEE_ILS
+            : 0
+        : baseDeliveryFee
+
   const finalTotal = Math.max(discountedSubtotal + deliveryFee, 0)
   const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 

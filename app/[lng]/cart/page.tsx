@@ -839,7 +839,7 @@ if (!isClient || loading) {
                         value="delivery"
                         checked={shippingMethod === 'delivery'}
                         onChange={() => setShippingMethod('delivery')}
-                        className="h-4 w-4 text-[#856D55] border-gray-300 focus:ring-[#856D55]"
+                        className="h-4 w-4 accent-[#856D55] border-gray-300 focus:ring-[#856D55]"
                       />
                       <span className="text-sm text-gray-800">
                         {lng === 'he' ? 'משלוח עד הבית' : 'Home Delivery'}
@@ -852,7 +852,7 @@ if (!isClient || loading) {
                         value="pickup"
                         checked={shippingMethod === 'pickup'}
                         onChange={() => setShippingMethod('pickup')}
-                        className="mt-1 h-4 w-4 text-[#856D55] border-gray-300 focus:ring-[#856D55]"
+                        className="mt-1 h-4 w-4 accent-[#856D55] border-gray-300 focus:ring-[#856D55]"
                       />
                       <span className="text-sm text-gray-800">
                         <span className="font-medium block">

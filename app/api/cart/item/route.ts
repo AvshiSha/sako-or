@@ -63,6 +63,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // IMPORTANT: Only search for mutable cart items (IN_CART, REMOVED, CHECKED_OUT)
+    // PURCHASED items are immutable/historical and must never be updated or reused
+    // Fetch existing item early so it can be used in stock validation
+    const existing = await prisma.cartItem.findFirst({
+      where: {
+        userId,
+        cartKey,
+        // Only consider mutable statuses - PURCHASED items are immutable
+        status: {
+          in: ['IN_CART', 'REMOVED', 'CHECKED_OUT']
+        }
+      }
+    })
+
     // Validate stock availability before adding to cart
     // Only validate if we're adding items (not removing)
     const isAddingItems = (quantitySet !== null && quantitySet > 0) || 
@@ -181,19 +195,6 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date()
-
-    // IMPORTANT: Only search for mutable cart items (IN_CART, REMOVED, CHECKED_OUT)
-    // PURCHASED items are immutable/historical and must never be updated or reused
-    const existing = await prisma.cartItem.findFirst({
-      where: {
-        userId,
-        cartKey,
-        // Only consider mutable statuses - PURCHASED items are immutable
-        status: {
-          in: ['IN_CART', 'REMOVED', 'CHECKED_OUT']
-        }
-      }
-    })
 
     // Check if a PURCHASED item exists (for better error handling)
     let purchasedItem = null

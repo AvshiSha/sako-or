@@ -95,6 +95,9 @@ function CartPageContent() {
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
 
   const [isClient, setIsClient] = useState(false)
+  const STORE_PICKUP_LOCATION = 'Rothschild 51, Rishon Lezion'
+  const SHIPPING_METHOD_STORAGE_KEY = 'cart_shipping_method'
+  const [shippingMethod, setShippingMethod] = useState<'delivery' | 'pickup'>('delivery')
 const [couponInput, setCouponInput] = useState('')
 const [couponLoading, setCouponLoading] = useState(false)
 const [couponStatus, setCouponStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
@@ -130,6 +133,19 @@ const cartItemsPayload = useMemo(() => {
 }, [items])
 
 const cartItemsSignature = useMemo(() => JSON.stringify(cartItemsPayload), [cartItemsPayload])
+
+  // Load shipping method preference from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const stored = localStorage.getItem(SHIPPING_METHOD_STORAGE_KEY)
+      if (stored === 'delivery' || stored === 'pickup') {
+        setShippingMethod(stored)
+      }
+    } catch (e) {
+      console.warn('Failed to load shipping method from storage:', e)
+    }
+  }, [])
 
 const saveCouponsToStorage = useCallback((codes: string[]) => {
   if (typeof window === 'undefined') return
@@ -399,6 +415,16 @@ const revalidateCouponCodes = useCallback(async (
     setIsClient(true)
   }, [])
 
+  // Persist shipping method selection
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem(SHIPPING_METHOD_STORAGE_KEY, shippingMethod)
+    } catch (e) {
+      console.warn('Failed to persist shipping method:', e)
+    }
+  }, [shippingMethod])
+
 useEffect(() => {
   if (!isClient) return
   if (initializedCouponsRef.current) return
@@ -562,7 +588,8 @@ if (!isClient || loading) {
 
   const totalItems = getTotalItems()
   const subtotal = getTotalPrice()
-  const deliveryFee = getDeliveryFee()
+  const baseDeliveryFee = getDeliveryFee()
+  const deliveryFee = shippingMethod === 'pickup' ? 0 : baseDeliveryFee
   const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
   const pointsDiscount = pointsToUse // 1 point = 1 ILS
   const discountedSubtotal = Math.max(subtotal - totalDiscount - pointsDiscount, 0)
@@ -786,6 +813,48 @@ if (!isClient || loading) {
                   </div>
                 )}
 
+                {/* Shipping method selection */}
+                <div className="mt-6 border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                    {lng === 'he' ? 'אופן קבלת ההזמנה' : 'Delivery Method'}
+                  </h3>
+                  <div className={`space-y-2 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="shippingMethod"
+                        value="delivery"
+                        checked={shippingMethod === 'delivery'}
+                        onChange={() => setShippingMethod('delivery')}
+                        className="h-4 w-4 text-[#856D55] border-gray-300 focus:ring-[#856D55]"
+                      />
+                      <span className="text-sm text-gray-800">
+                        {lng === 'he' ? 'משלוח עד הבית' : 'Home Delivery'}
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="shippingMethod"
+                        value="pickup"
+                        checked={shippingMethod === 'pickup'}
+                        onChange={() => setShippingMethod('pickup')}
+                        className="mt-1 h-4 w-4 text-[#856D55] border-gray-300 focus:ring-[#856D55]"
+                      />
+                      <span className="text-sm text-gray-800">
+                        <span className="font-medium block">
+                          {lng === 'he' ? 'איסוף עצמי (חינם)' : 'Self Pickup (Free)'}
+                        </span>
+                        <span className="text-xs text-gray-600 block mt-1">
+                          {lng === 'he'
+                            ? 'האיסוף מתבצע מהחנות ברחוב רוטשילד 51, ראשון לציון'
+                            : 'Pickup available at our store: Rothschild 51, Rishon Lezion'}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
                 <hr className="my-6 border-gray-200" />
                 
                 <div className="mt-6 space-y-3">
@@ -840,15 +909,28 @@ if (!isClient || loading) {
                     </>
                   )}
 
-                  {deliveryFee > 0 ? (
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>{t.delivery}</span>
-                      <span>₪{deliveryFee.toFixed(2)}</span>
+                  {shippingMethod === 'pickup' ? (
+                    <div className="flex flex-col text-sm text-green-700">
+                      <span>{lng === 'he' ? 'איסוף עצמי – חינם' : 'Self pickup – ₪0'}</span>
+                      <span className="text-xs text-gray-600 mt-1">
+                        {lng === 'he'
+                          ? 'האיסוף מתבצע מהחנות ברחוב רוטשילד 51, ראשון לציון'
+                          : 'Pickup available at our store: Rothschild 51, Rishon Lezion'}
+                      </span>
                     </div>
                   ) : (
-                    <div className="text-sm text-green-600 font-medium">
-                      {t.freeDelivery}
-                    </div>
+                    <>
+                      {deliveryFee > 0 ? (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>{t.delivery}</span>
+                          <span>₪{deliveryFee.toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-green-600 font-medium">
+                          {t.freeDelivery}
+                        </div>
+                      )}
+                    </>
                   )}
 
                   <div className="flex justify-between text-lg font-bold text-gray-700 border-t border-gray-200 pt-2">
@@ -900,6 +982,8 @@ if (!isClient || loading) {
           discountLabel: coupon.coupon.discountLabel
         }))}
         pointsToSpend={pointsToUse > 0 ? pointsToUse : undefined}
+        shippingMethod={shippingMethod}
+        pickupLocation={STORE_PICKUP_LOCATION}
       />
     </div>
   )

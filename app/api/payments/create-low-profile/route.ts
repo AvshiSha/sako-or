@@ -106,11 +106,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!body.deliveryAddress.city || !body.deliveryAddress.streetName || !body.deliveryAddress.streetNumber) {
-      return NextResponse.json(
-        { error: 'Missing required delivery address information' },
-        { status: 400 }
-      );
+    const shippingMethod = body.shippingMethod ?? 'delivery';
+
+    if (shippingMethod !== 'pickup') {
+      if (!body.deliveryAddress.city || !body.deliveryAddress.streetName || !body.deliveryAddress.streetNumber) {
+        return NextResponse.json(
+          { error: 'Missing required delivery address information' },
+          { status: 400 }
+        );
+      }
     }
 
     // Generate order number - always use server-side generation for uniqueness
@@ -268,7 +272,10 @@ export async function POST(request: NextRequest) {
     });
 
     const computedSubtotal = body.subtotal ?? orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const computedDeliveryFee = body.deliveryFee ?? Math.max(body.amount - (computedSubtotal - (body.discountTotal ?? 0)), 0);
+    // For pickup orders, delivery fee must always be 0
+    const computedDeliveryFee = shippingMethod === 'pickup'
+      ? 0
+      : (body.deliveryFee ?? Math.max(body.amount - (computedSubtotal - (body.discountTotal ?? 0)), 0));
     const computedDiscountTotal = body.discountTotal ?? Math.max(computedSubtotal + computedDeliveryFee - body.amount, 0);
 
     // Create order in database
@@ -280,6 +287,8 @@ export async function POST(request: NextRequest) {
         subtotal: computedSubtotal,
         discountTotal: computedDiscountTotal,
         deliveryFee: computedDeliveryFee,
+        shippingMethod,
+        pickupLocation: body.pickupLocation,
         currency: body.currencyIso === 2 ? 'USD' : 'ILS',
         customerName: `${body.customer.firstName} ${body.customer.lastName}`,
         customerEmail: body.customer.email,
@@ -306,6 +315,8 @@ export async function POST(request: NextRequest) {
           subtotal: computedSubtotal,
           discountTotal: computedDiscountTotal,
           deliveryFee: computedDeliveryFee,
+          shippingMethod,
+          pickupLocation: body.pickupLocation,
           currency: body.currencyIso === 2 ? 'USD' : 'ILS',
           customerName: `${body.customer.firstName} ${body.customer.lastName}`,
           customerEmail: body.customer.email,
@@ -398,6 +409,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create CardCom payment session request
+    const STORE_ADDRESS = 'Rothschild 51, Rishon Lezion';
+    const STORE_CITY = 'Rishon Lezion';
+
     const cardcomRequest = createPaymentSessionRequest(
       orderNumber,
       body.amount,
@@ -414,9 +428,13 @@ export async function POST(request: NextRequest) {
         language: body.language || 'he',
         // Receipt/Document options
         customerTaxId: "",
-        customerAddress: `${body.deliveryAddress.streetName} ${body.deliveryAddress.streetNumber}`,
+        customerAddress: shippingMethod === 'pickup'
+          ? STORE_ADDRESS
+          : `${body.deliveryAddress.streetName} ${body.deliveryAddress.streetNumber}`,
         customerAddress2: "",
-        customerCity: body.deliveryAddress.city,
+        customerCity: shippingMethod === 'pickup'
+          ? STORE_CITY
+          : body.deliveryAddress.city,
         customerMobile: body.customer.mobile,
         documentComments: `Order: ${orderNumber}`,
         departmentId: "",

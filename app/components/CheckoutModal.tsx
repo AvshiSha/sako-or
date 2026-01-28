@@ -34,6 +34,17 @@ interface CheckoutModalProps {
     discountLabel?: { en: string; he: string };
   }>;
   pointsToSpend?: number;
+  /**
+   * Shipping method selected in the cart.
+   * - "delivery": home delivery (default)
+   * - "pickup": self pickup from store
+   */
+  shippingMethod?: 'delivery' | 'pickup';
+  /**
+   * Pickup location when shippingMethod === "pickup".
+   * Defaults to store address if not provided.
+   */
+  pickupLocation?: string;
 }
 
 export default function CheckoutModal({
@@ -51,9 +62,13 @@ export default function CheckoutModal({
   language = 'he',
   items = [],
   appliedCoupons = [],
-  pointsToSpend = 0
+  pointsToSpend = 0,
+  shippingMethod = 'delivery',
+  pickupLocation,
 }: CheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>('INFO');
+  const STORE_PICKUP_LOCATION = 'Rothschild 51, Rishon Lezion';
+
   const [formData, setFormData] = useState<CheckoutFormData>({
     payer: {
       firstName: '',
@@ -70,6 +85,8 @@ export default function CheckoutModal({
       apartmentNumber: '',
       zipCode: ''
     },
+    shippingMethod: shippingMethod ?? 'delivery',
+    pickupLocation: pickupLocation ?? STORE_PICKUP_LOCATION,
     notes: ''
   });
   const [isFormValid, setIsFormValid] = useState(false);
@@ -129,6 +146,8 @@ export default function CheckoutModal({
           apartmentNumber: '',
           zipCode: ''
         },
+        shippingMethod: shippingMethod ?? 'delivery',
+        pickupLocation: pickupLocation ?? STORE_PICKUP_LOCATION,
         notes: ''
       });
       setRedirectUrl('');
@@ -373,7 +392,9 @@ export default function CheckoutModal({
         minNumOfPayments: 1,
         maxNumOfPayments: 1
       },
-      pointsToSpend: pointsToSpend > 0 ? pointsToSpend : undefined
+      pointsToSpend: pointsToSpend > 0 ? pointsToSpend : undefined,
+      shippingMethod: formData.shippingMethod,
+      pickupLocation: formData.pickupLocation
     };
 
     // Get auth token if user is signed in
@@ -726,6 +747,7 @@ export default function CheckoutModal({
                   deliveryFee={deliveryFee || 0}
                   appliedCoupons={appliedCoupons}
                   language={language}
+                  shippingMethod={shippingMethod}
                   showPromoCode={false}
                   pointsDiscount={pointsDiscount}
                 />

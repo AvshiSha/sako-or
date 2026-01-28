@@ -9,6 +9,16 @@ export interface CreateOrderData {
   subtotal?: number;
   discountTotal?: number;
   deliveryFee?: number;
+  /**
+   * Shipping method for the order.
+   * - "delivery" (default): standard home delivery with deliveryFee rules
+   * - "pickup": self pickup from store, deliveryFee should be 0
+   */
+  shippingMethod?: 'delivery' | 'pickup';
+  /**
+   * Pickup location for self-pickup orders (e.g. store address)
+   */
+  pickupLocation?: string;
   currency?: string;
   customerName?: string;
   customerEmail?: string;
@@ -44,6 +54,8 @@ export async function createOrder(data: CreateOrderData) {
         subtotal: data.subtotal ?? data.total,
         discountTotal: data.discountTotal ?? 0,
         deliveryFee: data.deliveryFee ?? 0,
+        shippingMethod: data.shippingMethod ?? 'delivery',
+        pickupLocation: data.pickupLocation ?? null,
         currency: data.currency || 'ILS',
         customerName: data.customerName,
         customerEmail: data.customerEmail,

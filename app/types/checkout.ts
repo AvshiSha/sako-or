@@ -32,6 +32,17 @@ export interface InvoiceDetails {
 export interface CheckoutFormData {
   payer: PayerDetails;
   deliveryAddress: DeliveryAddress;
+  /**
+   * Shipping method selected by the user.
+   * - "delivery" (default): home delivery, address required
+   * - "pickup": self pickup from store, address optional/ignored
+   */
+  shippingMethod: 'delivery' | 'pickup';
+  /**
+   * Pickup location when shippingMethod === 'pickup'
+   * (e.g. "Rothschild 51, Rishon Lezion")
+   */
+  pickupLocation?: string;
   notes?: string;
 }
 
@@ -81,6 +92,15 @@ export interface CreateLowProfileRequest {
    * `amount` should already reflect the final total after this discount.
    */
   pointsToSpend?: number;
+  /**
+   * Shipping method for this payment: "delivery" or "pickup".
+   * Used to relax address requirements and set document address for pickup.
+   */
+  shippingMethod?: 'delivery' | 'pickup';
+  /**
+   * Pickup location when shippingMethod === "pickup".
+   */
+  pickupLocation?: string;
 }
 
 export interface CreateLowProfileResponse {

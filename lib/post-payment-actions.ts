@@ -73,6 +73,12 @@ export async function handlePostPaymentActions(
           idNumber: '',
         };
 
+    const STORE_ADDRESS = 'Rothschild 51, Rishon Lezion';
+    const STORE_CITY = 'Rishon Lezion';
+
+    const shippingMethod = order.shippingMethod ?? 'delivery';
+    const pickupLocation = order.pickupLocation ?? STORE_ADDRESS;
+
     const deliveryAddress = checkout
       ? {
           city: checkout.customerCity,
@@ -81,6 +87,15 @@ export async function handlePostPaymentActions(
           floor: checkout.customerFloor || '',
           apartmentNumber: checkout.customerApartment || '',
           zipCode: checkout.customerZip || '',
+        }
+      : shippingMethod === 'pickup'
+      ? {
+          city: STORE_CITY,
+          streetName: STORE_ADDRESS,
+          streetNumber: '',
+          floor: '',
+          apartmentNumber: '',
+          zipCode: '',
         }
       : {
           city: '',
@@ -114,6 +129,8 @@ export async function handlePostPaymentActions(
         deliveryAddress: deliveryAddress,
         notes: checkout?.customerDeliveryNotes || undefined,
         isHebrew: if_he,
+        shippingMethod,
+        pickupLocation,
       },
       orderId
     );

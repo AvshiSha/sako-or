@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { HeartIcon } from '@heroicons/react/24/outline'
@@ -22,9 +22,11 @@ interface QuickBuyDrawerProps {
   product: Product
   language?: 'en' | 'he'
   returnUrl?: string
+  /** Color slug selected on the product card when Quick Buy was clicked; drawer opens with this variant. */
+  initialColorSlug?: string
 }
 
-export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en', returnUrl }: QuickBuyDrawerProps) {
+export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en', returnUrl, initialColorSlug }: QuickBuyDrawerProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
@@ -33,9 +35,21 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   const { isFavorite, toggleFavorite } = useFavorites()
   const { addToCart, items } = useCart()
   const { toast, showToast, hideToast } = useToast()
-  
-  // Get the first active color variant for display
-  const defaultVariant = product.colorVariants 
+
+  // When drawer opens, sync to the color variant selected on the product card
+  useEffect(() => {
+    if (!isOpen) return
+    if (!product.colorVariants) return
+    const activeVariants = Object.values(product.colorVariants).filter(v => v.isActive !== false)
+    const initialVariant = initialColorSlug
+      ? activeVariants.find(v => v.colorSlug === initialColorSlug) ?? null
+      : null
+    setSelectedVariant(initialVariant as ColorVariant | null)
+    setSelectedSize('')
+  }, [isOpen, initialColorSlug, product.colorVariants])
+
+  // Fallback when no variant is selected yet (e.g. drawer opened without initialColorSlug)
+  const defaultVariant = product.colorVariants
     ? Object.values(product.colorVariants).find(v => v.isActive !== false) || null
     : null
   const activeVariant = selectedVariant || defaultVariant

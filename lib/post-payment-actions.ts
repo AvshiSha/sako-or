@@ -76,12 +76,15 @@ export async function handlePostPaymentActions(
 
     const STORE_ADDRESS = 'Rothschild 51, Rishon Lezion';
     const STORE_CITY = 'Rishon Lezion';
+    const STORE_ADDRESS_HE = 'רוטשילד 51, ראשון לציון';
+    const STORE_CITY_HE = 'ראשון לציון';
 
     // Narrow string from DB to the union type expected by emails
     const rawShippingMethod = order.shippingMethod ?? 'delivery';
     const shippingMethod: 'delivery' | 'pickup' =
       rawShippingMethod === 'pickup' ? 'pickup' : 'delivery';
-    const pickupLocation = order.pickupLocation ?? STORE_ADDRESS;
+    const pickupLocation =
+      order.pickupLocation ?? (if_he ? STORE_ADDRESS_HE : STORE_ADDRESS);
 
     const deliveryAddress = checkout
       ? {
@@ -94,8 +97,8 @@ export async function handlePostPaymentActions(
         }
       : shippingMethod === 'pickup'
       ? {
-          city: STORE_CITY,
-          streetName: STORE_ADDRESS,
+          city: if_he ? STORE_CITY_HE : STORE_CITY,
+          streetName: if_he ? STORE_ADDRESS_HE : STORE_ADDRESS,
           streetNumber: '',
           floor: '',
           apartmentNumber: '',

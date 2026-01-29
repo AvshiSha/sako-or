@@ -450,7 +450,7 @@ export function buildReceiptLines(
     Sum: roundToTwoDecimals(totalPrice),
     paymentType: 'CreditCard',
     creditCard: {
-      PaymentType: '1',
+      PaymentType: '3',
       FirstPayment: roundToTwoDecimals(transactionInfo.FirstPaymentAmount || totalPrice),
       OtherPayments: roundToTwoDecimals(transactionInfo.ConstPaymentAmount || 0),
       CreditCardNo: transactionInfo.Last4CardDigitsString || '0000',

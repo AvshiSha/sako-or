@@ -1,6 +1,6 @@
 // Image URL mappings from local paths to Firebase Storage URLs
 const imageUrlMappings: Record<string, string> = {
-  "/images/about/crafting(2).webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fcrafting%282%29.webp?alt=media&token=YOUR_TOKEN_HERE",
+  "/images/about/crafting(2).webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fabout%2Fcrafting(2).webp?alt=media&token=5943c987-46d7-4fc3-bcaf-9f7dd1c2f444",
   "/images/placeholder.svg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fplaceholder.svg?alt=media&token=fe297841-0047-47c2-9523-823e98cd6e8f",
   "/images/logo/icon.png": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Ficon%2Ficon.png?alt=media&token=21a42254-77d1-40fe-a4c4-f6f4ab6f0cda",
   "men-jewls.jpeg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fmen-jewls.jpeg?alt=media&token=b71b8fe9-3e0f-4ef3-8494-554ae5ed185a",

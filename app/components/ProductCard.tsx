@@ -576,6 +576,7 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
         product={product}
         language={language}
         returnUrl={returnUrl}
+        initialColorSlug={activeVariant?.colorSlug}
       />
     </div>
   )

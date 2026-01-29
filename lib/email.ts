@@ -159,6 +159,8 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
         deliveryAddress: data.deliveryAddress,
         notes: data.notes,
         isHebrew: data.isHebrew,
+        shippingMethod: data.shippingMethod,
+        pickupLocation: data.pickupLocation,
         pointsSpent: data.pointsSpent,
       }),
     }, {

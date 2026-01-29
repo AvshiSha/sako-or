@@ -127,6 +127,7 @@ export function OrderConfirmationEmail({
     deliveryMethodPickup: isHebrew
       ? 'איסוף עצמי – רוטשילד 51, ראשון לציון'
       : 'Self Pickup – Rothschild 51, Rishon Lezion',
+    deliveryPickup: isHebrew ? 'כתובת איסוף' : 'Pickup Address',
     city: isHebrew ? 'עיר' : 'City',
     street: isHebrew ? 'רחוב' : 'Street',
     streetNumber: isHebrew ? 'מספר בית' : 'House Number',
@@ -210,7 +211,9 @@ export function OrderConfirmationEmail({
             <Hr style={hr} />
 
             <Section style={detailsSection}>
-              <Heading style={h2(isHebrew)}>{t.deliveryAddress}</Heading>
+              <Heading style={h2(isHebrew)}> 
+                {shippingMethod === 'pickup' ? t.deliveryPickup : t.deliveryAddress}
+              </Heading>
               <Section dir={isHebrew ? 'rtl' : 'ltr'} style={detailsInfo}>
                 {shippingMethod === 'pickup' ? (
                   <>
@@ -223,7 +226,7 @@ export function OrderConfirmationEmail({
                     <Row>
                       <Column align={isHebrew ? 'right' : 'left'} style={orderLabel(isHebrew)}>{t.street}:</Column>
                       <Column align={isHebrew ? 'left' : 'right'} style={orderValue(isHebrew)}>
-                        {pickupLocation || isHebrew ? 'רוטשילד 51' : 'Rothschild 51'}
+                        {isHebrew ? 'רוטשילד 51' : 'Rothschild 51'}
                       </Column>
                     </Row>
                   </>
@@ -319,15 +322,6 @@ export function OrderConfirmationEmail({
                 </Row>
               )}
 
-              {typeof discountTotal === 'number' && discountTotal > 0 && (
-                <Row>
-                  <Column align={isHebrew ? 'right' : 'left'} style={summaryLabel(isHebrew)}>{t.discountTotalLabel}:</Column>
-                  <Column align={isHebrew ? 'left' : 'right'} style={summaryValue(isHebrew)}>
-                    <span dir="ltr">-₪{discountTotal.toFixed(2)}</span>
-                  </Column>
-                </Row>
-              )}
-
               {coupons && coupons.length > 0 && (
                 <Row>
                   <Column align={isHebrew ? 'right' : 'left'} style={{ ...summaryLabel(isHebrew), verticalAlign: 'top' }}>
@@ -344,11 +338,20 @@ export function OrderConfirmationEmail({
                 </Row>
               )}
 
+              {typeof discountTotal === 'number' && discountTotal > 0 && (
+                <Row>
+                  <Column align={isHebrew ? 'right' : 'left'} style={summaryLabel(isHebrew)}>{t.discountTotalLabel}:</Column>
+                  <Column align={isHebrew ? 'left' : 'right'} style={summaryValue(isHebrew)}>
+                    <span dir="ltr">-₪{discountTotal.toFixed(2)}</span>
+                  </Column>
+                </Row>
+              )}
+
               {typeof pointsSpent === 'number' && pointsSpent > 0 && (
                 <Row>
                   <Column align={isHebrew ? 'right' : 'left'} style={summaryLabel(isHebrew)}>{t.pointsUsed}:</Column>
                   <Column align={isHebrew ? 'left' : 'right'} style={summaryValue(isHebrew)}>
-                    <span dir="ltr">-{pointsSpent} {isHebrew ? 'נקודות' : 'points'}</span>
+                    <span dir="ltr">-{pointsSpent}</span>
                   </Column>
                 </Row>
               )}

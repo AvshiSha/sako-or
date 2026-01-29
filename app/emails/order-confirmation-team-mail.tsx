@@ -62,6 +62,8 @@ interface TeamOrderEmailProps {
    * Pickup location when shippingMethod === "pickup".
    */
   pickupLocation?: string;
+  /** Points the customer spent on this order */
+  pointsSpent?: number;
 }
 
 export function OrderConfirmationTeamEmail({
@@ -80,6 +82,7 @@ export function OrderConfirmationTeamEmail({
   isHebrew = false,
   shippingMethod = 'delivery',
   pickupLocation,
+  pointsSpent,
 }: TeamOrderEmailProps) {
    const currency = (n: number) =>
      new Intl.NumberFormat(isHebrew ? 'he-IL' : 'en-US', { style: 'currency', currency: 'ILS' }).format(n);
@@ -111,6 +114,11 @@ export function OrderConfirmationTeamEmail({
             <Text style={styles.lineItem}>
               {t('Discounts', 'הנחות')}: <strong>{discountTotal != null ? currency(discountTotal) : '-'}</strong>
             </Text>
+            {typeof pointsSpent === 'number' && pointsSpent > 0 && (
+              <Text style={styles.lineItem}>
+                {t('Points used', 'נקודות שהופעלו')}: <strong>-{pointsSpent} {t('points', 'נקודות')}</strong>
+              </Text>
+            )}
             <Text style={styles.total}>
               {t('Total', 'סך הכל')}: <strong>{currency(total)}</strong>
             </Text>

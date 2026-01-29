@@ -68,6 +68,10 @@ export interface OrderEmailData {
    * Pickup location when shippingMethod === "pickup".
    */
   pickupLocation?: string;
+  /**
+   * Points the customer spent on this order (if any).
+   */
+  pointsSpent?: number;
 }
 
 export interface EmailOtpData {
@@ -155,6 +159,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
         deliveryAddress: data.deliveryAddress,
         notes: data.notes,
         isHebrew: data.isHebrew,
+        pointsSpent: data.pointsSpent,
       }),
     }, {
       idempotencyKey: idempotencyKey,
@@ -208,6 +213,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
               isHebrew: data.isHebrew,
               shippingMethod: data.shippingMethod,
               pickupLocation: data.pickupLocation,
+              pointsSpent: data.pointsSpent,
             }),
           }, { idempotencyKey: teamIdempotencyKey }),
           new Promise((_, reject) => {

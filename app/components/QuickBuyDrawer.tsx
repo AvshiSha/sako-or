@@ -191,16 +191,10 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
       // Close the drawer
       onClose()
       
-      // Navigate based on context
+      // Navigate only when returnUrl is explicitly provided (e.g. favorites page).
+      // When undefined (e.g. home carousel), stay on current page.
       if (returnUrl) {
-        // Use the provided return URL (e.g., from favorites page)
         router.push(returnUrl)
-      } else if (product.categories_path && product.categories_path.length > 0) {
-        // Navigate to the category page (default behavior)
-        router.push(`/${language}/collection/${product.categories_path[0]}`)
-      } else {
-        // Fallback to main collection page if no category path
-        router.push(`/${language}/collection`)
       }
     } catch (error: any) {
       console.error('Error adding to cart:', error)

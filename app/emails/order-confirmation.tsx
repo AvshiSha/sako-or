@@ -1,5 +1,5 @@
 import * as React from 'react';
-//import 'web-streams-polyfill/polyfill';
+import 'web-streams-polyfill/polyfill';
 import {
   Body,
   Container,
@@ -57,13 +57,16 @@ interface OrderConfirmationEmailProps {
   isHebrew?: boolean;
   shippingMethod?: 'delivery' | 'pickup';
   pickupLocation?: string;
+  /** Points the customer spent on this order */
+  pointsSpent?: number;
 }
 
 const getTotalPrice = (
   subtotal: number | undefined,
   deliveryFee: number | undefined,
   discountTotal: number | undefined,
-  fallbackTotal: number
+  fallbackTotal: number,
+  pointsSpent?: number
 ) => {
   if (
     typeof subtotal !== 'number' ||
@@ -72,7 +75,9 @@ const getTotalPrice = (
   ) {
     return fallbackTotal;
   }
-  return subtotal + deliveryFee - discountTotal;
+  // 1 point = 1 ILS
+  const pointsValue = typeof pointsSpent === 'number' && pointsSpent > 0 ? pointsSpent : 0;
+  return subtotal + deliveryFee - discountTotal - pointsValue;
 };
 
 export function OrderConfirmationEmail({
@@ -91,6 +96,7 @@ export function OrderConfirmationEmail({
   isHebrew = false,
   shippingMethod = 'delivery',
   pickupLocation,
+  pointsSpent,
 }: OrderConfirmationEmailProps) {
   const t = {
     title: isHebrew ? 'אישור הזמנה' : 'Order Confirmation',
@@ -131,6 +137,7 @@ export function OrderConfirmationEmail({
     skuLabel: isHebrew ? 'מק"ט' : 'SKU',
     colorLabel: isHebrew ? 'צבע' : 'Color',
     notes: isHebrew ? 'הערות' : 'Notes',
+    pointsUsed: isHebrew ? 'נקודות שהופעלו' : 'Points used',
     footer: isHebrew 
       ? 'אם יש לך שאלות, אנא צור איתנו קשר.' 
       : 'If you have any questions, please contact us.',
@@ -337,10 +344,19 @@ export function OrderConfirmationEmail({
                 </Row>
               )}
 
+              {typeof pointsSpent === 'number' && pointsSpent > 0 && (
+                <Row>
+                  <Column align={isHebrew ? 'right' : 'left'} style={summaryLabel(isHebrew)}>{t.pointsUsed}:</Column>
+                  <Column align={isHebrew ? 'left' : 'right'} style={summaryValue(isHebrew)}>
+                    <span dir="ltr">-{pointsSpent} {isHebrew ? 'נקודות' : 'points'}</span>
+                  </Column>
+                </Row>
+              )}
+
               <Row>
                 <Column align={isHebrew ? 'right' : 'left'} style={totalLabel(isHebrew)}>{t.total}:</Column>
                 <Column align={isHebrew ? 'left' : 'right'} style={totalValue(isHebrew)}>
-                  <span dir="ltr">₪{getTotalPrice(subtotal, deliveryFee, discountTotal, total).toFixed(2)}</span>
+                  <span dir="ltr">₪{getTotalPrice(subtotal, deliveryFee, discountTotal, total, pointsSpent).toFixed(2)}</span>
                 </Column>
               </Row>
             </Section>

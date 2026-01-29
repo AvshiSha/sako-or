@@ -1,5 +1,5 @@
 import * as React from 'react';
-//import 'web-streams-polyfill/polyfill';
+import 'web-streams-polyfill/polyfill';
 import {
   Body,
   Container,
@@ -57,13 +57,16 @@ interface OrderConfirmationEmailProps {
   isHebrew?: boolean;
   shippingMethod?: 'delivery' | 'pickup';
   pickupLocation?: string;
+  /** Points the customer spent on this order */
+  pointsSpent?: number;
 }
 
 const getTotalPrice = (
   subtotal: number | undefined,
   deliveryFee: number | undefined,
   discountTotal: number | undefined,
-  fallbackTotal: number
+  fallbackTotal: number,
+  pointsSpent?: number
 ) => {
   if (
     typeof subtotal !== 'number' ||
@@ -72,7 +75,9 @@ const getTotalPrice = (
   ) {
     return fallbackTotal;
   }
-  return subtotal + deliveryFee - discountTotal;
+  // 1 point = 1 ILS
+  const pointsValue = typeof pointsSpent === 'number' && pointsSpent > 0 ? pointsSpent : 0;
+  return subtotal + deliveryFee - discountTotal - pointsValue;
 };
 
 export function OrderConfirmationEmailHebrew({
@@ -91,6 +96,7 @@ export function OrderConfirmationEmailHebrew({
   isHebrew = true,
   shippingMethod = 'delivery',
   pickupLocation,
+  pointsSpent,
 }: OrderConfirmationEmailProps) {
   const t = {
     title: 'אישור הזמנה',
@@ -127,6 +133,7 @@ export function OrderConfirmationEmailHebrew({
     skuLabel: 'מספר דגם',
     colorLabel: 'צבע',
     notes: 'הערות',
+    pointsUsed: 'נקודות שהופעלו',
     footer: 'אם יש לך שאלות, אנא צור איתנו קשר.',
     contact: 'צור קשר',
   };
@@ -191,10 +198,6 @@ export function OrderConfirmationEmailHebrew({
                   <Column align="right" style={orderLabel(isHebrew)}>{t.mobile}:</Column>
                   <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{payer.mobile}</span></Column>
                 </Row>
-                <Row>
-                  <Column align="right" style={orderLabel(isHebrew)}>{t.idNumber}:</Column>
-                  <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{payer.idNumber}</span></Column>
-                </Row>
               </Section>
             </Section>
 
@@ -238,10 +241,6 @@ export function OrderConfirmationEmailHebrew({
                         </Column>
                       </Row>
                     )}
-                    <Row>
-                      <Column align="right" style={orderLabel(isHebrew)}>{t.zipCode}:</Column>
-                      <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{deliveryAddress.zipCode}</span></Column>
-                    </Row>
                   </>
                 )}
               </Section>
@@ -339,10 +338,19 @@ export function OrderConfirmationEmailHebrew({
                 </Row>
               )}
 
+              {typeof pointsSpent === 'number' && pointsSpent > 0 && (
+                <Row>
+                  <Column align="right" style={summaryLabel(isHebrew)}>{t.pointsUsed}:</Column>
+                  <Column align="left" style={summaryValue(isHebrew)}>
+                    <span dir="ltr">-{pointsSpent} נקודות</span>
+                  </Column>
+                </Row>
+              )}
+
               <Row>
                 <Column align="right" style={totalLabel(isHebrew)}>{t.total}:</Column>
                 <Column align="left" style={totalValue(isHebrew)}>
-                  <span dir="ltr">₪{getTotalPrice(subtotal, deliveryFee, discountTotal, total).toFixed(2)}</span>
+                  <span dir="ltr">₪{getTotalPrice(subtotal, deliveryFee, discountTotal, total, pointsSpent).toFixed(2)}</span>
                 </Column>
               </Row>
             </Section>

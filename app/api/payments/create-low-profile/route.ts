@@ -75,7 +75,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const pointsToSpend = body.pointsToSpend ? Math.trunc(body.pointsToSpend) : 0;
+    // Same precision as money (2 decimals) so invoice totals match
+    const pointsToSpend = body.pointsToSpend != null && body.pointsToSpend > 0
+      ? Math.round(body.pointsToSpend * 100) / 100
+      : 0;
     if (pointsToSpend > 0 && !userId) {
       return NextResponse.json(
         { error: 'Must be logged in to spend points' },
@@ -274,7 +277,7 @@ export async function POST(request: NextRequest) {
 
     const computedSubtotal = body.subtotal ?? orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const rawDiscountTotal = body.discountTotal ?? 0;
-    const pointsDiscount = body.pointsToSpend ? Math.trunc(body.pointsToSpend) : 0;
+    const pointsDiscount = pointsToSpend;
     const discountedSubtotal = Math.max(computedSubtotal - rawDiscountTotal - pointsDiscount, 0);
     const hasPromotions = rawDiscountTotal > 0 || pointsDiscount > 0;
 

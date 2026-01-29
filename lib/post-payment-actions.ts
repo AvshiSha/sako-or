@@ -20,6 +20,7 @@ export async function handlePostPaymentActions(
       include: {
         orderItems: true,
         appliedCoupons: true,
+        points: true,
       },
     });
 
@@ -112,6 +113,12 @@ export async function handlePostPaymentActions(
     // Send confirmation email with Resend (idempotent)
     console.log(`[POST_PAYMENT] Processing order ${orderId} confirmation`);
 
+    const pointsSpentRecord = order.points?.find((p) => p.kind === 'SPEND');
+    const pointsSpent =
+      pointsSpentRecord && Number(pointsSpentRecord.delta) !== 0
+        ? Math.abs(Number(pointsSpentRecord.delta))
+        : undefined;
+
     const emailResult = await sendOrderConfirmationEmailIdempotent(
       {
         customerEmail: order.customerEmail,
@@ -134,6 +141,7 @@ export async function handlePostPaymentActions(
         isHebrew: if_he,
         shippingMethod,
         pickupLocation,
+        pointsSpent,
       },
       orderId
     );

@@ -26,9 +26,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Validate email format
+    // Validate email format (reject double dots e.g. user@gmail..com)
+    const email = body.payer.email;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.payer.email)) {
+    if (email.includes('..') || !emailRegex.test(email)) {
       return NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }

@@ -15,7 +15,8 @@
     "db:setup:prod": "node scripts/setup-production-db.js",
     "seed:categories": "node scripts/seed-categories.js",
     "email": "npx email dev --dir app/emails",
-    "fix-email": "tsx scripts/fix-user-email.ts"
+    "fix-email": "tsx scripts/fix-user-email.ts",
+    "resend-order-email": "tsx scripts/resend-order-email.ts"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.17.1",

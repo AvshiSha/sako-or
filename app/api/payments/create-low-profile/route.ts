@@ -75,6 +75,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate email format (reject double dots e.g. user@gmail..com)
+    const customerEmail = body.customer.email;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (customerEmail.includes('..') || !emailRegex.test(customerEmail)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
+
     // Same precision as money (2 decimals) so invoice totals match
     const pointsToSpend = body.pointsToSpend != null && body.pointsToSpend > 0
       ? Math.round(body.pointsToSpend * 100) / 100

@@ -59,6 +59,10 @@ export default function PayerDetailsForm({
     if (!email.trim()) {
       return t.emailRequired;
     }
+    // Reject common typos: double dots (e.g. user@gmail..com)
+    if (email.includes('..')) {
+      return t.emailInvalid;
+    }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return t.emailInvalid;
@@ -131,7 +135,7 @@ export default function PayerDetailsForm({
     if (!payer.firstName || !payer.lastName || !payer.email || !payer.mobile) {
       return false;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payer.email)) {
+    if (payer.email.includes('..') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payer.email)) {
       return false;
     }
     if (!/^(\+972|0)([23489]|5[012345689]|77)[0-9]{7}$/.test(payer.mobile.replace(/\s/g, ''))) {

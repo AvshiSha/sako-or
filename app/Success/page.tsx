@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { trackPurchase, PurchaseUserProperties } from '@/lib/dataLayer';
@@ -16,8 +16,10 @@ function SuccessPageContent() {
     amount?: number;
     currency?: string;
   }>({});
-  const [hasTracked, setHasTracked] = useState(false);
-  const [hasClearedCart, setHasClearedCart] = useState(false);
+  const hasTrackedRef = useRef(false);
+  const hasClearedCartRef = useRef(false);
+  const userRef = useRef(user);
+  userRef.current = user;
 
   useEffect(() => {
     // Extract parameters from URL
@@ -66,9 +68,10 @@ function SuccessPageContent() {
       currency: currency || 'ILS',
     });
 
-    // Track purchase event for GA4 data layer
+    // Track purchase event for GA4 data layer (use ref to avoid stale closure in async callbacks)
     // Fire if we have either LPID or OrderId; derive values from backend if not in URL
-    if (!hasTracked && (lpid || orderId)) {
+    if (!hasTrackedRef.current && (lpid || orderId)) {
+      hasTrackedRef.current = true;
       try {
         // Fetch order details from API (prefer LPID)
         const url = lpid
@@ -117,7 +120,6 @@ function SuccessPageContent() {
                   userProperties: userProperties
                 }
               );
-              setHasTracked(true);
             } else {
               // Fallback: track purchase with minimal data
               trackPurchase(
@@ -134,7 +136,6 @@ function SuccessPageContent() {
                   affiliation: 'Sako Online Store'
                 }
               );
-              setHasTracked(true);
             }
           })
           .catch(err => {
@@ -154,10 +155,10 @@ function SuccessPageContent() {
                 affiliation: 'Sako Online Store'
               }
             );
-            setHasTracked(true);
           });
       } catch (error) {
         console.error('Error tracking purchase:', error);
+        hasTrackedRef.current = false; // allow retry if sync path failed
       }
     }
 
@@ -176,9 +177,15 @@ function SuccessPageContent() {
     setIsLoading(false);
   }, [searchParams]);
 
-  const verifyPaymentStatus = async (lpid: string, orderId?: string | null, paymentSucceededFromUrl: boolean = false) => {
+  const verifyPaymentStatus = async (
+    lpid: string,
+    orderId?: string | null,
+    paymentSucceededFromUrl: boolean = false,
+    retryCount: number = 0
+  ) => {
+    const maxRetries = 1;
     try {
-      console.log('Verifying payment status:', { lpid, orderId, paymentSucceededFromUrl });
+      console.log('Verifying payment status:', { lpid, orderId, paymentSucceededFromUrl, retryCount });
       
       let paymentConfirmed = false;
       
@@ -237,18 +244,23 @@ function SuccessPageContent() {
         }
       }
       
-      // Clear cart after payment is confirmed (only once)
-      // Also clear if paymentSucceededFromUrl is true (ResponseCode === '0') even if check-status hasn't completed
-      if ((paymentConfirmed || paymentSucceededFromUrl) && !hasClearedCart) {
-        setHasClearedCart(true);
-        // Small delay to ensure database updates are complete
+      // Clear cart after payment is confirmed (only once) - use ref to avoid stale closure
+      const shouldClear = (paymentConfirmed || paymentSucceededFromUrl) && !hasClearedCartRef.current;
+      if (shouldClear) {
+        hasClearedCartRef.current = true;
+        const uid = userRef.current?.uid;
         setTimeout(() => {
-          clearCartAfterPurchase(user?.uid);
+          clearCartAfterPurchase(uid);
         }, 1000);
       }
       
     } catch (error) {
       console.error('Failed to verify payment:', error);
+      if (retryCount < maxRetries) {
+        setTimeout(() => {
+          verifyPaymentStatus(lpid, orderId, paymentSucceededFromUrl, retryCount + 1);
+        }, 2000);
+      }
     }
   };
 

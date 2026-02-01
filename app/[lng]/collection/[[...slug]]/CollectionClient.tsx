@@ -227,12 +227,13 @@ export default function CollectionClient({
       setHasMore(initialHasMore);
       prevFilterKeyRef.current = filterKey;
     } else if (pageOnlyChanged && !isLoadingMoreRef.current) {
-      // Only page number changed (direct URL navigation like ?page=3)
-      // For direct navigation, we should show that page's items
-      // But if we already have more items loaded, keep them (user might have loaded more)
-      // Only reset if the requested page is less than what we have
-      if (searchPage && searchPage < currentPage) {
-        // Going backwards - reset to that page
+      // Only page number changed (direct URL navigation, e.g. ?page=3 or back to ?page=1)
+      // Server fetches the requested page and passes it in initialProducts/initialVariantItems.
+      // We must sync to that data - our accumulated items may be from a different page.
+      // - searchPage < currentPage: user went back (e.g. page 3 → page 1)
+      // - searchPage > currentPage: user jumped forward (e.g. shared link ?page=3, or page 1 → page 3)
+      //   In the forward case, we do NOT have page 3 in our stream; we must use initialProducts.
+      if (searchPage && searchPage !== currentPage) {
         if (useVariantItems && initialVariantItems) {
           setAllVariantItems(initialVariantItems);
           setTotalProducts(searchTotal || initialVariantItems.length);
@@ -243,8 +244,6 @@ export default function CollectionClient({
         setCurrentPage(searchPage);
         setHasMore(initialHasMore);
       }
-      // If going forward (searchPage > currentPage), keep accumulated items
-      // The server will have loaded that page, but we want to keep our stream
     }
     // If filterKey hasn't changed and we're loading more, DON'T RESET!
     // The accumulated stream should remain intact

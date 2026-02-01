@@ -5,6 +5,12 @@ import Accordion from './Accordion'
 
 interface PointsUsageProps {
   pointsBalance: number
+  /** Max points the user is allowed to apply for this cart (min(balance, 10% of cart)). */
+  maxUsablePoints: number
+  /** True when user has more points than 10% of cart, so we show the cap explanation. */
+  isCappedBy10Percent?: boolean
+  /** 10% of cart amount, for display in the cap message. */
+  maxPointsBy10Percent?: number
   onPointsChange: (points: number) => void
   language: 'he' | 'en'
   disabled?: boolean
@@ -20,7 +26,9 @@ const pointsContent = {
     available: 'Available points',
     noPoints: "You don't have points available to use yet.",
     invalid: 'Invalid amount. Please enter a number between 0 and your available balance.',
-    applied: 'Points applied successfully.'
+    applied: 'Points applied successfully.',
+    cap10Percent: (max: string) => `You can use up to 10% of your cart in points (max ₪${max}).`,
+    noPointsOnCart: "You can't use points on this cart."
   },
   he: {
     label: 'שימוש בנקודות',
@@ -31,12 +39,17 @@ const pointsContent = {
     available: 'נקודות זמינות',
     noPoints: 'אין לך נקודות זמינות לשימוש עדיין.',
     invalid: 'סכום לא תקין. אנא הכנס מספר בין 0 למאזן הזמין שלך.',
-    applied: 'הנקודות הוחלו בהצלחה.'
+    applied: 'הנקודות הוחלו בהצלחה.',
+    cap10Percent: (max: string) => `ניתן להשתמש בעד 10% מערך העגלה בנקודות (מקסימום ₪${max}).`,
+    noPointsOnCart: 'לא ניתן להשתמש בנקודות בעגלה זו.'
   }
 } as const
 
 export default function PointsUsage({
   pointsBalance,
+  maxUsablePoints,
+  isCappedBy10Percent = false,
+  maxPointsBy10Percent = 0,
   onPointsChange,
   language,
   disabled = false
@@ -46,6 +59,7 @@ export default function PointsUsage({
   const [error, setError] = useState<string | null>(null)
   const isRTL = language === 'he'
   const strings = pointsContent[language]
+  const effectiveMax = maxUsablePoints
 
   const handlePointsChange = (value: string) => {
     setPointsInput(value)
@@ -65,7 +79,7 @@ export default function PointsUsage({
       return
     }
 
-    if (numValue > pointsBalance) {
+    if (numValue > effectiveMax) {
       setError(strings.invalid)
       return
     }
@@ -80,7 +94,7 @@ export default function PointsUsage({
   const handleApply = () => {
     const numValue = parseFloat(pointsInput)
     
-    if (isNaN(numValue) || numValue < 0 || numValue > pointsBalance) {
+    if (isNaN(numValue) || numValue < 0 || numValue > effectiveMax) {
       setError(strings.invalid)
       return
     }
@@ -99,6 +113,17 @@ export default function PointsUsage({
     setError(null)
   }
 
+  // When cap drops (e.g. cart/coupons changed), clamp local state to maxUsablePoints
+  useEffect(() => {
+    if (appliedPoints > maxUsablePoints) {
+      const clamped = maxUsablePoints
+      setAppliedPoints(clamped)
+      setPointsInput(clamped.toFixed(2))
+      onPointsChange(clamped)
+      setError(null)
+    }
+  }, [maxUsablePoints, appliedPoints, onPointsChange])
+
   // Calculate discount amount (1 point = 1 ILS)
   const discountAmount = appliedPoints
 
@@ -109,22 +134,27 @@ export default function PointsUsage({
           <p className="text-sm text-gray-500">
             {language === 'he' ? 'טוען...' : 'Loading...'}
           </p>
-        ) : pointsBalance > 0 ? (
+        ) : pointsBalance > 0 && effectiveMax > 0 ? (
           <>
             <div className="mb-2 text-sm text-gray-600">
               {strings.available}: <span className="font-medium">{pointsBalance.toFixed(2)}</span>
             </div>
+            {isCappedBy10Percent && (
+              <p className="mb-2 text-sm text-gray-600">
+                {strings.cap10Percent(maxPointsBy10Percent.toFixed(2))}
+              </p>
+            )}
             <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
                 <input
                 type="number"
                 step="0.01"
                 min="0"
-                max={pointsBalance}
+                max={effectiveMax}
                 value={pointsInput}
                 onChange={(e) => handlePointsChange(e.target.value)}
                 placeholder={strings.placeholder}
                 className={`flex-1 rounded-md border text-gray-900 py-2 px-2 shadow-sm focus:outline-none focus:ring-0.5 focus:ring-[#856D55]/90 ${isRTL ? 'text-right' : 'text-left'}`}
-                disabled={disabled || pointsBalance <= 0}
+                disabled={disabled || pointsBalance <= 0 || effectiveMax <= 0}
                 style={{ 
                   borderColor: error ? 'rgba(220, 38, 38, 0.5)' : 'rgba(133, 109, 85, 0.2)',
                   borderRadius: '2px'
@@ -138,7 +168,7 @@ export default function PointsUsage({
               />
               <button
                 onClick={handleApply}
-                disabled={disabled || pointsBalance <= 0 || !pointsInput.trim() || parseFloat(pointsInput) <= 0}
+                disabled={disabled || pointsBalance <= 0 || effectiveMax <= 0 || !pointsInput.trim() || parseFloat(pointsInput) <= 0}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
               >
                 {strings.apply}
@@ -166,6 +196,10 @@ export default function PointsUsage({
               </div>
             )}
           </>
+        ) : pointsBalance > 0 && effectiveMax <= 0 ? (
+          <p className="text-sm text-gray-500">
+            {strings.noPointsOnCart}
+          </p>
         ) : (
           <p className="text-sm text-gray-500">
             {strings.noPoints}

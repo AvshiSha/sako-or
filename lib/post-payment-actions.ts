@@ -2,6 +2,15 @@ import { prisma } from './prisma';
 import { sendOrderConfirmationEmailIdempotent } from './email';
 import { triggerInforuAutomationIdempotent, e164ToLocalPhone } from './inforu';
 
+/** Normalize email for lookup: trim, remove RTL/LTR marks, collapse ".." so we can match despite typos. */
+function normalizeEmailForLookup(email: string): string {
+  if (!email || typeof email !== 'string') return '';
+  return email
+    .trim()
+    .replace(/\u200f|\u200e/g, '') // RTL mark, LTR mark
+    .replace(/\.\.+/g, '.');
+}
+
 /**
  * Handle post-payment actions (emails, SMS notifications, etc.)
  * This function is idempotent and can be called multiple times safely.
@@ -29,11 +38,27 @@ export async function handlePostPaymentActions(
       return;
     }
 
-    // Fetch checkout data separately using customer email
-    const checkout = await prisma.checkout.findFirst({
+    // Fetch checkout: exact email first, then by normalized email (handles RTL/double-dot typos)
+    let checkout = await prisma.checkout.findFirst({
       where: { customerEmail: order.customerEmail },
-      orderBy: { createdAt: 'desc' }, // Get the most recent checkout
+      orderBy: { createdAt: 'desc' },
     });
+    if (!checkout) {
+      const normalizedOrderEmail = normalizeEmailForLookup(order.customerEmail);
+      if (normalizedOrderEmail) {
+        const windowStart = new Date(order.createdAt);
+        windowStart.setMinutes(windowStart.getMinutes() - 15);
+        const windowEnd = new Date(order.createdAt);
+        windowEnd.setMinutes(windowEnd.getMinutes() + 5);
+        const recent = await prisma.checkout.findMany({
+          where: { createdAt: { gte: windowStart, lte: windowEnd } },
+          orderBy: { createdAt: 'desc' },
+        });
+        checkout = recent.find(
+          (c) => normalizeEmailForLookup(c.customerEmail) === normalizedOrderEmail
+        ) ?? null;
+      }
+    }
 
     // Build items for template
     const items = order.orderItems.map((item: any) => ({
@@ -57,7 +82,7 @@ export async function handlePostPaymentActions(
       }
     }
 
-    // Extract customer and delivery data from checkout
+    // Extract customer and delivery data: prefer checkout, fallback to order fields
     const payer = checkout
       ? {
           firstName: checkout.customerFirstName,
@@ -66,13 +91,19 @@ export async function handlePostPaymentActions(
           mobile: checkout.customerPhone,
           idNumber: checkout.customerID || '',
         }
-      : {
-          firstName: '',
-          lastName: '',
-          email: order.customerEmail,
-          mobile: '',
-          idNumber: '',
-        };
+      : (() => {
+          const fullName = (order.customerName || '').trim();
+          const spaceIndex = fullName.indexOf(' ');
+          const firstName = spaceIndex > 0 ? fullName.slice(0, spaceIndex) : fullName || '';
+          const lastName = spaceIndex > 0 ? fullName.slice(spaceIndex + 1) : '';
+          return {
+            firstName,
+            lastName,
+            email: order.customerEmail || '',
+            mobile: order.customerPhone || '',
+            idNumber: '',
+          };
+        })();
 
     const STORE_ADDRESS = 'Rothschild 51, Rishon Lezion';
     const STORE_CITY = 'Rishon Lezion';
@@ -114,6 +145,12 @@ export async function handlePostPaymentActions(
         };
 
     // Send confirmation email with Resend (idempotent)
+    // Use corrected email as recipient so typo addresses (e.g. user@gmail..com) still receive the email
+    const sendToEmail = normalizeEmailForLookup(order.customerEmail) || order.customerEmail;
+    const displayName = checkout
+      ? `${checkout.customerFirstName} ${checkout.customerLastName}`.trim()
+      : (order.customerName || '');
+
     console.log(`[POST_PAYMENT] Processing order ${orderId} confirmation`);
 
     const pointsSpentRecord = order.points?.find((p) => p.kind === 'SPEND');
@@ -124,8 +161,8 @@ export async function handlePostPaymentActions(
 
     const emailResult = await sendOrderConfirmationEmailIdempotent(
       {
-        customerEmail: order.customerEmail,
-        customerName: order.customerName || '',
+        customerEmail: sendToEmail,
+        customerName: displayName || sendToEmail,
         orderNumber: order.orderNumber,
         orderDate: new Date(order.createdAt).toLocaleDateString(),
         items: items,

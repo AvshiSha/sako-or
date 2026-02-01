@@ -120,6 +120,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Enforce 10% cap: points cannot exceed 10% of order (subtotal minus coupon discounts)
+    if (pointsToSpend > 0) {
+      const cartAmountBeforePoints = Math.max((body.subtotal ?? 0) - (body.discountTotal ?? 0), 0);
+      const maxPointsAllowed = Math.round(0.1 * cartAmountBeforePoints * 100) / 100;
+      if (pointsToSpend > maxPointsAllowed) {
+        return NextResponse.json(
+          { error: 'Points cannot exceed 10% of the order' },
+          { status: 400 }
+        );
+      }
+    }
+
     const shippingMethod = body.shippingMethod ?? 'delivery';
 
     if (shippingMethod !== 'pickup') {

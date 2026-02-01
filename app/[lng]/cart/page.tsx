@@ -576,6 +576,26 @@ useEffect(() => {
   }
 }, [cartCurrency, isClient, items, loading, lng])
 
+  // Points cap: compute before early return so the clamp useEffect runs in a consistent hook order
+  const totalItems = getTotalItems()
+  const subtotal = getTotalPrice()
+  const baseDeliveryFee = getDeliveryFee()
+  const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
+  const cartAmountBeforePoints = Math.max(subtotal - totalDiscount, 0)
+  const maxPointsBy10Percent = Math.round(0.1 * cartAmountBeforePoints * 100) / 100
+  const usablePoints = Math.min(pointsBalance, maxPointsBy10Percent)
+  const isCappedBy10Percent = pointsBalance > maxPointsBy10Percent
+
+  // Clamp pointsToUse when cap drops (e.g. cart or coupons change).
+  // Depend only on primitive inputs so the effect doesn't re-run when we call setPointsToUse;
+  // compute the cap inside the effect and use functional updater to avoid pointsToUse in deps.
+  useEffect(() => {
+    const cartAmountBeforePoints = Math.max(subtotal - totalDiscount, 0)
+    const maxPointsBy10Percent = Math.round(0.1 * cartAmountBeforePoints * 100) / 100
+    const usable = Math.min(pointsBalance, maxPointsBy10Percent)
+    setPointsToUse((prev) => (prev > usable ? usable : prev))
+  }, [subtotal, totalDiscount, pointsBalance])
+
 if (!isClient || loading) {
   return (
     <div className="min-h-screen flex items-center justify-center">
@@ -587,10 +607,6 @@ if (!isClient || loading) {
   )
 }
 
-  const totalItems = getTotalItems()
-  const subtotal = getTotalPrice()
-  const baseDeliveryFee = getDeliveryFee()
-  const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
   const pointsDiscount = pointsToUse // 1 point = 1 ILS
   const discountedSubtotal = Math.max(subtotal - totalDiscount - pointsDiscount, 0)
   const hasPromotions = totalDiscount > 0 || pointsDiscount > 0
@@ -819,6 +835,9 @@ if (!isClient || loading) {
                   <div className="mt-4">
                     <PointsUsage
                       pointsBalance={pointsBalance}
+                      maxUsablePoints={usablePoints}
+                      isCappedBy10Percent={isCappedBy10Percent}
+                      maxPointsBy10Percent={maxPointsBy10Percent}
                       onPointsChange={setPointsToUse}
                       language={lng as 'he' | 'en'}
                       disabled={pointsLoading}

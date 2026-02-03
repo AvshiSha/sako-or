@@ -5,12 +5,12 @@ import Accordion from './Accordion'
 
 interface PointsUsageProps {
   pointsBalance: number
-  /** Max points the user is allowed to apply for this cart (min(balance, 10% of cart)). */
+  /** Max points the user is allowed to apply for this cart (min(balance, 15% of cart)). */
   maxUsablePoints: number
-  /** True when user has more points than 10% of cart, so we show the cap explanation. */
-  isCappedBy10Percent?: boolean
-  /** 10% of cart amount, for display in the cap message. */
-  maxPointsBy10Percent?: number
+  /** True when user has more points than 15% of cart, so we show the cap explanation. */
+  isCappedBy15Percent?: boolean
+  /** 15% of cart amount, for display in the cap message. */
+  maxPointsBy15Percent?: number
   onPointsChange: (points: number) => void
   language: 'he' | 'en'
   disabled?: boolean
@@ -27,7 +27,7 @@ const pointsContent = {
     noPoints: "You don't have points available to use yet.",
     invalid: 'Invalid amount. Please enter a number between 0 and your available balance.',
     applied: 'Points applied successfully.',
-    cap10Percent: (max: string) => `You can use up to 10% of your cart in points (max ₪${max}).`,
+    cap15Percent: (max: string) => `You can use up to 15% of your cart in points (max ₪${max}).`,
     noPointsOnCart: "You can't use points on this cart."
   },
   he: {
@@ -40,7 +40,7 @@ const pointsContent = {
     noPoints: 'אין לך נקודות זמינות לשימוש עדיין.',
     invalid: 'סכום לא תקין. אנא הכנס מספר בין 0 למאזן הזמין שלך.',
     applied: 'הנקודות הוחלו בהצלחה.',
-    cap10Percent: (max: string) => `ניתן להשתמש בעד 10% מערך העגלה בנקודות (מקסימום ₪${max}).`,
+    cap15Percent: (max: string) => `ניתן להשתמש בעד 15% מערך העגלה בנקודות (מקסימום ₪${max}).`,
     noPointsOnCart: 'לא ניתן להשתמש בנקודות בעגלה זו.'
   }
 } as const
@@ -48,8 +48,8 @@ const pointsContent = {
 export default function PointsUsage({
   pointsBalance,
   maxUsablePoints,
-  isCappedBy10Percent = false,
-  maxPointsBy10Percent = 0,
+  isCappedBy15Percent = false,
+  maxPointsBy15Percent = 0,
   onPointsChange,
   language,
   disabled = false
@@ -139,9 +139,9 @@ export default function PointsUsage({
             <div className="mb-2 text-sm text-gray-600">
               {strings.available}: <span className="font-medium">{pointsBalance.toFixed(2)}</span>
             </div>
-            {isCappedBy10Percent && (
+            {isCappedBy15Percent && (
               <p className="mb-2 text-sm text-gray-600">
-                {strings.cap10Percent(maxPointsBy10Percent.toFixed(2))}
+                {strings.cap15Percent(maxPointsBy15Percent.toFixed(2))}
               </p>
             )}
             <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>

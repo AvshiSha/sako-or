@@ -180,6 +180,10 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
   const currentPrice = getCurrentPrice()
   const originalPrice = getOriginalPrice()
   const salePrice = getSalePrice()
+  const salePercent =
+    hasSalePrice() && salePrice && originalPrice > 0 && salePrice < originalPrice
+      ? Math.round((1 - salePrice / originalPrice) * 100)
+      : null
   const productName = language === 'he' ? (product.title_he || product.title_en) : (product.title_en || product.title_he) || 'Unnamed Product'
 
   // Get primary image from the active variant (for fallback)
@@ -465,8 +469,22 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
 
         {/* Sale Badge - Show if product has any sale price (product-level or variant-level) */}
         {!isOutOfStock && !isLastCall && hasSalePrice() && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
             {language === 'he' ? 'SALE' : 'SALE'}
+          </div>
+        )}
+
+        {/* Sale percentage badge - bottom right on mobile, bottom left on desktop */}
+        {!isOutOfStock && !isLastCall && hasSalePrice() && salePercent != null && salePercent > 0 && (
+          <div className="absolute bottom-2 right-2 md:bottom-2 md:left-2 md:top-auto md:right-auto bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+          {salePercent}%-
+          </div>
+        )}
+
+        {/* Sale percentage badge - bottom right on mobile, bottom left on desktop */}
+        {!isOutOfStock && isLastCall && hasSalePrice() && salePercent != null && salePercent > 0 && (
+          <div className="absolute bottom-2 right-2 md:bottom-2 md:left-2 md:top-auto md:right-auto bg-[#B2A28E]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+          {salePercent}%-
           </div>
         )}
 
@@ -477,8 +495,8 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
           </div>
         )}
 
-        {/* Desktop Quick Buy Button - Overlay at bottom of image */}
-        <div className="absolute bottom-0 left-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 hidden md:block">
+        {/* Desktop Quick Buy Button - Overlay at bottom of image (z-20 so it sits above badges on hover) */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 hidden md:block">
           <button
             onClick={handleQuickBuy}
             disabled={isOutOfStock}
@@ -500,11 +518,6 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
       <div className="mt-0 bg-[#E1DBD7]/60 p-3 pb-1">
         <div className={`flex items-center justify-between mb-1 ${language === 'he' ? 'flex-row' : 'flex-row-reverse'}`}>
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{productName}</h3>
-          {/* {product.newProduct && (
-            <span className="bg-black text-white text-xs font-medium px-2 py-0.5 uppercase">
-              {language === 'he' ? 'חדש' : 'NEW'}
-            </span> */}
-          {/* )} */}
         </div>
 
         <div className="text-sm font-medium text-gray-900">{language === 'he' ? 'מספר דגם: ' : 'SKU: '}{product.sku}</div>

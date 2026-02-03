@@ -582,17 +582,17 @@ useEffect(() => {
   const baseDeliveryFee = getDeliveryFee()
   const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
   const cartAmountBeforePoints = Math.max(subtotal - totalDiscount, 0)
-  const maxPointsBy10Percent = Math.round(0.1 * cartAmountBeforePoints * 100) / 100
-  const usablePoints = Math.min(pointsBalance, maxPointsBy10Percent)
-  const isCappedBy10Percent = pointsBalance > maxPointsBy10Percent
+  const maxPointsBy15Percent = Math.round(0.15 * cartAmountBeforePoints * 100) / 100
+  const usablePoints = Math.min(pointsBalance, maxPointsBy15Percent)
+  const isCappedBy15Percent = pointsBalance > maxPointsBy15Percent
 
   // Clamp pointsToUse when cap drops (e.g. cart or coupons change).
   // Depend only on primitive inputs so the effect doesn't re-run when we call setPointsToUse;
   // compute the cap inside the effect and use functional updater to avoid pointsToUse in deps.
   useEffect(() => {
     const cartAmountBeforePoints = Math.max(subtotal - totalDiscount, 0)
-    const maxPointsBy10Percent = Math.round(0.1 * cartAmountBeforePoints * 100) / 100
-    const usable = Math.min(pointsBalance, maxPointsBy10Percent)
+    const maxPointsBy15Percent = Math.round(0.15 * cartAmountBeforePoints * 100) / 100
+    const usable = Math.min(pointsBalance, maxPointsBy15Percent)
     setPointsToUse((prev) => (prev > usable ? usable : prev))
   }, [subtotal, totalDiscount, pointsBalance])
 
@@ -836,8 +836,8 @@ if (!isClient || loading) {
                     <PointsUsage
                       pointsBalance={pointsBalance}
                       maxUsablePoints={usablePoints}
-                      isCappedBy10Percent={isCappedBy10Percent}
-                      maxPointsBy10Percent={maxPointsBy10Percent}
+                      isCappedBy15Percent={isCappedBy15Percent}
+                      maxPointsBy15Percent={maxPointsBy15Percent}
                       onPointsChange={setPointsToUse}
                       language={lng as 'he' | 'en'}
                       disabled={pointsLoading}

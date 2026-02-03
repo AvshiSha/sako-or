@@ -468,23 +468,9 @@ export default function ProductCard({ product, language = 'en', returnUrl, selec
         )}
 
         {/* Sale Badge - Show if product has any sale price (product-level or variant-level) */}
-        {!isOutOfStock && !isLastCall && hasSalePrice() && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {language === 'he' ? 'SALE' : 'SALE'}
-          </div>
-        )}
-
-        {/* Sale percentage badge - bottom right on mobile, bottom left on desktop */}
         {!isOutOfStock && !isLastCall && hasSalePrice() && salePercent != null && salePercent > 0 && (
-          <div className="absolute bottom-2 right-2 md:bottom-2 md:left-2 md:top-auto md:right-auto bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
-          {salePercent}%-
-          </div>
-        )}
-
-        {/* Sale percentage badge - bottom right on mobile, bottom left on desktop */}
-        {!isOutOfStock && isLastCall && hasSalePrice() && salePercent != null && salePercent > 0 && (
-          <div className="absolute bottom-2 right-2 md:bottom-2 md:left-2 md:top-auto md:right-auto bg-[#B2A28E]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
-          {salePercent}%-
+          <div dir="ltr" className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+            {salePercent}% OFF
           </div>
         )}
 

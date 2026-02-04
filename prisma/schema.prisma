@@ -111,6 +111,15 @@ model Category {
   @@map("categories")
 }
 
+model BogoGroup {
+  id           String    @id @default(cuid())
+  name         String
+  pairPriceIls Float
+  products     Product[]
+
+  @@map("bogo_groups")
+}
+
 model Product {
   id                   String                   @id @default(cuid())
   featured             Boolean                  @default(false)
@@ -160,6 +169,8 @@ model Product {
   search_vector        Unsupported("tsvector")? @default(dbgenerated("(((((((((((((((((((((setweight(to_tsvector('english'::regconfig, COALESCE(title_en, ''::text)), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, COALESCE(description_en, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(title_he, ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(description_he, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(sku, ''::text)), 'A'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(\"upperMaterial_en\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(\"materialInnerSole_en\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(lining_en, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(sole_en, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, COALESCE(\"heelHeight_en\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"upperMaterial_he\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"materialInnerSole_he\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(lining_he, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(sole_he, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"heelHeight_he\", ''::text)), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(category, ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"subCategory\", ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"subSubCategory\", ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(category_he, ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"subCategory_he\", ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(\"subSubCategory_he\", ''::text)), 'A'::\"char\")) || setweight(to_tsvector('simple'::regconfig, COALESCE(brand, ''::text)), 'B'::\"char\"))"))
   tags                 ProductTag[]
   categoryRelation     Category                 @relation("CategoryProducts", fields: [categoryId], references: [id], onDelete: Cascade)
+  bogoGroupId          String?
+  bogoGroup            BogoGroup?               @relation(fields: [bogoGroupId], references: [id])
 
   @@index([search_vector], map: "products_search_vector_gin", type: Gin)
   @@map("products")
@@ -213,6 +224,7 @@ model Order {
   subtotal                   Float?
   discountTotal              Float         @default(0)
   deliveryFee                Float         @default(0)
+  bogoDiscountAmount         Float?
   userId                     String?       @map("user_id") @db.Uuid
   appliedCoupons             OrderCoupon[]
   orderItems                 OrderItem[]

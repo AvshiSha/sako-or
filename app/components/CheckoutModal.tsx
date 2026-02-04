@@ -45,6 +45,11 @@ interface CheckoutModalProps {
    * Defaults to store address if not provided.
    */
   pickupLocation?: string;
+  /**
+   * Optional: automatic BOGO discount amount applied in the cart.
+   * When present and > 0, coupons should not be combined with this order.
+   */
+  bogoDiscountAmount?: number;
 }
 
 export default function CheckoutModal({
@@ -65,6 +70,7 @@ export default function CheckoutModal({
   pointsToSpend = 0,
   shippingMethod = 'delivery',
   pickupLocation,
+  bogoDiscountAmount,
 }: CheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>('INFO');
   const STORE_PICKUP_LOCATION = 'Rothschild 51, Rishon Lezion';
@@ -394,7 +400,8 @@ export default function CheckoutModal({
       },
       pointsToSpend: pointsToSpend > 0 ? pointsToSpend : undefined,
       shippingMethod: formData.shippingMethod,
-      pickupLocation: formData.pickupLocation
+      pickupLocation: formData.pickupLocation,
+      bogoDiscountAmount: bogoDiscountAmount && bogoDiscountAmount > 0 ? bogoDiscountAmount : undefined
     };
 
     // Get auth token if user is signed in

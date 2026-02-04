@@ -8,6 +8,11 @@ export interface CreateOrderData {
   total: number;
   subtotal?: number;
   discountTotal?: number;
+  /**
+   * Optional: automatic BOGO discount amount applied to this order.
+   * When present and > 0, coupons should not be combined with this order.
+   */
+  bogoDiscountAmount?: number;
   deliveryFee?: number;
   /**
    * Shipping method for the order.
@@ -53,6 +58,7 @@ export async function createOrder(data: CreateOrderData) {
         total: data.total,
         subtotal: data.subtotal ?? data.total,
         discountTotal: data.discountTotal ?? 0,
+        bogoDiscountAmount: data.bogoDiscountAmount ?? null,
         deliveryFee: data.deliveryFee ?? 0,
         shippingMethod: data.shippingMethod ?? 'delivery',
         pickupLocation: data.pickupLocation ?? null,

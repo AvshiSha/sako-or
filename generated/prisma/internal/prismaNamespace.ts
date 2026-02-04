@@ -389,6 +389,7 @@ export const ModelName = {
   Favorite: 'Favorite',
   NewsletterEmails: 'NewsletterEmails',
   Category: 'Category',
+  BogoGroup: 'BogoGroup',
   Product: 'Product',
   Tag: 'Tag',
   ProductTag: 'ProductTag',
@@ -417,7 +418,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "cartItem" | "favorite" | "newsletterEmails" | "category" | "product" | "tag" | "productTag" | "order" | "orderItem" | "payment" | "paymentToken" | "checkout" | "contactMessage" | "coupon" | "couponRedemption" | "orderCoupon" | "points"
+    modelProps: "user" | "cartItem" | "favorite" | "newsletterEmails" | "category" | "bogoGroup" | "product" | "tag" | "productTag" | "order" | "orderItem" | "payment" | "paymentToken" | "checkout" | "contactMessage" | "coupon" | "couponRedemption" | "orderCoupon" | "points"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -788,6 +789,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.CategoryCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.CategoryCountAggregateOutputType> | number
+        }
+      }
+    }
+    BogoGroup: {
+      payload: Prisma.$BogoGroupPayload<ExtArgs>
+      fields: Prisma.BogoGroupFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BogoGroupFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BogoGroupFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>
+        }
+        findFirst: {
+          args: Prisma.BogoGroupFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BogoGroupFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>
+        }
+        findMany: {
+          args: Prisma.BogoGroupFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>[]
+        }
+        create: {
+          args: Prisma.BogoGroupCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>
+        }
+        createMany: {
+          args: Prisma.BogoGroupCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BogoGroupCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>[]
+        }
+        delete: {
+          args: Prisma.BogoGroupDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>
+        }
+        update: {
+          args: Prisma.BogoGroupUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>
+        }
+        deleteMany: {
+          args: Prisma.BogoGroupDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BogoGroupUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BogoGroupUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>[]
+        }
+        upsert: {
+          args: Prisma.BogoGroupUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BogoGroupPayload>
+        }
+        aggregate: {
+          args: Prisma.BogoGroupAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBogoGroup>
+        }
+        groupBy: {
+          args: Prisma.BogoGroupGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BogoGroupGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BogoGroupCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BogoGroupCountAggregateOutputType> | number
         }
       }
     }
@@ -1887,6 +1962,15 @@ export const CategoryScalarFieldEnum = {
 export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
 
 
+export const BogoGroupScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  pairPriceIls: 'pairPriceIls'
+} as const
+
+export type BogoGroupScalarFieldEnum = (typeof BogoGroupScalarFieldEnum)[keyof typeof BogoGroupScalarFieldEnum]
+
+
 export const ProductScalarFieldEnum = {
   id: 'id',
   featured: 'featured',
@@ -1932,7 +2016,8 @@ export const ProductScalarFieldEnum = {
   colorVariants: 'colorVariants',
   category_he: 'category_he',
   subCategory_he: 'subCategory_he',
-  subSubCategory_he: 'subSubCategory_he'
+  subSubCategory_he: 'subSubCategory_he',
+  bogoGroupId: 'bogoGroupId'
 } as const
 
 export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
@@ -1982,6 +2067,7 @@ export const OrderScalarFieldEnum = {
   subtotal: 'subtotal',
   discountTotal: 'discountTotal',
   deliveryFee: 'deliveryFee',
+  bogoDiscountAmount: 'bogoDiscountAmount',
   userId: 'userId',
   verifoneInvoiceStatus: 'verifoneInvoiceStatus',
   verifoneInvoiceNo: 'verifoneInvoiceNo',
@@ -2442,6 +2528,7 @@ export type GlobalOmitConfig = {
   favorite?: Prisma.FavoriteOmit
   newsletterEmails?: Prisma.NewsletterEmailsOmit
   category?: Prisma.CategoryOmit
+  bogoGroup?: Prisma.BogoGroupOmit
   product?: Prisma.ProductOmit
   tag?: Prisma.TagOmit
   productTag?: Prisma.ProductTagOmit

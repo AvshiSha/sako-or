@@ -31,6 +31,7 @@ export type OrderAvgAggregateOutputType = {
   subtotal: number | null
   discountTotal: number | null
   deliveryFee: number | null
+  bogoDiscountAmount: number | null
 }
 
 export type OrderSumAggregateOutputType = {
@@ -38,6 +39,7 @@ export type OrderSumAggregateOutputType = {
   subtotal: number | null
   discountTotal: number | null
   deliveryFee: number | null
+  bogoDiscountAmount: number | null
 }
 
 export type OrderMinAggregateOutputType = {
@@ -65,6 +67,7 @@ export type OrderMinAggregateOutputType = {
   subtotal: number | null
   discountTotal: number | null
   deliveryFee: number | null
+  bogoDiscountAmount: number | null
   userId: string | null
   verifoneInvoiceStatus: string | null
   verifoneInvoiceNo: string | null
@@ -100,6 +103,7 @@ export type OrderMaxAggregateOutputType = {
   subtotal: number | null
   discountTotal: number | null
   deliveryFee: number | null
+  bogoDiscountAmount: number | null
   userId: string | null
   verifoneInvoiceStatus: string | null
   verifoneInvoiceNo: string | null
@@ -135,6 +139,7 @@ export type OrderCountAggregateOutputType = {
   subtotal: number
   discountTotal: number
   deliveryFee: number
+  bogoDiscountAmount: number
   userId: number
   verifoneInvoiceStatus: number
   verifoneInvoiceNo: number
@@ -152,6 +157,7 @@ export type OrderAvgAggregateInputType = {
   subtotal?: true
   discountTotal?: true
   deliveryFee?: true
+  bogoDiscountAmount?: true
 }
 
 export type OrderSumAggregateInputType = {
@@ -159,6 +165,7 @@ export type OrderSumAggregateInputType = {
   subtotal?: true
   discountTotal?: true
   deliveryFee?: true
+  bogoDiscountAmount?: true
 }
 
 export type OrderMinAggregateInputType = {
@@ -186,6 +193,7 @@ export type OrderMinAggregateInputType = {
   subtotal?: true
   discountTotal?: true
   deliveryFee?: true
+  bogoDiscountAmount?: true
   userId?: true
   verifoneInvoiceStatus?: true
   verifoneInvoiceNo?: true
@@ -221,6 +229,7 @@ export type OrderMaxAggregateInputType = {
   subtotal?: true
   discountTotal?: true
   deliveryFee?: true
+  bogoDiscountAmount?: true
   userId?: true
   verifoneInvoiceStatus?: true
   verifoneInvoiceNo?: true
@@ -256,6 +265,7 @@ export type OrderCountAggregateInputType = {
   subtotal?: true
   discountTotal?: true
   deliveryFee?: true
+  bogoDiscountAmount?: true
   userId?: true
   verifoneInvoiceStatus?: true
   verifoneInvoiceNo?: true
@@ -378,6 +388,7 @@ export type OrderGroupByOutputType = {
   subtotal: number | null
   discountTotal: number
   deliveryFee: number
+  bogoDiscountAmount: number | null
   userId: string | null
   verifoneInvoiceStatus: string | null
   verifoneInvoiceNo: string | null
@@ -436,6 +447,7 @@ export type OrderWhereInput = {
   subtotal?: Prisma.FloatNullableFilter<"Order"> | number | null
   discountTotal?: Prisma.FloatFilter<"Order"> | number
   deliveryFee?: Prisma.FloatFilter<"Order"> | number
+  bogoDiscountAmount?: Prisma.FloatNullableFilter<"Order"> | number | null
   userId?: Prisma.UuidNullableFilter<"Order"> | string | null
   verifoneInvoiceStatus?: Prisma.StringNullableFilter<"Order"> | string | null
   verifoneInvoiceNo?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -476,6 +488,7 @@ export type OrderOrderByWithRelationInput = {
   subtotal?: Prisma.SortOrderInput | Prisma.SortOrder
   discountTotal?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  bogoDiscountAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
   verifoneInvoiceStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   verifoneInvoiceNo?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -519,6 +532,7 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   subtotal?: Prisma.FloatNullableFilter<"Order"> | number | null
   discountTotal?: Prisma.FloatFilter<"Order"> | number
   deliveryFee?: Prisma.FloatFilter<"Order"> | number
+  bogoDiscountAmount?: Prisma.FloatNullableFilter<"Order"> | number | null
   userId?: Prisma.UuidNullableFilter<"Order"> | string | null
   verifoneInvoiceStatus?: Prisma.StringNullableFilter<"Order"> | string | null
   verifoneInvoiceNo?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -559,6 +573,7 @@ export type OrderOrderByWithAggregationInput = {
   subtotal?: Prisma.SortOrderInput | Prisma.SortOrder
   discountTotal?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  bogoDiscountAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
   verifoneInvoiceStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   verifoneInvoiceNo?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -602,6 +617,7 @@ export type OrderScalarWhereWithAggregatesInput = {
   subtotal?: Prisma.FloatNullableWithAggregatesFilter<"Order"> | number | null
   discountTotal?: Prisma.FloatWithAggregatesFilter<"Order"> | number
   deliveryFee?: Prisma.FloatWithAggregatesFilter<"Order"> | number
+  bogoDiscountAmount?: Prisma.FloatNullableWithAggregatesFilter<"Order"> | number | null
   userId?: Prisma.UuidNullableWithAggregatesFilter<"Order"> | string | null
   verifoneInvoiceStatus?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   verifoneInvoiceNo?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
@@ -637,6 +653,7 @@ export type OrderCreateInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
   verifoneInvoiceRequest?: string | null
@@ -676,6 +693,7 @@ export type OrderUncheckedCreateInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   userId?: string | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
@@ -715,6 +733,7 @@ export type OrderUpdateInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -754,6 +773,7 @@ export type OrderUncheckedUpdateInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -793,6 +813,7 @@ export type OrderCreateManyInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   userId?: string | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
@@ -828,6 +849,7 @@ export type OrderUpdateManyMutationInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -862,6 +884,7 @@ export type OrderUncheckedUpdateManyInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -907,6 +930,7 @@ export type OrderCountOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   discountTotal?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  bogoDiscountAmount?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   verifoneInvoiceStatus?: Prisma.SortOrder
   verifoneInvoiceNo?: Prisma.SortOrder
@@ -922,6 +946,7 @@ export type OrderAvgOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   discountTotal?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  bogoDiscountAmount?: Prisma.SortOrder
 }
 
 export type OrderMaxOrderByAggregateInput = {
@@ -949,6 +974,7 @@ export type OrderMaxOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   discountTotal?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  bogoDiscountAmount?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   verifoneInvoiceStatus?: Prisma.SortOrder
   verifoneInvoiceNo?: Prisma.SortOrder
@@ -984,6 +1010,7 @@ export type OrderMinOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   discountTotal?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  bogoDiscountAmount?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   verifoneInvoiceStatus?: Prisma.SortOrder
   verifoneInvoiceNo?: Prisma.SortOrder
@@ -999,6 +1026,7 @@ export type OrderSumOrderByAggregateInput = {
   subtotal?: Prisma.SortOrder
   discountTotal?: Prisma.SortOrder
   deliveryFee?: Prisma.SortOrder
+  bogoDiscountAmount?: Prisma.SortOrder
 }
 
 export type OrderScalarRelationFilter = {
@@ -1136,6 +1164,7 @@ export type OrderCreateWithoutUserInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
   verifoneInvoiceRequest?: string | null
@@ -1174,6 +1203,7 @@ export type OrderUncheckedCreateWithoutUserInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
   verifoneInvoiceRequest?: string | null
@@ -1241,6 +1271,7 @@ export type OrderScalarWhereInput = {
   subtotal?: Prisma.FloatNullableFilter<"Order"> | number | null
   discountTotal?: Prisma.FloatFilter<"Order"> | number
   deliveryFee?: Prisma.FloatFilter<"Order"> | number
+  bogoDiscountAmount?: Prisma.FloatNullableFilter<"Order"> | number | null
   userId?: Prisma.UuidNullableFilter<"Order"> | string | null
   verifoneInvoiceStatus?: Prisma.StringNullableFilter<"Order"> | string | null
   verifoneInvoiceNo?: Prisma.StringNullableFilter<"Order"> | string | null
@@ -1276,6 +1307,7 @@ export type OrderCreateWithoutOrderItemsInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
   verifoneInvoiceRequest?: string | null
@@ -1314,6 +1346,7 @@ export type OrderUncheckedCreateWithoutOrderItemsInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   userId?: string | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
@@ -1368,6 +1401,7 @@ export type OrderUpdateWithoutOrderItemsInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1406,6 +1440,7 @@ export type OrderUncheckedUpdateWithoutOrderItemsInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1444,6 +1479,7 @@ export type OrderCreateWithoutPaymentsInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
   verifoneInvoiceRequest?: string | null
@@ -1482,6 +1518,7 @@ export type OrderUncheckedCreateWithoutPaymentsInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   userId?: string | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
@@ -1536,6 +1573,7 @@ export type OrderUpdateWithoutPaymentsInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1574,6 +1612,7 @@ export type OrderUncheckedUpdateWithoutPaymentsInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1612,6 +1651,7 @@ export type OrderCreateWithoutAppliedCouponsInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
   verifoneInvoiceRequest?: string | null
@@ -1650,6 +1690,7 @@ export type OrderUncheckedCreateWithoutAppliedCouponsInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   userId?: string | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
@@ -1704,6 +1745,7 @@ export type OrderUpdateWithoutAppliedCouponsInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1742,6 +1784,7 @@ export type OrderUncheckedUpdateWithoutAppliedCouponsInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1780,6 +1823,7 @@ export type OrderCreateWithoutPointsInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
   verifoneInvoiceRequest?: string | null
@@ -1818,6 +1862,7 @@ export type OrderUncheckedCreateWithoutPointsInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   userId?: string | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
@@ -1872,6 +1917,7 @@ export type OrderUpdateWithoutPointsInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1910,6 +1956,7 @@ export type OrderUncheckedUpdateWithoutPointsInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1948,6 +1995,7 @@ export type OrderCreateManyUserInput = {
   subtotal?: number | null
   discountTotal?: number
   deliveryFee?: number
+  bogoDiscountAmount?: number | null
   verifoneInvoiceStatus?: string | null
   verifoneInvoiceNo?: string | null
   verifoneInvoiceRequest?: string | null
@@ -1982,6 +2030,7 @@ export type OrderUpdateWithoutUserInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2020,6 +2069,7 @@ export type OrderUncheckedUpdateWithoutUserInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2058,6 +2108,7 @@ export type OrderUncheckedUpdateManyWithoutUserInput = {
   subtotal?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   discountTotal?: Prisma.FloatFieldUpdateOperationsInput | number
   deliveryFee?: Prisma.FloatFieldUpdateOperationsInput | number
+  bogoDiscountAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   verifoneInvoiceStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceNo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   verifoneInvoiceRequest?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2150,6 +2201,7 @@ export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   subtotal?: boolean
   discountTotal?: boolean
   deliveryFee?: boolean
+  bogoDiscountAmount?: boolean
   userId?: boolean
   verifoneInvoiceStatus?: boolean
   verifoneInvoiceNo?: boolean
@@ -2191,6 +2243,7 @@ export type OrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   subtotal?: boolean
   discountTotal?: boolean
   deliveryFee?: boolean
+  bogoDiscountAmount?: boolean
   userId?: boolean
   verifoneInvoiceStatus?: boolean
   verifoneInvoiceNo?: boolean
@@ -2227,6 +2280,7 @@ export type OrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   subtotal?: boolean
   discountTotal?: boolean
   deliveryFee?: boolean
+  bogoDiscountAmount?: boolean
   userId?: boolean
   verifoneInvoiceStatus?: boolean
   verifoneInvoiceNo?: boolean
@@ -2263,6 +2317,7 @@ export type OrderSelectScalar = {
   subtotal?: boolean
   discountTotal?: boolean
   deliveryFee?: boolean
+  bogoDiscountAmount?: boolean
   userId?: boolean
   verifoneInvoiceStatus?: boolean
   verifoneInvoiceNo?: boolean
@@ -2273,7 +2328,7 @@ export type OrderSelectScalar = {
   verifoneInvoiceError?: boolean
 }
 
-export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderNumber" | "status" | "total" | "shippingMethod" | "pickupLocation" | "currency" | "customerName" | "customerEmail" | "customerPhone" | "paymentStatus" | "paymentMethod" | "paymentData" | "cardcomLowProfileId" | "cardcomTransactionId" | "createdAt" | "updatedAt" | "emailMessageId" | "emailSentAt" | "smsSentAt" | "smsMessageId" | "subtotal" | "discountTotal" | "deliveryFee" | "userId" | "verifoneInvoiceStatus" | "verifoneInvoiceNo" | "verifoneInvoiceRequest" | "verifoneInvoiceResponse" | "verifoneInvoiceAttemptedAt" | "verifoneInvoiceSyncedAt" | "verifoneInvoiceError", ExtArgs["result"]["order"]>
+export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderNumber" | "status" | "total" | "shippingMethod" | "pickupLocation" | "currency" | "customerName" | "customerEmail" | "customerPhone" | "paymentStatus" | "paymentMethod" | "paymentData" | "cardcomLowProfileId" | "cardcomTransactionId" | "createdAt" | "updatedAt" | "emailMessageId" | "emailSentAt" | "smsSentAt" | "smsMessageId" | "subtotal" | "discountTotal" | "deliveryFee" | "bogoDiscountAmount" | "userId" | "verifoneInvoiceStatus" | "verifoneInvoiceNo" | "verifoneInvoiceRequest" | "verifoneInvoiceResponse" | "verifoneInvoiceAttemptedAt" | "verifoneInvoiceSyncedAt" | "verifoneInvoiceError", ExtArgs["result"]["order"]>
 export type OrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   appliedCoupons?: boolean | Prisma.Order$appliedCouponsArgs<ExtArgs>
   orderItems?: boolean | Prisma.Order$orderItemsArgs<ExtArgs>
@@ -2329,6 +2384,7 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     subtotal: number | null
     discountTotal: number
     deliveryFee: number
+    bogoDiscountAmount: number | null
     userId: string | null
     verifoneInvoiceStatus: string | null
     verifoneInvoiceNo: string | null
@@ -2789,6 +2845,7 @@ export interface OrderFieldRefs {
   readonly subtotal: Prisma.FieldRef<"Order", 'Float'>
   readonly discountTotal: Prisma.FieldRef<"Order", 'Float'>
   readonly deliveryFee: Prisma.FieldRef<"Order", 'Float'>
+  readonly bogoDiscountAmount: Prisma.FieldRef<"Order", 'Float'>
   readonly userId: Prisma.FieldRef<"Order", 'String'>
   readonly verifoneInvoiceStatus: Prisma.FieldRef<"Order", 'String'>
   readonly verifoneInvoiceNo: Prisma.FieldRef<"Order", 'String'>

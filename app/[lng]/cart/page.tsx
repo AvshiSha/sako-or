@@ -116,6 +116,10 @@ const { user } = useAuth()
 const [pointsBalance, setPointsBalance] = useState(0)
 const [pointsToUse, setPointsToUse] = useState(0)
 const [pointsLoading, setPointsLoading] = useState(false)
+// Automatic BOGO deal state
+const [bogoDiscountAmount, setBogoDiscountAmount] = useState(0)
+const [bogoHasLeftover, setBogoHasLeftover] = useState(false)
+const [bogoLoading, setBogoLoading] = useState(false)
 const appliedCodes = useMemo(() => appliedCoupons.map(coupon => coupon.coupon.code), [appliedCoupons])
 const userIdentifier = user?.email ? user.email.toLowerCase() : undefined
 const cartCurrency = useMemo(() => {
@@ -182,6 +186,20 @@ const applyCouponCode = useCallback(async (
     skipStorageUpdate?: boolean
   }
 ) => {
+  // Guardrail: do not apply coupons when automatic BOGO deal is active.
+  if (bogoDiscountAmount > 0) {
+    if (!options?.silent) {
+      setCouponStatus({
+        type: 'info',
+        message:
+          lng === 'he'
+            ? 'לא ניתן לשלב קופונים עם מבצע הזוגות.'
+            : 'Coupons can’t be combined with the automatic pairs deal.'
+      })
+    }
+    return
+  }
+
   const normalizedCode = rawCode.trim().toUpperCase()
   if (!normalizedCode) {
     return
@@ -268,7 +286,7 @@ const applyCouponCode = useCallback(async (
   } finally {
     setCouponLoading(false)
   }
-}, [appliedCodes, cartCurrency, cartItemsPayload, couponStrings.invalid, couponStrings.perUserRequired, couponStrings.success, lng, saveCouponsToStorage, userIdentifier])
+}, [appliedCodes, bogoDiscountAmount, cartCurrency, cartItemsPayload, couponStrings.invalid, couponStrings.perUserRequired, couponStrings.success, lng, saveCouponsToStorage, userIdentifier])
 
 const removeCoupon = useCallback((code: string) => {
   setAppliedCoupons(prev => prev.filter(coupon => coupon.coupon.code !== code))
@@ -576,11 +594,68 @@ useEffect(() => {
   }
 }, [cartCurrency, isClient, items, loading, lng])
 
+// Automatic BOGO deal calculation – recompute whenever cart items change
+useEffect(() => {
+  if (!isClient || loading || items.length === 0) {
+    setBogoDiscountAmount(0)
+    setBogoHasLeftover(false)
+    return
+  }
+
+  let cancelled = false
+  ;(async () => {
+    try {
+      setBogoLoading(true)
+      const response = await fetch('/api/cart/bogo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ items: cartItemsPayload })
+      })
+
+      const json = await response.json().catch(() => ({}))
+      if (cancelled) return
+
+      if (!response.ok || !json || json.success === false) {
+        setBogoDiscountAmount(0)
+        setBogoHasLeftover(false)
+        return
+      }
+
+      const amount =
+        typeof json.bogoDiscountAmount === 'number' ? json.bogoDiscountAmount : 0
+
+      setBogoDiscountAmount(amount > 0 ? amount : 0)
+      setBogoHasLeftover(!!json.hasLeftover)
+    } catch (error) {
+      if (!cancelled) {
+        console.warn('Failed to calculate automatic BOGO deal:', error)
+        setBogoDiscountAmount(0)
+        setBogoHasLeftover(false)
+      }
+    } finally {
+      if (!cancelled) {
+        setBogoLoading(false)
+      }
+    }
+  })()
+
+  return () => {
+    cancelled = true
+  }
+}, [isClient, loading, cartItemsSignature, cartItemsPayload, items.length])
+
   // Points cap: compute before early return so the clamp useEffect runs in a consistent hook order
   const totalItems = getTotalItems()
   const subtotal = getTotalPrice()
   const baseDeliveryFee = getDeliveryFee()
-  const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
+  const couponsDiscountTotal = appliedCoupons.reduce(
+    (sum, coupon) => sum + coupon.discountAmount,
+    0
+  )
+  const isBogoActive = bogoDiscountAmount > 0
+  const totalDiscount = isBogoActive ? bogoDiscountAmount : couponsDiscountTotal
   const cartAmountBeforePoints = Math.max(subtotal - totalDiscount, 0)
   const maxPointsBy15Percent = Math.round(0.15 * cartAmountBeforePoints * 100) / 100
   const usablePoints = Math.min(pointsBalance, maxPointsBy15Percent)
@@ -775,6 +850,13 @@ if (!isClient || loading) {
 
                 <Accordion title={couponStrings.label}>
                   <div className="pb-4" dir={isRTL ? 'rtl' : 'ltr'}>
+                    {bogoDiscountAmount > 0 && (
+                      <p className="mb-2 text-xs text-gray-600">
+                        {lng === 'he'
+                          ? 'קופונים לא ניתנים לשילוב עם מבצע הזוגות.'
+                          : 'Coupons can’t be combined with the automatic pairs deal.'}
+                      </p>
+                    )}
                     <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
                       <input
                         type="text"
@@ -782,7 +864,7 @@ if (!isClient || loading) {
                         onChange={(event) => setCouponInput(event.target.value)}
                         placeholder={couponStrings.placeholder}
                         className={`flex-1 rounded-md border text-gray-900 py-2 px-2 shadow-sm focus:outline-none focus:ring-0.5 focus:ring-[#856D55]/90 ${isRTL ? 'text-right' : 'text-left'}`}
-                        disabled={couponLoading}
+                        disabled={couponLoading || bogoDiscountAmount > 0}
                         style={{ 
                           borderColor: 'rgba(133, 109, 85, 0.2)',
                           borderRadius: '2px'
@@ -796,7 +878,7 @@ if (!isClient || loading) {
                       />
                       <button
                         onClick={() => applyCouponCode(couponInput)}
-                        disabled={couponLoading || !couponInput.trim()}
+                        disabled={couponLoading || !couponInput.trim() || bogoDiscountAmount > 0}
                         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
                       >
                         {couponLoading ? couponStrings.loading : couponStrings.apply}
@@ -922,16 +1004,43 @@ if (!isClient || loading) {
 
                   {(totalDiscount > 0 || pointsDiscount > 0) && (
                     <>
-                      {appliedCoupons.map(coupon => (
-                        <div key={coupon.coupon.code} className="flex justify-between text-xs text-green-600">
-                          <span>{coupon.coupon.code} • {coupon.coupon.discountLabel[lng as 'en' | 'he']}</span>
-                          <span>-₪{coupon.discountAmount.toFixed(2)}</span>
+                      {bogoDiscountAmount > 0 && (
+                        <div className="flex justify-between text-xs text-green-600">
+                          <span>{lng === 'he' ? 'מבצע זוגות' : 'BOGO Deal'}</span>
+                          <span>-₪{bogoDiscountAmount.toFixed(2)}</span>
                         </div>
-                      ))}
+                      )}
+                      {bogoDiscountAmount === 0 &&
+                        appliedCoupons.map(coupon => (
+                          <div
+                            key={coupon.coupon.code}
+                            className="flex justify-between text-xs text-green-600"
+                          >
+                            <span>
+                              {coupon.coupon.code} •{' '}
+                              {coupon.coupon.discountLabel[lng as 'en' | 'he']}
+                            </span>
+                            <span>-₪{coupon.discountAmount.toFixed(2)}</span>
+                          </div>
+                        ))}
                       {pointsDiscount > 0 && (
                         <div className="flex justify-between text-xs text-green-600">
                           <span>{lng === 'he' ? 'הנחת נקודות' : 'Points discount'}</span>
                           <span>-₪{pointsDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {bogoDiscountAmount > 0 && bogoHasLeftover && (
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <p>
+                            {lng === 'he'
+                              ? 'המבצע חל על זוגות בלבד. פריטים נוספים מחויבים במחיר הרגיל.'
+                              : 'Deal applies to pairs only. Extra items are charged at regular price.'}
+                          </p>
+                          <p>
+                            {lng === 'he'
+                              ? 'הוסיפי עוד פריט זכאי כדי להפעיל זוג נוסף.'
+                              : 'Add 1 more eligible item to activate another pair.'}
+                          </p>
                         </div>
                       )}
                       <div className="flex justify-between text-sm text-gray-600">
@@ -1005,17 +1114,23 @@ if (!isClient || loading) {
         quantity={totalItems}
         language={lng as 'he' | 'en'}
         items={items}
-        appliedCoupons={appliedCoupons.map(coupon => ({
-          code: coupon.coupon.code,
-          discountAmount: coupon.discountAmount,
-          discountType: coupon.coupon.discountType,
-          stackable: coupon.coupon.stackable,
-          description: coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined,
-          discountLabel: coupon.coupon.discountLabel
-        }))}
+        appliedCoupons={
+          bogoDiscountAmount > 0
+            ? []
+            : appliedCoupons.map(coupon => ({
+                code: coupon.coupon.code,
+                discountAmount: coupon.discountAmount,
+                discountType: coupon.coupon.discountType,
+                stackable: coupon.coupon.stackable,
+                description:
+                  coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined,
+                discountLabel: coupon.coupon.discountLabel
+              }))
+        }
         pointsToSpend={pointsToUse > 0 ? pointsToUse : undefined}
         shippingMethod={shippingMethod}
         pickupLocation={STORE_PICKUP_LOCATION}
+        bogoDiscountAmount={bogoDiscountAmount > 0 ? bogoDiscountAmount : undefined}
       />
     </div>
   )

@@ -78,6 +78,7 @@ export type ProductMinAggregateOutputType = {
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
+  bogoGroupId: string | null
 }
 
 export type ProductMaxAggregateOutputType = {
@@ -122,6 +123,7 @@ export type ProductMaxAggregateOutputType = {
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
+  bogoGroupId: string | null
 }
 
 export type ProductCountAggregateOutputType = {
@@ -170,6 +172,7 @@ export type ProductCountAggregateOutputType = {
   category_he: number
   subCategory_he: number
   subSubCategory_he: number
+  bogoGroupId: number
   _all: number
 }
 
@@ -226,6 +229,7 @@ export type ProductMinAggregateInputType = {
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
+  bogoGroupId?: true
 }
 
 export type ProductMaxAggregateInputType = {
@@ -270,6 +274,7 @@ export type ProductMaxAggregateInputType = {
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
+  bogoGroupId?: true
 }
 
 export type ProductCountAggregateInputType = {
@@ -318,6 +323,7 @@ export type ProductCountAggregateInputType = {
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
+  bogoGroupId?: true
   _all?: true
 }
 
@@ -453,6 +459,7 @@ export type ProductGroupByOutputType = {
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
+  bogoGroupId: string | null
   _count: ProductCountAggregateOutputType | null
   _avg: ProductAvgAggregateOutputType | null
   _sum: ProductSumAggregateOutputType | null
@@ -524,8 +531,10 @@ export type ProductWhereInput = {
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
   tags?: Prisma.ProductTagListRelationFilter
   categoryRelation?: Prisma.XOR<Prisma.CategoryScalarRelationFilter, Prisma.CategoryWhereInput>
+  bogoGroup?: Prisma.XOR<Prisma.BogoGroupNullableScalarRelationFilter, Prisma.BogoGroupWhereInput> | null
 }
 
 export type ProductOrderByWithRelationInput = {
@@ -574,8 +583,10 @@ export type ProductOrderByWithRelationInput = {
   category_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  bogoGroupId?: Prisma.SortOrderInput | Prisma.SortOrder
   tags?: Prisma.ProductTagOrderByRelationAggregateInput
   categoryRelation?: Prisma.CategoryOrderByWithRelationInput
+  bogoGroup?: Prisma.BogoGroupOrderByWithRelationInput
 }
 
 export type ProductWhereUniqueInput = Prisma.AtLeast<{
@@ -627,8 +638,10 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
   tags?: Prisma.ProductTagListRelationFilter
   categoryRelation?: Prisma.XOR<Prisma.CategoryScalarRelationFilter, Prisma.CategoryWhereInput>
+  bogoGroup?: Prisma.XOR<Prisma.BogoGroupNullableScalarRelationFilter, Prisma.BogoGroupWhereInput> | null
 }, "id" | "sku">
 
 export type ProductOrderByWithAggregationInput = {
@@ -677,6 +690,7 @@ export type ProductOrderByWithAggregationInput = {
   category_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  bogoGroupId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ProductCountOrderByAggregateInput
   _avg?: Prisma.ProductAvgOrderByAggregateInput
   _max?: Prisma.ProductMaxOrderByAggregateInput
@@ -733,6 +747,7 @@ export type ProductScalarWhereWithAggregatesInput = {
   category_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  bogoGroupId?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
 }
 
 export type ProductCreateInput = {
@@ -782,6 +797,7 @@ export type ProductCreateInput = {
   subSubCategory_he?: string | null
   tags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
   categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
+  bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
 }
 
 export type ProductUncheckedCreateInput = {
@@ -830,6 +846,7 @@ export type ProductUncheckedCreateInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  bogoGroupId?: string | null
   tags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
 }
 
@@ -880,6 +897,7 @@ export type ProductUpdateInput = {
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
   categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
+  bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
 }
 
 export type ProductUncheckedUpdateInput = {
@@ -928,6 +946,7 @@ export type ProductUncheckedUpdateInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
 }
 
@@ -977,6 +996,7 @@ export type ProductCreateManyInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  bogoGroupId?: string | null
 }
 
 export type ProductUpdateManyMutationInput = {
@@ -1072,6 +1092,7 @@ export type ProductUncheckedUpdateManyInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ProductListRelationFilter = {
@@ -1138,6 +1159,7 @@ export type ProductCountOrderByAggregateInput = {
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
+  bogoGroupId?: Prisma.SortOrder
 }
 
 export type ProductAvgOrderByAggregateInput = {
@@ -1187,6 +1209,7 @@ export type ProductMaxOrderByAggregateInput = {
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
+  bogoGroupId?: Prisma.SortOrder
 }
 
 export type ProductMinOrderByAggregateInput = {
@@ -1231,6 +1254,7 @@ export type ProductMinOrderByAggregateInput = {
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
+  bogoGroupId?: Prisma.SortOrder
 }
 
 export type ProductSumOrderByAggregateInput = {
@@ -1285,6 +1309,48 @@ export type ProductUncheckedUpdateManyWithoutCategoryRelationNestedInput = {
   deleteMany?: Prisma.ProductScalarWhereInput | Prisma.ProductScalarWhereInput[]
 }
 
+export type ProductCreateNestedManyWithoutBogoGroupInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutBogoGroupInput, Prisma.ProductUncheckedCreateWithoutBogoGroupInput> | Prisma.ProductCreateWithoutBogoGroupInput[] | Prisma.ProductUncheckedCreateWithoutBogoGroupInput[]
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutBogoGroupInput | Prisma.ProductCreateOrConnectWithoutBogoGroupInput[]
+  createMany?: Prisma.ProductCreateManyBogoGroupInputEnvelope
+  connect?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+}
+
+export type ProductUncheckedCreateNestedManyWithoutBogoGroupInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutBogoGroupInput, Prisma.ProductUncheckedCreateWithoutBogoGroupInput> | Prisma.ProductCreateWithoutBogoGroupInput[] | Prisma.ProductUncheckedCreateWithoutBogoGroupInput[]
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutBogoGroupInput | Prisma.ProductCreateOrConnectWithoutBogoGroupInput[]
+  createMany?: Prisma.ProductCreateManyBogoGroupInputEnvelope
+  connect?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+}
+
+export type ProductUpdateManyWithoutBogoGroupNestedInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutBogoGroupInput, Prisma.ProductUncheckedCreateWithoutBogoGroupInput> | Prisma.ProductCreateWithoutBogoGroupInput[] | Prisma.ProductUncheckedCreateWithoutBogoGroupInput[]
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutBogoGroupInput | Prisma.ProductCreateOrConnectWithoutBogoGroupInput[]
+  upsert?: Prisma.ProductUpsertWithWhereUniqueWithoutBogoGroupInput | Prisma.ProductUpsertWithWhereUniqueWithoutBogoGroupInput[]
+  createMany?: Prisma.ProductCreateManyBogoGroupInputEnvelope
+  set?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+  disconnect?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+  delete?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+  connect?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+  update?: Prisma.ProductUpdateWithWhereUniqueWithoutBogoGroupInput | Prisma.ProductUpdateWithWhereUniqueWithoutBogoGroupInput[]
+  updateMany?: Prisma.ProductUpdateManyWithWhereWithoutBogoGroupInput | Prisma.ProductUpdateManyWithWhereWithoutBogoGroupInput[]
+  deleteMany?: Prisma.ProductScalarWhereInput | Prisma.ProductScalarWhereInput[]
+}
+
+export type ProductUncheckedUpdateManyWithoutBogoGroupNestedInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutBogoGroupInput, Prisma.ProductUncheckedCreateWithoutBogoGroupInput> | Prisma.ProductCreateWithoutBogoGroupInput[] | Prisma.ProductUncheckedCreateWithoutBogoGroupInput[]
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutBogoGroupInput | Prisma.ProductCreateOrConnectWithoutBogoGroupInput[]
+  upsert?: Prisma.ProductUpsertWithWhereUniqueWithoutBogoGroupInput | Prisma.ProductUpsertWithWhereUniqueWithoutBogoGroupInput[]
+  createMany?: Prisma.ProductCreateManyBogoGroupInputEnvelope
+  set?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+  disconnect?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+  delete?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+  connect?: Prisma.ProductWhereUniqueInput | Prisma.ProductWhereUniqueInput[]
+  update?: Prisma.ProductUpdateWithWhereUniqueWithoutBogoGroupInput | Prisma.ProductUpdateWithWhereUniqueWithoutBogoGroupInput[]
+  updateMany?: Prisma.ProductUpdateManyWithWhereWithoutBogoGroupInput | Prisma.ProductUpdateManyWithWhereWithoutBogoGroupInput[]
+  deleteMany?: Prisma.ProductScalarWhereInput | Prisma.ProductScalarWhereInput[]
+}
+
 export type ProductCreatecategories_pathInput = {
   set: string[]
 }
@@ -1305,14 +1371,6 @@ export type ProductUpdatecategories_pathInput = {
 export type ProductUpdatecategories_path_idInput = {
   set?: string[]
   push?: string | string[]
-}
-
-export type FloatFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
 }
 
 export type NullableFloatFieldUpdateOperationsInput = {
@@ -1388,6 +1446,7 @@ export type ProductCreateWithoutCategoryRelationInput = {
   subCategory_he?: string | null
   subSubCategory_he?: string | null
   tags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
+  bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
 }
 
 export type ProductUncheckedCreateWithoutCategoryRelationInput = {
@@ -1435,6 +1494,7 @@ export type ProductUncheckedCreateWithoutCategoryRelationInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  bogoGroupId?: string | null
   tags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
 }
 
@@ -1513,6 +1573,131 @@ export type ProductScalarWhereInput = {
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
+}
+
+export type ProductCreateWithoutBogoGroupInput = {
+  id?: string
+  featured?: boolean
+  isNew?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  brand: string
+  categories_path?: Prisma.ProductCreatecategories_pathInput | string[]
+  categories_path_id?: Prisma.ProductCreatecategories_path_idInput | string[]
+  category: string
+  currency?: string
+  description_en: string
+  description_he: string
+  heelHeight_en?: string | null
+  heelHeight_he?: string | null
+  isDeleted?: boolean
+  isEnabled?: boolean
+  lining_en?: string | null
+  lining_he?: string | null
+  materialInnerSole_en?: string | null
+  materialInnerSole_he?: string | null
+  price: number
+  salePrice?: number | null
+  searchKeywords?: Prisma.ProductCreatesearchKeywordsInput | string[]
+  seo_description_en?: string | null
+  seo_description_he?: string | null
+  seo_slug?: string | null
+  seo_title_en?: string | null
+  seo_title_he?: string | null
+  shippingReturns_en?: string | null
+  shippingReturns_he?: string | null
+  sku: string
+  sole_en?: string | null
+  sole_he?: string | null
+  subCategory?: string | null
+  subSubCategory?: string | null
+  title_en: string
+  title_he: string
+  upperMaterial_en?: string | null
+  upperMaterial_he?: string | null
+  colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  category_he?: string | null
+  subCategory_he?: string | null
+  subSubCategory_he?: string | null
+  tags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
+  categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
+}
+
+export type ProductUncheckedCreateWithoutBogoGroupInput = {
+  id?: string
+  featured?: boolean
+  isNew?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  categoryId: string
+  brand: string
+  categories_path?: Prisma.ProductCreatecategories_pathInput | string[]
+  categories_path_id?: Prisma.ProductCreatecategories_path_idInput | string[]
+  category: string
+  currency?: string
+  description_en: string
+  description_he: string
+  heelHeight_en?: string | null
+  heelHeight_he?: string | null
+  isDeleted?: boolean
+  isEnabled?: boolean
+  lining_en?: string | null
+  lining_he?: string | null
+  materialInnerSole_en?: string | null
+  materialInnerSole_he?: string | null
+  price: number
+  salePrice?: number | null
+  searchKeywords?: Prisma.ProductCreatesearchKeywordsInput | string[]
+  seo_description_en?: string | null
+  seo_description_he?: string | null
+  seo_slug?: string | null
+  seo_title_en?: string | null
+  seo_title_he?: string | null
+  shippingReturns_en?: string | null
+  shippingReturns_he?: string | null
+  sku: string
+  sole_en?: string | null
+  sole_he?: string | null
+  subCategory?: string | null
+  subSubCategory?: string | null
+  title_en: string
+  title_he: string
+  upperMaterial_en?: string | null
+  upperMaterial_he?: string | null
+  colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  category_he?: string | null
+  subCategory_he?: string | null
+  subSubCategory_he?: string | null
+  tags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
+}
+
+export type ProductCreateOrConnectWithoutBogoGroupInput = {
+  where: Prisma.ProductWhereUniqueInput
+  create: Prisma.XOR<Prisma.ProductCreateWithoutBogoGroupInput, Prisma.ProductUncheckedCreateWithoutBogoGroupInput>
+}
+
+export type ProductCreateManyBogoGroupInputEnvelope = {
+  data: Prisma.ProductCreateManyBogoGroupInput | Prisma.ProductCreateManyBogoGroupInput[]
+  skipDuplicates?: boolean
+}
+
+export type ProductUpsertWithWhereUniqueWithoutBogoGroupInput = {
+  where: Prisma.ProductWhereUniqueInput
+  update: Prisma.XOR<Prisma.ProductUpdateWithoutBogoGroupInput, Prisma.ProductUncheckedUpdateWithoutBogoGroupInput>
+  create: Prisma.XOR<Prisma.ProductCreateWithoutBogoGroupInput, Prisma.ProductUncheckedCreateWithoutBogoGroupInput>
+}
+
+export type ProductUpdateWithWhereUniqueWithoutBogoGroupInput = {
+  where: Prisma.ProductWhereUniqueInput
+  data: Prisma.XOR<Prisma.ProductUpdateWithoutBogoGroupInput, Prisma.ProductUncheckedUpdateWithoutBogoGroupInput>
+}
+
+export type ProductUpdateManyWithWhereWithoutBogoGroupInput = {
+  where: Prisma.ProductScalarWhereInput
+  data: Prisma.XOR<Prisma.ProductUpdateManyMutationInput, Prisma.ProductUncheckedUpdateManyWithoutBogoGroupInput>
 }
 
 export type ProductCreateWithoutTagsInput = {
@@ -1561,6 +1746,7 @@ export type ProductCreateWithoutTagsInput = {
   subCategory_he?: string | null
   subSubCategory_he?: string | null
   categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
+  bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
 }
 
 export type ProductUncheckedCreateWithoutTagsInput = {
@@ -1609,6 +1795,7 @@ export type ProductUncheckedCreateWithoutTagsInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  bogoGroupId?: string | null
 }
 
 export type ProductCreateOrConnectWithoutTagsInput = {
@@ -1673,6 +1860,7 @@ export type ProductUpdateWithoutTagsInput = {
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
+  bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutTagsInput = {
@@ -1721,6 +1909,7 @@ export type ProductUncheckedUpdateWithoutTagsInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
 export type ProductCreateManyCategoryRelationInput = {
@@ -1768,6 +1957,7 @@ export type ProductCreateManyCategoryRelationInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  bogoGroupId?: string | null
 }
 
 export type ProductUpdateWithoutCategoryRelationInput = {
@@ -1816,6 +2006,7 @@ export type ProductUpdateWithoutCategoryRelationInput = {
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
+  bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutCategoryRelationInput = {
@@ -1863,6 +2054,7 @@ export type ProductUncheckedUpdateWithoutCategoryRelationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   tags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
 }
 
@@ -1873,6 +2065,201 @@ export type ProductUncheckedUpdateManyWithoutCategoryRelationInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  brand?: Prisma.StringFieldUpdateOperationsInput | string
+  categories_path?: Prisma.ProductUpdatecategories_pathInput | string[]
+  categories_path_id?: Prisma.ProductUpdatecategories_path_idInput | string[]
+  category?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  description_en?: Prisma.StringFieldUpdateOperationsInput | string
+  description_he?: Prisma.StringFieldUpdateOperationsInput | string
+  heelHeight_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lining_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lining_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  materialInnerSole_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  materialInnerSole_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.FloatFieldUpdateOperationsInput | number
+  salePrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  searchKeywords?: Prisma.ProductUpdatesearchKeywordsInput | string[]
+  seo_description_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_description_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_title_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_title_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingReturns_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingReturns_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sku?: Prisma.StringFieldUpdateOperationsInput | string
+  sole_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sole_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subSubCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  title_en?: Prisma.StringFieldUpdateOperationsInput | string
+  title_he?: Prisma.StringFieldUpdateOperationsInput | string
+  upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+}
+
+export type ProductCreateManyBogoGroupInput = {
+  id?: string
+  featured?: boolean
+  isNew?: boolean
+  isActive?: boolean
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  categoryId: string
+  brand: string
+  categories_path?: Prisma.ProductCreatecategories_pathInput | string[]
+  categories_path_id?: Prisma.ProductCreatecategories_path_idInput | string[]
+  category: string
+  currency?: string
+  description_en: string
+  description_he: string
+  heelHeight_en?: string | null
+  heelHeight_he?: string | null
+  isDeleted?: boolean
+  isEnabled?: boolean
+  lining_en?: string | null
+  lining_he?: string | null
+  materialInnerSole_en?: string | null
+  materialInnerSole_he?: string | null
+  price: number
+  salePrice?: number | null
+  searchKeywords?: Prisma.ProductCreatesearchKeywordsInput | string[]
+  seo_description_en?: string | null
+  seo_description_he?: string | null
+  seo_slug?: string | null
+  seo_title_en?: string | null
+  seo_title_he?: string | null
+  shippingReturns_en?: string | null
+  shippingReturns_he?: string | null
+  sku: string
+  sole_en?: string | null
+  sole_he?: string | null
+  subCategory?: string | null
+  subSubCategory?: string | null
+  title_en: string
+  title_he: string
+  upperMaterial_en?: string | null
+  upperMaterial_he?: string | null
+  colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  category_he?: string | null
+  subCategory_he?: string | null
+  subSubCategory_he?: string | null
+}
+
+export type ProductUpdateWithoutBogoGroupInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isNew?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  brand?: Prisma.StringFieldUpdateOperationsInput | string
+  categories_path?: Prisma.ProductUpdatecategories_pathInput | string[]
+  categories_path_id?: Prisma.ProductUpdatecategories_path_idInput | string[]
+  category?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  description_en?: Prisma.StringFieldUpdateOperationsInput | string
+  description_he?: Prisma.StringFieldUpdateOperationsInput | string
+  heelHeight_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lining_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lining_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  materialInnerSole_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  materialInnerSole_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.FloatFieldUpdateOperationsInput | number
+  salePrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  searchKeywords?: Prisma.ProductUpdatesearchKeywordsInput | string[]
+  seo_description_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_description_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_title_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_title_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingReturns_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingReturns_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sku?: Prisma.StringFieldUpdateOperationsInput | string
+  sole_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sole_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subSubCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  title_en?: Prisma.StringFieldUpdateOperationsInput | string
+  title_he?: Prisma.StringFieldUpdateOperationsInput | string
+  upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
+  categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
+}
+
+export type ProductUncheckedUpdateWithoutBogoGroupInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isNew?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  categoryId?: Prisma.StringFieldUpdateOperationsInput | string
+  brand?: Prisma.StringFieldUpdateOperationsInput | string
+  categories_path?: Prisma.ProductUpdatecategories_pathInput | string[]
+  categories_path_id?: Prisma.ProductUpdatecategories_path_idInput | string[]
+  category?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  description_en?: Prisma.StringFieldUpdateOperationsInput | string
+  description_he?: Prisma.StringFieldUpdateOperationsInput | string
+  heelHeight_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isDeleted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lining_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lining_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  materialInnerSole_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  materialInnerSole_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  price?: Prisma.FloatFieldUpdateOperationsInput | number
+  salePrice?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  searchKeywords?: Prisma.ProductUpdatesearchKeywordsInput | string[]
+  seo_description_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_description_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_slug?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_title_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seo_title_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingReturns_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingReturns_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sku?: Prisma.StringFieldUpdateOperationsInput | string
+  sole_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sole_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subSubCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  title_en?: Prisma.StringFieldUpdateOperationsInput | string
+  title_he?: Prisma.StringFieldUpdateOperationsInput | string
+  upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
+}
+
+export type ProductUncheckedUpdateManyWithoutBogoGroupInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isNew?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  categoryId?: Prisma.StringFieldUpdateOperationsInput | string
   brand?: Prisma.StringFieldUpdateOperationsInput | string
   categories_path?: Prisma.ProductUpdatecategories_pathInput | string[]
   categories_path_id?: Prisma.ProductUpdatecategories_path_idInput | string[]
@@ -1990,8 +2377,10 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  bogoGroupId?: boolean
   tags?: boolean | Prisma.Product$tagsArgs<ExtArgs>
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
+  bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
   _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["product"]>
 
@@ -2041,7 +2430,9 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  bogoGroupId?: boolean
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
+  bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
 }, ExtArgs["result"]["product"]>
 
 export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -2090,7 +2481,9 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  bogoGroupId?: boolean
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
+  bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
 }, ExtArgs["result"]["product"]>
 
 export type ProductSelectScalar = {
@@ -2139,19 +2532,23 @@ export type ProductSelectScalar = {
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  bogoGroupId?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "category_he" | "subCategory_he" | "subSubCategory_he", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "category_he" | "subCategory_he" | "subSubCategory_he" | "bogoGroupId", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   tags?: boolean | Prisma.Product$tagsArgs<ExtArgs>
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
+  bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
   _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ProductIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
+  bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
 }
 export type ProductIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
+  bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
 }
 
 export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2159,6 +2556,7 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   objects: {
     tags: Prisma.$ProductTagPayload<ExtArgs>[]
     categoryRelation: Prisma.$CategoryPayload<ExtArgs>
+    bogoGroup: Prisma.$BogoGroupPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2206,6 +2604,7 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     category_he: string | null
     subCategory_he: string | null
     subSubCategory_he: string | null
+    bogoGroupId: string | null
   }, ExtArgs["result"]["product"]>
   composites: {}
 }
@@ -2602,6 +3001,7 @@ export interface Prisma__ProductClient<T, Null = never, ExtArgs extends runtime.
   readonly [Symbol.toStringTag]: "PrismaPromise"
   tags<T extends Prisma.Product$tagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$tagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductTagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   categoryRelation<T extends Prisma.CategoryDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CategoryDefaultArgs<ExtArgs>>): Prisma.Prisma__CategoryClient<runtime.Types.Result.GetResult<Prisma.$CategoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  bogoGroup<T extends Prisma.Product$bogoGroupArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$bogoGroupArgs<ExtArgs>>): Prisma.Prisma__BogoGroupClient<runtime.Types.Result.GetResult<Prisma.$BogoGroupPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2676,6 +3076,7 @@ export interface ProductFieldRefs {
   readonly category_he: Prisma.FieldRef<"Product", 'String'>
   readonly subCategory_he: Prisma.FieldRef<"Product", 'String'>
   readonly subSubCategory_he: Prisma.FieldRef<"Product", 'String'>
+  readonly bogoGroupId: Prisma.FieldRef<"Product", 'String'>
 }
     
 
@@ -3093,6 +3494,25 @@ export type Product$tagsArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
   take?: number
   skip?: number
   distinct?: Prisma.ProductTagScalarFieldEnum | Prisma.ProductTagScalarFieldEnum[]
+}
+
+/**
+ * Product.bogoGroup
+ */
+export type Product$bogoGroupArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BogoGroup
+   */
+  select?: Prisma.BogoGroupSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BogoGroup
+   */
+  omit?: Prisma.BogoGroupOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BogoGroupInclude<ExtArgs> | null
+  where?: Prisma.BogoGroupWhereInput
 }
 
 /**

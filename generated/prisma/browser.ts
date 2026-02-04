@@ -43,6 +43,11 @@ export type NewsletterEmails = Prisma.NewsletterEmailsModel
  */
 export type Category = Prisma.CategoryModel
 /**
+ * Model BogoGroup
+ * 
+ */
+export type BogoGroup = Prisma.BogoGroupModel
+/**
  * Model Product
  * 
  */

@@ -10,10 +10,73 @@ import { getVerifoneCustomerByCellular } from './verifone'
 import { syncPointsFromVerifone } from './points'
 
 /**
+ * Round to 2 decimal places
+ */
+function roundTwo(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+/**
  * Round points value to 2 decimal places
  */
 function roundPoints(value: number): number {
-  return Math.round(value * 100) / 100
+  return roundTwo(value)
+}
+
+type OrderItemForInvoice = {
+  productSku: string
+  colorName: string | null
+  size: string | null
+  quantity: number
+  price: number
+  salePrice: number | null
+}
+
+/**
+ * Distribute a target total across order items proportionally (same logic as create-low-profile
+ * for CardCom). Returns items with price/salePrice set so that sum(price * qty) = targetProductTotal.
+ */
+function orderItemsWithProportionalTotals(
+  orderItems: OrderItemForInvoice[],
+  targetProductTotal: number
+): OrderItemForInvoice[] {
+  if (orderItems.length === 0) return []
+  const subtotalBefore = orderItems.reduce((sum, item) => {
+    const effective = (item.salePrice != null && item.salePrice > 0 && item.salePrice < item.price)
+      ? item.salePrice
+      : item.price
+    return sum + effective * item.quantity
+  }, 0)
+  if (subtotalBefore <= 0) return orderItems
+
+  const lineTotalsAfter: number[] = []
+  let remaining = roundTwo(targetProductTotal)
+  for (let i = 0; i < orderItems.length; i++) {
+    const item = orderItems[i]
+    const effective = (item.salePrice != null && item.salePrice > 0 && item.salePrice < item.price)
+      ? item.salePrice
+      : item.price
+    const lineBefore = effective * item.quantity
+    let lineAfter: number
+    if (i === orderItems.length - 1) {
+      lineAfter = remaining
+    } else {
+      lineAfter = roundTwo((lineBefore / subtotalBefore) * targetProductTotal)
+      if (lineAfter > remaining) lineAfter = remaining
+      remaining = roundTwo(remaining - lineAfter)
+    }
+    lineTotalsAfter.push(lineAfter)
+  }
+
+  return orderItems.map((item, i) => {
+    const qty = item.quantity && item.quantity > 0 ? item.quantity : 1
+    const discountedUnitPrice = roundTwo(lineTotalsAfter[i]! / qty)
+    return {
+      ...item,
+      price: discountedUnitPrice,
+      salePrice: null
+    }
+  })
 }
 
 /**
@@ -133,17 +196,30 @@ export async function createVerifoneInvoiceAsync(
     // Build SOAP envelope
     let soapEnvelope: string
     try {
-      // Prefer real coupons when present; otherwise, if there's a stored BOGO discount
-      // use it as a single coupon-equivalent amount for the invoice.
       const hasOrderCoupons =
         Array.isArray(order.appliedCoupons) && order.appliedCoupons.length > 0
+      const hasBogoDiscount =
+        !hasOrderCoupons &&
+        order.bogoDiscountAmount != null &&
+        order.bogoDiscountAmount > 0
+
+      // When BOGO was applied, pass order items with the same discounted line totals as CardCom
+      // so Verifone document lines sum to order.total (no lump coupon on first line).
+      const targetProductTotal = roundTwo(
+        order.total - (order.deliveryFee || 0) + pointsUsed
+      )
+      const orderItemsForEnvelope = hasBogoDiscount
+        ? orderItemsWithProportionalTotals(
+            order.orderItems as OrderItemForInvoice[],
+            targetProductTotal
+          )
+        : order.orderItems
+
       const couponsForInvoice = hasOrderCoupons
         ? order.appliedCoupons.map(coupon => ({
             discountAmount: coupon.discountAmount
           }))
-        : order.bogoDiscountAmount && order.bogoDiscountAmount > 0
-          ? [{ discountAmount: order.bogoDiscountAmount }]
-          : []
+        : []
 
       soapEnvelope = buildCreateInvoiceEnvelope(
         {
@@ -153,7 +229,7 @@ export async function createVerifoneInvoiceAsync(
           customerName: order.customerName,
           createdAt: order.createdAt,
           deliveryFee: order.deliveryFee || 0,
-          orderItems: order.orderItems,
+          orderItems: orderItemsForEnvelope,
           appliedCoupons: couponsForInvoice,
           user: order.user
         },

@@ -56,6 +56,7 @@ export const ModelName = {
   Favorite: 'Favorite',
   NewsletterEmails: 'NewsletterEmails',
   Category: 'Category',
+  BogoGroup: 'BogoGroup',
   Product: 'Product',
   Tag: 'Tag',
   ProductTag: 'ProductTag',
@@ -182,6 +183,15 @@ export const CategoryScalarFieldEnum = {
 export type CategoryScalarFieldEnum = (typeof CategoryScalarFieldEnum)[keyof typeof CategoryScalarFieldEnum]
 
 
+export const BogoGroupScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  pairPriceIls: 'pairPriceIls'
+} as const
+
+export type BogoGroupScalarFieldEnum = (typeof BogoGroupScalarFieldEnum)[keyof typeof BogoGroupScalarFieldEnum]
+
+
 export const ProductScalarFieldEnum = {
   id: 'id',
   featured: 'featured',
@@ -227,7 +237,8 @@ export const ProductScalarFieldEnum = {
   colorVariants: 'colorVariants',
   category_he: 'category_he',
   subCategory_he: 'subCategory_he',
-  subSubCategory_he: 'subSubCategory_he'
+  subSubCategory_he: 'subSubCategory_he',
+  bogoGroupId: 'bogoGroupId'
 } as const
 
 export type ProductScalarFieldEnum = (typeof ProductScalarFieldEnum)[keyof typeof ProductScalarFieldEnum]
@@ -277,6 +288,7 @@ export const OrderScalarFieldEnum = {
   subtotal: 'subtotal',
   discountTotal: 'discountTotal',
   deliveryFee: 'deliveryFee',
+  bogoDiscountAmount: 'bogoDiscountAmount',
   userId: 'userId',
   verifoneInvoiceStatus: 'verifoneInvoiceStatus',
   verifoneInvoiceNo: 'verifoneInvoiceNo',

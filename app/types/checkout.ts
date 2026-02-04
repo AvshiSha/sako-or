@@ -68,6 +68,11 @@ export interface CreateLowProfileRequest {
   subtotal?: number;
   discountTotal?: number;
   deliveryFee?: number;
+  /**
+   * Optional: automatic BOGO discount amount applied at cart level.
+   * When present and > 0, coupons should not be combined with this order.
+   */
+  bogoDiscountAmount?: number;
   coupons?: Array<{
     code: string;
     discountAmount: number;

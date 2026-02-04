@@ -323,7 +323,19 @@ export async function POST(request: NextRequest) {
       computedDeliveryFee = DELIVERY_FEE_ILS;
     }
 
+    // Honor discountTotal from the client (coupons or automatic BOGO),
+    // but keep a safety fallback if it's missing.
     const computedDiscountTotal = body.discountTotal ?? Math.max(computedSubtotal + computedDeliveryFee - body.amount, 0);
+
+    // Enforce no double-discount stacking between automatic BOGO and coupons.
+    const hasBogoDiscount = !!body.bogoDiscountAmount && body.bogoDiscountAmount > 0;
+    const hasCoupons = Array.isArray(body.coupons) && body.coupons.length > 0;
+    if (hasBogoDiscount && hasCoupons) {
+      return NextResponse.json(
+        { error: 'Coupons cannot be combined with the automatic pairs deal.' },
+        { status: 400 }
+      );
+    }
 
     // Create order in database
     let order;
@@ -333,6 +345,7 @@ export async function POST(request: NextRequest) {
         total: body.amount,
         subtotal: computedSubtotal,
         discountTotal: computedDiscountTotal,
+        bogoDiscountAmount: hasBogoDiscount ? body.bogoDiscountAmount : undefined,
         deliveryFee: computedDeliveryFee,
         shippingMethod,
         pickupLocation: body.pickupLocation,
@@ -342,14 +355,16 @@ export async function POST(request: NextRequest) {
         customerPhone: body.customer.mobile,
         userId,
         items: orderItems,
-        coupons: body.coupons?.map(coupon => ({
-          code: coupon.code,
-          discountAmount: coupon.discountAmount,
-          discountType: coupon.discountType,
-          stackable: coupon.stackable,
-          description: coupon.description,
-          couponId: couponMap.get(coupon.code.toUpperCase())
-        }))
+        coupons: hasBogoDiscount
+          ? undefined
+          : body.coupons?.map(coupon => ({
+              code: coupon.code,
+              discountAmount: coupon.discountAmount,
+              discountType: coupon.discountType,
+              stackable: coupon.stackable,
+              description: coupon.description,
+              couponId: couponMap.get(coupon.code.toUpperCase())
+            }))
       });
     } catch (createError: any) {
       // If we still get a unique constraint error, retry with a new order number
@@ -361,6 +376,7 @@ export async function POST(request: NextRequest) {
           total: body.amount,
           subtotal: computedSubtotal,
           discountTotal: computedDiscountTotal,
+          bogoDiscountAmount: hasBogoDiscount ? body.bogoDiscountAmount : undefined,
           deliveryFee: computedDeliveryFee,
           shippingMethod,
           pickupLocation: body.pickupLocation,
@@ -370,13 +386,15 @@ export async function POST(request: NextRequest) {
           customerPhone: body.customer.mobile,
           userId,
           items: orderItems,
-          coupons: body.coupons?.map(coupon => ({
-            code: coupon.code,
-            discountAmount: coupon.discountAmount,
-            discountType: coupon.discountType,
-            stackable: coupon.stackable,
-            description: coupon.description
-          }))
+          coupons: hasBogoDiscount
+            ? undefined
+            : body.coupons?.map(coupon => ({
+                code: coupon.code,
+                discountAmount: coupon.discountAmount,
+                discountType: coupon.discountType,
+                stackable: coupon.stackable,
+                description: coupon.description
+              }))
         });
       } else {
         throw createError;

@@ -133,6 +133,18 @@ export async function createVerifoneInvoiceAsync(
     // Build SOAP envelope
     let soapEnvelope: string
     try {
+      // Prefer real coupons when present; otherwise, if there's a stored BOGO discount
+      // use it as a single coupon-equivalent amount for the invoice.
+      const hasOrderCoupons =
+        Array.isArray(order.appliedCoupons) && order.appliedCoupons.length > 0
+      const couponsForInvoice = hasOrderCoupons
+        ? order.appliedCoupons.map(coupon => ({
+            discountAmount: coupon.discountAmount
+          }))
+        : order.bogoDiscountAmount && order.bogoDiscountAmount > 0
+          ? [{ discountAmount: order.bogoDiscountAmount }]
+          : []
+
       soapEnvelope = buildCreateInvoiceEnvelope(
         {
           id: order.id,
@@ -142,7 +154,7 @@ export async function createVerifoneInvoiceAsync(
           createdAt: order.createdAt,
           deliveryFee: order.deliveryFee || 0,
           orderItems: order.orderItems,
-          appliedCoupons: order.appliedCoupons,
+          appliedCoupons: couponsForInvoice,
           user: order.user
         },
         transactionInfo,

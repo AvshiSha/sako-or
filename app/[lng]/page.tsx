@@ -70,7 +70,7 @@ const translations = {
     emailRequired: 'Email is required',
     emailInvalid: 'Please enter a valid email address',
     subscriptionError: 'Failed to subscribe. Please try again.',
-    bogoPairTitle: 'Choose a pair, and surprise awaits in your cart.'
+    bogoPairTitle: 'Choose two items, and a surprise awaits in your cart'
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!
@@ -93,7 +93,7 @@ const translations = {
     emailRequired: 'נדרש אימייל',
     emailInvalid: 'אנא הזן כתובת אימייל תקינה',
     subscriptionError: 'ההרשמה נכשלה. אנא נסה שוב.',
-    bogoPairTitle: 'בחרי זוג, ויחכה לך הפתעה בעגלה'
+    bogoPairTitle: 'תבחרי שני פריטים – ותחכה לך הפתעה בעגלה'
   }
 }
 

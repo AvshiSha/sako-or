@@ -235,7 +235,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     <Transition.Root show={isOpen} as={Fragment}>
       <Dialog 
         as="div" 
-        className="relative z-[70]" 
+        className="relative z-[75]" 
         onClose={onClose}
       >
          <Transition.Child
@@ -250,7 +250,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
          <div className="fixed inset-0 bg-black/20 transition-opacity" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-hidden">
+        <div className="fixed inset-0 overflow-hidden" data-quick-buy-drawer>
           <div className="absolute inset-0 overflow-hidden">
             <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
               <Transition.Child

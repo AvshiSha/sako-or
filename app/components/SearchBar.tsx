@@ -68,19 +68,21 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement
       
-      // Don't close if clicking on QuickBuyDrawer or its backdrop
-      // Check for Headless UI Dialog elements (used by QuickBuyDrawer)
-      // Headless UI creates a div with role="dialog" for the Dialog component
+      // Don't close if clicking on QuickBuyDrawer (size selector, panel, etc.)
+      const isDrawerElement = target.closest('[data-quick-buy-drawer]')
+      if (isDrawerElement) {
+        return // Don't close search overlay when interacting with the drawer
+      }
+      
+      // Fallback: Headless UI Dialog (used by QuickBuyDrawer)
       const drawerDialog = document.querySelector('[role="dialog"]')
-      const isDrawerElement = drawerDialog && (
-        drawerDialog.contains(target) || 
+      const isLegacyDrawerElement = drawerDialog && (
+        drawerDialog.contains(target) ||
         target === drawerDialog ||
-        // Also check if clicking on backdrop (the fixed inset-0 div inside the dialog)
         target.closest('.fixed.inset-0.bg-black\\/20')
       )
-      
-      if (isDrawerElement) {
-        return // Don't close search overlay when drawer is open
+      if (isLegacyDrawerElement) {
+        return
       }
       
       // Don't close if clicking on a Link (product card navigation)
@@ -308,19 +310,13 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
           {/* Overlay backdrop */}
           <div 
             className="fixed inset-0 bg-black/20 z-40"
-            onClick={(e) => {
-              // Don't close if clicking on QuickBuyDrawer backdrop
-              const target = e.target as HTMLElement
-              const drawerDialog = document.querySelector('[role="dialog"]')
-              const isDrawerBackdrop = drawerDialog && (
-                drawerDialog.contains(target) || 
-                target === drawerDialog
-              )
-              
-              if (!isDrawerBackdrop) {
-                setIsExpanded(false)
-                setShowResults(false)
+            onClick={() => {
+              // Don't close if Quick Buy drawer is open (e.g. user clicked where drawer appears but hit this backdrop)
+              if (document.querySelector('[data-quick-buy-drawer]')) {
+                return
               }
+              setIsExpanded(false)
+              setShowResults(false)
             }}
           />
           

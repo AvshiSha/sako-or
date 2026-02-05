@@ -29,6 +29,11 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import { Slider } from '@/app/components/ui/slider';
+import {
+  getCollectionState,
+  setCollectionState,
+  type CollectionBrowseState,
+} from "@/lib/collectionBrowseStore";
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -190,10 +195,19 @@ export default function CollectionClient({
     return keyParts.sort().join('|');
   }, [categoryPath, searchQuery, searchParams]);
 
+  // Stable key for this collection + filter/search combination
+  const collectionKey = useMemo(() => {
+    const base = `${lng}|${categoryPath || 'all'}|${searchQuery || ''}`;
+    return `${base}|${filterKey}`;
+  }, [lng, categoryPath, searchQuery, filterKey]);
+
   // Track previous filter key to detect filter changes (not page changes)
   const prevFilterKeyRef = useRef<string>('');
   const isInitialMountRef = useRef<boolean>(true);
   const isLoadingMoreRef = useRef<boolean>(false);
+  const scrollRestoredRef = useRef<boolean>(false);
+  const hydratedFromStoreRef = useRef<boolean>(false);
+  const restoredFromUrlFetchRef = useRef<boolean>(false);
 
   // Initialize on mount only - set initial state
   useEffect(() => {
@@ -203,8 +217,119 @@ export default function CollectionClient({
     }
   }, []); // Empty deps - only run once on mount
 
+  // Ref to persist latest state on unmount (navigate away to PDP)
+  const stateSnapshotRef = useRef<{
+    useVariantItems: boolean;
+    items: VariantItem[] | Product[];
+    currentPage: number;
+    totalProducts: number;
+    hasMore: boolean;
+  } | null>(null);
+
+  // Hydrate pagination/items state from the per-collection store when available.
+  useEffect(() => {
+    if (!collectionKey || hydratedFromStoreRef.current) return;
+
+    const stored = getCollectionState(collectionKey);
+    if (!stored) return;
+
+    hydratedFromStoreRef.current = true;
+
+    if (stored.useVariantItems) {
+      setAllVariantItems(stored.items as VariantItem[]);
+    } else {
+      setAllProducts(stored.items as Product[]);
+    }
+
+    setCurrentPage(stored.currentPage);
+    setTotalProducts(stored.totalProducts);
+    setHasMore(stored.hasMore);
+  }, [collectionKey]);
+
+  // Fallback: when URL has page>1 but no stored state (e.g. sessionStorage failed or new tab),
+  // fetch pages 1..page on the client and restore the list so we show the same place.
+  useEffect(() => {
+    if (!collectionKey || hydratedFromStoreRef.current || restoredFromUrlFetchRef.current) return;
+
+    const pageParam = searchParams?.get("page");
+    const targetPage = pageParam ? Math.max(1, parseInt(pageParam, 10) || 1) : 1;
+    if (targetPage < 2) return;
+
+    restoredFromUrlFetchRef.current = true;
+    const safeSearchParams = searchParams ?? new URLSearchParams();
+
+    const fetchPage = (page: number): Promise<{ variantItems?: VariantItem[]; items?: Product[]; total?: number; hasMore?: boolean }> => {
+      const apiUrl = new URL("/api/products/collection", window.location.origin);
+      apiUrl.searchParams.set("page", String(page));
+      apiUrl.searchParams.set("language", lng);
+      if (categoryPath) apiUrl.searchParams.set("categoryPath", categoryPath);
+      if (searchQuery) apiUrl.searchParams.set("search", searchQuery);
+      safeSearchParams.forEach((value, key) => {
+        if (key !== "page" && key !== "search") apiUrl.searchParams.set(key, value);
+      });
+      return fetch(apiUrl.toString()).then((r) => (r.ok ? r.json() : Promise.resolve({})));
+    };
+
+    if (useVariantItems) {
+      Promise.all(Array.from({ length: targetPage }, (_, i) => fetchPage(i + 1)))
+        .then((results) => {
+          const allKeys = new Set<string>();
+          const combined: VariantItem[] = [];
+          let total = 0;
+          let hasMore = false;
+          for (let i = 0; i < results.length; i++) {
+            const data = results[i];
+            const list = data?.variantItems || [];
+            total = data?.total ?? total;
+            hasMore = i === results.length - 1 ? !!data?.hasMore : true;
+            list.forEach((item: VariantItem) => {
+              if (!allKeys.has(item.variantKey)) {
+                allKeys.add(item.variantKey);
+                combined.push(item);
+              }
+            });
+          }
+          if (combined.length > 0) {
+            setAllVariantItems(combined);
+            setCurrentPage(targetPage);
+            setTotalProducts(total || combined.length);
+            setHasMore(!!hasMore);
+          }
+        })
+        .catch(() => { restoredFromUrlFetchRef.current = false; });
+    } else {
+      Promise.all(Array.from({ length: targetPage }, (_, i) => fetchPage(i + 1)))
+        .then((results) => {
+          const allIds = new Set<string>();
+          const combined: Product[] = [];
+          let total = 0;
+          let hasMore = false;
+          for (let i = 0; i < results.length; i++) {
+            const data = results[i];
+            const list = data?.items || [];
+            total = data?.total ?? total;
+            hasMore = i === results.length - 1 ? !!data?.hasMore : true;
+            list.forEach((item: Product) => {
+              const id = item.id ?? item.sku;
+              if (id && !allIds.has(String(id))) {
+                allIds.add(String(id));
+                combined.push(item);
+              }
+            });
+          }
+          if (combined.length > 0) {
+            setAllProducts(combined);
+            setCurrentPage(targetPage);
+            setTotalProducts(total || combined.length);
+            setHasMore(!!hasMore);
+          }
+        })
+        .catch(() => { restoredFromUrlFetchRef.current = false; });
+    }
+  }, [collectionKey, categoryPath, searchQuery, lng, searchParams, useVariantItems]);
+
   // CRITICAL: Only reset products/variantItems when filters/search actually change, NOT when page changes
-  // This prevents the accumulated stream from being wiped when URL updates after Load More
+  // Do NOT overwrite when we just hydrated from store (returning from PDP with restored state).
   useEffect(() => {
     const filterChanged = prevFilterKeyRef.current !== filterKey;
     
@@ -215,6 +340,7 @@ export default function CollectionClient({
     const pageOnlyChanged = !filterChanged && prevFilterKeyRef.current !== '';
     
     if (filterChanged && !isLoadingMoreRef.current) {
+      hydratedFromStoreRef.current = false; // New filter context, clear hydration flag
       // Filters/search changed - reset accumulated items to start fresh
       if (useVariantItems && initialVariantItems) {
         setAllVariantItems(initialVariantItems);
@@ -226,13 +352,9 @@ export default function CollectionClient({
       setCurrentPage(searchPage || 1);
       setHasMore(initialHasMore);
       prevFilterKeyRef.current = filterKey;
-    } else if (pageOnlyChanged && !isLoadingMoreRef.current) {
-      // Only page number changed (direct URL navigation, e.g. ?page=3 or back to ?page=1)
-      // Server fetches the requested page and passes it in initialProducts/initialVariantItems.
-      // We must sync to that data - our accumulated items may be from a different page.
-      // - searchPage < currentPage: user went back (e.g. page 3 → page 1)
-      // - searchPage > currentPage: user jumped forward (e.g. shared link ?page=3, or page 1 → page 3)
-      //   In the forward case, we do NOT have page 3 in our stream; we must use initialProducts.
+    } else if (pageOnlyChanged && !isLoadingMoreRef.current && !hydratedFromStoreRef.current) {
+      // Only page number changed - sync to server data ONLY if we did NOT hydrate from store.
+      // When returning from PDP we hydrate from store and must not overwrite with server payload.
       if (searchPage && searchPage !== currentPage) {
         if (useVariantItems && initialVariantItems) {
           setAllVariantItems(initialVariantItems);
@@ -249,45 +371,102 @@ export default function CollectionClient({
     // The accumulated stream should remain intact
   }, [filterKey, initialProducts, initialVariantItems, searchPage, searchTotal, initialHasMore, currentPage, useVariantItems]);
 
-  // Scroll restoration: save scroll position and restore when returning from PDP
+  // Keep snapshot ref updated so we can persist on unmount
+  stateSnapshotRef.current = {
+    useVariantItems,
+    items: useVariantItems ? allVariantItems : allProducts,
+    currentPage,
+    totalProducts,
+    hasMore,
+  };
+
+  // Persist to store on unmount (navigating away to product page) so state is never lost
   useEffect(() => {
-    const scrollKey = `scroll_${lng}_${categoryPath || 'all'}_${searchQuery || ''}_${currentPage}`;
-    
-    // Restore scroll position if returning from PDP
-    const savedScroll = sessionStorage.getItem(scrollKey);
-    if (savedScroll) {
-      const scrollPosition = parseInt(savedScroll, 10);
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        window.scrollTo(0, scrollPosition);
-        // Clear after restoration
-        sessionStorage.removeItem(scrollKey);
+    return () => {
+      const key = collectionKey;
+      const snap = stateSnapshotRef.current;
+      if (!key || !snap) return;
+      const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
+      setCollectionState(key, {
+        useVariantItems: snap.useVariantItems,
+        items: snap.items,
+        currentPage: snap.currentPage,
+        totalProducts: snap.totalProducts,
+        hasMore: snap.hasMore,
+        scrollY,
+        updatedAt: Date.now(),
       });
-    }
-
-    // Save scroll position periodically and on scroll
-    const saveScrollPosition = () => {
-      sessionStorage.setItem(scrollKey, window.scrollY.toString());
     };
+  }, [collectionKey]);
 
-    // Save on scroll (throttled)
+  // Helper: persist current collection state (including latest scrollY) into the store.
+  const persistCollectionState = useCallback(
+    (scrollYOverride?: number) => {
+      if (!collectionKey) return;
+
+      const scrollY =
+        typeof window !== "undefined"
+          ? scrollYOverride ?? window.scrollY
+          : scrollYOverride ?? 0;
+
+      const state: CollectionBrowseState = {
+        useVariantItems,
+        items: useVariantItems ? allVariantItems : allProducts,
+        currentPage,
+        totalProducts,
+        hasMore,
+        scrollY,
+        updatedAt: Date.now(),
+      };
+
+      setCollectionState(collectionKey, state);
+    },
+    [
+      collectionKey,
+      useVariantItems,
+      allVariantItems,
+      allProducts,
+      currentPage,
+      totalProducts,
+      hasMore,
+    ]
+  );
+
+  // Persist scroll position into the store while the user scrolls.
+  useEffect(() => {
+    if (!collectionKey) return;
+
     let scrollTimeout: NodeJS.Timeout;
+
     const handleScroll = () => {
       clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(saveScrollPosition, 100);
+      scrollTimeout = setTimeout(() => {
+        persistCollectionState();
+      }, 100);
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    
-    // Save on page unload (when navigating away)
-    window.addEventListener('beforeunload', saveScrollPosition);
+    window.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('beforeunload', saveScrollPosition);
+      window.removeEventListener("scroll", handleScroll);
       clearTimeout(scrollTimeout);
     };
-  }, [lng, categoryPath, searchQuery, currentPage]);
+  }, [collectionKey, persistCollectionState]);
+
+  // Ensure latest state is stored when core pagination data changes.
+  useEffect(() => {
+    if (!collectionKey) return;
+    persistCollectionState();
+  }, [
+    collectionKey,
+    persistCollectionState,
+    useVariantItems,
+    allVariantItems,
+    allProducts,
+    currentPage,
+    totalProducts,
+    hasMore,
+  ]);
 
   // Load More handler
   const handleLoadMore = useCallback(async () => {
@@ -782,6 +961,29 @@ export default function CollectionClient({
       return sorted;
     }
   }, [allVariantItems, allProducts, sortBy, useVariantItems]);
+
+  // Scroll restoration: use stored scrollY for this collection key when returning from PDP.
+  useEffect(() => {
+    if (!collectionKey || scrollRestoredRef.current) return;
+
+    const stored = getCollectionState(collectionKey);
+    if (!stored || stored.scrollY <= 0) {
+      scrollRestoredRef.current = true;
+      return;
+    }
+
+    // Wait until items are rendered to avoid restoring too early.
+    if (sortedItems.length === 0) return;
+
+    scrollRestoredRef.current = true;
+    const targetY = stored.scrollY;
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, targetY);
+      });
+    });
+  }, [collectionKey, sortedItems.length]);
 
   // Track view_item_list when items are displayed
   useEffect(() => {

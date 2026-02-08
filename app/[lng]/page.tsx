@@ -439,7 +439,7 @@ export default function Home() {
         />
       )}
 
-      {/* Collection Tiles - under Hero #2 */}
+      {/* Collection Tiles - under Hero #3 */}
       <CollectionTiles lng={lng} />
 
       {/* Countdown Popup */}

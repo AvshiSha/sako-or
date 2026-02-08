@@ -30,7 +30,6 @@ function ProductLanguageSwitcherInner({ currentLanguage, sku }: ProductLanguageS
           }`}
           title={`${meta.name} - ${meta.nativeName}`}
         >
-          <span className="mr-2">{meta.flag}</span>
           {code.toUpperCase()}
         </Link>
       ))}
@@ -53,7 +52,6 @@ export default function ProductLanguageSwitcher({ currentLanguage, sku }: Produc
             }`}
             title={`${meta.name} - ${meta.nativeName}`}
           >
-            <span className="mr-2">{meta.flag}</span>
             {code.toUpperCase()}
           </Link>
         ))}

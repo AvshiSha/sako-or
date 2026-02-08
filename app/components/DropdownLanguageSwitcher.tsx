@@ -58,9 +58,8 @@ function DropdownLanguageSwitcherInner({ currentLanguage }: DropdownLanguageSwit
       {/* Dropdown Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200"
+        className="flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#856D55]/80 focus:border-[#856D55]/80 transition-colors duration-200"
       >
-        <span>{currentLanguageMeta.flag}</span>
         <span className="hidden sm:inline">{currentLanguageMeta.nativeName}</span>
         <span className="sm:hidden">{currentLanguage.toUpperCase()}</span>
         <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -74,11 +73,10 @@ function DropdownLanguageSwitcherInner({ currentLanguage }: DropdownLanguageSwit
               <button
                 key={code}
                 onClick={() => handleLanguageChange(code)}
-                className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-100 transition-colors duration-200 flex items-center space-x-2 ${
-                  currentLanguage === code ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'
+                className={`w-full text-left px-4 py-2 text-sm hover:bg-[#856D55]/20 transition-colors duration-200 flex items-center space-x-2 ${
+                  currentLanguage === code ? 'bg-[#856D55]/70 text-white' : 'text-gray-700'
                 }`}
               >
-                <span>{meta.flag}</span>
                 <span>{meta.nativeName}</span>
                 <span className="text-gray-500">({code.toUpperCase()})</span>
               </button>
@@ -95,10 +93,9 @@ export default function DropdownLanguageSwitcher({ currentLanguage }: DropdownLa
     <Suspense fallback={
       <div className="relative">
         <button
-          className="flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700"
+          className="flex items-center space-x-1 px-3 py-2 text-sm font-medium rounded-md border border-[#856D55]/80 bg-[#856D55]/80 text-white hover:bg-[#856D55] hover:text-white"
           disabled
         >
-          <span>{languageMetadata[currentLanguage as keyof typeof languageMetadata]?.flag || '🌐'}</span>
           <span className="hidden sm:inline">{languageMetadata[currentLanguage as keyof typeof languageMetadata]?.nativeName || currentLanguage.toUpperCase()}</span>
           <span className="sm:hidden">{currentLanguage.toUpperCase()}</span>
           <ChevronDown className="h-4 w-4" />

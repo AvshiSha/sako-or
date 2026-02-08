@@ -11,12 +11,27 @@ export async function POST(request: NextRequest) {
     const firebaseCategories = await categoryService.getAllCategories()
     console.log(`Found ${firebaseProducts.length} products in Firebase`)
     
-    // Create a mapping from Firebase category IDs to category names
-    const firebaseCategoryMap = new Map<string, string>()
+    // Create a mapping from Firebase category IDs to category objects (with both EN and HE names)
+    const firebaseCategoryMap = new Map<string, { en: string; he: string; level?: number; parentId?: string }>()
+    firebaseCategories.forEach(cat => {
+      if (cat.id) {
+        const categoryNameEn = typeof cat.name === 'object' ? cat.name.en : cat.name
+        const categoryNameHe = typeof cat.name === 'object' ? cat.name.he : cat.name
+        firebaseCategoryMap.set(cat.id, {
+          en: categoryNameEn,
+          he: categoryNameHe,
+          level: cat.level,
+          parentId: cat.parentId
+        })
+      }
+    })
+    
+    // Also create a simple mapping for backward compatibility
+    const firebaseCategoryNameMap = new Map<string, string>()
     firebaseCategories.forEach(cat => {
       if (cat.id) {
         const categoryName = typeof cat.name === 'object' ? cat.name.en : cat.name
-        firebaseCategoryMap.set(cat.id, categoryName)
+        firebaseCategoryNameMap.set(cat.id, categoryName)
       }
     })
     
@@ -66,25 +81,150 @@ export async function POST(request: NextRequest) {
           where: { sku: productSku }
         })
 
-        // Find category by Firebase ID (since products store Firebase category IDs)
+        // Resolve category path from Firebase IDs to names (both EN and HE)
+        // This handles cases like ["women", "outlet", "outlet-boots"] → ["Women", "Outlet", "Outlet Boots"] + Hebrew
+        let categoryEn = null
+        let categoryHe = null
+        let subCategoryEn = null
+        let subCategoryHe = null
+        let subSubCategoryEn = null
+        let subSubCategoryHe = null
         let categoryId = null
-        if (firebaseProduct.category) {
-          // Use the pre-built mapping to get category name
-          const categoryName = firebaseCategoryMap.get(firebaseProduct.category)
-          
-          if (categoryName) {
-            const category = await prisma.category.findFirst({
-              where: { name_en: categoryName }
+
+        // Priority 1: Check if category names are already resolved and stored in Firebase
+        // This is the most reliable source since admin pages store resolved names
+        const productWithResolvedCategories = firebaseProduct as any
+        if (productWithResolvedCategories.category_en) {
+          categoryEn = productWithResolvedCategories.category_en
+          categoryHe = productWithResolvedCategories.category_he || null
+          subCategoryEn = productWithResolvedCategories.subCategory_en || null
+          subCategoryHe = productWithResolvedCategories.subCategory_he || null
+          subSubCategoryEn = productWithResolvedCategories.subSubCategory_en || null
+          subSubCategoryHe = productWithResolvedCategories.subSubCategory_he || null
+
+          // Look up main category in Neon DB to get categoryId
+          const mainCategory = await prisma.category.findFirst({
+            where: { name_en: categoryEn, level: 0 }
+          })
+          if (mainCategory) {
+            categoryId = mainCategory.id
+            // Ensure Hebrew name is set if not already provided
+            if (!categoryHe) {
+              categoryHe = mainCategory.name_he
+            }
+
+            // If subcategory exists but Hebrew name is missing, look it up from Neon DB
+            if (subCategoryEn && !subCategoryHe) {
+              const subCategory = await prisma.category.findFirst({
+                where: {
+                  name_en: subCategoryEn,
+                  level: 1,
+                  parentId: mainCategory.id
+                }
+              })
+              if (subCategory) {
+                subCategoryHe = subCategory.name_he
+              }
+            }
+
+            // If sub-subcategory exists but Hebrew name is missing, look it up from Neon DB
+            if (subSubCategoryEn && !subSubCategoryHe && subCategoryEn) {
+              const subCategoryForLookup = await prisma.category.findFirst({
+                where: {
+                  name_en: subCategoryEn,
+                  level: 1,
+                  parentId: mainCategory.id
+                }
+              })
+              if (subCategoryForLookup) {
+                const subSubCategory = await prisma.category.findFirst({
+                  where: {
+                    name_en: subSubCategoryEn,
+                    level: 2,
+                    parentId: subCategoryForLookup.id
+                  }
+                })
+                if (subSubCategory) {
+                  subSubCategoryHe = subSubCategory.name_he
+                }
+              }
+            }
+          }
+        }
+
+        // Priority 2: Resolve category path using categories_path_id array (preserves hierarchy)
+        if (!categoryEn && firebaseProduct.categories_path_id && firebaseProduct.categories_path_id.length > 0) {
+          type ResolvedCategory = { en: string; he: string; level?: number; parentId?: string }
+          const resolvedPath = firebaseProduct.categories_path_id.map((firebaseId: string): ResolvedCategory | null => {
+            const firebaseCat = firebaseCategoryMap.get(firebaseId)
+            return firebaseCat ? {
+              en: firebaseCat.en,
+              he: firebaseCat.he,
+              level: firebaseCat.level,
+              parentId: firebaseCat.parentId
+            } : null
+          }).filter((item): item is ResolvedCategory => item !== null)
+
+          if (resolvedPath.length > 0) {
+            categoryEn = resolvedPath[0].en
+            categoryHe = resolvedPath[0].he
+
+            // Look up main category in Neon DB to get categoryId
+            const mainCategory = await prisma.category.findFirst({
+              where: { name_en: categoryEn, level: 0 }
             })
-            
+            if (mainCategory) {
+              categoryId = mainCategory.id
+            }
+
+            if (resolvedPath.length > 1) {
+              subCategoryEn = resolvedPath[1].en
+              // Look up Hebrew name from Neon DB with parent matching
+              const subCategory = await prisma.category.findFirst({
+                where: {
+                  name_en: subCategoryEn,
+                  level: 1,
+                  parentId: mainCategory?.id || undefined
+                }
+              })
+              subCategoryHe = subCategory?.name_he || resolvedPath[1].he
+            }
+
+            if (resolvedPath.length > 2) {
+              subSubCategoryEn = resolvedPath[2].en
+              // Look up Hebrew name from Neon DB with parent matching
+              const subCategoryForLookup = await prisma.category.findFirst({
+                where: {
+                  name_en: subCategoryEn,
+                  level: 1,
+                  parentId: mainCategory?.id || undefined
+                }
+              })
+              const subSubCategory = await prisma.category.findFirst({
+                where: {
+                  name_en: subSubCategoryEn,
+                  level: 2,
+                  parentId: subCategoryForLookup?.id || undefined
+                }
+              })
+              subSubCategoryHe = subSubCategory?.name_he || resolvedPath[2].he
+            }
+          }
+        }
+
+        // Priority 3: Fallback - Use old method if categories_path_id is not available
+        // This tries to resolve from Firebase category ID (not recommended, but handles legacy data)
+        if (!categoryEn && firebaseProduct.category) {
+          const categoryInfo = firebaseCategoryNameMap.get(firebaseProduct.category)
+          if (categoryInfo) {
+            categoryEn = categoryInfo
+            const category = await prisma.category.findFirst({
+              where: { name_en: categoryEn }
+            })
             if (category) {
               categoryId = category.id
-              console.log(`Mapped Firebase category "${firebaseProduct.category}" (${categoryName}) to Neon DB category ID: ${categoryId}`)
-            } else {
-              console.warn(`Category "${categoryName}" not found in Neon DB for product "${productTitleEn}"`)
+              categoryHe = category.name_he
             }
-          } else {
-            console.warn(`Firebase category ID "${firebaseProduct.category}" not found in category mapping for product "${productTitleEn}"`)
           }
         }
 
@@ -106,9 +246,14 @@ export async function POST(request: NextRequest) {
           price: firebaseProduct.price || 0,
           salePrice: firebaseProduct.salePrice || null,
           currency: firebaseProduct.currency || 'ILS',
-          category: firebaseProduct.category || '',
-          subCategory: firebaseProduct.subCategory || null,
-          subSubCategory: firebaseProduct.subSubCategory || null,
+          // Store resolved English names (not Firebase IDs)
+          category: categoryEn || firebaseProduct.category || '',
+          subCategory: subCategoryEn || firebaseProduct.subCategory || null,
+          subSubCategory: subSubCategoryEn || firebaseProduct.subSubCategory || null,
+          // Store Hebrew names for search
+          category_he: categoryHe || null,
+          subCategory_he: subCategoryHe || null,
+          subSubCategory_he: subSubCategoryHe || null,
           categories_path: firebaseProduct.categories_path || [],
           categories_path_id: firebaseProduct.categories_path_id || [],
           categoryId: categoryId || '',

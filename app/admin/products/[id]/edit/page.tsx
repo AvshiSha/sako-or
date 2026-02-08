@@ -1048,41 +1048,59 @@ function EditProductPage() {
     try {
       console.log('Preparing product data...')
       
-      // Build categories path and IDs
+      // Build categories path and IDs, and resolve Hebrew names
       const categoriesPath: string[] = []
       const categoriesPathId: string[] = []
+      let categoryEn = ''
+      let categoryHe = ''
+      let subCategoryEn = ''
+      let subCategoryHe = ''
+      let subSubCategoryEn = ''
+      let subSubCategoryHe = ''
       
       const mainCategory = categories.find(cat => cat.id === formData.category)
       if (mainCategory) {
         const mainSlug = typeof mainCategory.slug === 'object' ? mainCategory.slug.en : mainCategory.slug
+        const mainNameEn = typeof mainCategory.name === 'object' ? mainCategory.name.en : mainCategory.name
+        const mainNameHe = typeof mainCategory.name === 'object' ? mainCategory.name.he : mainCategory.name
         if (mainSlug) {
           categoriesPath.push(mainSlug)
           if (mainCategory.id) {
             categoriesPathId.push(mainCategory.id)
           }
         }
+        categoryEn = mainNameEn
+        categoryHe = mainNameHe
         
         if (formData.subCategory) {
           const subCategory = categories.find(cat => cat.id === formData.subCategory)
           if (subCategory) {
             const subSlug = typeof subCategory.slug === 'object' ? subCategory.slug.en : subCategory.slug
+            const subNameEn = typeof subCategory.name === 'object' ? subCategory.name.en : subCategory.name
+            const subNameHe = typeof subCategory.name === 'object' ? subCategory.name.he : subCategory.name
             if (subSlug) {
               categoriesPath.push(subSlug)
               if (subCategory.id) {
                 categoriesPathId.push(subCategory.id)
               }
             }
+            subCategoryEn = subNameEn
+            subCategoryHe = subNameHe
             
             if (formData.subSubCategory) {
               const subSubCategory = categories.find(cat => cat.id === formData.subSubCategory)
               if (subSubCategory) {
                 const subSubSlug = typeof subSubCategory.slug === 'object' ? subSubCategory.slug.en : subSubCategory.slug
+                const subSubNameEn = typeof subSubCategory.name === 'object' ? subSubCategory.name.en : subSubCategory.name
+                const subSubNameHe = typeof subSubCategory.name === 'object' ? subSubCategory.name.he : subSubCategory.name
                 if (subSubSlug) {
                   categoriesPath.push(subSubSlug)
                   if (subSubCategory.id) {
                     categoriesPathId.push(subSubCategory.id)
                   }
                 }
+                subSubCategoryEn = subSubNameEn
+                subSubCategoryHe = subSubNameHe
               }
             }
           }
@@ -1160,6 +1178,13 @@ function EditProductPage() {
         if (formData.category) {
           productData.categoryId = formData.category
         }
+        // Store resolved English and Hebrew names (will be synced to Neon)
+        productData.category_en = categoryEn
+        productData.category_he = categoryHe
+        productData.subCategory_en = subCategoryEn || null
+        productData.subCategory_he = subCategoryHe || null
+        productData.subSubCategory_en = subSubCategoryEn || null
+        productData.subSubCategory_he = subSubCategoryHe || null
       }
       
       addIfChanged('brand')

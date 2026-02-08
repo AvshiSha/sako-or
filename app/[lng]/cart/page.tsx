@@ -12,10 +12,13 @@ import {
 } from '@heroicons/react/24/outline'
 import { useCart } from '@/app/hooks/useCart'
 import CheckoutModal from '@/app/components/CheckoutModal'
+import Accordion from '@/app/components/Accordion'
+import PointsUsage from '@/app/components/PointsUsage'
 import { trackViewCart } from '@/lib/dataLayer'
 import { CouponValidationSuccess } from '@/lib/coupons'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { getColorName } from '@/lib/colors'
+import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '@/lib/pricing'
 
 const couponContent = {
   en: {
@@ -34,7 +37,7 @@ const couponContent = {
     loading: 'Checking coupon…'
   },
   he: {
-    label: 'הכנס קוד קופון',
+    label: 'יש לך קוד קופון?',
     placeholder: 'קוד קופון',
     apply: 'החל',
     remove: 'הסר',
@@ -51,6 +54,26 @@ const couponContent = {
 } as const
 
 const COUPON_STORAGE_KEY = 'cart_coupons'
+
+function CartPageFallback() {
+  return (
+    <div className="min-h-screen bg-[#E1DBD7] pt-16" style={{ backgroundColor: '#E1DBD7' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-gray-200 rounded w-48" />
+          <div className="space-y-4">
+            {[...Array(2)].map((_, idx) => (
+              <div key={idx} className="bg-white rounded-lg shadow-sm p-6">
+                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function CartPageContent() {
   const params = useParams()
@@ -73,6 +96,9 @@ function CartPageContent() {
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
 
   const [isClient, setIsClient] = useState(false)
+  const STORE_PICKUP_LOCATION = 'Rothschild 51, Rishon Lezion'
+  const SHIPPING_METHOD_STORAGE_KEY = 'cart_shipping_method'
+  const [shippingMethod, setShippingMethod] = useState<'delivery' | 'pickup'>('delivery')
 const [couponInput, setCouponInput] = useState('')
 const [couponLoading, setCouponLoading] = useState(false)
 const [couponStatus, setCouponStatus] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null)
@@ -85,6 +111,15 @@ const lastCartSignatureRef = useRef<string | null>(null)
 const urlCouponAttemptedRef = useRef<string | null>(null)
 const searchParamsObj = useSearchParams()
 const { user } = useAuth()
+
+// Points state
+const [pointsBalance, setPointsBalance] = useState(0)
+const [pointsToUse, setPointsToUse] = useState(0)
+const [pointsLoading, setPointsLoading] = useState(false)
+// Automatic BOGO deal state
+const [bogoDiscountAmount, setBogoDiscountAmount] = useState(0)
+const [bogoHasLeftover, setBogoHasLeftover] = useState(false)
+const [bogoLoading, setBogoLoading] = useState(false)
 const appliedCodes = useMemo(() => appliedCoupons.map(coupon => coupon.coupon.code), [appliedCoupons])
 const userIdentifier = user?.email ? user.email.toLowerCase() : undefined
 const cartCurrency = useMemo(() => {
@@ -104,6 +139,19 @@ const cartItemsPayload = useMemo(() => {
 
 const cartItemsSignature = useMemo(() => JSON.stringify(cartItemsPayload), [cartItemsPayload])
 
+  // Load shipping method preference from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const stored = localStorage.getItem(SHIPPING_METHOD_STORAGE_KEY)
+      if (stored === 'delivery' || stored === 'pickup') {
+        setShippingMethod(stored)
+      }
+    } catch (e) {
+      console.warn('Failed to load shipping method from storage:', e)
+    }
+  }, [])
+
 const saveCouponsToStorage = useCallback((codes: string[]) => {
   if (typeof window === 'undefined') return
   try {
@@ -121,7 +169,7 @@ const loadCouponsFromStorage = useCallback((): string[] => {
   if (typeof window === 'undefined') return []
   try {
     const stored = localStorage.getItem(COUPON_STORAGE_KEY)
-    if (!stored) return []
+    if (!stored || !stored.trim()) return []
     const parsed = JSON.parse(stored)
     return Array.isArray(parsed) ? parsed.filter((code): code is string => typeof code === 'string') : []
   } catch (storageError) {
@@ -138,6 +186,20 @@ const applyCouponCode = useCallback(async (
     skipStorageUpdate?: boolean
   }
 ) => {
+  // Guardrail: do not apply coupons when automatic BOGO deal is active.
+  if (bogoDiscountAmount > 0) {
+    if (!options?.silent) {
+      setCouponStatus({
+        type: 'info',
+        message:
+          lng === 'he'
+            ? 'לא ניתן לשלב קופונים עם מבצע הזוגות.'
+            : 'Coupons can’t be combined with the automatic pairs deal.'
+      })
+    }
+    return
+  }
+
   const normalizedCode = rawCode.trim().toUpperCase()
   if (!normalizedCode) {
     return
@@ -179,7 +241,7 @@ const applyCouponCode = useCallback(async (
         })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
       if (!response.ok || !data.success) {
         if (!options?.silent) {
           const message = data?.messages?.[lng] ??
@@ -224,7 +286,7 @@ const applyCouponCode = useCallback(async (
   } finally {
     setCouponLoading(false)
   }
-}, [appliedCodes, cartCurrency, cartItemsPayload, couponStrings.invalid, couponStrings.perUserRequired, couponStrings.success, lng, saveCouponsToStorage, userIdentifier])
+}, [appliedCodes, bogoDiscountAmount, cartCurrency, cartItemsPayload, couponStrings.invalid, couponStrings.perUserRequired, couponStrings.success, lng, saveCouponsToStorage, userIdentifier])
 
 const removeCoupon = useCallback((code: string) => {
   setAppliedCoupons(prev => prev.filter(coupon => coupon.coupon.code !== code))
@@ -271,7 +333,7 @@ const revalidateCouponCodes = useCallback(async (
         })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
       if (!response.ok || !data.success) {
         const message = data?.messages?.[lng] ?? couponStrings.invalid
         if (!options?.silent) {
@@ -372,6 +434,16 @@ const revalidateCouponCodes = useCallback(async (
     setIsClient(true)
   }, [])
 
+  // Persist shipping method selection
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem(SHIPPING_METHOD_STORAGE_KEY, shippingMethod)
+    } catch (e) {
+      console.warn('Failed to persist shipping method:', e)
+    }
+  }, [shippingMethod])
+
 useEffect(() => {
   if (!isClient) return
   if (initializedCouponsRef.current) return
@@ -438,7 +510,7 @@ useEffect(() => {
         })
       })
 
-      const data = await response.json()
+      const data = await response.json().catch(() => ({}))
       if (response.ok && data.success) {
         await applyCouponCode(data.coupon.code, {
           presetResult: data as CouponValidationSuccess,
@@ -458,6 +530,49 @@ useEffect(() => {
 
   autoApply()
 }, [applyCouponCode, appliedCoupons.length, autoApplyAttempted, cartCurrency, cartItemsPayload, couponStrings.autoApplied, lng, loading, userIdentifier])
+
+// Fetch points balance when user is signed in
+useEffect(() => {
+  if (!user || !isClient) {
+    setPointsBalance(0)
+    setPointsToUse(0)
+    return
+  }
+
+  let cancelled = false
+  ;(async () => {
+    setPointsLoading(true)
+    try {
+      const token = await user.getIdToken()
+      const res = await fetch('/api/me/points?limit=1', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json || json.error) {
+        throw new Error(json?.error || 'Failed to load points')
+      }
+
+      if (!cancelled) {
+        setPointsBalance(json.pointsBalance || 0)
+      }
+    } catch (e: any) {
+      console.error('Error loading points:', e)
+      if (!cancelled) {
+        setPointsBalance(0)
+      }
+    } finally {
+      if (!cancelled) {
+        setPointsLoading(false)
+      }
+    }
+  })()
+
+  return () => {
+    cancelled = true
+  }
+}, [user, isClient])
 
 useEffect(() => {
   if (!isClient || loading || items.length === 0) return
@@ -479,68 +594,121 @@ useEffect(() => {
   }
 }, [cartCurrency, isClient, items, loading, lng])
 
-if (!isClient || loading) {
-  return (
-    <div className="min-h-screen bg-gray-50" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-48 mb-8"></div>
-          <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="bg-white rounded-lg shadow-sm p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="h-20 w-20 bg-gray-200 rounded"></div>
-                  <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+// Automatic BOGO deal calculation – recompute whenever cart items change
+useEffect(() => {
+  if (!isClient || loading || items.length === 0) {
+    setBogoDiscountAmount(0)
+    setBogoHasLeftover(false)
+    return
+  }
 
-function CartPageFallback() {
-  return (
-    <div className="min-h-screen bg-gray-50 pt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-48" />
-          <div className="space-y-4">
-            {[...Array(2)].map((_, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow-sm p-6">
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+  let cancelled = false
+  ;(async () => {
+    try {
+      setBogoLoading(true)
+      const response = await fetch('/api/cart/bogo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ items: cartItemsPayload })
+      })
 
+      const json = await response.json().catch(() => ({}))
+      if (cancelled) return
+
+      if (!response.ok || !json || json.success === false) {
+        setBogoDiscountAmount(0)
+        setBogoHasLeftover(false)
+        return
+      }
+
+      const amount =
+        typeof json.bogoDiscountAmount === 'number' ? json.bogoDiscountAmount : 0
+
+      setBogoDiscountAmount(amount > 0 ? amount : 0)
+      setBogoHasLeftover(!!json.hasLeftover)
+    } catch (error) {
+      if (!cancelled) {
+        console.warn('Failed to calculate automatic BOGO deal:', error)
+        setBogoDiscountAmount(0)
+        setBogoHasLeftover(false)
+      }
+    } finally {
+      if (!cancelled) {
+        setBogoLoading(false)
+      }
+    }
+  })()
+
+  return () => {
+    cancelled = true
+  }
+}, [isClient, loading, cartItemsSignature, cartItemsPayload, items.length])
+
+  // Points cap: compute before early return so the clamp useEffect runs in a consistent hook order
   const totalItems = getTotalItems()
   const subtotal = getTotalPrice()
-  const deliveryFee = getDeliveryFee()
-  const totalDiscount = appliedCoupons.reduce((sum, coupon) => sum + coupon.discountAmount, 0)
-  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0)
+  const baseDeliveryFee = getDeliveryFee()
+  const couponsDiscountTotal = appliedCoupons.reduce(
+    (sum, coupon) => sum + coupon.discountAmount,
+    0
+  )
+  const isBogoActive = bogoDiscountAmount > 0
+  const totalDiscount = isBogoActive ? bogoDiscountAmount : couponsDiscountTotal
+  const cartAmountBeforePoints = Math.max(subtotal - totalDiscount, 0)
+  const maxPointsBy15Percent = Math.round(0.15 * cartAmountBeforePoints * 100) / 100
+  const usablePoints = Math.min(pointsBalance, maxPointsBy15Percent)
+  const isCappedBy15Percent = pointsBalance > maxPointsBy15Percent
+
+  // Clamp pointsToUse when cap drops (e.g. cart or coupons change).
+  // Depend only on primitive inputs so the effect doesn't re-run when we call setPointsToUse;
+  // compute the cap inside the effect and use functional updater to avoid pointsToUse in deps.
+  useEffect(() => {
+    const cartAmountBeforePoints = Math.max(subtotal - totalDiscount, 0)
+    const maxPointsBy15Percent = Math.round(0.15 * cartAmountBeforePoints * 100) / 100
+    const usable = Math.min(pointsBalance, maxPointsBy15Percent)
+    setPointsToUse((prev) => (prev > usable ? usable : prev))
+  }, [subtotal, totalDiscount, pointsBalance])
+
+if (!isClient || loading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
+        <p className="mt-4 text-gray-600">{lng === 'he' ? 'טוען...' : 'Loading...'}</p>
+      </div>
+    </div>
+  )
+}
+
+  const pointsDiscount = pointsToUse // 1 point = 1 ILS
+  const discountedSubtotal = Math.max(subtotal - totalDiscount - pointsDiscount, 0)
+  const hasPromotions = totalDiscount > 0 || pointsDiscount > 0
+
+  const deliveryFee =
+    shippingMethod === 'pickup'
+      ? 0
+      : subtotal >= FREE_DELIVERY_THRESHOLD_ILS
+        ? discountedSubtotal >= FREE_DELIVERY_THRESHOLD_ILS
+          ? 0
+          : hasPromotions
+            ? DELIVERY_FEE_ILS
+            : 0
+        : baseDeliveryFee
+
   const finalTotal = Math.max(discountedSubtotal + deliveryFee, 0)
   const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-16" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-[#E1DBD7] pt-16" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12">
         {/* Header */}
-        <div className="mb-8 mt-6">
+        <div className="mb-4 mt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center pt-1 pb-1">
-                <ShoppingBagIcon className="h-8 w-8 text-indigo-600 mr-3 pt-1" />
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center pt-1 pb-1 gap-4">
+                <ShoppingBagIcon className="h-8 w-8 text-[#856D55] pt-1" />
                 {t.title}
               </h1>
             </div>
@@ -556,7 +724,7 @@ function CartPageFallback() {
         {items.length === 0 ? (
           /* Empty State */
           <div className="text-center py-12">
-            <ShoppingBagIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+            <ShoppingBagIcon className="h-16 w-16 text-[#856D55] mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">
               {t.emptyTitle}
             </h2>
@@ -565,14 +733,14 @@ function CartPageFallback() {
             </p>
             <Link
               href={`/${lng}`}
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-[#856D55] hover:bg-[#856D55]/90"
             >
               {t.emptyButton}
             </Link>
           </div>
         ) : (
           /* Cart Items */
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Cart Items List */}
             <div className="lg:col-span-2">
               <div className="space-y-4">
@@ -680,55 +848,130 @@ function CartPageFallback() {
                   {t.subtotal}
                 </h2>
 
-                <div className="pb-4 border-b border-gray-200 mb-4" dir={isRTL ? 'rtl' : 'ltr'}>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {couponStrings.label}
-                  </label>
-                  <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
-                    <input
-                      type="text"
-                      value={couponInput}
-                      onChange={(event) => setCouponInput(event.target.value)}
-                      placeholder={couponStrings.placeholder}
-                      className={`flex-1 rounded-md border border-gray-300 text-gray-900 py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${isRTL ? 'text-right' : 'text-left'}`}
-                      disabled={couponLoading}
-                    />
-                    <button
-                      onClick={() => applyCouponCode(couponInput)}
-                      disabled={couponLoading || !couponInput.trim()}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-70"
-                    >
-                      {couponLoading ? couponStrings.loading : couponStrings.apply}
-                    </button>
-                  </div>
-                  {couponStatus && (
-                    <p className={`mt-2 text-sm ${couponStatus.type === 'error' ? 'text-red-600' : couponStatus.type === 'success' ? 'text-green-600' : 'text-gray-600'}`}>
-                      {couponStatus.message}
-                    </p>
-                  )}
-
-                  {appliedCoupons.length > 0 && (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {appliedCoupons.map(coupon => (
-                        <span
-                          key={coupon.coupon.code}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"
-                        >
-                          {coupon.coupon.code}
-                          <button
-                            onClick={() => removeCoupon(coupon.coupon.code)}
-                            className={`${isRTL ? 'mr-2' : 'ml-2'} text-indigo-500 hover:text-indigo-700`}
-                            aria-label={couponStrings.remove}
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
+                <Accordion title={couponStrings.label}>
+                  <div className="pb-4" dir={isRTL ? 'rtl' : 'ltr'}>
+                    {bogoDiscountAmount > 0 && (
+                      <p className="mb-2 text-xs text-gray-600">
+                        {lng === 'he'
+                          ? 'קופונים לא ניתנים לשילוב עם מבצע הזוגות.'
+                          : 'Coupons can’t be combined with the automatic pairs deal.'}
+                      </p>
+                    )}
+                    <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
+                      <input
+                        type="text"
+                        value={couponInput}
+                        onChange={(event) => setCouponInput(event.target.value)}
+                        placeholder={couponStrings.placeholder}
+                        className={`flex-1 rounded-md border text-gray-900 py-2 px-2 shadow-sm focus:outline-none focus:ring-0.5 focus:ring-[#856D55]/90 ${isRTL ? 'text-right' : 'text-left'}`}
+                        disabled={couponLoading || bogoDiscountAmount > 0}
+                        style={{ 
+                          borderColor: 'rgba(133, 109, 85, 0.2)',
+                          borderRadius: '2px'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = 'rgba(133, 109, 85, 0.7)'
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = 'rgba(133, 109, 85, 0.2)'
+                        }}
+                      />
+                      <button
+                        onClick={() => applyCouponCode(couponInput)}
+                        disabled={couponLoading || !couponInput.trim() || bogoDiscountAmount > 0}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
+                      >
+                        {couponLoading ? couponStrings.loading : couponStrings.apply}
+                      </button>
                     </div>
-                  )}
+                    {couponStatus && (
+                      <p className={`mt-2 text-sm ${couponStatus.type === 'error' ? 'text-red-600' : couponStatus.type === 'success' ? 'text-green-600' : 'text-gray-600'}`}>
+                        {couponStatus.message}
+                      </p>
+                    )}
+
+                    {appliedCoupons.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {appliedCoupons.map(coupon => (
+                          <span
+                            key={coupon.coupon.code}
+                            className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700"
+                          >
+                            {coupon.coupon.code}
+                            <button
+                              onClick={() => removeCoupon(coupon.coupon.code)}
+                              className={`${isRTL ? 'mr-2' : 'ml-2'} text-indigo-500 hover:text-indigo-700`}
+                              aria-label={couponStrings.remove}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Accordion>
+
+                {/* Points Usage */}
+                {user && (
+                  <div className="mt-4">
+                    <PointsUsage
+                      pointsBalance={pointsBalance}
+                      maxUsablePoints={usablePoints}
+                      isCappedBy15Percent={isCappedBy15Percent}
+                      maxPointsBy15Percent={maxPointsBy15Percent}
+                      onPointsChange={setPointsToUse}
+                      language={lng as 'he' | 'en'}
+                      disabled={pointsLoading}
+                    />
+                  </div>
+                )}
+
+                {/* Shipping method selection */}
+                <div className="mt-6 border-t border-gray-200 pt-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">
+                    {lng === 'he' ? 'אופן קבלת ההזמנה' : 'Delivery Method'}
+                  </h3>
+                  <div className={`space-y-2 ${isRTL ? 'text-right' : 'text-left'}`}>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="shippingMethod"
+                        value="delivery"
+                        checked={shippingMethod === 'delivery'}
+                        onChange={() => setShippingMethod('delivery')}
+                        className="h-4 w-4 accent-[#856D55] border-gray-300 focus:ring-[#856D55]"
+                      />
+                      <span className="text-sm text-gray-800">
+                        {lng === 'he' ? 'משלוח עד הבית' : 'Home Delivery'}
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="shippingMethod"
+                        value="pickup"
+                        checked={shippingMethod === 'pickup'}
+                        onChange={() => setShippingMethod('pickup')}
+                        className="mt-1 h-4 w-4 accent-[#856D55] border-gray-300 focus:ring-[#856D55]"
+                      />
+                      <span className="text-sm text-gray-800">
+                        <span className="font-medium block">
+                          {lng === 'he' ? 'איסוף עצמי (חינם)' : 'Self Pickup (Free)'}
+                        </span>
+                        <span className="text-xs text-gray-600 block mt-1">
+                          {lng === 'he'
+                            ? 'האיסוף מתבצע מהחנות ברחוב רוטשילד 51, ראשון לציון'
+                            : 'Pickup available at our store: Rothschild 51, Rishon Lezion'}
+                        </span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
+
+                <hr className="my-6 border-gray-200" />
                 
-                <div className="space-y-3">
+                <div className="mt-6 space-y-3">
                   {items.map((item, index) => (
                     <div key={`${item.sku}-${item.size}-${item.color}-${index}`} className="flex justify-between text-sm">
                       <div className="text-gray-600">
@@ -759,14 +1002,47 @@ function CartPageFallback() {
                     <span>₪{subtotal.toFixed(2)}</span>
                   </div>
 
-                  {totalDiscount > 0 && (
+                  {(totalDiscount > 0 || pointsDiscount > 0) && (
                     <>
-                      {appliedCoupons.map(coupon => (
-                        <div key={coupon.coupon.code} className="flex justify-between text-xs text-green-600">
-                          <span>{coupon.coupon.code} • {coupon.coupon.discountLabel[lng as 'en' | 'he']}</span>
-                          <span>-₪{coupon.discountAmount.toFixed(2)}</span>
+                      {bogoDiscountAmount > 0 && (
+                        <div className="flex justify-between text-xs text-green-600">
+                          <span>{lng === 'he' ? 'מבצע זוגות' : 'BOGO Deal'}</span>
+                          <span>-₪{bogoDiscountAmount.toFixed(2)}</span>
                         </div>
-                      ))}
+                      )}
+                      {bogoDiscountAmount === 0 &&
+                        appliedCoupons.map(coupon => (
+                          <div
+                            key={coupon.coupon.code}
+                            className="flex justify-between text-xs text-green-600"
+                          >
+                            <span>
+                              {coupon.coupon.code} •{' '}
+                              {coupon.coupon.discountLabel[lng as 'en' | 'he']}
+                            </span>
+                            <span>-₪{coupon.discountAmount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      {pointsDiscount > 0 && (
+                        <div className="flex justify-between text-xs text-green-600">
+                          <span>{lng === 'he' ? 'הנחת נקודות' : 'Points discount'}</span>
+                          <span>-₪{pointsDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {bogoDiscountAmount > 0 && bogoHasLeftover && (
+                        <div className="text-xs text-gray-600 space-y-1">
+                          <p>
+                            {lng === 'he'
+                              ? 'המבצע חל על זוגות בלבד. פריטים נוספים מחויבים במחיר הרגיל.'
+                              : 'Deal applies to pairs only. Extra items are charged at regular price.'}
+                          </p>
+                          <p>
+                            {lng === 'he'
+                              ? 'הוסיפי עוד פריט זכאי כדי להפעיל זוג נוסף.'
+                              : 'Add 1 more eligible item to activate another pair.'}
+                          </p>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm text-gray-600">
                         <span>{lng === 'he' ? 'סכום לאחר הנחות' : 'Subtotal after discounts'}</span>
                         <span>₪{discountedSubtotal.toFixed(2)}</span>
@@ -774,15 +1050,28 @@ function CartPageFallback() {
                     </>
                   )}
 
-                  {deliveryFee > 0 ? (
-                    <div className="flex justify-between text-sm text-gray-600">
-                      <span>{t.delivery}</span>
-                      <span>₪{deliveryFee.toFixed(2)}</span>
+                  {shippingMethod === 'pickup' ? (
+                    <div className="flex flex-col text-sm text-green-700">
+                      <span>{lng === 'he' ? 'איסוף עצמי – חינם' : 'Self pickup – ₪0'}</span>
+                      <span className="text-xs text-gray-600 mt-1">
+                        {lng === 'he'
+                          ? 'האיסוף מתבצע מהחנות ברחוב רוטשילד 51, ראשון לציון'
+                          : 'Pickup available at our store: Rothschild 51, Rishon Lezion'}
+                      </span>
                     </div>
                   ) : (
-                    <div className="text-sm text-green-600 font-medium">
-                      {t.freeDelivery}
-                    </div>
+                    <>
+                      {deliveryFee > 0 ? (
+                        <div className="flex justify-between text-sm text-gray-600">
+                          <span>{t.delivery}</span>
+                          <span>₪{deliveryFee.toFixed(2)}</span>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-green-600 font-medium">
+                          {t.freeDelivery}
+                        </div>
+                      )}
+                    </>
                   )}
 
                   <div className="flex justify-between text-lg font-bold text-gray-700 border-t border-gray-200 pt-2">
@@ -793,7 +1082,7 @@ function CartPageFallback() {
 
                 <button
                   onClick={() => setIsCheckoutModalOpen(true)}
-                  className="w-full mt-6 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="w-full mt-6 bg-[#856D55]/90 text-white py-3 px-6 rounded-lg hover:bg-[#856D55] transition-colors font-medium"
                 >
                   {t.checkout}
                 </button>
@@ -825,34 +1114,24 @@ function CartPageFallback() {
         quantity={totalItems}
         language={lng as 'he' | 'en'}
         items={items}
-        appliedCoupons={appliedCoupons.map(coupon => ({
-          code: coupon.coupon.code,
-          discountAmount: coupon.discountAmount,
-          discountType: coupon.coupon.discountType,
-          stackable: coupon.coupon.stackable,
-          description: coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined
-        }))}
+        appliedCoupons={
+          bogoDiscountAmount > 0
+            ? []
+            : appliedCoupons.map(coupon => ({
+                code: coupon.coupon.code,
+                discountAmount: coupon.discountAmount,
+                discountType: coupon.coupon.discountType,
+                stackable: coupon.coupon.stackable,
+                description:
+                  coupon.coupon.description?.[lng as 'en' | 'he'] ?? undefined,
+                discountLabel: coupon.coupon.discountLabel
+              }))
+        }
+        pointsToSpend={pointsToUse > 0 ? pointsToUse : undefined}
+        shippingMethod={shippingMethod}
+        pickupLocation={STORE_PICKUP_LOCATION}
+        bogoDiscountAmount={bogoDiscountAmount > 0 ? bogoDiscountAmount : undefined}
       />
-    </div>
-  )
-}
-
-function CartPageFallback() {
-  return (
-    <div className="min-h-screen bg-gray-50 pt-[104px]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-gray-200 rounded w-48" />
-          <div className="space-y-4">
-            {[...Array(2)].map((_, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow-sm p-6">
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
-                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
     </div>
   )
 }

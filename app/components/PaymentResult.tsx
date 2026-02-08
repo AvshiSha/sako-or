@@ -35,7 +35,7 @@ export default function PaymentResult({
         throw new Error('Failed to fetch payment status');
       }
       
-      const data: PaymentStatusResponse = await response.json();
+      const data: PaymentStatusResponse = await response.json().catch(() => ({}));
       setPaymentData(data);
       setStatus(data.status);
       

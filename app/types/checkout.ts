@@ -1,6 +1,6 @@
 // Checkout Modal Types
 
-export type CheckoutStep = 'IDLE' | 'DETAILS' | 'CREATING_LP' | 'PAYING' | 'RESULT';
+export type CheckoutStep = 'IDLE' | 'INFO' | 'CREATING_LP' | 'PAYMENT';
 
 export type PaymentStatus = 'pending' | 'success' | 'failed' | 'cancelled';
 
@@ -32,6 +32,17 @@ export interface InvoiceDetails {
 export interface CheckoutFormData {
   payer: PayerDetails;
   deliveryAddress: DeliveryAddress;
+  /**
+   * Shipping method selected by the user.
+   * - "delivery" (default): home delivery, address required
+   * - "pickup": self pickup from store, address optional/ignored
+   */
+  shippingMethod: 'delivery' | 'pickup';
+  /**
+   * Pickup location when shippingMethod === 'pickup'
+   * (e.g. "Rothschild 51, Rishon Lezion")
+   */
+  pickupLocation?: string;
   notes?: string;
 }
 
@@ -57,6 +68,11 @@ export interface CreateLowProfileRequest {
   subtotal?: number;
   discountTotal?: number;
   deliveryFee?: number;
+  /**
+   * Optional: automatic BOGO discount amount applied at cart level.
+   * When present and > 0, coupons should not be combined with this order.
+   */
+  bogoDiscountAmount?: number;
   coupons?: Array<{
     code: string;
     discountAmount: number;
@@ -74,6 +90,22 @@ export interface CreateLowProfileRequest {
     minNumOfPayments: number;
     maxNumOfPayments: number;
   };
+
+  /**
+   * Optional: points the user wants to spend on this order.
+   * If provided, backend will create a SPEND points row (-delta) linked to the order.
+   * `amount` should already reflect the final total after this discount.
+   */
+  pointsToSpend?: number;
+  /**
+   * Shipping method for this payment: "delivery" or "pickup".
+   * Used to relax address requirements and set document address for pickup.
+   */
+  shippingMethod?: 'delivery' | 'pickup';
+  /**
+   * Pickup location when shippingMethod === "pickup".
+   */
+  pickupLocation?: string;
 }
 
 export interface CreateLowProfileResponse {

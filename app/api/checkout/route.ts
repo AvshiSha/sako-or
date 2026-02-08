@@ -4,7 +4,7 @@ import { CheckoutFormData } from '../../types/checkout';
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CheckoutFormData = await request.json();
+    const body: CheckoutFormData = await request.json().catch(() => ({} as CheckoutFormData));
     console.log('Checkout form submission received:', JSON.stringify(body, null, 2));
     
     // Validate required fields
@@ -15,16 +15,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.deliveryAddress?.city || !body.deliveryAddress?.streetName || !body.deliveryAddress?.streetNumber) {
-      return NextResponse.json(
-        { error: 'Missing required delivery address information (city, streetName, streetNumber)' },
-        { status: 400 }
-      );
+    const shippingMethod = body.shippingMethod ?? 'delivery';
+
+    if (shippingMethod !== 'pickup') {
+      if (!body.deliveryAddress?.city || !body.deliveryAddress?.streetName || !body.deliveryAddress?.streetNumber) {
+        return NextResponse.json(
+          { error: 'Missing required delivery address information (city, streetName, streetNumber)' },
+          { status: 400 }
+        );
+      }
     }
 
-    // Validate email format
+    // Validate email format (reject double dots e.g. user@gmail..com)
+    const email = body.payer.email;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(body.payer.email)) {
+    if (email.includes('..') || !emailRegex.test(email)) {
       return NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }
@@ -40,6 +45,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const STORE_ADDRESS = 'Rothschild 51, Rishon Lezion';
+
     // Create checkout record in database
     const checkout = await prisma.checkout.create({
       data: {
@@ -47,16 +54,18 @@ export async function POST(request: NextRequest) {
         customerFirstName: body.payer.firstName,
         customerLastName: body.payer.lastName,
         customerPhone: body.payer.mobile,
-        customerStreetName: body.deliveryAddress.streetName,
-        customerStreetNumber: body.deliveryAddress.streetNumber,
-        customerFloor: body.deliveryAddress.floor || null,
-        customerApartment: body.deliveryAddress.apartmentNumber || null,
-        customerCity: body.deliveryAddress.city,
-        customerState: body.deliveryAddress.city, // Using city as state for now
-        customerZip: body.deliveryAddress.zipCode || null,
+        customerStreetName: shippingMethod === 'pickup' ? STORE_ADDRESS : body.deliveryAddress.streetName,
+        customerStreetNumber: shippingMethod === 'pickup' ? '' : body.deliveryAddress.streetNumber,
+        customerFloor: shippingMethod === 'pickup' ? null : body.deliveryAddress.floor || null,
+        customerApartment: shippingMethod === 'pickup' ? null : body.deliveryAddress.apartmentNumber || null,
+        customerCity: shippingMethod === 'pickup' ? 'Rishon Lezion' : body.deliveryAddress.city,
+        customerState: shippingMethod === 'pickup' ? 'Rishon Lezion' : body.deliveryAddress.city, // Using city as state for now
+        customerZip: shippingMethod === 'pickup' ? null : body.deliveryAddress.zipCode || null,
         customerCountry: 'Israel', // Default to Israel, can be made configurable
         customerID: body.payer.idNumber || null,
         customerDeliveryNotes: body.notes || null,
+        shippingMethod,
+        pickupLocation: body.pickupLocation ?? STORE_ADDRESS,
       },
     });
 

@@ -1,19 +1,25 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { trackPurchase, PurchaseUserProperties } from '@/lib/dataLayer';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { clearCartAfterPurchase } from '@/lib/cart-clear';
 
 function SuccessPageContent() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [orderInfo, setOrderInfo] = useState<{
     orderId?: string;
     amount?: number;
     currency?: string;
   }>({});
-  const [hasTracked, setHasTracked] = useState(false);
+  const hasTrackedRef = useRef(false);
+  const hasClearedCartRef = useRef(false);
+  const userRef = useRef(user);
+  userRef.current = user;
 
   useEffect(() => {
     // Extract parameters from URL
@@ -21,6 +27,7 @@ function SuccessPageContent() {
     const orderId = searchParams?.get('orderId') || searchParams?.get('ReturnValue'); // CardCom uses ReturnValue
     const amount = searchParams?.get('amount');
     const currency = searchParams?.get('currency');
+    const responseCode = searchParams?.get('ResponseCode') || searchParams?.get('ResponeCode'); // CardCom response code (0 = success)
     
     // Debug: log all URL parameters
     console.log('Success page URL parameters:', {
@@ -28,6 +35,7 @@ function SuccessPageContent() {
       orderId,
       amount,
       currency,
+      responseCode,
       allParams: Object.fromEntries(searchParams?.entries() || [])
     });
 
@@ -42,9 +50,16 @@ function SuccessPageContent() {
       window.parent.postMessage(message, window.location.origin);
     }
 
-    if (lpid) {
-      // Verify payment status with your backend
-      verifyPaymentStatus(lpid, orderId);
+    // If ResponseCode is 0, payment was successful - verify and update status
+    if (responseCode === '0' && (lpid || orderId)) {
+      if (lpid) {
+        verifyPaymentStatus(lpid, orderId, true); // Pass paymentSucceededFromUrl flag
+      } else if (orderId) {
+        verifyPaymentStatus('', orderId, true); // Pass paymentSucceededFromUrl flag
+      }
+    } else if (lpid) {
+      // Even without ResponseCode, try to verify if we have LPID
+      verifyPaymentStatus(lpid, orderId, false);
     }
 
     setOrderInfo({
@@ -53,9 +68,10 @@ function SuccessPageContent() {
       currency: currency || 'ILS',
     });
 
-    // Track purchase event for GA4 data layer
+    // Track purchase event for GA4 data layer (use ref to avoid stale closure in async callbacks)
     // Fire if we have either LPID or OrderId; derive values from backend if not in URL
-    if (!hasTracked && (lpid || orderId)) {
+    if (!hasTrackedRef.current && (lpid || orderId)) {
+      hasTrackedRef.current = true;
       try {
         // Fetch order details from API (prefer LPID)
         const url = lpid
@@ -104,7 +120,6 @@ function SuccessPageContent() {
                   userProperties: userProperties
                 }
               );
-              setHasTracked(true);
             } else {
               // Fallback: track purchase with minimal data
               trackPurchase(
@@ -121,7 +136,6 @@ function SuccessPageContent() {
                   affiliation: 'Sako Online Store'
                 }
               );
-              setHasTracked(true);
             }
           })
           .catch(err => {
@@ -141,10 +155,10 @@ function SuccessPageContent() {
                 affiliation: 'Sako Online Store'
               }
             );
-            setHasTracked(true);
           });
       } catch (error) {
         console.error('Error tracking purchase:', error);
+        hasTrackedRef.current = false; // allow retry if sync path failed
       }
     }
 
@@ -161,21 +175,92 @@ function SuccessPageContent() {
     }
 
     setIsLoading(false);
-  }, [searchParams, hasTracked]);
+  }, [searchParams]);
 
-  const verifyPaymentStatus = async (lpid: string, orderId?: string | null) => {
+  const verifyPaymentStatus = async (
+    lpid: string,
+    orderId?: string | null,
+    paymentSucceededFromUrl: boolean = false,
+    retryCount: number = 0
+  ) => {
+    const maxRetries = 1;
     try {
-      console.log('Verifying payment status:', { lpid, orderId });
+      console.log('Verifying payment status:', { lpid, orderId, paymentSucceededFromUrl, retryCount });
       
-      if (orderId) {
-        // Note: Email is already sent by webhook when payment completes
-        // This page is just for user confirmation - no need to send email again
-        console.log('Success page reached for order:', orderId);
-        console.log('Email should already be sent via webhook');
+      let paymentConfirmed = false;
+      
+      // First, get the order to find the orderNumber
+      if (lpid) {
+        try {
+          const statusResponse = await fetch(`/api/payments/by-low-profile-id?lpid=${encodeURIComponent(lpid)}`);
+          if (statusResponse.ok) {
+            const statusData = await statusResponse.json();
+            const orderNumber = statusData?.order?.orderNumber;
+            
+            if (orderNumber) {
+              // Call check-status with paymentSucceeded flag (we're on Success page, so payment succeeded)
+              console.log('Calling check-status for order:', orderNumber);
+              const checkStatusResponse = await fetch('/api/payments/check-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  orderId: orderNumber,
+                  paymentSucceeded: paymentSucceededFromUrl // Flag indicating payment succeeded (from Success page)
+                }),
+              }).catch(err => {
+                console.warn('Failed to check/update payment status:', err);
+                return null;
+              });
+              
+              if (checkStatusResponse?.ok) {
+                const checkStatusData = await checkStatusResponse.json().catch(() => ({}));
+                // Payment is confirmed if status is completed or if we got a successful response
+                paymentConfirmed = checkStatusData?.status === 'completed' || paymentSucceededFromUrl;
+              }
+            }
+          }
+        } catch (fetchError) {
+          console.error('Failed to verify payment status:', fetchError);
+        }
+      } else if (orderId) {
+        // If we have orderId directly, use it
+        console.log('Calling check-status for order:', orderId);
+        const checkStatusResponse = await fetch('/api/payments/check-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            orderId,
+            paymentSucceeded: paymentSucceededFromUrl // Flag indicating payment succeeded (from Success page)
+          }),
+        }).catch(err => {
+          console.warn('Failed to check/update payment status:', err);
+          return null;
+        });
+        
+        if (checkStatusResponse?.ok) {
+          const checkStatusData = await checkStatusResponse.json().catch(() => ({}));
+          // Payment is confirmed if status is completed or if we got a successful response
+          paymentConfirmed = checkStatusData?.status === 'completed' || paymentSucceededFromUrl;
+        }
+      }
+      
+      // Clear cart after payment is confirmed (only once) - use ref to avoid stale closure
+      const shouldClear = (paymentConfirmed || paymentSucceededFromUrl) && !hasClearedCartRef.current;
+      if (shouldClear) {
+        hasClearedCartRef.current = true;
+        const uid = userRef.current?.uid;
+        setTimeout(() => {
+          clearCartAfterPurchase(uid);
+        }, 1000);
       }
       
     } catch (error) {
       console.error('Failed to verify payment:', error);
+      if (retryCount < maxRetries) {
+        setTimeout(() => {
+          verifyPaymentStatus(lpid, orderId, paymentSucceededFromUrl, retryCount + 1);
+        }, 2000);
+      }
     }
   };
 
@@ -183,7 +268,7 @@ function SuccessPageContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
           <p className="mt-4 text-gray-600">מאמת את התשלום...</p>
         </div>
       </div>
@@ -194,9 +279,9 @@ function SuccessPageContent() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
         {/* Success Icon */}
-        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-6">
+        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-[#856D55]/10 mb-6">
           <svg
-            className="h-8 w-8 text-green-600"
+            className="h-8 w-8 text-[#856D55]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

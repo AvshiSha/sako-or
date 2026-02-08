@@ -13,6 +13,7 @@ import {
   Row,
   Column,
 } from '@react-email/components';
+import { getColorName } from '../../lib/colors';
 
 interface TeamOrderEmailProps {
   customerName: string;
@@ -51,7 +52,18 @@ interface TeamOrderEmailProps {
     zipCode: string;
   };
   notes?: string;
-   isHebrew?: boolean;
+  isHebrew?: boolean;
+  /**
+   * Shipping method: "delivery" (default) or "pickup".
+   * Used to decide whether to show customer address or store pickup address.
+   */
+  shippingMethod?: 'delivery' | 'pickup';
+  /**
+   * Pickup location when shippingMethod === "pickup".
+   */
+  pickupLocation?: string;
+  /** Points the customer spent on this order */
+  pointsSpent?: number;
 }
 
 export function OrderConfirmationTeamEmail({
@@ -66,8 +78,11 @@ export function OrderConfirmationTeamEmail({
   coupons,
   payer,
   deliveryAddress,
-   notes,
-   isHebrew = false,
+  notes,
+  isHebrew = false,
+  shippingMethod = 'delivery',
+  pickupLocation,
+  pointsSpent,
 }: TeamOrderEmailProps) {
    const currency = (n: number) =>
      new Intl.NumberFormat(isHebrew ? 'he-IL' : 'en-US', { style: 'currency', currency: 'ILS' }).format(n);
@@ -99,6 +114,11 @@ export function OrderConfirmationTeamEmail({
             <Text style={styles.lineItem}>
               {t('Discounts', 'הנחות')}: <strong>{discountTotal != null ? currency(discountTotal) : '-'}</strong>
             </Text>
+            {typeof pointsSpent === 'number' && pointsSpent > 0 && (
+              <Text style={styles.lineItem}>
+                {t('Points used', 'נקודות שהופעלו')}: <strong>-{pointsSpent} {t('points', 'נקודות')}</strong>
+              </Text>
+            )}
             <Text style={styles.total}>
               {t('Total', 'סך הכל')}: <strong>{currency(total)}</strong>
             </Text>
@@ -128,7 +148,12 @@ export function OrderConfirmationTeamEmail({
                   <Text style={styles.itemMeta}>
                     {item.sku ? `${t('SKU', 'מק״ט')}: ${item.sku} • ` : ''}
                     {item.size ? `${t('Size', 'מידה')}: ${item.size} • ` : ''}
-                    {item.colorName ? `${t('Color', 'צבע')}: ${item.colorName} • ` : ''}
+                    {item.colorName
+                      ? `${t('Color', 'צבע')}: ${getColorName(
+                          item.colorName,
+                          isHebrew ? 'he' : 'en'
+                        )} • `
+                      : ''}
                     {t('Qty', 'כמות')}: {item.quantity}
                   </Text>
                 </Column>
@@ -147,8 +172,20 @@ export function OrderConfirmationTeamEmail({
             </Text>
             <Text style={styles.lineItem}>
               {t('Address', 'כתובת')}: <strong>
-                {deliveryAddress.streetName} {deliveryAddress.streetNumber}, {deliveryAddress.city}
-              </strong> • {t('Floor', 'קומה')}: {deliveryAddress.floor || '-'} • {t('Apt', 'דירה')}: {deliveryAddress.apartmentNumber || '-'} • {t('ZIP', 'מיקוד')}: {deliveryAddress.zipCode || '-'}
+                {shippingMethod === 'pickup'
+                  ? 'רוטשילד 51, ראשון לציון'
+                  : `${deliveryAddress.streetName} ${deliveryAddress.streetNumber}, ${deliveryAddress.city}`}
+              </strong>
+              {shippingMethod === 'pickup' ? null : (
+                <>
+                  {' '}
+                  • {t('Floor', 'קומה')}: {deliveryAddress.floor || '-'}
+                  {' '}
+                  • {t('Apt', 'דירה')}: {deliveryAddress.apartmentNumber || '-'}
+                  {' '}
+                  • {t('ZIP', 'מיקוד')}: {deliveryAddress.zipCode || '-'}
+                </>
+              )}
             </Text>
             {notes ? (
               <Text style={styles.notes}>

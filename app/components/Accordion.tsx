@@ -12,20 +12,20 @@ export default function Accordion({ title, children }: AccordionProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   return (
-    <div className="border-b border-gray-200">
+    <div className="border-b border-[#856D55]/10 bg-[#856D55]/10 p-2 rounded-lg">
       <button
         className="flex justify-between items-center w-full py-4 text-left"
         onClick={() => setIsOpen(!isOpen)}
       >
         <span className="text-sm font-medium text-gray-900">{title}</span>
         <ChevronDownIcon
-          className={`h-5 w-5 text-gray-500 transition-transform duration-200 ${
+          className={`h-5 w-5 text-gray-500 transition-transform duration-400 ${
             isOpen ? 'transform rotate-180' : ''
           }`}
         />
       </button>
       <div
-        className={`overflow-hidden transition-all duration-200 ${
+        className={`overflow-hidden transition-all duration-400 ${
           isOpen ? 'max-h-96' : 'max-h-0'
         }`}
       >

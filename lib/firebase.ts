@@ -1,40 +1,113 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, Query, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { initializeApp, FirebaseApp } from "firebase/app";
+import { getAnalytics, logEvent as firebaseLogEvent, Analytics } from "firebase/analytics";
+import { getFirestore, Firestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, Query, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
+import { getAuth, Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { getStorage, FirebaseStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyA6M1iGDwf4iesgujOxqqLlkLddigFonL4",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "sako-or.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "sako-or",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "sako-or.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "492015346123",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:492015346123:web:2da31215f1b7f3212f164e",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-WK1B8GCMT0"
-};
+// Lazy-init Firebase to avoid auth/invalid-api-key during Next.js build (when env may be missing).
+// Initialization runs on first use of db/auth/storage/app, not at import time.
+let _app: FirebaseApp | null = null;
+let _analytics: Analytics | null = null;
+let _db: Firestore | null = null;
+let _auth: Auth | null = null;
+let _storage: FirebaseStorage | null = null;
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+function getApp(): FirebaseApp {
+  if (_app) return _app;
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  if (!apiKey || typeof apiKey !== 'string' || apiKey.length === 0) {
+    throw new Error(
+      'Firebase API key is not configured. Set NEXT_PUBLIC_FIREBASE_API_KEY (and other NEXT_PUBLIC_FIREBASE_* vars) in .env.local.'
+    );
+  }
+  const defaultProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const firebaseConfig = {
+    apiKey,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: defaultProjectId,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+  };
+  _app = initializeApp(firebaseConfig);
+  return _app;
+}
 
-// Initialize analytics only on client side
-let analytics: any = null;
-if (typeof window !== 'undefined') {
+function getDb(): Firestore {
+  if (_db) return _db;
+  _db = getFirestore(getApp());
+  return _db;
+}
+
+function getAuthInstance(): Auth {
+  if (_auth) return _auth;
+  _auth = getAuth(getApp());
+  return _auth;
+}
+
+function getStorageInstance(): FirebaseStorage {
+  if (_storage) return _storage;
+  _storage = getStorage(getApp());
+  return _storage;
+}
+
+function getAnalyticsInstance(): Analytics | null {
+  if (typeof window === 'undefined') return null;
+  if (_analytics) return _analytics;
   try {
-    analytics = getAnalytics(app);
+    _analytics = getAnalytics(getApp());
+    return _analytics;
   } catch (error) {
     console.warn('Analytics initialization failed:', error);
+    return null;
   }
 }
 
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+function createLazyProxy<T extends object>(getter: () => T): T {
+  let instance: T | null = null;
+  return new Proxy({} as T, {
+    get(_, prop) {
+      if (!instance) instance = getter();
+      return (instance as Record<string | symbol, unknown>)[prop];
+    }
+  }) as T;
+}
 
-// Export Firebase instances
+const app = createLazyProxy(getApp);
+const db = getDb();
+const auth = getAuthInstance();
+const storage = getStorageInstance();
+
+let analytics: Analytics | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    analytics = getAnalyticsInstance();
+  } catch {
+    analytics = null;
+  }
+}
+
+// Export Firebase instances (app, db, auth, storage are lazy; analytics is client-only)
 export { app, analytics, db, auth, storage };
+
+/** Use with modular API: logEvent(analytics, 'event_name', params). No-op if analytics is null. */
+export function logEvent(
+  analyticsInstance: Analytics | null,
+  eventName: string,
+  params?: Record<string, unknown>
+): void {
+  if (analyticsInstance) {
+    try {
+      firebaseLogEvent(analyticsInstance, eventName, params);
+    } catch (e) {
+      console.warn('Analytics logEvent error:', e);
+    }
+  }
+}
+
+
 
 // Types
 export interface Product {
@@ -98,7 +171,7 @@ export interface Product {
   searchKeywords?: string[];
   createdAt: Date;
   updatedAt: Date;
-  
+
   // Legacy fields for backward compatibility
   name?: {
     en: string;
@@ -120,7 +193,7 @@ export interface Product {
   categorySlug?: string;
   categoryObj?: Category;
   categoryPath?: string;
-  
+
   // Material & Care information
   upperMaterial?: {
     en: string;
@@ -142,13 +215,13 @@ export interface Product {
     en: string;
     he: string;
   };
-  
+
   // Shipping & Returns information
   shippingReturns?: {
     en: string;
     he: string;
   };
-  
+
   tags: string[];
   videoUrl?: string;
 }
@@ -184,24 +257,24 @@ export interface ColorVariant {
   colorName: string; // Display name (e.g., "Black", "Red")
   colorSlug: string; // URL slug (e.g., "black", "red")
   colorHex?: string; // Hex color code for swatches
-  
+
   // Pricing (can override base product pricing)
   price?: number; // Override price for this color
   salePrice?: number; // Sale price for this color
   saleStartDate?: Date;
   saleEndDate?: Date;
-  
+
   // Stock and availability
   stock: number;
   isActive: boolean;
-  
+
   // Video
   videoUrl?: string; // Video URL for this color variant
-  
+
   // SEO
   metaTitle?: string;
   metaDescription?: string;
-  
+
   createdAt: Date;
   updatedAt: Date;
 
@@ -228,6 +301,27 @@ export interface ColorVariantSize {
   sku?: string; // Full SKU for this size/color combination
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * VariantItem represents a single color variant of a product as a displayable item.
+ * Used for collection pages where each color variant gets its own card.
+ */
+export interface VariantItem {
+  product: Product;
+  variant: {
+    colorSlug: string;
+    isActive?: boolean;
+    priceOverride?: number;
+    salePrice?: number;
+    stockBySize: Record<string, number>;
+    metaTitle?: string;
+    metaDescription?: string;
+    images: string[];
+    primaryImage?: string;
+    videos?: string[];
+  };
+  variantKey: string; // Unique identifier: "productId-colorSlug"
 }
 
 export interface AppUser {
@@ -363,12 +457,13 @@ export const productService = {
     featured?: boolean;
     isNew?: boolean;
     isActive?: boolean;
+    brand?: string;
     limit?: number;
   }): Promise<Product[]> {
     try {
       let q: Query = collection(db, 'products');
       const constraints: any[] = []; // TODO: Fix type
-      
+
       if (filters?.category) {
         constraints.push(where('categoryId', '==', filters.category));
       }
@@ -381,9 +476,12 @@ export const productService = {
       if (filters?.isActive !== undefined) {
         constraints.push(where('isEnabled', '==', filters.isActive));
       }
-      
+      if (filters?.brand) {
+        constraints.push(where('brand', '==', filters.brand));
+      }
+
       constraints.push(orderBy('createdAt', 'desc'));
-      
+
       if (filters?.limit) {
         constraints.push(limit(filters.limit));
       }
@@ -391,11 +489,11 @@ export const productService = {
       q = query(q, ...constraints);
       const querySnapshot = await getDocs(q);
       const products: Product[] = [];
-      
+
       for (const docSnapshot of querySnapshot.docs) {
         const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
-        
-        
+
+
         // Fetch category data
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
@@ -405,7 +503,7 @@ export const productService = {
         }
         products.push(product);
       }
-      
+
       return products;
     } catch (error) {
       console.error('Error fetching products:', error);
@@ -418,10 +516,10 @@ export const productService = {
     try {
       const docRef = doc(db, 'products', id);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
         const product = { id: docSnap.id, ...docSnap.data() } as Product;
-        
+
         // Fetch category data
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
@@ -429,7 +527,7 @@ export const productService = {
             product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
-        
+
         return product;
       }
       return null;
@@ -445,11 +543,11 @@ export const productService = {
       // Query for products where the slug field matches the language-specific slug
       const q = query(collection(db, 'products'), where(`slug.${language}`, '==', slug), limit(1));
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const docSnapshot = querySnapshot.docs[0];
         const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
-        
+
         // Fetch category data
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
@@ -457,7 +555,7 @@ export const productService = {
             product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
-        
+
         return product;
       }
       return null;
@@ -474,19 +572,19 @@ export const productService = {
       // Force fresh data by adding a timestamp to bypass cache
       const q = query(collection(db, 'products'), where('sku', '==', baseSku), limit(1));
       const querySnapshot = await getDocs(q);
-      
+
       console.log('📊 Firebase: Query returned', querySnapshot.docs.length, 'documents');
-      
+
       if (!querySnapshot.empty) {
         const docSnapshot = querySnapshot.docs[0];
         const productData = docSnapshot.data();
-        
-        const product = { 
-          id: docSnapshot.id, 
+
+        const product = {
+          id: docSnapshot.id,
           ...productData,
           colorVariants: productData.colorVariants || {}
         } as Product;
-        
+
         // Fetch category data
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
@@ -494,7 +592,7 @@ export const productService = {
             product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
-        
+
         return product;
       }
       console.log('❌ Firebase: No product found with base SKU:', baseSku);
@@ -508,19 +606,19 @@ export const productService = {
   // Get product by base SKU with real-time listener
   onProductByBaseSku: (baseSku: string, callback: (product: Product | null) => void): Unsubscribe => {
     const q = query(collection(db, 'products'), where('sku', '==', baseSku), limit(1));
-    
-    return onSnapshot(q, 
+
+    return onSnapshot(q,
       (querySnapshot) => {
         if (!querySnapshot.empty) {
           const docSnapshot = querySnapshot.docs[0];
           const productData = docSnapshot.data();
-          
-          const product = { 
-            id: docSnapshot.id, 
+
+          const product = {
+            id: docSnapshot.id,
             ...productData,
             colorVariants: productData.colorVariants || {}
           } as Product;
-          
+
           // Fetch category data
           if (product.categoryId) {
             getDoc(doc(db, 'categories', product.categoryId)).then(categoryDoc => {
@@ -558,12 +656,12 @@ export const productService = {
         orderBy('createdAt', 'asc')
       );
       const colorVariantsSnapshot = await getDocs(colorVariantsQuery);
-      
+
       const colorVariants: ColorVariant[] = [];
-      
+
       for (const variantDoc of colorVariantsSnapshot.docs) {
         const variant = { id: variantDoc.id, ...variantDoc.data() } as ColorVariant;
-        
+
         // Fetch variant images
         const imagesQuery = query(
           collection(db, 'colorVariantImages'),
@@ -575,7 +673,7 @@ export const productService = {
           id: imgDoc.id,
           ...imgDoc.data()
         })) as ColorVariantImage[];
-        
+
         // Fetch variant sizes
         const sizesQuery = query(
           collection(db, 'colorVariantSizes'),
@@ -587,10 +685,10 @@ export const productService = {
           id: sizeDoc.id,
           ...sizeDoc.data()
         })) as ColorVariantSize[];
-        
+
         colorVariants.push(variant);
       }
-      
+
       // Convert array to Record format for new structure
       product.colorVariants = colorVariants.reduce((acc, variant) => {
         if (variant.colorSlug) {
@@ -624,14 +722,14 @@ export const productService = {
       console.log('🔍 Firebase: Searching for SKU:', sku);
       const q = query(collection(db, 'products'), where('sku', '==', sku), limit(1));
       const querySnapshot = await getDocs(q);
-      
+
       console.log('📊 Firebase: Query returned', querySnapshot.docs.length, 'documents');
-      
+
       if (!querySnapshot.empty) {
         const docSnapshot = querySnapshot.docs[0];
         const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
         console.log('✅ Firebase: Product found:', product.name?.en);
-        
+
         // Fetch category data
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
@@ -639,7 +737,7 @@ export const productService = {
             product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
-        
+
         return product;
       }
       console.log('❌ Firebase: No product found with SKU:', sku);
@@ -669,7 +767,7 @@ export const productService = {
         if (obj === null || obj === undefined) return null;
         if (typeof obj !== 'object') return obj;
         if (Array.isArray(obj)) return obj.map(deepClean);
-        
+
         const cleaned: any = {};
         for (const [key, value] of Object.entries(obj)) {
           if (value !== undefined) {
@@ -682,19 +780,19 @@ export const productService = {
       // Clean dimensions data - remove undefined values from nested objects
       const cleanDimensions = (dimensions: any) => {
         if (!dimensions) return null;
-        
+
         const cleaned = {
           heightCm: dimensions.heightCm ?? null,
           widthCm: dimensions.widthCm ?? null,
           depthCm: dimensions.depthCm ?? null,
           quantity: dimensions.quantity ?? undefined
         };
-        
+
         // If all dimension values are null/undefined, return null
         if (cleaned.heightCm === null && cleaned.widthCm === null && cleaned.depthCm === null) {
           return null;
         }
-        
+
         return cleaned;
       };
 
@@ -720,7 +818,7 @@ export const productService = {
         createdAt: now,
         updatedAt: now
       };
-      
+
       const docRef = await addDoc(collection(db, 'products'), product);
       return docRef.id;
     } catch (error) {
@@ -737,7 +835,7 @@ export const productService = {
         if (obj === null || obj === undefined) return null;
         if (typeof obj !== 'object') return obj;
         if (Array.isArray(obj)) return obj.map(deepClean);
-        
+
         const cleaned: any = {};
         for (const [key, value] of Object.entries(obj)) {
           if (value !== undefined) {
@@ -750,19 +848,19 @@ export const productService = {
       // Clean dimensions data - remove undefined values from nested objects
       const cleanDimensions = (dimensions: any) => {
         if (!dimensions) return null;
-        
+
         const cleaned = {
           heightCm: dimensions.heightCm ?? null,
           widthCm: dimensions.widthCm ?? null,
           depthCm: dimensions.depthCm ?? null,
           quantity: dimensions.quantity ?? undefined
         };
-        
+
         // If all dimension values are null/undefined, return null
         if (cleaned.heightCm === null && cleaned.widthCm === null && cleaned.depthCm === null) {
           return null;
         }
-        
+
         return cleaned;
       };
 
@@ -813,7 +911,7 @@ export const productService = {
   }) {
     let q: Query = collection(db, 'products');
     const constraints: any[] = []; // TODO: Fix type
-    
+
     if (filters?.category) {
       constraints.push(where('categoryId', '==', filters.category));
     }
@@ -826,16 +924,16 @@ export const productService = {
     if (filters?.isActive !== undefined) {
       constraints.push(where('isEnabled', '==', filters.isActive));
     }
-    
+
     constraints.push(orderBy('createdAt', 'desc'));
     q = query(q, ...constraints);
-    
+
     return onSnapshot(q, async (snapshot) => {
       const products: Product[] = [];
-      
+
       for (const docSnapshot of snapshot.docs) {
         const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
-        
+
         // Fetch category data
         if (product.categoryId) {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
@@ -843,7 +941,7 @@ export const productService = {
             product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         }
-        
+
         // Handle color variants - new products have them embedded, old products need separate fetch
         if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
           // Old product structure - fetch from separate collection
@@ -854,52 +952,52 @@ export const productService = {
               where('isActive', '==', true)
             );
             const colorVariantsSnapshot = await getDocs(colorVariantsQuery);
-          
-          product.colorVariants = {};
-          for (const variantDoc of colorVariantsSnapshot.docs) {
-            const variant = { id: variantDoc.id, ...variantDoc.data() } as ColorVariant;
-            
-            // Fetch variant images
-            const imagesQuery = query(
-              collection(db, 'colorVariantImages'),
-              where('colorVariantId', '==', variant.id),
-              orderBy('order', 'asc')
-            );
-            const imagesSnapshot = await getDocs(imagesQuery);
-            variant.images = imagesSnapshot.docs.map(imgDoc => ({
-              id: imgDoc.id,
-              ...imgDoc.data()
-            } as ColorVariantImage));
-            
-            // Fetch variant sizes
-            const sizesQuery = query(
-              collection(db, 'colorVariantSizes'),
-              where('colorVariantId', '==', variant.id)
-            );
-            const sizesSnapshot = await getDocs(sizesQuery);
-            variant.sizes = sizesSnapshot.docs.map(sizeDoc => ({
-              id: sizeDoc.id,
-              ...sizeDoc.data()
-            } as ColorVariantSize));
-            
-            // Convert to new Record format
-            if (variant.colorSlug) {
-              product.colorVariants[variant.colorSlug] = {
-                colorSlug: variant.colorSlug,
-                priceOverride: variant.price,
-                salePrice: variant.salePrice,
-                stockBySize: variant.sizes?.reduce((sizeAcc, size) => {
-                  sizeAcc[size.size] = size.stock;
-                  return sizeAcc;
-                }, {} as Record<string, number>) || {},
-                metaTitle: variant.metaTitle,
-                metaDescription: variant.metaDescription,
-                images: variant.images?.map(img => img.url) || [],
-                primaryImage: variant.images?.find(img => img.isPrimary)?.url,
-                videos: variant.videoUrl ? [variant.videoUrl] : []
-              };
+
+            product.colorVariants = {};
+            for (const variantDoc of colorVariantsSnapshot.docs) {
+              const variant = { id: variantDoc.id, ...variantDoc.data() } as ColorVariant;
+
+              // Fetch variant images
+              const imagesQuery = query(
+                collection(db, 'colorVariantImages'),
+                where('colorVariantId', '==', variant.id),
+                orderBy('order', 'asc')
+              );
+              const imagesSnapshot = await getDocs(imagesQuery);
+              variant.images = imagesSnapshot.docs.map(imgDoc => ({
+                id: imgDoc.id,
+                ...imgDoc.data()
+              } as ColorVariantImage));
+
+              // Fetch variant sizes
+              const sizesQuery = query(
+                collection(db, 'colorVariantSizes'),
+                where('colorVariantId', '==', variant.id)
+              );
+              const sizesSnapshot = await getDocs(sizesQuery);
+              variant.sizes = sizesSnapshot.docs.map(sizeDoc => ({
+                id: sizeDoc.id,
+                ...sizeDoc.data()
+              } as ColorVariantSize));
+
+              // Convert to new Record format
+              if (variant.colorSlug) {
+                product.colorVariants[variant.colorSlug] = {
+                  colorSlug: variant.colorSlug,
+                  priceOverride: variant.price,
+                  salePrice: variant.salePrice,
+                  stockBySize: variant.sizes?.reduce((sizeAcc, size) => {
+                    sizeAcc[size.size] = size.stock;
+                    return sizeAcc;
+                  }, {} as Record<string, number>) || {},
+                  metaTitle: variant.metaTitle,
+                  metaDescription: variant.metaDescription,
+                  images: variant.images?.map(img => img.url) || [],
+                  primaryImage: variant.images?.find(img => img.isPrimary)?.url,
+                  videos: variant.videoUrl ? [variant.videoUrl] : []
+                };
+              }
             }
-          }
           } catch (error) {
             console.error('Error fetching color variants:', error);
             product.colorVariants = {};
@@ -907,10 +1005,10 @@ export const productService = {
         } else {
           // New product structure - color variants are already embedded
         }
-        
+
         products.push(product);
       }
-      
+
       callback(products);
     });
   }
@@ -922,6 +1020,7 @@ export type ProductFilters = {
   categoryId?: string;          // Category ID to filter by (single level)
   categoryLevel?: number;        // Level in the path (0, 1, or 2) where categoryId should match
   categoryIds?: string[];       // Array of category IDs for hierarchical filtering [womenId, shoesId, sneakersId]
+  subSubCategoryIds?: string[]; // Array of sub-subcategory IDs to filter by (level 2 categories)
   color?: string | string[];
   size?: string | string[];
   minPrice?: number;
@@ -942,10 +1041,46 @@ export type PaginationOptions = {
 };
 
 export type FilteredProductsResult = {
-  products: Product[];
+  products: Product[]; // Keep for backward compatibility
+  variantItems?: VariantItem[]; // New: explicit variant items (one per color variant)
   hasMore: boolean;
+  total: number;  // Total matching variants (if variantItems) or products (if products)
+  page: number;   // Current page number
+  pageSize: number; // Page size used
   lastDocument?: QueryDocumentSnapshot<DocumentData>;
 };
+
+/**
+ * Expand products into variant items (one item per active color variant)
+ * Each variant item represents a single color variant that should be displayed as its own card.
+ */
+export function expandProductsToVariants(products: Product[]): VariantItem[] {
+  const variantItems: VariantItem[] = [];
+  
+  for (const product of products) {
+    if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
+      // Product with no variants - skip (products without variants won't be displayed)
+      continue;
+    }
+    
+    // Get all active variants
+    const activeVariants = Object.values(product.colorVariants)
+      .filter(v => v.isActive !== false);
+    
+    // Create one VariantItem per active variant
+    for (const variant of activeVariants) {
+      if (!variant.colorSlug) continue; // Skip variants without color slug
+      
+      variantItems.push({
+        product,
+        variant,
+        variantKey: `${product.id || product.sku}-${variant.colorSlug}`
+      });
+    }
+  }
+  
+  return variantItems;
+}
 
 /**
  * Get filtered products using Firestore queries
@@ -994,7 +1129,7 @@ export async function getFilteredProducts(
       // Fallback: use path-based filtering (for backward compatibility)
       const categoryPathLower = filters.categoryPath.toLowerCase();
       const pathSegments = categoryPathLower.split('/');
-      
+
       // Use array-contains for the first segment (main category) to narrow down results
       if (pathSegments.length > 0) {
         const firstSegment = pathSegments[0];
@@ -1031,7 +1166,9 @@ export async function getFilteredProducts(
       }
     }
 
-    // Sorting
+    // Sorting - Always use consistent orderBy for stable pagination
+    // Note: For stable sorting across pages, we always use the same field and direction
+    // Client-side sorting will handle salePrice logic and ensure consistency when loading more pages
     switch (sort) {
       case 'newest':
         constraints.push(orderBy('createdAt', 'desc'));
@@ -1067,20 +1204,18 @@ export async function getFilteredProducts(
         throw queryError;
       }
     }
-    
+
     const products: Product[] = [];
     let lastDoc: QueryDocumentSnapshot<DocumentData> | undefined;
     let hasMore = false;
 
-    // Process results - fetch all documents (no pagination)
+    // Process results - fetch all documents first (we'll paginate after client-side filtering)
     const docs = querySnapshot.docs;
-    hasMore = false; // No pagination, so no "more" to fetch
-    const docsToProcess = docs; // Process all documents
 
-    for (const docSnapshot of docsToProcess) {
+    for (const docSnapshot of docs) {
       const docData = docSnapshot.data();
       const product = { id: docSnapshot.id, ...docData } as Product;
-      
+
       // Fetch category data if needed
       if (product.categoryId) {
         try {
@@ -1093,7 +1228,7 @@ export async function getFilteredProducts(
           console.warn(`Failed to fetch category for product ${product.id}:`, err);
         }
       }
-      
+
       products.push(product);
       lastDoc = docSnapshot;
     }
@@ -1106,25 +1241,25 @@ export async function getFilteredProducts(
     // We still do a client-side verification to ensure data integrity, but most filtering happens in Firestore
     if (filters.categoryIds && filters.categoryIds.length > 0) {
       const categoryIds = filters.categoryIds; // Store in local variable for TypeScript
-      
+
       // Client-side verification (Firestore should have already filtered, but we verify for safety)
       filteredProducts = filteredProducts.filter((product) => {
         if (!product.categories_path_id || product.categories_path_id.length === 0) {
           return false;
         }
-        
+
         // Product must have at least as many levels as we're filtering by
         if (product.categories_path_id.length < categoryIds.length) {
           return false; // Product doesn't have enough levels
         }
-        
+
         // Verify each level matches (Firestore query should have already filtered, but we double-check)
         for (let i = 0; i < categoryIds.length; i++) {
           if (product.categories_path_id[i] !== categoryIds[i]) {
             return false;
           }
         }
-        
+
         // Product matches up to the target level - include it
         return true;
       });
@@ -1134,13 +1269,13 @@ export async function getFilteredProducts(
         if (!product.categories_path_id || product.categories_path_id.length === 0) {
           return false;
         }
-        
+
         // Check if the category ID matches at the specified level
         // Level 0 = index 0, Level 1 = index 1, Level 2 = index 2
         if (product.categories_path_id.length > targetLevel) {
           return product.categories_path_id[targetLevel] === filters.categoryId;
         }
-        
+
         return false;
       });
     } else if (filters.categoryPath) {
@@ -1151,25 +1286,39 @@ export async function getFilteredProducts(
         if (!product.categories_path || product.categories_path.length === 0) {
           return false;
         }
-        
+
         const productPath = product.categories_path.join('/').toLowerCase();
-        
+
         // Exact match
         if (productPath === requestedPath) {
           return true;
         }
-        
+
         // Parent match: product is in a child category of the requested path
         if (productPath.startsWith(requestedPath + '/')) {
           return true;
         }
-        
+
         // Child match: requested path is a child of the product's path
         if (requestedPath.startsWith(productPath + '/')) {
           return true;
         }
-        
+
         return false;
+      });
+    }
+
+    // Sub-subcategory filtering (client-side)
+    // Filter products where categories_path_id[2] (level 2) matches any of the selected sub-subcategory IDs
+    if (filters.subSubCategoryIds && filters.subSubCategoryIds.length > 0) {
+      const subSubCategoryIds = filters.subSubCategoryIds;
+      filteredProducts = filteredProducts.filter((product) => {
+        if (!product.categories_path_id || product.categories_path_id.length < 3) {
+          return false; // Product doesn't have a sub-subcategory
+        }
+        // Check if the product's sub-subcategory (index 2) is in the selected list
+        const productSubSubCategoryId = product.categories_path_id[2];
+        return subSubCategoryIds.includes(productSubSubCategoryId);
       });
     }
 
@@ -1218,22 +1367,13 @@ export async function getFilteredProducts(
 
     // Price filtering (client-side to handle salePrice and variant prices)
     // The actual displayed price can be: variant.salePrice > product.salePrice > variant.priceOverride > product.price
-    const productsBeforePriceFilter = filteredProducts.length;
-    console.log('[Price Filter] Products before price filtering:', productsBeforePriceFilter);
-    console.log('[Price Filter] Filter values:', { minPrice: filters.minPrice, maxPrice: filters.maxPrice });
-    
     if (filters.minPrice !== undefined && filters.minPrice > 0) {
-      console.log('[Price Filter] Applying minPrice filter:', filters.minPrice);
       filteredProducts = filteredProducts.filter((product) => {
         // Get the minimum price across all active variants
         if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
           // No variants, use product-level price
           const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          const passes = productPrice >= filters.minPrice!;
-          if (!passes) {
-            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice: productPrice=${productPrice}, minPrice=${filters.minPrice}, basePrice=${product.price}, salePrice=${product.salePrice}`);
-          }
-          return passes;
+          return productPrice >= filters.minPrice!;
         }
 
         // Check all active variants to find the minimum price
@@ -1249,36 +1389,22 @@ export async function getFilteredProducts(
 
         if (variantPrices.length === 0) {
           const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          const passes = productPrice >= filters.minPrice!;
-          if (!passes) {
-            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice (no active variants): productPrice=${productPrice}, minPrice=${filters.minPrice}`);
-          }
-          return passes;
+          return productPrice >= filters.minPrice!;
         }
 
         // Product matches if any variant's price is >= minPrice
         const minVariantPrice = Math.min(...variantPrices);
-        const passes = minVariantPrice >= filters.minPrice!;
-        if (!passes) {
-          console.log(`[Price Filter] Product ${product.sku || product.id} FAILED minPrice: minVariantPrice=${minVariantPrice}, minPrice=${filters.minPrice}, variantPrices=[${variantPrices.join(', ')}], basePrice=${product.price}, salePrice=${product.salePrice}`);
-        }
-        return passes;
+        return minVariantPrice >= filters.minPrice!;
       });
-      console.log('[Price Filter] Products after minPrice filter:', filteredProducts.length);
     }
 
     if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
-      console.log('[Price Filter] Applying maxPrice filter:', filters.maxPrice);
       filteredProducts = filteredProducts.filter((product) => {
         // Get the minimum price across all active variants (we show the lowest price)
         if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
           // No variants, use product-level price
           const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          const passes = productPrice <= filters.maxPrice!;
-          if (!passes) {
-            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice: productPrice=${productPrice}, maxPrice=${filters.maxPrice}, basePrice=${product.price}, salePrice=${product.salePrice}`);
-          }
-          return passes;
+          return productPrice <= filters.maxPrice!;
         }
 
         // Check all active variants to find the minimum price (what's displayed)
@@ -1294,29 +1420,41 @@ export async function getFilteredProducts(
 
         if (variantPrices.length === 0) {
           const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          const passes = productPrice <= filters.maxPrice!;
-          if (!passes) {
-            console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice (no active variants): productPrice=${productPrice}, maxPrice=${filters.maxPrice}`);
-          }
-          return passes;
+          return productPrice <= filters.maxPrice!;
         }
 
         // Product matches if the minimum variant price is <= maxPrice
         const minVariantPrice = Math.min(...variantPrices);
-        const passes = minVariantPrice <= filters.maxPrice!;
-        if (!passes) {
-          console.log(`[Price Filter] Product ${product.sku || product.id} FAILED maxPrice: minVariantPrice=${minVariantPrice}, maxPrice=${filters.maxPrice}, variantPrices=[${variantPrices.join(', ')}], basePrice=${product.price}, salePrice=${product.salePrice}`);
-        }
-        return passes;
+        return minVariantPrice <= filters.maxPrice!;
       });
-      console.log('[Price Filter] Products after maxPrice filter:', filteredProducts.length);
     }
-    
-    console.log('[Price Filter] Final product count:', filteredProducts.length, '(started with', productsBeforePriceFilter, ')');
+
+    // Calculate total count (before pagination)
+    const total = filteredProducts.length;
+
+    // Apply pagination if provided
+    let paginatedProducts = filteredProducts;
+    let currentPage = 1;
+    let currentPageSize = total; // Default: return all if no pagination
+    let calculatedHasMore = false;
+
+    if (pagination && pagination.page && pagination.pageSize) {
+      currentPage = pagination.page;
+      currentPageSize = pagination.pageSize;
+      const startIndex = (currentPage - 1) * currentPageSize;
+      const endIndex = startIndex + currentPageSize;
+      paginatedProducts = filteredProducts.slice(startIndex, endIndex);
+      calculatedHasMore = endIndex < total;
+    } else {
+      calculatedHasMore = false;
+    }
 
     return {
-      products: filteredProducts,
-      hasMore,
+      products: paginatedProducts,
+      hasMore: calculatedHasMore,
+      total: total,
+      page: currentPage,
+      pageSize: currentPageSize,
       lastDocument: lastDoc
     };
   } catch (error) {
@@ -1358,9 +1496,9 @@ export async function getCollectionProducts(
   // Color filter
   const colorsParam = searchParams.colors;
   if (colorsParam) {
-    const colors = typeof colorsParam === 'string' 
+    const colors = typeof colorsParam === 'string'
       ? colorsParam.split(',').filter(Boolean)
-      : Array.isArray(colorsParam) 
+      : Array.isArray(colorsParam)
         ? colorsParam.flatMap(c => c.split(',')).filter(Boolean)
         : [];
     if (colors.length > 0) {
@@ -1381,21 +1519,31 @@ export async function getCollectionProducts(
     }
   }
 
+  // Sub-subcategory filter
+  const subSubCategoriesParam = searchParams.subSubCategories;
+  if (subSubCategoriesParam) {
+    const subSubCategoryIds = typeof subSubCategoriesParam === 'string'
+      ? subSubCategoriesParam.split(',').filter(Boolean)
+      : Array.isArray(subSubCategoriesParam)
+        ? subSubCategoriesParam.flatMap(id => id.split(',')).filter(Boolean)
+        : [];
+    if (subSubCategoryIds.length > 0) {
+      filters.subSubCategoryIds = subSubCategoryIds;
+    }
+  }
+
   // Price range
   const minPriceParam = searchParams.minPrice;
   const maxPriceParam = searchParams.maxPrice;
-  console.log('[Price Filter] Raw params:', { minPriceParam, maxPriceParam });
-  
+
   if (minPriceParam) {
-    const minPrice = typeof minPriceParam === 'string' 
-      ? parseFloat(minPriceParam) 
-      : Array.isArray(minPriceParam) 
-        ? parseFloat(minPriceParam[0]) 
+    const minPrice = typeof minPriceParam === 'string'
+      ? parseFloat(minPriceParam)
+      : Array.isArray(minPriceParam)
+        ? parseFloat(minPriceParam[0])
         : undefined;
-    console.log('[Price Filter] Parsed minPrice:', minPrice, 'isNaN:', isNaN(minPrice!));
     if (!isNaN(minPrice!) && minPrice! > 0) {
       filters.minPrice = minPrice;
-      console.log('[Price Filter] Set filters.minPrice to:', filters.minPrice);
     }
   }
   if (maxPriceParam) {
@@ -1404,14 +1552,10 @@ export async function getCollectionProducts(
       : Array.isArray(maxPriceParam)
         ? parseFloat(maxPriceParam[0])
         : undefined;
-    console.log('[Price Filter] Parsed maxPrice:', maxPrice, 'isNaN:', isNaN(maxPrice!));
     if (!isNaN(maxPrice!) && maxPrice! > 0) {
       filters.maxPrice = maxPrice;
-      console.log('[Price Filter] Set filters.maxPrice to:', filters.maxPrice);
     }
   }
-  
-  console.log('[Price Filter] Final filters object:', { minPrice: filters.minPrice, maxPrice: filters.maxPrice });
 
   // Sort option - map from URL params to internal sort values
   const sortParam = searchParams.sort;
@@ -1429,12 +1573,77 @@ export async function getCollectionProducts(
 
   // Pagination
   const pageParam = searchParams.page;
-  const page = pageParam 
+  const page = pageParam
     ? (typeof pageParam === 'string' ? parseInt(pageParam) : Array.isArray(pageParam) ? parseInt(pageParam[0]) : 1)
     : 1;
-  const pageSize = 50; // Default page size
+  const pageSize = 24; // Mobile-first page size (24 products per page)
 
-  return getFilteredProducts(filters, sort, { page, pageSize });
+  // Validate page number
+  const validatedPage = Number.isInteger(page) && page > 0 ? page : 1;
+
+  // Get filtered products (without pagination - we'll paginate after expanding to variants)
+  const filteredResult = await getFilteredProducts(filters, sort);
+  
+  // Expand products to variant items (one item per active color variant)
+  const allVariantItems = expandProductsToVariants(filteredResult.products);
+  
+  // Sort variant items
+  let sortedVariantItems = [...allVariantItems];
+  
+  if (sort === 'priceAsc' || sort === 'priceDesc') {
+    sortedVariantItems.sort((a, b) => {
+      // Get variant-specific price for comparison
+      const getVariantPrice = (item: VariantItem): number => {
+        if (item.variant.salePrice && item.variant.salePrice > 0) return item.variant.salePrice;
+        if (item.product.salePrice && item.product.salePrice > 0) return item.product.salePrice;
+        if (item.variant.priceOverride && item.variant.priceOverride > 0) return item.variant.priceOverride;
+        return item.product.price;
+      };
+      
+      const priceA = getVariantPrice(a);
+      const priceB = getVariantPrice(b);
+      
+      return sort === 'priceAsc' ? priceA - priceB : priceB - priceA;
+    });
+  } else if (sort === 'newest') {
+    // Sort by product createdAt (all variants of same product have same date)
+    sortedVariantItems.sort((a, b) => {
+      const dateA = a.product.createdAt ? new Date(a.product.createdAt).getTime() : 0;
+      const dateB = b.product.createdAt ? new Date(b.product.createdAt).getTime() : 0;
+      return dateB - dateA; // Newest first
+    });
+  }
+  // For 'relevance', keep the order from getFilteredProducts (already sorted by createdAt desc)
+  
+  // Calculate total count at variant level
+  const totalVariants = sortedVariantItems.length;
+  
+  // Paginate variant items
+  const startIndex = (validatedPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedVariantItems = sortedVariantItems.slice(startIndex, endIndex);
+  const hasMore = endIndex < totalVariants;
+  
+  // For backward compatibility, we still return products array
+  // But the primary data is in variantItems
+  // Extract products from paginated variant items (unique products only)
+  const uniqueProducts = new Map<string, Product>();
+  paginatedVariantItems.forEach(item => {
+    const productId = item.product.id || item.product.sku;
+    if (!uniqueProducts.has(productId)) {
+      uniqueProducts.set(productId, item.product);
+    }
+  });
+  
+  return {
+    products: Array.from(uniqueProducts.values()), // Backward compatibility
+    variantItems: paginatedVariantItems, // New: variant items for collection pages
+    hasMore,
+    total: totalVariants, // Total variant count
+    page: validatedPage,
+    pageSize,
+    lastDocument: filteredResult.lastDocument
+  };
 }
 
 // Category Services
@@ -1445,21 +1654,12 @@ export const categoryService = {
       console.log('Fetching all categories from Firebase...');
       const q = query(collection(db, 'categories'), orderBy('sortOrder', 'asc'));
       const querySnapshot = await getDocs(q);
-      
+
       const categories = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Category[];
-      
-      console.log(`Retrieved ${categories.length} categories from Firebase:`, 
-        categories.map(cat => ({
-          id: cat.id,
-          name: typeof cat.name === 'object' ? cat.name?.en : cat.name,
-          level: cat.level,
-          parentId: cat.parentId
-        }))
-      );
-      
+
       return categories;
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -1470,12 +1670,12 @@ export const categoryService = {
   async getMainCategories(): Promise<Category[]> {
     try {
       const q = query(
-        collection(db, 'categories'), 
+        collection(db, 'categories'),
         where('level', '==', 0),
         orderBy('sortOrder', 'asc')
       );
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -1489,12 +1689,12 @@ export const categoryService = {
   async getSubCategories(parentId: string): Promise<Category[]> {
     try {
       const q = query(
-        collection(db, 'categories'), 
+        collection(db, 'categories'),
         where('parentId', '==', parentId),
         orderBy('sortOrder', 'asc')
       );
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -1508,13 +1708,13 @@ export const categoryService = {
   async getEnabledCategories(): Promise<Category[]> {
     try {
       const q = query(
-        collection(db, 'categories'), 
+        collection(db, 'categories'),
         where('isEnabled', '==', true),
         orderBy('level', 'asc'),
         orderBy('sortOrder', 'asc')
       );
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -1531,7 +1731,7 @@ export const categoryService = {
       // Main category - path is just the slug
       return categoryData.slug.en;
     }
-    
+
     if (categoryData.parentId) {
       // Get parent category to build path
       const parentCategory = await this.getCategoryById(categoryData.parentId);
@@ -1539,7 +1739,7 @@ export const categoryService = {
         return `${parentCategory.path}/${categoryData.slug.en}`;
       }
     }
-    
+
     // Fallback - just use the slug
     return categoryData.slug.en;
   },
@@ -1549,7 +1749,7 @@ export const categoryService = {
     try {
       const docRef = doc(db, 'categories', categoryId);
       const docSnap = await getDoc(docRef);
-      
+
       if (docSnap.exists()) {
         return {
           id: docSnap.id,
@@ -1572,7 +1772,7 @@ export const categoryService = {
         limit(1)
       );
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const docSnapshot = querySnapshot.docs[0];
         return {
@@ -1597,13 +1797,13 @@ export const categoryService = {
       }
 
       const categoryIds: string[] = [];
-      
+
       // Resolve each segment to its category ID
       for (let i = 0; i < pathSegments.length; i++) {
         const segment = pathSegments[i];
         const expectedLevel = i; // Level 0, 1, or 2
         let category: Category | null = null;
-        
+
         // First try: Query for category with this slug and level
         try {
           const q = query(
@@ -1613,7 +1813,7 @@ export const categoryService = {
             limit(1)
           );
           const querySnapshot = await getDocs(q);
-          
+
           if (!querySnapshot.empty) {
             const docSnapshot = querySnapshot.docs[0];
             category = {
@@ -1624,7 +1824,7 @@ export const categoryService = {
         } catch (queryError) {
           // Continue to fallback
         }
-        
+
         // Fallback 1: Try without level filter (in case level doesn't match)
         if (!category) {
           try {
@@ -1633,38 +1833,38 @@ export const categoryService = {
             // Continue to next fallback
           }
         }
-        
+
         // Fallback 2: Try case-insensitive search by fetching all categories and matching manually
         if (!category) {
           try {
             const allCategories = await this.getAllCategories();
             const segmentLower = segment.toLowerCase();
             category = allCategories.find(cat => {
-              const catSlug = typeof cat.slug === 'object' 
+              const catSlug = typeof cat.slug === 'object'
                 ? (cat.slug[language] || cat.slug.en || '')
                 : (cat.slug || '');
-              return catSlug.toLowerCase() === segmentLower && 
-                     (cat.level === expectedLevel || cat.level === undefined);
+              return catSlug.toLowerCase() === segmentLower &&
+                (cat.level === expectedLevel || cat.level === undefined);
             }) || null;
           } catch (fallbackError) {
             // Continue
           }
         }
-        
+
         if (category && category.id) {
           categoryIds.push(category.id);
         } else {
           return null;
         }
       }
-      
+
       if (categoryIds.length === pathSegments.length) {
         return {
           categoryIds,
           targetLevel: pathSegments.length - 1 // The deepest level (0, 1, or 2)
         };
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error getting category IDs from path:', error);
@@ -1676,13 +1876,13 @@ export const categoryService = {
   async createCategory(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path'>): Promise<string> {
     try {
       const now = new Date();
-      
+
       // Get the next sort order for this level
       const sortOrder = await this.getNextSortOrder(categoryData.level, categoryData.parentId);
-      
+
       // Generate the category path
       const path = await this.generateCategoryPath(categoryData);
-      
+
       // Build category object, only including defined fields
       const category: any = {
         name: categoryData.name,
@@ -1694,20 +1894,20 @@ export const categoryService = {
         createdAt: now,
         updatedAt: now
       };
-      
+
       // Add optional fields only if they have values
       if (categoryData.description) {
         category.description = categoryData.description;
       }
-      
+
       if (categoryData.image && categoryData.image.trim()) {
         category.image = categoryData.image;
       }
-      
+
       if (categoryData.parentId && categoryData.parentId.trim()) {
         category.parentId = categoryData.parentId;
       }
-      
+
       const docRef = await addDoc(collection(db, 'categories'), category);
       return docRef.id;
     } catch (error) {
@@ -1735,12 +1935,12 @@ export const categoryService = {
           limit(1)
         );
       }
-      
+
       const querySnapshot = await getDocs(q);
       if (querySnapshot.empty) {
         return 0;
       }
-      
+
       const lastCategory = querySnapshot.docs[0].data() as Category;
       return (lastCategory.sortOrder || 0) + 1;
     } catch (error) {
@@ -1793,14 +1993,14 @@ export const categoryService = {
     try {
       // Get all sub-categories
       const subCategories = await this.getSubCategories(id);
-      
+
       // Recursively delete all sub-categories
       for (const subCategory of subCategories) {
         if (subCategory.id) {
           await this.deleteCategoryWithChildren(subCategory.id);
         }
       }
-      
+
       // Delete the main category
       await this.deleteCategory(id);
     } catch (error) {
@@ -1819,7 +2019,7 @@ export const categoryService = {
         orderBy('sortOrder', 'asc')
       );
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -1876,7 +2076,7 @@ export const categoryService = {
     try {
       const category = await this.getCategoryById(categoryId);
       if (!category) return [];
-      
+
       return category.path.split('/');
     } catch (error) {
       console.error('Error getting category path array:', error);
@@ -1892,7 +2092,7 @@ export const categoryService = {
         where('path', '==', path)
       );
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -1907,12 +2107,12 @@ export const categoryService = {
   async bulkCreateCategories(categoriesData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path'>[]): Promise<string[]> {
     try {
       const categoryIds: string[] = [];
-      
+
       for (const categoryData of categoriesData) {
         const categoryId = await this.createCategory(categoryData);
         categoryIds.push(categoryId);
       }
-      
+
       return categoryIds;
     } catch (error) {
       console.error('Error bulk creating categories:', error);
@@ -1924,18 +2124,10 @@ export const categoryService = {
 // Authentication Services
 export const authService = {
   // Sign in
-  async signIn(email: string, password: string): Promise<AppUser> {
+  async signIn(email: string, password: string): Promise<FirebaseUser> {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Get user data from Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        return { id: userDoc.id, ...userDoc.data() } as AppUser;
-      }
-      
-      throw new Error('User data not found');
+      return userCredential.user;
     } catch (error) {
       console.error('Error signing in:', error);
       throw error;
@@ -1943,26 +2135,10 @@ export const authService = {
   },
 
   // Sign up
-  async signUp(email: string, password: string, name: string): Promise<string> {
+  async signUp(email: string, password: string): Promise<FirebaseUser> {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      
-      // Create user document in Firestore
-      const userData: Omit<AppUser, 'id' | 'createdAt' | 'updatedAt'> = {
-        email,
-        name,
-        role: 'USER'
-      };
-      
-      const now = new Date();
-      await addDoc(collection(db, 'users'), {
-        ...userData,
-        createdAt: now,
-        updatedAt: now
-      });
-      
-      return user.uid;
+      return userCredential.user;
     } catch (error) {
       console.error('Error signing up:', error);
       throw error;
@@ -1987,7 +2163,9 @@ export const authService = {
   // Listen to auth state changes
   onAuthStateChanged(callback: (user: FirebaseUser | null) => void) {
     return onAuthStateChanged(auth, callback);
-  }
+  },
+
+  // Note: end-user password reset has been removed (OTP-only auth).
 };
 
 // Storage Services
@@ -2019,9 +2197,9 @@ export const storageService = {
 
 // Bilingual Import Service
 export const importService = {
-  async importFromGoogleSheets(sheetData: any[]): Promise<{ 
-    success: number; 
-    errors: number; 
+  async importFromGoogleSheets(sheetData: any[]): Promise<{
+    success: number;
+    errors: number;
     errorsList: string[];
     missingTranslations: string[];
     created: number;
@@ -2039,7 +2217,7 @@ export const importService = {
     for (const row of sheetData) {
       try {
         console.log('Processing product:', row.name?.en || 'Unknown');
-        
+
         // Validate bilingual data
         const validation = productHelpers.validateBilingualProduct(row);
         if (!validation.isValid) {
@@ -2048,13 +2226,13 @@ export const importService = {
           results.errorsList.push(`Product validation failed: ${validation.errors.join(', ')}`);
           continue;
         }
-        
+
         console.log('Validation passed for product:', row.name?.en);
 
         // Create or find category
         const categoryQuery = query(collection(db, 'categories'), where('name', '==', row.category), limit(1));
         const categorySnapshot = await getDocs(categoryQuery);
-        
+
         let categoryId: string;
         if (categorySnapshot.empty) {
           // Create new category
@@ -2097,7 +2275,7 @@ export const importService = {
         if (!isUpdate) {
           const enSlugQuery = query(collection(db, 'products'), where('slug.en', '==', enSlug), limit(1));
           const heSlugQuery = query(collection(db, 'products'), where('slug.he', '==', heSlug), limit(1));
-          
+
           const [enSlugSnapshot, heSlugSnapshot] = await Promise.all([
             getDocs(enSlugQuery),
             getDocs(heSlugQuery)
@@ -2124,11 +2302,11 @@ export const importService = {
         // Parse stock by size
         let stockBySize: Record<string, number> = {};
         let totalStock = 0;
-        
+
         if (row.stockBySize) {
           const stockEntries = row.stockBySize.split(',').map((entry: string) => entry.trim()).filter(Boolean);
           stockBySize = {};
-          
+
           for (const entry of stockEntries) {
             const [size, quantity] = entry.split(':').map((s: string) => s.trim());
             if (size && quantity && !isNaN(parseInt(quantity))) {
@@ -2233,7 +2411,7 @@ export const colorVariantService = {
         createdAt: now,
         updatedAt: now
       };
-      
+
       const docRef = await addDoc(collection(db, 'colorVariants'), variant);
       return docRef.id;
     } catch (error) {
@@ -2276,7 +2454,7 @@ export const colorVariantService = {
         colorVariantId: variantId,
         createdAt: now
       };
-      
+
       const docRef = await addDoc(collection(db, 'colorVariantImages'), image);
       return docRef.id;
     } catch (error) {
@@ -2317,7 +2495,7 @@ export const colorVariantService = {
         createdAt: now,
         updatedAt: now
       };
-      
+
       const docRef = await addDoc(collection(db, 'colorVariantSizes'), size);
       return docRef.id;
     } catch (error) {
@@ -2360,7 +2538,7 @@ export const newsletterService = {
       // Check if email already exists
       const q = query(collection(db, 'NewsletterEmails'), where('email', '==', email), limit(1));
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         // Email already exists, update to active
         const existingDoc = querySnapshot.docs[0];
@@ -2368,9 +2546,9 @@ export const newsletterService = {
           isActive: true,
           subscribedAt: new Date()
         });
-        
+
         // Note: Neon DB sync is handled by the API endpoint
-        
+
         return existingDoc.id;
       } else {
         // Create new subscription
@@ -2379,11 +2557,11 @@ export const newsletterService = {
           subscribedAt: new Date(),
           isActive: true
         };
-        
+
         const docRef = await addDoc(collection(db, 'NewsletterEmails'), emailData);
-        
+
         // Note: Neon DB sync is handled by the API endpoint
-        
+
         return docRef.id;
       }
     } catch (error) {
@@ -2397,13 +2575,13 @@ export const newsletterService = {
     try {
       const q = query(collection(db, 'NewsletterEmails'), where('email', '==', email), limit(1));
       const querySnapshot = await getDocs(q);
-      
+
       if (!querySnapshot.empty) {
         const docRef = doc(db, 'NewsletterEmails', querySnapshot.docs[0].id);
         await updateDoc(docRef, {
           isActive: false
         });
-        
+
         // Note: Neon DB sync is handled by the API endpoint
       }
     } catch (error) {
@@ -2417,7 +2595,7 @@ export const newsletterService = {
     try {
       const q = query(collection(db, 'NewsletterEmails'), orderBy('subscribedAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -2441,7 +2619,7 @@ export const campaignService = {
     try {
       const q = query(collection(db, 'campaigns'), orderBy('priority', 'desc'), orderBy('createdAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map(doc => ({
         id: doc.id,
         slug: doc.id,
@@ -2458,11 +2636,11 @@ export const campaignService = {
     try {
       const docRef = doc(db, 'campaigns', slug);
       const docSnap = await getDoc(docRef);
-      
+
       if (!docSnap.exists()) {
         return null;
       }
-      
+
       return {
         id: docSnap.id,
         slug: docSnap.id,
@@ -2478,7 +2656,7 @@ export const campaignService = {
   async getActiveCampaign(): Promise<Campaign | null> {
     try {
       const now = new Date().toISOString();
-      
+
       // Query for active campaigns
       const q = query(
         collection(db, 'campaigns'),
@@ -2486,9 +2664,9 @@ export const campaignService = {
         orderBy('priority', 'desc'),
         orderBy('startAt', 'desc')
       );
-      
+
       const querySnapshot = await getDocs(q);
-      
+
       // Filter by date range client-side (Firestore doesn't support multiple range queries easily)
       const campaigns = querySnapshot.docs
         .map(doc => ({
@@ -2506,7 +2684,7 @@ export const campaignService = {
           }
           return true;
         });
-      
+
       // Return the highest priority campaign
       return campaigns.length > 0 ? campaigns[0] : null;
     } catch (error) {
@@ -2519,7 +2697,7 @@ export const campaignService = {
   async getCampaignProducts(campaign: Campaign): Promise<Product[]> {
     try {
       const { productFilter } = campaign;
-      
+
       if (productFilter.mode === 'tag' && productFilter.tag) {
         // Tag-based selection
         let q: Query = query(
@@ -2528,7 +2706,7 @@ export const campaignService = {
           where('isDeleted', '==', false),
           where('isEnabled', '==', true)
         );
-        
+
         // Add ordering
         if (productFilter.orderBy) {
           const direction = productFilter.orderDirection === 'asc' ? 'asc' : 'desc';
@@ -2536,18 +2714,18 @@ export const campaignService = {
         } else {
           q = query(q, orderBy('createdAt', 'desc'));
         }
-        
+
         // Add limit
         if (productFilter.limit) {
           q = query(q, limit(productFilter.limit));
         }
-        
+
         const querySnapshot = await getDocs(q);
         const products: Product[] = [];
-        
+
         for (const docSnapshot of querySnapshot.docs) {
           const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
-          
+
           // Fetch category data if needed
           if (product.categoryId) {
             const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
@@ -2555,10 +2733,10 @@ export const campaignService = {
               product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
             }
           }
-          
+
           products.push(product);
         }
-        
+
         return products;
       } else if (productFilter.mode === 'sale') {
         // All sale products
@@ -2568,7 +2746,7 @@ export const campaignService = {
           where('isDeleted', '==', false),
           where('isEnabled', '==', true)
         );
-        
+
         // Add ordering
         if (productFilter.orderBy) {
           const direction = productFilter.orderDirection === 'asc' ? 'asc' : 'desc';
@@ -2576,39 +2754,39 @@ export const campaignService = {
         } else {
           q = query(q, orderBy('createdAt', 'desc'));
         }
-        
+
         // Add limit
         if (productFilter.limit) {
           q = query(q, limit(productFilter.limit));
         }
-        
+
         const querySnapshot = await getDocs(q);
         const products: Product[] = [];
-        
+
         for (const docSnapshot of querySnapshot.docs) {
           const product = { id: docSnapshot.id, ...docSnapshot.data() } as Product;
-          
+
           if (product.categoryId) {
             const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
             if (categoryDoc.exists()) {
               product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
             }
           }
-          
+
           products.push(product);
         }
-        
+
         return products;
       } else if (productFilter.mode === 'manual' && campaign.productIds && campaign.productIds.length > 0) {
         // Manual selection - fetch products by IDs
         const products: Product[] = [];
-        
+
         for (const productId of campaign.productIds) {
           try {
             const productDoc = await getDoc(doc(db, 'products', productId));
             if (productDoc.exists()) {
               const product = { id: productDoc.id, ...productDoc.data() } as Product;
-              
+
               // Only include active, non-deleted products
               if (!product.isDeleted && product.isEnabled) {
                 if (product.categoryId) {
@@ -2617,7 +2795,7 @@ export const campaignService = {
                     product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
                   }
                 }
-                
+
                 products.push(product);
               }
             }
@@ -2625,10 +2803,10 @@ export const campaignService = {
             console.warn(`Error fetching product ${productId}:`, error);
           }
         }
-        
+
         return products;
       }
-      
+
       return [];
     } catch (error) {
       console.error('Error fetching campaign products:', error);
@@ -2641,9 +2819,9 @@ export const campaignService = {
     try {
       const now = new Date().toISOString();
       const docRef = doc(db, 'campaigns', campaignData.slug);
-      
+
       const { slug, ...data } = campaignData;
-      
+
       // Remove undefined values and empty optional objects
       const cleanData: any = {
         slug: slug,
@@ -2654,7 +2832,7 @@ export const campaignService = {
         createdAt: now,
         updatedAt: now
       };
-      
+
       // Only include optional fields if they have values
       if (data.subtitle && (data.subtitle.en || data.subtitle.he)) {
         cleanData.subtitle = data.subtitle;
@@ -2689,9 +2867,9 @@ export const campaignService = {
       if (data.productIds && data.productIds.length > 0) {
         cleanData.productIds = data.productIds;
       }
-      
+
       await setDoc(docRef, cleanData);
-      
+
       return docRef.id;
     } catch (error) {
       console.error('Error creating campaign:', error);
@@ -2703,12 +2881,12 @@ export const campaignService = {
   async updateCampaign(slug: string, campaignData: Partial<Campaign>): Promise<void> {
     try {
       const docRef = doc(db, 'campaigns', slug);
-      
+
       // Build update data, removing undefined values
       const updateData: any = {
         updatedAt: new Date().toISOString()
       };
-      
+
       // Only include fields that are actually provided (not undefined)
       if (campaignData.slug !== undefined) updateData.slug = campaignData.slug;
       if (campaignData.title !== undefined) updateData.title = campaignData.title;
@@ -2758,14 +2936,14 @@ export const campaignService = {
       }
       if (campaignData.productFilter !== undefined) updateData.productFilter = campaignData.productFilter;
       if (campaignData.productIds !== undefined) {
-        updateData.productIds = campaignData.productIds && campaignData.productIds.length > 0 
-          ? campaignData.productIds 
+        updateData.productIds = campaignData.productIds && campaignData.productIds.length > 0
+          ? campaignData.productIds
           : null;
       }
-      
+
       // Remove id if present
       delete updateData.id;
-      
+
       await updateDoc(docRef, updateData);
     } catch (error) {
       console.error('Error updating campaign:', error);

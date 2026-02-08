@@ -828,41 +828,59 @@ export default function NewProductPage() {
       
       console.log('Preparing product data...')
       
-      // Build categories path and IDs
+      // Build categories path and IDs, and resolve Hebrew names
       const categoriesPath: string[] = []
       const categoriesPathId: string[] = []
+      let categoryEn = ''
+      let categoryHe = ''
+      let subCategoryEn = ''
+      let subCategoryHe = ''
+      let subSubCategoryEn = ''
+      let subSubCategoryHe = ''
       
       const mainCategory = categories.find(cat => cat.id === formData.category)
       if (mainCategory) {
         const mainSlug = typeof mainCategory.slug === 'object' ? mainCategory.slug.en : mainCategory.slug
+        const mainNameEn = typeof mainCategory.name === 'object' ? mainCategory.name.en : mainCategory.name
+        const mainNameHe = typeof mainCategory.name === 'object' ? mainCategory.name.he : mainCategory.name
         if (mainSlug) {
           categoriesPath.push(mainSlug)
           if (mainCategory.id) {
             categoriesPathId.push(mainCategory.id)
           }
         }
+        categoryEn = mainNameEn
+        categoryHe = mainNameHe
         
         if (formData.subCategory) {
           const subCategory = categories.find(cat => cat.id === formData.subCategory)
           if (subCategory) {
             const subSlug = typeof subCategory.slug === 'object' ? subCategory.slug.en : subCategory.slug
+            const subNameEn = typeof subCategory.name === 'object' ? subCategory.name.en : subCategory.name
+            const subNameHe = typeof subCategory.name === 'object' ? subCategory.name.he : subCategory.name
             if (subSlug) {
               categoriesPath.push(subSlug)
               if (subCategory.id) {
                 categoriesPathId.push(subCategory.id)
               }
             }
+            subCategoryEn = subNameEn
+            subCategoryHe = subNameHe
             
             if (formData.subSubCategory) {
               const subSubCategory = categories.find(cat => cat.id === formData.subSubCategory)
               if (subSubCategory) {
                 const subSubSlug = typeof subSubCategory.slug === 'object' ? subSubCategory.slug.en : subSubCategory.slug
+                const subSubNameEn = typeof subSubCategory.name === 'object' ? subSubCategory.name.en : subSubCategory.name
+                const subSubNameHe = typeof subSubCategory.name === 'object' ? subSubCategory.name.he : subSubCategory.name
                 if (subSubSlug) {
                   categoriesPath.push(subSubSlug)
                   if (subSubCategory.id) {
                     categoriesPathId.push(subSubCategory.id)
                   }
                 }
+                subSubCategoryEn = subSubNameEn
+                subSubCategoryHe = subSubNameHe
               }
             }
           }
@@ -905,9 +923,18 @@ export default function NewProductPage() {
         title_he: formData.title_he,
         description_en: formData.description_en,
         description_he: formData.description_he,
+        // Store category IDs (for Firebase compatibility)
         category: formData.category,
-        subCategory: formData.subCategory,
-        subSubCategory: formData.subSubCategory,
+        subCategory: formData.subCategory || null,
+        subSubCategory: formData.subSubCategory || null,
+        // Store resolved English names (will be synced to Neon)
+        category_en: categoryEn,
+        subCategory_en: subCategoryEn || null,
+        subSubCategory_en: subSubCategoryEn || null,
+        // Store resolved Hebrew names (will be synced to Neon)
+        category_he: categoryHe,
+        subCategory_he: subCategoryHe || null,
+        subSubCategory_he: subSubCategoryHe || null,
         categories_path: categoriesPath,
         categories_path_id: categoriesPathId,
         brand: formData.brand,

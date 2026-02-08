@@ -120,7 +120,8 @@ export default async function handler(req, res) {
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            hour12: false
+            hour12: false,
+            timeZone: 'Asia/Jerusalem',
           })
           : now.toLocaleString('en-US', {
             year: 'numeric',
@@ -128,7 +129,8 @@ export default async function handler(req, res) {
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
+            timeZone: 'Asia/Jerusalem',
         });
 
         const emailData = {
@@ -218,7 +220,8 @@ export default async function handler(req, res) {
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            hour12: false
+            hour12: false,
+            timeZone: 'Asia/Jerusalem',
           })
           : now.toLocaleString('en-US', {
             year: 'numeric',
@@ -226,7 +229,8 @@ export default async function handler(req, res) {
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
+            hour12: true,
+            timeZone: 'Asia/Jerusalem',
           });
 
         const fallbackEmailHtml = await render(ContactMessageEmail({

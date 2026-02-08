@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { CheckCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface ToastProps {
@@ -30,8 +31,8 @@ export default function Toast({
 
   if (!isVisible) return null
 
-  return (
-    <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-right-full duration-300">
+  const toastContent = (
+    <div className="fixed top-4 right-4 z-[100] animate-in slide-in-from-right-full duration-300">
       <div className={`flex items-center p-4 rounded-lg shadow-lg max-w-sm ${
         type === 'success' 
           ? 'bg-green-50 border border-green-200 text-green-800' 
@@ -52,6 +53,12 @@ export default function Toast({
       </div>
     </div>
   )
+
+  // Render into document.body so fixed positioning is relative to viewport (e.g. when used inside drawer/transformed parent)
+  if (typeof document !== 'undefined' && document.body) {
+    return createPortal(toastContent, document.body)
+  }
+  return toastContent
 }
 
 // Hook for managing toast state

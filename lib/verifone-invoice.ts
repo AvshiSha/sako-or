@@ -629,7 +629,7 @@ export function buildCreateInvoiceEnvelope(
         <tem:Invoice>
           <tem:DocNo>0</tem:DocNo>
           <tem:DocType>1</tem:DocType>
-          <tem:StoreNo>98</tem:StoreNo> <!-- TODO: Change to the store number to 90 -->
+          <tem:StoreNo>90</tem:StoreNo> <!-- TODO: Change to the store number to 90 -->
           <tem:CustomerNo>${customerNo}</tem:CustomerNo>
           <tem:CustomerName>${escapeXml(customerName)}</tem:CustomerName>
           <tem:CreateDate>${createDate}</tem:CreateDate>
@@ -654,7 +654,7 @@ ${documentLinesXml}
         </tem:Invoice>
         <tem:Receipt>
           <tem:ReceiptNo>0</tem:ReceiptNo>
-          <tem:StoreNo>98</tem:StoreNo> <!-- TODO: Change to the store number to 90 -->
+          <tem:StoreNo>90</tem:StoreNo> <!-- TODO: Change to the store number to 90 -->
           <tem:CustomerNo>${customerNo}</tem:CustomerNo>
           <tem:CustomerName>${escapeXml(customerName)}</tem:CustomerName>
           <tem:CreateDate>${createDate}</tem:CreateDate>

@@ -235,7 +235,7 @@ function FooterInner({ lng }: { lng: string }) {
             >
               <FaFacebook size={24} />
             </a>
-            <a
+            {/* <a
               href={socialLinks.tiktok}
               target="_blank"
               rel="noopener noreferrer"
@@ -243,7 +243,7 @@ function FooterInner({ lng }: { lng: string }) {
               aria-label="TikTok"
             >
               <FaTiktok size={24} />
-            </a>
+            </a> */}
             <a
               href={socialLinks.whatsapp}
               target="_blank"
@@ -391,7 +391,7 @@ function FooterInner({ lng }: { lng: string }) {
             >
               <FaFacebook size={24} />
             </a>
-            <a
+            {/* <a
               href={socialLinks.tiktok}
               target="_blank"
               rel="noopener noreferrer"
@@ -399,7 +399,7 @@ function FooterInner({ lng }: { lng: string }) {
               aria-label="TikTok"
             >
               <FaTiktok size={24} />
-            </a>
+            </a> */}
             <a
               href={socialLinks.whatsapp}
               target="_blank"

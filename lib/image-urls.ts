@@ -12,7 +12,8 @@ const imageUrlMappings: Record<string, string> = {
   "high-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fhigh-heels.jpg?alt=media&token=977d2f7d-ed75-4e9f-94ed-1c8f0eb5f590",
   "sako-women-sneakers.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-women-sneakers.jpg?alt=media&token=5be848ff-56f7-4ac2-8db9-e6fd9901f0f9",
   "sako-outlet.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-outlet.jpg?alt=media&token=58ad0bc4-bbee-4e33-b706-586c8e009761",
-  "sako-women-belts.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-women-belts.webp?alt=media&token=ab8da023-27b9-4851-93a6-974a21795bb5"
+  "sako-women-belts.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-women-belts.webp?alt=media&token=ab8da023-27b9-4851-93a6-974a21795bb5",
+  "sako-women-oxford.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO-oxfordr-collection-tail.webp?alt=media&token=295995a1-c467-48bd-a6e8-daddf65d34d5"
 };
 
 const videoUrlMappings: Record<string, string> = {
@@ -20,7 +21,7 @@ const videoUrlMappings: Record<string, string> = {
   "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fsako_exclusive_mobile.mp4?alt=media&token=5d771fff-7cfb-4d3f-a733-0e2d1dabf160",
   "/videos/sako-or-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION_mobile.mp4?alt=media&token=c816cf11-042a-49a0-a1c9-a0f1b7f63322",
   "/videos/sako-or-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION.mp4?alt=media&token=84b2745c-0008-4c91-9c88-ea251489954c",
-  "/videos/hero3-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fend_of_season_desktop_fix.mp4?alt=media&token=67c85ea8-4a10-4ccd-8ab3-1b96d9b98425",
+  "/videos/hero3-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_SALES_DESKTOP.mp4?alt=media&token=7b109db9-67f6-47c8-b8cd-99c072f68a02",
   "/videos/hero3-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fsako_bogo.mp4?alt=media&token=b4774312-757a-4f91-93dc-faaa7974b1d7"
 };
 

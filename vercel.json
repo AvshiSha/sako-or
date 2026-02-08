@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/inventory-sync",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/verifone-points-sync",
+      "schedule": "0 */2 * * *"
     }
   ],
   "headers": [

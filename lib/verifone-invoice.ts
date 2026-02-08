@@ -386,13 +386,13 @@ export function buildReceiptLines(
   },
   totalPrice: number
 ): VerifoneReceiptLine {
-  // Format expire date: MMYY
+  // Format expire date: MMYY (CardCom may send CardMonth/CardYear as numbers)
   let expireDate = '0000'
-  if (transactionInfo.CardMonth && transactionInfo.CardYear) {
-    const month = transactionInfo.CardMonth.padStart(2, '0')
-    const year = transactionInfo.CardYear.length >= 2
-      ? transactionInfo.CardYear.slice(-2)
-      : transactionInfo.CardYear.padStart(2, '0')
+  if (transactionInfo.CardMonth != null && transactionInfo.CardYear != null) {
+    const monthStr = String(transactionInfo.CardMonth)
+    const yearStr = String(transactionInfo.CardYear)
+    const month = monthStr.padStart(2, '0')
+    const year = yearStr.length >= 2 ? yearStr.slice(-2) : yearStr.padStart(2, '0')
     expireDate = `${month}${year}`
   }
 

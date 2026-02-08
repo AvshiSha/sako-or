@@ -221,10 +221,7 @@ function buildCreateOrUpdateCustomerEnvelope(
 
   const localPhone = input.phoneE164 ? e164ToLocalPhone(input.phoneE164) : null
   if (!localPhone) {
-    console.warn(
-      '[VERIFONE_CREATE_OR_UPDATE] Skipping - cannot convert phone to local format',
-      { phoneE164: input.phoneE164 }
-    )
+    console.warn('[VERIFONE_CREATE_OR_UPDATE] Skipping - cannot convert phone to local format')
     return null
   }
 
@@ -331,10 +328,7 @@ export async function getVerifoneCustomerByCellular(
       // Already in local format
       localPhone = digits
     } else {
-      console.warn(
-        '[VERIFONE_GET_CUSTOMERS] Skipping lookup - cannot convert to local phone format',
-        { e164Phone, digits }
-      )
+      console.warn('[VERIFONE_GET_CUSTOMERS] Skipping lookup - cannot convert to local phone format')
       return { success: false, statusDescription: 'Invalid phone format' }
     }
   }
@@ -353,22 +347,12 @@ export async function getVerifoneCustomerByCellular(
 
   // Final validation: must start with "0" and be 9-10 digits
   if (!localPhone.startsWith('0') || localPhone.length < 9 || localPhone.length > 10) {
-    console.warn(
-      '[VERIFONE_GET_CUSTOMERS] Invalid local phone format after conversion',
-      { e164Phone, localPhone }
-    )
+    console.warn('[VERIFONE_GET_CUSTOMERS] Invalid local phone format after conversion')
     return { success: false, statusDescription: 'Invalid phone format' }
   }
 
   const soapEnvelope = buildGetCustomersEnvelope(localPhone)
   const timeoutMs = 10_000
-
-  console.log('[VERIFONE_GET_CUSTOMERS] Requesting customer by Cellular', {
-    endpoint: VERIFONE_ENDPOINT,
-    originalPhone: e164Phone,
-    localPhone,
-    phoneFormat: localPhone.startsWith('0') ? 'local (0XXXXXXXXX)' : 'unknown'
-  })
 
   const fetchPromise = fetch(VERIFONE_ENDPOINT, {
     method: 'POST',
@@ -403,12 +387,7 @@ export async function getVerifoneCustomerByCellular(
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    console.error(
-      '[VERIFONE_GET_CUSTOMERS] HTTP error from Verifone',
-      response.status,
-      text
-    )
+    console.error('[VERIFONE_GET_CUSTOMERS] HTTP error from Verifone', response.status)
     return {
       success: false,
       statusDescription: `HTTP ${response.status}`
@@ -423,10 +402,7 @@ export async function getVerifoneCustomerByCellular(
     const payload = extractGetCustomersPayload(parsed)
 
     if (!payload) {
-      console.error(
-        '[VERIFONE_GET_CUSTOMERS] Unable to extract GetCustomersResult payload',
-        parsed
-      )
+      console.error('[VERIFONE_GET_CUSTOMERS] Unable to extract GetCustomersResult payload')
       return {
         success: false,
         statusDescription: 'Malformed Verifone response'
@@ -447,12 +423,6 @@ export async function getVerifoneCustomerByCellular(
       requestResult['StatusDescription'] ??
       requestResult['Message'] ??
       undefined
-
-    console.log('[VERIFONE_GET_CUSTOMERS] Verifone response meta', {
-      isSuccess,
-      status,
-      statusDescription
-    })
 
     const data = payload.Data ?? payload['Data']
     const customersNode = data?.Customers ?? data?.['Customers']
@@ -516,15 +486,6 @@ export async function getVerifoneCustomerByCellular(
           : String(customerNo)
     }
 
-    console.log(
-      '[VERIFONE_GET_CUSTOMERS] Parsed customer from Verifone response',
-      {
-        isClubMember: resultCustomer.isClubMember,
-        creditPoints: resultCustomer.creditPoints,
-        customerNo: resultCustomer.customerNo
-      }
-    )
-
     return {
       success: true,
       status,
@@ -556,17 +517,6 @@ export async function createOrUpdateVerifoneCustomer(
   }
 
   const timeoutMs = 10_000
-
-  console.log('[VERIFONE_CREATE_OR_UPDATE] Sending CreateOrUpdateCustomer', {
-    hasBirthday: !!input.birthday,
-    hasEmail: !!input.email,
-    hasAddress: !!(
-      input.addressCity ||
-      input.addressStreet ||
-      input.addressStreetNumber
-    ),
-    customerNo: input.customerNo
-  })
 
   const fetchPromise = fetch(VERIFONE_ENDPOINT, {
     method: 'POST',
@@ -601,12 +551,7 @@ export async function createOrUpdateVerifoneCustomer(
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    console.error(
-      '[VERIFONE_CREATE_OR_UPDATE] HTTP error from Verifone',
-      response.status,
-      text
-    )
+    console.error('[VERIFONE_CREATE_OR_UPDATE] HTTP error from Verifone', response.status)
     return {
       success: false,
       statusDescription: `HTTP ${response.status}`
@@ -620,10 +565,7 @@ export async function createOrUpdateVerifoneCustomer(
     const payload = extractCreateOrUpdateCustomerPayload(parsed)
 
     if (!payload) {
-      console.error(
-        '[VERIFONE_CREATE_OR_UPDATE] Unable to extract CreateOrUpdateCustomerResult payload',
-        parsed
-      )
+      console.error('[VERIFONE_CREATE_OR_UPDATE] Unable to extract CreateOrUpdateCustomerResult payload')
       return {
         success: false,
         statusDescription: 'Malformed Verifone response'
@@ -657,13 +599,6 @@ export async function createOrUpdateVerifoneCustomer(
         customerNo = String(rawCustomerNo).trim()
       }
     }
-
-    console.log('[VERIFONE_CREATE_OR_UPDATE] Verifone response meta', {
-      isSuccess,
-      status,
-      statusDescription,
-      customerNo
-    })
 
     if (!isSuccess || status !== 0) {
       return {
@@ -719,11 +654,6 @@ export async function getStockByModel(
 
   const timeoutMs = 10_000
 
-  console.log('[VERIFONE_GET_STOCK_BY_MODEL] Requesting stock by model', {
-    endpoint: VERIFONE_ENDPOINT,
-    itemCode: itemCode.trim()
-  })
-
   const fetchPromise = fetch(VERIFONE_ENDPOINT, {
     method: 'POST',
     headers: {
@@ -757,12 +687,7 @@ export async function getStockByModel(
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    console.error(
-      '[VERIFONE_GET_STOCK_BY_MODEL] HTTP error from Verifone',
-      response.status,
-      text
-    )
+    console.error('[VERIFONE_GET_STOCK_BY_MODEL] HTTP error from Verifone', response.status)
     return {
       success: false,
       statusDescription: `HTTP ${response.status}`
@@ -776,10 +701,7 @@ export async function getStockByModel(
     const payload = extractGetStockByModelPayload(parsed)
 
     if (!payload) {
-      console.error(
-        '[VERIFONE_GET_STOCK_BY_MODEL] Unable to extract GetStockByModelResult payload',
-        parsed
-      )
+      console.error('[VERIFONE_GET_STOCK_BY_MODEL] Unable to extract GetStockByModelResult payload')
       return {
         success: false,
         statusDescription: 'Malformed Verifone response'
@@ -800,12 +722,6 @@ export async function getStockByModel(
       requestResult['StatusDescription'] ??
       requestResult['Message'] ??
       undefined
-
-    console.log('[VERIFONE_GET_STOCK_BY_MODEL] Verifone response meta', {
-      isSuccess,
-      status,
-      statusDescription
-    })
 
     if (!isSuccess || status !== 0) {
       return {
@@ -928,10 +844,6 @@ export async function getStockByModel(
         quantity: qty < 0 ? 0 : qty
       })
     }
-
-    console.log(
-      `[VERIFONE_GET_STOCK_BY_MODEL] Parsed ${parsedItems.length} inventory items from Verifone`
-    )
 
     return {
       success: true,

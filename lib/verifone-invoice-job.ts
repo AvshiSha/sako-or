@@ -143,20 +143,6 @@ export async function createVerifoneInvoiceAsync(
 
     console.log(`[VERIFONE_INVOICE] Starting invoice creation for order ${orderId}`)
 
-    // Debug: Log orderItems from database
-    console.log(`[VERIFONE_INVOICE] OrderItems from database:`, 
-      order.orderItems.map((item, idx) => ({
-        index: idx,
-        id: item.id,
-        productSku: item.productSku,
-        price: item.price,
-        salePrice: item.salePrice,
-        quantity: item.quantity,
-        colorName: item.colorName,
-        size: item.size
-      }))
-    )
-
     // Extract points used from payment data
     const paymentData = parsePaymentData(order.paymentData)
     const pointsUsed = paymentData?.pointsToSpend || 0
@@ -174,12 +160,7 @@ export async function createVerifoneInvoiceAsync(
           verifoneResultBefore.customer &&
           verifoneResultBefore.customer.isClubMember
         ) {
-          // Round to 2 decimal places
           pointsBefore = roundPoints(Math.max(0, verifoneResultBefore.customer.creditPoints || 0))
-          console.log(
-            `[VERIFONE_INVOICE] Points balance before CreateInvoice for order ${orderId}:`,
-            pointsBefore
-          )
         }
       } catch (error) {
         console.error(
@@ -239,7 +220,7 @@ export async function createVerifoneInvoiceAsync(
     } catch (buildError) {
       const errorMessage =
         buildError instanceof Error ? buildError.message : 'Failed to build SOAP envelope'
-      console.error(`[VERIFONE_INVOICE] Failed to build envelope for order ${orderId}:`, buildError)
+      console.error(`[VERIFONE_INVOICE] Failed to build envelope for order ${orderId}:`, errorMessage)
 
       await prisma.order.update({
         where: { orderNumber: orderId },
@@ -308,13 +289,7 @@ export async function createVerifoneInvoiceAsync(
             verifoneResultAfter.customer &&
             verifoneResultAfter.customer.isClubMember
           ) {
-            // Round to 2 decimal places
             const pointsAfter = roundPoints(Math.max(0, verifoneResultAfter.customer.creditPoints || 0))
-
-            console.log(
-              `[VERIFONE_INVOICE] Points balance after CreateInvoice for order ${orderId}:`,
-              pointsAfter
-            )
 
             // Sync points from Verifone
             await syncPointsFromVerifone({

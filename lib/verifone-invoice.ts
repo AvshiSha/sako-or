@@ -218,19 +218,6 @@ export function buildDocumentLines(
   pointsUsed: number,
   deliveryFee: number
 ): VerifoneInvoiceLine[] {
-  // Debug: Log input data to identify price issues
-  console.log(`[VERIFONE_INVOICE] buildDocumentLines called with ${orderItems.length} items:`,
-    orderItems.map((item, idx) => ({
-      index: idx,
-      productSku: item.productSku,
-      price: item.price,
-      salePrice: item.salePrice,
-      quantity: item.quantity,
-      colorName: item.colorName,
-      size: item.size
-    }))
-  )
-
   const lines: VerifoneInvoiceLine[] = []
   let lineNo = 1
   const couponAmount = coupons.reduce((sum, c) => sum + c.discountAmount, 0)
@@ -320,18 +307,8 @@ export function buildDocumentLines(
     // ItemID format: XXXX-XXXXYYZZ (base SKU with dash + 2-digit color + 2-digit size)
     const itemID = `${baseSku}${colorCode}${sizeCode}`
 
-    // Log for debugging
     if (!item.size || sizeCode === '00') {
-      console.warn(`[VERIFONE_INVOICE] Size missing or invalid for item:`, {
-        productSku: item.productSku,
-        colorName: item.colorName,
-        sizeFromItem: item.size,
-        sizeExtracted: sizeValue,
-        sizeCode,
-        itemID,
-        baseSku,
-        colorCode
-      })
+      console.warn(`[VERIFONE_INVOICE] Size missing or invalid for line ${lineNo}, itemID: ${itemID}`)
     }
 
     // Calculate prices
@@ -343,26 +320,9 @@ export function buildDocumentLines(
       ? item.salePrice
       : item.price
 
-    // Warn if salePrice exists but is invalid (higher than or equal to regular price)
     if (item.salePrice != null && item.salePrice > 0 && item.salePrice >= item.price) {
-      console.warn(`[VERIFONE_INVOICE] Invalid salePrice detected (salePrice >= price), using regular price:`, {
-        itemID,
-        productSku: item.productSku,
-        price: item.price,
-        salePrice: item.salePrice,
-        effectivePrice
-      })
+      console.warn(`[VERIFONE_INVOICE] Invalid salePrice (salePrice >= price), using regular price for line ${lineNo}`)
     }
-
-    // Debug logging to track price per item
-    console.log(`[VERIFONE_INVOICE] Processing item ${i + 1}/${orderItems.length}:`, {
-      itemID,
-      productSku: item.productSku,
-      baseUnitPrice,
-      salePrice: item.salePrice,
-      effectivePrice,
-      quantity: qty
-    })
 
     const fullLineTotal = qty * baseUnitPrice
     const baseLineTotal = qty * effectivePrice
@@ -384,17 +344,7 @@ export function buildDocumentLines(
     // Discount should never be negative (can happen due to rounding or data inconsistencies)
     // If negative, it means there's no actual discount, so set to 0
     if (lineDiscountPercent < 0) {
-      console.warn(`[VERIFONE_INVOICE] Negative discount detected, setting to 0:`, {
-        itemID,
-        baseUnitPrice,
-        effectivePrice,
-        fullLineTotal,
-        baseLineTotal,
-        lineDiscountFromSale,
-        couponApplied,
-        lineDiscountTotal,
-        calculatedDiscountPercent: lineDiscountPercent
-      })
+      console.warn(`[VERIFONE_INVOICE] Negative discount detected, setting to 0 for line ${lineNo}`)
       lineDiscountPercent = 0
     }
 
@@ -534,12 +484,9 @@ export function buildCreateInvoiceEnvelope(
     headerTotalWithVAT !== totals.TotalPriceIncludeVAT
   ) {
     console.error('[VERIFONE_CREATE_INVOICE] Invoice totals validation failed', {
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      expectedTotalPriceIncludeVAT: totals.TotalPriceIncludeVAT,
       sumLinesWithVAT,
       headerTotalWithVAT,
-      totals
+      expectedTotalPriceIncludeVAT: totals.TotalPriceIncludeVAT
     })
   }
 
@@ -556,48 +503,6 @@ export function buildCreateInvoiceEnvelope(
 
   // Date
   const createDate = formatDateYYYYMMDD(order.createdAt)
-
-  // Log invoice data being built
-  console.log('[VERIFONE_CREATE_INVOICE] Building invoice envelope', {
-    orderNumber: order.orderNumber,
-    customerNo: customerNo,
-    customerName: customerName,
-    createDate: createDate,
-    totals: {
-      TotalBeforeDiscount_WithoutVAT: totals.TotalBeforeDiscount_WithoutVAT,
-      Discount: totals.Discount,
-      DiscountPercent: totals.DiscountPercent,
-      TotalAfterDiscount_WithoutVAT: totals.TotalAfterDiscount_WithoutVAT,
-      VAT: totals.VAT,
-      TotalPriceIncludeVAT: totals.TotalPriceIncludeVAT,
-      TotalItems: totals.TotalItems,
-      TotalLines: totals.TotalLines
-    },
-    documentLinesCount: documentLines.length,
-    documentLines: documentLines.map(line => ({
-      LineNo: line.LineNo,
-      ItemID: line.ItemID,
-      Qty: line.Qty,
-      UnitPrice: line.UnitPrice,
-      TotalPrice: line.TotalPrice,
-      DiscountPercent: line.DiscountPercent
-    })),
-    receiptLine: {
-      Sum: receiptLine.Sum,
-      paymentType: receiptLine.paymentType,
-      creditCard: {
-        PaymentType: receiptLine.creditCard.PaymentType,
-        FirstPayment: receiptLine.creditCard.FirstPayment,
-        OtherPayments: receiptLine.creditCard.OtherPayments,
-        CreditCardNo: receiptLine.creditCard.CreditCardNo,
-        ExpireDate: receiptLine.creditCard.ExpireDate,
-        CreditCardType: receiptLine.creditCard.CreditCardType,
-        NumberOfPayments: receiptLine.creditCard.NumberOfPayments
-      }
-    },
-    pointsUsed,
-    deliveryFee: order.deliveryFee || 0
-  })
 
   // Build XML
   const documentLinesXml = documentLines
@@ -731,14 +636,9 @@ export async function callVerifoneCreateInvoice(
   const timeoutMs = 10_000
 
   console.log('[VERIFONE_CREATE_INVOICE] Sending CreateInvoice request', {
-    endpoint: VERIFONE_ENDPOINT,
-    soapAction: VERIFONE_CREATE_INVOICE_SOAP_ACTION,
-    requestSize: soapEnvelope.length,
-    requestPreview: soapEnvelope.substring(0, 500) + '...'
+    requestSize: soapEnvelope.length
   })
 
-  // Log full SOAP request (for debugging)
-  console.log('[VERIFONE_CREATE_INVOICE] Full SOAP request:', soapEnvelope)
 
   const fetchPromise = fetch(VERIFONE_ENDPOINT, {
     method: 'POST',
@@ -772,16 +672,10 @@ export async function callVerifoneCreateInvoice(
   }
 
   if (!response.ok) {
-    const text = await response.text().catch(() => '')
-    console.error(
-      '[VERIFONE_CREATE_INVOICE] HTTP error from Verifone',
-      {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries()),
-        responseBody: text
-      }
-    )
+    console.error('[VERIFONE_CREATE_INVOICE] HTTP error from Verifone', {
+      status: response.status,
+      statusText: response.statusText
+    })
     return {
       success: false,
       statusDescription: `HTTP ${response.status}`
@@ -790,25 +684,12 @@ export async function callVerifoneCreateInvoice(
 
   const xmlText = await response.text()
 
-  console.log('[VERIFONE_CREATE_INVOICE] Received response', {
-    status: response.status,
-    statusText: response.statusText,
-    responseSize: xmlText.length,
-    responsePreview: xmlText.substring(0, 500) + (xmlText.length > 500 ? '...' : '')
-  })
-
-  // Log full SOAP response (for debugging)
-  console.log('[VERIFONE_CREATE_INVOICE] Full SOAP response:', xmlText)
-
   try {
     const parsed = xmlParser.parse(xmlText)
     const payload = extractCreateInvoicePayload(parsed)
 
     if (!payload) {
-      console.error(
-        '[VERIFONE_CREATE_INVOICE] Unable to extract CreateInvoiceResult payload',
-        parsed
-      )
+      console.error('[VERIFONE_CREATE_INVOICE] Unable to extract CreateInvoiceResult payload')
       return {
         success: false,
         statusDescription: 'Malformed Verifone response'
@@ -829,19 +710,11 @@ export async function callVerifoneCreateInvoice(
       requestResult['Message'] ??
       undefined
 
-    console.log('[VERIFONE_CREATE_INVOICE] Verifone response meta', {
-      isSuccess,
-      status,
-      statusDescription,
-      payloadKeys: Object.keys(payload || {})
-    })
-
     if (!isSuccess || status !== 0) {
       console.error('[VERIFONE_CREATE_INVOICE] Verifone returned error', {
         isSuccess,
         status,
-        statusDescription,
-        fullPayload: JSON.stringify(payload, null, 2)
+        statusDescription
       })
       return {
         success: false,
@@ -869,14 +742,7 @@ export async function callVerifoneCreateInvoice(
       createTime: createTime ? String(createTime) : undefined
     }
 
-    console.log('[VERIFONE_CREATE_INVOICE] Successfully parsed response', {
-      invoiceNo: result.invoiceNo,
-      storeNo: result.storeNo,
-      customerNo: result.customerNo,
-      createDate: result.createDate,
-      createTime: result.createTime,
-      fullData: JSON.stringify(data, null, 2)
-    })
+    console.log('[VERIFONE_CREATE_INVOICE] Success', { invoiceNo: result.invoiceNo, storeNo: result.storeNo })
 
     return result
   } catch (err) {

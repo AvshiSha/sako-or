@@ -125,7 +125,22 @@ export default function VerifySmsPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
+  const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const [isMounted, setIsMounted] = useState(false)
   const hasAttemptedSendRef = useRef(false)
+  const turnstileWidgetIdRef = useRef<number | null>(null)
+
+  // Client-side: detect localhost (Turnstile skipped in development)
+  const isLocalhost =
+    isMounted &&
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.includes('localhost'))
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   // Cooldown timer
   useEffect(() => {
@@ -169,13 +184,60 @@ export default function VerifySmsPage() {
     }
   }, [firebaseUser, authLoading, router, lng])
 
-  // No longer need recaptcha verifier for Inforu OTP
-
-  // Auto-send SMS when component is ready (only once)
+  // Turnstile widget (production only; skipped on localhost)
   useEffect(() => {
-    if (!pendingSignup || otpSent || busy || hasAttemptedSendRef.current) {
-      return
+    if (!isMounted || isLocalhost || !pendingSignup) return
+
+    const containerId = '#cf-turnstile-verify-sms'
+    const container = document.querySelector(containerId)
+    if (!container) return
+
+    const renderTurnstile = () => {
+      const el = document.querySelector(containerId)
+      if (!el) return
+      if ((window as any).turnstile) {
+        try {
+          if (turnstileWidgetIdRef.current != null && (window as any).turnstile.remove) {
+            (window as any).turnstile.remove(turnstileWidgetIdRef.current)
+            turnstileWidgetIdRef.current = null
+          }
+          const widgetId = (window as any).turnstile.render(containerId, {
+            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+            theme: 'light',
+            size: 'normal',
+            callback: (token: string) => {
+              setTurnstileToken(token)
+            },
+            'error-callback': () => {
+              setTurnstileToken('')
+            }
+          })
+          turnstileWidgetIdRef.current = widgetId
+        } catch (err) {
+          console.error('[Verify SMS] Turnstile render error:', err)
+          setTimeout(renderTurnstile, 500)
+        }
+      } else {
+        setTimeout(renderTurnstile, 500)
+      }
     }
+
+    const timer = setTimeout(renderTurnstile, 100)
+    return () => {
+      clearTimeout(timer)
+      if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
+        try {
+          (window as any).turnstile.remove(turnstileWidgetIdRef.current)
+        } catch (_) {}
+        turnstileWidgetIdRef.current = null
+      }
+    }
+  }, [isMounted, isLocalhost, pendingSignup])
+
+  // Auto-send SMS when component is ready (only once). When not localhost, wait for Turnstile token.
+  useEffect(() => {
+    if (!pendingSignup || otpSent || busy || hasAttemptedSendRef.current) return
+    if (!isLocalhost && !turnstileToken) return
 
     const timer = setTimeout(() => {
       if (!hasAttemptedSendRef.current) {
@@ -184,11 +246,9 @@ export default function VerifySmsPage() {
       }
     }, 500)
 
-    return () => {
-      clearTimeout(timer)
-    }
+    return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingSignup, otpSent, busy])
+  }, [pendingSignup, otpSent, busy, isLocalhost, turnstileToken])
 
   async function sendSmsCode() {
     if (!pendingSignup) {
@@ -218,7 +278,8 @@ export default function VerifySmsPage() {
         body: JSON.stringify({
           otpType: 'sms',
           otpValue: phoneForInforu,
-          checkUserExists: false // Signup flow - user may not exist
+          checkUserExists: false, // Signup flow - user may not exist
+          ...(turnstileToken && { turnstileToken })
         }),
       })
 
@@ -234,14 +295,28 @@ export default function VerifySmsPage() {
             setError(data?.message || t.tooManyAttempts)
             setResendCooldown(60)
           }
+        } else if (res.status === 400 && data?.error?.toLowerCase?.().includes('verification')) {
+          setError(t.recaptchaError)
+          if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
+            try {
+              (window as any).turnstile.reset(turnstileWidgetIdRef.current)
+            } catch (_) {}
+            setTurnstileToken('')
+          }
         } else {
-          setError(data?.message || t.errorSendingSms)
+          setError(data?.message || data?.error || t.errorSendingSms)
         }
         return
       }
 
       setOtpSent(true)
       setResendCooldown(60)
+      if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
+        try {
+          (window as any).turnstile.reset(turnstileWidgetIdRef.current)
+        } catch (_) {}
+        setTurnstileToken('')
+      }
     } catch (err: any) {
       console.error('[SEND-SMS] Error:', err)
       setError(t.errorSendingSms)
@@ -550,6 +625,13 @@ export default function VerifySmsPage() {
             <p className="mt-2 text-sm text-slate-600">{smsSent}</p>
           </div>
 
+          {/* Cloudflare Turnstile - only in production (hidden on localhost) */}
+          {!isLocalhost && (
+            <div className="flex justify-center" dir="ltr">
+              <div id="cf-turnstile-verify-sms" />
+            </div>
+          )}
+
           <div className="space-y-4">
             <div>
               <label className={profileTheme.label}>{t.enterCode}</label>
@@ -583,7 +665,7 @@ export default function VerifySmsPage() {
                   setOtpSent(false)
                   void sendSmsCode()
                 }}
-                disabled={busy || resendCooldown > 0}
+                disabled={busy || resendCooldown > 0 || (!isLocalhost && !turnstileToken)}
                 className="text-sm font-medium text-slate-700 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {busy

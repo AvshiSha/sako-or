@@ -177,6 +177,19 @@ export async function createVerifoneInvoiceAsync(
     // Build SOAP envelope
     let soapEnvelope: string
     try {
+      // Debug: log input context before build
+      const hasChainId = Boolean(process.env.VERIFON_CHAIN_ID)
+      const hasUserName = Boolean(process.env.VERIFON_USER_NAME)
+      const hasPassword = Boolean(process.env.VERIFON_PASSWORD)
+      console.log('[VERIFONE_INVOICE] Building envelope', {
+        orderId,
+        orderItemsCount: order.orderItems?.length ?? 0,
+        couponsCount: order.appliedCoupons?.length ?? 0,
+        hasUser: Boolean(order.user),
+        hasVerifoneCredentials: hasChainId && hasUserName && hasPassword,
+        credentialsDetail: { hasChainId, hasUserName, hasPassword }
+      })
+
       const hasOrderCoupons =
         Array.isArray(order.appliedCoupons) && order.appliedCoupons.length > 0
       const hasBogoDiscount =
@@ -221,6 +234,16 @@ export async function createVerifoneInvoiceAsync(
       const errorMessage =
         buildError instanceof Error ? buildError.message : 'Failed to build SOAP envelope'
       console.error(`[VERIFONE_INVOICE] Failed to build envelope for order ${orderId}:`, errorMessage)
+      // Debug: full error and stack
+      console.error('[VERIFONE_INVOICE] Debug - full error:', buildError)
+      if (buildError instanceof Error && buildError.stack) {
+        console.error('[VERIFONE_INVOICE] Debug - stack:', buildError.stack)
+      }
+      console.error('[VERIFONE_INVOICE] Debug - credentials present:', {
+        VERIFON_CHAIN_ID: Boolean(process.env.VERIFON_CHAIN_ID),
+        VERIFON_USER_NAME: Boolean(process.env.VERIFON_USER_NAME),
+        VERIFON_PASSWORD: Boolean(process.env.VERIFON_PASSWORD)
+      })
 
       await prisma.order.update({
         where: { orderNumber: orderId },

@@ -219,7 +219,6 @@ function SignInClient() {
             size: 'normal',
             callback: (token: string) => {
               setTurnstileToken(token)
-              console.log('[Sign In] Turnstile token received:', token)
             },
             'error-callback': () => {
               console.error('Turnstile verification failed')

@@ -105,7 +105,7 @@ export default function Navigation({ lng }: { lng: string }) {
     try {
       const navCategories = await categoryService.getNavigationCategories()
 
-      // Store available categories for dynamic rendering
+      // Store available categories for dynamic rendering (only enabled, level 0)
       setAvailableCategories(navCategories.map(cat => ({
         id: cat.id!,
         slug: typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '',
@@ -169,6 +169,10 @@ export default function Navigation({ lng }: { lng: string }) {
       }
     } catch (error) {
       console.error('Error refreshing navigation categories:', error)
+      // Clear nav so we don't show stale data (e.g. disabled categories)
+      setAvailableCategories([])
+      setWomenSubcategories([])
+      setMenSubcategories([])
     }
   }
 

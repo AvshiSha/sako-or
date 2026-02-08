@@ -84,10 +84,29 @@ const GROUP_SKUS: Record<string, string[]> = {
   ]
 }
 
+/** pairPriceIls per group name (number extracted from "Group 450" -> 450) */
+const GROUP_PAIR_PRICES: Record<string, number> = {
+  'Group 450': 450,
+  'Group 500': 500,
+  'Group 600': 600,
+  'Group 700': 700,
+  'Group 800': 800
+}
+
 async function main() {
-  // 1) Load all BogoGroups
-  const groups = await prisma.bogoGroup.findMany()
-  const groupByName = new Map(groups.map(g => [g.name, g.id]))
+  // 0) Ensure BogoGroups exist (e.g. for fresh production/Neon)
+  const existingGroups = await prisma.bogoGroup.findMany()
+  const groupByName = new Map(existingGroups.map(g => [g.name, g.id]))
+
+  for (const groupName of Object.keys(GROUP_SKUS)) {
+    if (groupByName.has(groupName)) continue
+    const pairPriceIls = GROUP_PAIR_PRICES[groupName] ?? 0
+    const created = await prisma.bogoGroup.create({
+      data: { name: groupName, pairPriceIls }
+    })
+    groupByName.set(groupName, created.id)
+    console.log(`Created BogoGroup: ${groupName} (pairPriceIls: ${pairPriceIls})`)
+  }
 
   for (const [groupName, skus] of Object.entries(GROUP_SKUS)) {
     const groupId = groupByName.get(groupName)

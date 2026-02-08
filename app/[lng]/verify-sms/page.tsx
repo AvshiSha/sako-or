@@ -30,7 +30,8 @@ const translations = {
     errorVerifying: 'Error verifying code. Please try again.',
     cancelConfirm: 'Are you sure? This will delete your account and you\'ll need to sign up again from scratch.',
     invalidAppCredential: 'Phone verification setup error. Please ensure your domain is authorized in Firebase Console and billing is enabled.',
-    recaptchaError: 'Security verification failed. Please refresh the page and try again.'
+    recaptchaError: 'Security verification failed. Please refresh the page and try again.',
+    validatingMessage: 'Validating… please wait.'
   },
   he: {
     title: 'אימות מספר טלפון',
@@ -53,7 +54,8 @@ const translations = {
     errorVerifying: 'שגיאה באימות הקוד. נסו שוב.',
     cancelConfirm: 'האם אתם בטוחים? פעולה זו תמחק את החשבון שלכם ותצטרכו להירשם מחדש מההתחלה.',
     invalidAppCredential: 'שגיאה בהגדרת אימות טלפון. אנא ודאו שהדומיין מורשה ב-Firebase Console ושבילינג מופעל.',
-    recaptchaError: 'אימות אבטחה נכשל. אנא רעננו את הדף ונסו שוב.'
+    recaptchaError: 'אימות אבטחה נכשל. אנא רעננו את הדף ונסו שוב.',
+    validatingMessage: 'מאמת… אנא המתין.'
   }
 }
 
@@ -204,12 +206,13 @@ export default function VerifySmsPage() {
           const widgetId = (window as any).turnstile.render(containerId, {
             sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
             theme: 'light',
-            size: 'normal',
+            size: 'invisible',
             callback: (token: string) => {
               setTurnstileToken(token)
             },
             'error-callback': () => {
               setTurnstileToken('')
+              setError((prev) => prev || t.recaptchaError)
             }
           })
           turnstileWidgetIdRef.current = widgetId
@@ -232,7 +235,7 @@ export default function VerifySmsPage() {
         turnstileWidgetIdRef.current = null
       }
     }
-  }, [isMounted, isLocalhost, pendingSignup])
+  }, [isMounted, isLocalhost, pendingSignup, t])
 
   // Auto-send SMS when component is ready (only once). When not localhost, wait for Turnstile token.
   useEffect(() => {
@@ -625,11 +628,20 @@ export default function VerifySmsPage() {
             <p className="mt-2 text-sm text-slate-600">{smsSent}</p>
           </div>
 
-          {/* Cloudflare Turnstile - only in production (hidden on localhost) */}
+          {/* Invisible Turnstile: hidden container (no visible widget); runs in background */}
           {!isLocalhost && (
-            <div className="flex justify-center" dir="ltr">
-              <div id="cf-turnstile-verify-sms" />
-            </div>
+            <div
+              id="cf-turnstile-verify-sms"
+              className="absolute left-[-9999px] h-0 w-0 overflow-hidden"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Loading message while Turnstile validates in the background */}
+          {!isLocalhost && pendingSignup && !turnstileToken && !error && (
+            <p className={`text-center text-sm text-slate-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+              {t.validatingMessage}
+            </p>
           )}
 
           <div className="space-y-4">

@@ -1,7 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { flushSync } from 'react-dom'
+import { useAuth } from '@/app/contexts/AuthContext'
+import { buildCartKey } from '@/lib/cart'
+import { productService } from '@/lib/firebase'
+import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '@/lib/pricing'
 
 export interface CartItem {
   sku: string
@@ -21,7 +25,7 @@ export interface CartItem {
 
 export interface CartHook {
   items: CartItem[]
-  addToCart: (item: Omit<CartItem, 'quantity'>) => void
+  addToCart: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void
   removeFromCart: (sku: string, size?: string, color?: string) => void
   updateQuantity: (sku: string, quantity: number, size?: string, color?: string) => void
   clearCart: () => void
@@ -36,6 +40,11 @@ export interface CartHook {
 export function useCart(): CartHook {
   const [items, setItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
+  const loadedFromNeonRef = useRef(false)
+  
+  // Session storage key to track if cart was loaded in this session
+  const SESSION_LOADED_KEY = 'cart_loaded_from_neon'
 
   const normalizeCartItem = useCallback((item: CartItem): CartItem => {
     if (!item?.sku) return item
@@ -94,13 +103,23 @@ export function useCart(): CartHook {
   useEffect(() => {
     try {
       const storedCart = localStorage.getItem('cart')
-      if (storedCart) {
+      if (storedCart && storedCart.trim()) {
         const parsedItems: CartItem[] = JSON.parse(storedCart)
-        const normalized = parsedItems.map(item => normalizeCartItem(item))
-        setItems(normalized)
+        if (Array.isArray(parsedItems)) {
+          const normalized = parsedItems.map(item => normalizeCartItem(item))
+          setItems(normalized)
+        } else {
+          console.warn('Cart data is not an array, clearing...')
+          localStorage.removeItem('cart')
+        }
       }
     } catch (error) {
-      console.error('Error loading cart:', error)
+      console.error('Error loading cart, clearing corrupted data:', error)
+      try {
+        localStorage.removeItem('cart')
+      } catch (clearError) {
+        console.error('Failed to clear corrupted cart data:', clearError)
+      }
     } finally {
       setLoading(false)
     }
@@ -113,7 +132,11 @@ export function useCart(): CartHook {
         const normalizedItems = items.map(item => normalizeCartItem(item))
         const itemsToPersist = areItemArraysEqual(normalizedItems, items) ? items : normalizedItems
 
-        localStorage.setItem('cart', JSON.stringify(itemsToPersist))
+        if (itemsToPersist.length === 0) {
+          localStorage.removeItem('cart')
+        } else {
+          localStorage.setItem('cart', JSON.stringify(itemsToPersist))
+        }
         // Dispatch custom event to notify other components
         window.dispatchEvent(new CustomEvent('cartUpdated', { detail: itemsToPersist }))
       } catch (error) {
@@ -143,7 +166,298 @@ export function useCart(): CartHook {
     }
   }, [areItemArraysEqual, normalizeCartItem])
 
-  const addToCart = useCallback((newItem: Omit<CartItem, 'quantity'>) => {
+  // Listen for cart reload event (triggered after purchase to reload from Neon)
+  useEffect(() => {
+    const handleCartReload = async () => {
+      if (!user) return
+
+      // Clear the loaded flag to force reload from Neon
+      loadedFromNeonRef.current = false
+      
+      // Clear sessionStorage flag
+      try {
+        const sessionKey = `${SESSION_LOADED_KEY}_${user.uid}`
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem(sessionKey)
+        }
+      } catch (e) {
+        // Ignore sessionStorage errors
+      }
+
+      // Reload cart from Neon (which will exclude PURCHASED items)
+      try {
+        const token = await user.getIdToken()
+        if (!token) return
+
+        const response = await fetch('/api/cart', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (response.status === 404) {
+          // Profile not found - clear cart
+          setItems([])
+          return
+        }
+
+        if (!response.ok) {
+          console.warn('[useCart] Failed to reload cart from Neon:', response.status)
+          return
+        }
+
+        const data = await response.json()
+        const cartRows = data.cartItems || []
+
+        if (cartRows.length === 0) {
+          setItems([])
+          return
+        }
+
+        // Hydrate cart items from Firestore
+        const productCache = new Map<string, any>()
+        const hydratedItems: CartItem[] = []
+
+        for (const row of cartRows) {
+          const { baseSku, colorSlug, sizeSlug, quantity, unitPrice } = row
+
+          let product = productCache.get(baseSku)
+          if (!product) {
+            try {
+              product = await productService.getProductByBaseSku(baseSku)
+              if (!product) {
+                product = await productService.getProductBySku(baseSku)
+              }
+            } catch (error) {
+              console.error(`[useCart] Error fetching product ${baseSku}:`, error)
+              product = null
+            }
+            productCache.set(baseSku, product)
+          }
+
+          if (!product || !product.isEnabled) continue
+
+          const variant = colorSlug && product.colorVariants?.[colorSlug]
+          const stockBySize = variant?.stockBySize || {}
+          const maxStock = sizeSlug ? (stockBySize[sizeSlug] || 0) : 
+            Object.values(stockBySize).reduce((sum: number, stock: any) => sum + (stock || 0), 0)
+
+          const currentPrice = variant?.priceOverride || product.price
+          const currentSalePrice = variant?.salePrice || product.salePrice
+          const effectivePrice = unitPrice ? Number(unitPrice) : (currentSalePrice || currentPrice)
+          
+          const showAsSale = unitPrice && currentPrice && Number(unitPrice) < currentPrice
+
+          hydratedItems.push({
+            sku: baseSku,
+            name: {
+              en: product.title_en || '',
+              he: product.title_he || ''
+            },
+            price: currentPrice,
+            salePrice: showAsSale ? effectivePrice : (currentSalePrice || undefined),
+            currency: product.currency || 'ILS',
+            image: variant?.primaryImage || variant?.images?.[0] || '',
+            size: sizeSlug || undefined,
+            color: colorSlug || undefined,
+            quantity: quantity,
+            maxStock: maxStock
+          })
+        }
+
+        setItems(hydratedItems)
+        
+        // Mark as loaded again
+        loadedFromNeonRef.current = true
+        try {
+          const sessionKey = `${SESSION_LOADED_KEY}_${user.uid}`
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(sessionKey, 'true')
+          }
+        } catch (e) {
+          // Ignore sessionStorage errors
+        }
+      } catch (error) {
+        console.error('[useCart] Error reloading cart from Neon:', error)
+      }
+    }
+
+    window.addEventListener('cartReload', handleCartReload as EventListener)
+    
+    return () => {
+      window.removeEventListener('cartReload', handleCartReload as EventListener)
+    }
+  }, [user?.uid])
+
+  // Load cart from Neon for signed-in users (Favorites-style hydration)
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadCartFromNeon() {
+      if (!user) {
+        loadedFromNeonRef.current = false
+        return
+      }
+
+      // Check both ref and sessionStorage to prevent multiple loads
+      const sessionKey = `${SESSION_LOADED_KEY}_${user.uid}`
+      const alreadyLoaded = loadedFromNeonRef.current || 
+        (typeof window !== 'undefined' && sessionStorage.getItem(sessionKey) === 'true')
+      
+      if (alreadyLoaded) return
+      
+      loadedFromNeonRef.current = true
+      // Mark as loaded in sessionStorage to persist across remounts
+      try {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(sessionKey, 'true')
+        }
+      } catch (e) {
+        // Ignore sessionStorage errors (e.g., in private browsing)
+      }
+
+      try {
+        const token = await user.getIdToken()
+        if (!token) return
+
+        const response = await fetch('/api/cart', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        // 404 means user profile doesn't exist yet - that's OK
+        if (response.status === 404) {
+          console.log('[useCart] Profile not found yet (404) - keeping local cart')
+          return
+        }
+
+        if (!response.ok) {
+          console.warn('[useCart] Failed to load cart from Neon:', response.status)
+          return
+        }
+
+        const data = await response.json()
+        const cartRows = data.cartItems || []
+
+        if (cartRows.length === 0) {
+          if (!cancelled) {
+            setItems([])
+          }
+          return
+        }
+
+        // Hydrate cart items from Firestore (same strategy as Favorites)
+        const productCache = new Map<string, any>()
+        const hydratedItems: CartItem[] = []
+
+        for (const row of cartRows) {
+          if (cancelled) return
+
+          const { baseSku, colorSlug, sizeSlug, quantity, unitPrice } = row
+
+          let product = productCache.get(baseSku)
+          if (!product) {
+            try {
+              product = await productService.getProductByBaseSku(baseSku)
+              if (!product) {
+                product = await productService.getProductBySku(baseSku)
+              }
+            } catch (error) {
+              console.error(`[useCart] Error fetching product ${baseSku}:`, error)
+              product = null
+            }
+            productCache.set(baseSku, product)
+          }
+
+          if (!product || !product.isEnabled) continue
+
+          // Get the specific color variant
+          const variant = colorSlug && product.colorVariants?.[colorSlug]
+          const stockBySize = variant?.stockBySize || {}
+          const maxStock = sizeSlug ? (stockBySize[sizeSlug] || 0) : 
+            Object.values(stockBySize).reduce((sum: number, stock: any) => sum + (stock || 0), 0)
+
+          // Compute effective price from unitPrice snapshot
+          const currentPrice = variant?.priceOverride || product.price
+          const currentSalePrice = variant?.salePrice || product.salePrice
+          const effectivePrice = unitPrice ? Number(unitPrice) : (currentSalePrice || currentPrice)
+          
+          // Determine if we should show as sale (unitPrice < currentPrice)
+          const showAsSale = unitPrice && currentPrice && Number(unitPrice) < currentPrice
+
+          hydratedItems.push({
+            sku: baseSku,
+            name: {
+              en: product.title_en || '',
+              he: product.title_he || ''
+            },
+            price: currentPrice,
+            salePrice: showAsSale ? effectivePrice : (currentSalePrice || undefined),
+            currency: product.currency || 'ILS',
+            image: variant?.primaryImage || variant?.images?.[0] || '',
+            size: sizeSlug || undefined,
+            color: colorSlug || undefined,
+            quantity: quantity,
+            maxStock: maxStock
+          })
+        }
+
+        if (!cancelled) {
+          setItems(hydratedItems)
+        }
+      } catch (error) {
+        console.error('[useCart] Error loading cart from Neon:', error)
+      }
+    }
+
+    void loadCartFromNeon()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.uid])
+
+  // Helper to sync cart item to Neon (fire-and-forget)
+  const syncCartItemToNeon = useCallback(async (
+    baseSku: string,
+    colorSlug: string | undefined,
+    sizeSlug: string | undefined,
+    quantityDelta?: number,
+    quantitySet?: number,
+    unitPrice?: number
+  ) => {
+    if (!user) return
+
+    try {
+      const token = await user.getIdToken()
+      if (!token) return
+
+      const body: any = {
+        baseSku,
+        colorSlug: colorSlug || null,
+        sizeSlug: sizeSlug || null
+      }
+
+      if (quantityDelta !== undefined) body.quantityDelta = quantityDelta
+      if (quantitySet !== undefined) body.quantitySet = quantitySet
+      if (unitPrice !== undefined) body.unitPrice = unitPrice
+
+      // Fire-and-forget
+      fetch('/api/cart/item', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(body)
+      }).catch(err => {
+        console.warn('[useCart] Failed to sync cart item to Neon (non-blocking):', err)
+      })
+    } catch (error) {
+      console.warn('[useCart] Failed to get token for cart sync:', error)
+    }
+  }, [user])
+
+  const addToCart = useCallback((newItem: Omit<CartItem, 'quantity'>, quantityToAdd: number = 1) => {
+    const qty = Math.max(1, Math.floor(quantityToAdd))
+    let isMerge = false
     flushSync(() => {
       setItems(prevItems => {
         const existingItemIndex = prevItems.findIndex(item => 
@@ -153,13 +467,13 @@ export function useCart(): CartHook {
         )
 
         if (existingItemIndex >= 0) {
-          // Item exists, update quantity
+          isMerge = true
+          // Item exists, add to quantity
           const updatedItems = [...prevItems]
           const existingItem = updatedItems[existingItemIndex]
-          const newQuantity = existingItem.quantity + 1
+          const newQuantity = Math.min(existingItem.quantity + qty, existingItem.maxStock)
           
-          // Don't exceed max stock
-          if (newQuantity <= existingItem.maxStock) {
+          if (newQuantity > existingItem.quantity) {
             updatedItems[existingItemIndex] = {
               ...existingItem,
               quantity: newQuantity
@@ -167,13 +481,23 @@ export function useCart(): CartHook {
           }
           return updatedItems
         } else {
-          // New item, add with quantity 1
-          const newItems = [...prevItems, { ...newItem, quantity: 1 }]
+          // New item, add with requested quantity (capped at maxStock)
+          const initialQty = Math.min(qty, newItem.maxStock)
+          const newItems = [...prevItems, { ...newItem, quantity: initialQty }]
           return newItems
         }
       })
     })
-  }, [])
+
+    // Sync to Neon if signed in (single request with delta or set)
+    const unitPrice = newItem.salePrice ?? newItem.price
+    if (isMerge) {
+      void syncCartItemToNeon(newItem.sku, newItem.color, newItem.size, qty, undefined, unitPrice)
+    } else {
+      const initialQty = Math.min(qty, newItem.maxStock)
+      void syncCartItemToNeon(newItem.sku, newItem.color, newItem.size, undefined, initialQty, unitPrice)
+    }
+  }, [syncCartItemToNeon])
 
   const removeFromCart = useCallback((sku: string, size?: string, color?: string) => {
     setItems(prevItems => 
@@ -181,7 +505,10 @@ export function useCart(): CartHook {
         !(item.sku === sku && item.size === size && item.color === color)
       )
     )
-  }, [])
+
+    // Sync to Neon if signed in
+    void syncCartItemToNeon(sku, color, size, undefined, 0, undefined)
+  }, [syncCartItemToNeon])
 
   const updateQuantity = useCallback((sku: string, quantity: number, size?: string, color?: string) => {
     if (quantity <= 0) {
@@ -189,17 +516,22 @@ export function useCart(): CartHook {
       return
     }
 
+    let unitPrice: number | undefined
     setItems(prevItems => 
       prevItems.map(item => {
         if (item.sku === sku && item.size === size && item.color === color) {
           // Don't exceed max stock
           const newQuantity = Math.min(quantity, item.maxStock)
+          unitPrice = item.salePrice ?? item.price
           return { ...item, quantity: newQuantity }
         }
         return item
       })
     )
-  }, [removeFromCart])
+
+    // Sync to Neon if signed in
+    void syncCartItemToNeon(sku, color, size, undefined, quantity, unitPrice)
+  }, [removeFromCart, syncCartItemToNeon])
 
   const clearCart = useCallback(() => {
     setItems([])
@@ -224,13 +556,13 @@ export function useCart(): CartHook {
   }, [items])
 
   const getDeliveryFee = useCallback(() => {
- // Calculate total directly to avoid dependency chain issues
+    // Calculate total directly to avoid dependency chain issues
     const total = items.reduce((sum, item) => {
       const price = item.salePrice || item.price
       return sum + (price * item.quantity)
     }, 0)
-    
-    return total < 300 ? 45 : 0
+
+    return total < FREE_DELIVERY_THRESHOLD_ILS ? DELIVERY_FEE_ILS : 0
   }, [items])
 
   const getTotalWithDelivery = useCallback(() => {

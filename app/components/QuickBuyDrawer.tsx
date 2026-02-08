@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useState } from 'react'
+import { Fragment, useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { HeartIcon } from '@heroicons/react/24/outline'
@@ -14,6 +14,7 @@ import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
+import { buildFavoriteKey } from '@/lib/favorites'
 
 interface QuickBuyDrawerProps {
   isOpen: boolean
@@ -21,9 +22,11 @@ interface QuickBuyDrawerProps {
   product: Product
   language?: 'en' | 'he'
   returnUrl?: string
+  /** Color slug selected on the product card when Quick Buy was clicked; drawer opens with this variant. */
+  initialColorSlug?: string
 }
 
-export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en', returnUrl }: QuickBuyDrawerProps) {
+export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en', returnUrl, initialColorSlug }: QuickBuyDrawerProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
@@ -32,9 +35,21 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   const { isFavorite, toggleFavorite } = useFavorites()
   const { addToCart, items } = useCart()
   const { toast, showToast, hideToast } = useToast()
-  
-  // Get the first active color variant for display
-  const defaultVariant = product.colorVariants 
+
+  // When drawer opens, sync to the color variant selected on the product card
+  useEffect(() => {
+    if (!isOpen) return
+    if (!product.colorVariants) return
+    const activeVariants = Object.values(product.colorVariants).filter(v => v.isActive !== false)
+    const initialVariant = initialColorSlug
+      ? activeVariants.find(v => v.colorSlug === initialColorSlug) ?? null
+      : null
+    setSelectedVariant(initialVariant as ColorVariant | null)
+    setSelectedSize('')
+  }, [isOpen, initialColorSlug, product.colorVariants])
+
+  // Fallback when no variant is selected yet (e.g. drawer opened without initialColorSlug)
+  const defaultVariant = product.colorVariants
     ? Object.values(product.colorVariants).find(v => v.isActive !== false) || null
     : null
   const activeVariant = selectedVariant || defaultVariant
@@ -83,6 +98,9 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => ({ size, stock: activeVariant.stockBySize[size] }))
     : []
   
+  // Check if the active variant is out of stock (no available sizes)
+  const isVariantOutOfStock = availableSizes.length === 0
+  
   // Handle color variant selection
   const handleVariantSelect = (variant: any) => {
     setSelectedVariant(variant)
@@ -97,9 +115,11 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   
   // Handle wishlist toggle
   const handleWishlistToggle = () => {
-    const sku = product.baseSku || product.sku || ''
-    if (sku) {
-      toggleFavorite(sku)
+    const baseSku = product.baseSku || product.sku || ''
+    const colorSlug = activeVariant?.colorSlug || ''
+    const favoriteKey = buildFavoriteKey(baseSku, colorSlug)
+    if (favoriteKey) {
+      void toggleFavorite(favoriteKey)
     }
   }
   
@@ -110,6 +130,15 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     const sku = product.baseSku || product.sku || ''
     if (!sku) {
       console.error('No SKU found for product')
+      return
+    }
+    
+    // Check if variant is out of stock
+    if (isVariantOutOfStock) {
+      const errorMessage = language === 'he' 
+        ? 'פריט זה אזל מהמלאי'
+        : 'This item is out of stock'
+      showToast(errorMessage, 'error')
       return
     }
     
@@ -165,7 +194,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         console.warn('Data layer tracking error:', dataLayerError)
       }
       
-      addToCart(cartItem)
+      addToCart(cartItem, quantity)
       
       // Show success toast
       const successMessage = language === 'he' 
@@ -176,19 +205,27 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
       // Close the drawer
       onClose()
       
-      // Navigate based on context
+      // Navigate only when returnUrl is explicitly provided (e.g. favorites page).
+      // When undefined (e.g. home carousel), stay on current page.
       if (returnUrl) {
-        // Use the provided return URL (e.g., from favorites page)
         router.push(returnUrl)
-      } else if (product.categories_path && product.categories_path.length > 0) {
-        // Navigate to the category page (default behavior)
-        router.push(`/${language}/collection/${product.categories_path[0]}`)
-      } else {
-        // Fallback to main collection page if no category path
-        router.push(`/${language}/collection`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding to cart:', error)
+      
+      // Show error message to user
+      let errorMessage = language === 'he' 
+        ? 'שגיאה בהוספה לעגלה'
+        : 'Error adding to cart'
+      
+      // Check if error has a specific message
+      if (error?.message) {
+        errorMessage = error.message
+      } else if (error?.error && typeof error.error === 'string') {
+        errorMessage = error.error
+      }
+      
+      showToast(errorMessage, 'error')
     } finally {
       setIsAddingToCart(false)
     }
@@ -196,28 +233,32 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
 
   return (
     <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-50" onClose={onClose}>
+      <Dialog 
+        as="div" 
+        className="relative z-[75]" 
+        onClose={onClose}
+      >
          <Transition.Child
            as={Fragment}
-           enter="ease-in-out duration-500"
+           enter="ease-in-out duration-700"
            enterFrom="opacity-0"
            enterTo="opacity-100"
-           leave="ease-in-out duration-500"
+           leave="ease-in-out duration-700"
            leaveFrom="opacity-100"
            leaveTo="opacity-0"
          >
          <div className="fixed inset-0 bg-black/20 transition-opacity" />
         </Transition.Child>
 
-        <div className="fixed inset-0 overflow-hidden">
+        <div className="fixed inset-0 overflow-hidden" data-quick-buy-drawer>
           <div className="absolute inset-0 overflow-hidden">
             <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
               <Transition.Child
                 as={Fragment}
-                enter="transform transition ease-in-out duration-500 sm:duration-700"
+                enter="transform transition ease-in-out duration-700 sm:duration-1000"
                 enterFrom="translate-x-full"
                 enterTo="translate-x-0"
-                leave="transform transition ease-in-out duration-500 sm:duration-700"
+                leave="transform transition ease-in-out duration-700 sm:duration-1000"
                 leaveFrom="translate-x-0"
                 leaveTo="translate-x-full"
               >
@@ -232,7 +273,13 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                           onClick={handleWishlistToggle}
                           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                         >
-                          {isFavorite(product.baseSku || product.sku || '') ? (
+                          {isFavorite(
+                            (() => {
+                              const baseSku = product.baseSku || product.sku || ''
+                              const colorSlug = activeVariant?.colorSlug || ''
+                              return buildFavoriteKey(baseSku, colorSlug)
+                            })()
+                          ) ? (
                             <HeartSolidIcon className="h-5 w-5 text-red-500" />
                           ) : (
                             <HeartIcon className="h-5 w-5 text-gray-600" />
@@ -289,10 +336,10 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                       </div>
 
                       {/* Color Selection */}
-                      {product.colorVariants && Object.values(product.colorVariants).filter(v => v.isActive !== false).length > 1 && (
+                      {product.colorVariants && Object.values(product.colorVariants).filter(v => v.isActive !== false).length >= 1 && (
                         <div className="mb-8">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-900">
+                            <div className={`flex items-center justify-between mb-4 ${language === 'he' ? 'flex-row-reverse' : ''}`}>
+                              <h3 className={`text-sm font-medium text-gray-900`}>
                               {language === 'he' ? 'צבע' : 'Color'}: {getColorName(activeVariant.colorSlug, language)}
                             </h3>
                           </div>
@@ -337,7 +384,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                       {availableSizes.length > 0 && (
                         <div className="mb-8">
                           <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-900">
+                            <h3 className={`text-sm font-medium text-gray-900 ${language === 'he' ? 'ml-auto text-right' : ''}`}>
                               {language === 'he' ? 'מידה' : 'Size'}
                             </h3>
                           </div>
@@ -353,7 +400,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                                   disabled={isOutOfStock}
                                   className={`p-2 text-sm text-gray-900 border rounded-md transition-colors ${
                                     isSelected
-                                      ? 'border-black bg-gray-200 text-black'
+                                      ? 'border-[#856D55] bg-[#856D55] text-white'
                                       : isOutOfStock
                                       ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
                                       : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
@@ -363,6 +410,17 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                                 </button>
                               )
                             })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Out of Stock Message */}
+                      {isVariantOutOfStock && (
+                        <div className="mb-8">
+                          <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                            <p className={`text-sm text-red-800 ${language === 'he' ? 'text-right' : ''}`}>
+                              {language === 'he' ? 'צבע זה אזל מהמלאי' : 'This color is out of stock'}
+                            </p>
                           </div>
                         </div>
                       )}
@@ -413,15 +471,17 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                         {/* Add to Shopping Cart Button */}
                         <button
                           onClick={handleAddToCart}
-                          disabled={availableSizes.length > 0 && !selectedSize || isAddingToCart}
+                          disabled={isVariantOutOfStock || (availableSizes.length > 0 && !selectedSize) || isAddingToCart}
                           className={`w-full font-medium py-3 px-4 transition-colors duration-200 ${
-                            availableSizes.length > 0 && !selectedSize || isAddingToCart
+                            isVariantOutOfStock || (availableSizes.length > 0 && !selectedSize) || isAddingToCart
                               ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              : 'bg-black text-white hover:bg-gray-800'
+                              : 'bg-[#856D55] text-white hover:bg-[#856D55]'
                           }`}
                         >
                           {isAddingToCart ? (
                             language === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
+                          ) : isVariantOutOfStock ? (
+                            language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
                           ) : (
                             language === 'he' 
                               ? `הוסף ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`

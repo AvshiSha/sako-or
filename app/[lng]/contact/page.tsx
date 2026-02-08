@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 
 // Hardcoded translations for build-time rendering
@@ -76,8 +77,9 @@ const translations = {
   }
 }
 
-export default function ContactPage({ params }: { params: Promise<{ lng: string }> }) {
-  const [lng, setLng] = React.useState<string>('en')
+export default function ContactPage() {
+  const params = useParams()
+  const lng = (params?.lng as string) || 'en'
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -89,13 +91,6 @@ export default function ContactPage({ params }: { params: Promise<{ lng: string 
   const [emailError, setEmailError] = useState('')
   const [turnstileToken, setTurnstileToken] = useState<string>('')
   const [isMounted, setIsMounted] = useState(false)
-
-  // Initialize language from params
-  React.useEffect(() => {
-    params.then(({ lng: language }) => {
-      setLng(language)
-    })
-  }, [params])
 
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]

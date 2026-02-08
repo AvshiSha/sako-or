@@ -7,12 +7,12 @@ interface PromoRibbonProps {
 }
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
-  const text = lng === 'he'
-    ? 'משלוחים חינם לכל הארץ בהזמנה מעל 300₪ ✨'
-    : 'Free shipping for all orders over 300₪ ✨'
+  const text = lng === 'he' 
+    ? '🚚 משלוח חינם בכל הארץ בהזמנה מעל ₪300' 
+    : '🚚 Free shipping in Israel on orders over ₪300'
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-black to-gray-900 text-white h-10 z-[60]">
+    <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-[#B2A28E] to-[#B2A28E] text-white h-10 z-[60]">
       <div className="max-w-7xl mx-auto h-full flex items-center justify-center px-4">
         <Link
           href={`/${lng}/collection/women`}

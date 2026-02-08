@@ -9,7 +9,6 @@ import Link from 'next/link'
 function AdminUsersPage() {
   const { user, logout } = useAuth()
   const [newUserEmail, setNewUserEmail] = useState('')
-  const [newUserPassword, setNewUserPassword] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -104,20 +103,6 @@ function AdminUsersPage() {
                 onChange={(e) => setNewUserEmail(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="Enter email address"
-                required
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                value={newUserPassword}
-                onChange={(e) => setNewUserPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="Enter password"
                 required
               />
             </div>

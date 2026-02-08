@@ -3,11 +3,55 @@ import { CardComAPI, createPaymentSessionRequest } from '../../../../lib/cardcom
 import { CreateLowProfileRequest } from '../../../../app/types/checkout';
 import { createOrder, generateOrderNumber } from '../../../../lib/orders';
 import { prisma } from '../../../../lib/prisma';
+import { spendPointsForOrder } from '../../../../lib/points';
+import { getBearerToken, requireUserAuth } from '@/lib/server/auth';
+import { productService } from '../../../../lib/firebase';
+import { parseSku } from '../../../../lib/sku-parser';
+import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '../../../../lib/pricing';
 
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateLowProfileRequest = await request.json();
+    const body: CreateLowProfileRequest = await request.json().catch(() => ({}));
     console.log('Payment request received:', JSON.stringify(body, null, 2));
+
+    // Optional auth: if a Firebase bearer token is provided, link the order to that user.
+    // Only link to existing confirmed users - do NOT create partial users here.
+    const bearerToken = getBearerToken(request);
+    let userId: string | undefined = undefined;
+
+    if (bearerToken) {
+      try {
+        const auth = await requireUserAuth(request)
+        if (auth instanceof NextResponse) return auth
+        const firebaseUid = auth.firebaseUid;
+
+        // Read-only lookup: only link order to existing confirmed user
+        const user = await prisma.user.findUnique({
+          where: { firebaseUid },
+          select: { id: true, firstName: true, lastName: true, phone: true, language: true }
+        });
+
+        // Only set userId if user exists and has completed profile (required fields present)
+        if (user && user.firstName && user.lastName && user.phone && user.language) {
+          userId = user.id;
+          console.log('[CREATE_LOW_PROFILE] Linked order to confirmed user:', userId);
+        } else {
+          const missingFields = [];
+          if (!user) {
+            missingFields.push('user not found in Neon');
+          } else {
+            if (!user.firstName) missingFields.push('firstName');
+            if (!user.lastName) missingFields.push('lastName');
+            if (!user.phone) missingFields.push('phone');
+            if (!user.language) missingFields.push('language');
+          }
+          console.log('[CREATE_LOW_PROFILE] User not confirmed or incomplete, treating as guest. Missing fields:', missingFields);
+        }
+      } catch {
+        // Treat invalid/expired token as guest checkout
+        console.warn('[CREATE_LOW_PROFILE] Invalid bearer token, proceeding as guest');
+      }
+    }
     
     // Debug environment variables
     console.log('Environment variables:', {
@@ -31,11 +75,72 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!body.deliveryAddress.city || !body.deliveryAddress.streetName || !body.deliveryAddress.streetNumber) {
+    // Validate email format (reject double dots e.g. user@gmail..com)
+    const customerEmail = body.customer.email;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (customerEmail.includes('..') || !emailRegex.test(customerEmail)) {
       return NextResponse.json(
-        { error: 'Missing required delivery address information' },
+        { error: 'Invalid email format' },
         { status: 400 }
       );
+    }
+
+    // Same precision as money (2 decimals) so invoice totals match
+    const pointsToSpend = body.pointsToSpend != null && body.pointsToSpend > 0
+      ? Math.round(body.pointsToSpend * 100) / 100
+      : 0;
+    if (pointsToSpend > 0 && !userId) {
+      return NextResponse.json(
+        { error: 'Must be logged in to spend points' },
+        { status: 401 }
+      );
+    }
+
+    // Validate points balance if points are being used (but don't deduct yet - that happens after payment success)
+    if (pointsToSpend > 0 && userId) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { pointsBalance: true }
+      });
+
+      // Prisma stores decimals as Decimal objects; convert to number before comparison
+      if (!user || user.pointsBalance === null) {
+        return NextResponse.json(
+          { error: 'Insufficient points balance' },
+          { status: 400 }
+        );
+      }
+
+      const pointsBalanceNumber = user.pointsBalance.toNumber();
+      if (pointsBalanceNumber < pointsToSpend) {
+        return NextResponse.json(
+          { error: 'Insufficient points balance' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Enforce 15% cap: points cannot exceed 15% of order (subtotal minus coupon discounts)
+    if (pointsToSpend > 0) {
+      const cartAmountBeforePoints = Math.max((body.subtotal ?? 0) - (body.discountTotal ?? 0), 0);
+      const maxPointsAllowed = Math.round(0.15 * cartAmountBeforePoints * 100) / 100;
+      if (pointsToSpend > maxPointsAllowed) {
+        return NextResponse.json(
+          { error: 'Points cannot exceed 15% of the order' },
+          { status: 400 }
+        );
+      }
+    }
+
+    const shippingMethod = body.shippingMethod ?? 'delivery';
+
+    if (shippingMethod !== 'pickup') {
+      if (!body.deliveryAddress.city || !body.deliveryAddress.streetName || !body.deliveryAddress.streetNumber) {
+        return NextResponse.json(
+          { error: 'Missing required delivery address information' },
+          { status: 400 }
+        );
+      }
     }
 
     // Generate order number - always use server-side generation for uniqueness
@@ -69,21 +174,113 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare order items - use items array if provided, otherwise fallback to single product
-    const orderItems = body.items && body.items.length > 0
-      ? body.items.map(item => ({
-          productName: item.productName,
-          productSku: item.productSku,
-          quantity: item.quantity,
-          price: item.price, // Price per unit
-          colorName: item.color,
-          size: item.size,
-        }))
-      : [{
-          productName: body.productName || 'Sako Order',
-          productSku: body.productSku || 'UNKNOWN',
-          quantity: body.quantity || 1,
-          price: body.amount / (body.quantity || 1), // Calculate unit price from total
-        }];
+    // Fetch product data to capture images and pricing
+    const prepareOrderItems = async () => {
+      const items = body.items && body.items.length > 0
+        ? body.items
+        : [{
+            productName: body.productName || 'Sako Order',
+            productSku: body.productSku || 'UNKNOWN',
+            quantity: body.quantity || 1,
+            price: body.amount / (body.quantity || 1),
+            color: undefined,
+            size: undefined,
+          }];
+
+      const enrichedItems = await Promise.all(
+        items.map(async (item) => {
+          try {
+            // Parse SKU to get base SKU
+            const parsedSku = parseSku(item.productSku);
+            const baseSku = parsedSku.baseSku || item.productSku;
+            // Convert colorName to colorSlug (lowercase, for Firebase lookup)
+            const colorSlug = item.color || (parsedSku.colorName ? parsedSku.colorName.toLowerCase() : null);
+
+            // Fetch product from Firebase
+            const product = await productService.getProductByBaseSku(baseSku);
+            
+            let primaryImage: string | undefined;
+            let salePrice: number | undefined;
+            let modelNumber: string | undefined;
+
+            if (product) {
+              // Get color variant if color is specified
+              const variant = colorSlug && product.colorVariants?.[colorSlug];
+              
+              // Get primary image from variant or product
+              if (variant && typeof variant === 'object' && variant !== null && 'colorSlug' in variant) {
+                primaryImage = variant.primaryImage || variant.images?.[0];
+                // Only use variant salePrice if it's a valid discount (less than regular price)
+                const variantSalePrice = variant.salePrice;
+                if (variantSalePrice != null && variantSalePrice > 0 && variantSalePrice < item.price) {
+                  salePrice = variantSalePrice;
+                }
+              }
+              
+              // Fallback to product-level pricing if variant doesn't have valid sale price
+              if (!salePrice && product.salePrice != null && product.salePrice > 0 && product.salePrice < item.price) {
+                salePrice = product.salePrice;
+              }
+
+              // Generate model number: baseSku + colorName
+              let colorName: string | null = null;
+              if (variant && typeof variant === 'object' && variant !== null && 'colorSlug' in variant && variant.colorSlug) {
+                colorName = variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1);
+              } else {
+                colorName = item.color || parsedSku.colorName;
+              }
+              
+              modelNumber = colorName 
+                ? `${baseSku}-${colorName.toUpperCase()}` 
+                : baseSku;
+            } else {
+              // If product not found, generate model number from available data
+              const colorName = item.color || parsedSku.colorName;
+              modelNumber = colorName 
+                ? `${baseSku}-${colorName.toUpperCase()}` 
+                : baseSku;
+            }
+
+            return {
+              productName: item.productName,
+              productSku: item.productSku,
+              quantity: item.quantity,
+              price: item.price,
+              colorName: item.color,
+              size: item.size,
+              primaryImage,
+              salePrice,
+              modelNumber,
+            };
+          } catch (error) {
+            console.error(`[CREATE_LOW_PROFILE] Error fetching product data for ${item.productSku}:`, error);
+            // Return item without enrichment if fetch fails
+            const parsedSku = parseSku(item.productSku);
+            const baseSku = parsedSku.baseSku || item.productSku;
+            const colorName = item.color || parsedSku.colorName;
+            const modelNumber = colorName 
+              ? `${baseSku}-${colorName.toUpperCase()}` 
+              : baseSku;
+            
+            return {
+              productName: item.productName,
+              productSku: item.productSku,
+              quantity: item.quantity,
+              price: item.price,
+              colorName: item.color,
+              size: item.size,
+              primaryImage: undefined,
+              salePrice: undefined,
+              modelNumber,
+            };
+          }
+        })
+      );
+
+      return enrichedItems;
+    };
+
+    const orderItems = await prepareOrderItems();
 
     const requestedCouponCodes = body.coupons?.map(coupon => coupon.code.toUpperCase()) ?? [];
     const couponRecords = requestedCouponCodes.length > 0
@@ -101,8 +298,44 @@ export async function POST(request: NextRequest) {
     });
 
     const computedSubtotal = body.subtotal ?? orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const computedDeliveryFee = body.deliveryFee ?? Math.max(body.amount - (computedSubtotal - (body.discountTotal ?? 0)), 0);
+    const rawDiscountTotal = body.discountTotal ?? 0;
+    const pointsDiscount = pointsToSpend;
+    const discountedSubtotal = Math.max(computedSubtotal - rawDiscountTotal - pointsDiscount, 0);
+    const hasPromotions = rawDiscountTotal > 0 || pointsDiscount > 0;
+
+    // For pickup orders, delivery fee must always be 0
+    let computedDeliveryFee: number;
+    if (shippingMethod === 'pickup') {
+      computedDeliveryFee = 0;
+    } else if (computedSubtotal >= FREE_DELIVERY_THRESHOLD_ILS) {
+      if (discountedSubtotal >= FREE_DELIVERY_THRESHOLD_ILS) {
+        // Still above threshold after discounts – keep free delivery
+        computedDeliveryFee = 0;
+      } else if (hasPromotions) {
+        // Qualified before discounts, dropped below with promos – charge delivery
+        computedDeliveryFee = DELIVERY_FEE_ILS;
+      } else {
+        // No promotions, above threshold – free delivery
+        computedDeliveryFee = 0;
+      }
+    } else {
+      // Below threshold before discounts – use base rule (delivery fee applies)
+      computedDeliveryFee = DELIVERY_FEE_ILS;
+    }
+
+    // Honor discountTotal from the client (coupons or automatic BOGO),
+    // but keep a safety fallback if it's missing.
     const computedDiscountTotal = body.discountTotal ?? Math.max(computedSubtotal + computedDeliveryFee - body.amount, 0);
+
+    // Enforce no double-discount stacking between automatic BOGO and coupons.
+    const hasBogoDiscount = !!body.bogoDiscountAmount && body.bogoDiscountAmount > 0;
+    const hasCoupons = Array.isArray(body.coupons) && body.coupons.length > 0;
+    if (hasBogoDiscount && hasCoupons) {
+      return NextResponse.json(
+        { error: 'Coupons cannot be combined with the automatic pairs deal.' },
+        { status: 400 }
+      );
+    }
 
     // Create order in database
     let order;
@@ -112,20 +345,26 @@ export async function POST(request: NextRequest) {
         total: body.amount,
         subtotal: computedSubtotal,
         discountTotal: computedDiscountTotal,
+        bogoDiscountAmount: hasBogoDiscount ? body.bogoDiscountAmount : undefined,
         deliveryFee: computedDeliveryFee,
+        shippingMethod,
+        pickupLocation: body.pickupLocation,
         currency: body.currencyIso === 2 ? 'USD' : 'ILS',
         customerName: `${body.customer.firstName} ${body.customer.lastName}`,
         customerEmail: body.customer.email,
         customerPhone: body.customer.mobile,
+        userId,
         items: orderItems,
-        coupons: body.coupons?.map(coupon => ({
-          code: coupon.code,
-          discountAmount: coupon.discountAmount,
-          discountType: coupon.discountType,
-          stackable: coupon.stackable,
-          description: coupon.description,
-          couponId: couponMap.get(coupon.code.toUpperCase())
-        }))
+        coupons: hasBogoDiscount
+          ? undefined
+          : body.coupons?.map(coupon => ({
+              code: coupon.code,
+              discountAmount: coupon.discountAmount,
+              discountType: coupon.discountType,
+              stackable: coupon.stackable,
+              description: coupon.description,
+              couponId: couponMap.get(coupon.code.toUpperCase())
+            }))
       });
     } catch (createError: any) {
       // If we still get a unique constraint error, retry with a new order number
@@ -137,24 +376,34 @@ export async function POST(request: NextRequest) {
           total: body.amount,
           subtotal: computedSubtotal,
           discountTotal: computedDiscountTotal,
+          bogoDiscountAmount: hasBogoDiscount ? body.bogoDiscountAmount : undefined,
           deliveryFee: computedDeliveryFee,
+          shippingMethod,
+          pickupLocation: body.pickupLocation,
           currency: body.currencyIso === 2 ? 'USD' : 'ILS',
           customerName: `${body.customer.firstName} ${body.customer.lastName}`,
           customerEmail: body.customer.email,
           customerPhone: body.customer.mobile,
+          userId,
           items: orderItems,
-          coupons: body.coupons?.map(coupon => ({
-            code: coupon.code,
-            discountAmount: coupon.discountAmount,
-            discountType: coupon.discountType,
-            stackable: coupon.stackable,
-            description: coupon.description
-          }))
+          coupons: hasBogoDiscount
+            ? undefined
+            : body.coupons?.map(coupon => ({
+                code: coupon.code,
+                discountAmount: coupon.discountAmount,
+                discountType: coupon.discountType,
+                stackable: coupon.stackable,
+                description: coupon.description
+              }))
         });
       } else {
         throw createError;
       }
     }
+
+    // Store pointsToSpend in paymentData metadata for later deduction after payment success
+    // Points are NOT deducted here - they are only deducted after successful payment in check-status route
+    const paymentMetadata = pointsToSpend > 0 ? { pointsToSpend } : {};
 
     // Prepare Cardcom products - use items array if provided, otherwise fallback to single product
     const cardcomProducts = body.items && body.items.length > 0
@@ -225,6 +474,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Create CardCom payment session request
+    const STORE_ADDRESS = 'Rothschild 51, Rishon Lezion';
+    const STORE_CITY = 'Rishon Lezion';
+
     const cardcomRequest = createPaymentSessionRequest(
       orderNumber,
       body.amount,
@@ -241,9 +493,13 @@ export async function POST(request: NextRequest) {
         language: body.language || 'he',
         // Receipt/Document options
         customerTaxId: "",
-        customerAddress: `${body.deliveryAddress.streetName} ${body.deliveryAddress.streetNumber}`,
+        customerAddress: shippingMethod === 'pickup'
+          ? STORE_ADDRESS
+          : `${body.deliveryAddress.streetName} ${body.deliveryAddress.streetNumber}`,
         customerAddress2: "",
-        customerCity: body.deliveryAddress.city,
+        customerCity: shippingMethod === 'pickup'
+          ? STORE_CITY
+          : body.deliveryAddress.city,
         customerMobile: body.customer.mobile,
         documentComments: `Order: ${orderNumber}`,
         departmentId: "",
@@ -256,13 +512,14 @@ export async function POST(request: NextRequest) {
     const cardcomAPI = new CardComAPI();
     const cardcomResponse = await cardcomAPI.createLowProfile(cardcomRequest);
 
-    // Update order with CardCom Low Profile ID
+    // Update order with CardCom Low Profile ID and store pointsToSpend in paymentData metadata
     await prisma.order.update({
       where: { id: order.id },
       data: {
         cardcomLowProfileId: cardcomResponse.LowProfileId,
         status: 'processing',
         paymentStatus: 'processing',
+        paymentData: pointsToSpend > 0 ? JSON.stringify({ pointsToSpend }) : null,
       },
     });
 

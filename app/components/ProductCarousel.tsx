@@ -1,9 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import ProductCard from './ProductCard'
 import { Product } from '@/lib/firebase'
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from '@/app/components/ui/carousel'
 
 interface ProductCarouselProps {
   products: Product[]
@@ -13,59 +20,65 @@ interface ProductCarouselProps {
 }
 
 export default function ProductCarousel({ products, title, language = 'en', returnUrl }: ProductCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const itemsPerPage = 4
+  const [api, setApi] = useState<CarouselApi>()
+  const isRTL = language === 'he'
 
-  const nextSlide = () => {
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % (products.length - itemsPerPage + 1))
-  }
-
-  const prevSlide = () => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === 0 ? products.length - itemsPerPage : prevIndex - 1
-    )
+  if (!products || products.length === 0) {
+    return null
   }
 
   return (
-    <div className="relative">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-medium tracking-wide uppercase">{title}</h2>
-        <div className="flex gap-2">
-          <button
-            onClick={prevSlide}
-            className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50"
-            disabled={currentIndex === 0}
-          >
-            <ChevronLeftIcon className="h-5 w-5" />
-          </button>
-          <button
-            onClick={nextSlide}
-            className="p-2 rounded-full bg-white border border-gray-200 hover:bg-gray-50"
-            disabled={currentIndex === products.length - itemsPerPage}
-          >
-            <ChevronRightIcon className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
+    <div className="w-full py-12" style={{ backgroundColor: '#E1DBD7' }}>
+      <div className="max-w-[90rem] lg:max-w-[90%] xl:max-w-[90%] mx-auto px-2 sm:px-6 lg:px-4">
+        {/* Section Title */}
+        <h2 className={`text-2xl md:text-3xl font-bold text-black mb-6 ${isRTL ? 'text-center' : 'text-center'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+          {title}
+        </h2>
+        <div className="border-b border-gray-200 mb-6"></div>
 
-      <div className="relative overflow-hidden">
-        <div
-          className="flex transition-transform duration-300 ease-in-out"
-          style={{
-            transform: `translateX(-${currentIndex * (100 / itemsPerPage)}%)`,
-          }}
-        >
-          {products.map((product) => (
-            <div
-              key={product.id}
-              className="w-1/4 px-4"
-              style={{ flex: `0 0 ${100 / itemsPerPage}%` }}
-            >
-              <ProductCard product={product} language={language} returnUrl={returnUrl} />
+        {/* Carousel */}
+        <div className="relative group">
+          <Carousel
+            setApi={setApi}
+            opts={{
+              align: 'start',
+              loop: true,
+              dragFree: false, // Disable free drag for stiffer, snappier behavior
+              containScroll: 'trimSnaps',
+              duration: 25, // Shorter duration for stiffer feel (default is 25)
+              direction: isRTL ? 'rtl' : 'ltr',
+            }}
+            direction={isRTL ? 'rtl' : 'ltr'}
+            className="w-full"
+          >
+            <CarouselContent>
+              {products.map((product) => (
+                <CarouselItem
+                  key={product.id || product.sku}
+                  className="basis-[85%] sm:basis-[45%] lg:basis-[30%]"
+                >
+                  <ProductCard product={product} language={language} returnUrl={returnUrl} disableImageCarousel={true} />
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+
+            {/* Desktop Arrows - Only visible on hover */}
+            <div className="hidden md:block">
+              {isRTL ? (
+                <>
+                  <CarouselNext className="!left-1 !right-auto !top-1/3 !-translate-y-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-[#856D55]/80 bg-[#856D55]/80 hover:bg-[#856D55] [&>svg]:rotate-180" />
+                  <CarouselPrevious className="!right-1 !left-auto !top-1/3 !-translate-y-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-[#856D55]/80 bg-[#856D55]/80 hover:bg-[#856D55] [&>svg]:rotate-180" />
+                </>
+              ) : (
+                <>
+                  <CarouselPrevious className="left-2 !top-1/4 !-translate-y-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-gray-300 bg-white/90 hover:bg-white" />
+                  <CarouselNext className="right-2 !top-1/4 !-translate-y-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 h-8 w-8 border border-gray-300 bg-white/90 hover:bg-white" />
+                </>
+              )}
             </div>
-          ))}
+          </Carousel>
         </div>
       </div>
     </div>
   )
-} 
+}

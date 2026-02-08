@@ -1,5 +1,5 @@
 import * as React from 'react';
-//import 'web-streams-polyfill/polyfill';
+// import 'web-streams-polyfill/polyfill';
 import {
   Body,
   Container,
@@ -55,13 +55,18 @@ interface OrderConfirmationEmailProps {
   };
   notes?: string;
   isHebrew?: boolean;
+  shippingMethod?: 'delivery' | 'pickup';
+  pickupLocation?: string;
+  /** Points the customer spent on this order */
+  pointsSpent?: number;
 }
 
 const getTotalPrice = (
   subtotal: number | undefined,
   deliveryFee: number | undefined,
   discountTotal: number | undefined,
-  fallbackTotal: number
+  fallbackTotal: number,
+  pointsSpent?: number
 ) => {
   if (
     typeof subtotal !== 'number' ||
@@ -70,7 +75,9 @@ const getTotalPrice = (
   ) {
     return fallbackTotal;
   }
-  return subtotal + deliveryFee - discountTotal;
+  // 1 point = 1 ILS
+  const pointsValue = typeof pointsSpent === 'number' && pointsSpent > 0 ? pointsSpent : 0;
+  return subtotal + deliveryFee - discountTotal - pointsValue;
 };
 
 export function OrderConfirmationEmailHebrew({
@@ -87,6 +94,9 @@ export function OrderConfirmationEmailHebrew({
   deliveryAddress,
   notes,
   isHebrew = true,
+  shippingMethod = 'delivery',
+  pickupLocation,
+  pointsSpent,
 }: OrderConfirmationEmailProps) {
   const t = {
     title: 'אישור הזמנה',
@@ -110,6 +120,9 @@ export function OrderConfirmationEmailHebrew({
     mobile: 'טלפון נייד',
     idNumber: 'מספר זהות',
     deliveryAddress: 'כתובת משלוח',
+    deliveryMethod: 'אופן קבלת ההזמנה',
+    deliveryMethodDelivery: 'משלוח עד הבית',
+    deliveryMethodPickup: 'איסוף עצמי – רוטשילד 51, ראשון לציון',
     city: 'עיר',
     street: 'רחוב',
     streetNumber: 'מספר בית',
@@ -120,6 +133,7 @@ export function OrderConfirmationEmailHebrew({
     skuLabel: 'מספר דגם',
     colorLabel: 'צבע',
     notes: 'הערות',
+    pointsUsed: 'נקודות שהופעלו',
     footer: 'אם יש לך שאלות, אנא צור איתנו קשר.',
     contact: 'צור קשר',
   };
@@ -153,6 +167,14 @@ export function OrderConfirmationEmailHebrew({
                 <Column align="right" style={orderLabel(isHebrew)}>{t.orderDate}:</Column>
                 <Column align="left" style={orderValue(isHebrew)}>{orderDate}</Column>
               </Row>
+              <Row>
+                <Column align="right" style={orderLabel(isHebrew)}>{t.deliveryMethod}:</Column>
+                <Column align="left" style={orderValue(isHebrew)}>
+                  {shippingMethod === 'pickup'
+                    ? t.deliveryMethodPickup
+                    : t.deliveryMethodDelivery}
+                </Column>
+              </Row>
             </Section>
 
             <Hr style={hr} />
@@ -176,10 +198,6 @@ export function OrderConfirmationEmailHebrew({
                   <Column align="right" style={orderLabel(isHebrew)}>{t.mobile}:</Column>
                   <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{payer.mobile}</span></Column>
                 </Row>
-                <Row>
-                  <Column align="right" style={orderLabel(isHebrew)}>{t.idNumber}:</Column>
-                  <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{payer.idNumber}</span></Column>
-                </Row>
               </Section>
             </Section>
 
@@ -188,28 +206,43 @@ export function OrderConfirmationEmailHebrew({
             <Section style={detailsSection}>
               <Heading style={h2(isHebrew)}>{t.deliveryAddress}</Heading>
               <Section dir="rtl" style={detailsInfo}>
-                <Row>
-                  <Column align="right" style={orderLabel(isHebrew)}>{t.city}:</Column>
-                  <Column align="left" style={orderValue(isHebrew)}>{deliveryAddress.city}</Column>
-                </Row>
-                <Row>
-                  <Column align="right" style={orderLabel(isHebrew)}>{t.street}:</Column>
-                  <Column align="left" style={orderValue(isHebrew)}>{deliveryAddress.streetName} {deliveryAddress.streetNumber}</Column>
-                </Row>
-                {(deliveryAddress.floor || deliveryAddress.apartmentNumber) && (
-                  <Row>
-                    <Column align="right" style={orderLabel(isHebrew)}>{t.floor}/{t.apartment}:</Column>
-                    <Column align="left" style={orderValue(isHebrew)}>
-                      {deliveryAddress.floor && `${t.floor}: ${deliveryAddress.floor}`}
-                      {deliveryAddress.floor && deliveryAddress.apartmentNumber && ', '}
-                      {deliveryAddress.apartmentNumber && `${t.apartment}: ${deliveryAddress.apartmentNumber}`}
-                    </Column>
-                  </Row>
+                {shippingMethod === 'pickup' ? (
+                  <>
+                    <Row>
+                      <Column align="right" style={orderLabel(isHebrew)}>{t.city}:</Column>
+                      <Column align="left" style={orderValue(isHebrew)}>
+                        {'ראשון לציון'}
+                      </Column>
+                    </Row>
+                    <Row>
+                      <Column align="right" style={orderLabel(isHebrew)}>{t.street}:</Column>
+                      <Column align="left" style={orderValue(isHebrew)}>
+                        {pickupLocation || 'רוטשילד 51'}
+                      </Column>
+                    </Row>
+                  </>
+                ) : (
+                  <>
+                    <Row>
+                      <Column align="right" style={orderLabel(isHebrew)}>{t.city}:</Column>
+                      <Column align="left" style={orderValue(isHebrew)}>{deliveryAddress.city}</Column>
+                    </Row>
+                    <Row>
+                      <Column align="right" style={orderLabel(isHebrew)}>{t.street}:</Column>
+                      <Column align="left" style={orderValue(isHebrew)}>{deliveryAddress.streetName} {deliveryAddress.streetNumber}</Column>
+                    </Row>
+                    {(deliveryAddress.floor || deliveryAddress.apartmentNumber) && (
+                      <Row>
+                        <Column align="right" style={orderLabel(isHebrew)}>{t.floor}/{t.apartment}:</Column>
+                        <Column align="left" style={orderValue(isHebrew)}>
+                          {deliveryAddress.floor && `${t.floor}: ${deliveryAddress.floor}`}
+                          {deliveryAddress.floor && deliveryAddress.apartmentNumber && ', '}
+                          {deliveryAddress.apartmentNumber && `${t.apartment}: ${deliveryAddress.apartmentNumber}`}
+                        </Column>
+                      </Row>
+                    )}
+                  </>
                 )}
-                <Row>
-                  <Column align="right" style={orderLabel(isHebrew)}>{t.zipCode}:</Column>
-                  <Column align="left" style={orderValue(isHebrew)}><span dir="ltr">{deliveryAddress.zipCode}</span></Column>
-                </Row>
               </Section>
             </Section>
 
@@ -305,10 +338,19 @@ export function OrderConfirmationEmailHebrew({
                 </Row>
               )}
 
+              {typeof pointsSpent === 'number' && pointsSpent > 0 && (
+                <Row>
+                  <Column align="right" style={summaryLabel(isHebrew)}>{t.pointsUsed}:</Column>
+                  <Column align="left" style={summaryValue(isHebrew)}>
+                    <span dir="ltr">-{pointsSpent} נקודות</span>
+                  </Column>
+                </Row>
+              )}
+
               <Row>
                 <Column align="right" style={totalLabel(isHebrew)}>{t.total}:</Column>
                 <Column align="left" style={totalValue(isHebrew)}>
-                  <span dir="ltr">₪{getTotalPrice(subtotal, deliveryFee, discountTotal, total).toFixed(2)}</span>
+                  <span dir="ltr">₪{getTotalPrice(subtotal, deliveryFee, discountTotal, total, pointsSpent).toFixed(2)}</span>
                 </Column>
               </Row>
             </Section>

@@ -36,3 +36,190 @@ body {
 #vpplugin-interface {
   z-index: 999999 !important;
 }
+
+/* Accordion animations */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+.animate-accordion-down {
+  animation: accordion-down 0.3s ease-out;
+}
+
+.animate-accordion-up {
+  animation: accordion-up 0.3s ease-out;
+}
+
+/* Direct application for Radix UI accordion - targets the content element */
+.accordion-content[data-state="open"] {
+  animation: accordion-down 0.3s ease-out;
+}
+
+.accordion-content[data-state="closed"] {
+  animation: accordion-up 0.3s ease-out;
+}
+
+/* Select animations */
+@keyframes select-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes select-fade-out {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+}
+
+.select-content[data-state="open"] {
+  animation: select-fade-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.select-content[data-state="closed"] {
+  animation: select-fade-out 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* RTL support for Select component */
+[dir="rtl"] .select-content {
+  text-align: right;
+}
+
+[dir="rtl"] [data-radix-select-trigger] {
+  direction: rtl;
+}
+
+[dir="rtl"] [data-radix-select-item] {
+  text-align: right;
+}
+
+/* Sheet animations for smooth slide-in/out */
+@keyframes sheet-slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheet-slide-out-to-right {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes sheet-slide-in-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheet-slide-out-to-left {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes sheet-slide-in-from-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes sheet-slide-out-to-bottom {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+/* Smooth Sheet animations - using keyframes */
+.sheet-content {
+  will-change: transform;
+}
+
+/* RIGHT side - slides from right */
+.sheet-content[data-side="right"][data-state="open"] {
+  animation: sheet-slide-in-from-right 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sheet-content[data-side="right"][data-state="closed"] {
+  animation: sheet-slide-out-to-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* LEFT side - slides from left */
+.sheet-content[data-side="left"][data-state="open"] {
+  animation: sheet-slide-in-from-left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sheet-content[data-side="left"][data-state="closed"] {
+  animation: sheet-slide-out-to-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* BOTTOM side - slides from bottom */
+.sheet-content[data-side="bottom"][data-state="open"] {
+  animation: sheet-slide-in-from-bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sheet-content[data-side="bottom"][data-state="closed"] {
+  animation: sheet-slide-out-to-bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hero text animation - fade in with slide up, hold, then repeat */
+@keyframes hero-text-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hero-text-fade-in {
+  animation: hero-text-fade-in 5s ease-out infinite;
+}

@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
-import { sendOrderConfirmationEmailIdempotent } from '../../../../lib/email';
 import { stringifyPaymentData } from '../../../../lib/orders';
+import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
+import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
+import { productService } from '../../../../lib/firebase';
+import { parseSku } from '../../../../lib/sku-parser';
+import { createVerifoneInvoiceAsync } from '../../../../lib/verifone-invoice-job';
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,8 +76,20 @@ export async function POST(request: NextRequest) {
       await savePaymentToken(orderId, body.TokenInfo);
     }
 
-    // Send confirmation email
-    await handlePostPaymentActions(orderId, transactionData, request.url);
+    // Trigger Verifone invoice creation async (non-blocking)
+    console.log('[VERIFONE_INVOICE] Triggering Verifone invoice creation from webhook', {
+      orderId,
+      hasTransactionInfo: !!body.TranzactionInfo
+    })
+    createVerifoneInvoiceAsync(orderId, {
+      transactionInfo: body.TranzactionInfo
+    }).catch(err => {
+      console.error('[VERIFONE_INVOICE] Failed to trigger invoice creation:', err);
+      // Don't fail webhook - order still succeeds
+    });
+
+    // Send confirmation email and SMS
+    await handlePostPaymentActions(orderId, request.url);
 
     return NextResponse.json({ success: true });
 
@@ -137,12 +153,110 @@ async function updateOrderStatus(
         },
       });
     }
+
+    // Mark matching cart items as PURCHASED (Option 2: match order items only)
+    if (status === 'completed') {
+      await markCartItemsAsPurchased(orderId);
+      // Ensure order items have all required data
+      await ensureOrderItemsComplete(orderId);
+    }
     
   } catch (error) {
     console.error('Failed to update order status:', error);
     throw error;
   }
 }
+
+/**
+ * Ensure order items have all required data (primaryImage, salePrice, modelNumber)
+ * Fetches missing data from Firebase if needed
+ */
+async function ensureOrderItemsComplete(orderId: string) {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { orderNumber: orderId },
+      include: { orderItems: true }
+    });
+
+    if (!order) {
+      console.warn(`[ensureOrderItemsComplete] Order not found: ${orderId}`);
+      return;
+    }
+
+    // Check if any items are missing required data
+    const itemsNeedingUpdate = order.orderItems.filter(
+      item => !item.primaryImage || !item.modelNumber
+    );
+
+    if (itemsNeedingUpdate.length === 0) {
+      return; // All items already have required data
+    }
+
+    console.log(`[ensureOrderItemsComplete] Updating ${itemsNeedingUpdate.length} items for order ${orderId}`);
+
+    // Update each item that needs data
+    for (const item of itemsNeedingUpdate) {
+      try {
+        const parsedSku = parseSku(item.productSku);
+        const baseSku = parsedSku.baseSku || item.productSku;
+        // Convert colorName to colorSlug (lowercase, for Firebase lookup)
+        const itemColorName = item.colorName || parsedSku.colorName;
+        const colorSlug = itemColorName ? itemColorName.toLowerCase() : null;
+
+        // Fetch product from Firebase
+        const product = await productService.getProductByBaseSku(baseSku);
+        
+        if (!product) {
+          console.warn(`[ensureOrderItemsComplete] Product not found for SKU: ${baseSku}`);
+          continue;
+        }
+
+        const variant = colorSlug && product.colorVariants?.[colorSlug] 
+          ? product.colorVariants[colorSlug] 
+          : null;
+        
+        // Get primary image
+        const primaryImage = variant?.primaryImage || (variant && Array.isArray(variant.images) && variant.images.length > 0 ? variant.images[0] : null) || null;
+        
+        // Get sale price - only use if it's a valid discount (less than regular price)
+        let salePrice = variant?.salePrice || product.salePrice || null;
+        // Validate: salePrice must be less than item.price to be a valid discount
+        if (salePrice != null && salePrice > 0 && salePrice >= item.price) {
+          console.warn(`[ensureOrderItemsComplete] Invalid salePrice (${salePrice}) >= price (${item.price}) for item ${item.id}, setting to null`);
+          salePrice = null;
+        }
+
+        // Generate model number
+        const modelColorName = variant && variant.colorSlug
+          ? variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1)
+          : itemColorName;
+        
+        const modelNumber = modelColorName 
+          ? `${baseSku}-${modelColorName.toUpperCase()}` 
+          : baseSku;
+
+        // Update the order item
+        await prisma.orderItem.update({
+          where: { id: item.id },
+          data: {
+            primaryImage: item.primaryImage || primaryImage,
+            salePrice: item.salePrice !== null ? item.salePrice : salePrice,
+            modelNumber: item.modelNumber || modelNumber
+          }
+        });
+
+        console.log(`[ensureOrderItemsComplete] Updated item ${item.id} for order ${orderId}`);
+      } catch (itemError) {
+        console.error(`[ensureOrderItemsComplete] Error updating item ${item.id}:`, itemError);
+        // Continue with other items
+      }
+    }
+  } catch (error) {
+    console.error(`[ensureOrderItemsComplete] Error ensuring order items complete for ${orderId}:`, error);
+    // Don't throw - this is best-effort data enrichment
+  }
+}
+
 
 /**
  * Save payment token for future use
@@ -172,110 +286,3 @@ async function savePaymentToken(orderId: string, tokenInfo: any) {
   }
 }
 
-/**
- * Handle post-payment actions (emails, notifications, etc.)
- */
-async function handlePostPaymentActions(orderId: string, transactionData: any, requestUrl: string) {
-  try {
-
-    // Fetch order with items
-    const order = await prisma.order.findUnique({
-      where: { orderNumber: orderId },
-      include: { 
-        orderItems: true,
-        appliedCoupons: true
-      },
-    });
-
-    if (!order || !order.customerEmail) {
-      return;
-    }
-
-    // Fetch checkout data separately using customer email
-    const checkout = await prisma.checkout.findFirst({
-      where: { customerEmail: order.customerEmail },
-      orderBy: { createdAt: 'desc' }, // Get the most recent checkout
-    });
-
-    // Build items for template
-    const items = order.orderItems.map((item: any) => ({
-      name: item.productName,
-      quantity: item.quantity,
-      price: item.price,
-      size: item.size,
-      sku: item.productSku,
-      colorName: item.colorName || undefined,
-    }));
-
-    // Extract language from webhook URL parameters
-    const url = new URL(requestUrl);
-    const langParam = url.searchParams.get('lang');
-    const if_he = langParam === 'he' || !langParam;
-
-    // Extract customer and delivery data from checkout
-    const payer = checkout ? {
-      firstName: checkout.customerFirstName,
-      lastName: checkout.customerLastName,
-      email: checkout.customerEmail,
-      mobile: checkout.customerPhone,
-      idNumber: checkout.customerID || ''
-    } : {
-      firstName: '',
-      lastName: '',
-      email: order.customerEmail,
-      mobile: '',
-      idNumber: ''
-    };
-
-    const deliveryAddress = checkout ? {
-      city: checkout.customerCity,
-      streetName: checkout.customerStreetName,
-      streetNumber: checkout.customerStreetNumber,
-      floor: checkout.customerFloor || '',
-      apartmentNumber: checkout.customerApartment || '',
-      zipCode: checkout.customerZip || ''
-    } : {
-      city: '',
-      streetName: '',
-      streetNumber: '',
-      floor: '',
-      apartmentNumber: '',
-      zipCode: ''
-    };
-
-    // Send confirmation email with Resend (idempotent)
-    console.log(`[WEBHOOK] Processing order ${orderId} confirmation`);
-
-    const emailResult = await sendOrderConfirmationEmailIdempotent({
-      customerEmail: order.customerEmail,
-      customerName: order.customerName || '',
-      orderNumber: order.orderNumber,
-      orderDate: new Date(order.createdAt).toLocaleDateString(),
-      items: items,
-      total: order.total,
-      subtotal: order.subtotal ?? undefined,
-      deliveryFee: order.deliveryFee ?? undefined,
-      discountTotal: order.discountTotal ?? undefined,
-      coupons: order.appliedCoupons.map(coupon => ({
-        code: coupon.code,
-        discountAmount: coupon.discountAmount,
-        discountLabel: coupon.description ?? undefined,
-      })),
-      payer: payer,
-      deliveryAddress: deliveryAddress,
-      notes: checkout?.customerDeliveryNotes || undefined,
-      isHebrew: if_he,
-    }, orderId);
-
-    if (!emailResult.success) {
-      console.error(`[WEBHOOK] Failed to send email for order ${orderId}:`, 'error' in emailResult ? emailResult.error : 'Unknown error');
-    } else if ('skipped' in emailResult && emailResult.skipped) {
-      console.log(`[WEBHOOK] Email skipped for order ${orderId} - already sent`);
-    } else {
-      console.log(`[WEBHOOK] Order ${orderId} confirmation processed successfully`);
-    }
-    
-  } catch (error) {
-    console.error('Failed to handle post-payment actions:', error);
-  }
-}

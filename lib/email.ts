@@ -3,8 +3,19 @@ import { OrderConfirmationEmail } from '../app/emails/order-confirmation';
 import { OrderConfirmationEmailHebrew } from '../app/emails/order-confirmation-hebrew';
 import { prisma } from './prisma';
 import { OrderConfirmationTeamEmail } from '../app/emails/order-confirmation-team-mail';
+import { EmailOtp } from '../app/emails/email-otp';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+function getResendClient(): Resend {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    throw new Error('RESEND_API_KEY environment variable is not set');
+  }
+  if (!resendClient) {
+    resendClient = new Resend(key);
+  }
+  return resendClient;
+}
 
 // In-memory cache for test orders (since they don't exist in database)
 const testOrderEmailCache = new Map<string, { emailSentAt: Date; emailMessageId: string }>();
@@ -48,13 +59,65 @@ export interface OrderEmailData {
     discountAmount: number;
     discountLabel?: string;
   }>;
+  /**
+   * Shipping method for this order: "delivery" or "pickup".
+   * Used to control how delivery vs pickup details are rendered in the email.
+   */
+  shippingMethod?: 'delivery' | 'pickup';
+  /**
+   * Pickup location when shippingMethod === "pickup".
+   */
+  pickupLocation?: string;
+  /**
+   * Points the customer spent on this order (if any).
+   */
+  pointsSpent?: number;
+}
+
+export interface EmailOtpData {
+  to: string;
+  otpCode: string;
+  userFirstname?: string;
+  isHebrew?: boolean;
+  brandName?: string;
+}
+
+export async function sendEmailOtp(data: EmailOtpData) {
+  const resend = getResendClient();
+
+  const subject = data.isHebrew ? 'קוד אימות - Sako Or' : 'Verification code - Sako Or';
+  const idempotencyKey = `email-otp-${data.to}-${Date.now()}`;
+
+  const text = data.isHebrew
+    ? `קיבלנו בקשה להתחברות.\n\nקוד האימות שלך: ${data.otpCode}\n\nקוד זה תקף למשך 5 דקות.\n\nאם לא ביקשת להתחבר, אפשר להתעלם מהמייל הזה.`
+    : `We received a request to sign in.\n\nYour verification code: ${data.otpCode}\n\nThis code expires in 5 minutes.\n\nIf you didn't request to sign in, you can ignore this email.`;
+
+  const result = await resend.emails.send(
+    {
+      from: 'Sako Or <info@sako-or.com>',
+      to: [data.to],
+      subject,
+      react: EmailOtp({
+        userFirstname: data.userFirstname,
+        otpCode: data.otpCode,
+        isHebrew: data.isHebrew,
+        brandName: data.brandName ?? 'Sako Or',
+      }),
+      text,
+    },
+    { idempotencyKey }
+  );
+
+  const { data: emailData, error } = result as { data?: any; error?: any };
+  if (error) {
+    throw error;
+  }
+  return { messageId: emailData?.id, idempotencyKey };
 }
 
 export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?: string) {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error('RESEND_API_KEY environment variable is not set');
-    }
+    const resend = getResendClient();
 
     // Production logging - minimal
     console.log(`[EMAIL] Sending confirmation for order ${data.orderNumber}`);
@@ -96,6 +159,9 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
         deliveryAddress: data.deliveryAddress,
         notes: data.notes,
         isHebrew: data.isHebrew,
+        shippingMethod: data.shippingMethod,
+        pickupLocation: data.pickupLocation,
+        pointsSpent: data.pointsSpent,
       }),
     }, {
       idempotencyKey: idempotencyKey,
@@ -147,6 +213,9 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
               deliveryAddress: data.deliveryAddress,
               notes: data.notes,
               isHebrew: data.isHebrew,
+              shippingMethod: data.shippingMethod,
+              pickupLocation: data.pickupLocation,
+              pointsSpent: data.pointsSpent,
             }),
           }, { idempotencyKey: teamIdempotencyKey }),
           new Promise((_, reject) => {

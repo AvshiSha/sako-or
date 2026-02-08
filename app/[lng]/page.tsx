@@ -4,113 +4,56 @@ import React, { useState, useEffect } from 'react'
 import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
-import { getImageUrl, getCollectionImageUrl, getProductImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl } from '@/lib/image-urls'
-import NewsletterSuccessModal from '@/app/components/NewsletterSuccessModal'
+import { useParams, usePathname } from 'next/navigation'
+import { getImageUrl, getHeroDesktopVideoUrl, getHeroMobileVideoUrl, getSakoOrMobileVideoUrl, getSakoOrDesktopVideoUrl, getHero3DesktopVideoUrl, getHero3MobileVideoUrl } from '@/lib/image-urls'
 import CountdownPopup from '@/app/components/CountdownPopup'
+import ProductCarousel from '@/app/components/ProductCarousel'
+import { productService, getFilteredProducts } from '@/lib/firebase'
+import { Product } from '@/lib/firebase'
+import CollectionTiles from '@/app/components/CollectionTiles'
 
-const collections = [
-  {
-    name: {
-      en: 'Luxury Heels',
-      he: 'נעלי עקב יוקרתיות'
-    },
-    description: {
-      en: 'Elevate your style with our curated collection of designer heels',
-      he: 'העלאת הסגנון שלך עם אוסף מוקפד של עיצובים'
-    },
-    href: '/collection/women/shoes/pumps',
-    imageSrc: getCollectionImageUrl('Luxury Heels'),
-  },
-  {
-    name: {
-      en: 'Designer Boots',
-      he: 'מגפיים יוקרתיים'
-    },
-    description: {
-      en: 'Sophisticated boots for the modern fashion connoisseur',
-      he: 'מגפיים יוקרתיים בעלי עיצוב מורכב'
-    },
-    href: '/collection/women/shoes/low-boots',
-    imageSrc: getCollectionImageUrl('Designer Boots'),
-  },
-  {
-    name: {
-      en: 'Classic Oxford',
-      he: 'נעלי אוקספורד קלאסיות'
-    },
-    description: {
-      en: 'Timeless elegance meets contemporary design',
-      he: 'נעלי אוקספורד יוקרתיות בעלות עיצוב מורכב'
-    },
-    href: '/collection/women/shoes/oxford',
-    imageSrc: getCollectionImageUrl('Classic Oxford'),
-  },
+
+// Define the exact SKUs you want to feature as "Best Sellers"
+// You can edit this array as needed.
+const BEST_SELLER_SKUS: string[] = [
+  '4905-0036',
+  '4905-0012',
+  '4904-0003',
+  '4929-2318',
+  '4926-2356',
+  '4925-2901',
+  '4925-1309',
+  '4725-6119',
+  '4714-0006',
+  '4714-0001',
+  '4904-0001',
+  '4904-0007',
+  '4904-0010',
+  '4904-0050',
+  '4905-0001',
+  '4912-2168',
+  '4912-2170',
+  '4922-3151',
+  '4925-0310' ,
+  '4925-1205'
 ]
 
-const featuredProducts = [
-  {
-    id: 1,
-    name: {
-      en: 'Tan Suede Chunky Sneakers',
-      he: 'סניקרס זמש חומות'
-    },
-    href: `/product/4912-2169/dark-brown`,
-    imageSrc: getProductImageUrl('Tan Suede Chunky Sneakers'),
-    imageAlt: {
-      en: 'Tan Suede Chunky Sneakers',
-      he: 'סניקרס זמש חומות'
-    },
-    price: 990,
-    //salePrice: 890,
-    description: {
-      en: 'Step up your style with these premium suede sneakers.<br />A perfect mix of comfort, elegance, and modern edge.',
-      he: 'תקחי את הסטייל שלך צעד אחד קדימה עם סניקרס איטלקיות'
-    },
-  },
-  {
-    id: 2,
-    name: {
-      en: 'Chic Ankle Boots',
-      he: 'מגפוני שיק'
-    },
-    href: '/product/4926-2356/off-white',
-    imageSrc: getProductImageUrl('Chic Ankle Boots'),
-    imageAlt: {
-      en: 'Chic Ankle Boots',
-      he: 'מגפוני שיק'
-    },
-    price: 790,
-    //salePrice: 690,
-    description: {
-      en: 'Turn heads with these chic white ankle boots.<br />Sleek, modern, and effortlessly elegant for any occasion.',
-      he: 'תסובבי ראשים עם מגפוני עקב יוקרתיות'
-    },
-  },
-  {
-    id: 3,
-    name: {
-      en: 'Suede Cowboy Boots',
-      he: 'מגפוני בוקרים זמש'
-    },
-    href: '/product/4925-2901/dark-brown',
-    imageSrc: getProductImageUrl('Suede Cowboy Boots'),
-    imageAlt: {
-      en: 'Suede Cowboy Boots',
-      he:  'מגפוני בוקרים זמש'
-    },
-    price: 599,
-    // salePrice: 479,
-    description: {
-      en: 'Add a bold western touch to your look with these rich brown suede cowboy boots.',
-      he: 'הוסיפי טאץ\' מערבי נועז למראה שלך עם המגפוני בוקרים שלנו'
-    },
-  },
+// BOGO pair deal – SKUs from all groups (match assign-bogo-groups.ts)
+const BOGO_PAIR_SKUS: string[] = [
+  ...['4925-2703', '4925-2704', '4725-1310', '4725-2725'],
+  ...['4929-3123', '4724-0231', '4725-1201', '4725-1326', '4725-2521', '4725-2718', '4725-4007', '4725-6110', '4725-6119', '4726-8916'],
+  ...['4925-1304', '4925-1309', '4925-1320', '4925-1327', '4925-2714', '4925-2715', '4925-2901', '4925-2913', '4925-4013', '4925-4031', '4925-6113', '4929-9281', '4929-9988', '4715-0603', '4715-0701', '4725-1007', '4725-1011', '4725-1207', '4725-1305', '4725-2915', '4725-6108', '4725-6109'],
+  ...['4922-1804', '4924-0001', '4925-0301', '4925-0310', '4925-1205', '4925-1210', '4925-1329', '4925-2512', '4925-4001', '4925-6107', '4925-6108', '4925-6170', '4925-6180', '4929-2318', '4929-3985', '4929-9521', '4725-1210', '4725-3315', '4725-6105'],
+  ...['4922-5394', '4924-0605', '4924-7168', '4924-7187', '4924-8017', '4925-1302', '4929-2668', '4704-0007', '4704-0010', '4704-0061', '4712-4218', '4713-0100', '4713-0201']
 ]
 
 // Hardcoded translations for build-time rendering
 const translations = {
   en: {
     brandName: 'Sako Or',
+    holidayCollection: 'Holiday Collection',
+    forHer: 'FOR HER',
+    forHim: 'FOR HIM',
     heroDescription: 'End of year sales on all winter collections!',  //'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
     exploreCollections: 'Explore Winter Collections',  //'Explore Collections',
     collectionsTitle: 'Curated Collections',
@@ -126,12 +69,16 @@ const translations = {
     subscribeButton: 'Subscribe',
     emailRequired: 'Email is required',
     emailInvalid: 'Please enter a valid email address',
-    subscriptionError: 'Failed to subscribe. Please try again.'
+    subscriptionError: 'Failed to subscribe. Please try again.',
+    bogoPairTitle: 'Choose two items, and a surprise awaits in your cart'
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!
-    heroDescription:  'מבצעי סוף עונה על כל קולקציית החורף!',   //'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
-    exploreCollections:  'מבצעי סוף העונה',  //'לקולקציה החדשה',
+    holidayCollection: 'קולקציית החגים',
+    forHer: 'לנשים',
+    forHim: 'לגברים',
+    heroDescription: 'מבצעי סוף עונה על כל קולקציית החורף!',   //'גלי את האוסף המוקפד שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
+    exploreCollections: 'מבצעי סוף העונה',  //'לקולקציה החדשה',
     collectionsTitle: 'אוספים מוקפדים',
     collectionsDescription: 'כל חלק באוסף שלנו מייצג הרמוניה מושלמת של עיצוב, נוחות ואומנות',
     viewCollection: 'צפה באוסף',
@@ -145,25 +92,172 @@ const translations = {
     subscribeButton: 'הירשם',
     emailRequired: 'נדרש אימייל',
     emailInvalid: 'אנא הזן כתובת אימייל תקינה',
-    subscriptionError: 'ההרשמה נכשלה. אנא נסה שוב.'
+    subscriptionError: 'ההרשמה נכשלה. אנא נסה שוב.',
+    bogoPairTitle: 'תבחרי שני פריטים – ותחכה לך הפתעה בעגלה'
   }
 }
 
-export default function Home({ params }: { params: Promise<{ lng: string }> }) {
-  const [lng, setLng] = useState<string>('en')
-  const [email, setEmail] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [subscribedEmail, setSubscribedEmail] = useState('')
-  const [emailError, setEmailError] = useState('')
+export default function Home() {
+  const params = useParams()
+  const pathname = usePathname()
   const [showCountdownPopup, setShowCountdownPopup] = useState(false)
-  
-  // Initialize language from params
+  const [bestSellers, setBestSellers] = useState<Product[]>([])
+  const [sakoOrProducts, setSakoOrProducts] = useState<Product[]>([])
+  const [bogoPairProducts, setBogoPairProducts] = useState<Product[]>([])
+  const [loadingProducts, setLoadingProducts] = useState(true)
+  const [loadingSakoOrProducts, setLoadingSakoOrProducts] = useState(true)
+  const [loadingBogoPairProducts, setLoadingBogoPairProducts] = useState(true)
+
+  // Extract language from pathname or params to avoid hydration mismatch
+  // Prioritize pathname (available during SSR) for consistency between server and client
+  // Fallback to params only if pathname doesn't provide a valid language
+  const lng = React.useMemo((): 'en' | 'he' => {
+    // Try pathname first (available during SSR and consistent on both server and client)
+    if (pathname) {
+      const pathSegments = pathname.split('/').filter(Boolean)
+      const langFromPath = pathSegments[0]
+      if (langFromPath === 'he' || langFromPath === 'en') {
+        return langFromPath
+      }
+    }
+    // Fallback to params (available after hydration, but may not be during SSR)
+    if (params?.lng && (params.lng === 'he' || params.lng === 'en')) {
+      return params.lng as 'en' | 'he'
+    }
+    return 'en'
+  }, [pathname, params?.lng])
+
+  // Fetch best sellers products (by explicit SKU list)
   useEffect(() => {
-    params.then(({ lng: language }) => {
-      setLng(language)
-    })
-  }, [params])
+    const fetchBestSellers = async () => {
+      try {
+        setLoadingProducts(true)
+        console.log('Fetching best sellers, SKUs count:', BEST_SELLER_SKUS.length)
+        // If no SKUs configured, fall back to newest active products
+        if (BEST_SELLER_SKUS.length === 0) {
+          const products: Product[] = await productService.getAllProducts({
+            isActive: true,
+            limit: 12, // Limit to 12 products for the carousel
+          })
+          setBestSellers(products)
+          return
+        }
+
+        // Firestore `in` operator supports max 10 items – chunk SKUs
+        const chunkSize = 10
+        const skuChunks: string[][] = []
+        for (let i = 0; i < BEST_SELLER_SKUS.length; i += chunkSize) {
+          skuChunks.push(BEST_SELLER_SKUS.slice(i, i + chunkSize))
+        }
+
+        const results = await Promise.all(
+          skuChunks.map((chunk) =>
+            getFilteredProducts({
+              includeSkus: chunk,
+            })
+          )
+        )
+
+        // Merge and de-duplicate by SKU
+        const productBySku = new Map<string, Product>()
+        for (const result of results) {
+          for (const product of result.products as Product[]) {
+            if (product.sku) {
+              productBySku.set(product.sku, product)
+            }
+          }
+        }
+
+        // Preserve the order defined in BEST_SELLER_SKUS
+        const orderedBestSellers: Product[] = []
+        for (const sku of BEST_SELLER_SKUS) {
+          const product = productBySku.get(sku)
+          if (product) {
+            orderedBestSellers.push(product)
+          }
+        }
+
+        setBestSellers(orderedBestSellers)
+      } catch (error) {
+        console.error('Error fetching best sellers:', error)
+      } finally {
+        setLoadingProducts(false)
+      }
+    }
+
+    fetchBestSellers()
+  }, [])
+
+  // Fetch SAKO-OR brand products (random order)
+  useEffect(() => {
+    const fetchSakoOrProducts = async () => {
+      try {
+        setLoadingSakoOrProducts(true)
+        // Fetch more products to get better randomness, then shuffle and limit
+        const allProducts = await productService.getAllProducts({
+          isActive: true,
+          brand: 'SAKO-OR',
+          limit: 50, // Fetch more for better randomness
+        })
+
+        // Shuffle array using Fisher-Yates algorithm
+        const shuffled = [...allProducts]
+        for (let i = shuffled.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+        }
+
+        // Take first 15 after shuffling
+        setSakoOrProducts(shuffled.slice(0, 15))
+      } catch (error) {
+        console.error('Error fetching SAKO-OR products:', error)
+      } finally {
+        setLoadingSakoOrProducts(false)
+      }
+    }
+
+    fetchSakoOrProducts()
+  }, [])
+
+  // Fetch BOGO pair products (SKUs from assign-bogo-groups.ts)
+  useEffect(() => {
+    const fetchBogoPairProducts = async () => {
+      try {
+        setLoadingBogoPairProducts(true)
+        if (BOGO_PAIR_SKUS.length === 0) {
+          setBogoPairProducts([])
+          return
+        }
+        const chunkSize = 10
+        const skuChunks: string[][] = []
+        for (let i = 0; i < BOGO_PAIR_SKUS.length; i += chunkSize) {
+          skuChunks.push(BOGO_PAIR_SKUS.slice(i, i + chunkSize))
+        }
+        const results = await Promise.all(
+          skuChunks.map((chunk) =>
+            getFilteredProducts({ includeSkus: chunk })
+          )
+        )
+        const productBySku = new Map<string, Product>()
+        for (const result of results) {
+          for (const product of result.products as Product[]) {
+            if (product.sku) productBySku.set(product.sku, product)
+          }
+        }
+        const ordered: Product[] = []
+        for (const sku of BOGO_PAIR_SKUS) {
+          const product = productBySku.get(sku)
+          if (product) ordered.push(product)
+        }
+        setBogoPairProducts(ordered)
+      } catch (error) {
+        console.error('Error fetching BOGO pair products:', error)
+      } finally {
+        setLoadingBogoPairProducts(false)
+      }
+    }
+    fetchBogoPairProducts()
+  }, [])
 
   // Show countdown popup on home page
   useEffect(() => {
@@ -172,74 +266,28 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
       const timer = setTimeout(() => {
         setShowCountdownPopup(true)
       }, 500) // 500ms delay to ensure everything is ready
-      
+
       return () => clearTimeout(timer)
     }
   }, [])
 
   const isRTL = lng === 'he'
-  
+
   // Get translations for current language
-  const t = translations[lng as keyof typeof translations]
+  const t = translations[lng]
 
   const heroImageSrc = getImageUrl("/images/hero/main-hero.jpg")
   const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
   const heroMobileVideoSrc = getHeroMobileVideoUrl()
-
-  const validateEmail = (email: string): boolean => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
-
-  const handleNewsletterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    // Clear previous errors
-    setEmailError('')
-    
-    if (!email.trim()) {
-      setEmailError(t.emailRequired || 'Email is required')
-      return
-    }
-    
-    if (!validateEmail(email.trim())) {
-      setEmailError(t.emailInvalid || 'Please enter a valid email address')
-      return
-    }
-    
-    setIsSubmitting(true)
-    
-    try {
-      const response = await fetch('/api/newsletter/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: email.trim() }),
-      })
-      
-      const data = await response.json()
-      
-      if (data.success) {
-        setSubscribedEmail(email.trim())
-        setShowSuccessModal(true)
-        setEmail('') // Clear the form
-        setEmailError('') // Clear any errors
-      } else {
-        setEmailError(data.error || t.subscriptionError || 'Failed to subscribe. Please try again.')
-      }
-    } catch (error) {
-      console.error('Error subscribing to newsletter:', error)
-      setEmailError(t.subscriptionError || 'Failed to subscribe. Please try again.')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+  const sakoOrMobileVideoSrc = getSakoOrMobileVideoUrl()
+  const sakoOrDesktopVideoSrc = getSakoOrDesktopVideoUrl()
+  const hero3DesktopVideoSrc = getHero3DesktopVideoUrl()
+  const hero3MobileVideoSrc = getHero3MobileVideoUrl()
 
   return (
-    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#F6F3ED' }}>
+    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
-      <div className="relative h-screen">
+      <div className="relative aspect-[3/4] md:aspect-[21/9]">
         <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
           <video
             className="hidden md:block h-full w-full object-cover"
@@ -262,194 +310,137 @@ export default function Home({ params }: { params: Promise<{ lng: string }> }) {
             preload="metadata"
             //poster={heroImageSrc}
             aria-hidden="true"
+
           >
             <source src={heroMobileVideoSrc} type="video/mp4" />
           </video>
           <div className="absolute inset-0 bg-neutral-900/60" aria-hidden="true" />
         </div>
-        <div className="relative h-full flex items-center justify-center text-center">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1 className="text-5xl md:text-7xl font-light text-white mb-6 tracking-tight">
+        <div className="relative h-full flex flex-col items-center text-center">
+          <div className="absolute bottom-[15%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase" style={{ fontFamily: 'Assistant, sans-serif' }}>
               SAKO OR
             </h1>
-            <p className="text-xl md:text-2xl text-white font-light max-w-2xl mx-auto mb-10 whitespace-pre-line">
-              {t.heroDescription}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link
-                onClick={() => track('explore_collections_hero_button')}
-                href={`/${lng}/collection/women/shoes`}
-                className="inline-block bg-white/90 hover:bg-white py-4 px-8 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
-              >
-                {t.exploreCollections}
-              </Link>
-              {/* <Link
-                onClick={() => track('silvester_sale_hero_button')}
-                href={`/${lng}/collection/campaign?slug=silvester-sale`}
-                className="inline-block bg-white/90 hover:bg-white py-4 px-11 text-gray-900 text-lg font-light tracking-wider transition-all duration-300"
-              >
-                {lng === 'he' ? 'סילבסטר סייל' : 'Silvester Sale'}
-              </Link> */}
-            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Collections Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-light text-gray-900 mb-4">{t.collectionsTitle}</h2>
-          <p className="text-gray-500 max-w-2xl mx-auto">
-            {t.collectionsDescription}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {collections.map((collection) => (
+          <div className="absolute bottom-6 md:bottom-8 left-0 right-0 flex flex-row gap-6 md:gap-8 justify-center items-center px-4">
             <Link
-              key={collection.name.en}
-              onClick={() => track('view_collections_button')}
-              href={`/${lng}${collection.href}`}
-              className="group relative h-96 block"
-            >
-              <Image
-                src={collection.imageSrc}
-                alt={collection.name[lng as keyof typeof collection.name]}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
-              <div className="absolute inset-0 bg-gray-900 opacity-40 group-hover:opacity-30 transition-opacity duration-300" />
-              <div className="relative h-full flex items-end p-8">
-                <div>
-                  <h3 className="text-2xl font-light text-white mb-2">{collection.name[lng as keyof typeof collection.name]}</h3>
-                  <p className="text-white/80 mb-4">{collection.description[lng as keyof typeof collection.description]}</p>
-                  <span className="text-white text-sm tracking-wider underline-offset-2 group-hover:underline">
-                    {t.viewCollection} →
-                  </span>
-                </div>
-              </div>
+              onClick={() => track('new_collection_for_her')}
+              href={`/${lng}/collection/women/shoes`}
+              className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300" style={{ fontFamily: 'Assistant, sans-serif' }}>
+              {lng === 'he' ? 'לקולקציה החדשה' : 'To New Collection'}
             </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Featured Products */}
-      <div className="bg-neutral-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-light text-gray-900 mb-4">{t.featuredTitle}</h2>
-            <p className="text-gray-500 max-w-2xl mx-auto">
-              {t.featuredDescription}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {featuredProducts.map((product) => {
-            const salePriceValue =
-              'salePrice' in product && typeof product.salePrice === 'number'
-                ? product.salePrice
-                : null;
-            const hasSale = salePriceValue !== null && salePriceValue < product.price;
-
-              return (
-                <Link
-                  key={product.id}
-                  onClick={() => track('view_featured_product_button')}
-                  href={`/${lng}/${product.href}`}
-                  className="group block"
-                >
-                  <div className="relative aspect-square bg-gray-100 mb-4 overflow-hidden">
-                    <Image
-                      src={product.imageSrc}
-                      alt={product.imageAlt[lng as keyof typeof product.imageAlt]}
-                      fill
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                    <div className="absolute inset-0 bg-gray-900/5 group-hover:bg-gray-900/10 transition-colors duration-300" />
-                    {hasSale && (
-                      <div className="absolute top-3 left-3 bg-red-600 text-white text-xs uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
-                        {t.saleBadge}
-                      </div>
-                    )}
-                  </div>
-                  <h3 className="text-lg font-light text-gray-900 mb-1">
-                    {product.name[lng as keyof typeof product.name]}
-                  </h3>
-                  <p
-                    className="text-sm text-gray-500 mb-2"
-                    dangerouslySetInnerHTML={{ __html: product.description[lng as keyof typeof product.description] }}
-                  />
-                  {hasSale ? (
-                    <div className="flex items-baseline gap-3">
-                      <span className="text-base text-gray-500 line-through" aria-label={`Original price ${product.price}₪`}>
-                        {product.price}₪
-                      </span>
-                      <span className="text-lg text-red-600 font-medium" aria-label={`${t.salePriceLabel} ${salePriceValue}₪`}>
-                        {salePriceValue}₪
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="text-lg text-gray-900">{product.price}₪</p>
-                  )}
-                </Link>
-              );
-            })}
+            <Link
+              onClick={() => track('outlet_collection_for_her')}
+              href={`/${lng}/collection/women/outlet`}
+              className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300" style={{ fontFamily: 'Assistant, sans-serif' }}>
+              {lng === 'he' ? 'לכל המבצעים' : 'To Sales'}
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Newsletter Section */}
-      <div style={{ backgroundColor: '#f6f3ed' }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="max-w-xl mx-auto text-center">
-            <h2 className="text-3xl font-light text-gray-900 mb-4">{t.newsletterTitle}</h2>
-            <p className="text-gray-500 mb-8">
-              {t.newsletterDescription}
-            </p>
-            <form onSubmit={handleNewsletterSubmit} className="max-w-md mx-auto">
-              <div className="flex gap-4">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value)
-                    if (emailError) setEmailError('') // Clear error when user types
-                  }}
-                  placeholder={t.emailPlaceholder}
-                  required
-                  disabled={isSubmitting}
-                  className={`flex-1 px-4 py-3 border text-gray-900 focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed ${
-                    emailError ? 'border-red-500 focus:border-red-500' : 'border-gray-600 focus:border-gray-900'
-                  }`}
-                />
-                <button
-                  onClick={() => track('subscribe_to_newsletter_button')}
-                  type="submit"
-                  disabled={isSubmitting || !email.trim()}
-                  className="px-6 py-3 bg-gray-900 text-white hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSubmitting ? '...' : t.subscribeButton}
-                </button>
-              </div>
-              {emailError && (
-                <p className="mt-2 text-sm text-red-600 text-center">
-                  {emailError}
-                </p>
-              )}
-            </form>
+      {/* Product Carousel - Best Sellers */}
+      {!loadingProducts && bestSellers.length > 0 && (
+        <ProductCarousel
+          products={bestSellers}
+          title={lng === 'he' ? 'הנמכרים ביותר' : 'Best Sellers'}
+          language={lng as 'en' | 'he'}
+        />
+      )}
+
+      {/* Hero section - Second */}
+      <div className="relative aspect-[3/4] md:aspect-[21/9]">
+        <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
+          <video
+            className="hidden md:block h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            // poster={heroImageSrc}
+            aria-hidden="true"
+          >
+            <source src={sakoOrDesktopVideoSrc} type="video/mp4" />
+          </video>
+          <video
+            className="block md:hidden h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            //poster={heroImageSrc}
+            aria-hidden="true"
+
+          >
+            <source src={sakoOrMobileVideoSrc} type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-neutral-900/60" aria-hidden="true" />
+        </div>
+        <div className="relative h-full flex items-center justify-center text-center">
+          <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase hero-text-fade-in" style={{ fontFamily: 'Assistant, sans-serif', opacity: 0 }}>
+              SAKO OR EXCLUSIVE
+            </h1>
           </div>
         </div>
       </div>
 
-      {/* Newsletter Success Modal */}
-      <NewsletterSuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-        email={subscribedEmail}
-        lng={lng}
-      />
+      {/* Product Carousel - SAKO-OR Products - Second */}
+      {!loadingSakoOrProducts && sakoOrProducts.length > 0 && (
+        <ProductCarousel
+          products={sakoOrProducts}
+          title={'Only at SAKO OR'}
+          language={lng as 'en' | 'he'}
+        />
+      )}
+
+      {/* Hero section - Third (desktop + mobile videos) */}
+      <div className="relative aspect-[3/4] md:aspect-[21/9]">
+        <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
+          <video
+            className="hidden md:block h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+          >
+            <source src={hero3DesktopVideoSrc} type="video/mp4" />
+          </video>
+          <video
+            className="block md:hidden h-full w-full object-cover"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            aria-hidden="true"
+          >
+            <source src={hero3MobileVideoSrc} type="video/mp4" />
+          </video>
+          <div className="absolute inset-0 bg-neutral-900/40" aria-hidden="true" />
+        </div>
+        <div className="relative h-full flex items-center justify-center text-center">
+          <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Optional headline – replace or remove when you add your own content */}
+          </div>
+        </div>
+      </div>
+
+      {/* Product Carousel - BOGO pair deal */}
+      {!loadingBogoPairProducts && bogoPairProducts.length > 0 && (
+        <ProductCarousel
+          products={bogoPairProducts}
+          title={t.bogoPairTitle}
+          language={lng as 'en' | 'he'}
+        />
+      )}
+
+      {/* Collection Tiles - under Hero #3 */}
+      <CollectionTiles lng={lng} />
 
       {/* Countdown Popup */}
       {/* <CountdownPopup

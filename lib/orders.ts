@@ -1,17 +1,34 @@
 import { prisma } from './prisma';
 import { parseSku } from './sku-parser';
 import { CouponDiscountType } from '@prisma/client';
+import { markCartItemsAsCheckedOut } from './cart-status';
 
 export interface CreateOrderData {
   orderNumber: string;
   total: number;
   subtotal?: number;
   discountTotal?: number;
+  /**
+   * Optional: automatic BOGO discount amount applied to this order.
+   * When present and > 0, coupons should not be combined with this order.
+   */
+  bogoDiscountAmount?: number;
   deliveryFee?: number;
+  /**
+   * Shipping method for the order.
+   * - "delivery" (default): standard home delivery with deliveryFee rules
+   * - "pickup": self pickup from store, deliveryFee should be 0
+   */
+  shippingMethod?: 'delivery' | 'pickup';
+  /**
+   * Pickup location for self-pickup orders (e.g. store address)
+   */
+  pickupLocation?: string;
   currency?: string;
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  userId?: string;
   items: {
     productName: string;
     productSku: string;
@@ -19,6 +36,9 @@ export interface CreateOrderData {
     size?: string;
     quantity: number;
     price: number;
+    primaryImage?: string;
+    salePrice?: number;
+    modelNumber?: string;
   }[];
   coupons?: Array<{
     code: string;
@@ -38,11 +58,15 @@ export async function createOrder(data: CreateOrderData) {
         total: data.total,
         subtotal: data.subtotal ?? data.total,
         discountTotal: data.discountTotal ?? 0,
+        bogoDiscountAmount: data.bogoDiscountAmount ?? null,
         deliveryFee: data.deliveryFee ?? 0,
+        shippingMethod: data.shippingMethod ?? 'delivery',
+        pickupLocation: data.pickupLocation ?? null,
         currency: data.currency || 'ILS',
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,
+        ...(data.userId ? { userId: data.userId } : {}),
         orderItems: {
           create: data.items.map(item => {
             // Parse the SKU to extract base SKU, color, and size
@@ -55,6 +79,11 @@ export async function createOrder(data: CreateOrderData) {
 
             console.log(`[ORDER] Parsing SKU: ${item.productSku} -> Base: ${baseSku}, Color: ${colorName}, Size: ${size}`);
 
+            // Generate model number: baseSku + colorName (e.g., "SKU-123-BLACK")
+            const modelNumber = colorName 
+              ? `${baseSku}-${colorName.toUpperCase()}` 
+              : baseSku;
+
             return {
               quantity: item.quantity,
               price: item.price,
@@ -63,6 +92,9 @@ export async function createOrder(data: CreateOrderData) {
               productSku: baseSku, // Store only the base SKU
               colorName: colorName,
               size: size,
+              primaryImage: item.primaryImage || null,
+              salePrice: item.salePrice || null,
+              modelNumber: item.modelNumber || modelNumber,
             };
           }),
         },
@@ -84,6 +116,11 @@ export async function createOrder(data: CreateOrderData) {
         appliedCoupons: true,
       },
     });
+
+    // Mark cart items as CHECKED_OUT for signed-in users
+    if (data.userId) {
+      await markCartItemsAsCheckedOut(order.orderNumber, data.userId);
+    }
 
     return order;
   } catch (error) {
@@ -162,3 +199,4 @@ export function stringifyPaymentData(data: any): string | null {
     return null;
   }
 }
+

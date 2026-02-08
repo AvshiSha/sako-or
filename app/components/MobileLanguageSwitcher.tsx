@@ -45,7 +45,7 @@ function MobileLanguageSwitcherInner({ currentLanguage }: MobileLanguageSwitcher
       >
         {Object.entries(languageMetadata).map(([code, meta]) => (
           <option key={code} value={code}>
-            {meta.flag} {meta.nativeName} ({code.toUpperCase()})
+            {meta.nativeName} ({code.toUpperCase()})
           </option>
         ))}
       </select>
@@ -66,7 +66,7 @@ export default function MobileLanguageSwitcher({ currentLanguage }: MobileLangua
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900"
         >
           <option value={currentLanguage}>
-            {languageMetadata[currentLanguage as keyof typeof languageMetadata]?.flag} {languageMetadata[currentLanguage as keyof typeof languageMetadata]?.nativeName} ({currentLanguage.toUpperCase()})
+            {languageMetadata[currentLanguage as keyof typeof languageMetadata]?.nativeName} ({currentLanguage.toUpperCase()})
           </option>
         </select>
       </div>

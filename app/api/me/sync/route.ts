@@ -1,0 +1,153 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import { normalizeIsraelE164 } from '@/lib/phone'
+import { requireUserAuth } from '@/lib/server/auth'
+
+function normalizeEmail(raw: string) {
+  return raw.trim().toLowerCase()
+}
+
+function parseDisplayName(displayName: string | null | undefined): {
+  firstName: string | null
+  lastName: string | null
+} {
+  if (!displayName) return { firstName: null, lastName: null }
+  const parts = displayName
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (parts.length === 0) return { firstName: null, lastName: null }
+  if (parts.length === 1) return { firstName: parts[0], lastName: null }
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
+}
+
+function computeNeedsProfileCompletion(user: {
+  firstName: string | null
+  lastName: string | null
+  phone: string | null
+  language: string | null
+}): boolean {
+  return !user.firstName || !user.lastName || !user.phone || !user.language
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await requireUserAuth(request)
+    if (auth instanceof NextResponse) return auth
+    const decoded = auth.decoded
+    const firebaseUid = auth.firebaseUid
+    const now = new Date()
+
+    const firebaseUser = auth.firebaseUser
+
+    const emailRaw = firebaseUser.email ?? decoded.email ?? null
+    const email = emailRaw ? normalizeEmail(emailRaw) : null
+
+    // Normalize phone to E.164 format for consistency
+    const phone = normalizeIsraelE164(firebaseUser.phoneNumber)
+    const emailVerified = firebaseUser.emailVerified ?? (decoded.email_verified ?? false)
+
+    const authProvider = auth.authProvider
+
+    const { firstName: parsedFirstName, lastName: parsedLastName } =
+      parseDisplayName(firebaseUser.displayName)
+
+    // Find existing user - do NOT create on sync
+    const existingUser = await prisma.user.findUnique({
+      where: { firebaseUid }
+    })
+
+    // If user doesn't exist in DB yet, return early with needsProfileCompletion = true
+    // The user will be created when they submit the profile form via /api/me/profile PATCH
+    // Include parsed names from Google so frontend can use them as placeholders
+    if (!existingUser) {
+      return NextResponse.json(
+        {
+          ok: true,
+          needsProfileCompletion: true,
+          user: null,
+          id: null,
+          firebaseUid,
+          email,
+          role: 'USER',
+          lastLoginAt: null,
+          createdAt: null,
+          updatedAt: null,
+          // Include Google names for frontend to use as placeholders
+          googleFirstName: parsedFirstName,
+          googleLastName: parsedLastName
+        },
+        { status: 200 }
+      )
+    }
+
+    // User exists - update login metadata
+    // Only update names from Google if they are currently null/empty (never override user-chosen names)
+    const nameUpdate: { firstName?: string; lastName?: string } = {}
+    if (parsedFirstName && !existingUser.firstName) {
+      nameUpdate.firstName = parsedFirstName
+    }
+    if (parsedLastName && !existingUser.lastName) {
+      nameUpdate.lastName = parsedLastName
+    }
+
+    const user = await prisma.user.update({
+      where: { firebaseUid },
+      data: {
+        lastLoginAt: now,
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {}),
+        emailVerified,
+        ...(authProvider ? { authProvider } : {}),
+        ...nameUpdate,
+        isDelete: false
+      }
+    })
+
+    const needsProfileCompletion = computeNeedsProfileCompletion({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      language: user.language
+    })
+
+    return NextResponse.json(
+      {
+        ok: true,
+        user,
+        needsProfileCompletion,
+        id: user.id,
+        firebaseUid: user.firebaseUid,
+        email: user.email,
+        role: user.role,
+        lastLoginAt: user.lastLoginAt,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      },
+      { status: 200 }
+    )
+  } catch (error: any) {
+    // Prisma unique constraint violation
+    if (error?.code === 'P2002') {
+      const target = error?.meta?.target
+      const targetStr = Array.isArray(target) ? target.join(',') : String(target ?? '')
+      if (targetStr.includes('email')) {
+        return NextResponse.json({ error: 'Email is already in use' }, { status: 409 })
+      }
+      if (targetStr.includes('phone')) {
+        return NextResponse.json({ error: 'Phone number is already in use' }, { status: 409 })
+      }
+      if (targetStr.includes('firebaseUid') || targetStr.includes('firebase_uid')) {
+        return NextResponse.json({ error: 'User already exists' }, { status: 409 })
+      }
+      return NextResponse.json({ error: 'Conflict: unique constraint violation' }, { status: 409 })
+    }
+
+    console.error('[ME_SYNC_ERROR]', error)
+    const message =
+      typeof error?.message === 'string' ? error.message : 'Unable to sync user'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
+
+

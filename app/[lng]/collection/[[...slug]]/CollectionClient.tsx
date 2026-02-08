@@ -176,7 +176,7 @@ export default function CollectionClient({
   const [allVariantItems, setAllVariantItems] = useState<VariantItem[]>(initialVariantItems || []);
   const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
   const [currentPage, setCurrentPage] = useState(searchPage || 1);
-  const [totalProducts, setTotalProducts] = useState(searchTotal || (useVariantItems ? (initialVariantItems?.length || 0) : initialProducts.length));
+  const [totalProducts, setTotalProducts] = useState(searchTotal ?? (useVariantItems ? (initialVariantItems?.length ?? 0) : initialProducts.length));
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -344,10 +344,10 @@ export default function CollectionClient({
       // Filters/search changed - reset accumulated items to start fresh
       if (useVariantItems && initialVariantItems) {
         setAllVariantItems(initialVariantItems);
-        setTotalProducts(searchTotal || initialVariantItems.length);
+        setTotalProducts(searchTotal ?? initialVariantItems.length);
       } else {
         setAllProducts(initialProducts);
-        setTotalProducts(searchTotal || initialProducts.length);
+        setTotalProducts(searchTotal ?? initialProducts.length);
       }
       setCurrentPage(searchPage || 1);
       setHasMore(initialHasMore);
@@ -358,10 +358,10 @@ export default function CollectionClient({
       if (searchPage && searchPage !== currentPage) {
         if (useVariantItems && initialVariantItems) {
           setAllVariantItems(initialVariantItems);
-          setTotalProducts(searchTotal || initialVariantItems.length);
+          setTotalProducts(searchTotal ?? initialVariantItems.length);
         } else {
           setAllProducts(initialProducts);
-          setTotalProducts(searchTotal || initialProducts.length);
+          setTotalProducts(searchTotal ?? initialProducts.length);
         }
         setCurrentPage(searchPage);
         setHasMore(initialHasMore);

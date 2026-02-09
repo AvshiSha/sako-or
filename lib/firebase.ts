@@ -1083,6 +1083,67 @@ export function expandProductsToVariants(products: Product[]): VariantItem[] {
 }
 
 /**
+ * When product has no embedded colorVariants, load them from the colorVariants collection
+ * (supports legacy product structure so collection page can show one card per color).
+ */
+async function loadColorVariantsForProduct(product: Product): Promise<void> {
+  if (product.colorVariants && Object.keys(product.colorVariants).length > 0) {
+    return;
+  }
+  try {
+    const colorVariantsQuery = query(
+      collection(db, 'colorVariants'),
+      where('productId', '==', product.id),
+      orderBy('createdAt', 'asc')
+    );
+    const colorVariantsSnapshot = await getDocs(colorVariantsQuery);
+    product.colorVariants = {};
+    for (const variantDoc of colorVariantsSnapshot.docs) {
+      const variant = { id: variantDoc.id, ...variantDoc.data() } as ColorVariant;
+      const imagesQuery = query(
+        collection(db, 'colorVariantImages'),
+        where('colorVariantId', '==', variant.id),
+        orderBy('order', 'asc')
+      );
+      const imagesSnapshot = await getDocs(imagesQuery);
+      variant.images = imagesSnapshot.docs.map(imgDoc => ({
+        id: imgDoc.id,
+        ...imgDoc.data()
+      } as ColorVariantImage));
+      const sizesQuery = query(
+        collection(db, 'colorVariantSizes'),
+        where('colorVariantId', '==', variant.id),
+        orderBy('size', 'asc')
+      );
+      const sizesSnapshot = await getDocs(sizesQuery);
+      variant.sizes = sizesSnapshot.docs.map(sizeDoc => ({
+        id: sizeDoc.id,
+        ...sizeDoc.data()
+      } as ColorVariantSize));
+      if (variant.colorSlug) {
+        product.colorVariants[variant.colorSlug] = {
+          colorSlug: variant.colorSlug,
+          priceOverride: variant.price,
+          salePrice: variant.salePrice,
+          stockBySize: variant.sizes?.reduce((sizeAcc, size) => {
+            sizeAcc[size.size] = size.stock;
+            return sizeAcc;
+          }, {} as Record<string, number>) || {},
+          metaTitle: variant.metaTitle,
+          metaDescription: variant.metaDescription,
+          images: variant.images?.map(img => img.url) || [],
+          primaryImage: variant.images?.find(img => img.isPrimary)?.url,
+          videos: variant.videoUrl ? [variant.videoUrl] : []
+        };
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load color variants for product', product.id, error);
+    product.colorVariants = {};
+  }
+}
+
+/**
  * Get filtered products using Firestore queries
  * Handles category, price, and basic filtering on the server
  * Color and size filtering is done client-side on the filtered subset
@@ -1228,6 +1289,9 @@ export async function getFilteredProducts(
           console.warn(`Failed to fetch category for product ${product.id}:`, err);
         }
       }
+
+      // Populate colorVariants from separate collection when not embedded (so collection shows all color variants)
+      await loadColorVariantsForProduct(product);
 
       products.push(product);
       lastDoc = docSnapshot;
@@ -2812,6 +2876,40 @@ export const campaignService = {
       console.error('Error fetching campaign products:', error);
       throw error;
     }
+  },
+
+  /** Get a single page of campaign products (e.g. for "Load more"). */
+  async getCampaignProductsPaginated(
+    campaign: Campaign,
+    page: number,
+    pageSize: number
+  ): Promise<{ products: Product[]; total: number; hasMore: boolean; page: number }> {
+    const all = await this.getCampaignProducts(campaign);
+    const total = all.length;
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const products = all.slice(start, end);
+    const hasMore = end < total;
+    return { products, total, hasMore, page };
+  },
+
+  /** Campaign products as variant items (one per color), paginated – same as collection page. */
+  async getCampaignVariantItemsPaginated(
+    campaign: Campaign,
+    page: number,
+    pageSize: number
+  ): Promise<{ variantItems: VariantItem[]; total: number; hasMore: boolean; page: number }> {
+    const products = await this.getCampaignProducts(campaign);
+    for (const p of products) {
+      await loadColorVariantsForProduct(p);
+    }
+    const allVariants = expandProductsToVariants(products);
+    const total = allVariants.length;
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const variantItems = allVariants.slice(start, end);
+    const hasMore = end < total;
+    return { variantItems, total, hasMore, page };
   },
 
   // Create campaign

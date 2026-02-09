@@ -1,4 +1,4 @@
-import { campaignService, Product } from "@/lib/firebase";
+import { campaignService } from "@/lib/firebase";
 import { redirect } from "next/navigation";
 import CampaignClient from "./CampaignClient";
 import { Metadata } from "next";
@@ -101,17 +101,27 @@ export default async function CampaignPage({
     redirect(`/${lng}/collection`);
   }
 
-  // Fetch products for the campaign
-  const products = await campaignService.getCampaignProducts(campaign);
+  // Fetch first page of campaign variant items (one card per color, 24 per page)
+  const pageSize = 24;
+  const { variantItems, total, hasMore } = await campaignService.getCampaignVariantItemsPaginated(
+    campaign,
+    1,
+    pageSize
+  );
 
-  // Serialize Firestore timestamps before passing to client component
-  const serializedProducts = products.map((product) => serializeValue(product));
   const serializedCampaign = serializeValue(campaign);
+  const serializedVariantItems = variantItems.map((item) => ({
+    product: serializeValue(item.product),
+    variant: serializeValue(item.variant),
+    variantKey: item.variantKey,
+  }));
 
   return (
     <CampaignClient
       campaign={serializedCampaign}
-      products={serializedProducts}
+      initialVariantItems={serializedVariantItems}
+      totalProducts={total}
+      hasMore={hasMore}
       lng={lng as 'en' | 'he'}
     />
   );

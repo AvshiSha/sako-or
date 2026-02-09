@@ -222,7 +222,7 @@ const translations = {
     emailRequired: 'נדרש אימייל',
     emailInvalid: 'אנא הזן כתובת אימייל תקינה',
     subscriptionError: 'ההרשמה נכשלה. אנא נסה שוב.',
-    bogoPairTitle: 'תבחרי שני פריטים – ותחכה לך הפתעה בעגלה'
+    bogoPairTitle: 'תבחרי שני פריטים – ותחכה לך הנחה משמעותית בעגלה'
   }
 }
 
@@ -487,8 +487,15 @@ export default function Home() {
         overlayOpacity="bg-neutral-900/40"
       >
         <div className="relative h-full flex items-center justify-center text-center">
-          <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            {/* Optional headline – replace or remove when you add your own content */}
+          <div className="absolute bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 md:pb-6">
+          <div className="flex flex-row gap-6 md:gap-8 justify-center items-center">
+            <Link
+              onClick={() => track('bogo_pair_collection')}
+              href={`/${lng}/collection/campaign?slug=bogosale`}
+              className="text-white text-2xl md:text-2xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80" style={{ fontFamily: 'Assistant, sans-serif' }}>
+              {lng === 'he' ? 'לקולקציה של מבצע הזוגות' : 'To BOGO pair collection'}
+            </Link>
+            </div>
           </div>
         </div>
       </HeroVideoSection>

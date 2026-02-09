@@ -164,7 +164,7 @@ export function parseInventorySku(sku: string): ParsedInventorySku {
   const size = trimmedSku.substring(11, 13);
 
   // Validate size is numeric
-  if (!/^\d{2}$/.test(size)) {
+  if (!/^\d{2}$/.test(size) && size !== 'OS') {
     return {
       fullSku: trimmedSku,
       productSku,
@@ -172,7 +172,7 @@ export function parseInventorySku(sku: string): ParsedInventorySku {
       colorSlug,
       size: '',
       isValid: false,
-      error: `Invalid size: "${size}". Expected 2 digits`,
+      error: `Invalid size: "${size}". Expected 2 digits or OS`,
     };
   }
 

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { track } from '@vercel/analytics';
 import Image from 'next/image'
 import Link from 'next/link'
@@ -11,6 +11,135 @@ import ProductCarousel from '@/app/components/ProductCarousel'
 import { productService, getFilteredProducts } from '@/lib/firebase'
 import { Product } from '@/lib/firebase'
 import CollectionTiles from '@/app/components/CollectionTiles'
+
+/** Hero video block: poster, programmatic play, tap-to-play when blocked, and play only when in view (independent). */
+function HeroVideoSection({
+  desktopSrc,
+  mobileSrc,
+  posterSrc,
+  children,
+  overlayOpacity = 'bg-neutral-900/60',
+}: {
+  desktopSrc: string
+  mobileSrc: string
+  posterSrc: string
+  children?: React.ReactNode
+  overlayOpacity?: string
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const desktopRef = useRef<HTMLVideoElement>(null)
+  const mobileRef = useRef<HTMLVideoElement>(null)
+  const [showPlayButton, setShowPlayButton] = useState(false)
+  const [isInView, setIsInView] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Prefer playing only when section is in view so each hero feels independent and we avoid multiple videos fighting
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          setIsInView(entry.isIntersecting)
+        })
+      },
+      { threshold: 0.25, rootMargin: '0px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    const update = () => setIsMobile(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
+
+  const playCurrent = useCallback(async () => {
+    const video = isMobile ? mobileRef.current : desktopRef.current
+    if (!video) return
+    try {
+      await video.play()
+      setShowPlayButton(false)
+    } catch {
+      setShowPlayButton(true)
+    }
+  }, [isMobile])
+
+  useEffect(() => {
+    if (!isInView) {
+      desktopRef.current?.pause()
+      mobileRef.current?.pause()
+      return
+    }
+    const video = isMobile ? mobileRef.current : desktopRef.current
+    if (!video) return
+    const p = video.play()
+    if (p && typeof p.catch === 'function') {
+      p.catch(() => setShowPlayButton(true))
+    }
+  }, [isInView, isMobile])
+
+  // Hide play overlay when video actually starts (e.g. after user tap or delayed autoplay)
+  useEffect(() => {
+    const video = isMobile ? mobileRef.current : desktopRef.current
+    if (!video) return
+    const onPlaying = () => setShowPlayButton(false)
+    video.addEventListener('playing', onPlaying)
+    return () => video.removeEventListener('playing', onPlaying)
+  }, [isMobile])
+
+  return (
+    <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]">
+      <div
+        className={`absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden ${showPlayButton ? 'z-10' : 'z-0'}`}
+      >
+        <video
+          ref={desktopRef}
+          className="hidden md:block h-full w-full object-cover"
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          //poster={posterSrc}
+          aria-hidden="true"
+        >
+          <source src={desktopSrc} type="video/mp4" />
+        </video>
+        <video
+          ref={mobileRef}
+          className="block md:hidden h-full w-full object-cover"
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          //poster={posterSrc}
+          aria-hidden="true"
+        >
+          <source src={mobileSrc} type="video/mp4" />
+        </video>
+        {showPlayButton && (
+          <button
+            type="button"
+            onClick={playCurrent}
+            className="md:hidden absolute inset-0 flex items-center justify-center z-10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-white/50 rounded-none"
+            aria-label="Play video"
+          >
+            <span className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+              <svg className="w-8 h-8 text-neutral-900 ml-1" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 5v14l11-7L8 5z" />
+              </svg>
+            </span>
+          </button>
+        )}
+        <div className={`absolute inset-0 ${overlayOpacity}`} aria-hidden="true" />
+      </div>
+      <div className="relative h-full z-[5]">{children}</div>
+    </div>
+  )
+}
 
 
 // Define the exact SKUs you want to feature as "Best Sellers"
@@ -287,35 +416,12 @@ export default function Home() {
   return (
     <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
-      <div className="relative aspect-[3/4] md:aspect-[21/9]">
-        <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
-          <video
-            className="hidden md:block h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            // poster={heroImageSrc}
-            aria-hidden="true"
-          >
-            <source src={heroDesktopVideoSrc} type="video/mp4" />
-          </video>
-          <video
-            className="block md:hidden h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            //poster={heroImageSrc}
-            aria-hidden="true"
-
-          >
-            <source src={heroMobileVideoSrc} type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-neutral-900/60" aria-hidden="true" />
-        </div>
+      <HeroVideoSection
+        desktopSrc={heroDesktopVideoSrc}
+        mobileSrc={heroMobileVideoSrc}
+        posterSrc={heroImageSrc}
+        overlayOpacity="bg-neutral-900/60"
+      >
         <div className="relative h-full flex flex-col items-center text-center">
           <div className="absolute bottom-[15%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase" style={{ fontFamily: 'Assistant, sans-serif' }}>
@@ -337,7 +443,7 @@ export default function Home() {
             </Link>
           </div>
         </div>
-      </div>
+      </HeroVideoSection>
 
       {/* Product Carousel - Best Sellers */}
       {!loadingProducts && bestSellers.length > 0 && (
@@ -349,35 +455,12 @@ export default function Home() {
       )}
 
       {/* Hero section - Second */}
-      <div className="relative aspect-[3/4] md:aspect-[21/9]">
-        <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
-          <video
-            className="hidden md:block h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            // poster={heroImageSrc}
-            aria-hidden="true"
-          >
-            <source src={sakoOrDesktopVideoSrc} type="video/mp4" />
-          </video>
-          <video
-            className="block md:hidden h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            //poster={heroImageSrc}
-            aria-hidden="true"
-
-          >
-            <source src={sakoOrMobileVideoSrc} type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-neutral-900/60" aria-hidden="true" />
-        </div>
+      <HeroVideoSection
+        desktopSrc={sakoOrDesktopVideoSrc}
+        mobileSrc={sakoOrMobileVideoSrc}
+        posterSrc={heroImageSrc}
+        overlayOpacity="bg-neutral-900/60"
+      >
         <div className="relative h-full flex items-center justify-center text-center">
           <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase hero-text-fade-in" style={{ fontFamily: 'Assistant, sans-serif', opacity: 0 }}>
@@ -385,7 +468,7 @@ export default function Home() {
             </h1>
           </div>
         </div>
-      </div>
+      </HeroVideoSection>
 
       {/* Product Carousel - SAKO-OR Products - Second */}
       {!loadingSakoOrProducts && sakoOrProducts.length > 0 && (
@@ -397,38 +480,18 @@ export default function Home() {
       )}
 
       {/* Hero section - Third (desktop + mobile videos) */}
-      <div className="relative aspect-[3/4] md:aspect-[21/9]">
-        <div className="absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden">
-          <video
-            className="hidden md:block h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-          >
-            <source src={hero3DesktopVideoSrc} type="video/mp4" />
-          </video>
-          <video
-            className="block md:hidden h-full w-full object-cover"
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            aria-hidden="true"
-          >
-            <source src={hero3MobileVideoSrc} type="video/mp4" />
-          </video>
-          <div className="absolute inset-0 bg-neutral-900/40" aria-hidden="true" />
-        </div>
+      <HeroVideoSection
+        desktopSrc={hero3DesktopVideoSrc}
+        mobileSrc={hero3MobileVideoSrc}
+        posterSrc={heroImageSrc}
+        overlayOpacity="bg-neutral-900/40"
+      >
         <div className="relative h-full flex items-center justify-center text-center">
           <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* Optional headline – replace or remove when you add your own content */}
           </div>
         </div>
-      </div>
+      </HeroVideoSection>
 
       {/* Product Carousel - BOGO pair deal */}
       {!loadingBogoPairProducts && bogoPairProducts.length > 0 && (

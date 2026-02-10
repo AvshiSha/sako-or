@@ -73,6 +73,41 @@ export async function POST(request: NextRequest) {
         const productDescEn = firebaseProduct.description_en || (typeof firebaseProduct.description === 'object' ? firebaseProduct.description?.en : firebaseProduct.description) || ''
         const productDescHe = firebaseProduct.description_he || (typeof firebaseProduct.description === 'object' ? firebaseProduct.description?.he : firebaseProduct.description) || productDescEn
 
+        // Normalize array-like fields to always be arrays (for Prisma schema)
+        const rawCategoriesPath = (firebaseProduct as any).categories_path
+        const rawCategoriesPathId = (firebaseProduct as any).categories_path_id
+        const rawSearchKeywords = (firebaseProduct as any).searchKeywords
+
+        const categoriesPath =
+          Array.isArray(rawCategoriesPath)
+            ? rawCategoriesPath
+            : rawCategoriesPath
+            ? [String(rawCategoriesPath)]
+            : []
+
+        const categoriesPathId =
+          Array.isArray(rawCategoriesPathId)
+            ? rawCategoriesPathId
+            : rawCategoriesPathId
+            ? [String(rawCategoriesPathId)]
+            : []
+
+        const searchKeywords =
+          Array.isArray(rawSearchKeywords)
+            ? rawSearchKeywords.map((kw: any) => String(kw))
+            : rawSearchKeywords
+            ? [String(rawSearchKeywords)]
+            : []
+
+        // Normalize colorVariants to a plain object (record) – Prisma Json field
+        const rawColorVariants = (firebaseProduct as any).colorVariants
+        const colorVariants =
+          rawColorVariants &&
+          !Array.isArray(rawColorVariants) &&
+          typeof rawColorVariants === 'object'
+            ? rawColorVariants
+            : {}
+
         // Debug logging for new product field
         console.log(`Product "${productTitleEn}" - isNew: ${firebaseProduct.isNew}, newProduct: ${(firebaseProduct as any).newProduct}`)
 
@@ -259,8 +294,8 @@ export async function POST(request: NextRequest) {
           category_he: categoryHe || null,
           subCategory_he: subCategoryHe || null,
           subSubCategory_he: subSubCategoryHe || null,
-          categories_path: firebaseProduct.categories_path || [],
-          categories_path_id: firebaseProduct.categories_path_id || [],
+          categories_path: categoriesPath,
+          categories_path_id: categoriesPathId,
           // categoryId is guaranteed to be non-null here due to the guard above
           categoryId: categoryId!,
           isEnabled: firebaseProduct.isEnabled !== undefined ? firebaseProduct.isEnabled : true,
@@ -274,7 +309,7 @@ export async function POST(request: NextRequest) {
           seo_description_en: firebaseProduct.seo?.description_en || null,
           seo_description_he: firebaseProduct.seo?.description_he || null,
           seo_slug: firebaseProduct.seo?.slug || null,
-          searchKeywords: firebaseProduct.searchKeywords || [],
+          searchKeywords,
           // Material & Care fields (from materialCare object)
           upperMaterial_en: (firebaseProduct as any).materialCare?.upperMaterial_en || null,
           upperMaterial_he: (firebaseProduct as any).materialCare?.upperMaterial_he || null,
@@ -288,7 +323,7 @@ export async function POST(request: NextRequest) {
           heelHeight_he: (firebaseProduct as any).materialCare?.heelHeight_he || null,
           shippingReturns_en: (firebaseProduct as any).materialCare?.shippingReturns_en || null,
           shippingReturns_he: (firebaseProduct as any).materialCare?.shippingReturns_he || null,
-          colorVariants: firebaseProduct.colorVariants || {}
+          colorVariants
         }
 
         if (existingProduct) {
@@ -310,6 +345,14 @@ export async function POST(request: NextRequest) {
         
         syncedCount++
       } catch (error) {
+        // Log full context for easier debugging in dev server logs
+        console.error('Failed to sync product with detailed context:', {
+          sku: (firebaseProduct as any).sku,
+          baseSku: (firebaseProduct as any).baseSku,
+          title_en: (firebaseProduct as any).title_en,
+          error
+        })
+
         const errorMsg = `Failed to sync product "${firebaseProduct.title_en || firebaseProduct.name}": ${error instanceof Error ? error.message : 'Unknown error'}`
         console.error(errorMsg)
         errors.push(errorMsg)

@@ -248,7 +248,7 @@ export default function CampaignClient({
   }, [isLoadingMore, hasMore, currentPage, lng, campaign.slug, totalProducts]);
 
   return (
-    <div className="min-h-screen bg-[#">
+    <div className="min-h-screen bg-white">
       {/* Hero Section - video plays only when in view; tap-to-play on mobile when blocked */}
       {(hasDesktopBanner || hasMobileBanner) && (
         <>

@@ -218,7 +218,6 @@ export default function ProfileFavoritesPage() {
                 key={product.favoriteKey}
                 product={product}
                 language={lng as 'en' | 'he'}
-                returnUrl={`/${lng}/profile/favorites`}
                 selectedColors={selectedColors}
               />
             )

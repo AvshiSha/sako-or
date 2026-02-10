@@ -674,7 +674,6 @@ export default function FavoritesPage() {
           }}
           product={drawerProduct}
           language={lng as 'en' | 'he'}
-          returnUrl={`/${lng}/favorites`}
         />
       )}
     </div>

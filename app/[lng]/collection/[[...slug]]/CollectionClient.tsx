@@ -622,9 +622,6 @@ export default function CollectionClient({
   const collectionLevel = slug ? slug.length : 0; // 0 = all/main, 1 = level 0, 2 = level 1, 3+ = level 2+
   const showSubSubCategoryFilter = collectionLevel <= 2; // Show only on level 0 and level 1 pages
 
-  // Construct current collection URL for return navigation
-  const currentUrl = `/${lng}/collection${categoryPath ? `/${categoryPath}` : ''}`;
-
   // Helper function to get translated category/subcategory name
   const getTranslatedName = (category: string | undefined, subcategory?: string | null) => {
     // If search query exists, show search results title instead
@@ -1500,8 +1497,7 @@ export default function CollectionClient({
                         >
                           <ProductCard 
                             product={item.product} 
-                            language={lng as 'en' | 'he'} 
-                            returnUrl={currentUrl}
+                            language={lng as 'en' | 'he'}
                             selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
                             preselectedColorSlug={item.variant.colorSlug}
                             isAboveFold={isAboveFold}
@@ -1522,8 +1518,7 @@ export default function CollectionClient({
                         >
                           <ProductCard 
                             product={product} 
-                            language={lng as 'en' | 'he'} 
-                            returnUrl={currentUrl}
+                            language={lng as 'en' | 'he'}
                             selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
                             isAboveFold={isAboveFold}
                           />

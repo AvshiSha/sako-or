@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { Campaign, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
+import ScrollToTopButton from "@/app/components/ScrollToTopButton";
 import { cn } from "@/lib/utils";
 
 /** Hero video: poster, play only when in view (independent), tap-to-play when blocked on mobile. */
@@ -338,7 +339,6 @@ export default function CampaignClient({
                   key={item.variantKey}
                   product={item.product}
                   language={lng}
-                  returnUrl={`/${lng}/collection/campaign${campaign.slug ? `?slug=${campaign.slug}` : ""}`}
                   preselectedColorSlug={item.variant.colorSlug}
                 />
               ))}
@@ -366,6 +366,8 @@ export default function CampaignClient({
           </>
         )}
       </div>
+
+      <ScrollToTopButton lng={lng} />
     </div>
   );
 }

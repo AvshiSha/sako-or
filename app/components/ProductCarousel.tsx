@@ -16,10 +16,9 @@ interface ProductCarouselProps {
   products: Product[]
   title: string
   language?: 'en' | 'he'
-  returnUrl?: string
 }
 
-export default function ProductCarousel({ products, title, language = 'en', returnUrl }: ProductCarouselProps) {
+export default function ProductCarousel({ products, title, language = 'en' }: ProductCarouselProps) {
   const [api, setApi] = useState<CarouselApi>()
   const isRTL = language === 'he'
 
@@ -57,7 +56,7 @@ export default function ProductCarousel({ products, title, language = 'en', retu
                   key={product.id || product.sku}
                   className="basis-[85%] sm:basis-[45%] lg:basis-[30%]"
                 >
-                  <ProductCard product={product} language={language} returnUrl={returnUrl} disableImageCarousel={true} />
+                  <ProductCard product={product} language={language} disableImageCarousel={true} />
                 </CarouselItem>
               ))}
             </CarouselContent>

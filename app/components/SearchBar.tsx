@@ -274,7 +274,6 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
                         <ProductCard
                           product={product}
                           language={language as 'en' | 'he'}
-                          returnUrl={`/${language}`}
                         />
                       </div>
                     ))}
@@ -379,7 +378,6 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
                             <ProductCard
                               product={product}
                               language={language as 'en' | 'he'}
-                              returnUrl={`/${language}`}
                             />
                           </div>
                         ))}

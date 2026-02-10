@@ -7,7 +7,6 @@ import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
@@ -21,17 +20,15 @@ interface QuickBuyDrawerProps {
   onClose: () => void
   product: Product
   language?: 'en' | 'he'
-  returnUrl?: string
   /** Color slug selected on the product card when Quick Buy was clicked; drawer opens with this variant. */
   initialColorSlug?: string
 }
 
-export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en', returnUrl, initialColorSlug }: QuickBuyDrawerProps) {
+export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en', initialColorSlug }: QuickBuyDrawerProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
-  const router = useRouter()
   const { isFavorite, toggleFavorite } = useFavorites()
   const { addToCart, items } = useCart()
   const { toast, showToast, hideToast } = useToast()
@@ -202,14 +199,9 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
       showToast(successMessage, 'success')
       
-      // Close the drawer
+      // Close the drawer without navigating away.
+      // Quick Buy is an in-place overlay; keep the user on the same page.
       onClose()
-      
-      // Navigate only when returnUrl is explicitly provided (e.g. favorites page).
-      // When undefined (e.g. home carousel), stay on current page.
-      if (returnUrl) {
-        router.push(returnUrl)
-      }
     } catch (error: any) {
       console.error('Error adding to cart:', error)
       

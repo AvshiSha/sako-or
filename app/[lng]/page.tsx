@@ -199,7 +199,7 @@ const translations = {
     emailRequired: 'Email is required',
     emailInvalid: 'Please enter a valid email address',
     subscriptionError: 'Failed to subscribe. Please try again.',
-    bogoPairTitle: 'Choose two items, and a surprise awaits in your cart'
+    bogoPairTitle: 'Choose two items, and a significant discount awaits in your cart'
   },
   he: {
     brandName: 'סכו עור', // Don't fix it!!

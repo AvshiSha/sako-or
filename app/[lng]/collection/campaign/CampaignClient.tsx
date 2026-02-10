@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
 import { Campaign, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
 import ScrollToTopButton from "@/app/components/ScrollToTopButton";
 import { cn } from "@/lib/utils";
+import {
+  getCollectionState,
+  setCollectionState,
+  type CollectionBrowseState,
+} from "@/lib/collectionBrowseStore";
 
 /** Hero video: poster, play only when in view (independent), tap-to-play when blocked on mobile. */
 function CampaignHeroVideo({
@@ -163,11 +168,48 @@ export default function CampaignClient({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Stable key for this campaign (for back-navigation state restore)
+  const campaignKey = useMemo(
+    () => `campaign:${lng}:${campaign.id}`,
+    [lng, campaign.id]
+  );
+
+  const hydratedFromStoreRef = useRef<boolean>(false);
+  const scrollRestoredRef = useRef<boolean>(false);
+  const prevCampaignIdRef = useRef<string | undefined>(campaign.id);
+  const stateSnapshotRef = useRef<{
+    items: VariantItem[];
+    currentPage: number;
+    totalProducts: number;
+    hasMore: boolean;
+  } | null>(null);
+
   const title = campaign.title[lng] || campaign.title.en || campaign.title.he;
   const description = campaign.description?.[lng] || campaign.description?.en || campaign.description?.he;
 
-  // Sync from server when campaign or initial data changes
+  // Hydrate from store when returning from PDP (same as CollectionClient)
   useEffect(() => {
+    if (!campaignKey || hydratedFromStoreRef.current) return;
+
+    const stored = getCollectionState(campaignKey);
+    if (!stored) return;
+
+    hydratedFromStoreRef.current = true;
+    const items = stored.items as VariantItem[];
+    if (items?.length) setVariantItems(items);
+    setCurrentPage(stored.currentPage);
+    setTotalProducts(stored.totalProducts);
+    setHasMore(stored.hasMore);
+  }, [campaignKey]);
+
+  // Sync from server when campaign or initial data changes (do NOT overwrite when we hydrated from store)
+  useEffect(() => {
+    if (prevCampaignIdRef.current !== campaign.id) {
+      prevCampaignIdRef.current = campaign.id;
+      hydratedFromStoreRef.current = false;
+    }
+    if (hydratedFromStoreRef.current) return;
+
     setVariantItems(initialVariantItems);
     setTotalProducts(initialTotal ?? initialVariantItems.length);
     setHasMore(initialHasMore ?? false);
@@ -188,6 +230,95 @@ export default function CampaignClient({
   };
 
   const endDateFormatted = formatEndDate(campaign.endAt);
+
+  // Keep snapshot ref updated so we can persist on unmount (same as CollectionClient)
+  stateSnapshotRef.current = {
+    items: variantItems,
+    currentPage,
+    totalProducts,
+    hasMore,
+  };
+
+  // Persist to store on unmount (navigating away to product page) so state is never lost
+  useEffect(() => {
+    return () => {
+      const key = campaignKey;
+      const snap = stateSnapshotRef.current;
+      if (!key || !snap) return;
+      const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
+      setCollectionState(key, {
+        useVariantItems: true,
+        items: snap.items,
+        currentPage: snap.currentPage,
+        totalProducts: snap.totalProducts,
+        hasMore: snap.hasMore,
+        scrollY,
+        updatedAt: Date.now(),
+      });
+    };
+  }, [campaignKey]);
+
+  // Helper to persist current campaign state (including scrollY) into the store
+  const persistCampaignState = useCallback(
+    (scrollYOverride?: number) => {
+      if (!campaignKey) return;
+      const scrollY =
+        typeof window !== "undefined"
+          ? scrollYOverride ?? window.scrollY
+          : scrollYOverride ?? 0;
+      const state: CollectionBrowseState = {
+        useVariantItems: true,
+        items: variantItems,
+        currentPage,
+        totalProducts,
+        hasMore,
+        scrollY,
+        updatedAt: Date.now(),
+      };
+      setCollectionState(campaignKey, state);
+    },
+    [campaignKey, variantItems, currentPage, totalProducts, hasMore]
+  );
+
+  // Persist scroll position while the user scrolls (debounced)
+  useEffect(() => {
+    if (!campaignKey) return;
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => persistCampaignState(), 100);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(scrollTimeout);
+    };
+  }, [campaignKey, persistCampaignState]);
+
+  // Persist when pagination state changes
+  useEffect(() => {
+    if (!campaignKey) return;
+    persistCampaignState();
+  }, [campaignKey, persistCampaignState, variantItems.length, currentPage, totalProducts, hasMore]);
+
+  // Scroll restoration when returning from PDP
+  useEffect(() => {
+    if (!campaignKey || scrollRestoredRef.current) return;
+    const stored = getCollectionState(campaignKey);
+    if (!stored || stored.scrollY <= 0) {
+      scrollRestoredRef.current = true;
+      return;
+    }
+    if (variantItems.length === 0) return;
+
+    scrollRestoredRef.current = true;
+    const targetY = stored.scrollY;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, targetY);
+      });
+    });
+  }, [campaignKey, variantItems.length]);
 
   // Helper to check if a URL is a video
   const isVideoUrl = (url?: string): boolean => {
@@ -216,9 +347,11 @@ export default function CampaignClient({
   const hasDesktopBanner = desktopImageUrl || desktopVideoUrl;
   const hasMobileBanner = mobileImageUrl || mobileVideoUrl;
 
-  // Load more campaign variant items (same as collection page)
+  // Load more campaign variant items (same as collection page); preserve scroll after append
   const handleLoadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) return;
+    const scrollYBefore = typeof window !== "undefined" ? window.scrollY : 0;
+    const scrollXBefore = typeof window !== "undefined" ? window.scrollX : 0;
     const nextPage = currentPage + 1;
     setIsLoadingMore(true);
     try {
@@ -240,8 +373,22 @@ export default function CampaignClient({
       setCurrentPage(data.page ?? nextPage);
       setTotalProducts(data.total ?? totalProducts);
       setHasMore(Boolean(data.hasMore));
+
+      // Restore scroll position after React renders new items (same as CollectionClient)
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (typeof window !== "undefined") {
+            window.scrollTo({ top: scrollYBefore, left: scrollXBefore, behavior: "auto" });
+          }
+        });
+      });
     } catch (e) {
       console.error("Campaign load more error:", e);
+      requestAnimationFrame(() => {
+        if (typeof window !== "undefined") {
+          window.scrollTo({ top: scrollYBefore, left: scrollXBefore, behavior: "auto" });
+        }
+      });
     } finally {
       setIsLoadingMore(false);
     }

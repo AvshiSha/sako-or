@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         let subCategoryHe = null
         let subSubCategoryEn = null
         let subSubCategoryHe = null
-        let categoryId = null
+        let categoryId: string | null = null
 
         // Priority 1: Check if category names are already resolved and stored in Firebase
         // This is the most reliable source since admin pages store resolved names
@@ -228,9 +228,14 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Skip products without a valid category
-        if (!categoryId && firebaseProduct.category) {
-          const errorMsg = `Skipping product "${productTitleEn}" - category "${firebaseProduct.category}" not found in Neon DB`
+        // Skip products without a valid categoryId (required by Prisma schema)
+        if (!categoryId) {
+          const categoryIdentifier =
+            categoryEn ||
+            (Array.isArray(firebaseProduct.categories_path) && firebaseProduct.categories_path.length > 0
+              ? firebaseProduct.categories_path.join(' > ')
+              : firebaseProduct.category || 'Unknown')
+          const errorMsg = `Skipping product "${productTitleEn}" - category "${categoryIdentifier}" not found in Neon DB`
           console.warn(errorMsg)
           errors.push(errorMsg)
           continue
@@ -256,7 +261,8 @@ export async function POST(request: NextRequest) {
           subSubCategory_he: subSubCategoryHe || null,
           categories_path: firebaseProduct.categories_path || [],
           categories_path_id: firebaseProduct.categories_path_id || [],
-          categoryId: categoryId || '',
+          // categoryId is guaranteed to be non-null here due to the guard above
+          categoryId: categoryId!,
           isEnabled: firebaseProduct.isEnabled !== undefined ? firebaseProduct.isEnabled : true,
           isDeleted: firebaseProduct.isDeleted !== undefined ? firebaseProduct.isDeleted : false,
           featured: firebaseProduct.featured !== undefined ? firebaseProduct.featured : false,

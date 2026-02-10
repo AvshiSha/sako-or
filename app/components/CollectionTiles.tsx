@@ -20,7 +20,7 @@ const tiles: CollectionTile[] = [
     image: getImageUrl('sako-men-shoes.webp'),
     title: 'SAKO MEN SHOES',
     subtitle: 'NEW IN',
-    href: '/collection/men/shoes',
+    href: '/collection/men',
   },
   {
     id: 'tile-2',

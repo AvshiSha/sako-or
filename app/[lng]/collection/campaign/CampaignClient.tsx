@@ -408,7 +408,7 @@ export default function CampaignClient({
               title={title}
             />
           ) : (
-            <div className="relative w-full h-[60vh] md:h-[60vh] overflow-hidden">
+            <div className="relative w-full overflow-hidden bg-[#8B1E1E] aspect-[4/5] md:aspect-[21/9]">
               {desktopImageUrl && (
                 <div className="hidden md:block absolute inset-0">
                   <Image
@@ -416,7 +416,7 @@ export default function CampaignClient({
                     alt=""
                     fill
                     priority
-                    className="object-cover"
+                    className="object-cover object-center"
                     sizes="100vw"
                   />
                 </div>
@@ -428,7 +428,7 @@ export default function CampaignClient({
                     alt=""
                     fill
                     priority
-                    className="object-cover"
+                    className="object-contain object-bottom"
                     sizes="100vw"
                   />
                 </div>

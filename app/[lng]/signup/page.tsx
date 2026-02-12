@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select'
 import { cn } from '@/lib/utils'
+import { Gem, Gift, Lock, Sparkles } from 'lucide-react'
 
 type SyncResponse =
   | { ok: true; needsProfileCompletion: boolean }
@@ -38,6 +39,12 @@ const translations = {
   en: {
     title: 'Sign Up',
     subtitle: 'Create your account to get started',
+    clubTitle: 'The SAKO OR club is waiting for you ✨',
+    clubSubtitle: 'Discounts. Surprises. Early access. Points on every purchase.',
+    clubPoints: 'Points on every purchase',
+    clubGifts: 'Gifts and benefits',
+    clubEarlyAccess: 'Early access to sales',
+    clubCollections: 'Collections before everyone else',
     personalInfo: 'Personal Information',
     firstName: 'First Name',
     lastName: 'Last Name',
@@ -69,6 +76,7 @@ const translations = {
     newsletter: 'Subscribe to Newsletter',
     newsletterDescription: 'Yes, send me updates and offers',
     googleSignIn: 'Sign up with Google',
+    continueWithGoogle: 'Continue with Google',
     orDivider: 'OR',
     continueWithEmail: 'Continue with Email',
     saveProfile: 'Save Profile',
@@ -95,6 +103,12 @@ const translations = {
   he: {
     title: 'קצת פרטים כדי שנכיר אותך :)',
     subtitle: 'צרו את החשבון שלכם כדי להתחיל',
+    clubTitle: 'המועדון של SAKO OR מחכה לך ✨',
+    clubSubtitle: 'הנחות. הפתעות. גישה מוקדמת. נקודות בכל רכישה.',
+    clubPoints: 'נקודות על כל קנייה',
+    clubGifts: 'מתנות והטבות',
+    clubEarlyAccess: 'גישה מוקדמת לסייל',
+    clubCollections: 'קולקציות לפני כולן',
     personalInfo: 'מידע אישי',
     firstName: 'שם פרטי',
     lastName: 'שם משפחה',
@@ -126,6 +140,7 @@ const translations = {
     newsletter: 'הרשמה לניוזלטר',
     newsletterDescription: 'כן, שלחו לי עדכונים והצעות',
     googleSignIn: 'הרשמה עם Google',
+    continueWithGoogle: 'המשיכו עם Google',
     orDivider: 'או',
     continueWithEmail: 'המשך עם אימייל',
     saveProfile: 'שמור פרופיל',
@@ -186,10 +201,10 @@ export default function SignUpPage() {
   const [isNewsletter, setIsNewsletter] = useState(true) // Default to true
   
   const [busy, setBusy] = useState(false)
+  const [isGoogleSignInInProgress, setIsGoogleSignInInProgress] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({})
   const [isSignedInWithGoogle, setIsSignedInWithGoogle] = useState(false)
-  const [showEmailForm, setShowEmailForm] = useState(false)
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   // Google name placeholders (not pre-filled values)
   const [googleFirstNamePlaceholder, setGoogleFirstNamePlaceholder] = useState<string>('')
@@ -472,6 +487,7 @@ export default function SignUpPage() {
 
   async function handleGoogleSignIn() {
     setBusy(true)
+    setIsGoogleSignInInProgress(true)
     setError(null)
     try {
       const provider = new GoogleAuthProvider()
@@ -507,6 +523,7 @@ export default function SignUpPage() {
       setError(formatAuthError(e, 'Google sign in failed'))
     } finally {
       setBusy(false)
+      setIsGoogleSignInInProgress(false)
     }
   }
 
@@ -611,7 +628,6 @@ export default function SignUpPage() {
       syncedUidRef.current = null
       redirectChecked = false // Reset the redirect check when signing out
       setIsSignedInWithGoogle(false)
-      setShowEmailForm(false)
       setEmail('')
       setFirstName('')
       setLastName('')
@@ -665,9 +681,7 @@ export default function SignUpPage() {
     }
   }
 
-  const renderButtonsOnly = !isSignedInWithGoogle && !firebaseUser && !showEmailForm
   const shouldGateExistingUser = Boolean(firebaseUser) && profileGate !== 'needs_form'
-  const renderForm = (isSignedInWithGoogle || firebaseUser || showEmailForm) && !shouldGateExistingUser
 
   // While Firebase session is resolving, avoid UI flicker.
   if (authLoading) {
@@ -683,15 +697,46 @@ export default function SignUpPage() {
 
   return (
       <ProfileShell
-        title={t.title}
+        title={t.clubTitle}
+        subtitle={t.clubSubtitle}
       >
       <div className={profileTheme.section} dir={direction}>
+        {/* Club benefits with icons - between brand and Google button */}
+        {!shouldGateExistingUser && (
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4" dir={direction}>
+            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
+                <Gem className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
+              </div>
+              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubPoints}</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
+                <Gift className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
+              </div>
+              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubGifts}</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
+                <Lock className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
+              </div>
+              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubEarlyAccess}</span>
+            </div>
+            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
+                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
+              </div>
+              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubCollections}</span>
+            </div>
+          </div>
+        )}
+
         {error ? (
           <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </div>
         ) : null}
-
+        
         {/* Gate: if already signed in, check whether profile completion is needed before showing the form */}
         {shouldGateExistingUser ? (
           <div className="py-10 text-center">
@@ -701,15 +746,14 @@ export default function SignUpPage() {
           </div>
         ) : null}
 
-        {/* Google Sign-In or Email Option */}
-        {renderButtonsOnly && (
-          <div className="space-y-2">
+        {/* Google (primary CTA), separator, then email sign-up form */}
+        {!shouldGateExistingUser && (
+          <>
             <Button
               type="button"
               onClick={handleGoogleSignIn}
-              disabled={busy}
-              variant="outline"
-              className="w-full text-slate-900 hover:text-slate-900 border-[#856D55]/70"
+              disabled={isGoogleSignInInProgress}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-[#856D55]/80 px-5 py-3 text-sm font-semibold text-white shadow-md hover:bg-[#856D55]/90 focus:outline-none focus:ring-2 focus:ring-[#856D55] focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -717,7 +761,7 @@ export default function SignUpPage() {
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
-              {busy ? t.working : t.googleSignIn}
+              {busy ? t.working : t.continueWithGoogle}
             </Button>
 
             <div className="relative my-4">
@@ -729,21 +773,8 @@ export default function SignUpPage() {
               </div>
             </div>
 
-            <Button
-              type="button"
-              onClick={() => setShowEmailForm(true)}
-              disabled={busy}
-              variant="outline"
-              className="w-full text-slate-900 hover:text-slate-900 border-[#856D55]/70"
-            >
-              {t.continueWithEmail}
-            </Button>
-          </div>
-        )}
-
-        {/* Profile Form - shown after Google auth or email option selected */}
-        {renderForm && (
-          <div className="space-y-8">
+            {/* Profile Form */}
+            <div className="space-y-8">
             {/* Personal Information Section */}
             <section>
               <h2 className={profileTheme.sectionTitle}>{t.personalInfo}</h2>
@@ -840,7 +871,7 @@ export default function SignUpPage() {
                   )}
                 </div>
 
-                {!isSignedInWithGoogle && showEmailForm && (
+                {!isSignedInWithGoogle && (
                   <div className="sm:col-span-2">
                     <p className="text-xs text-slate-500">
                       {lng === 'he' 
@@ -1212,11 +1243,12 @@ export default function SignUpPage() {
                 </div>
               </div>
             </section>
-          </div>
+            </div>
+          </>
         )}
 
         {/* Save Profile Button */}
-        {renderForm && (
+        {!shouldGateExistingUser && (
           <div className="mt-8 border-t border-slate-200 pt-6">
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button

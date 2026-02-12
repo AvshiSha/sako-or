@@ -18,7 +18,7 @@ export default function ProfileShell({ title, subtitle, children }: Props) {
         <div className={profileTheme.card}>
           <div className={cn(profileTheme.header, "flex flex-col items-center justify-center")}>
             <div className="flex flex-col items-center gap-4 w-full">
-              <div className="h-40 w-40 relative flex-shrink-0">
+              <div className="h-20 w-40 relative flex-shrink-0">
                 <Image
                   src="/images/logo/sako-logo.png"
                   alt="Sako Logo"

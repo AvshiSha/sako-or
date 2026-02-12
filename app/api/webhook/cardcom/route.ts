@@ -8,6 +8,10 @@ import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
 import { productService } from '../../../../lib/firebase';
 import { parseSku } from '../../../../lib/sku-parser';
 import { createVerifoneInvoiceAsync } from '../../../../lib/verifone-invoice-job';
+import {
+  decrementInventoryForOrder,
+  InsufficientStockError,
+} from '../../../../lib/inventory';
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,6 +71,79 @@ export async function POST(request: NextRequest) {
       tokenInfo: body.TokenInfo,
       documentInfo: body.DocumentInfo,
     };
+
+    // Attempt to decrement inventory before finalizing the order.
+    // This ensures we never mark an order as completed if we cannot fulfill it from stock.
+    try {
+      await decrementInventoryForOrder(orderId);
+    } catch (error: any) {
+      if (error instanceof InsufficientStockError) {
+        console.error(
+          '[CARDCom Webhook] Insufficient stock when processing order',
+          {
+            orderId,
+            details: error.details,
+          }
+        );
+
+        // Mark order as out_of_stock while keeping paymentStatus as completed
+        // so finance can clearly see that payment was taken.
+        await prisma.order.update({
+          where: { orderNumber: orderId },
+          data: {
+            status: 'out_of_stock',
+            paymentStatus: 'completed',
+            paymentData: stringifyPaymentData({
+              ...transactionData,
+              inventoryError: 'INSUFFICIENT_STOCK',
+              inventoryDetails: error.details,
+            }),
+            cardcomLowProfileId: transactionData.lowProfileId,
+            cardcomTransactionId: transactionData.transactionId?.toString(),
+            updatedAt: new Date(),
+          },
+        });
+
+        // We deliberately do not mark cart items as PURCHASED or send confirmation emails here.
+        return NextResponse.json({
+          success: false,
+          status: 'out_of_stock',
+          message:
+            'One or more items in the order are no longer in stock. Our support team will contact the customer.',
+        });
+      }
+
+      console.error(
+        '[CARDCom Webhook] Failed to decrement inventory for order',
+        {
+          orderId,
+          error,
+        }
+      );
+
+      // Mark order as failed due to inventory error but still note that payment was completed.
+      await prisma.order.update({
+        where: { orderNumber: orderId },
+        data: {
+          status: 'failed',
+          paymentStatus: 'completed',
+          paymentData: stringifyPaymentData({
+            ...transactionData,
+            inventoryError: 'INVENTORY_UPDATE_FAILED',
+          }),
+          cardcomLowProfileId: transactionData.lowProfileId,
+          cardcomTransactionId: transactionData.transactionId?.toString(),
+          updatedAt: new Date(),
+        },
+      });
+
+      return NextResponse.json({
+        success: false,
+        status: 'inventory_error',
+        message:
+          'Payment was received, but stock could not be confirmed. Support will review this order.',
+      });
+    }
 
     // Update order status to completed
     await updateOrderStatus(orderId, 'completed', transactionData);

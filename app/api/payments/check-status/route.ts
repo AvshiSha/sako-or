@@ -8,6 +8,10 @@ import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
 import { productService } from '../../../../lib/firebase';
 import { parseSku } from '../../../../lib/sku-parser';
 import { createVerifoneInvoiceAsync } from '../../../../lib/verifone-invoice-job';
+import {
+  decrementInventoryForOrder,
+  InsufficientStockError,
+} from '../../../../lib/inventory';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,6 +38,18 @@ export async function POST(request: NextRequest) {
         { error: 'Order not found' },
         { status: 404 }
       );
+    }
+
+    // If order was already marked as out_of_stock (by the webhook or a previous run),
+    // surface that clearly to the client.
+    if (order.status === 'out_of_stock') {
+      return NextResponse.json({
+        success: false,
+        status: 'out_of_stock',
+        message:
+          'One or more items in your order are no longer in stock. Please contact support or update your cart.',
+        orderId: order.orderNumber,
+      });
     }
 
     // If order is already completed, just mark cart items as PURCHASED and return
@@ -70,7 +86,73 @@ export async function POST(request: NextRequest) {
         // Only assume success if explicitly told payment succeeded (from Success page)
         // This is safe because Success page is only reached when CardCom redirects with ResponseCode=0
         if (paymentSucceeded === true && (order.status === 'processing' || order.paymentStatus === 'processing')) {
-          console.log('[check-status] Payment succeeded flag set, marking as completed despite CardCom 404 (test/sandbox environment)');
+          console.log('[check-status] Payment succeeded flag set, attempting inventory decrement before marking as completed (CardCom 404 path)');
+
+          try {
+            await decrementInventoryForOrder(order.orderNumber);
+          } catch (inventoryError: any) {
+            if (inventoryError instanceof InsufficientStockError) {
+              console.error(
+                '[check-status] Insufficient stock when finalizing order (paymentSucceeded path)',
+                {
+                  orderId: order.orderNumber,
+                  details: inventoryError.details,
+                }
+              );
+
+              await prisma.order.update({
+                where: { id: order.id },
+                data: {
+                  status: 'out_of_stock',
+                  paymentStatus: 'completed',
+                  paymentData: stringifyPaymentData({
+                    ...(order.paymentData ? parsePaymentData(order.paymentData) : {}),
+                    inventoryError: 'INSUFFICIENT_STOCK',
+                    inventoryDetails: inventoryError.details,
+                  }),
+                  updatedAt: new Date(),
+                },
+              });
+
+              return NextResponse.json({
+                success: false,
+                status: 'out_of_stock',
+                message:
+                  'We are sorry, but one or more items in your order are no longer in stock. Your payment was received and our team will contact you.',
+                orderId: order.orderNumber,
+              });
+            }
+
+            console.error(
+              '[check-status] Failed to decrement inventory for order (paymentSucceeded path)',
+              {
+                orderId: order.orderNumber,
+                error: inventoryError,
+              }
+            );
+
+            await prisma.order.update({
+              where: { id: order.id },
+              data: {
+                status: 'failed',
+                paymentStatus: 'completed',
+                paymentData: stringifyPaymentData({
+                  ...(order.paymentData ? parsePaymentData(order.paymentData) : {}),
+                  inventoryError: 'INVENTORY_UPDATE_FAILED',
+                }),
+                updatedAt: new Date(),
+              },
+            });
+
+            return NextResponse.json({
+              success: false,
+              status: 'inventory_error',
+              message:
+                'Payment was received, but stock could not be confirmed. Our team will contact you.',
+              orderId: order.orderNumber,
+            });
+          }
+
           await prisma.order.update({
             where: { id: order.id },
             data: {
@@ -198,7 +280,74 @@ export async function POST(request: NextRequest) {
 
     // Update order status based on CardCom response
     if (statusResponse.ResponseCode === 0) {
-      // Payment successful
+      // Payment successful – attempt to decrement inventory before marking order as completed.
+      try {
+        await decrementInventoryForOrder(order.orderNumber);
+      } catch (inventoryError: any) {
+        if (inventoryError instanceof InsufficientStockError) {
+          console.error(
+            '[check-status] Insufficient stock when finalizing order (CardCom status path)',
+            {
+              orderId: order.orderNumber,
+              details: inventoryError.details,
+            }
+          );
+
+          await prisma.order.update({
+            where: { id: order.id },
+            data: {
+              status: 'out_of_stock',
+              paymentStatus: 'completed',
+              cardcomTransactionId: statusResponse.TranzactionId,
+              paymentData: stringifyPaymentData({
+                statusResponse,
+                inventoryError: 'INSUFFICIENT_STOCK',
+                inventoryDetails: inventoryError.details,
+              }),
+              updatedAt: new Date(),
+            },
+          });
+
+          return NextResponse.json({
+            success: false,
+            status: 'out_of_stock',
+            message:
+              'We are sorry, but one or more items in your order are no longer in stock. Your payment was received and our team will contact you.',
+            orderId: order.orderNumber,
+          });
+        }
+
+        console.error(
+          '[check-status] Failed to decrement inventory for order (CardCom status path)',
+          {
+            orderId: order.orderNumber,
+            error: inventoryError,
+          }
+        );
+
+        await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'failed',
+            paymentStatus: 'completed',
+            cardcomTransactionId: statusResponse.TranzactionId,
+            paymentData: stringifyPaymentData({
+              statusResponse,
+              inventoryError: 'INVENTORY_UPDATE_FAILED',
+            }),
+            updatedAt: new Date(),
+          },
+        });
+
+        return NextResponse.json({
+          success: false,
+          status: 'inventory_error',
+          message:
+            'Payment was received, but stock could not be confirmed. Our team will contact you.',
+          orderId: order.orderNumber,
+        });
+      }
+
       await prisma.order.update({
         where: { id: order.id },
         data: {

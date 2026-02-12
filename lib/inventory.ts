@@ -15,7 +15,7 @@
  */
 
 import { db } from './firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, runTransaction } from 'firebase/firestore';
 import { prisma } from './prisma';
 import { getStockByModel } from './verifone';
 
@@ -92,6 +92,35 @@ export interface InventoryUpdateResult {
   skipped: number;
   errors: string[];
   details: InventoryUpdateRow[];
+}
+
+/**
+ * Error thrown when there is not enough stock to fulfill an order.
+ * Carries per-SKU/size details so callers can surface clear messages.
+ */
+export class InsufficientStockError extends Error {
+  details: {
+    productSku: string;
+    colorSlug: string;
+    size: string;
+    required: number;
+    available: number;
+  }[];
+
+  constructor(
+    message: string,
+    details: {
+      productSku: string;
+      colorSlug: string;
+      size: string;
+      required: number;
+      available: number;
+    }[]
+  ) {
+    super(message);
+    this.name = 'InsufficientStockError';
+    this.details = details;
+  }
 }
 
 /**
@@ -184,6 +213,274 @@ export function parseInventorySku(sku: string): ParsedInventorySku {
     size,
     isValid: true,
   };
+}
+
+/**
+ * Decrement inventory in Firebase (source of truth) and Neon for a given order.
+ *
+ * - Reads order + orderItems from Postgres
+ * - For each product SKU, runs a Firestore transaction on the matching product document
+ *   to ensure stock never goes below zero, even under concurrent checkouts.
+ * - If any size would go negative, throws InsufficientStockError with details.
+ * - After successful Firebase updates, best-effort updates Neon Product.colorVariants JSON.
+ */
+export async function decrementInventoryForOrder(orderNumber: string): Promise<void> {
+  // Load order with items
+  const order = await prisma.order.findUnique({
+    where: { orderNumber },
+    include: {
+      orderItems: true,
+    },
+  });
+
+  if (!order) {
+    throw new Error(`[decrementInventoryForOrder] Order not found: ${orderNumber}`);
+  }
+
+  if (!order.orderItems || order.orderItems.length === 0) {
+    console.warn(
+      `[decrementInventoryForOrder] Order ${orderNumber} has no items, skipping inventory decrement`
+    );
+    return;
+  }
+
+  type DecrementItem = {
+    productSku: string;
+    colorSlug: string;
+    size: string;
+    quantity: number;
+  };
+
+  // Group order items by product SKU for per-product Firestore transactions
+  const productGroups = new Map<string, DecrementItem[]>();
+
+  for (const item of order.orderItems) {
+    const productSku = item.productSku;
+    const rawColor = item.colorName || '';
+    const colorSlug = rawColor.toLowerCase();
+    const size = item.size || '';
+    const quantity = item.quantity || 0;
+
+    if (!productSku || !colorSlug || !size || quantity <= 0) {
+      console.warn(
+        `[decrementInventoryForOrder] Skipping order item ${item.id} with incomplete data`,
+        {
+          productSku,
+          colorName: item.colorName,
+          size: item.size,
+          quantity: item.quantity,
+        }
+      );
+      continue;
+    }
+
+    if (!productGroups.has(productSku)) {
+      productGroups.set(productSku, []);
+    }
+
+    productGroups.get(productSku)!.push({
+      productSku,
+      colorSlug,
+      size,
+      quantity,
+    });
+  }
+
+  if (productGroups.size === 0) {
+    console.warn(
+      `[decrementInventoryForOrder] No valid items found for order ${orderNumber}, skipping inventory decrement`
+    );
+    return;
+  }
+
+  const { query, collection, where, getDocs } = await import('firebase/firestore');
+
+  // First, update Firebase (source of truth) with strict transactional checks
+  for (const [productSku, items] of productGroups.entries()) {
+    // Aggregate required quantities per (colorSlug, size) for this product
+    const requiredByKey = new Map<
+      string,
+      { colorSlug: string; size: string; required: number }
+    >();
+
+    for (const item of items) {
+      const key = `${item.colorSlug}:${item.size}`;
+      const existing = requiredByKey.get(key);
+      if (existing) {
+        existing.required += item.quantity;
+      } else {
+        requiredByKey.set(key, {
+          colorSlug: item.colorSlug,
+          size: item.size,
+          required: item.quantity,
+        });
+      }
+    }
+
+    // Locate the product document in Firebase
+    const productsRef = collection(db, 'products');
+    const q = query(productsRef, where('sku', '==', productSku));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+      throw new Error(
+        `[decrementInventoryForOrder] Product not found in Firebase for SKU ${productSku}`
+      );
+    }
+
+    const productDoc = querySnapshot.docs[0];
+    const productRef = doc(db, 'products', productDoc.id);
+
+    await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(productRef);
+
+      if (!snapshot.exists()) {
+        throw new Error(
+          `[decrementInventoryForOrder] Product document disappeared during transaction for SKU ${productSku}`
+        );
+      }
+
+      const data = snapshot.data() as any;
+      const colorVariants = data.colorVariants || {};
+
+      const insufficient: {
+        productSku: string;
+        colorSlug: string;
+        size: string;
+        required: number;
+        available: number;
+      }[] = [];
+
+      // Validation pass: ensure no size goes negative
+      for (const value of requiredByKey.values()) {
+        const { colorSlug, size, required } = value;
+        const variant = colorVariants[colorSlug];
+        const stockBySize = variant?.stockBySize || {};
+        const currentStockRaw = stockBySize[size];
+        const currentStock =
+          typeof currentStockRaw === 'number'
+            ? currentStockRaw
+            : parseInt(String(currentStockRaw ?? 0), 10) || 0;
+
+        if (!variant) {
+          insufficient.push({
+            productSku,
+            colorSlug,
+            size,
+            required,
+            available: 0,
+          });
+          continue;
+        }
+
+        if (currentStock < required) {
+          insufficient.push({
+            productSku,
+            colorSlug,
+            size,
+            required,
+            available: currentStock,
+          });
+        }
+      }
+
+      if (insufficient.length > 0) {
+        throw new InsufficientStockError(
+          'Insufficient stock for one or more items in the order',
+          insufficient
+        );
+      }
+
+      // Update pass: apply decrements
+      for (const value of requiredByKey.values()) {
+        const { colorSlug, size, required } = value;
+        const variant = colorVariants[colorSlug];
+
+        if (!variant) {
+          // Should not happen due to validation above, but guard anyway
+          continue;
+        }
+
+        if (!variant.stockBySize) {
+          variant.stockBySize = {};
+        }
+
+        const currentStockRaw = variant.stockBySize[size];
+        const currentStock =
+          typeof currentStockRaw === 'number'
+            ? currentStockRaw
+            : parseInt(String(currentStockRaw ?? 0), 10) || 0;
+
+        const newStock = currentStock - required;
+        variant.stockBySize[size] = newStock < 0 ? 0 : newStock;
+      }
+
+      transaction.update(productRef, {
+        colorVariants,
+        updatedAt: new Date(),
+      });
+    });
+
+    // After Firebase succeeds for this product, best-effort update Neon
+    try {
+      const product = await prisma.product.findFirst({
+        where: { sku: productSku },
+        select: {
+          id: true,
+          sku: true,
+          colorVariants: true,
+        },
+      });
+
+      if (!product) {
+        console.warn(
+          `[decrementInventoryForOrder] Product not found in Neon for SKU ${productSku}, skipping Neon inventory update`
+        );
+        continue;
+      }
+
+      const colorVariants = (product.colorVariants as any) || {};
+
+      for (const value of requiredByKey.values()) {
+        const { colorSlug, size, required } = value;
+        const variant = colorVariants[colorSlug];
+
+        if (!variant) {
+          console.warn(
+            `[decrementInventoryForOrder] Color variant "${colorSlug}" not found in Neon for product ${productSku}, skipping`
+          );
+          continue;
+        }
+
+        if (!variant.stockBySize) {
+          variant.stockBySize = {};
+        }
+
+        const currentStockRaw = variant.stockBySize[size];
+        const currentStock =
+          typeof currentStockRaw === 'number'
+            ? currentStockRaw
+            : parseInt(String(currentStockRaw ?? 0), 10) || 0;
+
+        const newStock = currentStock - value.required;
+        variant.stockBySize[size] = newStock < 0 ? 0 : newStock;
+      }
+
+      await prisma.product.update({
+        where: { id: product.id },
+        data: {
+          colorVariants,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (neonError) {
+      console.error(
+        `[decrementInventoryForOrder] Failed to update Neon inventory for product ${productSku}:`,
+        neonError
+      );
+      // Do not fail the entire flow – Neon is a best-effort mirror
+    }
+  }
 }
 
 /**

@@ -42,6 +42,7 @@ export function useCart(): CartHook {
   const [loading, setLoading] = useState(true)
   const { user } = useAuth()
   const loadedFromNeonRef = useRef(false)
+  const guestHydratedRef = useRef(false)
   
   // Session storage key to track if cart was loaded in this session
   const SESSION_LOADED_KEY = 'cart_loaded_from_neon'
@@ -124,6 +125,87 @@ export function useCart(): CartHook {
       setLoading(false)
     }
   }, [])
+
+  // For guest users (no Neon cart), hydrate cart items with latest availability from Firebase
+  // so that maxStock and quantities reflect current stockBySize.
+  useEffect(() => {
+    if (user) return
+    if (loading) return
+    if (guestHydratedRef.current) return
+    if (items.length === 0) return
+
+    guestHydratedRef.current = true
+
+    const hydrateFromFirebase = async () => {
+      try {
+        const productCache = new Map<string, any>()
+        const hydratedItems: CartItem[] = []
+
+        for (const item of items) {
+          const baseSku = item.sku
+          if (!baseSku) {
+            hydratedItems.push(item)
+            continue
+          }
+
+          let product = productCache.get(baseSku)
+          if (!product) {
+            try {
+              product = await productService.getProductByBaseSku(baseSku)
+              if (!product) {
+                product = await productService.getProductBySku(baseSku)
+              }
+            } catch (error) {
+              console.error(`[useCart] Error fetching product for guest cart item ${baseSku}:`, error)
+              product = null
+            }
+            productCache.set(baseSku, product)
+          }
+
+          if (!product || !product.isEnabled) {
+            // Keep the original item if product is missing/disabled; backend checks will still enforce stock.
+            hydratedItems.push(item)
+            continue
+          }
+
+          const colorSlug = item.color
+          const sizeSlug = item.size
+          const variant = colorSlug && product.colorVariants?.[colorSlug]
+          const stockBySize = variant?.stockBySize || {}
+          const maxStock = sizeSlug
+            ? (stockBySize[sizeSlug] || 0)
+            : Object.values(stockBySize).reduce(
+                (sum: number, stock: any) => sum + (stock || 0),
+                0
+              )
+
+          const clampedQuantity =
+            typeof maxStock === 'number' && maxStock >= 0
+              ? Math.min(item.quantity, maxStock)
+              : item.quantity
+
+          const currentPrice = variant?.priceOverride || product.price
+          const currentSalePrice = variant?.salePrice || product.salePrice
+
+          hydratedItems.push({
+            ...item,
+            quantity: clampedQuantity,
+            maxStock: typeof maxStock === 'number' ? maxStock : item.maxStock,
+            price: currentPrice ?? item.price,
+            salePrice: currentSalePrice ?? item.salePrice,
+            currency: product.currency || item.currency || 'ILS',
+            image: item.image || variant?.primaryImage || variant?.images?.[0] || ''
+          })
+        }
+
+        setItems(hydratedItems)
+      } catch (error) {
+        console.error('[useCart] Error hydrating guest cart from Firebase:', error)
+      }
+    }
+
+    void hydrateFromFirebase()
+  }, [user, loading, items])
 
   // Save cart to localStorage whenever items change
   useEffect(() => {

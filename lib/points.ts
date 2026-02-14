@@ -260,7 +260,9 @@ export async function syncAllUserPointsFromVerifone(
       ? options.maxBatchesPerRun
       : 50;
   const concurrency =
-    options.concurrency && options.concurrency > 0 ? options.concurrency : 5;
+    options.concurrency !== undefined && options.concurrency > 0
+      ? options.concurrency
+      : 1;
 
   const startTime = Date.now();
 

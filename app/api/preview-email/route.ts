@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const sampleData = {
       customerName: 'John Doe',
       orderNumber: 'ORD-2024-001',
-      orderDate: 'January 15, 2024',
+      orderDate: '15/01/2024',
       items: [
         { 
           name: 'Premium Leather Shoes', 

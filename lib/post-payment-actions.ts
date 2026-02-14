@@ -164,7 +164,11 @@ export async function handlePostPaymentActions(
         customerEmail: sendToEmail,
         customerName: displayName || sendToEmail,
         orderNumber: order.orderNumber,
-        orderDate: new Date(order.createdAt).toLocaleDateString(),
+        orderDate: new Date(order.createdAt).toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        }),
         items: items,
         total: order.total,
         subtotal: order.subtotal ?? undefined,

@@ -25,7 +25,11 @@ export async function POST(request: NextRequest) {
       customerEmail: customerEmail,
       customerName: 'Test User',
       orderNumber: 'TEST-' + Date.now(),
-      orderDate: new Date().toLocaleDateString(),
+      orderDate: new Date().toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }),
       items: [
         {
           name: if_he ? 'נעליים לבדיקה' : 'Test Shoes',

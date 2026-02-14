@@ -381,7 +381,7 @@ export function OrderConfirmationEmail({
 OrderConfirmationEmail.PreviewProps = {
   customerName: 'John Doe',
   orderNumber: 'ORD-2024-001',
-  orderDate: 'January 15, 2024',
+  orderDate: '15/01/2024',
   items: [
     { name: 'Premium Leather Shoes', quantity: 1, price: 299.99, size: '36', sku: '0000-0000', colorName: 'Black' },
     { name: 'Cotton Socks', quantity: 2, price: 15.50, size: '35', sku: '0000-0001', colorName: 'White' },

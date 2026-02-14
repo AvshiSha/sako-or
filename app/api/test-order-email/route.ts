@@ -30,7 +30,11 @@ export async function POST(request: Request) {
       customerEmail: body.email || 'avshi@sako-or.com',
       customerName: body.customerName || 'Test Customer',
       orderNumber: orderNumber,
-      orderDate: new Date().toLocaleDateString(),
+      orderDate: new Date().toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }),
       items: body.items || [
         {
           name: 'Test Product',

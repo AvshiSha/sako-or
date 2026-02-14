@@ -184,7 +184,9 @@ export async function handlePostPaymentActions(
         notes: checkout?.customerDeliveryNotes || undefined,
         isHebrew: if_he,
         shippingMethod,
-        pickupLocation,
+        // For Hebrew pickup emails, show address in Hebrew; order may store English pickupLocation from checkout
+        pickupLocation:
+          if_he && shippingMethod === 'pickup' ? STORE_ADDRESS_HE : pickupLocation,
         pointsSpent,
       },
       orderId

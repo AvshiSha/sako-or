@@ -772,4 +772,3 @@ export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonS
     return result;
   }
 }
-

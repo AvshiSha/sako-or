@@ -2,12 +2,22 @@
   "functions": {
     "app/api/webhook/cardcom/route.ts": {
       "maxDuration": 30
+    },
+    "app/api/cron/inventory-sync/route.ts": {
+      "maxDuration": 300
+    },
+    "app/api/cron/inventory-sync-neon/route.ts": {
+      "maxDuration": 60
     }
   },
   "crons": [
     {
       "path": "/api/cron/inventory-sync",
       "schedule": "0 */3 * * *"
+    },
+    {
+      "path": "/api/cron/inventory-sync-neon",
+      "schedule": "15 */3 * * *"
     },
     {
       "path": "/api/cron/verifone-points-sync",

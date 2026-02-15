@@ -585,6 +585,7 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
     // Process each product: Verifone fetch -> immediate Firebase update
     for (const product of products) {
       const productSku = product.sku;
+      let productRows: InventoryUpdateRow[] = [];
 
       if (!productSku) {
         console.warn(`[INVENTORY_SYNC] Skipping product with empty SKU`);
@@ -600,6 +601,7 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
           const errorMsg = `Failed to get stock from Verifone for SKU ${productSku}: ${verifoneResult.statusDescription || 'Unknown error'}`;
           console.error(`[INVENTORY_SYNC] ${errorMsg}`);
           result.failed++;
+          result.total++;
           result.errors.push(errorMsg);
           continue;
         }
@@ -611,7 +613,7 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
         }
 
         // 2. Convert Verifone items to InventoryUpdateRow format
-        const productRows: InventoryUpdateRow[] = [];
+        productRows = [];
         for (const item of verifoneResult.items) {
           const fullSku = `${item.sku}${item.colorCode}${item.size}`;
           const parsed = parseInventorySku(fullSku);
@@ -620,6 +622,7 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
             const errorMsg = `Invalid SKU format for ${fullSku}: ${parsed.error}`;
             console.warn(`[INVENTORY_SYNC] ${errorMsg}`);
             result.failed++;
+            result.total++;
             result.errors.push(errorMsg);
             continue;
           }
@@ -650,7 +653,10 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
       } catch (error) {
         const errorMsg = `Error processing product ${productSku}: ${error instanceof Error ? error.message : 'Unknown error'}`;
         console.error(`[INVENTORY_SYNC] ${errorMsg}`, error);
-        result.failed++;
+        // Count rows that failed (productRows populated before updateFirebaseInventory; else 1 for pre-fetch failures)
+        const rowCount = productRows.length > 0 ? productRows.length : 1;
+        result.failed += rowCount;
+        result.total += rowCount;
         result.errors.push(errorMsg);
       }
     }
@@ -700,7 +706,6 @@ export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonS
       select: { id: true, sku: true },
     });
 
-    result.total = products.length;
     console.log(`[INVENTORY_SYNC_NEON] Found ${products.length} products in Neon`);
 
     for (const product of products) {
@@ -748,6 +753,9 @@ export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonS
         result.errors.push(errorMsg);
       }
     }
+
+    // total = items actually processed (success + failed), not initial DB count
+    result.total = result.success + result.failed;
 
     console.log('[INVENTORY_SYNC_NEON] Sync completed', {
       total: result.total,

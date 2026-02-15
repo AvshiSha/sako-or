@@ -300,20 +300,22 @@ async function updateFirebaseInventory(
     // Get existing colorVariants (copy to avoid mutating cached data)
     const colorVariants = JSON.parse(JSON.stringify(productData.colorVariants || {}));
 
-    // Debug: log BEFORE state
-    console.log(
-      `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} - BEFORE update stockBySize:`,
-      JSON.stringify(
-        Object.fromEntries(
-          Object.entries(colorVariants).map(([color, v]: [string, any]) => [
-            color,
-            v?.stockBySize ?? {},
-          ])
-        ),
-        null,
-        2
-      )
-    );
+    // Debug: log BEFORE state only for SKU 5024-0019
+    if (productSku === '5024-0019') {
+      console.log(
+        `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} - BEFORE update stockBySize:`,
+        JSON.stringify(
+          Object.fromEntries(
+            Object.entries(colorVariants).map(([color, v]: [string, any]) => [
+              color,
+              v?.stockBySize ?? {},
+            ])
+          ),
+          null,
+          2
+        )
+      );
+    }
 
     // Update stock for each row
     for (const row of rows) {
@@ -336,25 +338,29 @@ async function updateFirebaseInventory(
       // Update stock for this size (OS from Verifone -> One size in DB)
       const prevQty = colorVariants[colorSlug].stockBySize[dbSize];
       colorVariants[colorSlug].stockBySize[dbSize] = row.quantity;
-      console.log(
-        `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} color=${colorSlug} size=${dbSize}: ${prevQty} -> ${row.quantity}`
-      );
+      if (productSku === '5024-0019') {
+        console.log(
+          `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} color=${colorSlug} size=${dbSize}: ${prevQty} -> ${row.quantity}`
+        );
+      }
     }
 
-    // Debug: log AFTER state (what we're about to write)
-    console.log(
-      `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} - AFTER update (to be written) stockBySize:`,
-      JSON.stringify(
-        Object.fromEntries(
-          Object.entries(colorVariants).map(([color, v]: [string, any]) => [
-            color,
-            v?.stockBySize ?? {},
-          ])
-        ),
-        null,
-        2
-      )
-    );
+    // Debug: log AFTER state (what we're about to write) only for SKU 5024-0019
+    if (productSku === '5024-0019') {
+      console.log(
+        `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} - AFTER update (to be written) stockBySize:`,
+        JSON.stringify(
+          Object.fromEntries(
+            Object.entries(colorVariants).map(([color, v]: [string, any]) => [
+              color,
+              v?.stockBySize ?? {},
+            ])
+          ),
+          null,
+          2
+        )
+      );
+    }
 
     // Update the product document
     const productRef = doc(db, 'products', productDoc.id);
@@ -396,17 +402,19 @@ async function updateNeonInventory(
       JSON.stringify((product.colorVariants as any) || {})
     );
 
-    // Debug: log BEFORE state
-    const beforeStock = Object.fromEntries(
-      Object.entries(colorVariants).map(([color, v]: [string, any]) => [
-        color,
-        v?.stockBySize ?? {},
-      ])
-    );
-    console.log(
-      `[INVENTORY_SYNC_DEBUG] Neon ${productSku} - BEFORE update stockBySize:`,
-      JSON.stringify(beforeStock, null, 2)
-    );
+    // Debug: log BEFORE state only for SKU 5024-0019
+    if (productSku === '5024-0019') {
+      const beforeStock = Object.fromEntries(
+        Object.entries(colorVariants).map(([color, v]: [string, any]) => [
+          color,
+          v?.stockBySize ?? {},
+        ])
+      );
+      console.log(
+        `[INVENTORY_SYNC_DEBUG] Neon ${productSku} - BEFORE update stockBySize:`,
+        JSON.stringify(beforeStock, null, 2)
+      );
+    }
 
     // Update stock for each row
     for (const row of rows) {
@@ -429,22 +437,26 @@ async function updateNeonInventory(
       // Update stock for this size (OS from Verifone -> One size in DB)
       const prevQty = colorVariants[colorSlug].stockBySize[dbSize];
       colorVariants[colorSlug].stockBySize[dbSize] = row.quantity;
-      console.log(
-        `[INVENTORY_SYNC_DEBUG] Neon ${productSku} color=${colorSlug} size=${dbSize}: ${prevQty} -> ${row.quantity}`
-      );
+      if (productSku === '5024-0019') {
+        console.log(
+          `[INVENTORY_SYNC_DEBUG] Neon ${productSku} color=${colorSlug} size=${dbSize}: ${prevQty} -> ${row.quantity}`
+        );
+      }
     }
 
-    // Debug: log AFTER state (what we're about to write)
-    const afterStock = Object.fromEntries(
-      Object.entries(colorVariants).map(([color, v]: [string, any]) => [
-        color,
-        v?.stockBySize ?? {},
-      ])
-    );
-    console.log(
-      `[INVENTORY_SYNC_DEBUG] Neon ${productSku} - AFTER update (to be written) stockBySize:`,
-      JSON.stringify(afterStock, null, 2)
-    );
+    // Debug: log AFTER state (what we're about to write) only for SKU 5024-0019
+    if (productSku === '5024-0019') {
+      const afterStock = Object.fromEntries(
+        Object.entries(colorVariants).map(([color, v]: [string, any]) => [
+          color,
+          v?.stockBySize ?? {},
+        ])
+      );
+      console.log(
+        `[INVENTORY_SYNC_DEBUG] Neon ${productSku} - AFTER update (to be written) stockBySize:`,
+        JSON.stringify(afterStock, null, 2)
+      );
+    }
 
     // Update the product with modified colorVariants
     await prisma.product.update({
@@ -626,18 +638,20 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
           });
         }
 
-        // Debug: log Verifone -> inventory mapping for this product
-        const itemsForProduct = verifoneResult.items.map((i) => ({
-          fullSku: `${i.sku}${i.colorCode}${i.size}`,
-          colorCode: i.colorCode,
-          colorSlug: COLOR_CODE_MAP[i.colorCode],
-          size: i.size,
-          quantity: i.quantity,
-        }));
-        console.log(
-          `[INVENTORY_SYNC_DEBUG] SKU ${productSku} - Verifone items mapped:`,
-          JSON.stringify(itemsForProduct, null, 2)
-        );
+        // Debug: log Verifone -> inventory mapping only for SKU 5024-0019
+        if (productSku === '5024-0019') {
+          const itemsForProduct = verifoneResult.items.map((i) => ({
+            fullSku: `${i.sku}${i.colorCode}${i.size}`,
+            colorCode: i.colorCode,
+            colorSlug: COLOR_CODE_MAP[i.colorCode],
+            size: i.size,
+            quantity: i.quantity,
+          }));
+          console.log(
+            `[INVENTORY_SYNC_DEBUG] SKU ${productSku} - Verifone items mapped:`,
+            JSON.stringify(itemsForProduct, null, 2)
+          );
+        }
 
         console.log(
           `[INVENTORY_SYNC] Processed ${verifoneResult.items.length} inventory items for SKU ${productSku}`
@@ -684,17 +698,19 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
     // Process each product group
     for (const [productSku, productRows] of productGroups.entries()) {
       try {
-        // Debug: log exactly what we're about to update for this product
-        const rowsSummary = productRows.map((r) => ({
-          sku: r.sku,
-          colorSlug: r.parsed?.colorSlug,
-          size: r.parsed?.size,
-          quantity: r.quantity,
-        }));
-        console.log(
-          `[INVENTORY_SYNC_DEBUG] Updating product ${productSku} with ${productRows.length} rows:`,
-          JSON.stringify(rowsSummary, null, 2)
-        );
+        // Debug: log exactly what we're about to update only for SKU 5024-0019
+        if (productSku === '5024-0019') {
+          const rowsSummary = productRows.map((r) => ({
+            sku: r.sku,
+            colorSlug: r.parsed?.colorSlug,
+            size: r.parsed?.size,
+            quantity: r.quantity,
+          }));
+          console.log(
+            `[INVENTORY_SYNC_DEBUG] Updating product ${productSku} with ${productRows.length} rows:`,
+            JSON.stringify(rowsSummary, null, 2)
+          );
+        }
 
         // Update Firebase
         await updateFirebaseInventory(productSku, productRows);

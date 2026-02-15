@@ -65,21 +65,19 @@ export async function GET(request: NextRequest) {
       errors: result.errors.length > 0 ? result.errors : undefined,
     };
 
-    // Debug: include per-row details in response (especially useful for 5024-0019 etc.)
+    // Debug: include details only for product 5024-0019
     if (result.details.length > 0) {
-      const detailsSummary = result.details.map((d) => ({
-        sku: d.sku,
-        productSku: d.parsed?.productSku,
-        colorSlug: d.parsed?.colorSlug,
-        size: d.parsed?.size,
-        quantity: d.quantity,
-        status: d.status,
-        error: d.error,
-      }));
-      response.debugDetails = detailsSummary;
-
-      // Log a sample for product 5024-0019 if present
-      const product5024 = detailsSummary.filter((d) => d.productSku === '5024-0019');
+      const product5024 = result.details
+        .filter((d) => d.parsed?.productSku === '5024-0019')
+        .map((d) => ({
+          sku: d.sku,
+          productSku: d.parsed?.productSku,
+          colorSlug: d.parsed?.colorSlug,
+          size: d.parsed?.size,
+          quantity: d.quantity,
+          status: d.status,
+          error: d.error,
+        }));
       if (product5024.length > 0) {
         console.log(
           '[CRON_INVENTORY_SYNC_DEBUG] Product 5024-0019 details:',
@@ -90,8 +88,9 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('[CRON_INVENTORY_SYNC] Inventory sync completed', {
-      ...response,
-      debugDetails: '(see full response)',
+      success: response.success,
+      summary: response.summary,
+      duration: response.duration,
     });
 
     return NextResponse.json(response, {

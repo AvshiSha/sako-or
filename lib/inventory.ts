@@ -44,7 +44,7 @@ export const COLOR_CODE_MAP: Record<string, string> = {
   '21': 'silver',
   '22': 'gold',
   '26': 'pink',
-  '29': 'ligh-blue',
+  '29': 'light-blue',
   '33': 'olive',
   '35': 'gray',
   '37': 'turquoise',

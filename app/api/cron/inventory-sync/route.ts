@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
-    const response = {
+    const response: Record<string, unknown> = {
       success: result.failed === 0,
       duration: `${duration}ms`,
       timestamp: new Date().toISOString(),
@@ -65,7 +65,34 @@ export async function GET(request: NextRequest) {
       errors: result.errors.length > 0 ? result.errors : undefined,
     };
 
-    console.log('[CRON_INVENTORY_SYNC] Inventory sync completed', response);
+    // Debug: include per-row details in response (especially useful for 5024-0019 etc.)
+    if (result.details.length > 0) {
+      const detailsSummary = result.details.map((d) => ({
+        sku: d.sku,
+        productSku: d.parsed?.productSku,
+        colorSlug: d.parsed?.colorSlug,
+        size: d.parsed?.size,
+        quantity: d.quantity,
+        status: d.status,
+        error: d.error,
+      }));
+      response.debugDetails = detailsSummary;
+
+      // Log a sample for product 5024-0019 if present
+      const product5024 = detailsSummary.filter((d) => d.productSku === '5024-0019');
+      if (product5024.length > 0) {
+        console.log(
+          '[CRON_INVENTORY_SYNC_DEBUG] Product 5024-0019 details:',
+          JSON.stringify(product5024, null, 2)
+        );
+        response.debugProduct5024 = product5024;
+      }
+    }
+
+    console.log('[CRON_INVENTORY_SYNC] Inventory sync completed', {
+      ...response,
+      debugDetails: '(see full response)',
+    });
 
     return NextResponse.json(response, {
       status: result.failed === 0 ? 200 : 207, // 207 = Multi-Status (partial success)

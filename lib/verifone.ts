@@ -845,6 +845,9 @@ export async function getStockByModel(
       })
     }
 
+    // Debug: log raw Verifone response for this product
+    console.log(`[VERIFONE_GET_STOCK_BY_MODEL] ItemCode=${itemCode} -> ${parsedItems.length} items:`, JSON.stringify(parsedItems, null, 2))
+
     return {
       success: true,
       status,

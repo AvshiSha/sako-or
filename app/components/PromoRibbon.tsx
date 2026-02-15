@@ -17,6 +17,7 @@ export default function PromoRibbon({ lng }: PromoRibbonProps) {
         <Link
           href={`/${lng}/collection/campaign?slug=bogosale`}
           className="text-center hover:underline font-medium text-sm md:text-base"
+          suppressHydrationWarning
         >
           {text}
         </Link>

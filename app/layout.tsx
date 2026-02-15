@@ -29,7 +29,7 @@ export default function RootLayout({
   const facebookPixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
   
   return (
-    <html className="light">
+    <html className="light" suppressHydrationWarning>
       <head>
         {/* Google Tag Manager */}
         <script
@@ -52,7 +52,59 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* End Cloudflare Turnstile */}
         
       </head>
-      <body className={assistant.className} suppressHydrationWarning={true}>
+      <body className={assistant.className} suppressHydrationWarning>
+        {/* Strip viewport/font-scaling extension attributes before React hydrates. Extension often runs after our first strip, so we keep stripping via MutationObserver + short polling. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function stripExtensionHydrationMismatch() {
+  function strip() {
+    try {
+      var all = document.querySelectorAll ? document.querySelectorAll('[class*="vp-"], [data-vp-has-lh], [style*="--vp-base-"]') : [];
+      for (var i = 0; i < all.length; i++) {
+        var el = all[i];
+        if (el.classList && el.classList.contains('vp-font-scaled')) el.classList.remove('vp-font-scaled');
+        if (el.removeAttribute) el.removeAttribute('data-vp-has-lh');
+        if (el.style && el.style.removeProperty) {
+          for (var k = el.style.length - 1; k >= 0; k--) {
+            var prop = el.style[k];
+            if (prop && prop.indexOf('--vp-base-') === 0) el.style.removeProperty(prop);
+          }
+        }
+      }
+    } catch (e) {}
+  }
+  function runStripAndSchedule() {
+    strip();
+    if (window.__vpStripDone) return;
+    window.__vpStripCount = (window.__vpStripCount || 0) + 1;
+    if (window.__vpStripCount > 60) { window.__vpStripDone = true; return; }
+    setTimeout(runStripAndSchedule, 50);
+  }
+  if (document.body) runStripAndSchedule();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runStripAndSchedule);
+  } else {
+    runStripAndSchedule();
+  }
+  if (typeof MutationObserver !== 'undefined' && document.body) {
+    var obs = new MutationObserver(function() {
+      if (window.__vpStripDone) return;
+      strip();
+    });
+    var startObs = function() {
+      if (!document.body || window.__vpStripObserving) return;
+      window.__vpStripObserving = true;
+      obs.observe(document.body, { attributes: true, attributeFilter: ['class', 'style', 'data-vp-has-lh'], subtree: true, childList: true });
+      setTimeout(function() { try { obs.disconnect(); } catch (e) {} }, 2500);
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startObs);
+    else startObs();
+  }
+})();
+            `.trim(),
+          }}
+        />
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe 

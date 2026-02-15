@@ -14,8 +14,7 @@
  *   -> Size: "35"
  */
 
-import { db } from './firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { adminDb } from './firebase-admin';
 import { prisma } from './prisma';
 import { getStockByModel } from './verifone';
 
@@ -284,11 +283,12 @@ async function updateFirebaseInventory(
   rows: InventoryUpdateRow[]
 ): Promise<void> {
   try {
-    // Query Firestore for the product with this SKU
-    const { query, collection, where, getDocs } = await import('firebase/firestore');
-    const productsRef = collection(db, 'products');
-    const q = query(productsRef, where('sku', '==', productSku));
-    const querySnapshot = await getDocs(q);
+    // Use Firebase Admin SDK (bypasses security rules - required for CRON/server-side writes)
+    const querySnapshot = await adminDb
+      .collection('products')
+      .where('sku', '==', productSku)
+      .limit(1)
+      .get();
 
     if (querySnapshot.empty) {
       throw new Error(`Product not found in Firebase: ${productSku}`);
@@ -362,9 +362,8 @@ async function updateFirebaseInventory(
       );
     }
 
-    // Update the product document
-    const productRef = doc(db, 'products', productDoc.id);
-    await updateDoc(productRef, {
+    // Update the product document (Admin SDK ensures write succeeds regardless of security rules)
+    await adminDb.collection('products').doc(productDoc.id).update({
       colorVariants,
       updatedAt: new Date(),
     });
@@ -712,11 +711,21 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
           );
         }
 
-        // Update Firebase
-        await updateFirebaseInventory(productSku, productRows);
+        // Update Firebase first, then Neon (both are sources - collection uses Firebase, search uses Neon)
+        let firebaseOk = false;
+        try {
+          await updateFirebaseInventory(productSku, productRows);
+          firebaseOk = true;
+        } catch (fbError) {
+          console.error(`[INVENTORY_SYNC] Firebase update failed for ${productSku}, will still try Neon:`, fbError);
+        }
 
-        // Update Neon (PostgreSQL)
+        // Update Neon (always attempt - product list comes from Neon so it exists there)
         await updateNeonInventory(productSku, productRows);
+
+        if (!firebaseOk) {
+          console.warn(`[INVENTORY_SYNC] Product ${productSku}: Neon updated but Firebase failed - run admin sync if product exists in Firebase`);
+        }
 
         // Mark all rows for this product as success
         for (const row of productRows) {

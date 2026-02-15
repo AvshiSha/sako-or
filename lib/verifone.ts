@@ -845,8 +845,10 @@ export async function getStockByModel(
       })
     }
 
-    // Debug: log raw Verifone response for this product
-    console.log(`[VERIFONE_GET_STOCK_BY_MODEL] ItemCode=${itemCode} -> ${parsedItems.length} items:`, JSON.stringify(parsedItems, null, 2))
+    // Debug: log raw Verifone response only for SKU 5024-0019
+    if (itemCode.trim() === '5024-0019') {
+      console.log(`[VERIFONE_GET_STOCK_BY_MODEL] ItemCode=${itemCode} -> ${parsedItems.length} items:`, JSON.stringify(parsedItems, null, 2))
+    }
 
     return {
       success: true,

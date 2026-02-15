@@ -40,6 +40,11 @@ import {
 // (Runtime behavior remains unchanged.)
 const motion = fmMotion as unknown as any;
 
+// Deterministic price formatting so server and client output matches (avoids hydration mismatch on mobile).
+function formatPrice(n: number): string {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+}
+
 // Translations for the collection page
 const translations = {
   en: {
@@ -146,6 +151,10 @@ interface CollectionClientProps {
   searchTotal?: number;
   searchPage?: number;
   hasMore?: boolean;
+  /** From server so initial state matches on static pages (e.g. women/accessories/bags) and mobile. */
+  initialSort?: string;
+  initialMinPrice?: string;
+  initialMaxPrice?: string;
 }
 
 export default function CollectionClient({
@@ -160,6 +169,9 @@ export default function CollectionClient({
   searchTotal,
   searchPage = 1,
   hasMore: initialHasMore = false,
+  initialSort: initialSortProp,
+  initialMinPrice,
+  initialMaxPrice,
 }: CollectionClientProps) {
   const params = useParams();
   const router = useRouter();
@@ -663,7 +675,7 @@ export default function CollectionClient({
   });
 
   const [sortBy, setSortBy] = useState<string>(() => {
-    return safeSearchParams.get('sort') || 'relevance';
+    return initialSortProp ?? 'relevance';
   });
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -1256,46 +1268,34 @@ export default function CollectionClient({
     return { min: minRounded, max: maxRounded };
   }, [initialProducts, initialVariantItems, useVariantItems]);
 
-  // UI State: Live price range for slider (updates instantly while dragging)
-  // Single source of truth for slider UI - no separate draft/applied states
+  // UI State: Live price range for slider. Initialize from server-passed params so static pages (e.g. women/accessories/bags) match on mobile.
   const [uiRange, setUiRange] = useState<[number, number]>(() => {
-    // Initialize from URL params or default to full collection bounds
-    // DO NOT clamp to bounds - allow user to set values outside collection range
-    const urlMinStr = safeSearchParams.get('minPrice') || '';
-    const urlMaxStr = safeSearchParams.get('maxPrice') || '';
     const boundsMin = collectionPriceBounds?.min ?? 0;
     const boundsMax = collectionPriceBounds?.max ?? 1000;
-    
-    // Use URL values directly, or default to bounds if not set
-    const urlMin = urlMinStr ? parseFloat(urlMinStr) : boundsMin;
-    const urlMax = urlMaxStr ? parseFloat(urlMaxStr) : boundsMax;
-    
-    // Only validate that values are numbers and min <= max (no clamping to bounds)
+    const urlMin =
+      initialMinPrice != null && initialMinPrice !== "" ? parseFloat(initialMinPrice) : boundsMin;
+    const urlMax =
+      initialMaxPrice != null && initialMaxPrice !== "" ? parseFloat(initialMaxPrice) : boundsMax;
     const validMin = isNaN(urlMin) ? boundsMin : urlMin;
     const validMax = isNaN(urlMax) ? boundsMax : urlMax;
-    
     return [Math.min(validMin, validMax), Math.max(validMin, validMax)];
   });
 
-  // Re-initialize uiRange when collectionPriceBounds becomes available (if it was undefined during initial render)
+  // Re-initialize uiRange when collectionPriceBounds becomes available (if it was undefined during initial render).
+  // Use server-provided initialMinPrice/initialMaxPrice (same as useState initializer) to avoid hydration mismatch on static pages.
   useEffect(() => {
     if (!collectionPriceBounds) return; // Wait for bounds to be computed
-    
-    const urlMinStr = safeSearchParams.get('minPrice') || '';
-    const urlMaxStr = safeSearchParams.get('maxPrice') || '';
+
     const boundsMin = collectionPriceBounds.min;
     const boundsMax = collectionPriceBounds.max;
-    
-    // Use URL values directly, or default to bounds if not set
-    const urlMin = urlMinStr ? parseFloat(urlMinStr) : boundsMin;
-    const urlMax = urlMaxStr ? parseFloat(urlMaxStr) : boundsMax;
-    
-    // Only validate that values are numbers and min <= max (no clamping to bounds)
+    const urlMin =
+      initialMinPrice != null && initialMinPrice !== "" ? parseFloat(initialMinPrice) : boundsMin;
+    const urlMax =
+      initialMaxPrice != null && initialMaxPrice !== "" ? parseFloat(initialMaxPrice) : boundsMax;
     const validMin = isNaN(urlMin) ? boundsMin : urlMin;
     const validMax = isNaN(urlMax) ? boundsMax : urlMax;
     const next: [number, number] = [Math.min(validMin, validMax), Math.max(validMin, validMax)];
-    
-    // Only update if different (prevents unnecessary updates)
+
     if (
       Math.abs(uiRange[0] - next[0]) > 0.01 ||
       Math.abs(uiRange[1] - next[1]) > 0.01
@@ -1624,7 +1624,7 @@ export default function CollectionClient({
                   <div className="space-y-4 pt-3 border-t border-gray-100">
                     {/* Price Range Label */}
                     <div className="text-sm font-medium text-gray-900">
-                      ₪{uiRange[0].toLocaleString()} - ₪{uiRange[1].toLocaleString()}
+                      ₪{formatPrice(uiRange[0])} - ₪{formatPrice(uiRange[1])}
                     </div>
                     
                     {/* Price Range Slider */}
@@ -1857,7 +1857,7 @@ export default function CollectionClient({
                       <div className="space-y-4 pt-3 border-t border-gray-100">
                         {/* Price Range Label */}
                         <div className="text-sm font-medium text-gray-900">
-                          ₪{uiRange[0].toLocaleString()} - ₪{uiRange[1].toLocaleString()}
+                          ₪{formatPrice(uiRange[0])} - ₪{formatPrice(uiRange[1])}
                         </div>
                         
                          {/* Price Range Slider */}

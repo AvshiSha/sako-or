@@ -372,7 +372,7 @@ export default function Navigation({ lng }: { lng: string }) {
         >
           {/* Desktop: Logo on left */}
           <div className="hidden md:flex items-center">
-            <Link href={`/${lng}`} className="text-1xl font-bold text-gray-900">
+            <Link href={`/${lng}`} className="text-1xl font-bold text-gray-900" suppressHydrationWarning>
               SAKO OR
             </Link>
           </div>
@@ -385,6 +385,7 @@ export default function Navigation({ lng }: { lng: string }) {
               onClick={() => setIsMobileMenuOpen(true)}
               className="text-gray-700 hover:text-gray-900 p-2"
               aria-label="Menu"
+              suppressHydrationWarning
             >
               {/* <Menu className="h-6 w-6" /> */}
               <TextSearch strokeWidth={1.5} className="h-6.5 w-6.5" />
@@ -395,6 +396,7 @@ export default function Navigation({ lng }: { lng: string }) {
             <Link
                 href={user ? `/${lng}/profile` : `/${lng}/signin`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+                suppressHydrationWarning
                 aria-label={
                   user
                     ? translations[lng as keyof typeof translations].myProfile
@@ -414,7 +416,7 @@ export default function Navigation({ lng }: { lng: string }) {
 
           {/* Center: Logo (Mobile only, positioned more to the left) */}
           <div className="flex-1 flex justify-start items-center md:hidden ml-1">
-            <Link href={`/${lng}`}>
+            <Link href={`/${lng}`} suppressHydrationWarning>
               <span className="text-xl font-bold text-gray-900">SAKO OR</span>
             </Link>
           </div>
@@ -424,6 +426,7 @@ export default function Navigation({ lng }: { lng: string }) {
             <Link
               href={`/${lng}`}
               className="text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
+              suppressHydrationWarning
             >
               {translations[lng as keyof typeof translations].home}
             </Link>
@@ -434,6 +437,7 @@ export default function Navigation({ lng }: { lng: string }) {
                 onMouseEnter={() => handleMouseEnter('women')}
                 onMouseLeave={() => handleMouseLeave('women')}
                 className={`flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50 ${isWomenDropdownOpen ? 'bg-gray-50' : ''}`}
+                suppressHydrationWarning
               >
                 {translations[lng as keyof typeof translations].women}
                 <ChevronDown className="ml-1 h-4 w-4" />
@@ -462,6 +466,7 @@ export default function Navigation({ lng }: { lng: string }) {
                     <Link
                       href={`/${lng}/collection/women`}
                       className="block text-sm text-gray-700 hover:text-gray-900 mb-1 transition-colors duration-150"
+                      suppressHydrationWarning
                     >
                       {translations[lng as keyof typeof translations].allWomen}
                     </Link>
@@ -476,6 +481,7 @@ export default function Navigation({ lng }: { lng: string }) {
                       <Link
                         href={`/${lng}/collection/women/${subcategory.slug}`}
                         className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150 mb-1"
+                        suppressHydrationWarning
                       >
                         {translations[lng as keyof typeof translations].allProducts}
                       </Link>
@@ -489,6 +495,7 @@ export default function Navigation({ lng }: { lng: string }) {
                               <Link
                                 href={`/${lng}/collection/women/${subcategory.slug}/${subSubCategory.slug}`}
                                 className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150"
+                                suppressHydrationWarning
                               >
                                 {subSubCategory.name}
                               </Link>
@@ -509,6 +516,7 @@ export default function Navigation({ lng }: { lng: string }) {
                   onMouseEnter={() => handleMouseEnter('men')}
                   onMouseLeave={() => handleMouseLeave('men')}
                   className={`flex items-center text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50 ${isMenDropdownOpen ? 'bg-gray-50' : ''}`}
+                  suppressHydrationWarning
                 >
                   {translations[lng as keyof typeof translations].men}
                   <ChevronDown className="ml-1 h-4 w-4" />
@@ -538,6 +546,7 @@ export default function Navigation({ lng }: { lng: string }) {
                     <Link
                       href={`/${lng}/collection/men`}
                       className="block text-sm text-gray-700 hover:text-gray-900 mb-1 transition-colors duration-150"
+                      suppressHydrationWarning
                     >
                       {translations[lng as keyof typeof translations].allMen}
                     </Link>
@@ -552,6 +561,7 @@ export default function Navigation({ lng }: { lng: string }) {
                       <Link
                         href={`/${lng}/collection/men/${subcategory.slug}`}
                         className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150 mb-1"
+                        suppressHydrationWarning
                       >
                         {translations[lng as keyof typeof translations].allProducts}
                       </Link>
@@ -563,6 +573,7 @@ export default function Navigation({ lng }: { lng: string }) {
                               <Link
                                 href={`/${lng}/collection/men/${subcategory.slug}/${subSubCategory.slug}`}
                                 className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150"
+                                suppressHydrationWarning
                               >
                                 {subSubCategory.name}
                               </Link>
@@ -579,6 +590,7 @@ export default function Navigation({ lng }: { lng: string }) {
             <Link
               href={`/${lng}/about`}
               className="text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
+              suppressHydrationWarning
             >
               {translations[lng as keyof typeof translations].about}
             </Link>
@@ -586,6 +598,7 @@ export default function Navigation({ lng }: { lng: string }) {
             <Link
               href={`/${lng}/contact`}
               className="text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
+              suppressHydrationWarning
             >
               {translations[lng as keyof typeof translations].contact}
             </Link>
@@ -601,6 +614,7 @@ export default function Navigation({ lng }: { lng: string }) {
                 <Link
                   href={user ? `/${lng}/profile` : `/${lng}/signin`}
                   className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50 flex items-center justify-center"
+                  suppressHydrationWarning
                   aria-label={
                     user
                       ? translations[lng as keyof typeof translations].myProfile
@@ -623,6 +637,7 @@ export default function Navigation({ lng }: { lng: string }) {
               <Link
                 href={`/${lng}/cart`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+                suppressHydrationWarning
               >
                 <ShoppingBag className="h-5 w-5" />
                 {items.length > 0 && (
@@ -635,6 +650,7 @@ export default function Navigation({ lng }: { lng: string }) {
               <Link
                 href={`/${lng}/favorites`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+                suppressHydrationWarning
               >
                 <Heart className="h-5 w-5" />
                 {favorites.length > 0 && (
@@ -652,6 +668,7 @@ export default function Navigation({ lng }: { lng: string }) {
               <Link
                 href={`/${lng}/favorites`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"
+                suppressHydrationWarning
               >
                 <Heart className="h-5 w-5" />
                 {favorites.length > 0 && (
@@ -664,6 +681,7 @@ export default function Navigation({ lng }: { lng: string }) {
               <Link
                 href={`/${lng}/cart`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"
+                suppressHydrationWarning
               >
                 <ShoppingBag className="h-5 w-5" />
                 {items.length > 0 && (
@@ -707,6 +725,7 @@ export default function Navigation({ lng }: { lng: string }) {
                     ? 'bg-white text-gray-900 shadow-sm'
                     : 'text-gray-600 hover:text-gray-900'
                 }`}
+                suppressHydrationWarning
               >
                 {translations[lng as keyof typeof translations].women.toUpperCase()}
               </button>
@@ -720,6 +739,7 @@ export default function Navigation({ lng }: { lng: string }) {
                       ? 'bg-white text-gray-900 shadow-sm'
                       : 'text-gray-600 hover:text-gray-900'
                   }`}
+                  suppressHydrationWarning
                 >
                   {translations[lng as keyof typeof translations].men.toUpperCase()}
                 </button>
@@ -737,6 +757,7 @@ export default function Navigation({ lng }: { lng: string }) {
                   className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-900 font-bold border-b border-gray-300 uppercase text-sm tracking-wide"
                   style={{ fontFamily: 'Poppins, sans-serif' }}
                   dir={lng === 'he' ? 'rtl' : 'ltr'}
+                  suppressHydrationWarning
                 >
                   <span>{selectedGender === 'women' ? translations[lng as keyof typeof translations].allWomen : translations[lng as keyof typeof translations].allMen}</span>
                 </Link>
@@ -759,6 +780,7 @@ export default function Navigation({ lng }: { lng: string }) {
                             className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
                             style={{ fontFamily: 'Poppins, sans-serif' }}
                             dir={lng === 'he' ? 'rtl' : 'ltr'}
+                            suppressHydrationWarning
                           >
                             <span className="text-sm uppercase tracking-wide">{categoryName}</span>
                           </Link>
@@ -779,6 +801,7 @@ export default function Navigation({ lng }: { lng: string }) {
                               href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
                               className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm font-medium border-b border-gray-200"
                               dir={lng === 'he' ? 'rtl' : 'ltr'}
+                              suppressHydrationWarning
                             >
                               {translations[lng as keyof typeof translations].allProducts}
                             </Link>
@@ -793,6 +816,7 @@ export default function Navigation({ lng }: { lng: string }) {
                                   href={`/${lng}/collection/${selectedGender}/${subcategory.slug}/${subSubCategory.slug}`}
                                   className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
                                   dir={lng === 'he' ? 'rtl' : 'ltr'}
+                                  suppressHydrationWarning
                                 >
                                   {subSubName}
                                 </Link>

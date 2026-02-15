@@ -1,27 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { syncInventoryFromVerifone } from '@/lib/inventory';
+import { syncInventoryFromFirebaseToNeon } from '@/lib/inventory';
 
 /**
- * GET /api/cron/inventory-sync
+ * GET /api/cron/inventory-sync-neon
  *
- * CRON job to sync inventory from Verifone SOAP API to Firebase only.
- * Updates Firebase immediately per product; Neon is updated by inventory-sync-neon.
+ * CRON job to sync inventory (colorVariants) from Firebase to Neon.
+ * Runs after inventory-sync; no Verifone calls.
  * Protected by CRON_SECRET header (set by Vercel)
  *
- * Schedule: every 3 hours (0 *\/3 * * *)
+ * Schedule: 15 min past the hour, every 3 hours (15 *\/3 * * *)
  */
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // Verify CRON_SECRET header for security
-    // Vercel cron jobs send the secret in the "x-vercel-cron-secret" header
-    // or in the Authorization header as "Bearer <secret>"
     const cronSecret = process.env.CRON_SECRET;
 
     if (!cronSecret) {
       console.error(
-        '[CRON_INVENTORY_SYNC] CRON_SECRET environment variable is not set'
+        '[CRON_INVENTORY_SYNC_NEON] CRON_SECRET environment variable is not set'
       );
       return NextResponse.json(
         { error: 'CRON_SECRET not configured' },
@@ -33,7 +30,6 @@ export async function GET(request: NextRequest) {
     const vercelCronSecret = request.headers.get('x-vercel-cron-secret');
     const cronSecretHeader = request.headers.get('x-cron-secret');
 
-    // Check various header formats
     const providedSecret =
       vercelCronSecret ||
       cronSecretHeader ||
@@ -41,19 +37,18 @@ export async function GET(request: NextRequest) {
 
     if (!providedSecret || providedSecret !== cronSecret) {
       console.warn(
-        '[CRON_INVENTORY_SYNC] Unauthorized access attempt - invalid or missing CRON_SECRET'
+        '[CRON_INVENTORY_SYNC_NEON] Unauthorized access attempt - invalid or missing CRON_SECRET'
       );
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    console.log('[CRON_INVENTORY_SYNC] Starting inventory sync from Verifone to Firebase...');
+    console.log('[CRON_INVENTORY_SYNC_NEON] Starting Firebase->Neon inventory sync...');
 
-    // Execute the inventory sync
-    const result = await syncInventoryFromVerifone();
+    const result = await syncInventoryFromFirebaseToNeon();
 
     const duration = Date.now() - startTime;
 
-    const response: Record<string, unknown> = {
+    const response = {
       success: result.failed === 0,
       duration: `${duration}ms`,
       timestamp: new Date().toISOString(),
@@ -66,51 +61,44 @@ export async function GET(request: NextRequest) {
       errors: result.errors.length > 0 ? result.errors : undefined,
     };
 
-    console.log('[CRON_INVENTORY_SYNC] Firebase inventory sync completed', {
+    console.log('[CRON_INVENTORY_SYNC_NEON] Sync completed', {
       success: response.success,
       summary: response.summary,
       duration: response.duration,
     });
 
     return NextResponse.json(response, {
-      status: result.failed === 0 ? 200 : 207, // 207 = Multi-Status (partial success)
+      status: result.failed === 0 ? 200 : 207,
     });
   } catch (error) {
     const duration = Date.now() - startTime;
 
-    // Extract error information
     let errorMessage = 'Unknown error';
     let errorStack: string | undefined;
-    let errorName: string | undefined;
 
     if (error instanceof Error) {
       errorMessage = error.message;
       errorStack = error.stack;
-      errorName = error.name;
     } else if (typeof error === 'string') {
       errorMessage = error;
     } else if (error && typeof error === 'object') {
-      // Try to extract message from error object
       errorMessage = (error as any).message || String(error);
     }
 
-    console.error('[CRON_INVENTORY_SYNC] Fatal error during inventory sync', {
+    console.error('[CRON_INVENTORY_SYNC_NEON] Fatal error', {
       error: errorMessage,
-      errorName,
       errorStack,
       duration: `${duration}ms`,
-      rawError: error,
     });
 
-    const errorResponse: any = {
+    const errorResponse: Record<string, unknown> = {
       success: false,
-      error: 'Failed to sync inventory',
+      error: 'Failed to sync inventory from Firebase to Neon',
       details: errorMessage,
       duration: `${duration}ms`,
       timestamp: new Date().toISOString(),
     };
 
-    // Include stack trace in development
     if (process.env.NODE_ENV === 'development' && errorStack) {
       errorResponse.stack = errorStack;
     }

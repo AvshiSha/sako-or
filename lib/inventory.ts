@@ -58,6 +58,16 @@ export const COLOR_CODE_MAP: Record<string, string> = {
   '99': 'nude'
 };
 
+/**
+ * Map size from Verifone/SKU format to our DB format.
+ * Verifone uses "OS" for one-size items; we use "One size" in Firebase and Neon.
+ */
+function sizeToDbFormat(size: string): string {
+  const trimmed = (size || '').trim();
+  if (trimmed.toUpperCase() === 'OS') return 'One size';
+  return trimmed;
+}
+
 // Reverse map for encoding
 export const COLOR_SLUG_TO_CODE: Record<string, string> = Object.entries(COLOR_CODE_MAP).reduce(
   (acc, [code, slug]) => {
@@ -293,7 +303,7 @@ async function updateFirebaseInventory(
     // Update stock for each row
     for (const row of rows) {
       const { colorSlug, size } = row.parsed!;
-
+      const dbSize = sizeToDbFormat(size); // OS (Verifone) -> One size (our DB)
 
       // Initialize color variant if it doesn't exist
       if (!colorVariants[colorSlug]) {
@@ -308,8 +318,8 @@ async function updateFirebaseInventory(
         colorVariants[colorSlug].stockBySize = {};
       }
 
-      // Update stock for this size
-      colorVariants[colorSlug].stockBySize[size] = row.quantity;
+      // Update stock for this size (OS from Verifone -> One size in DB)
+      colorVariants[colorSlug].stockBySize[dbSize] = row.quantity;
     }
 
 
@@ -354,7 +364,7 @@ async function updateNeonInventory(
     // Update stock for each row
     for (const row of rows) {
       const { colorSlug, size } = row.parsed!;
-
+      const dbSize = sizeToDbFormat(size); // OS (Verifone) -> One size (our DB)
 
       // Check if color variant exists, create if it doesn't
       if (!colorVariants[colorSlug]) {
@@ -369,8 +379,8 @@ async function updateNeonInventory(
         colorVariants[colorSlug].stockBySize = {};
       }
 
-      // Update stock for this size
-      colorVariants[colorSlug].stockBySize[size] = row.quantity;
+      // Update stock for this size (OS from Verifone -> One size in DB)
+      colorVariants[colorSlug].stockBySize[dbSize] = row.quantity;
     }
 
     // Update the product with modified colorVariants

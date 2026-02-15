@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { FaFacebook, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa';
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { languageMetadata } from '../../i18n/settings';
 import {
@@ -74,6 +74,16 @@ const translations = {
   }
 }
 
+/** Renders children only after mount so Radix Accordion IDs match (avoids server/client hydration mismatch). */
+function ClientOnlyAccordion({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) {
+    return <div className="w-full min-h-[180px]" aria-hidden />;
+  }
+  return <>{children}</>;
+}
+
 function FooterInner({ lng }: { lng: string }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -111,7 +121,7 @@ function FooterInner({ lng }: { lng: string }) {
       {/* Mobile Footer */}
       <footer className="md:hidden bg-[#B2A28E] text-black">
         <div className="w-full">
-          {/* Accordion Sections */}
+          <ClientOnlyAccordion>
           <Accordion type="single" collapsible className="w-full">
             {/* COMPANY Accordion */}
             <AccordionItem value="company" className="border-b border-black/20">
@@ -214,6 +224,7 @@ function FooterInner({ lng }: { lng: string }) {
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+          </ClientOnlyAccordion>
 
           {/* Social Icons Row */}
           <div className="flex items-center justify-center gap-6 py-6 px-4 border-b border-black/20">
@@ -267,7 +278,7 @@ function FooterInner({ lng }: { lng: string }) {
       {/* Desktop Footer */}
       <footer className="hidden md:block bg-[#B2A28E] text-black">
         <div className="w-full">
-          {/* Accordion Sections */}
+          <ClientOnlyAccordion>
           <Accordion type="single" collapsible className="w-full">
             {/* COMPANY Accordion */}
             <AccordionItem value="company" className="border-b border-black/20">
@@ -370,6 +381,7 @@ function FooterInner({ lng }: { lng: string }) {
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+          </ClientOnlyAccordion>
 
           {/* Social Icons Row */}
           <div className="flex items-center justify-center gap-6 py-6 px-4 border-b border-black/20">

@@ -297,6 +297,14 @@ export default async function CollectionSlugPage({
     }));
   }
 
+  // Pass initial filter values from server so client initial state matches (fixes hydration on static pages e.g. women/accessories/bags on mobile).
+  const initialSort =
+    typeof resolvedSearchParams.sort === "string" ? resolvedSearchParams.sort : "relevance";
+  const initialMinPrice =
+    typeof resolvedSearchParams.minPrice === "string" ? resolvedSearchParams.minPrice : undefined;
+  const initialMaxPrice =
+    typeof resolvedSearchParams.maxPrice === "string" ? resolvedSearchParams.maxPrice : undefined;
+
   return (
     <CollectionClient
       initialProducts={serializedProducts}
@@ -310,6 +318,9 @@ export default async function CollectionSlugPage({
       searchTotal={searchQuery ? searchTotal : collectionTotal}
       searchPage={searchQuery ? searchPage : collectionPage}
       hasMore={searchQuery ? searchHasMore : collectionHasMore}
+      initialSort={initialSort}
+      initialMinPrice={initialMinPrice}
+      initialMaxPrice={initialMaxPrice}
     />
   );
 }

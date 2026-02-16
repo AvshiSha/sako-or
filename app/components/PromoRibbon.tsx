@@ -8,8 +8,8 @@ interface PromoRibbonProps {
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
   const text = lng === 'he' 
-    ? '❤️ Love comes in pairs - מבצע זוגות בדף ולנטיינס › לחצי כאן'  
-    : '❤️ Love comes in pairs 💕 BOGO pair sale on the page and newsletter › Click here to see them'
+    ? 'שני זוגות. הנחה אוטומטית בעגלה. ✨ לחצי כאן לצפייה במוצרים'
+    : 'Two pairs. Automatic discount in cart. ✨ Click here to see the products'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-[#B2A28E] to-[#B2A28E] text-white h-10 z-[60]">

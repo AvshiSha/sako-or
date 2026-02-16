@@ -97,7 +97,9 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     const onSelect = () => setSelectedImageIndex(api.selectedScrollSnap())
     api.on('select', onSelect)
     onSelect()
-    return () => api.off('select', onSelect)
+    return () => {
+      api.off('select', onSelect)
+    }
   }, [api])
 
   // Reset carousel to primary image when variant changes

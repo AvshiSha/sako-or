@@ -1490,11 +1490,7 @@ export default function CollectionClient({
                       const isAboveFold = index < 6;
                       
                       return (
-                        <motion.div
-                          key={item.variantKey}
-                          {...({ whileHover: { y: -4 } } as unknown as Record<string, unknown>)}
-                          transition={{ duration: 0.2 }}
-                        >
+                        <motion.div key={item.variantKey}>
                           <ProductCard 
                             product={item.product} 
                             language={lng as 'en' | 'he'}
@@ -1511,11 +1507,7 @@ export default function CollectionClient({
                       const isAboveFold = index < 6;
                       
                       return (
-                        <motion.div
-                          key={product.id}
-                          {...({ whileHover: { y: -4 } } as unknown as Record<string, unknown>)}
-                          transition={{ duration: 0.2 }}
-                        >
+                        <motion.div key={product.id}>
                           <ProductCard 
                             product={product} 
                             language={lng as 'en' | 'he'}

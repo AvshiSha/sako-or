@@ -145,26 +145,28 @@ function HeroVideoSection({
 // Define the exact SKUs you want to feature as "Best Sellers"
 // You can edit this array as needed.
 const BEST_SELLER_SKUS: string[] = [
-  '4905-0036',
-  '4905-0012',
-  '4904-0003',
-  '4929-2318',
-  '4926-2356',
-  '4925-2901',
-  '4925-1309',
-  '4725-6119',
-  '4714-0006',
-  '4714-0001',
-  '4904-0001',
-  '4904-0007',
-  '4904-0010',
-  '4904-0050',
-  '4905-0001',
-  '4912-2168',
-  '4912-2170',
-  '4922-3151',
-  '4925-0310' ,
-  '4925-1205'
+  '5024-0020',
+  '5024-0019',
+  '5035-0002',
+  '5035-0195',
+  '5035-0302',
+  '5035-6617',
+  '5035-6630',
+  '5036-0803',
+  '5003-0017',
+  '5003-0023',
+  '5003-0030',
+  '5003-0056',
+  '5022-0635',
+  '5022-3102',
+  '5025-1305',
+  '5025-2917',
+  '5025-4009',
+  '5025-4010',
+  '5025-4011',
+  '5029-1261',
+  '5029-7060',
+  '5029-9523'
 ]
 
 // BOGO pair deal – SKUs from all groups (match assign-bogo-groups.ts)
@@ -449,7 +451,7 @@ export default function Home() {
       {!loadingProducts && bestSellers.length > 0 && (
         <ProductCarousel
           products={bestSellers}
-          title={lng === 'he' ? 'הנמכרים ביותר' : 'Best Sellers'}
+          title={lng === 'he' ? 'New Collection' : 'New Collection'}
           language={lng as 'en' | 'he'}
         />
       )}

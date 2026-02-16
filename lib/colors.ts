@@ -57,6 +57,7 @@ export const colorTranslations: Record<string, ColorTranslation> = {
   'caramel': { hex: '#b5651d', en: 'Caramel', he: 'קרמל' },
   'bronze': { hex: '#CD7F32', en: 'Bronze', he: 'ארד' },
   'black-red': { hex: '#420000', en: 'Black & Red', he: 'שחור ואדום' },
+  'nude': { hex: '#F7D9BC', en: 'Nude', he: 'ניוד' },
 };
 
 /**

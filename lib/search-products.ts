@@ -66,7 +66,24 @@ export async function searchProducts(
     'אפור': 'gray',
     'ורוד': 'pink',
     'סגול': 'purple',
-    'כתום': 'orange'
+    'כתום': 'orange',
+    'ניוד': 'nude',
+    'בורדו': 'bordeaux',
+    'שחור ואדום': 'black-red',
+    'שחור ולבן': 'black-white',
+    'שקוף': 'transparent',
+    'כאמל': 'camel',
+    'ורוד בהיר': 'light-pink',
+    'קרמל': 'caramel',
+    'ארד': 'bronze',
+    'חום בהיר': 'light-brown',
+    'חום כהה': 'dark-brown',
+    'כחול כהה': 'dark-blue',
+    'בז': 'beige',
+    'זהב': 'gold',
+    'כסף': 'silver',
+    'אוף וויט': 'off-white',
+    'תכלת': 'light-blue'
   };
   
   // Extract potential color names from the query and expand with variations

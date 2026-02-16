@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
 import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
@@ -35,7 +35,6 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   // Carousel state
   const [api, setApi] = useState<CarouselApi>()
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
-  const linkClickedRef = useRef(false)
 
   // Get the default color variant for display
   // Priority: preselectedColorSlug > selectedColors filter > first active variant
@@ -92,48 +91,13 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     return index >= 0 ? index : 0
   }, [activeVariant, variantImages, totalImages])
 
-  // Update selected image index when carousel changes
+  // Sync selected image index when carousel changes (Embla v8 handles click vs drag)
   useEffect(() => {
     if (!api) return
-
-    let isScrolling = false
-    let scrollTimeout: NodeJS.Timeout | null = null
-
-    const onSelect = () => {
-      const selected = api.selectedScrollSnap()
-      setSelectedImageIndex(selected)
-
-      // If the index changed, it means user swiped - prevent link click
-      if (isScrolling) {
-        linkClickedRef.current = true
-        // Reset after a short delay to allow normal clicks again
-        if (scrollTimeout) clearTimeout(scrollTimeout)
-        scrollTimeout = setTimeout(() => {
-          linkClickedRef.current = false
-        }, 300)
-      }
-    }
-
-    const onScroll = () => {
-      isScrolling = true
-      linkClickedRef.current = true
-    }
-
-    const onScrollEnd = () => {
-      isScrolling = false
-    }
-
+    const onSelect = () => setSelectedImageIndex(api.selectedScrollSnap())
     api.on('select', onSelect)
-    api.on('scroll', onScroll)
-    api.on('settle', onScrollEnd)
-    onSelect() // Set initial index
-
-    return () => {
-      api.off('select', onSelect)
-      api.off('scroll', onScroll)
-      api.off('settle', onScrollEnd)
-      if (scrollTimeout) clearTimeout(scrollTimeout)
-    }
+    onSelect()
+    return () => api.off('select', onSelect)
   }, [api])
 
   // Reset carousel to primary image when variant changes
@@ -246,13 +210,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     setIsQuickBuyOpen(true)
   }
 
-  const handleLinkClick = useCallback((e: React.MouseEvent) => {
-    if (linkClickedRef.current) {
-      e.preventDefault()
-      linkClickedRef.current = false
-      return
-    }
-
+  const handleLinkClick = useCallback(() => {
     // Track select_item when product is clicked
     try {
       const productName = productHelpers.getField(product, 'name', language as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product';
@@ -285,21 +243,9 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const handleArrowClick = useCallback((direction: 'prev' | 'next', e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-
     if (!api || totalImages <= 1) return
-
-    linkClickedRef.current = true // Prevent link navigation
-
-    if (direction === 'prev') {
-      api.scrollPrev()
-    } else {
-      api.scrollNext()
-    }
-
-    // Reset after a short delay to allow normal clicks again
-    setTimeout(() => {
-      linkClickedRef.current = false
-    }, 300)
+    if (direction === 'prev') api.scrollPrev()
+    else api.scrollNext()
   }, [api, totalImages])
 
   return (
@@ -314,7 +260,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         <div className="w-full h-full relative">
           {/* Image indicator dots */}
           {!disableImageCarousel && totalImages > 1 && (
-            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex space-x-1">
+            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex space-x-1 pointer-events-none">
               {Array.from({ length: totalImages }).map((_, index) => (
                 <div
                   key={index}
@@ -454,28 +400,28 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
         {/* Out of Stock Badge */}
         {isOutOfStock && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
             {language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
           </div>
         )}
 
         {/* Last Call Badge - Show if stock is between 1 and 4 */}
         {!isOutOfStock && isLastCall && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#B2A28E]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#B2A28E]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
             {language === 'he' ? 'Last Call' : 'Last Call'}
           </div>
         )}
 
         {/* Sale Badge - Show if product has any sale price (product-level or variant-level) */}
         {!isOutOfStock && !isLastCall && hasSalePrice() && salePercent != null && salePercent > 0 && (
-          <div dir="ltr" className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+          <div dir="ltr" className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
             {salePercent}% OFF
           </div>
         )}
 
         {/* New Product Badge - Show if product is new, positioned after sale badge if both exist */}
         {!isOutOfStock && !isLastCall && product.newProduct && !hasSalePrice() && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#856D55]/80 text-white text-xs font-medium px-2 py-1 rounded z-10" style={{ fontFamily: 'Assistant, sans-serif' }}>
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#856D55]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
             {language === 'he' ? 'NEW' : 'NEW'}
           </div>
         )}

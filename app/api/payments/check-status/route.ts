@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { prisma } from '../../../../lib/prisma';
-import { stringifyPaymentData, parsePaymentData } from '../../../../lib/orders';
+import { stringifyPaymentData, parsePaymentData, mergePaymentData } from '../../../../lib/orders';
 import { spendPointsForOrder } from '../../../../lib/points';
 import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
 import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
@@ -198,14 +198,14 @@ export async function POST(request: NextRequest) {
 
     // Update order status based on CardCom response
     if (statusResponse.ResponseCode === 0) {
-      // Payment successful
+      // Payment successful; merge so pointsToSpend from create-low-profile is preserved for Verifone invoice
       await prisma.order.update({
         where: { id: order.id },
         data: {
           status: 'completed',
           paymentStatus: 'completed',
           cardcomTransactionId: statusResponse.TranzactionId,
-          paymentData: stringifyPaymentData(statusResponse),
+          paymentData: mergePaymentData(order.paymentData, statusResponse as Record<string, unknown>),
           updatedAt: new Date(),
         },
       });
@@ -333,13 +333,13 @@ export async function POST(request: NextRequest) {
         orderId: order.orderNumber,
       });
     } else {
-      // Payment failed
+      // Payment failed; still merge to preserve pointsToSpend in case of retry
       await prisma.order.update({
         where: { id: order.id },
         data: {
           status: 'failed',
           paymentStatus: 'failed',
-          paymentData: stringifyPaymentData(statusResponse),
+          paymentData: mergePaymentData(order.paymentData, statusResponse as Record<string, unknown>),
           updatedAt: new Date(),
         },
       });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { LowProfileResult } from '../../../../app/types/cardcom';
 import { prisma } from '../../../../lib/prisma';
-import { stringifyPaymentData } from '../../../../lib/orders';
+import { mergePaymentData } from '../../../../lib/orders';
 import { markCartItemsAsPurchased } from '../../../../lib/cart-status';
 import { handlePostPaymentActions } from '../../../../lib/post-payment-actions';
 import { productService } from '../../../../lib/firebase';
@@ -120,14 +120,23 @@ async function updateOrderStatus(
   data?: any
 ) {
   try {
-    
+    // Preserve existing paymentData metadata (e.g. pointsToSpend) when merging in transaction data
+    const existingOrder = await prisma.order.findUnique({
+      where: { orderNumber: orderId },
+      select: { paymentData: true },
+    });
+    const paymentDataToStore =
+      data && typeof data === 'object' && !Array.isArray(data)
+        ? mergePaymentData(existingOrder?.paymentData ?? null, data)
+        : existingOrder?.paymentData ?? null;
+
     // Update order status and payment data
     await prisma.order.update({
       where: { orderNumber: orderId },
       data: {
         status,
         paymentStatus: status === 'completed' ? 'completed' : status === 'failed' ? 'failed' : 'pending',
-        paymentData: stringifyPaymentData(data),
+        paymentData: paymentDataToStore,
         cardcomLowProfileId: data?.lowProfileId,
         cardcomTransactionId: data?.transactionId?.toString(),
         updatedAt: new Date(),

@@ -53,6 +53,10 @@ const translations = {
     verifying: 'Verifying…',
     orDivider: 'OR',
     notRegisteredYet: 'Not registered yet?',
+    clubMemberTitle: '✨ Already a SAKO OR club member?',
+    clubMemberIntro: 'If you\'re registered for the customer club in-store – great!',
+    clubMemberBody: 'To see your points and use them on the website too, you need to sign up on the site first via the sign-up page. The system doesn\'t automatically recognise you by phone number alone, so a one-time registration is required. After signing up – all your points will appear in your account and you can use them for online purchases too. If this is your first time with us – sign up through the same page ✨',
+    clubMemberCta: 'Sign up ›',
     signUp: 'Sign up',
     invalidEmail: 'Please enter a valid email address',
     cooldownMessage: 'Please wait {seconds}s before requesting another code',
@@ -94,6 +98,10 @@ const translations = {
     verifying: 'מאמת…',
     orDivider: 'או',
     notRegisteredYet: 'עדיין לא נרשמת?',
+    clubMemberTitle: '✨ כבר חברה במועדון SAKO OR?',
+    clubMemberIntro: 'אם את רשומה למועדון הלקוחות בחנות – מעולה!',
+    clubMemberBody: 'כדי לראות את הנקודות שלך ולממש אותן גם באתר, יש להירשם תחילה לאתר באמצעות דף ההרשמה.\n\nהמערכת אינה מזהה אוטומטית לפי מספר טלפון בלבד, ולכן נדרש לבצע הרשמה חד-פעמית.\n\nלאחר ההרשמה – כל הנקודות שלך יופיעו בחשבון האישי ותוכלי להשתמש בהן גם ברכישה אונליין.\n\nגם אם זו הפעם הראשונה שלך אצלנו – ההרשמה מתבצעת דרך אותו דף ✨',
+    clubMemberCta: 'להרשמה ›',
     signUp: 'הרשמה',
     invalidEmail: 'אנא הזינו כתובת אימייל תקינה',
     cooldownMessage: 'אנא המתינו {seconds} שניות לפני בקשת קוד נוסף',
@@ -977,14 +985,18 @@ function SignInClient() {
             {busy ? t.working : t.continueWithGoogle}
           </button>
 
-          <div className="mt-6 text-center text-sm text-slate-600">
-            {t.notRegisteredYet}{' '}
-            <Link
-              href={`/${lng}/signup`}
-              className="font-semibold text-[#856D55] hover:underline"
-            >
-              {t.signUp}
-            </Link>
+          <div className="mt-6 rounded-xl border border-amber-200/60 bg-amber-50/80 p-4 text-sm text-slate-700">
+            <h3 className="mb-2 font-semibold text-slate-800">{t.clubMemberTitle}</h3>
+            <p className="mb-2">{t.clubMemberIntro}</p>
+            <p className="whitespace-pre-line text-slate-600">{t.clubMemberBody}</p>
+            <p className="mt-4">
+              <Link
+                href={`/${lng}/signup`}
+                className="inline-flex items-center font-semibold text-[#856D55] hover:underline"
+              >
+                {t.clubMemberCta}
+              </Link>
+            </p>
           </div>
         </div>
       </div>

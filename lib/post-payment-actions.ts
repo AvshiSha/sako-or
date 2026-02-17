@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { parsePaymentData } from './orders';
 import { sendOrderConfirmationEmailIdempotent } from './email';
 import { triggerInforuAutomationIdempotent, e164ToLocalPhone } from './inforu';
 
@@ -153,11 +154,18 @@ export async function handlePostPaymentActions(
 
     console.log(`[POST_PAYMENT] Processing order ${orderId} confirmation`);
 
+    // Points spent: prefer Point record (created when points are deducted), fallback to paymentData (set at checkout, preserved through webhook)
     const pointsSpentRecord = order.points?.find((p) => p.kind === 'SPEND');
-    const pointsSpent =
+    const pointsSpentFromRecord =
       pointsSpentRecord && Number(pointsSpentRecord.delta) !== 0
         ? Math.abs(Number(pointsSpentRecord.delta))
         : undefined;
+    const paymentData = parsePaymentData(order.paymentData);
+    const pointsSpentFromPayment =
+      paymentData?.pointsToSpend != null && paymentData?.pointsToSpend > 0
+        ? Number(paymentData.pointsToSpend)
+        : undefined;
+    const pointsSpent = pointsSpentFromRecord ?? pointsSpentFromPayment ?? undefined;
 
     const emailResult = await sendOrderConfirmationEmailIdempotent(
       {

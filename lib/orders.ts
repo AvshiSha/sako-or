@@ -200,3 +200,23 @@ export function stringifyPaymentData(data: any): string | null {
   }
 }
 
+/**
+ * Merge new payment/transaction data with existing order paymentData.
+ * Preserves metadata set at payment creation (e.g. pointsToSpend) when the
+ * webhook or check-status overwrites with CardCom payload that doesn't include it.
+ * Used so Verifone invoice job still sees pointsToSpend after order completion.
+ */
+export function mergePaymentData(
+  existingPaymentData: string | null,
+  updates: Record<string, unknown>
+): string | null {
+  const existing = parsePaymentData(existingPaymentData) || {};
+  const merged = { ...existing, ...updates };
+  if (
+    (updates.pointsToSpend === undefined || updates.pointsToSpend === null) &&
+    existing.pointsToSpend != null
+  ) {
+    merged.pointsToSpend = existing.pointsToSpend;
+  }
+  return stringifyPaymentData(merged);
+}

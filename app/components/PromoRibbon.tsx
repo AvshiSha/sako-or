@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { track } from '@vercel/analytics'
 
 interface PromoRibbonProps {
   lng: 'en' | 'he'
@@ -18,6 +19,7 @@ export default function PromoRibbon({ lng }: PromoRibbonProps) {
           href={`/${lng}/collection/campaign?slug=bogosale`}
           className="text-center hover:underline font-medium text-sm md:text-base"
           suppressHydrationWarning
+          onClick={() => track('promo_ribbon_click')}
         >
           {text}
         </Link>

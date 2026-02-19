@@ -1090,9 +1090,15 @@ export function expandProductsToVariants(
       );
     }
     if (sizes) {
+      // Normalize selected sizes (trim, string) so they match stockBySize keys e.g. "35", "39"
+      const sizeSet = new Set(sizes.map((s) => String(s).trim()).filter(Boolean));
       activeVariants = activeVariants.filter((v) => {
-        const variantSizes = Object.keys(v.stockBySize || {});
-        return variantSizes.some((s) => sizes.includes(s));
+        // Variant must have at least one selected size with stock > 0
+        const stockBySize = v.stockBySize || {};
+        return Array.from(sizeSet).some((sizeKey) => {
+          const qty = stockBySize[sizeKey];
+          return typeof qty === 'number' && qty > 0;
+        });
       });
     }
 
@@ -1438,16 +1444,22 @@ export async function getFilteredProducts(
       });
     }
 
-    // Size filtering (client-side due to nested structure)
+    // Size filtering (client-side): variant must have at least one selected size with stock > 0
     if (filters.size && (Array.isArray(filters.size) ? filters.size.length > 0 : true)) {
-      const sizes = Array.isArray(filters.size) ? filters.size : [filters.size];
+      const sizeSet = new Set(
+        (Array.isArray(filters.size) ? filters.size : [filters.size]).map((s) => String(s).trim()).filter(Boolean)
+      );
       filteredProducts = filteredProducts.filter((product) => {
         if (!product.colorVariants) return false;
         return Object.values(product.colorVariants)
           .filter(variant => variant.isActive !== false)
-          .some((variant) =>
-            Object.keys(variant.stockBySize || {}).some((size) => sizes.includes(size))
-          );
+          .some((variant) => {
+            const stockBySize = variant.stockBySize || {};
+            return Array.from(sizeSet).some((sizeKey) => {
+              const qty = stockBySize[sizeKey];
+              return typeof qty === 'number' && qty > 0;
+            });
+          });
       });
     }
 
@@ -1604,14 +1616,15 @@ export async function getCollectionProducts(
     }
   }
 
-  // Size filter
+  // Size filter (normalize and trim so "39" / " 39 " match stockBySize keys)
   const sizesParam = searchParams.sizes;
   if (sizesParam) {
-    const sizes = typeof sizesParam === 'string'
+    const raw = typeof sizesParam === 'string'
       ? sizesParam.split(',').filter(Boolean)
       : Array.isArray(sizesParam)
-        ? sizesParam.flatMap(s => s.split(',')).filter(Boolean)
+        ? sizesParam.flatMap(s => (typeof s === 'string' ? s.split(',') : [String(s)])).filter(Boolean)
         : [];
+    const sizes = raw.map((s) => String(s).trim()).filter(Boolean);
     if (sizes.length > 0) {
       filters.size = sizes;
     }
@@ -1793,14 +1806,15 @@ export async function getCampaignCollectionProducts(
     }
   }
 
-  // Size filter
+  // Size filter (normalize and trim so "39" / " 39 " match stockBySize keys)
   const sizesParam = searchParams.sizes;
   if (sizesParam) {
-    const sizes = typeof sizesParam === 'string'
+    const raw = typeof sizesParam === 'string'
       ? sizesParam.split(',').filter(Boolean)
       : Array.isArray(sizesParam)
-        ? sizesParam.flatMap(s => s.split(',')).filter(Boolean)
+        ? sizesParam.flatMap(s => (typeof s === 'string' ? s.split(',') : [String(s)])).filter(Boolean)
         : [];
+    const sizes = raw.map((s) => String(s).trim()).filter(Boolean);
     if (sizes.length > 0) {
       filters.size = sizes;
     }

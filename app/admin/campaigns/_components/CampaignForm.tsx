@@ -36,7 +36,6 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [activeTab, setActiveTab] = useState<'en' | 'he'>('en')
-  const [productFilterMode, setProductFilterMode] = useState<'tag' | 'sale' | 'manual'>('tag')
 
   const [formData, setFormData] = useState<CampaignFormData>({
     slug: initialData?.slug || '',
@@ -53,21 +52,20 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
     priority: initialData?.priority ?? 100,
     startAt: initialData?.startAt ? new Date(initialData.startAt).toISOString().slice(0, 16) : '',
     endAt: initialData?.endAt ? new Date(initialData.endAt).toISOString().slice(0, 16) : '',
-    productFilter: initialData?.productFilter || {
-      mode: 'tag',
-      tag: '',
-      limit: 120,
-      orderBy: 'createdAt',
-      orderDirection: 'desc'
-    },
-    productIds: initialData?.productIds || []
+    productFilter: (() => {
+      const pf = initialData?.productFilter
+      if (pf && pf.mode === 'tag' && pf.tag) return { ...pf, mode: 'tag' as const }
+      return {
+        mode: 'tag' as const,
+        tag: (initialData?.productFilter as any)?.tag || '',
+        limit: (initialData?.productFilter as any)?.limit ?? 120,
+        orderBy: (initialData?.productFilter as any)?.orderBy || 'createdAt',
+        orderDirection: (initialData?.productFilter as any)?.orderDirection || 'desc'
+      }
+    })(),
+    productIds: []
   })
 
-  useEffect(() => {
-    if (initialData?.productFilter) {
-      setProductFilterMode(initialData.productFilter.mode)
-    }
-  }, [initialData])
 
   const validateSlug = (slug: string): boolean => {
     return /^[a-z0-9-]+$/.test(slug) && slug.length > 0
@@ -101,8 +99,8 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
       }
     }
 
-    if (productFilterMode === 'tag' && !formData.productFilter.tag?.trim()) {
-      newErrors.productFilter = 'Tag is required for tag-based selection'
+    if (!formData.productFilter.tag?.trim()) {
+      newErrors.productFilter = 'Tag is required for tag-based campaigns'
     }
 
     setErrors(newErrors)
@@ -127,7 +125,7 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
         priority: formData.priority,
         productFilter: {
           ...formData.productFilter,
-          mode: productFilterMode
+          mode: 'tag'
         }
       }
       
@@ -166,10 +164,6 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
       if (formData.endAt) {
         campaignData.endAt = new Date(formData.endAt).toISOString()
       }
-      if (productFilterMode === 'manual' && formData.productIds && formData.productIds.length > 0) {
-        campaignData.productIds = formData.productIds
-      }
-
       const { campaignService } = await import('@/lib/firebase')
       if (isEdit) {
         await campaignService.updateCampaign(formData.slug, campaignData)
@@ -532,158 +526,84 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
             </div>
           </div>
 
-          {/* Product Filter */}
+          {/* Product Filter (tag-based only) */}
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Product Selection</h2>
-            
+            <p className="text-sm text-gray-600 mb-4">
+              Campaigns show products that have a specific tag. Add the same tag to products in the product editor to include them in this campaign.
+            </p>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Selection Mode
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tag <span className="text-red-500">*</span>
                 </label>
-                <div className="space-y-2">
-                  <label className="flex items-center text-gray-700">
-                    <input
-                      type="radio"
-                      value="tag"
-                      checked={productFilterMode === 'tag'}
-                      onChange={(e) => {
-                        setProductFilterMode('tag')
-                        setFormData(prev => ({
-                          ...prev,
-                          productFilter: { ...prev.productFilter, mode: 'tag' }
-                        }))
-                      }}
-                      className="mr-2"
-                    />
-                    Tag-based selection
-                  </label>
-                  <label className="flex items-center text-gray-700">
-                    <input
-                      type="radio"
-                      value="sale"
-                      checked={productFilterMode === 'sale'}
-                      onChange={(e) => {
-                        setProductFilterMode('sale')
-                        setFormData(prev => ({
-                          ...prev,
-                          productFilter: { ...prev.productFilter, mode: 'sale' }
-                        }))
-                      }}
-                      className="mr-2"
-                    />
-                    All sale products
-                  </label>
-                  <label className="flex items-center text-gray-700">
-                    <input
-                      type="radio"
-                      value="manual"
-                      checked={productFilterMode === 'manual'}
-                      onChange={(e) => {
-                        setProductFilterMode('manual')
-                        setFormData(prev => ({
-                          ...prev,
-                          productFilter: { ...prev.productFilter, mode: 'manual' }
-                        }))
-                      }}
-                      className="mr-2"
-                    />
-                    Manual selection (future)
-                  </label>
-                </div>
+                <input
+                  type="text"
+                  value={formData.productFilter.tag || ''}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    productFilter: { ...prev.productFilter, tag: e.target.value }
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
+                  placeholder="black-friday-2025"
+                />
+                {errors.productFilter && <p className="mt-1 text-sm text-red-500">{errors.productFilter}</p>}
+                <p className="mt-1 text-xs text-gray-500">
+                  Products must include this tag in their tags[] field
+                </p>
               </div>
 
-              {productFilterMode === 'tag' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tag <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.productFilter.tag || ''}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        productFilter: { ...prev.productFilter, tag: e.target.value }
-                      }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
-                      placeholder="black-friday-2025"
-                    />
-                    {errors.productFilter && <p className="mt-1 text-sm text-red-500">{errors.productFilter}</p>}
-                    <p className="mt-1 text-xs text-gray-500">
-                      Products must include this tag in their tags[] field
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Limit
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.productFilter.limit || 120}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          productFilter: { ...prev.productFilter, limit: parseInt(e.target.value) || 120 }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Sort By
-                      </label>
-                      <select
-                        value={formData.productFilter.orderBy || 'createdAt'}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          productFilter: { ...prev.productFilter, orderBy: e.target.value as any }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
-                      >
-                        <option value="createdAt">Created Date</option>
-                        <option value="salePrice">Sale Price</option>
-                        <option value="popularity">Popularity</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Direction
-                      </label>
-                      <select
-                        value={formData.productFilter.orderDirection || 'desc'}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          productFilter: { ...prev.productFilter, orderDirection: e.target.value as any }
-                        }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
-                      >
-                        <option value="desc">Descending</option>
-                        <option value="asc">Ascending</option>
-                      </select>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {productFilterMode === 'sale' && (
-                <div className="bg-blue-50 p-4 rounded-md">
-                  <p className="text-sm text-blue-800">
-                    This will show all products where salePrice &gt; 0
-                  </p>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Limit
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.productFilter.limit || 120}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      productFilter: { ...prev.productFilter, limit: parseInt(e.target.value) || 120 }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
+                  />
                 </div>
-              )}
 
-              {productFilterMode === 'manual' && (
-                <div className="bg-yellow-50 p-4 rounded-md">
-                  <p className="text-sm text-yellow-800">
-                    Manual product selection is not yet implemented. Coming soon!
-                  </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sort By
+                  </label>
+                  <select
+                    value={formData.productFilter.orderBy || 'createdAt'}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      productFilter: { ...prev.productFilter, orderBy: e.target.value as any }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
+                  >
+                    <option value="createdAt">Created Date</option>
+                    <option value="salePrice">Sale Price</option>
+                    <option value="popularity">Popularity</option>
+                  </select>
                 </div>
-              )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Direction
+                  </label>
+                  <select
+                    value={formData.productFilter.orderDirection || 'desc'}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      productFilter: { ...prev.productFilter, orderDirection: e.target.value as any }
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700"
+                  >
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 

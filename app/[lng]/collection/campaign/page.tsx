@@ -1,4 +1,4 @@
-import { campaignService } from "@/lib/firebase";
+import { campaignService, getCampaignCollectionProducts } from "@/lib/firebase";
 import { redirect } from "next/navigation";
 import CampaignClient from "./CampaignClient";
 import { Metadata } from "next";
@@ -101,13 +101,15 @@ export default async function CampaignPage({
     redirect(`/${lng}/collection`);
   }
 
-  // Fetch first page of campaign variant items (one card per color, 24 per page)
-  const pageSize = 24;
-  const { variantItems, total, hasMore } = await campaignService.getCampaignVariantItemsPaginated(
+  // Fetch first page with filters (tag-based; filter params from URL)
+  const result = await getCampaignCollectionProducts(
     campaign,
-    1,
-    pageSize
+    resolvedSearchParams,
+    lng as "en" | "he"
   );
+  const variantItems = result.variantItems ?? [];
+  const total = result.total ?? 0;
+  const hasMore = result.hasMore ?? false;
 
   const serializedCampaign = serializeValue(campaign);
   const serializedVariantItems = variantItems.map((item) => ({
@@ -116,13 +118,29 @@ export default async function CampaignPage({
     variantKey: item.variantKey,
   }));
 
+  const initialSort =
+    typeof resolvedSearchParams.sort === "string"
+      ? resolvedSearchParams.sort
+      : "relevance";
+  const initialMinPrice =
+    typeof resolvedSearchParams.minPrice === "string"
+      ? resolvedSearchParams.minPrice
+      : undefined;
+  const initialMaxPrice =
+    typeof resolvedSearchParams.maxPrice === "string"
+      ? resolvedSearchParams.maxPrice
+      : undefined;
+
   return (
     <CampaignClient
       campaign={serializedCampaign}
       initialVariantItems={serializedVariantItems}
       totalProducts={total}
       hasMore={hasMore}
-      lng={lng as 'en' | 'he'}
+      lng={lng as "en" | "he"}
+      initialSort={initialSort}
+      initialMinPrice={initialMinPrice}
+      initialMaxPrice={initialMaxPrice}
     />
   );
 }

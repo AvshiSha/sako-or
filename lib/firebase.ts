@@ -1030,6 +1030,7 @@ export type ProductFilters = {
   isOnSaleOnly?: boolean;
   excludeSkus?: string[];
   includeSkus?: string[];
+  tag?: string; // Campaign: products with this tag (array-contains)
 };
 
 export type ProductSortOption = 'relevance' | 'newest' | 'priceAsc' | 'priceDesc';
@@ -1051,26 +1052,54 @@ export type FilteredProductsResult = {
 };
 
 /**
+ * Options for filtering which variants are expanded into variant items.
+ * When provided, only variants matching these filters are included (AND between color and size).
+ */
+export type ExpandProductsToVariantsOptions = {
+  colorSlugs?: string[];
+  sizes?: string[];
+};
+
+/**
  * Expand products into variant items (one item per active color variant)
  * Each variant item represents a single color variant that should be displayed as its own card.
+ * When options are provided, only variants matching the color/size filters are included.
  */
-export function expandProductsToVariants(products: Product[]): VariantItem[] {
+export function expandProductsToVariants(
+  products: Product[],
+  options?: ExpandProductsToVariantsOptions
+): VariantItem[] {
   const variantItems: VariantItem[] = [];
-  
+  const colorSlugs = options?.colorSlugs?.length ? options.colorSlugs : undefined;
+  const sizes = options?.sizes?.length ? options.sizes : undefined;
+
   for (const product of products) {
     if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
       // Product with no variants - skip (products without variants won't be displayed)
       continue;
     }
-    
+
     // Get all active variants
-    const activeVariants = Object.values(product.colorVariants)
+    let activeVariants = Object.values(product.colorVariants)
       .filter(v => v.isActive !== false);
-    
-    // Create one VariantItem per active variant
+
+    // Apply variant-level filters when options are provided
+    if (colorSlugs) {
+      activeVariants = activeVariants.filter(
+        v => v.colorSlug && colorSlugs.includes(v.colorSlug)
+      );
+    }
+    if (sizes) {
+      activeVariants = activeVariants.filter((v) => {
+        const variantSizes = Object.keys(v.stockBySize || {});
+        return variantSizes.some((s) => sizes.includes(s));
+      });
+    }
+
+    // Create one VariantItem per matching variant
     for (const variant of activeVariants) {
       if (!variant.colorSlug) continue; // Skip variants without color slug
-      
+
       variantItems.push({
         product,
         variant,
@@ -1078,7 +1107,7 @@ export function expandProductsToVariants(products: Product[]): VariantItem[] {
       });
     }
   }
-  
+
   return variantItems;
 }
 
@@ -1161,10 +1190,15 @@ export async function getFilteredProducts(
     constraints.push(where('isEnabled', '==', true));
     constraints.push(where('isDeleted', '==', false));
 
+    // Tag-based filtering (campaign): alternative to category; when set, skip category constraints
+    if (filters.tag) {
+      constraints.push(where('tags', 'array-contains', filters.tag));
+    }
+
     // Category filtering using categories_path_id with dot notation for array index matching
     // Firestore supports querying array elements by index using dot notation
     // Note: Arrays are 0-indexed, so we use .0, .1, .2 for indices 0, 1, 2
-    if (filters.categoryIds && filters.categoryIds.length > 0) {
+    if (!filters.tag && filters.categoryIds && filters.categoryIds.length > 0) {
       // Add where clauses for each level using dot notation
       // If Level 0: categories_path_id.0 == categoryIds[0]
       // If Level 1: categories_path_id contains categoryIds[1]
@@ -1182,11 +1216,11 @@ export async function getFilteredProducts(
         default:
           break;
       }
-    } else if (filters.categoryId && filters.categoryLevel !== undefined) {
+    } else if (!filters.tag && filters.categoryId && filters.categoryLevel !== undefined) {
       // Use array-contains to get products that have this category ID in their path
       // We'll filter by exact level client-side
       constraints.push(where('categories_path_id', 'array-contains', filters.categoryId));
-    } else if (filters.categoryPath) {
+    } else if (!filters.tag && filters.categoryPath) {
       // Fallback: use path-based filtering (for backward compatibility)
       const categoryPathLower = filters.categoryPath.toLowerCase();
       const pathSegments = categoryPathLower.split('/');
@@ -1647,9 +1681,20 @@ export async function getCollectionProducts(
 
   // Get filtered products (without pagination - we'll paginate after expanding to variants)
   const filteredResult = await getFilteredProducts(filters, sort);
-  
-  // Expand products to variant items (one item per active color variant)
-  const allVariantItems = expandProductsToVariants(filteredResult.products);
+
+  // Normalize color/size to string[] for variant-level expansion (only matching variants become items)
+  const normalizedColors = filters.color
+    ? (Array.isArray(filters.color) ? filters.color : [filters.color]).filter(Boolean)
+    : undefined;
+  const normalizedSizes = filters.size
+    ? (Array.isArray(filters.size) ? filters.size : [filters.size]).filter(Boolean)
+    : undefined;
+
+  // Expand products to variant items (one item per matching color variant; filter by color/size when set)
+  const allVariantItems = expandProductsToVariants(filteredResult.products, {
+    colorSlugs: normalizedColors,
+    sizes: normalizedSizes,
+  });
   
   // Sort variant items
   let sortedVariantItems = [...allVariantItems];
@@ -1707,6 +1752,170 @@ export async function getCollectionProducts(
     page: validatedPage,
     pageSize,
     lastDocument: filteredResult.lastDocument
+  };
+}
+
+/**
+ * Get campaign collection products (tag-based only) with filters from searchParams.
+ * Same filter/sort/paginate pipeline as getCollectionProducts, but base set is products with campaign tag.
+ */
+export async function getCampaignCollectionProducts(
+  campaign: Campaign,
+  searchParams: { [key: string]: string | string[] | undefined } = {},
+  language: 'en' | 'he' = 'en'
+): Promise<FilteredProductsResult> {
+  if (campaign.productFilter?.mode !== 'tag' || !campaign.productFilter?.tag) {
+    return {
+      products: [],
+      variantItems: [],
+      hasMore: false,
+      total: 0,
+      page: 1,
+      pageSize: 24,
+    };
+  }
+
+  const filters: ProductFilters = {};
+
+  // Tag-based: only products with this tag
+  filters.tag = campaign.productFilter.tag;
+
+  // Color filter
+  const colorsParam = searchParams.colors;
+  if (colorsParam) {
+    const colors = typeof colorsParam === 'string'
+      ? colorsParam.split(',').filter(Boolean)
+      : Array.isArray(colorsParam)
+        ? colorsParam.flatMap(c => c.split(',')).filter(Boolean)
+        : [];
+    if (colors.length > 0) {
+      filters.color = colors;
+    }
+  }
+
+  // Size filter
+  const sizesParam = searchParams.sizes;
+  if (sizesParam) {
+    const sizes = typeof sizesParam === 'string'
+      ? sizesParam.split(',').filter(Boolean)
+      : Array.isArray(sizesParam)
+        ? sizesParam.flatMap(s => s.split(',')).filter(Boolean)
+        : [];
+    if (sizes.length > 0) {
+      filters.size = sizes;
+    }
+  }
+
+  // Price range
+  const minPriceParam = searchParams.minPrice;
+  const maxPriceParam = searchParams.maxPrice;
+  if (minPriceParam) {
+    const minPrice = typeof minPriceParam === 'string'
+      ? parseFloat(minPriceParam)
+      : Array.isArray(minPriceParam)
+        ? parseFloat(minPriceParam[0])
+        : undefined;
+    if (!isNaN(minPrice!) && minPrice! > 0) {
+      filters.minPrice = minPrice;
+    }
+  }
+  if (maxPriceParam) {
+    const maxPrice = typeof maxPriceParam === 'string'
+      ? parseFloat(maxPriceParam)
+      : Array.isArray(maxPriceParam)
+        ? parseFloat(maxPriceParam[0])
+        : undefined;
+    if (!isNaN(maxPrice!) && maxPrice! > 0) {
+      filters.maxPrice = maxPrice;
+    }
+  }
+
+  // Sort option
+  const sortParam = searchParams.sort;
+  let sort: ProductSortOption = 'relevance';
+  if (sortParam) {
+    const sortValue = typeof sortParam === 'string' ? sortParam : Array.isArray(sortParam) ? sortParam[0] : '';
+    if (sortValue === 'newest') {
+      sort = 'newest';
+    } else if (sortValue === 'price-low' || sortValue === 'priceAsc') {
+      sort = 'priceAsc';
+    } else if (sortValue === 'price-high' || sortValue === 'priceDesc') {
+      sort = 'priceDesc';
+    }
+  }
+
+  const pageParam = searchParams.page;
+  const page = pageParam
+    ? (typeof pageParam === 'string' ? parseInt(pageParam) : Array.isArray(pageParam) ? parseInt(pageParam[0]) : 1)
+    : 1;
+  const pageSize = 24;
+  const validatedPage = Number.isInteger(page) && page > 0 ? page : 1;
+
+  const filteredResult = await getFilteredProducts(filters, sort);
+  let products = filteredResult.products;
+
+  // Apply campaign product limit if set
+  const limit = campaign.productFilter?.limit;
+  if (limit && limit > 0 && products.length > limit) {
+    products = products.slice(0, limit);
+  }
+
+  // Normalize color/size to string[] for variant-level expansion (only matching variants become items)
+  const normalizedColors = filters.color
+    ? (Array.isArray(filters.color) ? filters.color : [filters.color]).filter(Boolean)
+    : undefined;
+  const normalizedSizes = filters.size
+    ? (Array.isArray(filters.size) ? filters.size : [filters.size]).filter(Boolean)
+    : undefined;
+
+  const allVariantItems = expandProductsToVariants(products, {
+    colorSlugs: normalizedColors,
+    sizes: normalizedSizes,
+  });
+  let sortedVariantItems = [...allVariantItems];
+
+  if (sort === 'priceAsc' || sort === 'priceDesc') {
+    sortedVariantItems.sort((a, b) => {
+      const getVariantPrice = (item: VariantItem): number => {
+        if (item.variant.salePrice && item.variant.salePrice > 0) return item.variant.salePrice;
+        if (item.product.salePrice && item.product.salePrice > 0) return item.product.salePrice;
+        if (item.variant.priceOverride && item.variant.priceOverride > 0) return item.variant.priceOverride;
+        return item.product.price;
+      };
+      const priceA = getVariantPrice(a);
+      const priceB = getVariantPrice(b);
+      return sort === 'priceAsc' ? priceA - priceB : priceB - priceA;
+    });
+  } else if (sort === 'newest') {
+    sortedVariantItems.sort((a, b) => {
+      const dateA = a.product.createdAt ? new Date(a.product.createdAt).getTime() : 0;
+      const dateB = b.product.createdAt ? new Date(b.product.createdAt).getTime() : 0;
+      return dateB - dateA;
+    });
+  }
+
+  const totalVariants = sortedVariantItems.length;
+  const startIndex = (validatedPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedVariantItems = sortedVariantItems.slice(startIndex, endIndex);
+  const hasMore = endIndex < totalVariants;
+
+  const uniqueProducts = new Map<string, Product>();
+  paginatedVariantItems.forEach(item => {
+    const productId = item.product.id || item.product.sku;
+    if (!uniqueProducts.has(productId)) {
+      uniqueProducts.set(productId, item.product);
+    }
+  });
+
+  return {
+    products: Array.from(uniqueProducts.values()),
+    variantItems: paginatedVariantItems,
+    hasMore,
+    total: totalVariants,
+    page: validatedPage,
+    pageSize,
+    lastDocument: filteredResult.lastDocument,
   };
 }
 

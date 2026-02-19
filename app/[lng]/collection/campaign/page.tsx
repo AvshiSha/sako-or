@@ -135,6 +135,7 @@ export default async function CampaignPage({
     <CampaignClient
       campaign={serializedCampaign}
       initialVariantItems={serializedVariantItems}
+      initialAvailableFilterOptions={result.availableFilterOptions}
       totalProducts={total}
       hasMore={hasMore}
       lng={lng as "en" | "he"}

@@ -1049,6 +1049,8 @@ export type FilteredProductsResult = {
   page: number;   // Current page number
   pageSize: number; // Page size used
   lastDocument?: QueryDocumentSnapshot<DocumentData>;
+  /** Stable filter options from full collection (not from filtered result) so UI list does not collapse */
+  availableFilterOptions?: { colors: string[]; sizes: string[] };
 };
 
 /**
@@ -1692,6 +1694,33 @@ export async function getCollectionProducts(
   // Validate page number
   const validatedPage = Number.isInteger(page) && page > 0 ? page : 1;
 
+  // Stable filter options: from full collection (no color/size filter) so the filter list does not collapse
+  const filtersNoColorSize = { ...filters, color: undefined, size: undefined };
+  const fullResult = await getFilteredProducts(filtersNoColorSize, sort);
+  const allVariantsForOptions = expandProductsToVariants(fullResult.products);
+  const availableFilterOptions: { colors: string[]; sizes: string[] } = {
+    colors: [
+      ...new Set(
+        allVariantsForOptions
+          .filter((item) => item.variant.isActive !== false && item.variant.colorSlug)
+          .map((item) => item.variant.colorSlug!)
+          .filter(Boolean)
+      ),
+    ].sort(),
+    sizes: [
+      ...new Set(
+        allVariantsForOptions
+          .filter((item) => item.variant.isActive !== false)
+          .flatMap((item) => Object.keys(item.variant.stockBySize || {}))
+      ),
+    ].sort((a, b) => {
+      const aNum = parseFloat(a);
+      const bNum = parseFloat(b);
+      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
+      return String(a).localeCompare(String(b));
+    }),
+  };
+
   // Get filtered products (without pagination - we'll paginate after expanding to variants)
   const filteredResult = await getFilteredProducts(filters, sort);
 
@@ -1764,7 +1793,8 @@ export async function getCollectionProducts(
     total: totalVariants, // Total variant count
     page: validatedPage,
     pageSize,
-    lastDocument: filteredResult.lastDocument
+    lastDocument: filteredResult.lastDocument,
+    availableFilterOptions,
   };
 }
 
@@ -1785,6 +1815,7 @@ export async function getCampaignCollectionProducts(
       total: 0,
       page: 1,
       pageSize: 24,
+      availableFilterOptions: { colors: [], sizes: [] },
     };
   }
 
@@ -1865,11 +1896,42 @@ export async function getCampaignCollectionProducts(
   const pageSize = 24;
   const validatedPage = Number.isInteger(page) && page > 0 ? page : 1;
 
+  // Stable filter options: from full campaign set (no color/size filter)
+  const filtersNoColorSize = { ...filters, color: undefined, size: undefined };
+  const fullResult = await getFilteredProducts(filtersNoColorSize, sort);
+  let productsForOptions = fullResult.products;
+  const limit = campaign.productFilter?.limit;
+  if (limit && limit > 0 && productsForOptions.length > limit) {
+    productsForOptions = productsForOptions.slice(0, limit);
+  }
+  const allVariantsForOptions = expandProductsToVariants(productsForOptions);
+  const availableFilterOptions: { colors: string[]; sizes: string[] } = {
+    colors: [
+      ...new Set(
+        allVariantsForOptions
+          .filter((item) => item.variant.isActive !== false && item.variant.colorSlug)
+          .map((item) => item.variant.colorSlug!)
+          .filter(Boolean)
+      ),
+    ].sort(),
+    sizes: [
+      ...new Set(
+        allVariantsForOptions
+          .filter((item) => item.variant.isActive !== false)
+          .flatMap((item) => Object.keys(item.variant.stockBySize || {}))
+      ),
+    ].sort((a, b) => {
+      const aNum = parseFloat(a);
+      const bNum = parseFloat(b);
+      if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
+      return String(a).localeCompare(String(b));
+    }),
+  };
+
   const filteredResult = await getFilteredProducts(filters, sort);
   let products = filteredResult.products;
 
   // Apply campaign product limit if set
-  const limit = campaign.productFilter?.limit;
   if (limit && limit > 0 && products.length > limit) {
     products = products.slice(0, limit);
   }
@@ -1930,6 +1992,7 @@ export async function getCampaignCollectionProducts(
     page: validatedPage,
     pageSize,
     lastDocument: filteredResult.lastDocument,
+    availableFilterOptions,
   };
 }
 

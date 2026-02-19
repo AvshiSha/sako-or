@@ -142,6 +142,8 @@ const translations = {
 interface CollectionClientProps {
   initialProducts: Product[];
   initialVariantItems?: VariantItem[]; // New: variant items (one per color variant)
+  /** Stable filter options from full collection so the filter list does not collapse after selection */
+  initialAvailableFilterOptions?: { colors: string[]; sizes: string[] };
   categories: Category[];
   categoryPath: string | undefined;
   selectedCategory: string;
@@ -160,6 +162,7 @@ interface CollectionClientProps {
 export default function CollectionClient({
   initialProducts,
   initialVariantItems,
+  initialAvailableFilterOptions,
   categories,
   categoryPath,
   selectedCategory,
@@ -1045,46 +1048,11 @@ export default function CollectionClient({
     }
   }, [sortedItems, categoryPath, selectedCategory, lng, useVariantItems]);
 
-  // Build dynamic color mapping from variant items or products (includes colorHex when available)
-  // This prioritizes colorHex from variants, then falls back to getColorHex
-  const colorSlugToHex = useMemo(() => {
-    const map: Record<string, string> = {};
-    
-    if (useVariantItems && initialVariantItems) {
-      // Extract color info from variant items
-      initialVariantItems.forEach((item) => {
-        if (item.variant.isActive !== false && item.variant.colorSlug) {
-          // Use colorHex from variant if available, otherwise use getColorHex
-          if ((item.variant as any).colorHex) {
-            map[item.variant.colorSlug] = (item.variant as any).colorHex;
-          } else {
-            map[item.variant.colorSlug] = getColorHex(item.variant.colorSlug);
-          }
-        }
-      });
-    } else {
-      // Extract color info from products (for search)
-      initialProducts.forEach((product) => {
-        if (product.colorVariants) {
-          Object.values(product.colorVariants).forEach((variant) => {
-            if (variant.isActive !== false && variant.colorSlug) {
-              // Use colorHex from variant if available, otherwise use getColorHex
-              if ((variant as any).colorHex) {
-                map[variant.colorSlug] = (variant as any).colorHex;
-              } else {
-                map[variant.colorSlug] = getColorHex(variant.colorSlug);
-              }
-            }
-          });
-        }
-      });
-    }
-    
-    return map;
-  }, [initialProducts, initialVariantItems, useVariantItems]);
-
-  // Get all colors and sizes from the filtered variant items or products
+  // Filter options: use stable full-collection options when provided so list does not collapse after selection
   const allColors = useMemo(() => {
+    if (initialAvailableFilterOptions?.colors?.length) {
+      return initialAvailableFilterOptions.colors;
+    }
     if (useVariantItems && initialVariantItems) {
       return [
         ...new Set(
@@ -1094,23 +1062,25 @@ export default function CollectionClient({
             .filter(Boolean)
         ),
       ] as string[];
-    } else {
-      return [
-        ...new Set([
-          ...initialProducts.flatMap((p) => 
-            p.colorVariants 
-              ? Object.values(p.colorVariants)
-                  .filter(v => v.isActive !== false)
-                  .map((v) => v.colorSlug)
-                  .filter(Boolean)
-              : []
-          )
-        ]),
-      ] as string[];
     }
-  }, [initialProducts, initialVariantItems, useVariantItems]);
+    return [
+      ...new Set([
+        ...initialProducts.flatMap((p) =>
+          p.colorVariants
+            ? Object.values(p.colorVariants)
+                .filter(v => v.isActive !== false)
+                .map((v) => v.colorSlug)
+                .filter(Boolean)
+            : []
+        ),
+      ]),
+    ] as string[];
+  }, [initialProducts, initialVariantItems, useVariantItems, initialAvailableFilterOptions]);
 
   const allSizes = useMemo(() => {
+    if (initialAvailableFilterOptions?.sizes?.length) {
+      return initialAvailableFilterOptions.sizes;
+    }
     if (useVariantItems && initialVariantItems) {
       return [
         ...new Set(
@@ -1119,20 +1089,45 @@ export default function CollectionClient({
             .flatMap((item) => Object.keys(item.variant.stockBySize || {}))
         ),
       ] as string[];
-    } else {
-      return [
-        ...new Set([
-          ...initialProducts.flatMap((p) => 
-            p.colorVariants 
-              ? Object.values(p.colorVariants)
-                  .filter(v => v.isActive !== false)
-                  .flatMap((v) => Object.keys(v.stockBySize || {}))
-              : []
-          ),
-        ]),
-      ] as string[];
     }
-  }, [initialProducts, initialVariantItems, useVariantItems]);
+    return [
+      ...new Set([
+        ...initialProducts.flatMap((p) =>
+          p.colorVariants
+            ? Object.values(p.colorVariants)
+                .filter(v => v.isActive !== false)
+                .flatMap((v) => Object.keys(v.stockBySize || {}))
+            : []
+        ),
+      ]),
+    ] as string[];
+  }, [initialProducts, initialVariantItems, useVariantItems, initialAvailableFilterOptions]);
+
+  // Build color slug to hex for swatches; ensure every color in allColors has an entry
+  const colorSlugToHex = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (useVariantItems && initialVariantItems) {
+      initialVariantItems.forEach((item) => {
+        if (item.variant.isActive !== false && item.variant.colorSlug) {
+          map[item.variant.colorSlug] = (item.variant as any).colorHex || getColorHex(item.variant.colorSlug);
+        }
+      });
+    } else {
+      initialProducts.forEach((product) => {
+        if (product.colorVariants) {
+          Object.values(product.colorVariants).forEach((variant) => {
+            if (variant.isActive !== false && variant.colorSlug) {
+              map[variant.colorSlug] = (variant as any).colorHex || getColorHex(variant.colorSlug);
+            }
+          });
+        }
+      });
+    }
+    allColors.forEach((c) => {
+      if (!map[c]) map[c] = getColorHex(c);
+    });
+    return map;
+  }, [initialProducts, initialVariantItems, useVariantItems, allColors]);
 
   // Separate numeric sizes (shoes) from alpha sizes (clothing)
   const numericSizes = allSizes.filter(size => /^\d+(\.\d+)?$/.test(size)).sort((a, b) => parseFloat(a) - parseFloat(b));

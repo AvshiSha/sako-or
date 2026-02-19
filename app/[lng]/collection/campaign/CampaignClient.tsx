@@ -213,6 +213,8 @@ function CampaignHeroVideo({
 interface CampaignClientProps {
   campaign: Campaign;
   initialVariantItems: VariantItem[];
+  /** Stable filter options from full campaign so the filter list does not collapse after selection */
+  initialAvailableFilterOptions?: { colors: string[]; sizes: string[] };
   totalProducts?: number;
   hasMore?: boolean;
   lng: "en" | "he";
@@ -224,6 +226,7 @@ interface CampaignClientProps {
 export default function CampaignClient({
   campaign,
   initialVariantItems,
+  initialAvailableFilterOptions,
   totalProducts: initialTotal,
   hasMore: initialHasMore = false,
   lng,
@@ -321,29 +324,31 @@ export default function CampaignClient({
     return [Math.min(validMin, validMax), Math.max(validMin, validMax)];
   });
 
-  const allColors = useMemo(
-    () =>
-      [
-        ...new Set(
-          initialVariantItems
-            .filter((i) => i.variant.isActive !== false && i.variant.colorSlug)
-            .map((i) => i.variant.colorSlug)
-            .filter(Boolean)
-        ),
-      ] as string[],
-    [initialVariantItems]
-  );
-  const allSizes = useMemo(
-    () =>
-      [
-        ...new Set(
-          initialVariantItems
-            .filter((i) => i.variant.isActive !== false)
-            .flatMap((i) => Object.keys(i.variant.stockBySize || {}))
-        ),
-      ] as string[],
-    [initialVariantItems]
-  );
+  const allColors = useMemo(() => {
+    if (initialAvailableFilterOptions?.colors?.length) {
+      return initialAvailableFilterOptions.colors;
+    }
+    return [
+      ...new Set(
+        initialVariantItems
+          .filter((i) => i.variant.isActive !== false && i.variant.colorSlug)
+          .map((i) => i.variant.colorSlug)
+          .filter(Boolean)
+      ),
+    ] as string[];
+  }, [initialVariantItems, initialAvailableFilterOptions]);
+  const allSizes = useMemo(() => {
+    if (initialAvailableFilterOptions?.sizes?.length) {
+      return initialAvailableFilterOptions.sizes;
+    }
+    return [
+      ...new Set(
+        initialVariantItems
+          .filter((i) => i.variant.isActive !== false)
+          .flatMap((i) => Object.keys(i.variant.stockBySize || {}))
+      ),
+    ] as string[];
+  }, [initialVariantItems, initialAvailableFilterOptions]);
   const numericSizes = allSizes.filter((s) => /^\d+(\.\d+)?$/.test(s)).sort((a, b) => parseFloat(a) - parseFloat(b));
   const alphaSizes = allSizes.filter((s) => !/^\d+(\.\d+)?$/.test(s)).sort();
   const colorSlugToHex = useMemo(() => {
@@ -353,8 +358,11 @@ export default function CampaignClient({
         map[item.variant.colorSlug] = (item.variant as any).colorHex || getColorHex(item.variant.colorSlug);
       }
     });
+    allColors.forEach((c) => {
+      if (!map[c]) map[c] = getColorHex(c);
+    });
     return map;
-  }, [initialVariantItems]);
+  }, [initialVariantItems, allColors]);
 
   const basePath = `/${lng}/collection/campaign`;
   const updateURL = useCallback(

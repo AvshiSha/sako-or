@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       total: result.total ?? 0,
       page: result.page ?? 1,
       hasMore: result.hasMore ?? false,
+      availableFilterOptions: result.availableFilterOptions,
     });
   } catch (error) {
     console.error("Error fetching campaign products:", error);

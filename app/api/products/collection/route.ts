@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
         page: collectionData.page || 1,
         pageSize: collectionData.pageSize || 24,
         hasMore: collectionData.hasMore || false,
+        availableFilterOptions: collectionData.availableFilterOptions,
       };
     }
     

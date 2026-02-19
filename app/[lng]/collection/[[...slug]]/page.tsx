@@ -225,6 +225,7 @@ export default async function CollectionSlugPage({
   let collectionPage = 1;
   let collectionHasMore = false;
   let collectionVariantItems: VariantItem[] | undefined = undefined;
+  let collectionAvailableFilterOptions: { colors: string[]; sizes: string[] } | undefined = undefined;
 
   // Parse page parameter (used for both search and collection)
   let page = 1;
@@ -278,6 +279,7 @@ export default async function CollectionSlugPage({
     collectionPage = collectionData.page || 1;
     collectionHasMore = collectionData.hasMore || false;
     collectionVariantItems = collectionData.variantItems; // Get variant items for collection pages
+    collectionAvailableFilterOptions = collectionData.availableFilterOptions; // Stable options so filter list does not collapse
   }
 
   // Fetch categories for the client component (needed for breadcrumbs and other UI)
@@ -309,6 +311,7 @@ export default async function CollectionSlugPage({
     <CollectionClient
       initialProducts={serializedProducts}
       initialVariantItems={serializedVariantItems}
+      initialAvailableFilterOptions={collectionAvailableFilterOptions}
       categories={serializedCategories}
       categoryPath={searchQuery ? undefined : categoryPath}
       selectedCategory={searchQuery ? "All Products" : selectedCategory}

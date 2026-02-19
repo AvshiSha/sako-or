@@ -461,7 +461,7 @@ export default function CampaignClient({
       )}
 
       {/* Products Grid Section */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-32 pb-8 md:pt-32 md:pb-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-10 pb-8 md:pt-32 md:pb-8">
         {variantItems.length === 0 ? (
           <div className={`text-center py-12 ${lng === "he" ? "text-right" : "text-left"}`}>
             <p className="text-gray-500 text-lg">

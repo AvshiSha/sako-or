@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select'
 import { cn } from '@/lib/utils'
-import { Gem, Gift, Lock, Sparkles } from 'lucide-react'
+import { Gem, Gift, Lock, Sparkles, Star } from 'lucide-react'
 
 type SyncResponse =
   | { ok: true; needsProfileCompletion: boolean }
@@ -45,6 +45,7 @@ const translations = {
     clubGifts: 'Gifts and benefits',
     clubEarlyAccess: 'Early access to sales',
     clubCollections: 'Collections before everyone else',
+    clubStoreMembers: 'Already a store club member? Register here to see and use all your points from past purchases online too!',
     personalInfo: 'Personal Information',
     firstName: 'First Name',
     lastName: 'Last Name',
@@ -109,6 +110,7 @@ const translations = {
     clubGifts: 'מתנות והטבות',
     clubEarlyAccess: 'גישה מוקדמת לסייל',
     clubCollections: 'קולקציות לפני כולן',
+    clubStoreMembers: 'כבר חברת מועדון מהחנות? 💖 אם תירשמי לאתר – תוכלי לראות את כל הנקודות שצברת בקניות הקודמות שלך, ולהשתמש בהן גם כאן באתר!',
     personalInfo: 'מידע אישי',
     firstName: 'שם פרטי',
     lastName: 'שם משפחה',
@@ -727,6 +729,12 @@ export default function SignUpPage() {
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
               </div>
               <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubCollections}</span>
+            </div>
+            <div className="col-span-2 flex items-start gap-3 rounded-lg border border-[#856D55]/20 bg-[#856D55]/5 px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
+                <Star className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
+              </div>
+              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubStoreMembers}</span>
             </div>
           </div>
         )}

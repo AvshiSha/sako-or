@@ -53,7 +53,7 @@ export const COLOR_CODE_MAP: Record<string, string> = {
   '61': 'dark-gray',
   '69': 'camel',
   '89': 'natural',
-  '91': 'multi-color',
+  '91': 'multicolor',
   '95': 'black-white',
   '99': 'nude'
 };

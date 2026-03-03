@@ -29,7 +29,7 @@ interface DashboardStats {
 }
 
 function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('products')
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -200,7 +200,6 @@ function AdminDashboard() {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6">
               {[
-                { id: 'overview', name: 'Overview', icon: ChartBarIcon },
                 { id: 'products', name: 'Products', icon: CubeIcon },
                 { id: 'categories', name: 'Categories', icon: TagIcon },
                 { id: 'users', name: 'Users', icon: UsersIcon },
@@ -221,31 +220,6 @@ function AdminDashboard() {
             </nav>
           </div>
           <div className="p-6">
-            {activeTab === 'overview' && (
-              <div className="text-center py-12">
-                <ChartBarIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No analytics yet</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Get started by adding some products to your store.
-                </p>
-                <div className="mt-6 space-x-4">
-                  <Link
-                    href="/admin/import"
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
-                    Import Products
-                  </Link>
-                  <Link
-                    href="/admin/products/new"
-                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    <PlusIcon className="h-4 w-4 mr-2" />
-                    Add Product
-                  </Link>
-                </div>
-              </div>
-            )}
             {activeTab === 'products' && (
               <div className="text-center py-12">
                 <CubeIcon className="mx-auto h-12 w-12 text-gray-400" />

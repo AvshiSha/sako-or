@@ -301,23 +301,6 @@ async function updateFirebaseInventory(
     // Get existing colorVariants (copy to avoid mutating cached data)
     const colorVariants = JSON.parse(JSON.stringify(productData.colorVariants || {}));
 
-    // Debug: log BEFORE state only for SKU 5024-0019
-    if (productSku === '5024-0019') {
-      console.log(
-        `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} - BEFORE update stockBySize:`,
-        JSON.stringify(
-          Object.fromEntries(
-            Object.entries(colorVariants).map(([color, v]: [string, any]) => [
-              color,
-              v?.stockBySize ?? {},
-            ])
-          ),
-          null,
-          2
-        )
-      );
-    }
-
     // Update stock for each row
     for (const row of rows) {
       const { colorSlug, size } = row.parsed!;
@@ -339,28 +322,7 @@ async function updateFirebaseInventory(
       // Update stock for this size (OS from Verifone -> One size in DB)
       const prevQty = colorVariants[colorSlug].stockBySize[dbSize];
       colorVariants[colorSlug].stockBySize[dbSize] = row.quantity;
-      if (productSku === '5024-0019') {
-        console.log(
-          `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} color=${colorSlug} size=${dbSize}: ${prevQty} -> ${row.quantity}`
-        );
-      }
-    }
-
-    // Debug: log AFTER state (what we're about to write) only for SKU 5024-0019
-    if (productSku === '5024-0019') {
-      console.log(
-        `[INVENTORY_SYNC_DEBUG] Firebase ${productSku} - AFTER update (to be written) stockBySize:`,
-        JSON.stringify(
-          Object.fromEntries(
-            Object.entries(colorVariants).map(([color, v]: [string, any]) => [
-              color,
-              v?.stockBySize ?? {},
-            ])
-          ),
-          null,
-          2
-        )
-      );
+      
     }
 
     // Update the product document (Admin SDK ensures write succeeds regardless of security rules)

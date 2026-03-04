@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         const id = `${sku}-${size}-${colorSlug}`
         const title = titleHe
         const description = descHe
-        const availability = 'in stock'
+        const availability = (quantity > 0) ? 'in stock' : 'out of stock'
         const condition = 'new'
         const price = `${basePrice} ${currency}`
         const link = `https://www.sako-or.com/he/product/${sku}/${colorSlug}`
@@ -88,7 +88,8 @@ export async function GET(request: NextRequest) {
             : ''
         const salePriceEffectiveDate = ''
         const itemGroupId = groupId
-        const gender = 'female'
+        const primaryCategory = product.categories_path?.[0] || '';
+        const gender = (primaryCategory.toLowerCase() === 'women') ? 'female' : (primaryCategory.toLowerCase() === 'men') ? 'male' : 'unisex'
         const color = colorSlug
         const sizeOut = size
         const ageGroup = 'all ages'

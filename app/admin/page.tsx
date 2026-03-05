@@ -1,6 +1,6 @@
 'use client'
 // google sheets import guide: https://github.com/sako-shop/sako-shop/blob/main/docs/GOOGLE_SHEETS_IMPORT_GUIDE.md
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { 
   CubeIcon, 
@@ -21,47 +21,9 @@ import {
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { useAuth } from '@/app/contexts/AuthContext'
 
-interface DashboardStats {
-  totalProducts: number
-  activeCategories: number
-  featuredProducts: number
-  outOfStockItems: number
-}
-
 function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const { user, logout } = useAuth()
-
-  useEffect(() => {
-    fetchStats()
-  }, [])
-
-  const fetchStats = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await fetch('/api/admin/stats')
-      if (!response.ok) {
-        throw new Error('Failed to fetch statistics')
-      }
-      const data = await response.json()
-      setStats(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const statsDisplay = stats ? [
-    { name: 'Total Products', value: stats.totalProducts.toString(), change: '', changeType: 'neutral' },
-    { name: 'Active Categories', value: stats.activeCategories.toString(), change: '', changeType: 'neutral' },
-    { name: 'Featured Products', value: stats.featuredProducts.toString(), change: '', changeType: 'neutral' },
-    { name: 'Out of Stock Items', value: stats.outOfStockItems.toString(), change: '', changeType: stats.outOfStockItems > 0 ? 'negative' : 'positive' },
-  ] : []
 
   const quickActions = [
     {

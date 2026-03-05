@@ -68,54 +68,71 @@ export async function GET(request: NextRequest) {
       const primaryImage = variant.primaryImage || (variant.images && variant.images[0]) || ''
 
       const stockBySize = variant.stockBySize || {}
-      for (const [size, quantity] of Object.entries(stockBySize)) {
-        const id = `${sku}-${size}-${colorSlug}`
-        const title = titleHe
-        const description = descHe
-        const availability = (quantity > 0) ? 'in stock' : 'out of stock'
-        const condition = 'new'
-        const price = `${basePrice} ${currency}`
-        const link = `https://www.sako-or.com/he/product/${sku}/${colorSlug}`
-        const imageLink = primaryImage
-        const brand = 'SAKO-OR'
-        const googleCategory = 'Apparel & Accessories > Shoes'
-        const fbCategory = "clothing & accessories > shoes & footwear > women's shoes"
-        const quantityToSell = quantity
-        const salePrice = (variant.salePrice && variant.salePrice > 0)
-          ? variant.salePrice
-          : (product.salePrice && product.salePrice > 0)
-            ? product.salePrice
-            : ''
-        const salePriceEffectiveDate = ''
-        const itemGroupId = groupId
-        const primaryCategory = product.categories_path?.[0] || '';
-        const gender = (primaryCategory.toLowerCase() === 'women') ? 'female' : (primaryCategory.toLowerCase() === 'men') ? 'male' : 'unisex'
-        const color = colorSlug
-        const sizeOut = size
-        const ageGroup = 'all ages'
-
-        lines.push(buildRow([
-          id,
-          title,
-          description,
-          availability,
-          condition,
-          price,
-          link,
-          imageLink,
-          brand,
-          googleCategory,
-          fbCategory,
-          quantityToSell,
-          salePrice,
-          salePriceEffectiveDate,
-          itemGroupId,
-          gender,
-          color,
-          sizeOut,
-          ageGroup
-        ]))
+      // Aggregate stock and export one row per color variant
+      let totalQuantity = 0
+      for (const quantity of Object.values(stockBySize)) {
+        if (typeof quantity === 'number' && quantity > 0) {
+          totalQuantity += quantity
+        }
       }
+
+      const id = `${sku}-${colorSlug}`
+      const title = titleHe.toLowerCase()
+      const description = descHe
+      const availability = totalQuantity > 0 ? 'in stock' : 'out of stock'
+      const condition = 'new'
+      const price = `${basePrice} ${currency}`
+      const link = `https://www.sako-or.com/he/product/${sku}/${colorSlug}`
+      const imageLink = primaryImage
+      const brand = 'SAKO-OR'
+      const googleCategory = 'Apparel & Accessories > Shoes'
+      const primaryCategory = product.categories_path?.[0] || product.category || ''
+      const primaryCategoryLower = primaryCategory.toLowerCase()
+      const fbCategory =
+        primaryCategoryLower === 'women'
+          ? "clothing & accessories > shoes & footwear > women's shoes"
+          : primaryCategoryLower === 'men'
+            ? "clothing & accessories > shoes & footwear > men's shoes"
+            : "clothing & accessories > shoes & footwear > unisex"
+      const quantityToSell = totalQuantity
+      const salePrice = (variant.salePrice && variant.salePrice > 0)
+        ? variant.salePrice
+        : (product.salePrice && product.salePrice > 0)
+          ? product.salePrice
+          : ''
+      const salePriceEffectiveDate = ''
+      const itemGroupId = groupId
+      const gender =
+        primaryCategoryLower === 'women'
+          ? 'female'
+          : primaryCategoryLower === 'men'
+            ? 'male'
+            : 'unisex'
+      const color = colorSlug
+      const sizeOut = 'One Size'
+      const ageGroup = 'all ages'
+
+      lines.push(buildRow([
+        id,
+        title,
+        description,
+        availability,
+        condition,
+        price,
+        link,
+        imageLink,
+        brand,
+        googleCategory,
+        fbCategory,
+        quantityToSell,
+        salePrice,
+        salePriceEffectiveDate,
+        itemGroupId,
+        gender,
+        color,
+        sizeOut,
+        ageGroup
+      ]))
     }
   }
 

@@ -1,4 +1,4 @@
-import { languages, getLanguageDirection } from '../../i18n/settings'
+import { languages, type Language, defaultLanguage, getLanguageDirection } from '../../i18n/settings'
 import Navigation from '../components/Navigation'
 import Footer from '../components/Footer'
 import PromoRibbon from '../components/PromoRibbon'
@@ -15,32 +15,32 @@ export default async function LanguageLayout({
   params: Promise<{ lng: string }>
 }) {
   const { lng } = await params
-  
+
   // Skip socket.io and other non-language routes
   if (lng === 'socket.io' || lng.startsWith('socket.io')) {
     return null
   }
-  
-  // Validate language parameter
-  if (!languages.includes(lng as any)) {
-    throw new Error(`Unsupported language: ${lng}`)
-  }
-  
+
+  // Normalize language: fall back to default for anything unsupported (including file-like paths such as meta.json)
+  const normalizedLng: Language = languages.includes(lng as any)
+    ? (lng as Language)
+    : defaultLanguage
+
   // Determine direction based on language
-  const direction = getLanguageDirection(lng as any)
+  const direction = getLanguageDirection(normalizedLng)
 
   return (
     <div 
       className={`flex flex-col min-h-screen ${direction}`}
       dir={direction}
-      lang={lng}
+      lang={normalizedLng}
     >
-      <PromoRibbon lng={lng as 'en' | 'he'} />
-      <Navigation lng={lng} />
+      <PromoRibbon lng={normalizedLng} />
+      <Navigation lng={normalizedLng} />
       <main className="flex-grow">
         {children}
       </main>
-      <Footer lng={lng} />
+      <Footer lng={normalizedLng} />
     </div>
   )
 }

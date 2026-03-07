@@ -1344,8 +1344,8 @@ export default function CollectionClient({
 
 
   return (
-    <div className="min-h-screen pt-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pt-20 md:pb-16 relative">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pb-16 relative">
         {/* Header with Filters Button */}
         <div className="mb-4 md:mb-4">
           <div className="mb-4">

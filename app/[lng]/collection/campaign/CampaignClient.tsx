@@ -801,7 +801,7 @@ export default function CampaignClient({
       )}
 
       {/* Products Grid Section with Filters */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-10 pb-8 md:pt-32 md:pb-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8 pb-8 md:pb-8">
         <div className={cn("flex items-center gap-3 mb-4", lng === "he" ? "flex-row-reverse" : "flex-row")}>
           <button
             onClick={() => setDesktopFiltersOpen(!desktopFiltersOpen)}

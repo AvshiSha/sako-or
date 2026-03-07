@@ -415,7 +415,7 @@ export default function Home() {
   const hero3MobileVideoSrc = getHero3MobileVideoUrl()
 
   return (
-    <div className={`pt-[104px] ${isRTL ? 'text-right' : 'text-left'}`} style={{ backgroundColor: '#FFFFFF' }}>
+    <div className={isRTL ? 'text-right' : 'text-left'} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
       <HeroVideoSection
         desktopSrc={heroDesktopVideoSrc}

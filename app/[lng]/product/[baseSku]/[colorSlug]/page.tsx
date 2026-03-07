@@ -503,7 +503,7 @@ export default function ProductColorPage() {
       />
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
-        <div className="pt-[102px]">
+        <div>
         <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_2fr] gap-0">            {/* Product Images - Full Width */}
             <div className="relative w-full">
               {/* Favorite Heart Icon - Top Left */}

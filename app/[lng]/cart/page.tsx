@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react'
+import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -57,7 +57,7 @@ const COUPON_STORAGE_KEY = 'cart_coupons'
 
 function CartPageFallback() {
   return (
-    <div className="min-h-screen bg-[#E1DBD7] pt-16" style={{ backgroundColor: '#E1DBD7' }}>
+    <div className="min-h-screen bg-[#E1DBD7]" style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="animate-pulse space-y-6">
           <div className="h-8 bg-gray-200 rounded w-48" />
@@ -701,8 +701,8 @@ if (!isClient || loading) {
   const cardFontFamily = isRTL ? 'Heebo, sans-serif' : 'Poppins, sans-serif'
 
   return (
-    <div className="min-h-screen bg-[#E1DBD7] pt-16" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12">
+    <div className="min-h-screen bg-[#E1DBD7]" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 md:py-8">
         {/* Header */}
         <div className="mb-4 mt-6">
           <div className="flex items-center justify-between">

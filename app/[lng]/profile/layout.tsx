@@ -98,7 +98,7 @@ export default function ProfileLayout({
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-b from-[#eef5ff] via-[#f4f7ff] to-white pt-20 pb-12"
+      className="min-h-screen bg-gradient-to-b from-[#eef5ff] via-[#f4f7ff] to-white pb-12"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">

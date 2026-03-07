@@ -9,8 +9,8 @@ interface PromoRibbonProps {
 
 export default function PromoRibbon({ lng }: PromoRibbonProps) {
   const text = lng === 'he' 
-    ? 'לאור המצב הבטחוני ❤️ 7% הנחה על כל האתר | קוד: SAKO7'
-    : 'Due to the security situation ❤️ 7% discount on all products | Code: SAKO7'
+    ? '🌸 יום האישה שמח! קבלי 10% הנחה עם הקוד WOMEN10'
+    : '🌸 Happy Women\'s Day! Get 10% discount with code WOMEN10'
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-gradient-to-r from-[#B2A28E] to-[#B2A28E] text-white h-10 z-[60]">

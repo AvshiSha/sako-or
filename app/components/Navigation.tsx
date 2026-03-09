@@ -70,7 +70,7 @@ export default function Navigation({ lng }: { lng: string }) {
   const [openTimeout, setOpenTimeout] = useState<NodeJS.Timeout | null>(null)
   const [selectedGender, setSelectedGender] = useState<'women' | 'men'>('women')
 
-  const { items } = useCart()
+  const { items, getTotalItems } = useCart()
   const { favorites } = useFavorites()
   const { user, loading: authLoading } = useAuth()
   const pathname = usePathname()
@@ -640,9 +640,9 @@ export default function Navigation({ lng }: { lng: string }) {
                 suppressHydrationWarning
               >
                 <ShoppingBag className="h-5 w-5" />
-                {items.length > 0 && (
+                {getTotalItems() > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
-                    {items.length}
+                    {getTotalItems()}
                   </span>
                 )}
               </Link>
@@ -684,9 +684,9 @@ export default function Navigation({ lng }: { lng: string }) {
                 suppressHydrationWarning
               >
                 <ShoppingBag className="h-5 w-5" />
-                {items.length > 0 && (
+                {getTotalItems() > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold z-10">
-                    {items.length}
+                    {getTotalItems()}
                   </span>
                 )}
               </Link>

@@ -126,8 +126,13 @@ const cartCurrency = useMemo(() => {
  return 'ILS'
 }, [items])
 
+const purchasableItems = useMemo(
+  () => items.filter(item => !item.isOutOfStock && item.maxStock > 0 && item.quantity > 0),
+  [items]
+)
+
 const cartItemsPayload = useMemo(() => {
-  return items.map(item => ({
+  return purchasableItems.map(item => ({
     sku: item.sku,
     quantity: item.quantity,
     price: item.price,
@@ -135,7 +140,7 @@ const cartItemsPayload = useMemo(() => {
     color: item.color,
     size: item.size
   }))
-}, [items])
+}, [purchasableItems])
 
 const cartItemsSignature = useMemo(() => JSON.stringify(cartItemsPayload), [cartItemsPayload])
 
@@ -371,24 +376,24 @@ const revalidateCouponCodes = useCallback(async (
   }
 }, [cartCurrency, cartItemsPayload, couponStrings.invalid, couponStrings.success, lng, loading, saveCouponsToStorage, userIdentifier])
 
-  // Generate product name from cart items
+  // Generate product name from purchasable cart items (what will actually be charged)
   const getProductName = () => {
-    if (items.length === 0) return 'Sako Order'
+    if (purchasableItems.length === 0) return 'Sako Order'
     
-    if (items.length === 1) {
-      const item = items[0]
+    if (purchasableItems.length === 1) {
+      const item = purchasableItems[0]
       return `${item.name[lng as 'en' | 'he']}${item.color ? ` - ${item.color}` : ''}`
     }
     
-    if (items.length === 2) {
-      const item1 = items[0]
-      const item2 = items[1]
+    if (purchasableItems.length === 2) {
+      const item1 = purchasableItems[0]
+      const item2 = purchasableItems[1]
       return `${item1.name[lng as 'en' | 'he']}${item1.color ? ` - ${item1.color}` : ''} + ${item2.name[lng as 'en' | 'he']}${item2.color ? ` - ${item2.color}` : ''}`
     }
     
     // For 3+ items, show first item + count
-    const firstItem = items[0]
-    const remainingCount = items.length - 1
+    const firstItem = purchasableItems[0]
+    const remainingCount = purchasableItems.length - 1
     return `${firstItem.name[lng as 'en' | 'he']}${firstItem.color ? ` - ${firstItem.color}` : ''} + ${remainingCount} ${isRTL ? 'עוד פריטים' : 'more items'}`
   }
 
@@ -408,7 +413,9 @@ const revalidateCouponCodes = useCallback(async (
       clearCart: 'Clear Cart',
       items: 'items',
       item: 'item',
-      freeDelivery: 'Free delivery on orders over ₪300'
+      freeDelivery: 'Free delivery on orders over ₪300',
+      outOfStockLabel: 'OUT OF STOCK',
+      outOfStockDescription: 'This item is no longer available and will not be included in your total.'
     },
     he: {
       title: 'עגלת קניות',
@@ -424,7 +431,9 @@ const revalidateCouponCodes = useCallback(async (
       clearCart: 'נקה עגלה',
       items: 'פריטים',
       item: 'פריט',
-      freeDelivery: 'משלוח חינם בהזמנות מעל ₪300'
+      freeDelivery: 'משלוח חינם בהזמנות מעל ₪300',
+      outOfStockLabel: 'אזל מהמלאי – המוצר לא ייכלל בהזמנה',
+      outOfStockDescription: 'המוצר אינו זמין יותר ולא ייכלל בסכום לתשלום.'
     }
   }
 
@@ -575,10 +584,10 @@ useEffect(() => {
 }, [user, isClient])
 
 useEffect(() => {
-  if (!isClient || loading || items.length === 0) return
+  if (!isClient || loading || purchasableItems.length === 0) return
 
   try {
-    const cartItems = items.map(item => ({
+    const cartItems = purchasableItems.map(item => ({
       name: item.name[lng as 'en' | 'he'] || 'Unknown Product',
       id: item.sku,
       price: item.salePrice || item.price,
@@ -592,11 +601,11 @@ useEffect(() => {
   } catch (dataLayerError) {
     console.warn('Data layer tracking error:', dataLayerError)
   }
-}, [cartCurrency, isClient, items, loading, lng])
+}, [cartCurrency, isClient, loading, lng, purchasableItems])
 
 // Automatic BOGO deal calculation – recompute whenever cart items change
 useEffect(() => {
-  if (!isClient || loading || items.length === 0) {
+  if (!isClient || loading || purchasableItems.length === 0) {
     setBogoDiscountAmount(0)
     setBogoHasLeftover(false)
     return
@@ -644,7 +653,7 @@ useEffect(() => {
   return () => {
     cancelled = true
   }
-}, [isClient, loading, cartItemsSignature, cartItemsPayload, items.length])
+}, [isClient, loading, cartItemsSignature, cartItemsPayload, purchasableItems.length])
 
   // Points cap: compute before early return so the clamp useEffect runs in a consistent hook order
   const totalItems = getTotalItems()
@@ -744,10 +753,14 @@ if (!isClient || loading) {
             {/* Cart Items List */}
             <div className="lg:col-span-2">
               <div className="space-y-4">
-                {items.map((item, index) => (
+                {items.map((item, index) => {
+                  const isOutOfStock = item.isOutOfStock || item.maxStock <= 0
+                  return (
                   <div
                     key={`${item.sku}-${item.size}-${item.color}-${index}`}
-                    className="bg-white border border-gray-200 rounded-[12px] shadow-sm p-4"
+                    className={`bg-white border border-gray-200 rounded-[12px] shadow-sm p-4 ${
+                      isOutOfStock ? 'opacity-70' : ''
+                    }`}
                     style={{ fontFamily: cardFontFamily }}
                   >
                     <div className={`flex ${isRTL ? 'flex-row-reverse' : 'flex-row'} items-start gap-4`}>
@@ -773,6 +786,12 @@ if (!isClient || loading) {
                             </div>
                           )}
                         </div>
+
+                        {isOutOfStock && (
+                          <div className="mt-1 inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
+                            {t.outOfStockLabel}
+                          </div>
+                        )}
 
                         <div className={`${isRTL ? 'text-right' : 'text-left'}`}>
                           {item.salePrice && item.salePrice < item.price ? (
@@ -809,7 +828,7 @@ if (!isClient || loading) {
                         <button
                           onClick={() => updateQuantity(item.sku, item.quantity - 1, item.size, item.color)}
                           className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={item.quantity <= 1}
+                          disabled={isOutOfStock || item.quantity <= 1}
                           aria-label={lng === 'he' ? 'הפחת כמות' : 'Decrease quantity'}
                         >
                           <MinusIcon className="h-4 w-4" />
@@ -820,7 +839,7 @@ if (!isClient || loading) {
                         <button
                           onClick={() => updateQuantity(item.sku, item.quantity + 1, item.size, item.color)}
                           className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={item.quantity >= item.maxStock}
+                          disabled={isOutOfStock || item.quantity >= item.maxStock}
                           aria-label={lng === 'he' ? 'הגדל כמות' : 'Increase quantity'}
                         >
                           <PlusIcon className="h-4 w-4" />
@@ -837,7 +856,8 @@ if (!isClient || loading) {
                       </button>
                     </div>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
@@ -972,7 +992,7 @@ if (!isClient || loading) {
                 <hr className="my-6 border-gray-200" />
                 
                 <div className="mt-6 space-y-3">
-                  {items.map((item, index) => (
+                  {purchasableItems.map((item, index) => (
                     <div key={`${item.sku}-${item.size}-${item.color}-${index}`} className="flex justify-between text-sm">
                       <div className="text-gray-600">
                         <div className="font-medium">{item.name[lng as 'en' | 'he']}</div>
@@ -1110,10 +1130,10 @@ if (!isClient || loading) {
         deliveryFee={deliveryFee}
         currency={cartCurrency}
         productName={getProductName()}
-        productSku={items.length > 0 ? items[0].sku : 'UNKNOWN'}
+        productSku={purchasableItems.length > 0 ? purchasableItems[0].sku : 'UNKNOWN'}
         quantity={totalItems}
         language={lng as 'he' | 'en'}
-        items={items}
+        items={purchasableItems}
         appliedCoupons={
           bogoDiscountAmount > 0
             ? []

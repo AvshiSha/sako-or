@@ -1,7 +1,7 @@
 export const profileTheme = {
   pageBg:
     'min-h-[calc(100vh-0px)] bg-gradient-to-b from-[#eef5ff] via-[#f4f7ff] to-white',
-  shell: 'mx-auto w-full max-w-2xl px-4 py-4 sm:py-8 mt-26 ',
+  shell: 'mx-auto w-full max-w-2xl px-4 py-4 sm:py-8 ',
   card: 'rounded-xl bg-white/90 shadow-[0_4px_20px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur mt-4',
   header: 'flex items-center gap-3 border-b border-slate-100 px-5 py-4 sm:px-6 sm:py-5',
   avatar:

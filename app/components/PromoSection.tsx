@@ -29,19 +29,19 @@ function pad(n: number): string {
 
 /** Campaign ribbon: shown while countdown is active */
 const promoMessage = {
-  en: '🌸 Happy Women\'s Day! Get 10% discount',
-  he: '🌸 לכבוד יום האישה – 10% הנחה על כל האתר'
+  en: 'Due to the security situation ❤️ 7% discount on all products',
+  he: 'עקב המצב משהו קטן מאיתנו 🤍 7% הנחה על כל האתר'
 }
 
 const couponLabel = {
-  en: 'Code: WOMEN10',
-  he: 'קוד: WOMEN10'
+  en: 'Code: SAKO7',
+  he: 'קוד: SAKO7'
 }
 
 /** Default ribbon: shown after countdown ends (no campaign, no coupon) */
 const defaultRibbonMessage = {
-  en: 'Free shipping on orders over ₪300 🚗',
-  he: 'משלוח חינם להזמנות מעל 300 ש"ח 🚗'
+  en: 'Due to the security situation ❤️ 7% discount on all products | Code: SAKO7',
+  he: 'עקב המצב, משהו קטן מאיתנו 🤍 7% הנחה על כל האתר | קוד: SAKO7'
 }
 
 const urgencyLabel = {
@@ -121,6 +121,7 @@ export default function PromoSection({ lng, targetDate }: PromoSectionProps) {
           </Link>
         )}
 
+        {/*
         {showCountdown && (
           <>
             <div className="mt-1 w-full max-w-xs border-t border-white/25" />
@@ -145,6 +146,7 @@ export default function PromoSection({ lng, targetDate }: PromoSectionProps) {
             </div>
           </>
         )}
+        */}
       </div>
     </div>
   )

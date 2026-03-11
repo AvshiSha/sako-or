@@ -6,6 +6,7 @@ import { useAuth } from '@/app/contexts/AuthContext'
 import { buildCartKey } from '@/lib/cart'
 import { productService } from '@/lib/firebase'
 import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '@/lib/pricing'
+import { usePathname } from 'next/navigation'
 
 export interface CartItem {
   sku: string
@@ -21,6 +22,14 @@ export interface CartItem {
   color?: string
   quantity: number
   maxStock: number
+  isOutOfStock?: boolean
+}
+
+type StoredCartLine = {
+  sku: string
+  size?: string
+  color?: string
+  quantity: number
 }
 
 export interface CartHook {
@@ -35,13 +44,17 @@ export interface CartHook {
   getDeliveryFee: () => number
   getTotalWithDelivery: () => number
   loading: boolean
+  hadStockAdjustments: boolean
 }
 
 export function useCart(): CartHook {
   const [items, setItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [hadStockAdjustments, setHadStockAdjustments] = useState(false)
   const { user } = useAuth()
   const loadedFromNeonRef = useRef(false)
+  const hasValidatedCartRef = useRef(false)
+  const pathname = usePathname()
   
   // Session storage key to track if cart was loaded in this session
   const SESSION_LOADED_KEY = 'cart_loaded_from_neon'
@@ -99,14 +112,61 @@ export function useCart(): CartHook {
     return true
   }, [])
 
+  const applyStockValidationToItems = useCallback((inputItems: CartItem[]): CartItem[] => {
+    if (!Array.isArray(inputItems) || inputItems.length === 0) {
+      return inputItems
+    }
+
+    let changed = false
+
+    const validated = inputItems.map(item => {
+      const safeMaxStock =
+        typeof item.maxStock === 'number' && Number.isFinite(item.maxStock) && item.maxStock > 0
+          ? item.maxStock
+          : 0
+
+      let nextQuantity = item.quantity
+
+      // Clamp quantity down to available stock when there is stock
+      if (safeMaxStock > 0 && nextQuantity > safeMaxStock) {
+        nextQuantity = safeMaxStock
+      }
+
+      if (
+        safeMaxStock !== item.maxStock ||
+        nextQuantity !== item.quantity
+      ) {
+        changed = true
+        return {
+          ...item,
+          maxStock: safeMaxStock,
+          quantity: nextQuantity
+        }
+      }
+
+      return item
+    })
+
+    return changed ? validated : inputItems
+  }, [])
+
   // Load cart from localStorage on mount
   useEffect(() => {
     try {
       const storedCart = localStorage.getItem('cart')
       if (storedCart && storedCart.trim()) {
-        const parsedItems: CartItem[] = JSON.parse(storedCart)
-        if (Array.isArray(parsedItems)) {
-          const normalized = parsedItems.map(item => normalizeCartItem(item))
+        const parsedLines: StoredCartLine[] = JSON.parse(storedCart)
+        if (Array.isArray(parsedLines)) {
+          const initialItems: CartItem[] = parsedLines.map(line => ({
+            sku: line.sku,
+            name: { en: '', he: '' },
+            price: 0,
+            quantity: Math.max(0, Math.floor(line.quantity || 0)),
+            maxStock: 0,
+            size: line.size,
+            color: line.color
+          }))
+          const normalized = initialItems.map(item => normalizeCartItem(item))
           setItems(normalized)
         } else {
           console.warn('Cart data is not an array, clearing...')
@@ -123,7 +183,7 @@ export function useCart(): CartHook {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [normalizeCartItem])
 
   // Save cart to localStorage whenever items change
   useEffect(() => {
@@ -131,11 +191,19 @@ export function useCart(): CartHook {
       try {
         const normalizedItems = items.map(item => normalizeCartItem(item))
         const itemsToPersist = areItemArraysEqual(normalizedItems, items) ? items : normalizedItems
+        const linesToPersist: StoredCartLine[] = itemsToPersist
+          .filter(item => item.quantity > 0)
+          .map(item => ({
+            sku: item.sku,
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity
+          }))
 
-        if (itemsToPersist.length === 0) {
+        if (linesToPersist.length === 0) {
           localStorage.removeItem('cart')
         } else {
-          localStorage.setItem('cart', JSON.stringify(itemsToPersist))
+          localStorage.setItem('cart', JSON.stringify(linesToPersist))
         }
         // Dispatch custom event to notify other components
         window.dispatchEvent(new CustomEvent('cartUpdated', { detail: itemsToPersist }))
@@ -165,6 +233,80 @@ export function useCart(): CartHook {
       window.removeEventListener('cartUpdated', handleCartUpdate as EventListener)
     }
   }, [areItemArraysEqual, normalizeCartItem])
+
+  // Validate cart against current stock via server once per hook lifetime (on load)
+  // We only run this on the full cart page to avoid duplicate calls from
+  // components like the quick-buy drawer that also use the cart hook.
+  useEffect(() => {
+    if (loading) return
+    if (!items.length) return
+    if (hasValidatedCartRef.current) return
+    if (!pathname || !pathname.endsWith('/cart')) return
+
+    let cancelled = false
+
+    ;(async () => {
+      try {
+        hasValidatedCartRef.current = true
+
+        const payload = {
+          items: items.map(item => ({
+            sku: item.sku,
+            color: item.color ?? null,
+            size: item.size ?? null,
+            quantity: item.quantity
+          }))
+        }
+
+        const res = await fetch('/api/cart/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+
+        if (!res.ok) return
+
+        const json = await res.json().catch(() => null)
+        if (!json || !Array.isArray(json.items)) return
+        if (cancelled) return
+
+        const serverItems: CartItem[] = json.items
+          .filter((x: any) => x && typeof x.sku === 'string')
+          .map((x: any) => {
+            const maxStock = Math.max(0, Math.floor(x.stock ?? 0))
+            const quantity = Math.max(0, Math.floor(x.finalQuantity ?? x.quantity ?? 0))
+            return {
+              sku: x.sku,
+              name: {
+                en: x.name?.en || '',
+                he: x.name?.he || ''
+              },
+              price: Number(x.price || 0),
+              salePrice: x.salePrice != null ? Number(x.salePrice) : undefined,
+              currency: x.currency || 'ILS',
+              image: x.image || undefined,
+              size: x.size || undefined,
+              color: x.color || undefined,
+              quantity,
+              maxStock,
+              isOutOfStock: Boolean(x.outOfStock) || maxStock <= 0 || quantity <= 0
+            }
+          })
+
+        const validated = applyStockValidationToItems(serverItems)
+        if (!cancelled) {
+          setItems(validated)
+          setHadStockAdjustments(Boolean(json.hadAdjustments))
+        }
+      } catch (error) {
+        console.error('[useCart] Error validating cart via server:', error)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [applyStockValidationToItems, items, loading, pathname])
 
   // Listen for cart reload event (triggered after purchase to reload from Neon)
   useEffect(() => {
@@ -259,11 +401,13 @@ export function useCart(): CartHook {
             size: sizeSlug || undefined,
             color: colorSlug || undefined,
             quantity: quantity,
-            maxStock: maxStock
+            maxStock: maxStock,
+            isOutOfStock: maxStock <= 0 || quantity <= 0
           })
         }
 
-        setItems(hydratedItems)
+        const validatedItems = applyStockValidationToItems(hydratedItems)
+        setItems(validatedItems)
         
         // Mark as loaded again
         loadedFromNeonRef.current = true
@@ -285,7 +429,7 @@ export function useCart(): CartHook {
     return () => {
       window.removeEventListener('cartReload', handleCartReload as EventListener)
     }
-  }, [user?.uid])
+  }, [applyStockValidationToItems, user?.uid])
 
   // Load cart from Neon for signed-in users (Favorites-style hydration)
   useEffect(() => {
@@ -395,12 +539,14 @@ export function useCart(): CartHook {
             size: sizeSlug || undefined,
             color: colorSlug || undefined,
             quantity: quantity,
-            maxStock: maxStock
+            maxStock: maxStock,
+            isOutOfStock: maxStock <= 0 || quantity <= 0
           })
         }
 
         if (!cancelled) {
-          setItems(hydratedItems)
+          const validatedItems = applyStockValidationToItems(hydratedItems)
+          setItems(validatedItems)
         }
       } catch (error) {
         console.error('[useCart] Error loading cart from Neon:', error)
@@ -412,7 +558,7 @@ export function useCart(): CartHook {
     return () => {
       cancelled = true
     }
-  }, [user?.uid])
+  }, [applyStockValidationToItems, user?.uid])
 
   // Helper to sync cart item to Neon (fire-and-forget)
   const syncCartItemToNeon = useCallback(async (
@@ -537,33 +683,44 @@ export function useCart(): CartHook {
     setItems([])
   }, [])
 
+  const getPurchasableItemsInternal = useCallback(() => {
+    return items.filter(
+      item => !item.isOutOfStock && item.maxStock > 0 && item.quantity > 0
+    )
+  }, [items])
+
   const getTotalPrice = useCallback(() => {
-    return items.reduce((total, item) => {
+    const purchasableItems = getPurchasableItemsInternal()
+    return purchasableItems.reduce((total, item) => {
       const price = item.salePrice || item.price
       return total + (price * item.quantity)
     }, 0)
-  }, [items])
+  }, [getPurchasableItemsInternal])
 
   const getTotalItems = useCallback(() => {
-    return items.reduce((total, item) => total + item.quantity, 0)
-  }, [items])
+    const purchasableItems = getPurchasableItemsInternal()
+    return purchasableItems.reduce((total, item) => total + item.quantity, 0)
+  }, [getPurchasableItemsInternal])
 
   const getItemQuantity = useCallback((sku: string, size?: string, color?: string) => {
     const item = items.find(item => 
       item.sku === sku && item.size === size && item.color === color
     )
-    return item ? item.quantity : 0
+    if (!item) return 0
+    if (item.maxStock <= 0 || item.quantity <= 0) return 0
+    return item.quantity
   }, [items])
 
   const getDeliveryFee = useCallback(() => {
-    // Calculate total directly to avoid dependency chain issues
-    const total = items.reduce((sum, item) => {
+    // Calculate total directly from purchasable items
+    const purchasableItems = getPurchasableItemsInternal()
+    const total = purchasableItems.reduce((sum, item) => {
       const price = item.salePrice || item.price
       return sum + (price * item.quantity)
     }, 0)
 
     return total < FREE_DELIVERY_THRESHOLD_ILS ? DELIVERY_FEE_ILS : 0
-  }, [items])
+  }, [getPurchasableItemsInternal])
 
   const getTotalWithDelivery = useCallback(() => {
     return getTotalPrice() + getDeliveryFee()
@@ -580,6 +737,7 @@ export function useCart(): CartHook {
     getItemQuantity,
     getDeliveryFee,
     getTotalWithDelivery,
-    loading
+    loading,
+    hadStockAdjustments
   }
 }

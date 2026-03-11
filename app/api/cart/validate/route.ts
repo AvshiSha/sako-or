@@ -104,8 +104,8 @@ export async function POST(request: NextRequest) {
           // No size either – sum all stock across all variants and sizes
           stock = variantsArray.reduce((sum, v: any) => {
             const bySize = v?.stockBySize || {}
-            const variantTotal = Object.values(bySize).reduce(
-              (inner, s: any) => inner + Number(s || 0),
+            const variantTotal = Object.values(bySize).reduce<number>(
+              (inner: number, s: any) => inner + Number(s || 0),
               0
             )
             return sum + variantTotal

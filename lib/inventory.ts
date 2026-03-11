@@ -654,6 +654,18 @@ export interface FirebaseToNeonSyncResult {
  * No Verifone calls - runs as a separate CRON after inventory-sync.
  */
 export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonSyncResult> {
+  const startedAt = Date.now();
+
+  // Tunable guardrails and execution parameters
+  const BATCH_SIZE = Number(process.env.INVENTORY_NEON_BATCH_SIZE || 50);
+  const CONCURRENCY_LIMIT = Number(process.env.INVENTORY_NEON_CONCURRENCY || 5);
+  const MAX_PRODUCTS_PER_RUN = Number(
+    process.env.INVENTORY_NEON_MAX_PRODUCTS_PER_RUN || 2000
+  );
+  const SLOW_OPERATION_THRESHOLD_MS = Number(
+    process.env.INVENTORY_NEON_SLOW_THRESHOLD_MS || 500
+  );
+
   const result: FirebaseToNeonSyncResult = {
     total: 0,
     success: 0,
@@ -669,37 +681,75 @@ export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonS
       select: { id: true, sku: true },
     });
 
-    console.log(`[INVENTORY_SYNC_NEON] Found ${products.length} products in Neon`);
+    console.log(
+      '[INVENTORY_SYNC_NEON] Loaded products from Neon',
+      JSON.stringify(
+        {
+          totalFromDb: products.length,
+          batchSize: BATCH_SIZE,
+          concurrencyLimit: CONCURRENCY_LIMIT,
+          maxPerRun: MAX_PRODUCTS_PER_RUN,
+        },
+        null,
+        2
+      )
+    );
 
-    for (const product of products) {
+    const productsToProcess =
+      products.length > MAX_PRODUCTS_PER_RUN
+        ? products.slice(0, MAX_PRODUCTS_PER_RUN)
+        : products;
+
+    if (products.length > MAX_PRODUCTS_PER_RUN) {
+      console.warn(
+        `[INVENTORY_SYNC_NEON] Product count (${products.length}) exceeds MAX_PRODUCTS_PER_RUN (${MAX_PRODUCTS_PER_RUN}). ` +
+          `Only processing first ${productsToProcess.length} products this run.`
+      );
+    }
+
+    const totalBatches = Math.ceil(productsToProcess.length / BATCH_SIZE) || 0;
+
+    // Helper to sync a single product (Firestore -> Neon)
+    const syncSingleProduct = async (product: { id: string; sku: string | null }) => {
       const { id, sku } = product;
+
       if (!sku) {
         result.skipped++;
-        continue;
+        return;
       }
 
+      const productStart = Date.now();
+
       try {
+        const firestoreStart = Date.now();
         const querySnapshot = await adminDb
           .collection('products')
           .where('sku', '==', sku)
           .limit(1)
+          .select('colorVariants')
           .get();
+        const firestoreDuration = Date.now() - firestoreStart;
 
         if (querySnapshot.empty) {
-          console.warn(`[INVENTORY_SYNC_NEON] Product ${sku} not found in Firebase, skipping`);
+          console.warn(
+            `[INVENTORY_SYNC_NEON] Product ${sku} not found in Firebase, skipping`
+          );
           result.skipped++;
-          continue;
+          return;
         }
 
         const firebaseData = querySnapshot.docs[0].data();
         const colorVariants = firebaseData.colorVariants;
 
         if (!colorVariants || typeof colorVariants !== 'object') {
-          console.warn(`[INVENTORY_SYNC_NEON] Product ${sku} has no colorVariants in Firebase, skipping`);
+          console.warn(
+            `[INVENTORY_SYNC_NEON] Product ${sku} has no colorVariants in Firebase, skipping`
+          );
           result.skipped++;
-          continue;
+          return;
         }
 
+        const neonUpdateStart = Date.now();
         await prisma.product.update({
           where: { id },
           data: {
@@ -707,24 +757,116 @@ export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonS
             updatedAt: new Date(),
           },
         });
+        const neonUpdateDuration = Date.now() - neonUpdateStart;
+
+        if (
+          firestoreDuration > SLOW_OPERATION_THRESHOLD_MS ||
+          neonUpdateDuration > SLOW_OPERATION_THRESHOLD_MS
+        ) {
+          console.log(
+            '[INVENTORY_SYNC_NEON] Slow product sync detected',
+            JSON.stringify(
+              {
+                sku,
+                firestoreMs: firestoreDuration,
+                neonUpdateMs: neonUpdateDuration,
+              },
+              null,
+              2
+            )
+          );
+        }
 
         result.success++;
       } catch (error) {
-        const errorMsg = `Failed to sync ${sku}: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        const errorMsg = `Failed to sync ${sku}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`;
         console.error(`[INVENTORY_SYNC_NEON] ${errorMsg}`);
         result.failed++;
         result.errors.push(errorMsg);
+      } finally {
+        const productDuration = Date.now() - productStart;
+        if (productDuration > SLOW_OPERATION_THRESHOLD_MS * 2) {
+          console.log(
+            '[INVENTORY_SYNC_NEON] Product end-to-end sync time',
+            JSON.stringify(
+              {
+                sku,
+                durationMs: productDuration,
+              },
+              null,
+              2
+            )
+          );
+        }
       }
+    };
+
+    // Process products in batches with limited concurrency
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const start = batchIndex * BATCH_SIZE;
+      const end = Math.min(start + BATCH_SIZE, productsToProcess.length);
+      const batch = productsToProcess.slice(start, end);
+
+      const batchStart = Date.now();
+      console.log(
+        `[INVENTORY_SYNC_NEON] Processing batch ${batchIndex + 1}/${totalBatches} (${batch.length} products)`
+      );
+
+      let cursor = 0;
+      const workerCount = Math.min(CONCURRENCY_LIMIT, batch.length);
+
+      const workers: Promise<void>[] = [];
+      for (let i = 0; i < workerCount; i++) {
+        workers.push(
+          (async () => {
+            while (cursor < batch.length) {
+              const index = cursor++;
+              const product = batch[index];
+              if (!product) return;
+              await syncSingleProduct(product);
+            }
+          })()
+        );
+      }
+
+      await Promise.all(workers);
+
+      const batchDuration = Date.now() - batchStart;
+      console.log(
+        '[INVENTORY_SYNC_NEON] Completed batch',
+        JSON.stringify(
+          {
+            batchNumber: batchIndex + 1,
+            totalBatches,
+            batchSize: batch.length,
+            batchDurationMs: batchDuration,
+            cumulative: {
+              success: result.success,
+              failed: result.failed,
+              skipped: result.skipped,
+            },
+          },
+          null,
+          2
+        )
+      );
     }
 
     // total = items actually processed (success + failed), not initial DB count
     result.total = result.success + result.failed;
+
+    const totalDuration = Date.now() - startedAt;
 
     console.log('[INVENTORY_SYNC_NEON] Sync completed', {
       total: result.total,
       success: result.success,
       failed: result.failed,
       skipped: result.skipped,
+      durationMs: totalDuration,
+      totalProductsFromDb: products.length,
+      processedProducts: productsToProcess.length,
     });
 
     return result;

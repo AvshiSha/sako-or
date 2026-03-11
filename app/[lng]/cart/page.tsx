@@ -415,7 +415,8 @@ const revalidateCouponCodes = useCallback(async (
       item: 'item',
       freeDelivery: 'Free delivery on orders over ₪300',
       outOfStockLabel: 'OUT OF STOCK',
-      outOfStockDescription: 'This item is no longer available and will not be included in your total.'
+      outOfStockDescription: 'This item is no longer available and will not be included in your total.',
+      stockDisclaimer: 'Items in your cart are not reserved until you complete your order.'
     },
     he: {
       title: 'עגלת קניות',
@@ -433,7 +434,8 @@ const revalidateCouponCodes = useCallback(async (
       item: 'פריט',
       freeDelivery: 'משלוח חינם בהזמנות מעל ₪300',
       outOfStockLabel: 'אזל מהמלאי – המוצר לא ייכלל בהזמנה',
-      outOfStockDescription: 'המוצר אינו זמין יותר ולא ייכלל בסכום לתשלום.'
+      outOfStockDescription: 'המוצר אינו זמין יותר ולא ייכלל בסכום לתשלום.',
+      stockDisclaimer: 'המוצרים בעגלה אינם שמורים עבורך עד להשלמת ההזמנה'
     }
   }
 
@@ -713,19 +715,33 @@ if (!isClient || loading) {
     <div className="min-h-screen bg-[#E1DBD7]" dir={isRTL ? 'rtl' : 'ltr'} style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 md:py-8">
         {/* Header */}
-        <div className="mb-4 mt-6">
+        <div className="mb-4 mt-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <h1 className="text-3xl font-bold text-gray-900 flex items-center pt-1 pb-1 gap-4">
-                <ShoppingBagIcon className="h-8 w-8 text-[#856D55] pt-1" />
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center pt-1 pb-1 gap-2">
+                <ShoppingBagIcon
+                  className={`h-8 w-8 text-[#856D55] pt-1 ${isRTL ? '-mr-1' : '-ml-1'}`}
+                />
                 {t.title}
               </h1>
             </div>
           </div>
           {items.length > 0 && (
-            <p className="text-gray-600 mt-2">
-              {totalItems} {totalItems === 1 ? t.item : t.items}
-            </p>
+            <>
+              <div className="mt-1 text-xs text-gray-500 flex items-start gap-2">
+                <span
+                  aria-hidden="true"
+                  className="mt-[0.5px]860497 inline-flex h-4 w-4 items-center justify-center rounded-full"
+                  style={{ border: '1px solid rgba(133, 109, 85, 0.7)', color: '#856D55', fontSize: '10px' }}
+                >
+                  i
+                </span>
+                <span>{t.stockDisclaimer}</span>
+              </div>
+              <p className="text-gray-600 mt-2">
+                {totalItems} {totalItems === 1 ? t.item : t.items}
+              </p>
+            </>
           )}
         </div>
 

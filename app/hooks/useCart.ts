@@ -6,6 +6,7 @@ import { useAuth } from '@/app/contexts/AuthContext'
 import { buildCartKey } from '@/lib/cart'
 import { productService } from '@/lib/firebase'
 import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '@/lib/pricing'
+import { usePathname } from 'next/navigation'
 
 export interface CartItem {
   sku: string
@@ -24,6 +25,13 @@ export interface CartItem {
   isOutOfStock?: boolean
 }
 
+type StoredCartLine = {
+  sku: string
+  size?: string
+  color?: string
+  quantity: number
+}
+
 export interface CartHook {
   items: CartItem[]
   addToCart: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void
@@ -36,14 +44,17 @@ export interface CartHook {
   getDeliveryFee: () => number
   getTotalWithDelivery: () => number
   loading: boolean
+  hadStockAdjustments: boolean
 }
 
 export function useCart(): CartHook {
   const [items, setItems] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [hadStockAdjustments, setHadStockAdjustments] = useState(false)
   const { user } = useAuth()
   const loadedFromNeonRef = useRef(false)
-  const hasRefreshedStockRef = useRef(false)
+  const hasValidatedCartRef = useRef(false)
+  const pathname = usePathname()
   
   // Session storage key to track if cart was loaded in this session
   const SESSION_LOADED_KEY = 'cart_loaded_from_neon'
@@ -144,11 +155,19 @@ export function useCart(): CartHook {
     try {
       const storedCart = localStorage.getItem('cart')
       if (storedCart && storedCart.trim()) {
-        const parsedItems: CartItem[] = JSON.parse(storedCart)
-        if (Array.isArray(parsedItems)) {
-          const normalized = parsedItems.map(item => normalizeCartItem(item))
-          const validated = applyStockValidationToItems(normalized)
-          setItems(validated)
+        const parsedLines: StoredCartLine[] = JSON.parse(storedCart)
+        if (Array.isArray(parsedLines)) {
+          const initialItems: CartItem[] = parsedLines.map(line => ({
+            sku: line.sku,
+            name: { en: '', he: '' },
+            price: 0,
+            quantity: Math.max(0, Math.floor(line.quantity || 0)),
+            maxStock: 0,
+            size: line.size,
+            color: line.color
+          }))
+          const normalized = initialItems.map(item => normalizeCartItem(item))
+          setItems(normalized)
         } else {
           console.warn('Cart data is not an array, clearing...')
           localStorage.removeItem('cart')
@@ -164,7 +183,7 @@ export function useCart(): CartHook {
     } finally {
       setLoading(false)
     }
-  }, [applyStockValidationToItems, normalizeCartItem])
+  }, [normalizeCartItem])
 
   // Save cart to localStorage whenever items change
   useEffect(() => {
@@ -172,11 +191,19 @@ export function useCart(): CartHook {
       try {
         const normalizedItems = items.map(item => normalizeCartItem(item))
         const itemsToPersist = areItemArraysEqual(normalizedItems, items) ? items : normalizedItems
+        const linesToPersist: StoredCartLine[] = itemsToPersist
+          .filter(item => item.quantity > 0)
+          .map(item => ({
+            sku: item.sku,
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity
+          }))
 
-        if (itemsToPersist.length === 0) {
+        if (linesToPersist.length === 0) {
           localStorage.removeItem('cart')
         } else {
-          localStorage.setItem('cart', JSON.stringify(itemsToPersist))
+          localStorage.setItem('cart', JSON.stringify(linesToPersist))
         }
         // Dispatch custom event to notify other components
         window.dispatchEvent(new CustomEvent('cartUpdated', { detail: itemsToPersist }))
@@ -207,78 +234,79 @@ export function useCart(): CartHook {
     }
   }, [areItemArraysEqual, normalizeCartItem])
 
-  // Refresh stock from Firebase on first cart load in this session
+  // Validate cart against current stock via server once per hook lifetime (on load)
+  // We only run this on the full cart page to avoid duplicate calls from
+  // components like the quick-buy drawer that also use the cart hook.
   useEffect(() => {
     if (loading) return
-    if (hasRefreshedStockRef.current) return
     if (!items.length) return
+    if (hasValidatedCartRef.current) return
+    if (!pathname || !pathname.endsWith('/cart')) return
 
     let cancelled = false
-    hasRefreshedStockRef.current = true
 
     ;(async () => {
       try {
-        const productCache = new Map<string, any>()
-        const refreshedItems: CartItem[] = []
+        hasValidatedCartRef.current = true
 
-        for (const item of items) {
-          if (cancelled) return
-
-          const baseSku = item.sku
-          let product = productCache.get(baseSku)
-
-          if (!product) {
-            try {
-              product = await productService.getProductByBaseSku(baseSku)
-              if (!product) {
-                product = await productService.getProductBySku(baseSku)
-              }
-            } catch (error) {
-              console.error(`[useCart] Error fetching product ${baseSku} for guest cart:`, error)
-              product = null
-            }
-            productCache.set(baseSku, product)
-          }
-
-          if (!product || !product.isEnabled) {
-            // Treat disabled/missing products as out of stock
-            refreshedItems.push({
-              ...item,
-              maxStock: 0
-            })
-            continue
-          }
-
-          const colorSlug = item.color
-          const variant = colorSlug && product.colorVariants?.[colorSlug]
-          const stockBySize = variant?.stockBySize || {}
-
-          const maxStock = item.size
-            ? (stockBySize[item.size] || 0)
-            : Object.values(stockBySize).reduce(
-                (sum: number, stock: any) => sum + (stock || 0),
-                0
-              )
-
-          refreshedItems.push({
-            ...item,
-            maxStock
-          })
+        const payload = {
+          items: items.map(item => ({
+            sku: item.sku,
+            color: item.color ?? null,
+            size: item.size ?? null,
+            quantity: item.quantity
+          }))
         }
 
+        const res = await fetch('/api/cart/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+
+        if (!res.ok) return
+
+        const json = await res.json().catch(() => null)
+        if (!json || !Array.isArray(json.items)) return
         if (cancelled) return
 
-        const validated = applyStockValidationToItems(refreshedItems)
-        setItems(validated)
+        const serverItems: CartItem[] = json.items
+          .filter((x: any) => x && typeof x.sku === 'string')
+          .map((x: any) => {
+            const maxStock = Math.max(0, Math.floor(x.stock ?? 0))
+            const quantity = Math.max(0, Math.floor(x.finalQuantity ?? x.quantity ?? 0))
+            return {
+              sku: x.sku,
+              name: {
+                en: x.name?.en || '',
+                he: x.name?.he || ''
+              },
+              price: Number(x.price || 0),
+              salePrice: x.salePrice != null ? Number(x.salePrice) : undefined,
+              currency: x.currency || 'ILS',
+              image: x.image || undefined,
+              size: x.size || undefined,
+              color: x.color || undefined,
+              quantity,
+              maxStock,
+              isOutOfStock: Boolean(x.outOfStock) || maxStock <= 0 || quantity <= 0
+            }
+          })
+
+        const validated = applyStockValidationToItems(serverItems)
+        if (!cancelled) {
+          setItems(validated)
+          setHadStockAdjustments(Boolean(json.hadAdjustments))
+        }
       } catch (error) {
-        console.error('[useCart] Error refreshing guest cart stock from Firebase:', error)
+        console.error('[useCart] Error validating cart via server:', error)
       }
     })()
 
     return () => {
       cancelled = true
     }
-  }, [applyStockValidationToItems, items, loading, user])
+  }, [applyStockValidationToItems, items, loading, pathname])
 
   // Listen for cart reload event (triggered after purchase to reload from Neon)
   useEffect(() => {
@@ -373,7 +401,8 @@ export function useCart(): CartHook {
             size: sizeSlug || undefined,
             color: colorSlug || undefined,
             quantity: quantity,
-            maxStock: maxStock
+            maxStock: maxStock,
+            isOutOfStock: maxStock <= 0 || quantity <= 0
           })
         }
 
@@ -510,7 +539,8 @@ export function useCart(): CartHook {
             size: sizeSlug || undefined,
             color: colorSlug || undefined,
             quantity: quantity,
-            maxStock: maxStock
+            maxStock: maxStock,
+            isOutOfStock: maxStock <= 0 || quantity <= 0
           })
         }
 
@@ -654,7 +684,9 @@ export function useCart(): CartHook {
   }, [])
 
   const getPurchasableItemsInternal = useCallback(() => {
-    return items.filter(item => item.maxStock > 0 && item.quantity > 0)
+    return items.filter(
+      item => !item.isOutOfStock && item.maxStock > 0 && item.quantity > 0
+    )
   }, [items])
 
   const getTotalPrice = useCallback(() => {
@@ -705,6 +737,7 @@ export function useCart(): CartHook {
     getItemQuantity,
     getDeliveryFee,
     getTotalWithDelivery,
-    loading
+    loading,
+    hadStockAdjustments
   }
 }

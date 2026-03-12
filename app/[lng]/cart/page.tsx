@@ -127,7 +127,19 @@ const cartCurrency = useMemo(() => {
 }, [items])
 
 const purchasableItems = useMemo(
-  () => items.filter(item => !item.isOutOfStock && item.maxStock > 0 && item.quantity > 0),
+  () =>
+    items.filter(item => {
+      const status = item.stockStatus
+      const isOutOfStock =
+        status === 'out_of_stock' ||
+        item.isOutOfStock ||
+        item.maxStock <= 0 ||
+        item.quantity <= 0
+
+      // Treat both 'checking' and 'in_stock' as purchasable so totals
+      // don't flicker to zero while stock is being validated.
+      return !isOutOfStock
+    }),
   [items]
 )
 
@@ -770,7 +782,14 @@ if (!isClient || loading) {
             <div className="lg:col-span-2">
               <div className="space-y-4">
                 {items.map((item, index) => {
-                  const isOutOfStock = item.isOutOfStock || item.maxStock <= 0
+                  const stockStatus = item.stockStatus
+                  const isChecking = stockStatus === 'checking'
+                  const derivedOutOfStock =
+                    stockStatus === 'out_of_stock' ||
+                    item.isOutOfStock ||
+                    item.maxStock <= 0 ||
+                    item.quantity <= 0
+                  const isOutOfStock = !isChecking && derivedOutOfStock
                   return (
                   <div
                     key={`${item.sku}-${item.size}-${item.color}-${index}`}
@@ -802,6 +821,12 @@ if (!isClient || loading) {
                             </div>
                           )}
                         </div>
+
+                        {isChecking && (
+                          <div className="mt-1 text-xs text-gray-500">
+                            {lng === 'he' ? 'בודקים זמינות...' : 'Checking availability...'}
+                          </div>
+                        )}
 
                         {isOutOfStock && (
                           <div className="mt-1 inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700">
@@ -844,7 +869,7 @@ if (!isClient || loading) {
                         <button
                           onClick={() => updateQuantity(item.sku, item.quantity - 1, item.size, item.color)}
                           className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={isOutOfStock || item.quantity <= 1}
+                          disabled={isOutOfStock || isChecking || item.quantity <= 1}
                           aria-label={lng === 'he' ? 'הפחת כמות' : 'Decrease quantity'}
                         >
                           <MinusIcon className="h-4 w-4" />
@@ -855,7 +880,7 @@ if (!isClient || loading) {
                         <button
                           onClick={() => updateQuantity(item.sku, item.quantity + 1, item.size, item.color)}
                           className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={isOutOfStock || item.quantity >= item.maxStock}
+                          disabled={isOutOfStock || isChecking || item.quantity >= item.maxStock}
                           aria-label={lng === 'he' ? 'הגדל כמות' : 'Increase quantity'}
                         >
                           <PlusIcon className="h-4 w-4" />

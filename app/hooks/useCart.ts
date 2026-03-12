@@ -23,6 +23,7 @@ export interface CartItem {
   quantity: number
   maxStock: number
   isOutOfStock?: boolean
+  stockStatus?: 'checking' | 'in_stock' | 'out_of_stock'
 }
 
 type StoredCartLine = {
@@ -132,15 +133,24 @@ export function useCart(): CartHook {
         nextQuantity = safeMaxStock
       }
 
-      if (
+      const derivedOutOfStock = safeMaxStock <= 0 || nextQuantity <= 0
+      const derivedStatus: CartItem['stockStatus'] =
+        derivedOutOfStock ? 'out_of_stock' : (item.stockStatus === 'checking' ? 'in_stock' : item.stockStatus ?? 'in_stock')
+
+      const needsUpdate =
         safeMaxStock !== item.maxStock ||
-        nextQuantity !== item.quantity
-      ) {
+        nextQuantity !== item.quantity ||
+        item.isOutOfStock !== derivedOutOfStock ||
+        item.stockStatus !== derivedStatus
+
+      if (needsUpdate) {
         changed = true
         return {
           ...item,
           maxStock: safeMaxStock,
-          quantity: nextQuantity
+          quantity: nextQuantity,
+          isOutOfStock: derivedOutOfStock,
+          stockStatus: derivedStatus
         }
       }
 
@@ -164,7 +174,8 @@ export function useCart(): CartHook {
             quantity: Math.max(0, Math.floor(line.quantity || 0)),
             maxStock: 0,
             size: line.size,
-            color: line.color
+            color: line.color,
+            stockStatus: 'checking'
           }))
           const normalized = initialItems.map(item => normalizeCartItem(item))
           setItems(normalized)
@@ -275,6 +286,8 @@ export function useCart(): CartHook {
           .map((x: any) => {
             const maxStock = Math.max(0, Math.floor(x.stock ?? 0))
             const quantity = Math.max(0, Math.floor(x.finalQuantity ?? x.quantity ?? 0))
+            const isOutOfStock = Boolean(x.outOfStock) || maxStock <= 0 || quantity <= 0
+            const stockStatus: CartItem['stockStatus'] = isOutOfStock ? 'out_of_stock' : 'in_stock'
             return {
               sku: x.sku,
               name: {
@@ -289,7 +302,8 @@ export function useCart(): CartHook {
               color: x.color || undefined,
               quantity,
               maxStock,
-              isOutOfStock: Boolean(x.outOfStock) || maxStock <= 0 || quantity <= 0
+              isOutOfStock,
+              stockStatus
             }
           })
 
@@ -388,6 +402,8 @@ export function useCart(): CartHook {
           
           const showAsSale = unitPrice && currentPrice && Number(unitPrice) < currentPrice
 
+          const isOutOfStock = maxStock <= 0 || quantity <= 0
+
           hydratedItems.push({
             sku: baseSku,
             name: {
@@ -402,7 +418,8 @@ export function useCart(): CartHook {
             color: colorSlug || undefined,
             quantity: quantity,
             maxStock: maxStock,
-            isOutOfStock: maxStock <= 0 || quantity <= 0
+            isOutOfStock,
+            stockStatus: isOutOfStock ? 'out_of_stock' : 'in_stock'
           })
         }
 
@@ -526,6 +543,8 @@ export function useCart(): CartHook {
           // Determine if we should show as sale (unitPrice < currentPrice)
           const showAsSale = unitPrice && currentPrice && Number(unitPrice) < currentPrice
 
+          const isOutOfStock = maxStock <= 0 || quantity <= 0
+
           hydratedItems.push({
             sku: baseSku,
             name: {
@@ -540,7 +559,8 @@ export function useCart(): CartHook {
             color: colorSlug || undefined,
             quantity: quantity,
             maxStock: maxStock,
-            isOutOfStock: maxStock <= 0 || quantity <= 0
+            isOutOfStock,
+            stockStatus: isOutOfStock ? 'out_of_stock' : 'in_stock'
           })
         }
 
@@ -684,9 +704,18 @@ export function useCart(): CartHook {
   }, [])
 
   const getPurchasableItemsInternal = useCallback(() => {
-    return items.filter(
-      item => !item.isOutOfStock && item.maxStock > 0 && item.quantity > 0
-    )
+    return items.filter(item => {
+      const status = item.stockStatus
+      const isOutOfStock =
+        status === 'out_of_stock' ||
+        item.isOutOfStock ||
+        item.maxStock <= 0 ||
+        item.quantity <= 0
+
+      // Treat both 'checking' and 'in_stock' as purchasable so totals
+      // don't flicker to zero while stock is being validated.
+      return !isOutOfStock
+    })
   }, [items])
 
   const getTotalPrice = useCallback(() => {

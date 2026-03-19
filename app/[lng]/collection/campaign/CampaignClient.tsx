@@ -748,7 +748,7 @@ export default function CampaignClient({
               title={title}
             />
           ) : (
-            <div className="relative w-full overflow-hidden bg-[#8B1E1E] aspect-[4/5] md:aspect-[21/9]">
+            <div className="relative w-full overflow-hidden bg-[#B2A28E] aspect-[4/5] md:aspect-[21/9]">
               {desktopImageUrl && (
                 <div className="hidden md:block absolute inset-0">
                   <Image

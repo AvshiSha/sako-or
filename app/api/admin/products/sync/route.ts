@@ -323,7 +323,8 @@ export async function POST(request: NextRequest) {
           heelHeight_he: (firebaseProduct as any).materialCare?.heelHeight_he || null,
           shippingReturns_en: (firebaseProduct as any).materialCare?.shippingReturns_en || null,
           shippingReturns_he: (firebaseProduct as any).materialCare?.shippingReturns_he || null,
-          colorVariants
+          colorVariants,
+          tags: (firebaseProduct as any).tags || []
         }
 
         if (existingProduct) {

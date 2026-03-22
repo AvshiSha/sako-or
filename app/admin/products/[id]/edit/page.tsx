@@ -284,8 +284,8 @@ function EditProductPage() {
             category: product.categoryId || product.category || '',
             subCategory: product.subCategory || '',
             subSubCategory: product.subSubCategory || '',
-            categories_path: product.categories_path || [],
-            categories_path_id: product.categories_path_id || [],
+            categories_path: [...(product.categories_path || [])],
+            categories_path_id: [...(product.categories_path_id || [])],
             brand: product.brand || '',
             price: product.price || 0,
             salePrice: product.salePrice || 0,
@@ -325,14 +325,15 @@ function EditProductPage() {
               slug: product.seo?.slug || ''
             },
             
-            searchKeywords: product.searchKeywords || [],
-            tags: loadedTags
+            searchKeywords: [...(product.searchKeywords || [])],
+            tags: [...loadedTags]
           }
           // One synchronous commit: form, tags text field, and original snapshot stay aligned
           flushSync(() => {
             setFormData(nextFormData)
             setTagsInputValue(loadedTags.join(', '))
-            setOriginalFormData({ ...nextFormData })
+            // Deep snapshot so nested arrays/objects (tags, colorVariants, etc.) are not shared with formData
+            setOriginalFormData(structuredClone(nextFormData))
           })
           
           // Load subcategories if main category is selected

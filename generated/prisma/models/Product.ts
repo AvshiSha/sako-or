@@ -172,6 +172,7 @@ export type ProductCountAggregateOutputType = {
   category_he: number
   subCategory_he: number
   subSubCategory_he: number
+  tags: number
   bogoGroupId: number
   _all: number
 }
@@ -323,6 +324,7 @@ export type ProductCountAggregateInputType = {
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
+  tags?: true
   bogoGroupId?: true
   _all?: true
 }
@@ -459,6 +461,7 @@ export type ProductGroupByOutputType = {
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
+  tags: string[]
   bogoGroupId: string | null
   _count: ProductCountAggregateOutputType | null
   _avg: ProductAvgAggregateOutputType | null
@@ -531,10 +534,11 @@ export type ProductWhereInput = {
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Product">
   bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
-  tags?: Prisma.ProductTagListRelationFilter
   categoryRelation?: Prisma.XOR<Prisma.CategoryScalarRelationFilter, Prisma.CategoryWhereInput>
   bogoGroup?: Prisma.XOR<Prisma.BogoGroupNullableScalarRelationFilter, Prisma.BogoGroupWhereInput> | null
+  productTags?: Prisma.ProductTagListRelationFilter
 }
 
 export type ProductOrderByWithRelationInput = {
@@ -583,10 +587,11 @@ export type ProductOrderByWithRelationInput = {
   category_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  tags?: Prisma.SortOrder
   bogoGroupId?: Prisma.SortOrderInput | Prisma.SortOrder
-  tags?: Prisma.ProductTagOrderByRelationAggregateInput
   categoryRelation?: Prisma.CategoryOrderByWithRelationInput
   bogoGroup?: Prisma.BogoGroupOrderByWithRelationInput
+  productTags?: Prisma.ProductTagOrderByRelationAggregateInput
 }
 
 export type ProductWhereUniqueInput = Prisma.AtLeast<{
@@ -638,10 +643,11 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Product">
   bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
-  tags?: Prisma.ProductTagListRelationFilter
   categoryRelation?: Prisma.XOR<Prisma.CategoryScalarRelationFilter, Prisma.CategoryWhereInput>
   bogoGroup?: Prisma.XOR<Prisma.BogoGroupNullableScalarRelationFilter, Prisma.BogoGroupWhereInput> | null
+  productTags?: Prisma.ProductTagListRelationFilter
 }, "id" | "sku">
 
 export type ProductOrderByWithAggregationInput = {
@@ -690,6 +696,7 @@ export type ProductOrderByWithAggregationInput = {
   category_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  tags?: Prisma.SortOrder
   bogoGroupId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ProductCountOrderByAggregateInput
   _avg?: Prisma.ProductAvgOrderByAggregateInput
@@ -747,6 +754,7 @@ export type ProductScalarWhereWithAggregatesInput = {
   category_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Product">
   bogoGroupId?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
 }
 
@@ -795,9 +803,10 @@ export type ProductCreateInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
-  tags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
+  tags?: Prisma.ProductCreatetagsInput | string[]
   categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
   bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
+  productTags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateInput = {
@@ -846,8 +855,9 @@ export type ProductUncheckedCreateInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
-  tags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
+  productTags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductUpdateInput = {
@@ -895,9 +905,10 @@ export type ProductUpdateInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
   bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
+  productTags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateInput = {
@@ -946,8 +957,9 @@ export type ProductUncheckedUpdateInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
+  productTags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductCreateManyInput = {
@@ -996,6 +1008,7 @@ export type ProductCreateManyInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
 }
 
@@ -1044,6 +1057,7 @@ export type ProductUpdateManyMutationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
 }
 
 export type ProductUncheckedUpdateManyInput = {
@@ -1092,6 +1106,7 @@ export type ProductUncheckedUpdateManyInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -1159,6 +1174,7 @@ export type ProductCountOrderByAggregateInput = {
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
+  tags?: Prisma.SortOrder
   bogoGroupId?: Prisma.SortOrder
 }
 
@@ -1363,6 +1379,10 @@ export type ProductCreatesearchKeywordsInput = {
   set: string[]
 }
 
+export type ProductCreatetagsInput = {
+  set: string[]
+}
+
 export type ProductUpdatecategories_pathInput = {
   set?: string[]
   push?: string | string[]
@@ -1386,18 +1406,23 @@ export type ProductUpdatesearchKeywordsInput = {
   push?: string | string[]
 }
 
-export type ProductCreateNestedOneWithoutTagsInput = {
-  create?: Prisma.XOR<Prisma.ProductCreateWithoutTagsInput, Prisma.ProductUncheckedCreateWithoutTagsInput>
-  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutTagsInput
+export type ProductUpdatetagsInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type ProductCreateNestedOneWithoutProductTagsInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutProductTagsInput, Prisma.ProductUncheckedCreateWithoutProductTagsInput>
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutProductTagsInput
   connect?: Prisma.ProductWhereUniqueInput
 }
 
-export type ProductUpdateOneRequiredWithoutTagsNestedInput = {
-  create?: Prisma.XOR<Prisma.ProductCreateWithoutTagsInput, Prisma.ProductUncheckedCreateWithoutTagsInput>
-  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutTagsInput
-  upsert?: Prisma.ProductUpsertWithoutTagsInput
+export type ProductUpdateOneRequiredWithoutProductTagsNestedInput = {
+  create?: Prisma.XOR<Prisma.ProductCreateWithoutProductTagsInput, Prisma.ProductUncheckedCreateWithoutProductTagsInput>
+  connectOrCreate?: Prisma.ProductCreateOrConnectWithoutProductTagsInput
+  upsert?: Prisma.ProductUpsertWithoutProductTagsInput
   connect?: Prisma.ProductWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.ProductUpdateToOneWithWhereWithoutTagsInput, Prisma.ProductUpdateWithoutTagsInput>, Prisma.ProductUncheckedUpdateWithoutTagsInput>
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ProductUpdateToOneWithWhereWithoutProductTagsInput, Prisma.ProductUpdateWithoutProductTagsInput>, Prisma.ProductUncheckedUpdateWithoutProductTagsInput>
 }
 
 export type ProductCreateWithoutCategoryRelationInput = {
@@ -1445,8 +1470,9 @@ export type ProductCreateWithoutCategoryRelationInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
-  tags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
+  tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
+  productTags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateWithoutCategoryRelationInput = {
@@ -1494,8 +1520,9 @@ export type ProductUncheckedCreateWithoutCategoryRelationInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
-  tags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
+  productTags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductCreateOrConnectWithoutCategoryRelationInput = {
@@ -1573,6 +1600,7 @@ export type ProductScalarWhereInput = {
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  tags?: Prisma.StringNullableListFilter<"Product">
   bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
 }
 
@@ -1621,8 +1649,9 @@ export type ProductCreateWithoutBogoGroupInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
-  tags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
+  tags?: Prisma.ProductCreatetagsInput | string[]
   categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
+  productTags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
 }
 
 export type ProductUncheckedCreateWithoutBogoGroupInput = {
@@ -1671,7 +1700,8 @@ export type ProductUncheckedCreateWithoutBogoGroupInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
-  tags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
+  tags?: Prisma.ProductCreatetagsInput | string[]
+  productTags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
 }
 
 export type ProductCreateOrConnectWithoutBogoGroupInput = {
@@ -1700,7 +1730,7 @@ export type ProductUpdateManyWithWhereWithoutBogoGroupInput = {
   data: Prisma.XOR<Prisma.ProductUpdateManyMutationInput, Prisma.ProductUncheckedUpdateManyWithoutBogoGroupInput>
 }
 
-export type ProductCreateWithoutTagsInput = {
+export type ProductCreateWithoutProductTagsInput = {
   id?: string
   featured?: boolean
   isNew?: boolean
@@ -1745,11 +1775,12 @@ export type ProductCreateWithoutTagsInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
   categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
   bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
 }
 
-export type ProductUncheckedCreateWithoutTagsInput = {
+export type ProductUncheckedCreateWithoutProductTagsInput = {
   id?: string
   featured?: boolean
   isNew?: boolean
@@ -1795,26 +1826,27 @@ export type ProductUncheckedCreateWithoutTagsInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
 }
 
-export type ProductCreateOrConnectWithoutTagsInput = {
+export type ProductCreateOrConnectWithoutProductTagsInput = {
   where: Prisma.ProductWhereUniqueInput
-  create: Prisma.XOR<Prisma.ProductCreateWithoutTagsInput, Prisma.ProductUncheckedCreateWithoutTagsInput>
+  create: Prisma.XOR<Prisma.ProductCreateWithoutProductTagsInput, Prisma.ProductUncheckedCreateWithoutProductTagsInput>
 }
 
-export type ProductUpsertWithoutTagsInput = {
-  update: Prisma.XOR<Prisma.ProductUpdateWithoutTagsInput, Prisma.ProductUncheckedUpdateWithoutTagsInput>
-  create: Prisma.XOR<Prisma.ProductCreateWithoutTagsInput, Prisma.ProductUncheckedCreateWithoutTagsInput>
+export type ProductUpsertWithoutProductTagsInput = {
+  update: Prisma.XOR<Prisma.ProductUpdateWithoutProductTagsInput, Prisma.ProductUncheckedUpdateWithoutProductTagsInput>
+  create: Prisma.XOR<Prisma.ProductCreateWithoutProductTagsInput, Prisma.ProductUncheckedCreateWithoutProductTagsInput>
   where?: Prisma.ProductWhereInput
 }
 
-export type ProductUpdateToOneWithWhereWithoutTagsInput = {
+export type ProductUpdateToOneWithWhereWithoutProductTagsInput = {
   where?: Prisma.ProductWhereInput
-  data: Prisma.XOR<Prisma.ProductUpdateWithoutTagsInput, Prisma.ProductUncheckedUpdateWithoutTagsInput>
+  data: Prisma.XOR<Prisma.ProductUpdateWithoutProductTagsInput, Prisma.ProductUncheckedUpdateWithoutProductTagsInput>
 }
 
-export type ProductUpdateWithoutTagsInput = {
+export type ProductUpdateWithoutProductTagsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isNew?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1859,11 +1891,12 @@ export type ProductUpdateWithoutTagsInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
   bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
 }
 
-export type ProductUncheckedUpdateWithoutTagsInput = {
+export type ProductUncheckedUpdateWithoutProductTagsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   featured?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isNew?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1909,6 +1942,7 @@ export type ProductUncheckedUpdateWithoutTagsInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -1957,6 +1991,7 @@ export type ProductCreateManyCategoryRelationInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
 }
 
@@ -2005,8 +2040,9 @@ export type ProductUpdateWithoutCategoryRelationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
+  productTags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutCategoryRelationInput = {
@@ -2054,8 +2090,9 @@ export type ProductUncheckedUpdateWithoutCategoryRelationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
+  productTags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateManyWithoutCategoryRelationInput = {
@@ -2103,6 +2140,7 @@ export type ProductUncheckedUpdateManyWithoutCategoryRelationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
 
@@ -2152,6 +2190,7 @@ export type ProductCreateManyBogoGroupInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  tags?: Prisma.ProductCreatetagsInput | string[]
 }
 
 export type ProductUpdateWithoutBogoGroupInput = {
@@ -2199,8 +2238,9 @@ export type ProductUpdateWithoutBogoGroupInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
+  tags?: Prisma.ProductUpdatetagsInput | string[]
   categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
+  productTags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateWithoutBogoGroupInput = {
@@ -2249,7 +2289,8 @@ export type ProductUncheckedUpdateWithoutBogoGroupInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  tags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
+  tags?: Prisma.ProductUpdatetagsInput | string[]
+  productTags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
 }
 
 export type ProductUncheckedUpdateManyWithoutBogoGroupInput = {
@@ -2298,6 +2339,7 @@ export type ProductUncheckedUpdateManyWithoutBogoGroupInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  tags?: Prisma.ProductUpdatetagsInput | string[]
 }
 
 
@@ -2306,11 +2348,11 @@ export type ProductUncheckedUpdateManyWithoutBogoGroupInput = {
  */
 
 export type ProductCountOutputType = {
-  tags: number
+  productTags: number
 }
 
 export type ProductCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  tags?: boolean | ProductCountOutputTypeCountTagsArgs
+  productTags?: boolean | ProductCountOutputTypeCountProductTagsArgs
 }
 
 /**
@@ -2326,7 +2368,7 @@ export type ProductCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Exte
 /**
  * ProductCountOutputType without action
  */
-export type ProductCountOutputTypeCountTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type ProductCountOutputTypeCountProductTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.ProductTagWhereInput
 }
 
@@ -2377,10 +2419,11 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  tags?: boolean
   bogoGroupId?: boolean
-  tags?: boolean | Prisma.Product$tagsArgs<ExtArgs>
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
   bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
+  productTags?: boolean | Prisma.Product$productTagsArgs<ExtArgs>
   _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["product"]>
 
@@ -2430,6 +2473,7 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  tags?: boolean
   bogoGroupId?: boolean
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
   bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
@@ -2481,6 +2525,7 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  tags?: boolean
   bogoGroupId?: boolean
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
   bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
@@ -2532,14 +2577,15 @@ export type ProductSelectScalar = {
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  tags?: boolean
   bogoGroupId?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "category_he" | "subCategory_he" | "subSubCategory_he" | "bogoGroupId", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "category_he" | "subCategory_he" | "subSubCategory_he" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  tags?: boolean | Prisma.Product$tagsArgs<ExtArgs>
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
   bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
+  productTags?: boolean | Prisma.Product$productTagsArgs<ExtArgs>
   _count?: boolean | Prisma.ProductCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ProductIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2554,9 +2600,9 @@ export type ProductIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
 export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Product"
   objects: {
-    tags: Prisma.$ProductTagPayload<ExtArgs>[]
     categoryRelation: Prisma.$CategoryPayload<ExtArgs>
     bogoGroup: Prisma.$BogoGroupPayload<ExtArgs> | null
+    productTags: Prisma.$ProductTagPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2604,6 +2650,7 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     category_he: string | null
     subCategory_he: string | null
     subSubCategory_he: string | null
+    tags: string[]
     bogoGroupId: string | null
   }, ExtArgs["result"]["product"]>
   composites: {}
@@ -2999,9 +3046,9 @@ readonly fields: ProductFieldRefs;
  */
 export interface Prisma__ProductClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  tags<T extends Prisma.Product$tagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$tagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductTagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   categoryRelation<T extends Prisma.CategoryDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CategoryDefaultArgs<ExtArgs>>): Prisma.Prisma__CategoryClient<runtime.Types.Result.GetResult<Prisma.$CategoryPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   bogoGroup<T extends Prisma.Product$bogoGroupArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$bogoGroupArgs<ExtArgs>>): Prisma.Prisma__BogoGroupClient<runtime.Types.Result.GetResult<Prisma.$BogoGroupPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  productTags<T extends Prisma.Product$productTagsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Product$productTagsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ProductTagPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3076,6 +3123,7 @@ export interface ProductFieldRefs {
   readonly category_he: Prisma.FieldRef<"Product", 'String'>
   readonly subCategory_he: Prisma.FieldRef<"Product", 'String'>
   readonly subSubCategory_he: Prisma.FieldRef<"Product", 'String'>
+  readonly tags: Prisma.FieldRef<"Product", 'String[]'>
   readonly bogoGroupId: Prisma.FieldRef<"Product", 'String'>
 }
     
@@ -3473,9 +3521,28 @@ export type ProductDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
 }
 
 /**
- * Product.tags
+ * Product.bogoGroup
  */
-export type Product$tagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type Product$bogoGroupArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BogoGroup
+   */
+  select?: Prisma.BogoGroupSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BogoGroup
+   */
+  omit?: Prisma.BogoGroupOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BogoGroupInclude<ExtArgs> | null
+  where?: Prisma.BogoGroupWhereInput
+}
+
+/**
+ * Product.productTags
+ */
+export type Product$productTagsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
    * Select specific fields to fetch from the ProductTag
    */
@@ -3494,25 +3561,6 @@ export type Product$tagsArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
   take?: number
   skip?: number
   distinct?: Prisma.ProductTagScalarFieldEnum | Prisma.ProductTagScalarFieldEnum[]
-}
-
-/**
- * Product.bogoGroup
- */
-export type Product$bogoGroupArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the BogoGroup
-   */
-  select?: Prisma.BogoGroupSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the BogoGroup
-   */
-  omit?: Prisma.BogoGroupOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.BogoGroupInclude<ExtArgs> | null
-  where?: Prisma.BogoGroupWhereInput
 }
 
 /**

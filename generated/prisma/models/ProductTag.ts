@@ -210,7 +210,7 @@ export type ProductTagScalarWhereWithAggregatesInput = {
 
 export type ProductTagCreateInput = {
   id?: string
-  product: Prisma.ProductCreateNestedOneWithoutTagsInput
+  product: Prisma.ProductCreateNestedOneWithoutProductTagsInput
   tag: Prisma.TagCreateNestedOneWithoutProductsInput
 }
 
@@ -222,7 +222,7 @@ export type ProductTagUncheckedCreateInput = {
 
 export type ProductTagUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  product?: Prisma.ProductUpdateOneRequiredWithoutTagsNestedInput
+  product?: Prisma.ProductUpdateOneRequiredWithoutProductTagsNestedInput
   tag?: Prisma.TagUpdateOneRequiredWithoutProductsNestedInput
 }
 
@@ -412,7 +412,7 @@ export type ProductTagScalarWhereInput = {
 
 export type ProductTagCreateWithoutTagInput = {
   id?: string
-  product: Prisma.ProductCreateNestedOneWithoutTagsInput
+  product: Prisma.ProductCreateNestedOneWithoutProductTagsInput
 }
 
 export type ProductTagUncheckedCreateWithoutTagInput = {
@@ -473,7 +473,7 @@ export type ProductTagCreateManyTagInput = {
 
 export type ProductTagUpdateWithoutTagInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  product?: Prisma.ProductUpdateOneRequiredWithoutTagsNestedInput
+  product?: Prisma.ProductUpdateOneRequiredWithoutProductTagsNestedInput
 }
 
 export type ProductTagUncheckedUpdateWithoutTagInput = {

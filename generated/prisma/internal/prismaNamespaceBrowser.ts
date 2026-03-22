@@ -238,6 +238,7 @@ export const ProductScalarFieldEnum = {
   category_he: 'category_he',
   subCategory_he: 'subCategory_he',
   subSubCategory_he: 'subSubCategory_he',
+  tags: 'tags',
   bogoGroupId: 'bogoGroupId'
 } as const
 

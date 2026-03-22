@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { flushSync } from 'react-dom'
 import { useRouter, useParams } from 'next/navigation'
 import { productService, categoryService, Category, storage } from '@/lib/firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -140,6 +141,14 @@ interface GoogleDriveFile {
 const commonSizes = ['One size', 'XS', 'S', 'M', 'L', 'XL', 'XXL','34','35','36', '37', '38', '39', '40', '41', '42', '43', '44', '45'];
 const commonColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'light Brown', 'Dark Brown', 'Gray', 'Navy', 'Beige', 'Gold', 'Silver', 'Off White', 'Light Blue', 'Dark Blue', 'Bordeaux', 'Black nail polish', 'Olive', 'Multicolor', 'Black & White', 'Transparent', 'camel', 'light pink', 'caramel', 'bronze', 'black-red','nude'];
 
+/** Parse comma-separated tags for storage; input field keeps raw string so trailing commas are not erased. */
+function parseCommaSeparatedTags(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0)
+}
+
 function EditProductPage() {
   const router = useRouter()
   const params = useParams()
@@ -158,6 +167,7 @@ function EditProductPage() {
   const [showGoogleDriveVideoPicker, setShowGoogleDriveVideoPicker] = useState(false)
   const [currentVariantForGoogleDriveVideo, setCurrentVariantForGoogleDriveVideo] = useState<string | null>(null)
   const [originalFormData, setOriginalFormData] = useState<ProductFormData | null>(null)
+  const [tagsInputValue, setTagsInputValue] = useState('')
 
   const [formData, setFormData] = useState<ProductFormData>({
     sku: '',
@@ -264,7 +274,8 @@ function EditProductPage() {
           })) : []
           
           const loadedMaterialCare = product.materialCare || {}
-          setFormData({
+          const loadedTags = product.tags || []
+          const nextFormData: ProductFormData = {
             sku: product.sku || product.baseSku || '',
             title_en: product.title_en || product.name?.en || '',
             title_he: product.title_he || product.name?.he || '',
@@ -315,56 +326,13 @@ function EditProductPage() {
             },
             
             searchKeywords: product.searchKeywords || [],
-            tags: product.tags || []
-          })
-          // Keep a copy to compare on submit so we update only changed fields
-          setOriginalFormData({
-            sku: product.sku || product.baseSku || '',
-            title_en: product.title_en || product.name?.en || '',
-            title_he: product.title_he || product.name?.he || '',
-            description_en: product.description_en || product.description?.en || '',
-            description_he: product.description_he || product.description?.he || '',
-            category: product.categoryId || product.category || '',
-            subCategory: product.subCategory || '',
-            subSubCategory: product.subSubCategory || '',
-            categories_path: product.categories_path || [],
-            categories_path_id: product.categories_path_id || [],
-            brand: product.brand || '',
-            price: product.price || 0,
-            salePrice: product.salePrice || 0,
-            currency: product.currency || 'ILS',
-            colorVariants: colorVariants,
-            isEnabled: product.isEnabled !== false,
-            isDeleted: product.isDeleted || false,
-            newProduct: product.isNew || product.newProduct || false,
-            featuredProduct: product.featured || product.featuredProduct || false,
-            materialCare: {
-              upperMaterial_en: loadedMaterialCare.upperMaterial_en || product.upperMaterial?.en || '',
-              upperMaterial_he: loadedMaterialCare.upperMaterial_he || product.upperMaterial?.he || '',
-              materialInnerSole_en: loadedMaterialCare.materialInnerSole_en || product.materialInnerSole?.en || '',
-              materialInnerSole_he: loadedMaterialCare.materialInnerSole_he || product.materialInnerSole?.he || '',
-              lining_en: loadedMaterialCare.lining_en || product.lining?.en || '',
-              lining_he: loadedMaterialCare.lining_he || product.lining?.he || '',
-              sole_en: loadedMaterialCare.sole_en || product.sole?.en || '',
-              sole_he: loadedMaterialCare.sole_he || product.sole?.he || '',
-              heelHeight_en: loadedMaterialCare.heelHeight_en || product.heelHeight?.en || '',
-              heelHeight_he: loadedMaterialCare.heelHeight_he || product.heelHeight?.he || '',
-              height_en: loadedMaterialCare.height_en || '',
-              height_he: loadedMaterialCare.height_he || '',
-              depth_en: loadedMaterialCare.depth_en || '',
-              depth_he: loadedMaterialCare.depth_he || '',
-              width_en: loadedMaterialCare.width_en || '',
-              width_he: loadedMaterialCare.width_he || ''
-            },
-            seo: {
-              title_en: product.seo?.title_en || '',
-              title_he: product.seo?.title_he || '',
-              description_en: product.seo?.description_en || '',
-              description_he: product.seo?.description_he || '',
-              slug: product.seo?.slug || ''
-            },
-            searchKeywords: product.searchKeywords || [],
-            tags: product.tags || []
+            tags: loadedTags
+          }
+          // One synchronous commit: form, tags text field, and original snapshot stay aligned
+          flushSync(() => {
+            setFormData(nextFormData)
+            setTagsInputValue(loadedTags.join(', '))
+            setOriginalFormData({ ...nextFormData })
           })
           
           // Load subcategories if main category is selected
@@ -2180,13 +2148,11 @@ function EditProductPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.tags.join(', ')}
+                  value={tagsInputValue}
                   onChange={(e) => {
-                    const tagsArray = e.target.value
-                      .split(',')
-                      .map(tag => tag.trim())
-                      .filter(tag => tag.length > 0)
-                    handleInputChange('tags', tagsArray)
+                    const raw = e.target.value
+                    setTagsInputValue(raw)
+                    handleInputChange('tags', parseCommaSeparatedTags(raw))
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="e.g., black-friday-2025, sale, boots"

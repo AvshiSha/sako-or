@@ -26,6 +26,12 @@ import {
   SheetTitle,
 } from '@/app/components/ui/sheet'
 import { ScrollArea } from '@/app/components/ui/scroll-area'
+import {
+  WOMEN_BOGO_NAV_LINKS,
+  womenSalesCampaignHref,
+  womenSalesLinkLabel,
+  womenSalesSectionTitle,
+} from '@/lib/navigation/women-sales-nav'
 
 
 
@@ -505,6 +511,25 @@ export default function Navigation({ lng }: { lng: string }) {
                       )}
                     </div>
                   ))}
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      {womenSalesSectionTitle(lng)}
+                    </h3>
+                    <ul className="space-y-1">
+                      {WOMEN_BOGO_NAV_LINKS.map((link) => (
+                        <li key={link.slug}>
+                          <Link
+                            href={womenSalesCampaignHref(lng, link.slug)}
+                            className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150"
+                            suppressHydrationWarning
+                          >
+                            {womenSalesLinkLabel(lng, link)}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
               </div>
             )}
@@ -828,6 +853,34 @@ export default function Navigation({ lng }: { lng: string }) {
                     </AccordionItem>
                   )
                 })}
+                {selectedGender === 'women' && (
+                  <AccordionItem value="women-nav-sales" className="border-b border-gray-300">
+                    <AccordionTrigger
+                      className="min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 hover:no-underline"
+                      dir={lng === 'he' ? 'rtl' : 'ltr'}
+                    >
+                      <span className="text-sm uppercase tracking-wide">
+                        {womenSalesSectionTitle(lng)}
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-0">
+                      <div className="bg-gray-50 border-t border-gray-100">
+                        {WOMEN_BOGO_NAV_LINKS.map((link) => (
+                          <SheetClose key={link.slug} asChild>
+                            <Link
+                              href={womenSalesCampaignHref(lng, link.slug)}
+                              className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
+                              dir={lng === 'he' ? 'rtl' : 'ltr'}
+                              suppressHydrationWarning
+                            >
+                              {womenSalesLinkLabel(lng, link)}
+                            </Link>
+                          </SheetClose>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                )}
               </Accordion>
               
               {/* Mobile Auth Greeting Component */}

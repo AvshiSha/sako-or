@@ -104,6 +104,11 @@ export interface InventoryUpdateResult {
   details: InventoryUpdateRow[];
 }
 
+interface FirebaseInventoryUpdateResult {
+  updatedRows: InventoryUpdateRow[];
+  skippedMissingColorRows: InventoryUpdateRow[];
+}
+
 /**
  * Parse an inventory SKU into its components
  * Format: PPPP-PPPPCCSS (e.g., "4925-03010135")
@@ -244,15 +249,26 @@ export async function updateInventoryFromCsv(
 
   // Process each product
   for (const [productSku, productRows] of productGroups.entries()) {
+    let firebaseUpdateResult: FirebaseInventoryUpdateResult | null = null;
     try {
-      // Update Firebase
-      await updateFirebaseInventory(productSku, productRows);
+      // Update Firebase (partial success: missing colors are skipped)
+      firebaseUpdateResult = await updateFirebaseInventory(productSku, productRows);
 
-      // Update Neon (PostgreSQL)
-      await updateNeonInventory(productSku, productRows);
+      // Mark missing-color rows as skipped right away.
+      // This way Neon failures don't incorrectly push those rows into `failed`.
+      for (const row of firebaseUpdateResult.skippedMissingColorRows) {
+        row.status = 'error';
+        row.error = `Missing color variant "${row.parsed?.colorSlug}" in Firebase, skipped`;
+        result.skipped++;
+      }
 
-      // Mark all rows for this product as success
-      for (const row of productRows) {
+      // Update Neon (PostgreSQL) only for rows updated in Firebase
+      if (firebaseUpdateResult.updatedRows.length > 0) {
+        await updateNeonInventory(productSku, firebaseUpdateResult.updatedRows);
+      }
+
+      // Mark updated rows as success
+      for (const row of firebaseUpdateResult.updatedRows) {
         row.status = 'success';
         result.success++;
       }
@@ -262,10 +278,20 @@ export async function updateInventoryFromCsv(
       // Mark all rows for this product as failed
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-      for (const row of productRows) {
-        row.status = 'error';
-        row.error = errorMessage;
-        result.failed++;
+      // If Firebase succeeded partially, only rows that were sent to Neon should be marked failed.
+      // Rows skipped due to missing Firebase color variants must remain in `skipped`.
+      if (firebaseUpdateResult) {
+        for (const row of firebaseUpdateResult.updatedRows) {
+          row.status = 'error';
+          row.error = errorMessage;
+          result.failed++;
+        }
+      } else {
+        for (const row of productRows) {
+          row.status = 'error';
+          row.error = errorMessage;
+          result.failed++;
+        }
       }
 
       result.errors.push(`Failed to update product ${productSku}: ${errorMessage}`);
@@ -282,7 +308,7 @@ export async function updateInventoryFromCsv(
 async function updateFirebaseInventory(
   productSku: string,
   rows: InventoryUpdateRow[]
-): Promise<void> {
+): Promise<FirebaseInventoryUpdateResult> {
   try {
     // Use Firebase Admin SDK (bypasses security rules - required for CRON/server-side writes)
     const querySnapshot = await adminDb
@@ -301,6 +327,9 @@ async function updateFirebaseInventory(
     // Get existing colorVariants (copy to avoid mutating cached data)
     const colorVariants = JSON.parse(JSON.stringify(productData.colorVariants || {}));
 
+    const updatedRows: InventoryUpdateRow[] = [];
+    const skippedMissingColorRows: InventoryUpdateRow[] = [];
+
     // Update stock for each row
     for (const row of rows) {
       const { colorSlug, size } = row.parsed!;
@@ -309,9 +338,11 @@ async function updateFirebaseInventory(
       // Initialize color variant if it doesn't exist
       if (!colorVariants[colorSlug]) {
         const availableColors = Object.keys(colorVariants).join(', ') || 'none';
-        throw new Error(
-          `Color variant "${colorSlug}" not found for product ${productSku}. Available colors: ${availableColors}`
+        console.warn(
+          `[INVENTORY_SYNC] Warning: color variant "${colorSlug}" not found for product ${productSku}, skipping. Available colors: ${availableColors}`
         );
+        skippedMissingColorRows.push(row);
+        continue;
       }
 
       // Initialize stockBySize if it doesn't exist
@@ -322,14 +353,28 @@ async function updateFirebaseInventory(
       // Update stock for this size (OS from Verifone -> One size in DB)
       const prevQty = colorVariants[colorSlug].stockBySize[dbSize];
       colorVariants[colorSlug].stockBySize[dbSize] = row.quantity;
-      
+      updatedRows.push(row);
+      console.log(
+        `[INVENTORY_SYNC] Success: updated existing color variant "${colorSlug}" for product ${productSku} (size=${dbSize}, ${prevQty ?? 'undefined'} -> ${row.quantity})`
+      );
     }
 
-    // Update the product document (Admin SDK ensures write succeeds regardless of security rules)
-    await adminDb.collection('products').doc(productDoc.id).update({
-      colorVariants,
-      updatedAt: new Date(),
-    });
+    if (updatedRows.length > 0) {
+      // Update the product document (Admin SDK ensures write succeeds regardless of security rules)
+      await adminDb.collection('products').doc(productDoc.id).update({
+        colorVariants,
+        updatedAt: new Date(),
+      });
+    } else {
+      console.warn(
+        `[INVENTORY_SYNC] No matching color variants to update for product ${productSku}. Missing colors skipped: ${skippedMissingColorRows.length}`
+      );
+    }
+
+    return {
+      updatedRows,
+      skippedMissingColorRows,
+    };
 
   } catch (error) {
     console.error(`❌ Firebase: Failed to update product ${productSku}:`, error);
@@ -601,17 +646,25 @@ export async function syncInventoryFromVerifone(): Promise<InventoryUpdateResult
         if (productRows.length === 0) continue;
 
         // 3. Immediately update Firebase (persists progress even on timeout)
-        await updateFirebaseInventory(productSku, productRows);
+        // Missing colors are skipped; existing colors still update.
+        const firebaseUpdateResult = await updateFirebaseInventory(productSku, productRows);
 
-        for (const row of productRows) {
+        for (const row of firebaseUpdateResult.updatedRows) {
           row.status = 'success';
           result.success++;
         }
+
+        for (const row of firebaseUpdateResult.skippedMissingColorRows) {
+          row.status = 'error';
+          row.error = `Missing color variant "${row.parsed?.colorSlug}" in Firebase, skipped`;
+          result.skipped++;
+        }
+
         result.total += productRows.length;
         result.details.push(...productRows);
 
         console.log(
-          `[INVENTORY_SYNC] Successfully updated Firebase for product ${productSku} (${productRows.length} variants)`
+          `[INVENTORY_SYNC] Product ${productSku}: updated ${firebaseUpdateResult.updatedRows.length} color/size rows, skipped ${firebaseUpdateResult.skippedMissingColorRows.length} missing-color rows`
         );
       } catch (error) {
         const errorMsg = `Error processing product ${productSku}: ${error instanceof Error ? error.message : 'Unknown error'}`;

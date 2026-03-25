@@ -68,6 +68,11 @@ export type ProductTag = Prisma.ProductTagModel
  */
 export type Order = Prisma.OrderModel
 /**
+ * Model VerifoneManualInvoiceAudit
+ * 
+ */
+export type VerifoneManualInvoiceAudit = Prisma.VerifoneManualInvoiceAuditModel
+/**
  * Model OrderItem
  * 
  */

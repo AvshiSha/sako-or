@@ -244,6 +244,25 @@ model Order {
   @@map("orders")
 }
 
+model VerifoneManualInvoiceAudit {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  adminEmail       String   @map("admin_email")
+  orderNumber      String?  @map("order_number")
+
+  requestJson      Json     @map("request_json")
+
+  responseXml      String?  @map("response_xml")
+  responseParsed   Json?    @map("response_parsed")
+  httpStatus       Int?     @map("http_status")
+  errorMessage     String?  @map("error_message")
+
+  @@index([orderNumber])
+  @@index([createdAt(sort: Desc)])
+  @@map("verifone_manual_invoice_audits")
+}
+
 model OrderItem {
   id           String   @id @default(cuid())
   quantity     Int

@@ -651,14 +651,6 @@ export type PaymentUncheckedUpdateManyWithoutOrderNestedInput = {
   deleteMany?: Prisma.PaymentScalarWhereInput | Prisma.PaymentScalarWhereInput[]
 }
 
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type PaymentCreateWithoutOrderInput = {
   id?: string
   amount: number

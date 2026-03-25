@@ -61,6 +61,7 @@ export const ModelName = {
   Tag: 'Tag',
   ProductTag: 'ProductTag',
   Order: 'Order',
+  VerifoneManualInvoiceAudit: 'VerifoneManualInvoiceAudit',
   OrderItem: 'OrderItem',
   Payment: 'Payment',
   PaymentToken: 'PaymentToken',
@@ -303,6 +304,21 @@ export const OrderScalarFieldEnum = {
 export type OrderScalarFieldEnum = (typeof OrderScalarFieldEnum)[keyof typeof OrderScalarFieldEnum]
 
 
+export const VerifoneManualInvoiceAuditScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  adminEmail: 'adminEmail',
+  orderNumber: 'orderNumber',
+  requestJson: 'requestJson',
+  responseXml: 'responseXml',
+  responseParsed: 'responseParsed',
+  httpStatus: 'httpStatus',
+  errorMessage: 'errorMessage'
+} as const
+
+export type VerifoneManualInvoiceAuditScalarFieldEnum = (typeof VerifoneManualInvoiceAuditScalarFieldEnum)[keyof typeof VerifoneManualInvoiceAuditScalarFieldEnum]
+
+
 export const OrderItemScalarFieldEnum = {
   id: 'id',
   quantity: 'quantity',
@@ -485,6 +501,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {

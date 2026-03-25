@@ -74,6 +74,12 @@ function AdminDashboard() {
       icon: MegaphoneIcon,
       description: 'Create and manage promotional landing pages'
     },
+    {
+      name: 'Manual Verifone Invoice',
+      href: '/admin/verifone/manual-invoice',
+      icon: ExclamationTriangleIcon,
+      description: 'Recovery tool: resend CreateInvoice to Verifone'
+    },
   
   ]
 

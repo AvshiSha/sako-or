@@ -394,6 +394,7 @@ export const ModelName = {
   Tag: 'Tag',
   ProductTag: 'ProductTag',
   Order: 'Order',
+  VerifoneManualInvoiceAudit: 'VerifoneManualInvoiceAudit',
   OrderItem: 'OrderItem',
   Payment: 'Payment',
   PaymentToken: 'PaymentToken',
@@ -418,7 +419,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "cartItem" | "favorite" | "newsletterEmails" | "category" | "bogoGroup" | "product" | "tag" | "productTag" | "order" | "orderItem" | "payment" | "paymentToken" | "checkout" | "contactMessage" | "coupon" | "couponRedemption" | "orderCoupon" | "points"
+    modelProps: "user" | "cartItem" | "favorite" | "newsletterEmails" | "category" | "bogoGroup" | "product" | "tag" | "productTag" | "order" | "verifoneManualInvoiceAudit" | "orderItem" | "payment" | "paymentToken" | "checkout" | "contactMessage" | "coupon" | "couponRedemption" | "orderCoupon" | "points"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1159,6 +1160,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.OrderCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.OrderCountAggregateOutputType> | number
+        }
+      }
+    }
+    VerifoneManualInvoiceAudit: {
+      payload: Prisma.$VerifoneManualInvoiceAuditPayload<ExtArgs>
+      fields: Prisma.VerifoneManualInvoiceAuditFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.VerifoneManualInvoiceAuditFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.VerifoneManualInvoiceAuditFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>
+        }
+        findFirst: {
+          args: Prisma.VerifoneManualInvoiceAuditFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.VerifoneManualInvoiceAuditFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>
+        }
+        findMany: {
+          args: Prisma.VerifoneManualInvoiceAuditFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>[]
+        }
+        create: {
+          args: Prisma.VerifoneManualInvoiceAuditCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>
+        }
+        createMany: {
+          args: Prisma.VerifoneManualInvoiceAuditCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.VerifoneManualInvoiceAuditCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>[]
+        }
+        delete: {
+          args: Prisma.VerifoneManualInvoiceAuditDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>
+        }
+        update: {
+          args: Prisma.VerifoneManualInvoiceAuditUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>
+        }
+        deleteMany: {
+          args: Prisma.VerifoneManualInvoiceAuditDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.VerifoneManualInvoiceAuditUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.VerifoneManualInvoiceAuditUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>[]
+        }
+        upsert: {
+          args: Prisma.VerifoneManualInvoiceAuditUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$VerifoneManualInvoiceAuditPayload>
+        }
+        aggregate: {
+          args: Prisma.VerifoneManualInvoiceAuditAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateVerifoneManualInvoiceAudit>
+        }
+        groupBy: {
+          args: Prisma.VerifoneManualInvoiceAuditGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VerifoneManualInvoiceAuditGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.VerifoneManualInvoiceAuditCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.VerifoneManualInvoiceAuditCountAggregateOutputType> | number
         }
       }
     }
@@ -2082,6 +2157,21 @@ export const OrderScalarFieldEnum = {
 export type OrderScalarFieldEnum = (typeof OrderScalarFieldEnum)[keyof typeof OrderScalarFieldEnum]
 
 
+export const VerifoneManualInvoiceAuditScalarFieldEnum = {
+  id: 'id',
+  createdAt: 'createdAt',
+  adminEmail: 'adminEmail',
+  orderNumber: 'orderNumber',
+  requestJson: 'requestJson',
+  responseXml: 'responseXml',
+  responseParsed: 'responseParsed',
+  httpStatus: 'httpStatus',
+  errorMessage: 'errorMessage'
+} as const
+
+export type VerifoneManualInvoiceAuditScalarFieldEnum = (typeof VerifoneManualInvoiceAuditScalarFieldEnum)[keyof typeof VerifoneManualInvoiceAuditScalarFieldEnum]
+
+
 export const OrderItemScalarFieldEnum = {
   id: 'id',
   quantity: 'quantity',
@@ -2264,6 +2354,13 @@ export const NullableJsonNullValueInput = {
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {
@@ -2534,6 +2631,7 @@ export type GlobalOmitConfig = {
   tag?: Prisma.TagOmit
   productTag?: Prisma.ProductTagOmit
   order?: Prisma.OrderOmit
+  verifoneManualInvoiceAudit?: Prisma.VerifoneManualInvoiceAuditOmit
   orderItem?: Prisma.OrderItemOmit
   payment?: Prisma.PaymentOmit
   paymentToken?: Prisma.PaymentTokenOmit

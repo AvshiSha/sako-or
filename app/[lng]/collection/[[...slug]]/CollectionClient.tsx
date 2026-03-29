@@ -653,6 +653,12 @@ export default function CollectionClient({
       return lng === 'he' ? 'כל המוצרים' : 'All Products';
     }
 
+    if (category === 'women') {
+      return 'Women';
+    }
+    if (category === 'men') {
+      return 'Men';
+    }
     const categoryKey = category.toLowerCase();
     const translatedCategory = t.categoriesList[categoryKey as keyof typeof t.categoriesList];
     return translatedCategory || category.charAt(0).toUpperCase() + category.slice(1);
@@ -1139,14 +1145,36 @@ export default function CollectionClient({
     
     // On level 1 pages, find the current subcategory ID to filter sub-subcategories
     let currentSubcategoryId: string | undefined;
-    if (collectionLevel === 2 && selectedSubcategory) {
-      // Find the subcategory by matching slug (case-insensitive)
-      const subcategorySlug = selectedSubcategory.toLowerCase();
-      const foundSubcategory = categories.find(cat => {
-        if (cat.level !== 1 || !cat.isEnabled) return false;
+    const pathRootSegment =
+      typeof categoryPath === 'string' ? categoryPath.split('/').filter(Boolean)[0]?.trim() ?? '' : '';
+    const rootSlugSource =
+      (typeof selectedCategory === 'string' ? selectedCategory.trim() : '') || pathRootSegment;
+    const subSlugSource =
+      selectedSubcategory != null && typeof selectedSubcategory === 'string'
+        ? selectedSubcategory.trim()
+        : '';
+    if (collectionLevel === 2 && rootSlugSource.length > 0 && subSlugSource.length > 0) {
+      const rootSlug = rootSlugSource.toLowerCase();
+      const root = categories.find((cat) => {
+        if (cat.level !== 0 || !cat.isEnabled) return false;
         const slugEn = typeof cat.slug === 'object' ? cat.slug.en : cat.slug;
         const slugHe = typeof cat.slug === 'object' ? cat.slug.he : cat.slug;
-        return slugEn?.toLowerCase() === subcategorySlug || slugHe?.toLowerCase() === subcategorySlug;
+        return slugEn?.toLowerCase() === rootSlug || slugHe?.toLowerCase() === rootSlug;
+      });
+      const subcategorySlug = subSlugSource.toLowerCase();
+      const foundSubcategory = categories.find((cat) => {
+        if (cat.level !== 1 || !cat.isEnabled || !root?.id || cat.parentId !== root.id) return false;
+        const slugEn = typeof cat.slug === 'object' ? cat.slug.en : cat.slug;
+        const slugHe = typeof cat.slug === 'object' ? cat.slug.he : cat.slug;
+        const slugLang =
+          typeof cat.slug === 'object'
+            ? (lng === 'he' ? cat.slug.he : cat.slug.en) || cat.slug.en
+            : cat.slug;
+        return (
+          slugEn?.toLowerCase() === subcategorySlug ||
+          slugHe?.toLowerCase() === subcategorySlug ||
+          slugLang?.toLowerCase() === subcategorySlug
+        );
       });
       currentSubcategoryId = foundSubcategory?.id;
     }
@@ -1179,7 +1207,7 @@ export default function CollectionClient({
     });
     
     return grouped;
-  }, [categories, collectionLevel, selectedSubcategory]);
+  }, [categories, collectionLevel, selectedSubcategory, selectedCategory, categoryPath, lng]);
 
   // Get parent category name for display
   const getParentCategoryName = (parentId: string): string => {

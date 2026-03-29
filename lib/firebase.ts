@@ -2138,7 +2138,7 @@ export const categoryService = {
   },
 
   // Get category IDs from path (e.g., "women/shoes/pumps" -> returns all category IDs and the target level)
-  // Returns an array of category IDs matching each segment of the path
+  // Resolves each segment under the previous segment's category ID so duplicate slugs (e.g. men/shoes vs women/shoes) work.
   async getCategoryIdsFromPath(categoryPath: string, language: 'en' | 'he' = 'en'): Promise<{ categoryIds: string[]; targetLevel: number } | null> {
     try {
       const pathSegments = categoryPath.split('/').filter(Boolean);
@@ -2146,59 +2146,92 @@ export const categoryService = {
         return null;
       }
 
+      const segmentMatchesSlug = (cat: Category, segment: string): boolean => {
+        const s = segment.toLowerCase();
+        const slugEn = typeof cat.slug === 'object' ? cat.slug.en : (cat.slug as string) || '';
+        const slugHe = typeof cat.slug === 'object' ? cat.slug.he : '';
+        const slugLang =
+          typeof cat.slug === 'object' ? (cat.slug[language] || cat.slug.en || '') : slugEn;
+        return (
+          slugEn.toLowerCase() === s ||
+          (slugHe.length > 0 && slugHe.toLowerCase() === s) ||
+          (slugLang.length > 0 && slugLang.toLowerCase() === s)
+        );
+      };
+
       const categoryIds: string[] = [];
 
-      // Resolve each segment to its category ID
       for (let i = 0; i < pathSegments.length; i++) {
         const segment = pathSegments[i];
-        const expectedLevel = i; // Level 0, 1, or 2
+        const expectedLevel = i;
         let category: Category | null = null;
 
-        // First try: Query for category with this slug and level
-        try {
-          const q = query(
-            collection(db, 'categories'),
-            where(`slug.en`, '==', segment),
-            where('level', '==', expectedLevel),
-            limit(1)
-          );
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            const docSnapshot = querySnapshot.docs[0];
-            category = {
-              id: docSnapshot.id,
-              ...docSnapshot.data()
-            } as Category;
-          }
-        } catch (queryError) {
-          // Continue to fallback
-        }
-
-        // Fallback 1: Try without level filter (in case level doesn't match)
-        if (!category) {
+        if (i === 0) {
           try {
-            category = await this.getCategoryBySlug(segment, language);
-          } catch (slugError) {
-            // Continue to next fallback
+            const q = query(
+              collection(db, 'categories'),
+              where(`slug.en`, '==', segment),
+              where('level', '==', 0),
+              limit(1)
+            );
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+              const docSnapshot = querySnapshot.docs[0];
+              category = { id: docSnapshot.id, ...docSnapshot.data() } as Category;
+            }
+          } catch {
+            // fall through
           }
-        }
 
-        // Fallback 2: Try case-insensitive search by fetching all categories and matching manually
-        if (!category) {
-          try {
+          if (!category && language !== 'en') {
+            try {
+              const slugField = language === 'he' ? 'slug.he' : `slug.${language}`;
+              const q = query(
+                collection(db, 'categories'),
+                where(slugField, '==', segment),
+                where('level', '==', 0),
+                limit(1)
+              );
+              const querySnapshot = await getDocs(q);
+              if (!querySnapshot.empty) {
+                const docSnapshot = querySnapshot.docs[0];
+                category = { id: docSnapshot.id, ...docSnapshot.data() } as Category;
+              }
+            } catch {
+              // fall through
+            }
+          }
+
+          if (!category) {
+            try {
+              const bySlug = await this.getCategoryBySlug(segment, language);
+              if (bySlug && bySlug.level === 0 && (!bySlug.parentId || bySlug.parentId.trim() === '')) {
+                category = bySlug;
+              }
+            } catch {
+              // fall through
+            }
+          }
+
+          if (!category) {
             const allCategories = await this.getAllCategories();
-            const segmentLower = segment.toLowerCase();
-            category = allCategories.find(cat => {
-              const catSlug = typeof cat.slug === 'object'
-                ? (cat.slug[language] || cat.slug.en || '')
-                : (cat.slug || '');
-              return catSlug.toLowerCase() === segmentLower &&
-                (cat.level === expectedLevel || cat.level === undefined);
-            }) || null;
-          } catch (fallbackError) {
-            // Continue
+            const roots = allCategories.filter(
+              (cat) =>
+                cat.level === 0 &&
+                (!cat.parentId || String(cat.parentId).trim() === '') &&
+                segmentMatchesSlug(cat, segment)
+            );
+            category = roots[0] || null;
           }
+        } else {
+          const parentId = categoryIds[i - 1];
+          const children = await this.getSubCategories(parentId);
+          category =
+            children.find(
+              (cat) => cat.level === expectedLevel && segmentMatchesSlug(cat, segment)
+            ) ||
+            children.find((cat) => segmentMatchesSlug(cat, segment)) ||
+            null;
         }
 
         if (category && category.id) {
@@ -2211,7 +2244,7 @@ export const categoryService = {
       if (categoryIds.length === pathSegments.length) {
         return {
           categoryIds,
-          targetLevel: pathSegments.length - 1 // The deepest level (0, 1, or 2)
+          targetLevel: pathSegments.length - 1,
         };
       }
 

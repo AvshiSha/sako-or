@@ -34,14 +34,14 @@ const promoMessage = {
 }
 
 const couponLabel = {
-  en: 'Code: SAKO7',
-  he: 'קוד: SAKO7'
+  en: 'Code: SAKO10',
+  he: 'קוד: SAKO10'
 }
 
 /** Default ribbon: shown after countdown ends (no campaign, no coupon) */
 const defaultRibbonMessage = {
-  en: 'Due to the security situation ❤️ 7% discount on all products | Code: SAKO7',
-  he: 'עקב המצב, משהו קטן מאיתנו 🤍 7% הנחה על כל האתר | קוד: SAKO7'
+  en: 'Happy Passover 💗 10% discount on all products | Code: SAKO10',
+  he: 'לכבוד חג הפסח 💗 10% הנחה על כל האתר | קוד: SAKO10'
 }
 
 const urgencyLabel = {

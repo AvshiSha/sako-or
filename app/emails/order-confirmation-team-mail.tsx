@@ -167,9 +167,9 @@ export function OrderConfirmationTeamEmail({
             <Text style={styles.lineItem}>
               {t('Payer', 'משלם')}: <strong>{payer.firstName} {payer.lastName}</strong> ({payer.email}, {payer.mobile})
             </Text>
-            <Text style={styles.lineItem}>
+            {/* <Text style={styles.lineItem}>
               {t('ID', 'ת.ז')}: {payer.idNumber || '-'}
-            </Text>
+            </Text> */}
             <Text style={styles.lineItem}>
               {t('Address', 'כתובת')}: <strong>
                 {shippingMethod === 'pickup'

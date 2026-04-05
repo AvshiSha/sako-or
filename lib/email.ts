@@ -197,7 +197,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
         await Promise.race([
           resend.emails.send({
             from: 'Sako Or <info@sako-or.com>',
-            to: ['moshe@sako-or.com', 'avshi@sako-or.com'],
+            to: ['moshe@sako-or.com'],
             subject: `New Order Received - ${data.orderNumber}`,
             react: OrderConfirmationTeamEmail({
               customerName: data.customerName,

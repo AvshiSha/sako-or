@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { track } from '@vercel/analytics'
 import { usePromo } from '@/app/contexts/PromoContext'
 
-const DEFAULT_TARGET = '2026-03-09T00:00:00+02:00'
+const DEFAULT_TARGET = '2026-04-12T00:00:00+02:00'
 
 function parseTarget(targetDate?: Date | string): Date {
   if (targetDate === undefined) return new Date(DEFAULT_TARGET)
@@ -29,8 +29,8 @@ function pad(n: number): string {
 
 /** Campaign ribbon: shown while countdown is active */
 const promoMessage = {
-  en: 'Due to the security situation ❤️ 7% discount on all products',
-  he: 'עקב המצב משהו קטן מאיתנו 🤍 7% הנחה על כל האתר'
+  en: 'Last hours of the sale ⏳ 10% discount on all collection',
+  he: 'ימים אחרונים למבצע ⏳ 10% הנחה על כל האתר'
 }
 
 const couponLabel = {
@@ -60,7 +60,7 @@ interface PromoSectionProps {
 }
 
 export default function PromoSection({ lng, targetDate }: PromoSectionProps) {
-  const { setCountdownVisible } = usePromo()
+  const { countdownVisible, setCountdownVisible } = usePromo()
   const targetTimestamp = useMemo(
     () => parseTarget(targetDate).getTime(),
     [targetDate === undefined ? DEFAULT_TARGET : typeof targetDate === 'string' ? targetDate : targetDate instanceof Date ? targetDate.getTime() : DEFAULT_TARGET]
@@ -73,15 +73,15 @@ export default function PromoSection({ lng, targetDate }: PromoSectionProps) {
     const tick = () => {
       const r = getRemaining(target)
       setTimeLeft(r)
-      if (r.totalSeconds <= 0) {
+      const isActive = r.totalSeconds > 0
+      setCountdownVisible(isActive)
+      if (!isActive) {
         if (intervalRef.current) {
           clearInterval(intervalRef.current)
           intervalRef.current = null
         }
-        setCountdownVisible(false)
       }
     }
-    setCountdownVisible(true)
     tick()
     intervalRef.current = setInterval(tick, 1000)
     return () => {
@@ -90,7 +90,7 @@ export default function PromoSection({ lng, targetDate }: PromoSectionProps) {
   }, [targetTimestamp, setCountdownVisible])
 
   const campaignActive = timeLeft === null || timeLeft.totalSeconds > 0
-  const showCountdown = campaignActive
+  const showCountdown = campaignActive && (timeLeft === null || countdownVisible)
   const { h = 0, m = 0, s = 0 } = timeLeft ?? {}
   const labels = segmentLabels[lng]
 
@@ -121,7 +121,6 @@ export default function PromoSection({ lng, targetDate }: PromoSectionProps) {
           </Link>
         )}
 
-        {/*
         {showCountdown && (
           <>
             <div className="mt-1 w-full max-w-xs border-t border-white/25" />
@@ -146,7 +145,6 @@ export default function PromoSection({ lng, targetDate }: PromoSectionProps) {
             </div>
           </>
         )}
-        */}
       </div>
     </div>
   )

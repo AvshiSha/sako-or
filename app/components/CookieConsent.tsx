@@ -52,31 +52,30 @@ export default function CookieConsent() {
   if (!showBanner) return null;
 
   return (
-    <div
-      className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg p-4 md:p-6 ${isRTL ? 'text-right' : 'text-left'}`}
-      dir={isRTL ? 'rtl' : 'ltr'}
-    >
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold mb-2 text-[#856D55]">{t.title}</h3>
-            <p className="text-sm text-gray-600 mb-2 text-[#856D55]/80">{t.description}</p>
-            <Link
-              href={`/${lng}/privacy`}
-              className="text-sm text-[#856D55] hover:underline"
-            >
-              {t.privacyPolicy}
-            </Link>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleClose}
-              variant="ghost"
-              size="sm"
-              className="text-[#856D55] hover:text-[#856D55]/80 hover:bg-gray-100"
-            >
-              {t.close}
-            </Button>
+    <div data-nosnippet>
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg p-4 md:p-6 ${isRTL ? 'text-right' : 'text-left'}`}
+        dir={isRTL ? 'rtl' : 'ltr'}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold mb-2 text-[#856D55]">{t.title}</h3>
+              <p className="text-sm text-gray-600 mb-2 text-[#856D55]/80">{t.description}</p>
+              <Link href={`/${lng}/privacy`} className="text-sm text-[#856D55] hover:underline">
+                {t.privacyPolicy}
+              </Link>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleClose}
+                variant="ghost"
+                size="sm"
+                className="text-[#856D55] hover:text-[#856D55]/80 hover:bg-gray-100"
+              >
+                {t.close}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

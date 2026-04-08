@@ -96,11 +96,25 @@ export default function ProductColorPage() {
   // Toast hook
   const { toast, showToast, hideToast } = useToast()
 
-  // Get images only (no videos)
+  function reorderImagesByPrimary(images: string[] | undefined, primaryImage: string | undefined): string[] {
+    const list = Array.isArray(images) ? images : []
+    if (!primaryImage) return list
+    const idx = list.findIndex((img) => img === primaryImage)
+    if (idx <= 0) return list
+    return [primaryImage, ...list.slice(0, idx), ...list.slice(idx + 1)]
+  }
+
+  // Get images only (no videos) with primary image first
   const productImages = useMemo(() => {
     if (!currentVariant) return []
-    return currentVariant.images || []
+    return reorderImagesByPrimary(currentVariant.images, currentVariant.primaryImage)
   }, [currentVariant])
+
+  // Keep latest images available without triggering reset effects
+  const productImagesRef = useRef<string[]>([])
+  useEffect(() => {
+    productImagesRef.current = productImages
+  }, [productImages])
 
   // Get language, baseSku, and colorSlug from params
   const lng = params?.lng as string || 'en'
@@ -129,6 +143,19 @@ export default function ProductColorPage() {
       api.off('select', onSelect)
     }
   }, [api])
+
+  // Ensure carousel starts on the first image (primary-first) when the color variant changes.
+  // Intentionally does NOT depend on productImages/currentVariant to avoid redundant resets during data load.
+  const lastResetColorSlugRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!api) return
+    if (productImagesRef.current.length === 0) return
+    if (lastResetColorSlugRef.current === colorSlug) return
+
+    lastResetColorSlugRef.current = colorSlug
+    api.scrollTo(0)
+    // selectedImageIndex is driven by the carousel's `select` event listener
+  }, [api, colorSlug])
 
   // Set up real-time listener for product data
   useEffect(() => {
@@ -395,7 +422,7 @@ export default function ProductColorPage() {
       price: getOriginalPrice(),
       salePrice: resolvedSalePrice && resolvedSalePrice > 0 && resolvedSalePrice < getOriginalPrice() ? resolvedSalePrice : undefined,
       currency: 'USD',
-      image: currentVariant.images?.[0],
+      image: productImages?.[0],
       size: sizeLabel,
       color: currentVariant.colorSlug,
       maxStock: currentStock
@@ -455,7 +482,7 @@ export default function ProductColorPage() {
       "availability": isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
       "url": window.location.href
     },
-    "image": currentVariant.images || [],
+    "image": productImages,
     "category": product.category,
     "color": currentVariant.colorSlug
   }
@@ -480,7 +507,7 @@ export default function ProductColorPage() {
         <meta property="og:description" content={currentVariant.metaDescription || productDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={`https://sako-or.com/${lng}/product/${baseSku}/${colorSlug}`} />
-        <meta property="og:image" content={currentVariant.images?.[0]} />
+        <meta property="og:image" content={productImages?.[0]} />
         <meta property="og:site_name" content="Sako" />
         <meta property="product:price:amount" content={currentPrice.toString()} />
         <meta property="product:price:currency" content="USD" />
@@ -493,7 +520,7 @@ export default function ProductColorPage() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${productName} - ${currentVariant.colorSlug}`} />
         <meta name="twitter:description" content={currentVariant.metaDescription || productDescription} />
-        <meta name="twitter:image" content={currentVariant.images?.[0]} />
+        <meta name="twitter:image" content={productImages?.[0]} />
       </Head>
 
       {/* Structured Data */}

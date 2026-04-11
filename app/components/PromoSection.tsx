@@ -40,8 +40,8 @@ const couponLabel = {
 
 /** Default ribbon: shown after countdown ends (no campaign, no coupon) */
 const defaultRibbonMessage = {
-  en: 'Happy Passover 💗 10% discount on all products | Code: SAKO10',
-  he: 'לכבוד חג הפסח 💗 10% הנחה על כל האתר | קוד: SAKO10'
+  en: 'Free shipping for all orders over 300₪ 🚚',
+  he: 'משלוח חינם עד הבית בקנייה מעל 300₪ 🚚'
 }
 
 const urgencyLabel = {

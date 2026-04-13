@@ -17,7 +17,7 @@ export async function generateMetadata({
   const { lng } = await params
   const locale = (lng === 'he' ? 'he' : 'en') as 'he' | 'en'
 
-  const title = locale === 'he' ? 'סכו עור (SAKO OR) | נעלי נשים, תיקים ואקססוריז מעור' : 'SAKO OR | Leather shoes, bags & accessories'
+  const title = locale === 'he' ? 'סכו עור | נעלי נשים, תיקים ואקססוריז מעור' : 'SAKO OR | Leather shoes, bags & accessories'
   const description = homeDescriptions[locale]
   const url = `/${lng}`
 

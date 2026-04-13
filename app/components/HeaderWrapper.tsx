@@ -5,13 +5,12 @@ import Navigation from '@/app/components/Navigation'
 
 interface HeaderWrapperProps {
   lng: 'en' | 'he'
-  targetDate?: Date | string
 }
 
-export default function HeaderWrapper({ lng, targetDate }: HeaderWrapperProps) {
+export default function HeaderWrapper({ lng }: HeaderWrapperProps) {
   return (
     <header className="sticky top-0 z-[65] w-full">
-      <PromoSection lng={lng} targetDate={targetDate} />
+      <PromoSection lng={lng} />
       <Navigation lng={lng} />
     </header>
   )

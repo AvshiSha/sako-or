@@ -743,7 +743,7 @@ if (!isClient || loading) {
               <div className="mt-1 text-xs text-gray-500 flex items-start gap-2">
                 <span
                   aria-hidden="true"
-                  className="mt-[0.5px]860497 inline-flex h-4 w-4 items-center justify-center rounded-full"
+                  className="mt-[0.5px] inline-flex h-4 w-4 items-center justify-center rounded-full"
                   style={{ border: '1px solid rgba(133, 109, 85, 0.7)', color: '#856D55', fontSize: '10px' }}
                 >
                   i
@@ -802,7 +802,7 @@ if (!isClient || loading) {
                       <div className="flex-1 min-w-0 flex flex-col gap-1">
                         <Link href={`/${lng}/product/${item.sku}/${item.color}`} className="block">
                           <h3
-                            className="text-base font-semibold text-gray-900 hover:text-indigo-600 truncate"
+                            className="text-base font-semibold text-gray-900 hover:text-[#856D55] truncate"
                             title={item.name[lng as 'en' | 'he']}
                           >
                             {item.name[lng as 'en' | 'he']}

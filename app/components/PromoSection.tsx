@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { track } from '@vercel/analytics'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { AnimatePresence, motion as fmMotion } from 'framer-motion'
 
 export type PromoItem = {
   text: { he: string; en: string }
@@ -41,6 +42,10 @@ interface PromoSectionProps {
 const ROTATION_MS_DEFAULT = 4000
 const TRANSITION_MS = 400
 const RESERVED_COUNTDOWN_HEIGHT_PX = 18
+
+// Work around occasional framer-motion typing mismatches in this codebase (see other usage sites).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const motion = fmMotion as unknown as any
 
 function isInternalPath(href: string): boolean {
   return href.startsWith('/')
@@ -84,17 +89,6 @@ export default function PromoSection({
   const [activeIndex, setActiveIndex] = useState(0)
   const [paused, setPaused] = useState(false)
 
-  // Animation state: keep a short-lived outgoing item for crossfade.
-  const [outgoing, setOutgoing] = useState<{ item: PromoItem; key: string } | null>(null)
-  const [incomingKey, setIncomingKey] = useState(() => `promo_${Date.now()}_${Math.random().toString(16).slice(2)}`)
-  const [transitionOn, setTransitionOn] = useState(false)
-  const prevActiveRef = useRef<PromoItem | null>(null)
-  const outgoingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const animCycleRef = useRef(0)
-  const rafRef = useRef<number | null>(null)
-  const rafRef2 = useRef<number | null>(null)
-  const transitionKickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   // Countdown state (only for the active promo when it has countdownEnd).
   const [countdownText, setCountdownText] = useState<string>('')
   const [countdownVisible, setCountdownVisible] = useState(false)
@@ -117,85 +111,11 @@ export default function PromoSection({
     }, rotationMs)
     return () => clearInterval(id)
   }, [items.length, paused, pauseOnHover, rotationMs])
-
-  // Crossfade on promo change.
-  useEffect(() => {
-    animCycleRef.current += 1
-    const cycle = animCycleRef.current
-
-    if (outgoingTimeoutRef.current) {
-      clearTimeout(outgoingTimeoutRef.current)
-      outgoingTimeoutRef.current = null
-    }
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current)
-      rafRef.current = null
-    }
-    if (rafRef2.current !== null) {
-      cancelAnimationFrame(rafRef2.current)
-      rafRef2.current = null
-    }
-    if (transitionKickTimeoutRef.current) {
-      clearTimeout(transitionKickTimeoutRef.current)
-      transitionKickTimeoutRef.current = null
-    }
-
-    const prev = prevActiveRef.current
-    if (prev && activeItem && prev !== activeItem) {
-      setOutgoing({ item: prev, key: incomingKey })
-    } else {
-      setOutgoing(null)
-    }
-
-    prevActiveRef.current = activeItem
-    setIncomingKey(`promo_${Date.now()}_${Math.random().toString(16).slice(2)}`)
-    setTransitionOn(false)
-    // Double-rAF ensures the initial styles paint before we flip to "transitionOn".
-    // This is more reliable than setTimeout under load, especially on mobile.
-    rafRef.current = requestAnimationFrame(() => {
-      if (animCycleRef.current !== cycle) return
-      rafRef2.current = requestAnimationFrame(() => {
-        if (animCycleRef.current !== cycle) return
-        if (transitionKickTimeoutRef.current) {
-          clearTimeout(transitionKickTimeoutRef.current)
-          transitionKickTimeoutRef.current = null
-        }
-        setTransitionOn(true)
-      })
-    })
-    // Guarded fallback in case rAF is delayed unusually (background tabs, heavy load).
-    transitionKickTimeoutRef.current = setTimeout(() => {
-      if (animCycleRef.current !== cycle) return
-      setTransitionOn(true)
-      transitionKickTimeoutRef.current = null
-    }, TRANSITION_MS)
-
-    outgoingTimeoutRef.current = setTimeout(() => {
-      if (animCycleRef.current !== cycle) return
-      setOutgoing(null)
-      outgoingTimeoutRef.current = null
-    }, TRANSITION_MS)
-
-    return () => {
-      if (outgoingTimeoutRef.current) {
-        clearTimeout(outgoingTimeoutRef.current)
-        outgoingTimeoutRef.current = null
-      }
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
-      if (rafRef2.current !== null) {
-        cancelAnimationFrame(rafRef2.current)
-        rafRef2.current = null
-      }
-      if (transitionKickTimeoutRef.current) {
-        clearTimeout(transitionKickTimeoutRef.current)
-        transitionKickTimeoutRef.current = null
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeItem])
+  const promoMotionKey = useMemo(() => {
+    if (!activeItem) return 'promo_empty'
+    // Include lng so switching language doesn't reuse the same animated node.
+    return `promo_${activeIndex}_${lng}`
+  }, [activeIndex, activeItem, lng])
 
   // Countdown ticking for active promo only.
   useEffect(() => {
@@ -296,7 +216,7 @@ export default function PromoSection({
       <div className="mx-auto max-w-7xl px-4">
         <Link
           href={href}
-          className="block w-full py-2.5 text-center"
+          className="mx-auto block w-full max-w-3xl py-2.5 text-center"
           suppressHydrationWarning
           onClick={() =>
             track('promo_ribbon_click', {
@@ -310,33 +230,24 @@ export default function PromoSection({
           onBlurCapture={onBlurCapture}
         >
           <div className="mx-auto flex w-full flex-col items-center justify-center">
-            <div className="relative w-full max-w-[920px] overflow-hidden">
+            <div className="relative w-full max-w-[720px] overflow-hidden">
               <div className="relative flex min-h-[20px] items-center justify-center px-2 text-center">
-              {outgoing && (
-                <span
-                  key={`out_${outgoing.key}`}
-                  className={`absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium transition-opacity transition-transform will-change-transform md:text-base ${
-                    transitionOn ? 'opacity-0 -translate-y-0.5' : 'opacity-100 translate-y-0'
-                  }`}
-                  style={{ transitionDuration: `${TRANSITION_MS}ms` }}
-                  aria-hidden="true"
-                >
-                  <span className="opacity-95">{outgoing.item.icon ?? ''}</span>
-                  <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{outgoing.item.text[lng]}</span>
-                </span>
-              )}
-              {activeItem && (
-                <span
-                  key={`in_${incomingKey}`}
-                  className={`absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium transition-opacity transition-transform will-change-transform md:text-base ${
-                    transitionOn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-0.5'
-                  }`}
-                  style={{ transitionDuration: `${TRANSITION_MS}ms` }}
-                >
-                  <span className="opacity-95">{activeItem.icon ?? ''}</span>
-                  <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{activeItem.text[lng]}</span>
-                </span>
-              )}
+                <AnimatePresence mode="wait" initial={false}>
+                  {activeItem && (
+                    <motion.div
+                      key={promoMotionKey}
+                      className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium md:text-base"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: TRANSITION_MS / 1000, ease: 'easeInOut' }}
+                      style={{ willChange: 'transform, opacity' }}
+                    >
+                      <span className="opacity-95">{activeItem.icon ?? ''}</span>
+                      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{activeItem.text[lng]}</span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 

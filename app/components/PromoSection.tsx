@@ -90,9 +90,10 @@ export default function PromoSection({
   const [transitionOn, setTransitionOn] = useState(false)
   const prevActiveRef = useRef<PromoItem | null>(null)
   const outgoingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const animCycleRef = useRef(0)
   const rafRef = useRef<number | null>(null)
   const rafRef2 = useRef<number | null>(null)
-  const animCycleRef = useRef(0)
+  const transitionKickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Countdown state (only for the active promo when it has countdownEnd).
   const [countdownText, setCountdownText] = useState<string>('')
@@ -134,6 +135,10 @@ export default function PromoSection({
       cancelAnimationFrame(rafRef2.current)
       rafRef2.current = null
     }
+    if (transitionKickTimeoutRef.current) {
+      clearTimeout(transitionKickTimeoutRef.current)
+      transitionKickTimeoutRef.current = null
+    }
 
     const prev = prevActiveRef.current
     if (prev && activeItem && prev !== activeItem) {
@@ -145,18 +150,25 @@ export default function PromoSection({
     prevActiveRef.current = activeItem
     setIncomingKey(`promo_${Date.now()}_${Math.random().toString(16).slice(2)}`)
     setTransitionOn(false)
-    // Double-rAF ensures the initial (transitionOff) styles are painted before we flip to transitionOn.
-    // This avoids occasional “stuck”/non-symmetric fades when looping back to the first promo.
-    const id1 = requestAnimationFrame(() => {
-      // Ignore stale callbacks from previous effect cycles.
+    // Double-rAF ensures the initial styles paint before we flip to "transitionOn".
+    // This is more reliable than setTimeout under load, especially on mobile.
+    rafRef.current = requestAnimationFrame(() => {
       if (animCycleRef.current !== cycle) return
-      const id2 = requestAnimationFrame(() => {
+      rafRef2.current = requestAnimationFrame(() => {
         if (animCycleRef.current !== cycle) return
+        if (transitionKickTimeoutRef.current) {
+          clearTimeout(transitionKickTimeoutRef.current)
+          transitionKickTimeoutRef.current = null
+        }
         setTransitionOn(true)
       })
-      rafRef2.current = id2
     })
-    rafRef.current = id1
+    // Guarded fallback in case rAF is delayed unusually (background tabs, heavy load).
+    transitionKickTimeoutRef.current = setTimeout(() => {
+      if (animCycleRef.current !== cycle) return
+      setTransitionOn(true)
+      transitionKickTimeoutRef.current = null
+    }, TRANSITION_MS)
 
     outgoingTimeoutRef.current = setTimeout(() => {
       if (animCycleRef.current !== cycle) return
@@ -176,6 +188,10 @@ export default function PromoSection({
       if (rafRef2.current !== null) {
         cancelAnimationFrame(rafRef2.current)
         rafRef2.current = null
+      }
+      if (transitionKickTimeoutRef.current) {
+        clearTimeout(transitionKickTimeoutRef.current)
+        transitionKickTimeoutRef.current = null
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -299,7 +315,7 @@ export default function PromoSection({
               {outgoing && (
                 <span
                   key={`out_${outgoing.key}`}
-                  className={`absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium transition-all md:text-base ${
+                  className={`absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium transition-opacity transition-transform will-change-transform md:text-base ${
                     transitionOn ? 'opacity-0 -translate-y-0.5' : 'opacity-100 translate-y-0'
                   }`}
                   style={{ transitionDuration: `${TRANSITION_MS}ms` }}
@@ -312,7 +328,7 @@ export default function PromoSection({
               {activeItem && (
                 <span
                   key={`in_${incomingKey}`}
-                  className={`absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium transition-all md:text-base ${
+                  className={`absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium transition-opacity transition-transform will-change-transform md:text-base ${
                     transitionOn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-0.5'
                   }`}
                   style={{ transitionDuration: `${TRANSITION_MS}ms` }}

@@ -30,6 +30,10 @@ export interface OrderEmailData {
     sku?: string;
     size?: string;
     colorName?: string;
+    /** Optional primary product image URL (absolute preferred for email clients). */
+    imageUrl?: string;
+    /** Optional product page URL (absolute). */
+    productUrl?: string;
     quantity: number;
     price: number;
   }>;

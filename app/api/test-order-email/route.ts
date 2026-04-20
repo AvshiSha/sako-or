@@ -1,4 +1,5 @@
 import { sendOrderConfirmationEmailIdempotent } from '../../../lib/email';
+import { buildAbsoluteUrl } from '../../../lib/seo';
 
 export async function POST(request: Request) {
   try {
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
     
     // Test email data
     const orderNumber = body.orderNumber || 'ORDER-TEST-' + Date.now();
+    const lng = body.isHebrew ? 'he' : 'en';
     const emailData = {
       customerEmail: body.email || 'avshi@sako-or.com',
       customerName: body.customerName || 'Test Customer',
@@ -41,7 +43,9 @@ export async function POST(request: Request) {
           sku: 'SKU-TEST-123',
           size: 'M',
           quantity: 1,
-          price: 100.00
+          price: 100.00,
+          imageUrl: buildAbsoluteUrl('/images/placeholder.svg'),
+          productUrl: buildAbsoluteUrl(`/${lng}/product/0000-0000/black`),
         }
       ],
       total: body.total || 100.00,

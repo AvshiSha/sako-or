@@ -26,6 +26,10 @@ interface OrderConfirmationEmailProps {
     sku?: string;
     size?: string;
     colorName?: string;
+    /** Optional primary product image URL (absolute preferred for email clients). */
+    imageUrl?: string;
+    /** Optional product page URL (absolute). */
+    productUrl?: string;
     quantity: number;
     price: number;
   }>;
@@ -271,9 +275,40 @@ export function OrderConfirmationEmail({
               <Heading style={h2(isHebrew)}>{t.items}</Heading>
               {items.map((item, index) => (
                 <Row key={index} style={itemRow}>
+                  {item.imageUrl && (
+                    <Column align="center" style={itemImageColumn}>
+                      {item.productUrl ? (
+                        <Link href={item.productUrl} style={productLink}>
+                          <Img
+                            src={item.imageUrl}
+                            width="56"
+                            height="56"
+                            alt={item.name}
+                            style={itemImage}
+                          />
+                        </Link>
+                      ) : (
+                        <Img
+                          src={item.imageUrl}
+                          width="56"
+                          height="56"
+                          alt={item.name}
+                          style={itemImage}
+                        />
+                      )}
+                    </Column>
+                  )}
                   <Column align={isHebrew ? 'right' : 'left'} style={itemName(isHebrew)}>
                     <div>
-                      <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{item.name}</div>
+                      <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                        {item.productUrl ? (
+                          <Link href={item.productUrl} style={productLink}>
+                            {item.name}
+                          </Link>
+                        ) : (
+                          item.name
+                        )}
+                      </div>
                       {(item.size || item.sku || item.colorName) && (
                         <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
                           {item.size && (
@@ -330,8 +365,7 @@ export function OrderConfirmationEmail({
                   <Column align={isHebrew ? 'left' : 'right'} style={{ ...summaryValue(isHebrew), whiteSpace: 'pre-line' }}>
                     {coupons
                       .map(coupon => {
-                        const label = coupon.discountLabel ? ` (${coupon.discountLabel})` : '';
-                        return `${coupon.code}${label} - ₪${coupon.discountAmount.toFixed(2)}`;
+                        return `${coupon.code} - ₪${coupon.discountAmount.toFixed(2)}`;
                       })
                       .join('\n')}
                   </Column>
@@ -383,8 +417,26 @@ OrderConfirmationEmail.PreviewProps = {
   orderNumber: 'ORD-2024-001',
   orderDate: '15/01/2024',
   items: [
-    { name: 'Premium Leather Shoes', quantity: 1, price: 299.99, size: '36', sku: '0000-0000', colorName: 'Black' },
-    { name: 'Cotton Socks', quantity: 2, price: 15.50, size: '35', sku: '0000-0001', colorName: 'White' },
+    {
+      name: 'Premium Leather Shoes',
+      quantity: 1,
+      price: 299.99,
+      size: '36',
+      sku: '0000-0000',
+      colorName: 'black',
+      imageUrl: 'https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fplaceholder.svg?alt=media&token=fe297841-0047-47c2-9523-823e98cd6e8f',
+      productUrl: 'https://sako-or.com/en/product/0000-0000/black',
+    },
+    {
+      name: 'Cotton Socks',
+      quantity: 2,
+      price: 15.5,
+      size: '35',
+      sku: '0000-0001',
+      colorName: 'white',
+      imageUrl: 'https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fplaceholder.svg?alt=media&token=fe297841-0047-47c2-9523-823e98cd6e8f',
+      productUrl: 'https://sako-or.com/en/product/0000-0001/white',
+    },
   ],
   total: 330.99,
   subtotal: 350.99,
@@ -515,6 +567,25 @@ const itemName = (isHebrew: boolean) => ({
   width: '50%',
   textAlign: (isHebrew ? 'right' : 'left') as 'left' | 'right',
 });
+
+const itemImageColumn = {
+  width: '70px',
+  paddingRight: '12px',
+  paddingLeft: '0px',
+  verticalAlign: 'top' as const,
+};
+
+const itemImage = {
+  display: 'block',
+  borderRadius: '8px',
+  objectFit: 'cover' as const,
+  border: '1px solid #f0f0f0',
+};
+
+const productLink = {
+  color: '#333',
+  textDecoration: 'none',
+};
 
 const itemQuantity = {
   color: '#666',

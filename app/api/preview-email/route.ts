@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { render } from '@react-email/render';
 import { OrderConfirmationEmail } from '@/app/emails/order-confirmation';
+import { buildAbsoluteUrl } from '@/lib/seo';
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,14 +16,18 @@ export async function GET(request: NextRequest) {
           sku: 'SHOES-001',
           size: 'L',
           quantity: 1, 
-          price: 299.99 
+          price: 299.99,
+          imageUrl: buildAbsoluteUrl('/images/placeholder.svg'),
+          productUrl: buildAbsoluteUrl('/en/product/0000-0000/black'),
         },
         { 
           name: 'Cotton Socks', 
           sku: 'SOCKS-002',
           size: 'M',
           quantity: 2, 
-          price: 15.50 
+          price: 15.50,
+          imageUrl: buildAbsoluteUrl('/images/placeholder.svg'),
+          productUrl: buildAbsoluteUrl('/en/product/0000-0001/white'),
         },
       ],
       total: 330.99,

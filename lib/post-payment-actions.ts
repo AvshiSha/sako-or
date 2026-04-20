@@ -2,6 +2,8 @@ import { prisma } from './prisma';
 import { parsePaymentData } from './orders';
 import { sendOrderConfirmationEmailIdempotent } from './email';
 import { triggerInforuAutomationIdempotent, e164ToLocalPhone } from './inforu';
+import { buildAbsoluteUrl } from './seo';
+import { normalizeColorSlug as normalizeColorSlugShared } from './colors';
 
 /** Normalize email for lookup: trim, remove RTL/LTR marks, collapse ".." so we can match despite typos. */
 function normalizeEmailForLookup(email: string): string {
@@ -10,6 +12,13 @@ function normalizeEmailForLookup(email: string): string {
     .trim()
     .replace(/\u200f|\u200e/g, '') // RTL mark, LTR mark
     .replace(/\.\.+/g, '.');
+}
+
+function normalizeOrderItemColorSlug(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined;
+  const trimmed = input.trim();
+  if (!trimmed) return undefined;
+  return normalizeColorSlugShared(trimmed).replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
 /**
@@ -61,16 +70,6 @@ export async function handlePostPaymentActions(
       }
     }
 
-    // Build items for template
-    const items = order.orderItems.map((item: any) => ({
-      name: item.productName,
-      quantity: item.quantity,
-      price: item.price,
-      size: item.size,
-      sku: item.productSku,
-      colorName: item.colorName || undefined,
-    }));
-
     // Extract language from request URL parameters (if provided)
     let if_he = true; // Default to Hebrew
     if (requestUrl) {
@@ -82,6 +81,40 @@ export async function handlePostPaymentActions(
         // If URL parsing fails, default to Hebrew
       }
     }
+
+    // Build items for email templates (include image + variant URL when available)
+    const lng = if_he ? 'he' : 'en';
+    const items = order.orderItems.map((item: any) => {
+      const baseSku =
+        typeof item.productSku === 'string' && item.productSku.trim()
+          ? item.productSku.trim()
+          : '';
+      const colorSlug: string | undefined = normalizeOrderItemColorSlug(item.colorName);
+
+      const productPath = baseSku
+        ? colorSlug
+          ? `/${lng}/product/${encodeURIComponent(baseSku)}/${encodeURIComponent(colorSlug)}`
+          : `/${lng}/product/${encodeURIComponent(baseSku)}`
+        : null;
+
+      const rawImageUrl: string | undefined = item.primaryImage || undefined;
+      const imageUrl = rawImageUrl
+        ? rawImageUrl.startsWith('http://') || rawImageUrl.startsWith('https://')
+          ? rawImageUrl
+          : buildAbsoluteUrl(rawImageUrl)
+        : undefined;
+
+      return {
+        name: item.productName,
+        quantity: item.quantity,
+        price: item.price,
+        size: item.size,
+        sku: baseSku || undefined,
+        colorName: colorSlug,
+        imageUrl,
+        productUrl: productPath ? buildAbsoluteUrl(productPath) : undefined,
+      };
+    });
 
     // Extract customer and delivery data: prefer checkout, fallback to order fields
     const payer = checkout

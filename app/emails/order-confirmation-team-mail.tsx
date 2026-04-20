@@ -6,6 +6,8 @@ import {
   Head,
   Heading,
   Html,
+  Img,
+  Link,
   Preview,
   Section,
   Text,
@@ -24,6 +26,10 @@ interface TeamOrderEmailProps {
     sku?: string;
     size?: string;
     colorName?: string;
+    /** Optional primary product image URL (absolute preferred for email clients). */
+    imageUrl?: string;
+    /** Optional product page URL (absolute). */
+    productUrl?: string;
     quantity: number;
     price: number;
   }>;
@@ -143,8 +149,39 @@ export function OrderConfirmationTeamEmail({
             <Heading as="h2" style={styles.sectionHeading}>{t('Items', 'מוצרים')}</Heading>
             {items.map((item, idx) => (
               <Row key={idx} style={styles.itemRow}>
+                {item.imageUrl ? (
+                  <Column style={styles.itemImageColumn}>
+                    {item.productUrl ? (
+                      <Link href={item.productUrl} style={styles.productLink}>
+                        <Img
+                          src={item.imageUrl}
+                          width="56"
+                          height="56"
+                          alt={item.name}
+                          style={styles.itemImage}
+                        />
+                      </Link>
+                    ) : (
+                      <Img
+                        src={item.imageUrl}
+                        width="56"
+                        height="56"
+                        alt={item.name}
+                        style={styles.itemImage}
+                      />
+                    )}
+                  </Column>
+                ) : null}
                 <Column>
-                  <Text style={styles.itemName}>{item.name}</Text>
+                  <Text style={styles.itemName}>
+                    {item.productUrl ? (
+                      <Link href={item.productUrl} style={styles.productLink}>
+                        {item.name}
+                      </Link>
+                    ) : (
+                      item.name
+                    )}
+                  </Text>
                   <Text style={styles.itemMeta}>
                     {item.sku ? `${t('SKU', 'מק״ט')}: ${item.sku} • ` : ''}
                     {item.size ? `${t('Size', 'מידה')}: ${item.size} • ` : ''}
@@ -208,8 +245,26 @@ OrderConfirmationTeamEmail.PreviewProps = {
     orderNumber: 'ORD-2024-001',
     orderDate: 'January 15, 2024',
     items: [
-      { name: 'Premium Leather Shoes', quantity: 1, price: 299.99, size: '36', sku: '0000-0000', colorName: 'Black' },
-      { name: 'Cotton Socks', quantity: 2, price: 15.50, size: '35', sku: '0000-0001', colorName: 'White' },
+      {
+        name: 'Premium Leather Shoes',
+        quantity: 1,
+        price: 299.99,
+        size: '36',
+        sku: '0000-0000',
+        colorName: 'black',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fplaceholder.svg?alt=media&token=fe297841-0047-47c2-9523-823e98cd6e8f',
+        productUrl: 'https://sako-or.com/en/product/0000-0000/black',
+      },
+      {
+        name: 'Cotton Socks',
+        quantity: 2,
+        price: 15.5,
+        size: '35',
+        sku: '0000-0001',
+        colorName: 'white',
+        imageUrl: 'https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fplaceholder.svg?alt=media&token=fe297841-0047-47c2-9523-823e98cd6e8f',
+        productUrl: 'https://sako-or.com/en/product/0000-0001/white',
+      },
     ],
     total: 330.99,
     subtotal: 350.99,
@@ -278,6 +333,21 @@ const styles = {
   itemRow: {
     padding: '8px 0',
     borderBottom: '1px solid #eee',
+  },
+  itemImageColumn: {
+    width: '70px',
+    verticalAlign: 'top' as const,
+    paddingRight: '12px',
+  },
+  itemImage: {
+    display: 'block',
+    borderRadius: '8px',
+    objectFit: 'cover' as const,
+    border: '1px solid #f0f0f0',
+  },
+  productLink: {
+    color: '#111',
+    textDecoration: 'none',
   },
   itemName: {
     fontSize: '16px',

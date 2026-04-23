@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { motion, type Transition } from "framer-motion";
+import { motion as fmMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
+
+const motion = fmMotion as unknown as any;
 
 export type LoaderProps = {
   className?: string;
@@ -18,14 +20,14 @@ export type LoaderProps = {
   label?: string;
 };
 
-const iconTransition: Transition = {
+const iconTransition = {
   duration: 1.6,
   ease: "easeInOut",
   repeat: Infinity,
   repeatType: "mirror",
 };
 
-const rotateTransition: Transition = {
+const rotateTransition = {
   duration: 4.5,
   ease: "linear",
   repeat: Infinity,

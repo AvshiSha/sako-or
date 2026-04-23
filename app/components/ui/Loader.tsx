@@ -28,7 +28,7 @@ const iconTransition = {
 };
 
 const rotateTransition = {
-  duration: 4.5,
+  duration: 10,
   ease: "linear",
   repeat: Infinity,
 };
@@ -36,7 +36,7 @@ const rotateTransition = {
 export default function Loader({
   className,
   overlay = true,
-  size = 56,
+  size = 120,
   label = "Loading",
 }: LoaderProps) {
   const icon = (
@@ -48,7 +48,8 @@ export default function Loader({
       aria-hidden="true"
       className="select-none"
       draggable={false}
-      animate={{ opacity: [0.82, 1], scale: [0.985, 1.02] }}
+      style={{ transform: "translateZ(0)" }}
+      animate={{ opacity: [0.88, 1], scale: [1, 1.02] }}
       transition={iconTransition}
     />
   );
@@ -64,6 +65,7 @@ export default function Loader({
         animate={{ rotate: 360 }}
         transition={rotateTransition}
         className="will-change-transform"
+        style={{ transform: "translateZ(0)" }}
       >
         {icon}
       </motion.div>

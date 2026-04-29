@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { Menu, X, Heart, ShoppingBag, ChevronDown, TextSearch, User } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import { track } from '@vercel/analytics'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import SearchBar from './SearchBar'
 import MobileAuthGreeting from './MobileAuthGreeting'
@@ -483,6 +484,13 @@ export default function Navigation({ lng }: { lng: string }) {
                             href={womenFeaturedCampaignHref(lng, link.slug)}
                             className="group relative flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 transition-colors duration-150 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100"
                             suppressHydrationWarning
+                            onClick={() =>
+                              track('nav_women_featured_click', {
+                                slug: link.slug,
+                                location: 'desktop_dropdown',
+                                lng,
+                              })
+                            }
                           >
                             <span className="font-medium tracking-wide">
                               {womenFeaturedLinkLabel(lng, link)}
@@ -837,6 +845,13 @@ export default function Navigation({ lng }: { lng: string }) {
                             className="flex items-center justify-between min-h-[44px] py-3 px-3 text-gray-900 font-medium transition-colors hover:bg-gray-50 active:bg-gray-100"
                             dir={lng === 'he' ? 'rtl' : 'ltr'}
                             suppressHydrationWarning
+                            onClick={() =>
+                              track('nav_women_featured_click', {
+                                slug: link.slug,
+                                location: 'mobile_sheet',
+                                lng,
+                              })
+                            }
                           >
                             <span className="text-sm tracking-wide">{womenFeaturedLinkLabel(lng, link)}</span>
                             {badge && (

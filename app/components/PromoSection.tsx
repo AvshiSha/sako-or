@@ -15,11 +15,11 @@ export type PromoItem = {
 const DEFAULT_PROMOS: PromoItem[] = [
   {
     text: {
-      he: '10% הנחה על כל הסניקרס | קוד: SNEAK10',
-      en: '10% discount on all sneakers | code: SNEAK10',
+      he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
+      en: 'Free shipping to all Israel, on orders over 300₪',
     },
-    href: '/collection/women/shoes/sneakers',
-    icon: '👟',
+    href: '/collection/women',
+    icon: '🚚',
   },
   {
     text: {

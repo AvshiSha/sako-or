@@ -15,20 +15,22 @@ export type PromoItem = {
 const DEFAULT_PROMOS: PromoItem[] = [
   {
     text: {
-      he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
-      en: 'Free shipping to all Israel, on orders over 300₪',
+      he: '20% הנחה על כל הסניקרס, רק הסופ"ש! | קוד: SNEAK20',
+      en: '20% discount on all sneakers, only in the weekend! | code: SNEAK20',
     },
-    href: '/collection/women',
-    icon: '🚚',
+    href: '/collection/women/shoes/sneakers',
+    icon: '👟',
+    // Countdown until May 3, 2026 midnight (local time).
+    countdownEnd: '2026-05-03T00:00:00',
   },
-  {
-    text: {
-      he: 'מחלקת האאוטלט – עד 70% הנחה על פריטים נבחרים',
-      en: 'Outlet category – up to 70% discount on selected items',
-    },
-    href: '/collection/women/outlet',
-    icon: '🔥',
-  },
+  // {
+  //   text: {
+  //     he: 'מחלקת האאוטלט – עד 70% הנחה על פריטים נבחרים',
+  //     en: 'Outlet category – up to 70% discount on selected items',
+  //   },
+  //   href: '/collection/women/outlet',
+  //   icon: '🔥',
+  // },
 ]
 
 interface PromoSectionProps {

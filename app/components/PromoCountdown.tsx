@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePromo } from '@/app/contexts/PromoContext'
 
-const DEFAULT_TARGET = '2026-03-09T00:00:00+02:00'
+const DEFAULT_TARGET = '2026-05-03T00:00:00+02:00'
 
 /** Height of the countdown bar in px. Ribbon is 40px; nav uses 40 + this when visible. */
 export const PROMO_COUNTDOWN_BAR_HEIGHT = 56

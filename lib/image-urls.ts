@@ -6,14 +6,17 @@ const imageUrlMappings: Record<string, string> = {
   "men-jewls.jpeg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fmen-jewls.jpeg?alt=media&token=b71b8fe9-3e0f-4ef3-8494-554ae5ed185a",
   "low-boots.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Flow-boots.jpg?alt=media&token=2f310de9-0629-43cf-ba7c-2cabe6dd0ce9",
   "women-bags.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fwomen-bags.jpg?alt=media&token=296cda9d-af7c-4696-9f6b-cbbc4dcfce8f",
-  "sako-men-shoes.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-men-shoes.webp?alt=media&token=b32af041-8624-4c39-bb9e-ce6ca47afe6d",
+  "sako-men-shoes.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhf_20260405_220729_6d371807-79a6-4187-8e4e-70a8dcaa709c.webp?alt=media&token=b83ad02b-454a-4be3-acb6-af6c7a0e397a",
   "sako-women-shoes.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-women-shoes.jpg?alt=media&token=702da283-bf49-4070-8b32-9c1f36fccc68",
   "sako-accs.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-accs.jpg?alt=media&token=f64145b0-00fb-459a-b2f1-1b4e103b9258",
   "high-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fhigh-heels.jpg?alt=media&token=977d2f7d-ed75-4e9f-94ed-1c8f0eb5f590",
   "sako-women-sneakers.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-women-sneakers.jpg?alt=media&token=5be848ff-56f7-4ac2-8db9-e6fd9901f0f9",
-  "sako-outlet.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-outlet.jpg?alt=media&token=58ad0bc4-bbee-4e33-b706-586c8e009761",
-  "sako-women-belts.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-women-belts.webp?alt=media&token=ab8da023-27b9-4851-93a6-974a21795bb5",
-  "sako-women-oxford.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO-oxfordr-collection-tail.webp?alt=media&token=295995a1-c467-48bd-a6e8-daddf65d34d5"
+  "sako-women-high-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2FIMG_0866%20(1).jpg?alt=media&token=87e620a6-ddbc-4f5c-a95f-7b0f4b3ce6a5",
+  "sako-women-oxford.jpg": "",
+  "sako-women-moccasin.jpg": "",
+  "sako-women-slippers.jpg": "",
+  "sako-women-sandals.jpg": "",
+  "sako-women-belts.jpg": "",
 };
 
 const videoUrlMappings: Record<string, string> = {

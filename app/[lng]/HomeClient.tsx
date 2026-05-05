@@ -151,23 +151,22 @@ function HeroVideoSection({
 // Define the exact SKUs you want to feature as "Best Sellers"
 // You can edit this array as needed.
 const BEST_SELLER_SKUS: string[] = [
-  '5005-0276',
-  '5005-0004',
-  '5035-0731',
-  '5025-4204',
+  '5003-0030',
+  '5004-0010',
+  '5025-3418',
+  '5025-3509',
+  '5025-3516',
   '5025-3513',
-  '5035-3347',
-  '5029-8695',
-  '5025-3517',
-  '5035-7712',
+  '5025-4204',
   '5022-3102',
-  '5025-2718',
-  '5035-0010',
+  '5025-2901',
+  '5026-0872',
+  '5025-7830',
+  '5025-7821',
+  '5029-8695',
   '5004-0016',
-  '5035-8816',
-  '5024-0009',
-  '5024-0007',
-  '5039-0003',
+  '5004-0070',
+  '5025-3517'
 ]
 
 // BOGO pair deal – SKUs from all groups (match assign-bogo-groups.ts)
@@ -527,7 +526,7 @@ export default function HomeClient() {
 
       {/* Product Carousel - Best Sellers */}
       {!loadingProducts && bestSellers.length > 0 && (
-        <ProductCarousel products={bestSellers} title={lng === 'he' ? 'New Collection' : 'New Collection'} language={lng as 'en' | 'he'} />
+        <ProductCarousel products={bestSellers} title={lng === 'he' ? 'Summer Collection Essentials' : 'Summer Collection Essentials'} language={lng as 'en' | 'he'} />
       )}
 
       {/* Hero section - Second */}

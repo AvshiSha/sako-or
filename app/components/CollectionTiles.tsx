@@ -17,7 +17,7 @@ interface CollectionTilesProps {
 const tiles: CollectionTile[] = [
   {
     id: 'tile-1',
-    image: getImageUrl('sako-men-sneakers.webp'),
+    image: getImageUrl('sako-women-sneakers.webp'),
     title: 'SAKO SNEAKERS',
     subtitle: 'NEW IN',
     href: '/collection/women/shoes/sneakers',

@@ -39,6 +39,10 @@ function HeroVideoSection({
   const [isInView, setIsInView] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
 
+  const isVideoSrc = useCallback((src: string) => src.toLowerCase().includes('.mp4'), [])
+  const hasDesktopVideo = isVideoSrc(desktopSrc)
+  const hasMobileVideo = isVideoSrc(mobileSrc)
+
   // Prefer playing only when section is in view so each hero feels independent and we avoid multiple videos fighting
   useEffect(() => {
     const el = containerRef.current
@@ -75,6 +79,7 @@ function HeroVideoSection({
   }, [isMobile])
 
   useEffect(() => {
+    if (!hasDesktopVideo && !hasMobileVideo) return
     if (!isInView) {
       desktopRef.current?.pause()
       mobileRef.current?.pause()
@@ -86,16 +91,17 @@ function HeroVideoSection({
     if (p && typeof p.catch === 'function') {
       p.catch(() => setShowPlayButton(true))
     }
-  }, [isInView, isMobile])
+  }, [isInView, isMobile, hasDesktopVideo, hasMobileVideo])
 
   // Hide play overlay when video actually starts (e.g. after user tap or delayed autoplay)
   useEffect(() => {
+    if (!hasDesktopVideo && !hasMobileVideo) return
     const video = isMobile ? mobileRef.current : desktopRef.current
     if (!video) return
     const onPlaying = () => setShowPlayButton(false)
     video.addEventListener('playing', onPlaying)
     return () => video.removeEventListener('playing', onPlaying)
-  }, [isMobile])
+  }, [isMobile, hasDesktopVideo, hasMobileVideo])
 
   return (
     <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]">
@@ -104,31 +110,57 @@ function HeroVideoSection({
           showPlayButton ? 'z-10' : 'z-0'
         }`}
       >
-        <video
-          ref={desktopRef}
-          className="hidden md:block h-full w-full object-cover"
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          //poster={posterSrc}
-          aria-hidden="true"
-        >
-          <source src={desktopSrc} type="video/mp4" />
-        </video>
-        <video
-          ref={mobileRef}
-          className="block md:hidden h-full w-full object-cover"
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          //poster={posterSrc}
-          aria-hidden="true"
-        >
-          <source src={mobileSrc} type="video/mp4" />
-        </video>
-        {showPlayButton && (
+        {hasDesktopVideo ? (
+          <video
+            ref={desktopRef}
+            className="hidden md:block h-full w-full object-cover"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            //poster={posterSrc}
+            aria-hidden="true"
+          >
+            <source src={desktopSrc} type="video/mp4" />
+          </video>
+        ) : (
+          <Image
+            src={desktopSrc || posterSrc}
+            alt=""
+            fill
+            sizes="(min-width: 768px) 100vw, 0px"
+            className="hidden md:block object-cover"
+            priority={false}
+            aria-hidden="true"
+          />
+        )}
+
+        {hasMobileVideo ? (
+          <video
+            ref={mobileRef}
+            className="block md:hidden h-full w-full object-cover"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            //poster={posterSrc}
+            aria-hidden="true"
+          >
+            <source src={mobileSrc} type="video/mp4" />
+          </video>
+        ) : (
+          <Image
+            src={mobileSrc || posterSrc}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 0px"
+            className="block md:hidden object-cover"
+            priority={false}
+            aria-hidden="true"
+          />
+        )}
+
+        {showPlayButton && (hasDesktopVideo || hasMobileVideo) && (
           <button
             type="button"
             onClick={playCurrent}
@@ -530,7 +562,7 @@ export default function HomeClient() {
         posterSrc={heroImageSrc}
         overlayOpacity="bg-neutral-900/60"
       >
-        <div className="relative h-full flex items-center justify-center text-center">
+        <div className="relative h-full flex flex-col items-center text-center">
           <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             {/* <h1
               className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase hero-text-fade-in"
@@ -538,6 +570,16 @@ export default function HomeClient() {
             >
               SAKO OR BAGS
             </h1> */}
+          </div>
+          <div className="absolute bottom-6 md:bottom-8 left-0 right-0 flex flex-row justify-center items-center px-4">
+            <Link
+              onClick={() => track('to_bags_collection')}
+              href={`/${lng}/collection/women/accessories/bags`}
+              className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300"
+              style={{ fontFamily: 'Assistant, sans-serif' }}
+            >
+              {lng === 'he' ? 'לקולקציית התיקים' : 'to the bags'}
+            </Link>
           </div>
         </div>
       </HeroVideoSection>
@@ -557,7 +599,7 @@ export default function HomeClient() {
             aria-label={lng === 'he' ? 'חדש באתר' : 'New in'}
           >
             <Image
-              src={getImageUrl('/images/hero/main-hero.svg')}
+              src="https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fnew_in.webp?alt=media&token=304d3a1d-97fe-4194-a77e-1ef83bc38aab"
               alt={lng === 'he' ? 'חדש באתר' : 'New in'}
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
@@ -588,7 +630,7 @@ export default function HomeClient() {
             aria-label={lng === 'he' ? 'מהדורה מוגבלת' : 'Limited edition'}
           >
             <Image
-              src={getImageUrl('/images/placeholder.svg')}
+              src="https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Flimited_editoin_v2.webp?alt=media&token=1e63ede2-4dc9-49e3-8aca-b2f59f2ac0b8"
               alt={lng === 'he' ? 'מהדורה מוגבלת' : 'Limited edition'}
               fill
               sizes="(max-width: 768px) 100vw, 50vw"

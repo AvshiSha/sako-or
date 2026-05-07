@@ -15,13 +15,13 @@ const imageUrlMappings: Record<string, string> = {
   "sako-women-oxford.jpg": "",
   "sako-women-moccasin.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fmoccasin_tiles.webp?alt=media&token=f1db8295-2ea8-4c33-9674-39d7d3afe49a",
   "sako-women-slippers.jpg": "",
-  "sako-women-sandals.jpg": "",
+  "sako-women-sandals.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollection_tile_sandals.webp?alt=media&token=f52c78e2-bc54-47e2-bd18-5e8ff88278c0",
   "sako-women-belts.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbelts_tiles.webp?alt=media&token=db6c451c-0332-463f-9580-6e89b1190828",
 };
 
 const videoUrlMappings: Record<string, string> = {
-  "/videos/hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fthe_new_desktop.mp4?alt=media&token=5a89f7b0-d950-4aae-a2f3-f55db603b239",
-  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fthe_new_mobile.mp4?alt=media&token=96ed45d8-7a7f-4a74-b238-4b5b084103a0",
+  "/videos/hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fv3_desktop_hero_1.mp4?alt=media&token=5e806364-1ed4-415b-bdd3-e08396c9d850",
+  "/videos/hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fv3_mobile_hero_1.mp4?alt=media&token=03068d08-1340-4f57-bb1b-3b5c525aefb5",
   "/videos/sako-or-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fsako_world_fab_2026.mp4?alt=media&token=5d5a19f1-316a-45a6-8f10-1eb9bbefc663",
   "/videos/sako-or-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION.mp4?alt=media&token=84b2745c-0008-4c91-9c88-ea251489954c",
   "/videos/hero3-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_SALES_DESKTOP.mp4?alt=media&token=7b109db9-67f6-47c8-b8cd-99c072f68a02",
@@ -71,7 +71,7 @@ export function getHeroMobileVideoUrl(): string {
  * Get Firebase Storage URL for the sako or mobile video
  */
 export function getSakoOrMobileVideoUrl(): string {
-  return getVideoUrl("/videos/sako-or-mobile.mp4");
+  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbags_image_hero_mobile.webp?alt=media&token=d55a6e62-028f-4793-988e-65aa54d63536";
 }
 
 export function getSakoOrDesktopVideoUrl(): string {

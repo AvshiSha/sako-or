@@ -25,8 +25,8 @@ const DEFAULT_PROMOS: PromoItem[] = [
   },
    {
      text: {
-       he: 'מחלקת האאוטלט – עד 70% הנחה על פריטים נבחרים',
-       en: 'Outlet category – up to 70% discount on selected items',
+       he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
+       en: 'Outlet category – up to 70% discount + 10% extra | Coupon: OUT10',
      },
      href: '/collection/women/outlet',
      icon: '🔥',

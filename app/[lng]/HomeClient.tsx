@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { track } from '@vercel/analytics'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useParams, usePathname } from 'next/navigation'
 import {
   getImageUrl,
@@ -37,6 +38,10 @@ function HeroVideoSection({
   const [showPlayButton, setShowPlayButton] = useState(false)
   const [isInView, setIsInView] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+
+  const isVideoSrc = useCallback((src: string) => src.toLowerCase().includes('.mp4'), [])
+  const hasDesktopVideo = isVideoSrc(desktopSrc)
+  const hasMobileVideo = isVideoSrc(mobileSrc)
 
   // Prefer playing only when section is in view so each hero feels independent and we avoid multiple videos fighting
   useEffect(() => {
@@ -74,6 +79,7 @@ function HeroVideoSection({
   }, [isMobile])
 
   useEffect(() => {
+    if (!hasDesktopVideo && !hasMobileVideo) return
     if (!isInView) {
       desktopRef.current?.pause()
       mobileRef.current?.pause()
@@ -85,16 +91,17 @@ function HeroVideoSection({
     if (p && typeof p.catch === 'function') {
       p.catch(() => setShowPlayButton(true))
     }
-  }, [isInView, isMobile])
+  }, [isInView, isMobile, hasDesktopVideo, hasMobileVideo])
 
   // Hide play overlay when video actually starts (e.g. after user tap or delayed autoplay)
   useEffect(() => {
+    if (!hasDesktopVideo && !hasMobileVideo) return
     const video = isMobile ? mobileRef.current : desktopRef.current
     if (!video) return
     const onPlaying = () => setShowPlayButton(false)
     video.addEventListener('playing', onPlaying)
     return () => video.removeEventListener('playing', onPlaying)
-  }, [isMobile])
+  }, [isMobile, hasDesktopVideo, hasMobileVideo])
 
   return (
     <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]">
@@ -103,31 +110,57 @@ function HeroVideoSection({
           showPlayButton ? 'z-10' : 'z-0'
         }`}
       >
-        <video
-          ref={desktopRef}
-          className="hidden md:block h-full w-full object-cover"
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          //poster={posterSrc}
-          aria-hidden="true"
-        >
-          <source src={desktopSrc} type="video/mp4" />
-        </video>
-        <video
-          ref={mobileRef}
-          className="block md:hidden h-full w-full object-cover"
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          //poster={posterSrc}
-          aria-hidden="true"
-        >
-          <source src={mobileSrc} type="video/mp4" />
-        </video>
-        {showPlayButton && (
+        {hasDesktopVideo ? (
+          <video
+            ref={desktopRef}
+            className="hidden md:block h-full w-full object-cover"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            //poster={posterSrc}
+            aria-hidden="true"
+          >
+            <source src={desktopSrc} type="video/mp4" />
+          </video>
+        ) : (
+          <Image
+            src={desktopSrc || posterSrc}
+            alt=""
+            fill
+            sizes="(min-width: 768px) 100vw, 0px"
+            className="hidden md:block object-cover"
+            priority={false}
+            aria-hidden="true"
+          />
+        )}
+
+        {hasMobileVideo ? (
+          <video
+            ref={mobileRef}
+            className="block md:hidden h-full w-full object-cover"
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            //poster={posterSrc}
+            aria-hidden="true"
+          >
+            <source src={mobileSrc} type="video/mp4" />
+          </video>
+        ) : (
+          <Image
+            src={mobileSrc || posterSrc}
+            alt=""
+            fill
+            sizes="(max-width: 768px) 100vw, 0px"
+            className="block md:hidden object-cover"
+            priority={false}
+            aria-hidden="true"
+          />
+        )}
+
+        {showPlayButton && (hasDesktopVideo || hasMobileVideo) && (
           <button
             type="button"
             onClick={playCurrent}
@@ -398,24 +431,16 @@ export default function HomeClient() {
     const fetchSakoOrProducts = async () => {
       try {
         setLoadingSakoOrProducts(true)
-        // Fetch more products to get better randomness, then shuffle and limit
-        const allProducts = await productService.getAllProducts({
-          isActive: true,
-          brand: 'SAKO-OR',
-          limit: 50, // Fetch more for better randomness
-        })
+        // Women's Accessories -> Bags (women/accessories/bags)
+        const result = await getFilteredProducts(
+          { categoryPath: 'women/accessories/bags' },
+          'newest',
+          { page: 1, pageSize: 200 }
+        )
 
-        // Shuffle array using Fisher-Yates algorithm
-        const shuffled = [...allProducts]
-        for (let i = shuffled.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1))
-          ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-        }
-
-        // Take first 15 after shuffling
-        setSakoOrProducts(shuffled.slice(0, 15))
+        setSakoOrProducts(result.products ?? [])
       } catch (error) {
-        console.error('Error fetching SAKO-OR products:', error)
+        console.error('Error fetching women accessories bags products:', error)
       } finally {
         setLoadingSakoOrProducts(false)
       }
@@ -536,45 +561,99 @@ export default function HomeClient() {
         posterSrc={heroImageSrc}
         overlayOpacity="bg-neutral-900/60"
       >
-        <div className="relative h-full flex items-center justify-center text-center">
+        <div className="relative h-full flex flex-col items-center text-center">
           <div className="absolute bottom-[10%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-            <h1
+            {/* <h1
               className="text-4xl md:text-5xl lg:text-6xl font-semibold text-white tracking-tight text-center uppercase hero-text-fade-in"
               style={{ fontFamily: 'Assistant, sans-serif', opacity: 0 }}
             >
-              SAKO OR EXCLUSIVE
-            </h1>
+              SAKO OR BAGS
+            </h1> */}
+          </div>
+          <div className="absolute bottom-6 md:bottom-8 left-0 right-0 flex flex-row justify-center items-center px-4">
+            <Link
+              onClick={() => track('to_bags_collection')}
+              href={`/${lng}/collection/women/accessories/bags`}
+              className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300"
+              style={{ fontFamily: 'Assistant, sans-serif' }}
+            >
+              {lng === 'he' ? 'לקולקציית התיקים' : 'to the bags'}
+            </Link>
           </div>
         </div>
       </HeroVideoSection>
 
       {/* Product Carousel - SAKO-OR Products - Second */}
       {!loadingSakoOrProducts && sakoOrProducts.length > 0 && (
-        <ProductCarousel products={sakoOrProducts} title={'Only at SAKO OR'} language={lng as 'en' | 'he'} />
+        <ProductCarousel products={sakoOrProducts} title={'SAKO OR BAGS'} language={lng as 'en' | 'he'} />
       )}
 
-      {/* Hero section - Third (desktop + mobile videos) */}
-      <HeroVideoSection desktopSrc={hero3DesktopVideoSrc} mobileSrc={hero3MobileVideoSrc} posterSrc={heroImageSrc} overlayOpacity="bg-neutral-900/40">
-        <div className="relative h-full flex items-center justify-center text-center">
-          <div className="absolute bottom-0 left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 pb-4 md:pb-6">
-            <div className="flex flex-row gap-6 md:gap-8 justify-center items-center">
-              <Link
-                onClick={() => track('bogo_pair_collection')}
-                href={`/${lng}/collection/campaign?slug=bogosale`}
-                className="text-white text-2xl md:text-2xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80"
+      {/* Campaign tiles - New in / Limited edition */}
+      <div className="relative aspect-[3/4] md:aspect-[21/9] bg-black">
+        <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 bg-white p-2 md:p-3">
+          <Link
+            href={`/${lng}/collection/campaign?slug=new-in`}
+            onClick={() => track('campaign_new_in')}
+            className="group relative overflow-hidden"
+            aria-label={lng === 'he' ? 'חדש באתר' : 'New in'}
+          >
+            <Image
+              src="https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fnew_in.webp?alt=media&token=304d3a1d-97fe-4194-a77e-1ef83bc38aab"
+              alt={lng === 'he' ? 'חדש באתר' : 'New in'}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+              priority={false}
+            />
+            <div className="absolute inset-0 bg-neutral-900/40 transition-colors duration-300 group-hover:bg-neutral-900/50" aria-hidden="true" />
+            <div className="absolute inset-x-0 bottom-0 p-6 md:p-10">
+              <div
+                className="text-white text-3xl md:text-4xl font-semibold tracking-tight uppercase"
                 style={{ fontFamily: 'Assistant, sans-serif' }}
               >
-                {lng === 'he' ? 'לקולקציה של מבצע הזוגות' : 'To BOGO pair collection'}
-              </Link>
+                {lng === 'he' ? 'חדש באתר' : 'New in'}
+              </div>
+              <div
+                className="mt-2 text-white/90 text-base md:text-lg font-light tracking-wide underline decoration-white/80 underline-offset-4 group-hover:text-white"
+                style={{ fontFamily: 'Assistant, sans-serif' }}
+              >
+                {lng === 'he' ? 'לצפייה' : 'Shop now'}
+              </div>
             </div>
-          </div>
-        </div>
-      </HeroVideoSection>
+          </Link>
 
-      {/* Product Carousel - BOGO pair deal */}
-      {!loadingBogoPairProducts && bogoPairProducts.length > 0 && (
-        <ProductCarousel products={bogoPairProducts} title={t.bogoPairTitle} language={lng as 'en' | 'he'} />
-      )}
+          <Link
+            href={`/${lng}/collection/campaign?slug=limited-edition`}
+            onClick={() => track('campaign_limited_edition')}
+            className="group relative overflow-hidden"
+            aria-label={lng === 'he' ? 'מהדורה מוגבלת' : 'Limited edition'}
+          >
+            <Image
+              src="https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Flimited_editoin_v2.webp?alt=media&token=1e63ede2-4dc9-49e3-8aca-b2f59f2ac0b8"
+              alt={lng === 'he' ? 'מהדורה מוגבלת' : 'Limited edition'}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+              priority={false}
+            />
+            <div className="absolute inset-0 bg-neutral-900/40 transition-colors duration-300 group-hover:bg-neutral-900/50" aria-hidden="true" />
+            <div className="absolute inset-x-0 bottom-0 p-6 md:p-10">
+              <div
+                className="text-white text-3xl md:text-4xl font-semibold tracking-tight uppercase"
+                style={{ fontFamily: 'Assistant, sans-serif' }}
+              >
+                {lng === 'he' ? 'מהדורה מוגבלת' : 'Limited edition'}
+              </div>
+              <div
+                className="mt-2 text-white/90 text-base md:text-lg font-light tracking-wide underline decoration-white/80 underline-offset-4 group-hover:text-white"
+                style={{ fontFamily: 'Assistant, sans-serif' }}
+              >
+                {lng === 'he' ? 'לצפייה' : 'Shop now'}
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
 
       {/* Collection Tiles - under Hero #3 */}
       <CollectionTiles lng={lng} />

@@ -4,6 +4,12 @@ import { getAnalytics, logEvent as firebaseLogEvent, Analytics } from "firebase/
 import { getFirestore, Firestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, setDoc, deleteDoc, query, where, orderBy, limit, startAfter, onSnapshot, Query, Unsubscribe, QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { getAuth, Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { getStorage, FirebaseStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import type { CampaignMerchandising } from '@/lib/campaign-merchandising-types';
+import {
+  defaultCampaignMerchandising,
+  parseVariantKey,
+  MERCHANDISING_COLLECTION,
+} from '@/lib/campaign-merchandising-types';
 
 // Lazy-init Firebase to avoid auth/invalid-api-key during Next.js build (when env may be missing).
 // Initialization runs on first use of db/auth/storage/app, not at import time.
@@ -379,6 +385,16 @@ export interface Campaign {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type {
+  CampaignMerchandising,
+  CampaignMerchandisingMode,
+} from '@/lib/campaign-merchandising-types';
+
+export {
+  defaultCampaignMerchandising,
+  parseVariantKey,
+} from '@/lib/campaign-merchandising-types';
 
 // Helper functions for bilingual products
 export const productHelpers = {
@@ -2171,6 +2187,349 @@ export async function getCollectionProducts(
   });
 }
 
+/** Read per-campaign merchandising config (defaults to auto when missing). */
+export async function getCampaignMerchandising(campaignSlug: string): Promise<CampaignMerchandising> {
+  try {
+    const snap = await getDoc(doc(db, MERCHANDISING_COLLECTION, campaignSlug));
+    if (!snap.exists()) {
+      return defaultCampaignMerchandising(campaignSlug);
+    }
+    const data = snap.data() as Partial<CampaignMerchandising>;
+    return {
+      campaignSlug,
+      mode: data.mode ?? 'auto',
+      orderedVariantKeys: Array.isArray(data.orderedVariantKeys) ? data.orderedVariantKeys : [],
+      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedBy: data.updatedBy,
+      version: data.version ?? 1,
+    };
+  } catch (error) {
+    console.error('Error fetching campaign merchandising:', error);
+    return defaultCampaignMerchandising(campaignSlug);
+  }
+}
+
+function sortProductsForCampaignAuto(
+  products: Product[],
+  orderBy: CampaignProductFilter['orderBy'] = 'createdAt',
+  orderDirection: CampaignProductFilter['orderDirection'] = 'desc'
+): Product[] {
+  const dir = orderDirection === 'asc' ? 1 : -1;
+  const sorted = [...products];
+  sorted.sort((a, b) => {
+    if (orderBy === 'salePrice') {
+      const priceA = a.salePrice && a.salePrice > 0 ? a.salePrice : a.price;
+      const priceB = b.salePrice && b.salePrice > 0 ? b.salePrice : b.price;
+      return (priceA - priceB) * dir;
+    }
+    const dateA = a.createdAt ? new Date(a.createdAt as string | Date).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt as string | Date).getTime() : 0;
+    return (dateA - dateB) * dir;
+  });
+  return sorted;
+}
+
+function variantItemMatchesFilters(item: VariantItem, filters: ProductFilters): boolean {
+  const productFilters: ProductFilters = {
+    ...filters,
+    color: undefined,
+    size: undefined,
+    minPrice: undefined,
+    maxPrice: undefined,
+  };
+  if (!productMatchesListingFilters(item.product, productFilters)) {
+    return false;
+  }
+
+  if (filters.color && (Array.isArray(filters.color) ? filters.color.length > 0 : true)) {
+    const colors = Array.isArray(filters.color) ? filters.color : [filters.color];
+    if (!colors.includes(item.variant.colorSlug || '')) {
+      return false;
+    }
+  }
+
+  if (filters.size && (Array.isArray(filters.size) ? filters.size.length > 0 : true)) {
+    const sizeSet = new Set(
+      (Array.isArray(filters.size) ? filters.size : [filters.size])
+        .map((s) => String(s).trim())
+        .filter(Boolean)
+    );
+    const stockBySize = item.variant.stockBySize || {};
+    const hasSize = Array.from(sizeSet).some((sizeKey) => {
+      const qty = stockBySize[sizeKey];
+      return typeof qty === 'number' && qty > 0;
+    });
+    if (!hasSize) {
+      return false;
+    }
+  }
+
+  const price = getVariantPriceForSort(item);
+  if (filters.minPrice !== undefined && filters.minPrice > 0 && price < filters.minPrice) {
+    return false;
+  }
+  if (filters.maxPrice !== undefined && filters.maxPrice > 0 && price > filters.maxPrice) {
+    return false;
+  }
+
+  return true;
+}
+
+async function fetchVariantItemsByKeys(
+  keys: string[],
+  expandOptions?: ExpandProductsToVariantsOptions
+): Promise<VariantItem[]> {
+  if (keys.length === 0) return [];
+
+  const productIds = [
+    ...new Set(
+      keys
+        .map((key) => parseVariantKey(key)?.productId)
+        .filter((id): id is string => !!id)
+    ),
+  ];
+
+  const productMap = new Map<string, Product>();
+  const chunkSize = 30;
+  for (let i = 0; i < productIds.length; i += chunkSize) {
+    const chunk = productIds.slice(i, i + chunkSize);
+    await Promise.all(
+      chunk.map(async (productId) => {
+        try {
+          const snap = await getDoc(doc(db, 'products', productId));
+          if (!snap.exists()) return;
+          const product = { id: snap.id, ...snap.data() } as Product;
+          if (product.isDeleted || product.isEnabled === false) return;
+          await loadColorVariantsForProduct(product);
+          productMap.set(productId, product);
+        } catch (error) {
+          console.warn(`Error fetching product ${productId} for merchandising:`, error);
+        }
+      })
+    );
+  }
+
+  const items: VariantItem[] = [];
+  for (const key of keys) {
+    const parsed = parseVariantKey(key);
+    if (!parsed) continue;
+    const product = productMap.get(parsed.productId);
+    if (!product) continue;
+    const expanded = expandProductsToVariants([product], {
+      ...expandOptions,
+      colorSlugs: expandOptions?.colorSlugs ?? [parsed.colorSlug],
+    });
+    const match = expanded.find((item) => item.variantKey === key);
+    if (match) {
+      items.push(match);
+    }
+  }
+  return items;
+}
+
+type CollectTagVariantsOptions = {
+  filters: ProductFilters;
+  excludeVariantKeys: Set<string>;
+  productLimit?: number;
+  expandOptions?: ExpandProductsToVariantsOptions;
+  productFilter?: CampaignProductFilter;
+};
+
+async function collectTagMatchedVariantItems(
+  options: CollectTagVariantsOptions
+): Promise<{
+  items: VariantItem[];
+  availableFilterOptions: { colors: string[]; sizes: string[] };
+}> {
+  const { filters, excludeVariantKeys, productLimit, expandOptions, productFilter } = options;
+  const filtersNoColorSize = { ...filters, color: undefined, size: undefined };
+  const colorFacetSet = new Set<string>();
+  const sizeFacetSet = new Set<string>();
+  const matchedProducts: Product[] = [];
+  let facetProductCount = 0;
+  let matchedProductCount = 0;
+
+  let baseConstraints = buildFirestoreProductConstraints(filters, 'relevance');
+  let lastDoc: QueryDocumentSnapshot<DocumentData> | undefined;
+
+  while (true) {
+    const pageConstraints = [...baseConstraints];
+    if (lastDoc) {
+      pageConstraints.push(startAfter(lastDoc));
+    }
+    pageConstraints.push(limit(LISTING_FIRESTORE_BATCH_SIZE));
+
+    const snapshot = await getDocs(query(collection(db, 'products'), ...pageConstraints));
+    if (snapshot.empty) {
+      break;
+    }
+
+    const products = await hydrateProductsForListing(snapshot.docs);
+    lastDoc = snapshot.docs[snapshot.docs.length - 1];
+
+    for (const product of products) {
+      if (productMatchesListingFilters(product, filtersNoColorSize)) {
+        if (!productLimit || facetProductCount < productLimit) {
+          collectFacetOptionsFromProduct(product, colorFacetSet, sizeFacetSet);
+          facetProductCount += 1;
+        }
+      }
+
+      if (!productMatchesListingFilters(product, filters)) {
+        continue;
+      }
+
+      if (productLimit && productLimit > 0 && matchedProductCount >= productLimit) {
+        continue;
+      }
+      matchedProductCount += 1;
+      matchedProducts.push(product);
+    }
+
+    if (snapshot.docs.length < LISTING_FIRESTORE_BATCH_SIZE) {
+      break;
+    }
+  }
+
+  const sortedProducts = sortProductsForCampaignAuto(
+    matchedProducts,
+    productFilter?.orderBy ?? 'createdAt',
+    productFilter?.orderDirection ?? 'desc'
+  );
+
+  const items: VariantItem[] = [];
+  for (const product of sortedProducts) {
+    const variantItems = expandProductsToVariants([product], expandOptions);
+    for (const item of variantItems) {
+      if (!excludeVariantKeys.has(item.variantKey)) {
+        items.push(item);
+      }
+    }
+  }
+
+  return {
+    items,
+    availableFilterOptions: buildAvailableFilterOptions(colorFacetSet, sizeFacetSet),
+  };
+}
+
+type ResolveCampaignMerchandisedOptions = {
+  campaign: Campaign;
+  merchandising: CampaignMerchandising;
+  filters: ProductFilters;
+  page: number;
+  pageSize?: number;
+  productLimit?: number;
+};
+
+async function resolveCampaignMerchandisedVariantPage(
+  options: ResolveCampaignMerchandisedOptions
+): Promise<FilteredProductsResult> {
+  const { campaign, merchandising, filters, productLimit } = options;
+  const pageSize = options.pageSize ?? LISTING_PAGE_SIZE;
+  const validatedPage = Number.isInteger(options.page) && options.page > 0 ? options.page : 1;
+  const startIndex = (validatedPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+
+  const normalizedColors = filters.color
+    ? (Array.isArray(filters.color) ? filters.color : [filters.color]).filter(Boolean)
+    : undefined;
+  const normalizedSizes = filters.size
+    ? (Array.isArray(filters.size) ? filters.size : [filters.size]).filter(Boolean)
+    : undefined;
+  const expandOptions =
+    normalizedColors || normalizedSizes
+      ? { colorSlugs: normalizedColors, sizes: normalizedSizes }
+      : undefined;
+
+  const curatedKeys = merchandising.orderedVariantKeys;
+  const excludeSet = new Set(curatedKeys);
+
+  const useKeySlice =
+    merchandising.mode === 'manual' && curatedKeys.length > pageSize;
+
+  let pageItems: VariantItem[] = [];
+  let availableFilterOptions = { colors: [] as string[], sizes: [] as string[] };
+  let total = 0;
+
+  if (useKeySlice) {
+    const curatedCount = curatedKeys.length;
+    const { items: tailItems, availableFilterOptions: facets } = await collectTagMatchedVariantItems({
+      filters,
+      excludeVariantKeys: excludeSet,
+      productLimit,
+      expandOptions,
+      productFilter: campaign.productFilter,
+    });
+    availableFilterOptions = facets;
+    total = curatedCount + tailItems.length;
+
+    if (endIndex <= curatedCount) {
+      const sliceKeys = curatedKeys.slice(startIndex, endIndex);
+      pageItems = await fetchVariantItemsByKeys(sliceKeys, expandOptions);
+    } else if (startIndex >= curatedCount) {
+      const tailOffset = startIndex - curatedCount;
+      pageItems = tailItems.slice(tailOffset, tailOffset + pageSize);
+    } else {
+      const curatedSlice = curatedKeys.slice(startIndex, curatedCount);
+      const curatedItems = await fetchVariantItemsByKeys(curatedSlice, expandOptions);
+      const tailNeeded = pageSize - curatedItems.length;
+      pageItems = [...curatedItems, ...tailItems.slice(0, tailNeeded)];
+    }
+  } else {
+    const pinnedItems = await fetchVariantItemsByKeys(curatedKeys, expandOptions);
+    const { items: tailItems, availableFilterOptions: facets } = await collectTagMatchedVariantItems({
+      filters,
+      excludeVariantKeys: merchandising.mode === 'pinned' || merchandising.mode === 'manual' ? excludeSet : new Set(),
+      productLimit,
+      expandOptions,
+      productFilter: campaign.productFilter,
+    });
+    availableFilterOptions = facets;
+
+    let merged: VariantItem[];
+    if (merchandising.mode === 'manual') {
+      const pinnedByKey = new Map(pinnedItems.map((item) => [item.variantKey, item]));
+      const orderedPinned = curatedKeys
+        .map((key) => pinnedByKey.get(key))
+        .filter((item): item is VariantItem => !!item);
+      const pinnedKeySet = new Set(orderedPinned.map((item) => item.variantKey));
+      const tail = tailItems.filter((item) => !pinnedKeySet.has(item.variantKey));
+      merged = [...orderedPinned, ...tail];
+    } else {
+      const pinnedByKey = new Map(pinnedItems.map((item) => [item.variantKey, item]));
+      const orderedPinned = curatedKeys
+        .map((key) => pinnedByKey.get(key))
+        .filter((item): item is VariantItem => !!item);
+      merged = [...orderedPinned, ...tailItems];
+    }
+
+    const filtered = merged.filter((item) => variantItemMatchesFilters(item, filters));
+    total = filtered.length;
+    pageItems = filtered.slice(startIndex, endIndex);
+  }
+
+  const filteredPageItems = pageItems.filter((item) => variantItemMatchesFilters(item, filters));
+  const hasMore = endIndex < total;
+  const uniqueProducts = new Map<string, Product>();
+  filteredPageItems.forEach((item) => {
+    const productId = item.product.id || item.product.sku;
+    if (!uniqueProducts.has(productId)) {
+      uniqueProducts.set(productId, item.product);
+    }
+  });
+
+  return {
+    products: Array.from(uniqueProducts.values()),
+    variantItems: filteredPageItems,
+    hasMore,
+    total,
+    page: validatedPage,
+    pageSize,
+    availableFilterOptions,
+  };
+}
+
 /**
  * Get campaign collection products (tag-based only) with filters from searchParams.
  * Same filter/sort/paginate pipeline as getCollectionProducts, but base set is products with campaign tag.
@@ -2266,6 +2625,21 @@ export async function getCampaignCollectionProducts(
   const page = pageParam
     ? (typeof pageParam === 'string' ? parseInt(pageParam) : Array.isArray(pageParam) ? parseInt(pageParam[0]) : 1)
     : 1;
+
+  const useMerchandising = sort === 'relevance';
+  if (useMerchandising) {
+    const merchandising = await getCampaignMerchandising(campaign.slug);
+    if (merchandising.mode !== 'auto') {
+      return resolveCampaignMerchandisedVariantPage({
+        campaign,
+        merchandising,
+        filters,
+        page,
+        pageSize: LISTING_PAGE_SIZE,
+        productLimit: campaign.productFilter?.limit,
+      });
+    }
+  }
 
   return resolveListingVariantPage({
     filters,

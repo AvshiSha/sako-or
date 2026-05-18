@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { 
   PlusIcon, 
-  PencilIcon, 
+  PencilIcon,
   TrashIcon,
+  Squares2X2Icon,
   EyeIcon,
   MagnifyingGlassIcon,
   TicketIcon,
@@ -383,6 +384,13 @@ function CampaignsPageContent() {
                               title="Preview (EN)"
                             >
                               <EyeIcon className="h-5 w-5" />
+                            </Link>
+                            <Link
+                              href={`/admin/campaigns/${campaign.slug}/merchandising`}
+                              className="text-indigo-600 hover:text-indigo-900"
+                              title="Merchandising"
+                            >
+                              <Squares2X2Icon className="h-5 w-5" />
                             </Link>
                             <Link
                               href={`/admin/campaigns/${campaign.slug}`}

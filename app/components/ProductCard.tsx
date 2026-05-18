@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
-import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon, TagIcon } from '@heroicons/react/24/outline'
+import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import QuickBuyDrawer from './QuickBuyDrawer'
@@ -18,49 +18,10 @@ import {
 } from '@/app/components/ui/carousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
-import type { ProductCouponBadge } from '@/lib/coupon-product-badges'
+import { ProductPromoCouponBadge } from './ProductPromoCouponBadge'
 
 const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
 const STATUS_BADGE_CLASS = 'text-xs font-medium px-2 py-1 rounded pointer-events-none'
-
-function ProductPromoCouponBadge({
-  badge,
-  language,
-  align = 'left',
-}: {
-  badge: ProductCouponBadge
-  language: 'en' | 'he'
-  align?: 'left' | 'right'
-}) {
-  const label = badge.label[language]
-  const textClass =
-    language === 'en' ? 'uppercase tracking-wide' : 'tracking-normal'
-
-  return (
-    <div
-      dir="ltr"
-      className={`inline-flex w-fit max-w-full items-center gap-1 rounded-full border border-[#856D55]/45 bg-white/95 px-2.5 py-1 min-h-[22px] md:px-2 md:py-0.5 md:min-h-[20px] pointer-events-none ${
-        align === 'right' ? 'ml-auto flex-row-reverse' : ''
-      }`}
-      style={BADGE_FONT_STYLE}
-    >
-      <TagIcon
-        className="h-2.5 w-2.5 shrink-0 text-[#856D55]"
-        strokeWidth={2}
-        aria-hidden
-      />
-      <span
-        className={`inline-flex min-w-0 items-center gap-1 whitespace-nowrap text-[9px] font-medium leading-none text-[#5C4A3A] md:truncate ${textClass}`}
-      >
-        <span className="shrink-0">{label}</span>
-        <span className="shrink-0 text-[#856D55]/45" aria-hidden>
-          •
-        </span>
-        <span className="shrink-0 font-semibold tabular-nums">{badge.code}</span>
-      </span>
-    </div>
-  )
-}
 
 interface ProductCardProps {
   product: Product
@@ -495,17 +456,10 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
           </div>
         )}
 
-        {/* Promo badge — mobile top-left */}
+        {/* Promo badge — top-left (grid, search, home carousel, etc.) */}
         {promoBadge && (
-          <div className="absolute top-4 left-1 right-22 z-10 flex items-start md:hidden pointer-events-none">
+          <div className="absolute top-2.5 left-2 z-20 max-w-[calc(100%-3.25rem)] pointer-events-none">
             <ProductPromoCouponBadge badge={promoBadge} language={language} />
-          </div>
-        )}
-
-        {/* Desktop: promo top-right */}
-        {promoBadge && (
-          <div className="absolute top-2 right-2 z-10 hidden md:block max-w-[42%] pointer-events-none">
-            <ProductPromoCouponBadge badge={promoBadge} language={language} align="right" />
           </div>
         )}
 

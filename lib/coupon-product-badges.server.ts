@@ -10,38 +10,45 @@ import {
   type ProductCouponBadgeIndex,
 } from './coupon-product-badges'
 
+const EMPTY_COUPON_BADGE_INDEX: ProductCouponBadgeIndex = {}
+
 export async function getStorefrontCouponBadgeIndex(): Promise<ProductCouponBadgeIndex> {
-  const now = new Date()
+  try {
+    const now = new Date()
 
-  const coupons = await prisma.coupon.findMany({
-    where: {
-      isActive: true,
-      discountType: {
-        in: ['percent_specific', 'bogo'] as CouponDiscountType[],
+    const coupons = await prisma.coupon.findMany({
+      where: {
+        isActive: true,
+        discountType: {
+          in: ['percent_specific', 'bogo'] as CouponDiscountType[],
+        },
       },
-    },
-    select: {
-      code: true,
-      discountType: true,
-      discountValue: true,
-      eligibleProducts: true,
-      bogoBuySkus: true,
-      bogoGetSkus: true,
-      bogoEligibleSkus: true,
-      bogoBuyQuantity: true,
-      bogoGetQuantity: true,
-      isActive: true,
-      startDate: true,
-      endDate: true,
-      usageLimit: true,
-      usageCount: true,
-    },
-  })
+      select: {
+        code: true,
+        discountType: true,
+        discountValue: true,
+        eligibleProducts: true,
+        bogoBuySkus: true,
+        bogoGetSkus: true,
+        bogoEligibleSkus: true,
+        bogoBuyQuantity: true,
+        bogoGetQuantity: true,
+        isActive: true,
+        startDate: true,
+        endDate: true,
+        usageLimit: true,
+        usageCount: true,
+      },
+    })
 
-  const activeCoupons = coupons.filter((coupon) => {
-    if (!isCouponStorefrontActive(coupon, now)) return false
-    return getCouponSkuLists(coupon).length > 0
-  })
+    const activeCoupons = coupons.filter((coupon) => {
+      if (!isCouponStorefrontActive(coupon, now)) return false
+      return getCouponSkuLists(coupon).length > 0
+    })
 
-  return badgeIndexToRecord(buildStorefrontCouponBadgeIndex(activeCoupons))
+    return badgeIndexToRecord(buildStorefrontCouponBadgeIndex(activeCoupons))
+  } catch (error) {
+    console.error('[getStorefrontCouponBadgeIndex] Failed to load coupon badges:', error)
+    return EMPTY_COUPON_BADGE_INDEX
+  }
 }

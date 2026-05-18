@@ -31,16 +31,16 @@ const DEFAULT_PROMOS: PromoItem[] = [
      href: '/collection/women/outlet',
      icon: '🔥',
    },
-   {
-    text: {
-      he: 'מגוון מוצרים מקולקציית הסניקרס ב־20% הנחה',
-      en: '20% off on all of the SAKO SNEAKERS collection',
-    },
-    href: '/collection/women/shoes/sneakers',
-    icon: '👟',
-    // Countdown until May 17, 2026 midnight (local time).
-    // countdownEnd: '2026-05-17T00:00:00',
-  },
+  //  {
+  //   text: {
+  //     he: 'מגוון מוצרים מקולקציית הסניקרס ב־20% הנחה',
+  //     en: '20% off on all of the SAKO SNEAKERS collection',
+  //   },
+  //   href: '/collection/women/shoes/sneakers',
+  //   icon: '👟',
+  //   // Countdown until May 17, 2026 midnight (local time).
+  //   // countdownEnd: '2026-05-17T00:00:00',
+  // },
   {
     text: {
       he: 'חג שבועות שמח מגוון פריטים ב־20% הנחה | קוד קופון: SHVT20',

@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
-import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon, TagIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import QuickBuyDrawer from './QuickBuyDrawer'
@@ -17,6 +17,50 @@ import {
   type CarouselApi,
 } from '@/app/components/ui/carousel'
 import { buildFavoriteKey } from '@/lib/favorites'
+import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
+import type { ProductCouponBadge } from '@/lib/coupon-product-badges'
+
+const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
+const STATUS_BADGE_CLASS = 'text-xs font-medium px-2 py-1 rounded pointer-events-none'
+
+function ProductPromoCouponBadge({
+  badge,
+  language,
+  align = 'left',
+}: {
+  badge: ProductCouponBadge
+  language: 'en' | 'he'
+  align?: 'left' | 'right'
+}) {
+  const label = badge.label[language]
+  const textClass =
+    language === 'en' ? 'uppercase tracking-wide' : 'tracking-normal'
+
+  return (
+    <div
+      dir="ltr"
+      className={`inline-flex w-fit max-w-full items-center gap-1 rounded-full border border-[#856D55]/45 bg-white/95 px-2.5 py-1 min-h-[22px] md:px-2 md:py-0.5 md:min-h-[20px] pointer-events-none ${
+        align === 'right' ? 'ml-auto flex-row-reverse' : ''
+      }`}
+      style={BADGE_FONT_STYLE}
+    >
+      <TagIcon
+        className="h-2.5 w-2.5 shrink-0 text-[#856D55]"
+        strokeWidth={2}
+        aria-hidden
+      />
+      <span
+        className={`inline-flex min-w-0 items-center gap-1 whitespace-nowrap text-[9px] font-medium leading-none text-[#5C4A3A] md:truncate ${textClass}`}
+      >
+        <span className="shrink-0">{label}</span>
+        <span className="shrink-0 text-[#856D55]/45" aria-hidden>
+          •
+        </span>
+        <span className="shrink-0 font-semibold tabular-nums">{badge.code}</span>
+      </span>
+    </div>
+  )
+}
 
 interface ProductCardProps {
   product: Product
@@ -178,6 +222,50 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const isLastCall = useMemo(() => {
     return totalStock > 0 && totalStock < 4
   }, [totalStock])
+
+  const promoBadge = useProductCouponBadge(product.sku, product.baseSku)
+
+  const statusBadge = useMemo(() => {
+    if (isOutOfStock) {
+      return {
+        text: language === 'he' ? 'אזל מהמלאי' : 'Out of Stock',
+        className: 'bg-[#7B1B38]/80',
+      }
+    }
+    if (isLastCall) {
+      return {
+        text: language === 'he' ? 'Last Call' : 'Last Call',
+        className: 'bg-[#B2A28E]/80',
+      }
+    }
+    if (hasSalePrice() && salePercent != null && salePercent > 0) {
+      return {
+        text: `${salePercent}% OFF`,
+        className: 'bg-[#7B1B38]/70',
+        dir: 'ltr' as const,
+      }
+    }
+    if (product.newProduct && !hasSalePrice()) {
+      return {
+        text: language === 'he' ? 'NEW' : 'NEW',
+        className: 'bg-[#856D55]/80',
+      }
+    }
+    return null
+  }, [isOutOfStock, isLastCall, salePercent, salePrice, product.newProduct, language])
+
+  const renderStatusBadge = () => {
+    if (!statusBadge) return null
+    return (
+      <div
+        dir={statusBadge.dir}
+        className={`${STATUS_BADGE_CLASS} ${statusBadge.className} text-white`}
+        style={BADGE_FONT_STYLE}
+      >
+        {statusBadge.text}
+      </div>
+    )
+  }
 
   // Handle color variant selection - just change the display
   const handleVariantSelect = (variant: any, e: React.MouseEvent) => {
@@ -400,31 +488,24 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
           )}
         </button>
 
-        {/* Out of Stock Badge */}
-        {isOutOfStock && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
+        {/* Status badge — original position: bottom-left mobile, top-left desktop */}
+        {statusBadge && (
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 z-10 pointer-events-none">
+            {renderStatusBadge()}
           </div>
         )}
 
-        {/* Last Call Badge - Show if stock is between 1 and 4 */}
-        {!isOutOfStock && isLastCall && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#B2A28E]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {language === 'he' ? 'Last Call' : 'Last Call'}
+        {/* Promo badge — mobile top-left */}
+        {promoBadge && (
+          <div className="absolute top-4 left-1 right-22 z-10 flex items-start md:hidden pointer-events-none">
+            <ProductPromoCouponBadge badge={promoBadge} language={language} />
           </div>
         )}
 
-        {/* Sale Badge - Show if product has any sale price (product-level or variant-level) */}
-        {!isOutOfStock && !isLastCall && hasSalePrice() && salePercent != null && salePercent > 0 && (
-          <div dir="ltr" className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {salePercent}% OFF
-          </div>
-        )}
-
-        {/* New Product Badge - Show if product is new, positioned after sale badge if both exist */}
-        {!isOutOfStock && !isLastCall && product.newProduct && !hasSalePrice() && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#856D55]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {language === 'he' ? 'NEW' : 'NEW'}
+        {/* Desktop: promo top-right */}
+        {promoBadge && (
+          <div className="absolute top-2 right-2 z-10 hidden md:block max-w-[42%] pointer-events-none">
+            <ProductPromoCouponBadge badge={promoBadge} language={language} align="right" />
           </div>
         )}
 

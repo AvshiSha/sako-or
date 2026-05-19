@@ -43,7 +43,7 @@ const DEFAULT_PROMOS: PromoItem[] = [
   // },
   {
     text: {
-      he: 'חג שבועות שמח מגוון פריטים ב־20% הנחה | קוד קופון: SHVT20',
+      he: 'חג שבועות שמח עם מגוון פריטים ב־20% הנחה | קוד קופון: SHVT20',
       en: 'Happy Shavuot 20% off on selected items | Coupon code: SHVT20',
     },
     href: '/collection/campaign?slug=shavuot',

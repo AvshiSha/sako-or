@@ -456,9 +456,9 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
           </div>
         )}
 
-        {/* Promo badge — top-left (grid, search, home carousel, etc.) */}
+        {/* Promo badge — top-left mobile, bottom-left desktop */}
         {promoBadge && (
-          <div className="absolute top-2.5 left-2 z-20 max-w-[calc(100%-3.25rem)] pointer-events-none">
+          <div className="absolute top-2.5 md:top-auto md:bottom-2.5 left-2 z-20 max-w-[calc(100%-3.25rem)] pointer-events-none">
             <ProductPromoCouponBadge badge={promoBadge} language={language} />
           </div>
         )}

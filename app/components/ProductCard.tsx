@@ -17,6 +17,11 @@ import {
   type CarouselApi,
 } from '@/app/components/ui/carousel'
 import { buildFavoriteKey } from '@/lib/favorites'
+import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
+import { ProductPromoCouponBadge } from './ProductPromoCouponBadge'
+
+const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
+const STATUS_BADGE_CLASS = 'text-xs font-medium px-2 py-1 rounded pointer-events-none'
 
 interface ProductCardProps {
   product: Product
@@ -178,6 +183,50 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const isLastCall = useMemo(() => {
     return totalStock > 0 && totalStock < 4
   }, [totalStock])
+
+  const promoBadge = useProductCouponBadge(product.sku, product.baseSku)
+
+  const statusBadge = useMemo(() => {
+    if (isOutOfStock) {
+      return {
+        text: language === 'he' ? 'אזל מהמלאי' : 'Out of Stock',
+        className: 'bg-[#7B1B38]/80',
+      }
+    }
+    if (isLastCall) {
+      return {
+        text: language === 'he' ? 'Last Call' : 'Last Call',
+        className: 'bg-[#B2A28E]/80',
+      }
+    }
+    if (hasSalePrice() && salePercent != null && salePercent > 0) {
+      return {
+        text: `${salePercent}% OFF`,
+        className: 'bg-[#7B1B38]/70',
+        dir: 'ltr' as const,
+      }
+    }
+    if (product.newProduct && !hasSalePrice()) {
+      return {
+        text: language === 'he' ? 'NEW' : 'NEW',
+        className: 'bg-[#856D55]/80',
+      }
+    }
+    return null
+  }, [isOutOfStock, isLastCall, salePercent, salePrice, product.newProduct, language])
+
+  const renderStatusBadge = () => {
+    if (!statusBadge) return null
+    return (
+      <div
+        dir={statusBadge.dir}
+        className={`${STATUS_BADGE_CLASS} ${statusBadge.className} text-white`}
+        style={BADGE_FONT_STYLE}
+      >
+        {statusBadge.text}
+      </div>
+    )
+  }
 
   // Handle color variant selection - just change the display
   const handleVariantSelect = (variant: any, e: React.MouseEvent) => {
@@ -400,31 +449,17 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
           )}
         </button>
 
-        {/* Out of Stock Badge */}
-        {isOutOfStock && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'}
+        {/* Status badge — original position: bottom-left mobile, top-left desktop */}
+        {statusBadge && (
+          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 z-10 pointer-events-none">
+            {renderStatusBadge()}
           </div>
         )}
 
-        {/* Last Call Badge - Show if stock is between 1 and 4 */}
-        {!isOutOfStock && isLastCall && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#B2A28E]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {language === 'he' ? 'Last Call' : 'Last Call'}
-          </div>
-        )}
-
-        {/* Sale Badge - Show if product has any sale price (product-level or variant-level) */}
-        {!isOutOfStock && !isLastCall && hasSalePrice() && salePercent != null && salePercent > 0 && (
-          <div dir="ltr" className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#7B1B38]/70 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {salePercent}% OFF
-          </div>
-        )}
-
-        {/* New Product Badge - Show if product is new, positioned after sale badge if both exist */}
-        {!isOutOfStock && !isLastCall && product.newProduct && !hasSalePrice() && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 bg-[#856D55]/80 text-white text-xs font-medium px-2 py-1 rounded z-10 pointer-events-none" style={{ fontFamily: 'Assistant, sans-serif' }}>
-            {language === 'he' ? 'NEW' : 'NEW'}
+        {/* Promo badge — top-left (grid, search, home carousel, etc.) */}
+        {promoBadge && (
+          <div className="absolute top-2.5 left-2 z-20 max-w-[calc(100%-3.25rem)] pointer-events-none">
+            <ProductPromoCouponBadge badge={promoBadge} language={language} />
           </div>
         )}
 

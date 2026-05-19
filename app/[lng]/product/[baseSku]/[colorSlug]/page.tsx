@@ -31,6 +31,8 @@ import {
   type CarouselApi,
 } from '@/app/components/ui/carousel'
 import { buildFavoriteKey } from '@/lib/favorites'
+import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
+import { ProductPromoCouponBadge } from '@/app/components/ProductPromoCouponBadge'
 
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
@@ -89,7 +91,7 @@ export default function ProductColorPage() {
   
   // Favorites hook
   const { isFavorite, toggleFavorite } = useFavorites()
-  
+
   // Cart hook
   const { addToCart } = useCart()
   
@@ -121,6 +123,22 @@ export default function ProductColorPage() {
   const baseSku = params?.baseSku as string
   const colorSlug = params?.colorSlug as string
   const isRTL = lng === 'he'
+
+  const couponBadgeLookup = useMemo(() => {
+    if (!product) {
+      return { sku: null as string | null, baseSku: null as string | null }
+    }
+    const variantSku = colorSlug ? `${product.sku}-${colorSlug}` : null
+    return {
+      sku: variantSku ?? product.sku,
+      baseSku: product.baseSku ?? product.sku,
+    }
+  }, [product, colorSlug])
+
+  const promoBadge = useProductCouponBadge(
+    couponBadgeLookup.sku,
+    couponBadgeLookup.baseSku
+  )
 
   // Client-side only effect
   useEffect(() => {
@@ -545,6 +563,12 @@ export default function ProductColorPage() {
                   <HeartIcon className="h-4 w-4 text-gray-700" />
                 )}
               </button>
+
+              {promoBadge && (
+                <div className="absolute top-4 right-4 z-20 max-w-[calc(100%-4rem)] pointer-events-none">
+                  <ProductPromoCouponBadge badge={promoBadge} language={lng as 'en' | 'he'} />
+                </div>
+              )}
 
               {/* Main Image Carousel */}
               <Carousel

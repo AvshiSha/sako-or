@@ -17,6 +17,8 @@ const imageUrlMappings: Record<string, string> = {
   "sako-women-slippers.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fslippers_collection_tile.webp?alt=media&token=707229b0-68ef-4a09-8855-1df8b6429b2b",
   "sako-women-sandals.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollection_tile_sandals.webp?alt=media&token=f52c78e2-bc54-47e2-bd18-5e8ff88278c0",
   "sako-women-belts.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbelts_tiles.webp?alt=media&token=db6c451c-0332-463f-9580-6e89b1190828",
+  "/images/hero/shavout-2026-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fshavout-2026-desktop.webp?alt=media&token=e6d46a34-d6a4-4099-b3f1-defdf266549c",
+  "/images/hero/shavout-2026-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fshavout-2026-mobile.webp?alt=media&token=b33dcc64-7b6d-4186-828e-feadf2f5eb13",
 };
 
 const videoUrlMappings: Record<string, string> = {
@@ -51,6 +53,17 @@ export function getVideoUrl(localPath: string): string {
  */
 export function getHeroImageUrl(): string {
   return getImageUrl("/images/hero/main-hero.jpg");
+}
+
+/**
+ * Shavuot 2026 hero banners (desktop / mobile)
+ */
+export function getShavoutHeroDesktopImageUrl(): string {
+  return getImageUrl("/images/hero/shavout-2026-desktop.webp");
+}
+
+export function getShavoutHeroMobileImageUrl(): string {
+  return getImageUrl("/images/hero/shavout-2026-mobile.webp");
 }
 
 /**

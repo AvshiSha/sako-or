@@ -7,8 +7,8 @@ import Image from 'next/image'
 import { useParams, usePathname } from 'next/navigation'
 import {
   getImageUrl,
-  getHeroDesktopVideoUrl,
-  getHeroMobileVideoUrl,
+  getShavoutHeroDesktopImageUrl,
+  getShavoutHeroMobileImageUrl,
   getSakoOrMobileVideoUrl,
   getSakoOrDesktopVideoUrl,
   getHero3DesktopVideoUrl,
@@ -503,8 +503,8 @@ export default function HomeClient() {
   const t = translations[lng]
 
   const heroImageSrc = getImageUrl('/images/hero/main-hero.jpg')
-  const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
-  const heroMobileVideoSrc = getHeroMobileVideoUrl()
+  const heroDesktopImageSrc = getShavoutHeroDesktopImageUrl()
+  const heroMobileImageSrc = getShavoutHeroMobileImageUrl()
   const sakoOrMobileVideoSrc = getSakoOrMobileVideoUrl()
   const sakoOrDesktopVideoSrc = getSakoOrDesktopVideoUrl()
   const hero3DesktopVideoSrc = getHero3DesktopVideoUrl()
@@ -514,10 +514,10 @@ export default function HomeClient() {
     <div className={isRTL ? 'text-right' : 'text-left'} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
       <HeroVideoSection
-        desktopSrc={heroDesktopVideoSrc}
-        mobileSrc={heroMobileVideoSrc}
+        desktopSrc={heroDesktopImageSrc}
+        mobileSrc={heroMobileImageSrc}
         posterSrc={heroImageSrc}
-        overlayOpacity="bg-neutral-900/60"
+        overlayOpacity="bg-transparent"
       >
         <div className="relative h-full flex flex-col items-center text-center">
           <div className="absolute bottom-[15%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -537,13 +537,21 @@ export default function HomeClient() {
             >
               {lng === 'he' ? 'לקולקציה החדשה' : 'To New Collection'}
             </Link>
-            <Link
+            {/* <Link
               onClick={() => track('outlet_collection_for_her')}
               href={`/${lng}/collection/women/outlet`}
               className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300"
               style={{ fontFamily: 'Assistant, sans-serif' }}
             >
               {lng === 'he' ? 'לכל המבצעים' : 'To Sales'}
+            </Link> */}
+             <Link
+              onClick={() => track('Shavout_campagin_hero_Section')}
+              href={`/${lng}/collection/campaign?slug=shavuot`}
+              className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300"
+              style={{ fontFamily: 'Assistant, sans-serif' }}
+            >
+              {lng === 'he' ? 'לקולקציית שבועות' : 'To Shavuot Collection'}
             </Link>
           </div>
         </div>

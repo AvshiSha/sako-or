@@ -235,44 +235,10 @@ export function CouponForm({
   const dir = formLocale === 'he' ? 'rtl' : 'ltr'
 
   const previewData = useMemo(() => {
-    const discountValueNumber = Number(values.discountValue) || 0
-    let discountLabel: CouponLabel
-
-    switch (values.discountType) {
-      case 'percent_all':
-      case 'percent_specific':
-        discountLabel = {
-          en: `${discountValueNumber}% OFF`,
-          he: `${discountValueNumber}% הנחה`
-        }
-        break
-      case 'fixed':
-        discountLabel = {
-          en: `${currencySymbol()}${discountValueNumber} off`,
-          he: `${currencySymbol()}${discountValueNumber} הנחה`
-        }
-        break
-      case 'bogo': {
-        const buyQty = Number(values.bogoBuyQuantity) || 1
-        const getQty = Number(values.bogoGetQuantity) || 1
-      const percent = Number(values.discountValue) || 100
-        discountLabel = {
-        en:
-          percent >= 100
-            ? `Buy ${buyQty}, get ${getQty} free`
-            : `Buy ${buyQty}, get ${getQty} at ${percent}% off`,
-        he:
-          percent >= 100
-            ? `קנה ${buyQty}, קבל ${getQty} חינם`
-            : `קנה ${buyQty}, קבל ${getQty} בהנחה של ${percent}%`
-        }
-        break
-      }
-      default:
-        discountLabel = {
-          en: 'Coupon',
-          he: 'קופון'
-        }
+    const code = values.code.trim() || 'COUPON'
+    const discountLabel: CouponLabel = {
+      en: `Code: ${code}`,
+      he: `קוד קופון: ${code}`
     }
 
     return {
@@ -287,14 +253,11 @@ export function CouponForm({
       discountLabel
     }
   }, [
-    values.discountValue,
-    values.discountType,
+    values.code,
     values.name_en,
     values.name_he,
     values.description_en,
-    values.description_he,
-    values.bogoBuyQuantity,
-    values.bogoGetQuantity
+    values.description_he
   ])
 
   const handleChange = <K extends keyof CouponFormValues>(key: K, value: CouponFormValues[K]) => {

@@ -618,15 +618,23 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
 
             <div className="flex gap-3">
               {isEdit && formData.slug && (
-                <Link
-                  href={`/en/collection/campaign?slug=${formData.slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  <EyeIcon className="h-4 w-4 mr-2" />
-                  Preview
-                </Link>
+                <>
+                  <Link
+                    href={`/admin/campaigns/${formData.slug}/merchandising`}
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  >
+                    Manage product order
+                  </Link>
+                  <Link
+                    href={`/en/collection/campaign?slug=${formData.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  >
+                    <EyeIcon className="h-4 w-4 mr-2" />
+                    Preview
+                  </Link>
+                </>
               )}
 
               <button

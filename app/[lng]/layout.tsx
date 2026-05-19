@@ -2,6 +2,8 @@ import { languages, type Language, defaultLanguage, getLanguageDirection } from 
 import Footer from '../components/Footer'
 import HeaderWrapper from '@/app/components/HeaderWrapper'
 import { PromoProvider } from '../contexts/PromoContext'
+import { CouponBadgeProvider } from '../contexts/CouponBadgeContext'
+import { getStorefrontCouponBadgeIndex } from '@/lib/coupon-product-badges.server'
 
 export async function generateStaticParams() {
   return languages.map((lng) => ({ lng }))
@@ -28,6 +30,7 @@ export default async function LanguageLayout({
 
   // Determine direction based on language
   const direction = getLanguageDirection(normalizedLng)
+  const couponBadgeIndex = await getStorefrontCouponBadgeIndex()
 
   return (
     <div 
@@ -36,11 +39,13 @@ export default async function LanguageLayout({
       lang={normalizedLng}
     >
       <PromoProvider>
-        <HeaderWrapper lng={normalizedLng} />
-        <main className="flex-grow">
-          {children}
-        </main>
-        <Footer lng={normalizedLng} />
+        <CouponBadgeProvider initialIndex={couponBadgeIndex}>
+          <HeaderWrapper lng={normalizedLng} />
+          <main className="flex-grow">
+            {children}
+          </main>
+          <Footer lng={normalizedLng} />
+        </CouponBadgeProvider>
       </PromoProvider>
     </div>
   )

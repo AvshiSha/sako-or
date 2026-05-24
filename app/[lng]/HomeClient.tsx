@@ -7,8 +7,8 @@ import Image from 'next/image'
 import { useParams, usePathname } from 'next/navigation'
 import {
   getImageUrl,
-  getShavoutHeroDesktopImageUrl,
-  getShavoutHeroMobileImageUrl,
+  getHeroDesktopVideoUrl,
+  getHeroMobileVideoUrl,
   getSakoOrMobileVideoUrl,
   getSakoOrDesktopVideoUrl,
   getHero3DesktopVideoUrl,
@@ -503,8 +503,8 @@ export default function HomeClient() {
   const t = translations[lng]
 
   const heroImageSrc = getImageUrl('/images/hero/main-hero.jpg')
-  const heroDesktopImageSrc = getShavoutHeroDesktopImageUrl()
-  const heroMobileImageSrc = getShavoutHeroMobileImageUrl()
+  const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
+  const heroMobileVideoSrc = getHeroMobileVideoUrl()
   const sakoOrMobileVideoSrc = getSakoOrMobileVideoUrl()
   const sakoOrDesktopVideoSrc = getSakoOrDesktopVideoUrl()
   const hero3DesktopVideoSrc = getHero3DesktopVideoUrl()
@@ -514,8 +514,8 @@ export default function HomeClient() {
     <div className={isRTL ? 'text-right' : 'text-left'} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
       <HeroVideoSection
-        desktopSrc={heroDesktopImageSrc}
-        mobileSrc={heroMobileImageSrc}
+        desktopSrc={heroDesktopVideoSrc}
+        mobileSrc={heroMobileVideoSrc}
         posterSrc={heroImageSrc}
         overlayOpacity="bg-transparent"
       >

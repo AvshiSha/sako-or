@@ -13,16 +13,16 @@ export type PromoItem = {
 }
 
 const DEFAULT_PROMOS: PromoItem[] = [
-  {
-    text: {
-      he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
-      en: 'Shipping is free to all Israel, on orders over 300₪',
-    },
-    href: '/collection/women/',
-    icon: '🚚',
-    // Countdown until May 3, 2026 midnight (local time).
-    // countdownEnd: '2026-05-03T00:00:00',
-  },
+  // {
+  //   text: {
+  //     he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
+  //     en: 'Shipping is free to all Israel, on orders over 300₪',
+  //   },
+  //   href: '/collection/women/',
+  //   icon: '🚚',
+  //   // Countdown until May 3, 2026 midnight (local time).
+  //   // countdownEnd: '2026-05-03T00:00:00',
+  // },
    {
      text: {
        he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
@@ -31,16 +31,16 @@ const DEFAULT_PROMOS: PromoItem[] = [
      href: '/collection/women/outlet',
      icon: '🔥',
    },
-  //  {
-  //   text: {
-  //     he: 'לסופ"ש הקרוב, 20% הנחה על כל הסניקרס! | קוד קופון: SNEAK20',
-  //     en: '20% off on all of the SAKO SNEAKERS collection | code: SNEAK20',
-  //   },
-  //   href: '/collection/women/shoes/sneakers',
-  //   icon: '👟',
-  //   // Countdown until May 17, 2026 midnight (local time).
-  //   // countdownEnd: '2026-05-17T00:00:00',
-  // },
+   {
+    text: {
+      he: 'זוג שני ב־40% הנחה על מגוון מוצרי סניקרס | קוד: SNK40',
+      en: '20% off on all of the SAKO SNEAKERS collection | code: SNEAK20',
+    },
+    href: '/collection/women/shoes/sneakers',
+    icon: '👟',
+    // Countdown until May 17, 2026 midnight (local time).
+    // countdownEnd: '2026-05-17T00:00:00',
+  },
   // {
   //   text: {
   //     he: 'חג שבועות שמח עם מגוון פריטים ב־20% הנחה | קוד קופון: SHVT20',

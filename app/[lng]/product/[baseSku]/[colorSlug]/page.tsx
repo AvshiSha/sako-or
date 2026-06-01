@@ -32,7 +32,8 @@ import {
 } from '@/app/components/ui/carousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
-import { ProductPromoCouponBadge } from '@/app/components/ProductPromoCouponBadge'
+import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
+import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
 
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
@@ -139,6 +140,8 @@ export default function ProductColorPage() {
     couponBadgeLookup.sku,
     couponBadgeLookup.baseSku
   )
+
+  const showBogoSecondPairPromo = isBogoSecondPairPromoSku(baseSku, product?.baseSku ?? product?.sku)
 
   // Client-side only effect
   useEffect(() => {
@@ -564,10 +567,14 @@ export default function ProductColorPage() {
                 )}
               </button>
 
-              {promoBadge && (
-                <div className="absolute top-4 right-4 z-20 max-w-[calc(100%-4rem)] pointer-events-none">
-                  <ProductPromoCouponBadge badge={promoBadge} language={lng as 'en' | 'he'} />
-                </div>
+              {(showBogoSecondPairPromo || promoBadge) && (
+                <ProductPromoRibbon
+                  language={lng as 'en' | 'he'}
+                  showBogoSecondPair={showBogoSecondPairPromo}
+                  promoBadge={promoBadge}
+                  size="card"
+                  className="absolute left-4 top-14 z-20 max-w-[calc(100%-4rem)] lg:hidden"
+                />
               )}
 
               {/* Main Image Carousel */}
@@ -651,7 +658,7 @@ export default function ProductColorPage() {
 
             {/* Product Details */}
             <div className={`space-y-6 px-4 sm:px-6 py-4 ${isRTL ? 'lg:pl-48 lg:pr-4' : 'lg:pl-4 lg:pr-48'}`}>
-              {/* Mobile Layout */}
+              {/* Mobile Layout — promo labels on image carousel */}
               <div className="lg:hidden space-y-2">
                 {/* Product Title + Price (same row) */}
                 <div className="flex items-start justify-between gap-2">
@@ -905,6 +912,16 @@ export default function ProductColorPage() {
 
               {/* Desktop Layout */}
               <div className="hidden lg:block space-y-2">
+                {(showBogoSecondPairPromo || promoBadge) && (
+                  <ProductPromoRibbon
+                    language={lng as 'en' | 'he'}
+                    showBogoSecondPair={showBogoSecondPairPromo}
+                    promoBadge={promoBadge}
+                    size="page"
+                    className="w-fit max-w-full"
+                  />
+                )}
+
                 {/* Product Title + Price (same row) */}
                 <div className="flex items-start justify-between gap-2">
                   <h1 className="text-2xl font-bold text-gray-900 flex-1">

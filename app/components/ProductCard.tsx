@@ -18,7 +18,8 @@ import {
 } from '@/app/components/ui/carousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
-import { ProductPromoCouponBadge } from './ProductPromoCouponBadge'
+import { ProductPromoRibbon } from './ProductPromoRibbon'
+import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
 
 const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
 const STATUS_BADGE_CLASS = 'text-xs font-medium px-2 py-1 rounded pointer-events-none'
@@ -185,6 +186,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   }, [totalStock])
 
   const promoBadge = useProductCouponBadge(product.sku, product.baseSku)
+  const showBogoSecondPairPromo = isBogoSecondPairPromoSku(product.sku, product.baseSku)
 
   const statusBadge = useMemo(() => {
     if (isOutOfStock) {
@@ -449,18 +451,26 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
           )}
         </button>
 
-        {/* Status badge — original position: bottom-left mobile, top-left desktop */}
+        {/* Status badge — bottom-left mobile (above promo ribbon when both), top-left desktop */}
         {statusBadge && (
-          <div className="absolute bottom-2 md:top-2 md:bottom-auto left-2 z-10 pointer-events-none">
+          <div
+            className={`absolute left-2 z-10 pointer-events-none md:top-2 md:bottom-auto ${
+              showBogoSecondPairPromo || promoBadge ? 'bottom-11 md:bottom-auto' : 'bottom-2'
+            }`}
+          >
             {renderStatusBadge()}
           </div>
         )}
 
-        {/* Promo badge — top-left mobile, bottom-left desktop */}
-        {promoBadge && (
-          <div className="absolute top-2.5 md:top-auto md:bottom-2.5 left-2 z-20 max-w-[calc(100%-3.25rem)] pointer-events-none">
-            <ProductPromoCouponBadge badge={promoBadge} language={language} />
-          </div>
+        {/* Promo ribbon — bottom-left inside image */}
+        {(showBogoSecondPairPromo || promoBadge) && (
+          <ProductPromoRibbon
+            language={language}
+            showBogoSecondPair={showBogoSecondPairPromo}
+            promoBadge={promoBadge}
+            size="card"
+            className="absolute bottom-3 left-3 z-20 max-w-[calc(100%-3.75rem)]"
+          />
         )}
 
         {/* Desktop Quick Buy Button - Overlay at bottom of image (z-20 so it sits above badges on hover) */}

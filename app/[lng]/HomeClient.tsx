@@ -546,12 +546,12 @@ export default function HomeClient() {
               {lng === 'he' ? 'לכל המבצעים' : 'To Sales'}
             </Link> */}
              <Link
-              onClick={() => track('Shavout_campagin_hero_Section')}
-              href={`/${lng}/collection/campaign?slug=shavuot`}
+              onClick={() => track('outlet_hero_Section')}
+              href={`/${lng}/collection/women/outlet`}
               className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4 hover:opacity-80 transition-opacity duration-300"
               style={{ fontFamily: 'Assistant, sans-serif' }}
             >
-              {lng === 'he' ? 'לקולקציית שבועות' : 'To Shavuot Collection'}
+              {lng === 'he' ? 'לקולקציית האאוטלט' : 'To Sales Collection'}
             </Link>
           </div>
         </div>

@@ -62,7 +62,7 @@ const tiles: CollectionTile[] = [
     image: getImageUrl('sako-women-high-heels.jpg'),
     title: 'SAKO WOMEN HIGH HEELS',
     subtitle: 'UP TO 40% OFF',
-    href: '/collection/women/shoes/high-heels',
+    href: '/collection/women/shoes/pumps',
   },
   {
     id: 'tile-8',

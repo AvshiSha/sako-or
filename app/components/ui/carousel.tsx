@@ -23,6 +23,11 @@ type CarouselProps = {
   setApi?: (api: CarouselApi) => void
   /** "flush" removes default slide gap padding (product image galleries). */
   itemVariant?: CarouselItemVariant
+  /**
+   * "grid" avoids will-change on the track (many carousels on collection pages).
+   * Default keeps GPU hint for single-carousels (e.g. marketing rows).
+   */
+  performanceMode?: "default" | "grid"
 }
 
 type CarouselContextProps = {
@@ -33,6 +38,7 @@ type CarouselContextProps = {
   canScrollPrev: boolean
   canScrollNext: boolean
   itemVariant?: CarouselItemVariant
+  performanceMode?: "default" | "grid"
 } & CarouselProps
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null)
@@ -59,6 +65,7 @@ const Carousel = React.forwardRef<
       setApi,
       plugins,
       itemVariant = "default",
+      performanceMode = "default",
       className,
       children,
       ...props
@@ -142,6 +149,7 @@ const Carousel = React.forwardRef<
           canScrollPrev,
           canScrollNext,
           itemVariant,
+          performanceMode,
         }}
       >
         <div
@@ -164,21 +172,25 @@ const CarouselContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
-  const { carouselRef, orientation, direction } = useCarousel()
-
-  const { itemVariant } = useCarousel()
+  const { carouselRef, orientation, direction, itemVariant, performanceMode } =
+    useCarousel()
   const isFlush = itemVariant === "flush"
+  const isGridPerf = performanceMode === "grid"
 
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden touch-pan-y"
+      className={cn(
+        "overflow-hidden",
+        isFlush ? "touch-pan-y pinch-zoom" : "touch-pan-y"
+      )}
       dir={direction}
     >
       <div
         ref={ref}
         className={cn(
-          "flex will-change-transform [transform:translate3d(0,0,0)]",
+          "flex backface-hidden",
+          !isGridPerf && "will-change-transform",
           !isFlush &&
             (orientation === "horizontal"
               ? direction === "rtl"
@@ -208,7 +220,7 @@ const CarouselItem = React.forwardRef<
       role="group"
       aria-roledescription="slide"
       className={cn(
-        "min-w-0 shrink-0 grow-0 basis-full",
+        "min-w-0 shrink-0 grow-0 basis-full backface-hidden",
         !isFlush &&
           (orientation === "horizontal"
             ? direction === "rtl"

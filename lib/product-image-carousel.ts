@@ -25,10 +25,11 @@ export function getProductImageCarouselOpts(imageCount: number): CarouselOptions
   };
 }
 
-export function getProductCardCarouselOpts(): CarouselOptions {
+/** Grid product cards: infinite loop when there are multiple images. */
+export function getProductCardCarouselOpts(imageCount: number): CarouselOptions {
   return {
     ...productImageCarouselOpts,
-    loop: false,
+    loop: imageCount > 1,
     breakpoints: productImageCarouselMobileBreakpoints,
   };
 }

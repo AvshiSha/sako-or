@@ -182,7 +182,7 @@ function ProductImageCarouselInner({
     () =>
       variant === "pdp"
         ? getProductImageCarouselOpts(images.length)
-        : getProductCardCarouselOpts(),
+        : getProductCardCarouselOpts(images.length),
     [variant, images.length]
   );
 

@@ -22,10 +22,7 @@ type HistoryScrollPayload = {
   path: string;
 };
 
-const RESTORE_DELAYS_MS = [
-  0, 0, 16, 50, 100, 200, 400, 700, 1100, 1600, 2400, 3500, 5000, 6500, 8500,
-  10000,
-];
+const RESTORE_DELAYS_MS = [0, 16, 50, 100, 200, 400, 800, 1200];
 const SCROLL_TOLERANCE_PX = 16;
 const GUARD_MAX_MS = 20000;
 const RESTORE_TIMEOUT_MS = 20000;
@@ -265,8 +262,26 @@ function maxScrollTop(): number {
   );
 }
 
-function canScrollToTarget(targetY: number): boolean {
+export function canScrollToTarget(targetY: number): boolean {
   return maxScrollTop() >= targetY - SCROLL_TOLERANCE_PX;
+}
+
+function isAnchorInView(el: HTMLElement): boolean {
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.top >= 60 &&
+    rect.top <= window.innerHeight * 0.55 &&
+    rect.bottom > 0
+  );
+}
+
+function scrollToCollectionAnchor(anchorKey: string): boolean {
+  const el = document.querySelector(
+    `[data-collection-anchor="${CSS.escape(anchorKey)}"]`
+  );
+  if (!el || !(el instanceof HTMLElement)) return false;
+  el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+  return isAnchorInView(el);
 }
 
 export function hasPendingCollectionScrollRestore(): boolean {
@@ -276,7 +291,8 @@ export function hasPendingCollectionScrollRestore(): boolean {
 /** Apply scroll and retry until we hit the target or time out (fights late Next scroll-to-top). */
 export function runCollectionScrollRestore(
   targetY: number,
-  onComplete?: () => void
+  onComplete?: () => void,
+  anchorKey?: string
 ): void {
   if (!isBrowser() || targetY <= 0) {
     onComplete?.();
@@ -318,22 +334,31 @@ export function runCollectionScrollRestore(
   const attempt = () => {
     if (finished) return;
 
+    if (anchorKey) {
+      const el = document.querySelector(
+        `[data-collection-anchor="${CSS.escape(anchorKey)}"]`
+      );
+      if (el instanceof HTMLElement) {
+        if (scrollToCollectionAnchor(anchorKey) || isAnchorInView(el)) {
+          finish();
+          return;
+        }
+        return;
+      }
+    }
+
     const reachable = canScrollToTarget(targetY);
-    const scrollToY = reachable ? targetY : maxScrollTop();
-    window.scrollTo({ top: scrollToY, left: 0, behavior: "auto" });
+    // Never scroll to maxScrollTop as a stand-in — that lands on page-1 bottom.
+    if (!reachable) return;
 
-    const atTarget = isAtScrollTarget(targetY);
-    const timedOut = Date.now() - startedAt > RESTORE_TIMEOUT_MS;
+    window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
 
-    if (atTarget) {
+    if (isAtScrollTarget(targetY)) {
       finish();
       return;
     }
 
-    // Page not tall enough yet (list still hydrating) — keep watchdog alive.
-    if (!reachable) return;
-
-    if (timedOut) {
+    if (Date.now() - startedAt > RESTORE_TIMEOUT_MS) {
       finish();
     }
   };

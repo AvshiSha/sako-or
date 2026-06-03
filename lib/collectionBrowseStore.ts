@@ -25,6 +25,8 @@ export interface CollectionBrowseState {
   hasMore: boolean;
   scrollY: number;
   updatedAt: number;
+  /** Product card the user opened — used to scroll back to the right row. */
+  anchorVariantKey?: string;
 }
 
 // In-memory store scoped to the current browser tab.
@@ -92,6 +94,38 @@ export function getCollectionState(
   return undefined;
 }
 
+function mergeBrowseItems(
+  existing: CollectionBrowseState | undefined,
+  incoming: CollectionBrowseState
+): CollectionBrowseState {
+  if (
+    !existing ||
+    !Array.isArray(existing.items) ||
+    existing.items.length === 0
+  ) {
+    return incoming;
+  }
+  if (!Array.isArray(incoming.items) || incoming.items.length === 0) {
+    return {
+      ...incoming,
+      items: existing.items,
+      currentPage: Math.max(incoming.currentPage, existing.currentPage),
+      totalProducts: Math.max(incoming.totalProducts, existing.totalProducts),
+      hasMore: incoming.hasMore || existing.hasMore,
+    };
+  }
+  if (incoming.items.length >= existing.items.length) {
+    return incoming;
+  }
+  return {
+    ...incoming,
+    items: existing.items,
+    currentPage: Math.max(incoming.currentPage, existing.currentPage),
+    totalProducts: Math.max(incoming.totalProducts, existing.totalProducts),
+    hasMore: incoming.hasMore || existing.hasMore,
+  };
+}
+
 export function setCollectionState(
   key: CollectionKey,
   state: CollectionBrowseState
@@ -106,7 +140,13 @@ export function setCollectionState(
       frozen?.browseKey === key ? frozen.scrollY : 0
     );
   }
-  const next = scrollY === state.scrollY ? state : { ...state, scrollY };
+  const merged = mergeBrowseItems(existing, { ...state, scrollY });
+  const next = {
+    ...merged,
+    scrollY,
+    anchorVariantKey:
+      state.anchorVariantKey ?? existing?.anchorVariantKey ?? merged.anchorVariantKey,
+  };
   collectionStore.set(key, next);
   saveToSessionStorage(key, next);
 }
@@ -163,7 +203,8 @@ export function persistCollectionScroll(key: CollectionKey | undefined): void {
  */
 export function persistCollectionBrowseBeforeNavigate(
   key: CollectionKey | undefined,
-  snapshot: CollectionBrowseSnapshot | null | undefined
+  snapshot: CollectionBrowseSnapshot | null | undefined,
+  anchorVariantKey?: string
 ): void {
   if (!key || !isBrowser() || !snapshot) return;
   const scrollY = window.scrollY;
@@ -173,8 +214,9 @@ export function persistCollectionBrowseBeforeNavigate(
   setCollectionState(key, {
     ...snapshot,
     scrollY: resolvedScrollY,
+    anchorVariantKey: anchorVariantKey ?? existing?.anchorVariantKey,
     updatedAt: Date.now(),
-  });
+  } as CollectionBrowseState);
   const collectionPath = collectionPathFromWindow();
   if (resolvedScrollY > 0 && collectionPath) {
     freezeCollectionScrollForBack(key, resolvedScrollY, collectionPath);
@@ -213,8 +255,19 @@ export function saveCollectionStateOnLeave(
   setCollectionState(key, {
     ...snapshot,
     scrollY,
+    anchorVariantKey: existing?.anchorVariantKey,
     updatedAt: Date.now(),
-  });
+  } as CollectionBrowseState);
+}
+
+/** True when cached list is shorter than expected for the saved page count. */
+export function isStoredBrowseListIncomplete(
+  stored: CollectionBrowseState | undefined,
+  pageSize = 24
+): boolean {
+  if (!stored || stored.currentPage < 2) return false;
+  const minExpected = Math.max(1, stored.currentPage - 1) * pageSize;
+  return stored.items.length < minExpected;
 }
 
 /** Resolve scrollY for persistence, avoiding overwrite with 0 while a restore is pending. */

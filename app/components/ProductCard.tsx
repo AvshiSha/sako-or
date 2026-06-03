@@ -31,9 +31,11 @@ interface ProductCardProps {
   isAboveFold?: boolean // Whether product is above the fold (for lazy loading)
   /** When set, scroll position is saved before navigating to the product page. */
   browseStoreKey?: string
+  /** Stable id for scroll restoration on browser Back. */
+  collectionAnchorKey?: string
 }
 
-export default function ProductCard({ product, language = 'en', selectedColors, preselectedColorSlug, disableImageCarousel = false, isAboveFold = false, browseStoreKey }: ProductCardProps) {
+export default function ProductCard({ product, language = 'en', selectedColors, preselectedColorSlug, disableImageCarousel = false, isAboveFold = false, browseStoreKey, collectionAnchorKey }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -253,10 +255,11 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const saveBrowseScroll = useCallback(() => {
     const key = collectionBrowse.browseKey ?? browseStoreKey
     const snap = collectionBrowse.snapshotRef?.current
+    const anchor = collectionAnchorKey
     if (key && snap) {
-      persistCollectionBrowseBeforeNavigate(key, snap)
+      persistCollectionBrowseBeforeNavigate(key, snap, anchor)
     }
-  }, [browseStoreKey, collectionBrowse.browseKey, collectionBrowse.snapshotRef])
+  }, [browseStoreKey, collectionBrowse.browseKey, collectionBrowse.snapshotRef, collectionAnchorKey])
 
   const handleLinkClick = useCallback((e: MouseEvent<HTMLAnchorElement>) => {
     if (api && 'clickAllowed' in api && typeof api.clickAllowed === 'function' && !api.clickAllowed()) {

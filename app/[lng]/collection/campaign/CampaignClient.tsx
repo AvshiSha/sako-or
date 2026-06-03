@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
 import { FunnelIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Campaign, VariantItem } from "@/lib/firebase";
@@ -14,7 +14,12 @@ import {
   getCollectionState,
   type CollectionBrowseSnapshot,
 } from "@/lib/collectionBrowseStore";
+import {
+  COLLECTION_RETURN_EVENT,
+  readLastCollectionScroll,
+} from "@/lib/collectionScrollRestore";
 import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
+import { CollectionBrowseProvider } from "@/app/contexts/CollectionBrowseContext";
 import {
   Accordion,
   AccordionContent,
@@ -261,6 +266,21 @@ export default function CampaignClient({
   );
 
   const hydratedFromStoreRef = useRef<boolean>(false);
+  const [browseListReady, setBrowseListReady] = useState(false);
+  const pathname = usePathname();
+
+  const applyStoredBrowseState = useCallback(() => {
+    if (!campaignKey) return false;
+    const stored = getCollectionState(campaignKey);
+    if (!stored) return false;
+    hydratedFromStoreRef.current = true;
+    const items = stored.items as VariantItem[];
+    if (items?.length) setVariantItems(items);
+    setCurrentPage(stored.currentPage);
+    setTotalProducts(stored.totalProducts);
+    setHasMore(stored.hasMore);
+    return true;
+  }, [campaignKey]);
   const prevCampaignIdRef = useRef<string | undefined>(campaign.id);
   const prevFilterKeyRef = useRef<string>(filterKey);
   const stateSnapshotRef = useRef<CollectionBrowseSnapshot | null>(null);
@@ -508,18 +528,45 @@ export default function CampaignClient({
     return sorted;
   }, [variantItems, sortBy]);
 
-  // Hydrate from store when returning from PDP
+  // Hydrate from store before paint when returning from PDP
+  useLayoutEffect(() => {
+    setBrowseListReady(false);
+
+    if (!campaignKey) {
+      setBrowseListReady(true);
+      return;
+    }
+
+    const pendingScroll = readLastCollectionScroll();
+    const shouldForceHydrate =
+      pendingScroll?.browseKey === campaignKey &&
+      pendingScroll.scrollY > 0;
+
+    if (!hydratedFromStoreRef.current || shouldForceHydrate) {
+      applyStoredBrowseState();
+    }
+
+    setBrowseListReady(true);
+  }, [campaignKey, pathname, applyStoredBrowseState]);
+
   useEffect(() => {
-    if (!campaignKey || hydratedFromStoreRef.current) return;
-    const stored = getCollectionState(campaignKey);
-    if (!stored) return;
-    hydratedFromStoreRef.current = true;
-    const items = stored.items as VariantItem[];
-    if (items?.length) setVariantItems(items);
-    setCurrentPage(stored.currentPage);
-    setTotalProducts(stored.totalProducts);
-    setHasMore(stored.hasMore);
-  }, [campaignKey]);
+    const onBrowseReturn = () => {
+      const pending = readLastCollectionScroll();
+      if (
+        !campaignKey ||
+        pending?.browseKey !== campaignKey ||
+        pending.scrollY <= 0
+      ) {
+        return;
+      }
+      applyStoredBrowseState();
+      setBrowseListReady(true);
+    };
+
+    window.addEventListener(COLLECTION_RETURN_EVENT, onBrowseReturn);
+    return () =>
+      window.removeEventListener(COLLECTION_RETURN_EVENT, onBrowseReturn);
+  }, [campaignKey, applyStoredBrowseState]);
 
   // Sync from server when campaign or filters change; reset when filterKey changes
   useEffect(() => {
@@ -568,6 +615,7 @@ export default function CampaignClient({
     browseKey: campaignKey,
     itemCount: sortedItems.length,
     snapshotRef: stateSnapshotRef,
+    browseListReady,
     persistDeps: [
       variantItems.length,
       currentPage,
@@ -661,6 +709,10 @@ export default function CampaignClient({
   }, [isLoadingMore, hasMore, currentPage, lng, campaign.slug, totalProducts, searchParams]);
 
   return (
+    <CollectionBrowseProvider
+      browseKey={campaignKey}
+      snapshotRef={stateSnapshotRef}
+    >
     <div className="min-h-screen bg-white">
       {/* Hero Section - video plays only when in view; tap-to-play on mobile when blocked */}
       {(hasDesktopBanner || hasMobileBanner) && (
@@ -1075,6 +1127,7 @@ export default function CampaignClient({
 
       <ScrollToTopButton lng={lng} />
     </div>
+    </CollectionBrowseProvider>
   );
 }
 

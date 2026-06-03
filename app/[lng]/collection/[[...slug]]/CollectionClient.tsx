@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
 import {
   FunnelIcon,
@@ -33,7 +33,13 @@ import {
   getCollectionState,
   type CollectionBrowseSnapshot,
 } from "@/lib/collectionBrowseStore";
+import {
+  cancelCollectionScrollRestoreWatchdog,
+  COLLECTION_RETURN_EVENT,
+  readLastCollectionScroll,
+} from "@/lib/collectionScrollRestore";
 import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
+import { CollectionBrowseProvider } from "@/app/contexts/CollectionBrowseContext";
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -216,12 +222,46 @@ export default function CollectionClient({
     return `${base}|${filterKey}`;
   }, [lng, categoryPath, searchQuery, filterKey]);
 
-  // Track previous filter key to detect filter changes (not page changes)
-  const prevFilterKeyRef = useRef<string>('');
+  // Seed with current filter so remount (browser Back) is not treated as a filter change.
+  const prevFilterKeyRef = useRef<string>(filterKey);
   const isInitialMountRef = useRef<boolean>(true);
   const isLoadingMoreRef = useRef<boolean>(false);
   const hydratedFromStoreRef = useRef<boolean>(false);
   const restoredFromUrlFetchRef = useRef<boolean>(false);
+  const [browseListReady, setBrowseListReady] = useState(false);
+  const pathname = usePathname();
+  /** Wait until this many products are in the DOM before restoring scroll (browser Back). */
+  const pendingListHydrationRef = useRef(0);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+
+  const applyStoredBrowseState = useCallback(() => {
+    if (!collectionKey) return 0;
+
+    const stored = getCollectionState(collectionKey);
+    if (!stored || !Array.isArray(stored.items) || stored.items.length === 0) {
+      return 0;
+    }
+
+    hydratedFromStoreRef.current = true;
+    if (stored.useVariantItems) {
+      setAllVariantItems(stored.items as VariantItem[]);
+    } else {
+      setAllProducts(stored.items as Product[]);
+    }
+    setCurrentPage(stored.currentPage);
+    setTotalProducts(stored.totalProducts);
+    setHasMore(stored.hasMore);
+    return stored.items.length;
+  }, [collectionKey]);
+
+  const isReturningFromProduct = useCallback(() => {
+    const pending = readLastCollectionScroll();
+    return (
+      !!collectionKey &&
+      pending?.browseKey === collectionKey &&
+      pending.scrollY > 0
+    );
+  }, [collectionKey]);
 
   // Initialize on mount only - set initial state
   useEffect(() => {
@@ -234,25 +274,259 @@ export default function CollectionClient({
   // Ref to persist latest state on unmount (navigate away to PDP)
   const stateSnapshotRef = useRef<CollectionBrowseSnapshot | null>(null);
 
-  // Hydrate pagination/items state from the per-collection store when available.
-  useEffect(() => {
-    if (!collectionKey || hydratedFromStoreRef.current) return;
-
-    const stored = getCollectionState(collectionKey);
-    if (!stored) return;
-
-    hydratedFromStoreRef.current = true;
-
-    if (stored.useVariantItems) {
-      setAllVariantItems(stored.items as VariantItem[]);
+  const finishBrowseListHydration = useCallback((expectedItemCount: number) => {
+    if (expectedItemCount > 0) {
+      pendingListHydrationRef.current = expectedItemCount;
+      setBrowseListReady(false);
     } else {
-      setAllProducts(stored.items as Product[]);
+      pendingListHydrationRef.current = 0;
+      setBrowseListReady(true);
+    }
+  }, []);
+
+  // Hydrate list before paint when returning from PDP (browser Back).
+  useLayoutEffect(() => {
+    if (!collectionKey) {
+      pendingListHydrationRef.current = 0;
+      setBrowseListReady(true);
+      return;
     }
 
-    setCurrentPage(stored.currentPage);
-    setTotalProducts(stored.totalProducts);
-    setHasMore(stored.hasMore);
-  }, [collectionKey]);
+    const returning = isReturningFromProduct();
+    if (!returning) {
+      if (!hydratedFromStoreRef.current) {
+        applyStoredBrowseState();
+      }
+      pendingListHydrationRef.current = 0;
+      setBrowseListReady(true);
+      return;
+    }
+
+    cancelCollectionScrollRestoreWatchdog();
+    hydratedFromStoreRef.current = false;
+    const expectedCount = applyStoredBrowseState();
+    if (expectedCount > 0) {
+      finishBrowseListHydration(expectedCount);
+      return;
+    }
+
+    const urlPage = parseInt(searchParams?.get("page") || "1", 10) || 1;
+    if (urlPage >= 2) {
+      pendingListHydrationRef.current = 1;
+      setBrowseListReady(false);
+      return;
+    }
+
+    finishBrowseListHydration(0);
+  }, [
+    collectionKey,
+    pathname,
+    searchParams,
+    applyStoredBrowseState,
+    isReturningFromProduct,
+    finishBrowseListHydration,
+  ]);
+
+  // Release scroll restore only after the full paginated list is in state.
+  useEffect(() => {
+    if (pendingListHydrationRef.current <= 0) return;
+    const count = useVariantItems ? allVariantItems.length : allProducts.length;
+    if (count >= pendingListHydrationRef.current) {
+      pendingListHydrationRef.current = 0;
+      setBrowseListReady(true);
+    }
+  }, [allVariantItems.length, allProducts.length, useVariantItems]);
+
+  // If hydration stalls (store missing / RSC reset), refetch pages then allow scroll restore.
+  useEffect(() => {
+    if (!isReturningFromProduct() || pendingListHydrationRef.current <= 0) return;
+
+    const timeout = window.setTimeout(() => {
+      if (pendingListHydrationRef.current <= 0) return;
+
+      const stored = getCollectionState(collectionKey);
+      const targetPage = Math.max(
+        stored?.currentPage ?? 1,
+        parseInt(searchParams?.get("page") || "1", 10) || 1
+      );
+      if (targetPage < 2) {
+        pendingListHydrationRef.current = 0;
+        setBrowseListReady(true);
+        return;
+      }
+
+      restoredFromUrlFetchRef.current = true;
+      const safeSearchParams = searchParams ?? new URLSearchParams();
+
+      const fetchPage = (
+        page: number
+      ): Promise<{
+        variantItems?: VariantItem[];
+        items?: Product[];
+        total?: number;
+        hasMore?: boolean;
+      }> => {
+        const apiUrl = new URL("/api/products/collection", window.location.origin);
+        apiUrl.searchParams.set("page", String(page));
+        apiUrl.searchParams.set("language", lng);
+        if (categoryPath) apiUrl.searchParams.set("categoryPath", categoryPath);
+        if (searchQuery) apiUrl.searchParams.set("search", searchQuery);
+        safeSearchParams.forEach((value, key) => {
+          if (key !== "page" && key !== "search") apiUrl.searchParams.set(key, value);
+        });
+        return fetch(apiUrl.toString()).then((r) =>
+          r.ok ? r.json() : Promise.resolve({})
+        );
+      };
+
+      const finishRefetch = (
+        combined: VariantItem[] | Product[],
+        total: number,
+        hasMore: boolean,
+        page: number
+      ) => {
+        if (combined.length === 0) {
+          pendingListHydrationRef.current = 0;
+          setBrowseListReady(true);
+          return;
+        }
+        hydratedFromStoreRef.current = true;
+        if (useVariantItems) {
+          setAllVariantItems(combined as VariantItem[]);
+        } else {
+          setAllProducts(combined as Product[]);
+        }
+        setCurrentPage(page);
+        setTotalProducts(total || combined.length);
+        setHasMore(hasMore);
+        pendingListHydrationRef.current = 0;
+        setBrowseListReady(true);
+      };
+
+      if (useVariantItems) {
+        Promise.all(
+          Array.from({ length: targetPage }, (_, i) => fetchPage(i + 1))
+        )
+          .then((results) => {
+            const allKeys = new Set<string>();
+            const combined: VariantItem[] = [];
+            let total = 0;
+            let hasMore = false;
+            for (let i = 0; i < results.length; i++) {
+              const data = results[i];
+              const list = data?.variantItems || [];
+              total = data?.total ?? total;
+              hasMore = i === results.length - 1 ? !!data?.hasMore : true;
+              list.forEach((item: VariantItem) => {
+                if (!allKeys.has(item.variantKey)) {
+                  allKeys.add(item.variantKey);
+                  combined.push(item);
+                }
+              });
+            }
+            finishRefetch(combined, total, hasMore, targetPage);
+          })
+          .catch(() => {
+            pendingListHydrationRef.current = 0;
+            setBrowseListReady(true);
+          });
+      } else {
+        Promise.all(
+          Array.from({ length: targetPage }, (_, i) => fetchPage(i + 1))
+        )
+          .then((results) => {
+            const allIds = new Set<string>();
+            const combined: Product[] = [];
+            let total = 0;
+            let hasMore = false;
+            for (let i = 0; i < results.length; i++) {
+              const data = results[i];
+              const list = data?.items || [];
+              total = data?.total ?? total;
+              hasMore = i === results.length - 1 ? !!data?.hasMore : true;
+              list.forEach((item: Product) => {
+                const id = item.id ?? item.sku;
+                if (id && !allIds.has(String(id))) {
+                  allIds.add(String(id));
+                  combined.push(item);
+                }
+              });
+            }
+            finishRefetch(combined, total, hasMore, targetPage);
+          })
+          .catch(() => {
+            pendingListHydrationRef.current = 0;
+            setBrowseListReady(true);
+          });
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timeout);
+  }, [
+    collectionKey,
+    pathname,
+    isReturningFromProduct,
+    useVariantItems,
+    categoryPath,
+    searchQuery,
+    lng,
+    searchParams,
+  ]);
+
+  // RSC may reset the client to page-1 props on Back — re-apply stored list if shorter.
+  useEffect(() => {
+    if (!isReturningFromProduct()) return;
+    const stored = getCollectionState(collectionKey);
+    if (!stored?.items?.length) return;
+
+    const currentLen = useVariantItems ? allVariantItems.length : allProducts.length;
+    if (currentLen < stored.items.length) {
+      const expectedCount = applyStoredBrowseState();
+      finishBrowseListHydration(expectedCount);
+    }
+  }, [
+    pathname,
+    collectionKey,
+    initialVariantItems,
+    initialProducts,
+    allVariantItems.length,
+    allProducts.length,
+    useVariantItems,
+    applyStoredBrowseState,
+    isReturningFromProduct,
+    finishBrowseListHydration,
+  ]);
+
+  useEffect(() => {
+    const onBrowseReturn = () => {
+      if (!isReturningFromProduct()) return;
+      const stored = getCollectionState(collectionKey);
+      if (!stored?.items?.length) return;
+
+      const currentLen = useVariantItems
+        ? allVariantItems.length
+        : allProducts.length;
+      if (currentLen >= stored.items.length) return;
+
+      cancelCollectionScrollRestoreWatchdog();
+      const expectedCount = applyStoredBrowseState();
+      if (expectedCount > 0) {
+        finishBrowseListHydration(expectedCount);
+      }
+    };
+
+    window.addEventListener(COLLECTION_RETURN_EVENT, onBrowseReturn);
+    return () =>
+      window.removeEventListener(COLLECTION_RETURN_EVENT, onBrowseReturn);
+  }, [
+    collectionKey,
+    applyStoredBrowseState,
+    isReturningFromProduct,
+    finishBrowseListHydration,
+    useVariantItems,
+    allVariantItems.length,
+    allProducts.length,
+  ]);
 
   // Fallback: when URL has page>1 but no stored state (e.g. sessionStorage failed or new tab),
   // fetch pages 1..page on the client and restore the list so we show the same place.
@@ -339,6 +613,8 @@ export default function CollectionClient({
   // CRITICAL: Only reset products/variantItems when filters/search actually change, NOT when page changes
   // Do NOT overwrite when we just hydrated from store (returning from PDP with restored state).
   useEffect(() => {
+    if (pendingListHydrationRef.current > 0) return;
+
     const filterChanged = prevFilterKeyRef.current !== filterKey;
     
     // Only reset if:
@@ -348,6 +624,14 @@ export default function CollectionClient({
     const pageOnlyChanged = !filterChanged && prevFilterKeyRef.current !== '';
     
     if (filterChanged && !isLoadingMoreRef.current) {
+      const pending = readLastCollectionScroll();
+      const returningFromProduct =
+        pending?.browseKey === collectionKey && pending.scrollY > 0;
+      if (returningFromProduct) {
+        prevFilterKeyRef.current = filterKey;
+        return;
+      }
+
       hydratedFromStoreRef.current = false; // New filter context, clear hydration flag
       // Filters/search changed - reset accumulated items to start fresh
       if (useVariantItems && initialVariantItems) {
@@ -360,7 +644,12 @@ export default function CollectionClient({
       setCurrentPage(searchPage || 1);
       setHasMore(initialHasMore);
       prevFilterKeyRef.current = filterKey;
-    } else if (pageOnlyChanged && !isLoadingMoreRef.current && !hydratedFromStoreRef.current) {
+    } else if (
+      pageOnlyChanged &&
+      !isLoadingMoreRef.current &&
+      !hydratedFromStoreRef.current &&
+      !isReturningFromProduct()
+    ) {
       // Only page number changed - sync to server data ONLY if we did NOT hydrate from store.
       // When returning from PDP we hydrate from store and must not overwrite with server payload.
       if (searchPage && searchPage !== currentPage) {
@@ -377,7 +666,18 @@ export default function CollectionClient({
     }
     // If filterKey hasn't changed and we're loading more, DON'T RESET!
     // The accumulated stream should remain intact
-  }, [filterKey, initialProducts, initialVariantItems, searchPage, searchTotal, initialHasMore, currentPage, useVariantItems]);
+  }, [
+    filterKey,
+    initialProducts,
+    initialVariantItems,
+    searchPage,
+    searchTotal,
+    initialHasMore,
+    currentPage,
+    useVariantItems,
+    collectionKey,
+    isReturningFromProduct,
+  ]);
 
   // Keep snapshot ref updated so we can persist on unmount
   stateSnapshotRef.current = {
@@ -481,31 +781,12 @@ export default function CollectionClient({
         });
       }
       
-      // Set flag BEFORE updating URL to prevent useEffect from resetting
       isLoadingMoreRef.current = true;
-      
-      // Update pagination metadata
+
       setCurrentPage(data.page || nextPage);
       setTotalProducts(data.total || totalProducts);
       setHasMore(data.hasMore || false);
 
-      // Update URL with new page number - use window.history to avoid server re-render
-      // This keeps URL in sync for sharing/refresh without triggering Next.js server fetch
-      // Using replaceState prevents scroll restoration that Next.js router might trigger
-      const urlParams = new URLSearchParams(safeSearchParams.toString());
-      urlParams.set('page', nextPage.toString());
-      const queryString = urlParams.toString();
-      const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
-      const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
-      
-      // Use window.history.replaceState to update URL without triggering server re-render or scroll
-      // This is critical - router.replace() can trigger server re-fetch and scroll restoration
-      window.history.replaceState(
-        { ...window.history.state, as: newUrl, url: newUrl },
-        '',
-        newUrl
-      );
-      
       // CRITICAL: Restore scroll position after React renders new items
       // Use requestAnimationFrame to ensure DOM has updated with new products
       // Multiple rAF calls ensure we restore after layout is complete
@@ -538,7 +819,63 @@ export default function CollectionClient({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, currentPage, categoryPath, searchQuery, lng, searchParams, router, slug, totalProducts, useVariantItems]);
+  }, [isLoadingMore, hasMore, currentPage, categoryPath, searchQuery, lng, searchParams, totalProducts, useVariantItems]);
+
+  // Infinite scroll: load next page when sentinel nears the viewport.
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMore || !browseListReady) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          void handleLoadMore();
+        }
+      },
+      { root: null, rootMargin: "600px 0px", threshold: 0 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, browseListReady, handleLoadMore]);
+
+  // Browser Back: auto-fetch until stored list length or scroll target is reachable.
+  useEffect(() => {
+    if (!browseListReady || !hasMore || isLoadingMore) return;
+    if (!isReturningFromProduct()) return;
+
+    const stored = getCollectionState(collectionKey);
+    const currentLen = useVariantItems ? allVariantItems.length : allProducts.length;
+    const targetLen = stored?.items?.length ?? 0;
+    if (targetLen > currentLen) {
+      void handleLoadMore();
+      return;
+    }
+
+    const targetY = Math.max(
+      readLastCollectionScroll()?.scrollY ?? 0,
+      stored?.scrollY ?? 0
+    );
+    if (targetY <= 0) return;
+
+    const maxScroll =
+      document.documentElement.scrollHeight - window.innerHeight;
+    if (targetY > maxScroll + 80) {
+      void handleLoadMore();
+    }
+  }, [
+    browseListReady,
+    hasMore,
+    isLoadingMore,
+    collectionKey,
+    useVariantItems,
+    allVariantItems.length,
+    allProducts.length,
+    isReturningFromProduct,
+    handleLoadMore,
+    currentPage,
+  ]);
+
   const collectionLevel = slug ? slug.length : 0; // 0 = all/main, 1 = level 0, 2 = level 1, 3+ = level 2+
   const showSubSubCategoryFilter = collectionLevel <= 2; // Show only on level 0 and level 1 pages
 
@@ -889,6 +1226,7 @@ export default function CollectionClient({
     browseKey: collectionKey,
     itemCount: sortedItems.length,
     snapshotRef: stateSnapshotRef,
+    browseListReady,
     persistDeps: [
       useVariantItems,
       allVariantItems.length,
@@ -1268,6 +1606,10 @@ export default function CollectionClient({
 
 
   return (
+    <CollectionBrowseProvider
+      browseKey={collectionKey}
+      snapshotRef={stateSnapshotRef}
+    >
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pb-16 relative">
         {/* Header with Filters Button */}
@@ -1440,34 +1782,15 @@ export default function CollectionClient({
                     })}
               </div>
               
-              {/* Load More Button */}
-              {hasMore && (
-                <div className="mt-8 flex justify-center">
-                  <button
-                    type="button"
-                    disabled={isLoadingMore}
-                    onClick={(e) => {
-                      // Prevent any default behavior that might cause scroll
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleLoadMore();
-                    }}
-                    onMouseDown={(e) => {
-                      // Prevent focus on mousedown to avoid scroll jumps
-                      // This helps prevent browser from scrolling to button
-                      if (e.button === 0) {
-                        // Just prevent focus, don't prevent the click
-                        e.currentTarget.blur();
-                      }
-                    }}
-                    className={cn(
-                      "px-6 py-3 bg-[#856D55] text-white font-medium rounded-md transition-colors duration-200",
-                      "hover:bg-[#856D55]/90 disabled:opacity-50 disabled:cursor-not-allowed",
-                      isLoadingMore && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    {isLoadingMore ? t.loading : t.loadMore}
-                  </button>
+              {(hasMore || isLoadingMore) && (
+                <div
+                  ref={loadMoreSentinelRef}
+                  className="mt-8 flex min-h-[3rem] items-center justify-center"
+                  aria-hidden={!isLoadingMore}
+                >
+                  {isLoadingMore && (
+                    <p className="text-sm text-gray-500">{t.loading}</p>
+                  )}
                 </div>
               )}
             </>
@@ -1957,6 +2280,7 @@ export default function CollectionClient({
       {/* Scroll to Top Button */}
       <ScrollToTopButton lng={lng as 'en' | 'he'} />
     </div>
+    </CollectionBrowseProvider>
   );
 }
 

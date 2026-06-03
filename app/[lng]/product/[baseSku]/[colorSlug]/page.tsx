@@ -34,6 +34,7 @@ import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
 import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
+import { getProductImageCarouselOpts } from '@/lib/product-image-carousel'
 
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
@@ -580,18 +581,16 @@ export default function ProductColorPage() {
               {/* Main Image Carousel */}
               <Carousel
                 setApi={setApi}
-                opts={{
-                  align: "start",
-                  loop: productImages.length > 1,
-                }}
+                opts={getProductImageCarouselOpts(productImages.length)}
                 direction={isRTL ? "rtl" : "ltr"}
+                itemVariant="flush"
                 className="w-full group"
               >
                 <div className="relative aspect-square w-full overflow-hidden">
                   <CarouselContent>
                     {productImages.length > 0 ? (
                       productImages.map((image, index) => (
-                        <CarouselItem key={index} className="pl-0">
+                        <CarouselItem key={index}>
                           <div className="relative w-full h-full">
                             <Image
                               src={image}
@@ -608,7 +607,7 @@ export default function ProductColorPage() {
                         </CarouselItem>
                       ))
                     ) : (
-                      <CarouselItem className="pl-0">
+                      <CarouselItem>
                         <div className="w-full h-full flex items-center justify-center bg-white">
                           <span className="text-gray-400">
                             {lng === 'he' ? 'אין תמונה זמינה' : 'No image available'}

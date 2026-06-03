@@ -12,9 +12,9 @@ import { getColorName, getColorHex } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import {
   getCollectionState,
-  setCollectionState,
-  type CollectionBrowseState,
+  type CollectionBrowseSnapshot,
 } from "@/lib/collectionBrowseStore";
+import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
 import {
   Accordion,
   AccordionContent,
@@ -261,15 +261,9 @@ export default function CampaignClient({
   );
 
   const hydratedFromStoreRef = useRef<boolean>(false);
-  const scrollRestoredRef = useRef<boolean>(false);
   const prevCampaignIdRef = useRef<string | undefined>(campaign.id);
   const prevFilterKeyRef = useRef<string>(filterKey);
-  const stateSnapshotRef = useRef<{
-    items: VariantItem[];
-    currentPage: number;
-    totalProducts: number;
-    hasMore: boolean;
-  } | null>(null);
+  const stateSnapshotRef = useRef<CollectionBrowseSnapshot | null>(null);
 
   const title = campaign.title[lng] || campaign.title.en || campaign.title.he;
   const description = campaign.description?.[lng] || campaign.description?.en || campaign.description?.he;
@@ -563,92 +557,24 @@ export default function CampaignClient({
 
   // Keep snapshot ref updated so we can persist on unmount (same as CollectionClient)
   stateSnapshotRef.current = {
+    useVariantItems: true,
     items: variantItems,
     currentPage,
     totalProducts,
     hasMore,
   };
 
-  // Persist to store on unmount (navigating away to product page) so state is never lost
-  useEffect(() => {
-    return () => {
-      const key = campaignKey;
-      const snap = stateSnapshotRef.current;
-      if (!key || !snap) return;
-      const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
-      setCollectionState(key, {
-        useVariantItems: true,
-        items: snap.items,
-        currentPage: snap.currentPage,
-        totalProducts: snap.totalProducts,
-        hasMore: snap.hasMore,
-        scrollY,
-        updatedAt: Date.now(),
-      });
-    };
-  }, [campaignKey]);
-
-  // Helper to persist current campaign state (including scrollY) into the store
-  const persistCampaignState = useCallback(
-    (scrollYOverride?: number) => {
-      if (!campaignKey) return;
-      const scrollY =
-        typeof window !== "undefined"
-          ? scrollYOverride ?? window.scrollY
-          : scrollYOverride ?? 0;
-      const state: CollectionBrowseState = {
-        useVariantItems: true,
-        items: variantItems,
-        currentPage,
-        totalProducts,
-        hasMore,
-        scrollY,
-        updatedAt: Date.now(),
-      };
-      setCollectionState(campaignKey, state);
-    },
-    [campaignKey, variantItems, currentPage, totalProducts, hasMore]
-  );
-
-  // Persist scroll position while the user scrolls (debounced)
-  useEffect(() => {
-    if (!campaignKey) return;
-    let scrollTimeout: NodeJS.Timeout;
-    const handleScroll = () => {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => persistCampaignState(), 100);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearTimeout(scrollTimeout);
-    };
-  }, [campaignKey, persistCampaignState]);
-
-  // Persist when pagination state changes
-  useEffect(() => {
-    if (!campaignKey) return;
-    persistCampaignState();
-  }, [campaignKey, persistCampaignState, variantItems.length, currentPage, totalProducts, hasMore]);
-
-  // Scroll restoration when returning from PDP
-  useEffect(() => {
-    if (!campaignKey || scrollRestoredRef.current) return;
-    const stored = getCollectionState(campaignKey);
-    if (!stored || stored.scrollY <= 0) {
-      scrollRestoredRef.current = true;
-      return;
-    }
-    if (variantItems.length === 0) return;
-
-    scrollRestoredRef.current = true;
-    const targetY = stored.scrollY;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo(0, targetY);
-      });
-    });
-  }, [campaignKey, variantItems.length]);
+  useCollectionScrollRestore({
+    browseKey: campaignKey,
+    itemCount: sortedItems.length,
+    snapshotRef: stateSnapshotRef,
+    persistDeps: [
+      variantItems.length,
+      currentPage,
+      totalProducts,
+      hasMore,
+    ],
+  });
 
   // Helper to check if a URL is a video
   const isVideoUrl = (url?: string): boolean => {
@@ -879,6 +805,7 @@ export default function CampaignClient({
                   product={item.product}
                   language={lng}
                   preselectedColorSlug={item.variant.colorSlug}
+                  browseStoreKey={campaignKey}
                 />
               ))}
             </div>

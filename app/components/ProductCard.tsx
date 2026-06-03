@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, type MouseEvent } from 'react'
 import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
 import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
@@ -20,6 +20,8 @@ import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from './ProductPromoRibbon'
 import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
+import { productImageCarouselOpts } from '@/lib/product-image-carousel'
+import { persistCollectionScroll } from '@/lib/collectionBrowseStore'
 
 const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
 const STATUS_BADGE_CLASS = 'text-xs font-medium px-2 py-1 rounded pointer-events-none'
@@ -31,9 +33,11 @@ interface ProductCardProps {
   preselectedColorSlug?: string // Preselected color variant (for variant items from collection pages)
   disableImageCarousel?: boolean // Disable image carousel (e.g., when inside ProductCarousel)
   isAboveFold?: boolean // Whether product is above the fold (for lazy loading)
+  /** When set, scroll position is saved before navigating to the product page. */
+  browseStoreKey?: string
 }
 
-export default function ProductCard({ product, language = 'en', selectedColors, preselectedColorSlug, disableImageCarousel = false, isAboveFold = false }: ProductCardProps) {
+export default function ProductCard({ product, language = 'en', selectedColors, preselectedColorSlug, disableImageCarousel = false, isAboveFold = false, browseStoreKey }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -263,7 +267,18 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     setIsQuickBuyOpen(true)
   }
 
-  const handleLinkClick = useCallback(() => {
+  const saveBrowseScroll = useCallback(() => {
+    if (browseStoreKey) persistCollectionScroll(browseStoreKey)
+  }, [browseStoreKey])
+
+  const handleLinkClick = useCallback((e: MouseEvent<HTMLAnchorElement>) => {
+    if (api && 'clickAllowed' in api && typeof api.clickAllowed === 'function' && !api.clickAllowed()) {
+      e.preventDefault()
+      return
+    }
+
+    saveBrowseScroll()
+
     // Track select_item when product is clicked
     try {
       const productName = productHelpers.getField(product, 'name', language as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product';
@@ -290,7 +305,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     } catch (dataLayerError) {
       console.warn('Data layer tracking error:', dataLayerError);
     }
-  }, [product, activeVariant, currentPrice, language])
+  }, [product, activeVariant, currentPrice, language, api, saveBrowseScroll])
 
   // Handle arrow navigation (desktop only)
   const handleArrowClick = useCallback((direction: 'prev' | 'next', e: React.MouseEvent) => {
@@ -307,6 +322,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       <Link
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
         className="relative aspect-square overflow-hidden bg-gray-50 block"
+        onPointerDown={saveBrowseScroll}
         onClick={handleLinkClick}
       >
         {/* Image Carousel Container */}
@@ -330,33 +346,29 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
               <Carousel
                 setApi={setApi}
                 direction={language === 'he' ? 'rtl' : 'ltr'}
-                opts={{
-                  align: 'start',
-                  loop: true,
-                }}
+                itemVariant="flush"
+                opts={productImageCarouselOpts}
                 className="w-full h-full"
               >
-                <CarouselContent className={`h-full ${language === 'he' ? '-mr-0' : '-ml-0'}`}>
+                <CarouselContent className="h-full">
                   {variantImages.map((image, index) => {
                     const shouldPreload = Math.abs(selectedImageIndex - index) <= 1
-                    const isActive = selectedImageIndex === index
                     const isPrimary = index === primaryImageIndex
 
                     return (
-                      <CarouselItem key={`image-${index}`} className={`h-full basis-full ${language === 'he' ? 'pr-0' : 'pl-0'}`}>
+                      <CarouselItem key={`image-${index}`} className="h-full basis-full">
                         <div className="w-full h-full relative aspect-square">
                           <Image
                             src={typeof image === 'string' ? image : image?.url || ''}
                             alt={`${productName} - ${activeVariant.colorSlug}`}
                             width={500}
                             height={500}
-                            className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                            className="h-full w-full object-cover object-center"
                             priority={isPrimary && isAboveFold}
                             unoptimized={true}
                             loading={isAboveFold && isPrimary ? undefined : (shouldPreload ? undefined : 'lazy')}
                             draggable={false}
-                            decoding={isActive ? 'sync' : 'async'}
-                            style={{ aspectRatio: '1 / 1' }} // Ensure fixed aspect ratio to prevent layout shift
+                            style={{ aspectRatio: '1 / 1' }}
                           />
                         </div>
                       </CarouselItem>

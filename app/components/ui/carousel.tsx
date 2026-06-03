@@ -13,12 +13,16 @@ type UseCarouselParameters = Parameters<typeof useEmblaCarousel>
 type CarouselOptions = UseCarouselParameters[0]
 type CarouselPlugin = UseCarouselParameters[1]
 
+type CarouselItemVariant = "default" | "flush"
+
 type CarouselProps = {
   opts?: CarouselOptions
   plugins?: CarouselPlugin
   orientation?: "horizontal" | "vertical"
   direction?: "ltr" | "rtl"
   setApi?: (api: CarouselApi) => void
+  /** "flush" removes default slide gap padding (product image galleries). */
+  itemVariant?: CarouselItemVariant
 }
 
 type CarouselContextProps = {
@@ -28,6 +32,7 @@ type CarouselContextProps = {
   scrollNext: () => void
   canScrollPrev: boolean
   canScrollNext: boolean
+  itemVariant?: CarouselItemVariant
 } & CarouselProps
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null)
@@ -53,6 +58,7 @@ const Carousel = React.forwardRef<
       opts,
       setApi,
       plugins,
+      itemVariant = "default",
       className,
       children,
       ...props
@@ -135,6 +141,7 @@ const Carousel = React.forwardRef<
           scrollNext,
           canScrollPrev,
           canScrollNext,
+          itemVariant,
         }}
       >
         <div
@@ -159,13 +166,26 @@ const CarouselContent = React.forwardRef<
 >(({ className, ...props }, ref) => {
   const { carouselRef, orientation, direction } = useCarousel()
 
+  const { itemVariant } = useCarousel()
+  const isFlush = itemVariant === "flush"
+
   return (
-    <div ref={carouselRef} className="overflow-hidden" dir={direction}>
+    <div
+      ref={carouselRef}
+      className="overflow-hidden touch-pan-y"
+      dir={direction}
+    >
       <div
         ref={ref}
         className={cn(
-          "flex",
-          orientation === "horizontal" ? (direction === "rtl" ? "-mr-4" : "-ml-4") : "-mt-4 flex-col",
+          "flex will-change-transform [transform:translate3d(0,0,0)]",
+          !isFlush &&
+            (orientation === "horizontal"
+              ? direction === "rtl"
+                ? "-mr-4"
+                : "-ml-4"
+              : "-mt-4 flex-col"),
+          isFlush && orientation === "vertical" && "-mt-4 flex-col",
           className
         )}
         {...props}
@@ -179,7 +199,8 @@ const CarouselItem = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => {
-  const { orientation, direction } = useCarousel()
+  const { orientation, direction, itemVariant } = useCarousel()
+  const isFlush = itemVariant === "flush"
 
   return (
     <div
@@ -188,7 +209,12 @@ const CarouselItem = React.forwardRef<
       aria-roledescription="slide"
       className={cn(
         "min-w-0 shrink-0 grow-0 basis-full",
-        orientation === "horizontal" ? (direction === "rtl" ? "pr-3" : "pl-3") : "pt-4",
+        !isFlush &&
+          (orientation === "horizontal"
+            ? direction === "rtl"
+              ? "pr-3"
+              : "pl-3"
+            : "pt-4"),
         className
       )}
       {...props}
@@ -255,6 +281,7 @@ CarouselNext.displayName = "CarouselNext"
 
 export {
   type CarouselApi,
+  type CarouselOptions,
   Carousel,
   CarouselContent,
   CarouselItem,

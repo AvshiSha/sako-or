@@ -90,23 +90,15 @@ export function useCollectionScrollRestore({
         lastScrollYRef.current = scrollY;
       }
 
-      const useStoredList =
-        stored &&
-        Array.isArray(stored.items) &&
-        stored.items.length > snap.items.length;
-
       setCollectionState(browseKey, {
-        useVariantItems: useStoredList
-          ? stored.useVariantItems
-          : snap.useVariantItems,
-        items: useStoredList ? stored.items : snap.items,
-        currentPage: useStoredList ? stored.currentPage : snap.currentPage,
-        totalProducts: useStoredList
-          ? stored.totalProducts
-          : snap.totalProducts,
-        hasMore: useStoredList ? stored.hasMore : snap.hasMore,
+        useVariantItems: snap.useVariantItems,
+        items: snap.items,
+        currentPage: Math.max(snap.currentPage, stored?.currentPage ?? 1),
+        totalProducts: Math.max(snap.totalProducts, stored?.totalProducts ?? 0),
+        hasMore: snap.hasMore || !!stored?.hasMore,
         scrollY,
         updatedAt: Date.now(),
+        anchorVariantKey: stored?.anchorVariantKey,
       });
     },
     [browseKey, snapshotRef, browseListReady]
@@ -163,10 +155,16 @@ export function useCollectionScrollRestore({
     isRestoringRef.current = true;
     lastScrollYRef.current = targetY;
 
-    runCollectionScrollRestore(targetY, () => {
-      isRestoringRef.current = false;
-      restoreCompleteRef.current = true;
-    });
+    const anchorKey = getCollectionState(browseKey)?.anchorVariantKey;
+
+    runCollectionScrollRestore(
+      targetY,
+      () => {
+        isRestoringRef.current = false;
+        restoreCompleteRef.current = true;
+      },
+      anchorKey
+    );
   }, [browseKey, browseListReady]);
 
   useEffect(() => {
@@ -205,12 +203,6 @@ export function useCollectionScrollRestore({
     }
 
     restoreCompleteRef.current = false;
-    beginRestore();
-  }, [browseKey, browseListReady, beginRestore]);
-
-  useEffect(() => {
-    if (!browseKey || !browseListReady) return;
-    if (restoreCompleteRef.current) return;
     beginRestore();
   }, [browseKey, browseListReady, beginRestore]);
 

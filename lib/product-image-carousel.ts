@@ -4,14 +4,31 @@ import type { CarouselOptions } from "@/app/components/ui/carousel";
 export const productImageCarouselOpts: CarouselOptions = {
   align: "start",
   containScroll: "trimSnaps",
-  dragThreshold: 8,
-  skipSnaps: false,
-  loop: true,
-}
+  dragThreshold: 5,
+  skipSnaps: true,
+  loop: false,
+};
+
+/** Mobile-first tuning: slightly looser snap on small screens for flick gestures. */
+export const productImageCarouselMobileBreakpoints = {
+  "(min-width: 768px)": {
+    skipSnaps: false,
+    dragThreshold: 8,
+  },
+} as const satisfies NonNullable<CarouselOptions>["breakpoints"];
 
 export function getProductImageCarouselOpts(imageCount: number): CarouselOptions {
   return {
     ...productImageCarouselOpts,
     loop: imageCount > 2,
-  }
+    breakpoints: productImageCarouselMobileBreakpoints,
+  };
+}
+
+export function getProductCardCarouselOpts(): CarouselOptions {
+  return {
+    ...productImageCarouselOpts,
+    loop: false,
+    breakpoints: productImageCarouselMobileBreakpoints,
+  };
 }

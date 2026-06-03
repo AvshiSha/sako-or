@@ -22,19 +22,11 @@ import Accordion from '@/app/components/Accordion'
 import SizeChart from '@/app/components/SizeChart'
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  type CarouselApi,
-} from '@/app/components/ui/carousel'
+import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
 import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
-import { getProductImageCarouselOpts } from '@/lib/product-image-carousel'
 
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
@@ -81,15 +73,11 @@ export default function ProductColorPage() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [selectedSize, setSelectedSize] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [isClient, setIsClient] = useState(false)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isSizeChartOpen, setIsSizeChartOpen] = useState(false)
-  
-  // Carousel API state
-  const [api, setApi] = useState<CarouselApi>()
   
   // Favorites hook
   const { isFavorite, toggleFavorite } = useFavorites()
@@ -113,12 +101,6 @@ export default function ProductColorPage() {
     if (!currentVariant) return []
     return reorderImagesByPrimary(currentVariant.images, currentVariant.primaryImage)
   }, [currentVariant])
-
-  // Keep latest images available without triggering reset effects
-  const productImagesRef = useRef<string[]>([])
-  useEffect(() => {
-    productImagesRef.current = productImages
-  }, [productImages])
 
   // Get language, baseSku, and colorSlug from params
   const lng = params?.lng as string || 'en'
@@ -148,36 +130,6 @@ export default function ProductColorPage() {
   useEffect(() => {
     setIsClient(true)
   }, [])
-
-  // Track carousel selection
-  useEffect(() => {
-    if (!api) return
-
-    const onSelect = () => {
-      const selected = api.selectedScrollSnap()
-      setSelectedImageIndex(selected)
-    }
-
-    api.on('select', onSelect)
-    onSelect() // Set initial index
-
-    return () => {
-      api.off('select', onSelect)
-    }
-  }, [api])
-
-  // Ensure carousel starts on the first image (primary-first) when the color variant changes.
-  // Intentionally does NOT depend on productImages/currentVariant to avoid redundant resets during data load.
-  const lastResetColorSlugRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!api) return
-    if (productImagesRef.current.length === 0) return
-    if (lastResetColorSlugRef.current === colorSlug) return
-
-    lastResetColorSlugRef.current = colorSlug
-    api.scrollTo(0)
-    // selectedImageIndex is driven by the carousel's `select` event listener
-  }, [api, colorSlug])
 
   // Set up real-time listener for product data
   useEffect(() => {
@@ -221,9 +173,6 @@ export default function ProductColorPage() {
         if (availableSizes.length > 0) {
           setSelectedSize(availableSizes[0])
         }
-
-        // Reset image selection to 0
-        setSelectedImageIndex(0)
 
         // Fire Product View analytics event (Firebase)
         if (productData) {
@@ -578,81 +527,17 @@ export default function ProductColorPage() {
                 />
               )}
 
-              {/* Main Image Carousel */}
-              <Carousel
-                setApi={setApi}
-                opts={getProductImageCarouselOpts(productImages.length)}
+              <ProductImageCarousel
+                key={colorSlug}
+                images={productImages}
+                alt={`${productName} - ${currentVariant.colorSlug}`}
                 direction={isRTL ? "rtl" : "ltr"}
-                itemVariant="flush"
+                variant="pdp"
                 className="w-full group"
-              >
-                <div className="relative aspect-square w-full overflow-hidden">
-                  <CarouselContent>
-                    {productImages.length > 0 ? (
-                      productImages.map((image, index) => (
-                        <CarouselItem key={index}>
-                          <div className="relative w-full h-full">
-                            <Image
-                              src={image}
-                              alt={`${productName} - ${currentVariant.colorSlug} - ${index + 1}`}
-                              width={600}
-                              height={600}
-                              className="w-full h-full object-cover object-center"
-                              priority={index === 0}
-                              unoptimized={true}
-                              loading={index === 0 ? undefined : 'lazy'}
-                              draggable={false}
-                            />
-                          </div>
-                        </CarouselItem>
-                      ))
-                    ) : (
-                      <CarouselItem>
-                        <div className="w-full h-full flex items-center justify-center bg-white">
-                          <span className="text-gray-400">
-                            {lng === 'he' ? 'אין תמונה זמינה' : 'No image available'}
-                          </span>
-                        </div>
-                      </CarouselItem>
-                    )}
-                  </CarouselContent>
-
-                  {/* Navigation Arrows */}
-                  {productImages.length > 1 && (
-                    <>
-                      {isRTL ? (
-                        <>
-                          <CarouselPrevious className="!right-2 sm:!right-4 !left-auto !-translate-y-1/2 !opacity-50 z-20 pointer-events-auto h-6 w-6 [&>svg]:text-[#000000] [&>svg]:rotate-180 disabled:!opacity-30 [&[disabled]]:!pointer-events-auto" />
-                          <CarouselNext className="!left-2 sm:!left-4 !right-auto !-translate-y-1/2 !opacity-50 z-20 pointer-events-auto h-6 w-6 [&>svg]:text-[#000000] [&>svg]:rotate-180 disabled:!opacity-30 [&[disabled]]:!pointer-events-auto" />
-                        </>
-                      ) : (
-                        <>
-                          <CarouselPrevious className="!left-2 sm:!left-4 !-translate-y-1/2 opacity-50 sm:opacity-100 group-hover:opacity-100 transition-opacity pointer-events-auto h-6 w-6 [&>svg]:text-[#000000] z-20" />
-                          <CarouselNext className="!right-2 sm:!right-4 !-translate-y-1/2 opacity-50 sm:opacity-100 group-hover:opacity-100 transition-opacity pointer-events-auto h-6 w-6 [&>svg]:text-[#000000] z-20" />
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* Pagination Dots - Bottom Center */}
-                  {productImages.length > 1 && (
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10 flex space-x-2">
-                      {productImages.map((_, index) => (
-                        <button
-                          key={index}
-                          onClick={() => api?.scrollTo(index)}
-                          className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                            selectedImageIndex === index
-                              ? 'bg-[#E1DBD7] w-6'
-                              : 'bg-[#E1DBD7]/50 hover:bg-[#E1DBD7]/75'
-                          }`}
-                          aria-label={`${lng === 'he' ? 'עבור לתמונה' : 'Go to image'} ${index + 1}`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </Carousel>
+                dotSelectLabelPrefix={
+                  lng === "he" ? "עבור לתמונה" : "Go to image"
+                }
+              />
             </div>
 
             {/* Product Details */}

@@ -10,17 +10,12 @@ import { useFavorites } from '@/app/hooks/useFavorites'
 import QuickBuyDrawer from './QuickBuyDrawer'
 import { trackSelectItem } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  type CarouselApi,
-} from '@/app/components/ui/carousel'
+import type { CarouselApi } from '@/app/components/ui/carousel'
+import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from './ProductPromoRibbon'
 import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
-import { productImageCarouselOpts } from '@/lib/product-image-carousel'
 import { persistCollectionScroll } from '@/lib/collectionBrowseStore'
 
 const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
@@ -42,9 +37,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
 
-  // Carousel state
   const [api, setApi] = useState<CarouselApi>()
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
   // Get the default color variant for display
   // Priority: preselectedColorSlug > selectedColors filter > first active variant
@@ -88,6 +81,14 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
   const totalImages = variantImages.length
 
+  const imageUrls = useMemo(
+    () =>
+      variantImages.map((image) =>
+        typeof image === 'string' ? image : image?.url || ''
+      ),
+    [variantImages]
+  )
+
   // Find primary image index
   const primaryImageIndex = useMemo(() => {
     if (!activeVariant || totalImages === 0) return 0
@@ -100,26 +101,6 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
     return index >= 0 ? index : 0
   }, [activeVariant, variantImages, totalImages])
-
-  // Sync selected image index when carousel changes (Embla v8 handles click vs drag)
-  useEffect(() => {
-    if (!api) return
-    const onSelect = () => setSelectedImageIndex(api.selectedScrollSnap())
-    api.on('select', onSelect)
-    onSelect()
-    return () => {
-      api.off('select', onSelect)
-    }
-  }, [api])
-
-  // Reset carousel to primary image when variant changes
-  useEffect(() => {
-    if (api && activeVariant && totalImages > 0) {
-      const initialIndex = primaryImageIndex
-      api.scrollTo(initialIndex, false) // false = instant scroll, no animation
-      setSelectedImageIndex(initialIndex)
-    }
-  }, [api, activeVariant, totalImages, primaryImageIndex])
 
   if (!activeVariant) {
     return null
@@ -327,55 +308,19 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       >
         {/* Image Carousel Container */}
         <div className="w-full h-full relative">
-          {/* Image indicator dots */}
-          {!disableImageCarousel && totalImages > 1 && (
-            <div className="absolute top-2 left-1/2 transform -translate-x-1/2 z-10 flex space-x-1 pointer-events-none">
-              {Array.from({ length: totalImages }).map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-1 h-1 rounded-full transition-all duration-200 ${selectedImageIndex === index ? 'bg-[#E1DBD7]' : 'bg-[#E1DBD7]/50'
-                    }`}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Image Carousel */}
           {!disableImageCarousel && totalImages > 1 ? (
             <>
-              <Carousel
-                setApi={setApi}
+              <ProductImageCarousel
+                key={`${product.sku}-${activeVariant.colorSlug}`}
+                images={imageUrls}
+                alt={`${productName} - ${activeVariant.colorSlug}`}
                 direction={language === 'he' ? 'rtl' : 'ltr'}
-                itemVariant="flush"
-                opts={productImageCarouselOpts}
+                variant="card"
+                isAboveFold={isAboveFold}
+                initialIndex={primaryImageIndex}
+                setApi={setApi}
                 className="w-full h-full"
-              >
-                <CarouselContent className="h-full">
-                  {variantImages.map((image, index) => {
-                    const shouldPreload = Math.abs(selectedImageIndex - index) <= 1
-                    const isPrimary = index === primaryImageIndex
-
-                    return (
-                      <CarouselItem key={`image-${index}`} className="h-full basis-full">
-                        <div className="w-full h-full relative aspect-square">
-                          <Image
-                            src={typeof image === 'string' ? image : image?.url || ''}
-                            alt={`${productName} - ${activeVariant.colorSlug}`}
-                            width={500}
-                            height={500}
-                            className="h-full w-full object-cover object-center"
-                            priority={isPrimary && isAboveFold}
-                            unoptimized={true}
-                            loading={isAboveFold && isPrimary ? undefined : (shouldPreload ? undefined : 'lazy')}
-                            draggable={false}
-                            style={{ aspectRatio: '1 / 1' }}
-                          />
-                        </div>
-                      </CarouselItem>
-                    )
-                  })}
-                </CarouselContent>
-              </Carousel>
+              />
 
               {/* Desktop Arrow Navigation - Only show when more than 1 image */}
               {totalImages > 1 && (

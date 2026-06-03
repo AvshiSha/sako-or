@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, type RefObject } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type RefObject,
+} from "react";
 import {
   getCollectionState,
   saveCollectionStateOnLeave,
@@ -9,16 +15,25 @@ import {
   type CollectionBrowseSnapshot,
   type CollectionKey,
 } from "@/lib/collectionBrowseStore";
-
-const RESTORE_MAX_ATTEMPTS = 15;
+import { usePathname } from "next/navigation";
+import {
+  COLLECTION_RETURN_EVENT,
+  getRestoreScrollTarget,
+  hasPendingCollectionScrollRestore,
+  isCollectionScrollLocked,
+  isOnCollectionPage,
+  readFrozenCollectionScroll,
+  resolveRestoreScrollY,
+  runCollectionScrollRestore,
+  unlockCollectionScrollWrites,
+} from "@/lib/collectionScrollRestore";
 
 type UseCollectionScrollRestoreParams = {
   browseKey: CollectionKey | undefined;
-  /** Number of grid items rendered; restore waits until > 0. */
   itemCount: number;
   snapshotRef: RefObject<CollectionBrowseSnapshot | null>;
-  /** When these change, persist full browse state (skipped while restoring). */
   persistDeps: readonly unknown[];
+  browseListReady?: boolean;
 };
 
 export function useCollectionScrollRestore({
@@ -26,62 +41,96 @@ export function useCollectionScrollRestore({
   itemCount,
   snapshotRef,
   persistDeps,
+  browseListReady = true,
 }: UseCollectionScrollRestoreParams) {
+  const pathname = usePathname();
+  const prevPathRef = useRef<string | null>(null);
   const isRestoringRef = useRef(false);
-  const scrollRestoredRef = useRef(false);
+  const restoreCompleteRef = useRef(false);
   const lastScrollYRef = useRef(0);
+  const collectionPathRef = useRef("");
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const previous = window.history.scrollRestoration;
-    window.history.scrollRestoration = "manual";
-    return () => {
-      window.history.scrollRestoration = previous;
-    };
-  }, []);
+    restoreCompleteRef.current = false;
+    isRestoringRef.current = false;
+  }, [browseKey]);
+
+  useEffect(() => {
+    if (!pathname || !/\/collection/.test(pathname) || /\/product\//.test(pathname)) {
+      return;
+    }
+    collectionPathRef.current =
+      window.location.pathname + window.location.search;
+  }, [pathname]);
 
   const persistBrowseState = useCallback(
     (scrollYOverride?: number) => {
-      if (!browseKey || isRestoringRef.current) return;
+      if (!browseKey || isRestoringRef.current || !browseListReady) return;
+      if (!isOnCollectionPage() || isCollectionScrollLocked()) return;
+      const frozen = readFrozenCollectionScroll();
+      const frozenY =
+        frozen?.browseKey === browseKey ? frozen.scrollY : 0;
+      if (
+        frozenY > 0 &&
+        scrollYOverride == null &&
+        (hasPendingCollectionScrollRestore() ||
+          window.scrollY < frozenY - 80)
+      ) {
+        return;
+      }
       const snap = snapshotRef.current;
       if (!snap) return;
-      const scrollY = resolveBrowseScrollY(browseKey, scrollYOverride);
-      if (scrollY > 0) lastScrollYRef.current = scrollY;
+
+      const stored = getCollectionState(browseKey);
+      const scrollY = Math.max(
+        resolveBrowseScrollY(browseKey, scrollYOverride),
+        frozenY
+      );
+      if (scrollY > 0) {
+        lastScrollYRef.current = scrollY;
+      }
+
+      const useStoredList =
+        stored &&
+        Array.isArray(stored.items) &&
+        stored.items.length > snap.items.length;
+
       setCollectionState(browseKey, {
-        ...snap,
+        useVariantItems: useStoredList
+          ? stored.useVariantItems
+          : snap.useVariantItems,
+        items: useStoredList ? stored.items : snap.items,
+        currentPage: useStoredList ? stored.currentPage : snap.currentPage,
+        totalProducts: useStoredList
+          ? stored.totalProducts
+          : snap.totalProducts,
+        hasMore: useStoredList ? stored.hasMore : snap.hasMore,
         scrollY,
         updatedAt: Date.now(),
       });
     },
-    [browseKey, snapshotRef]
+    [browseKey, snapshotRef, browseListReady]
   );
 
   useEffect(() => {
     if (!browseKey) return;
 
-    let scrollTimeout: ReturnType<typeof setTimeout>;
-    const handleScroll = () => {
-      if (isRestoringRef.current) return;
-      const y = window.scrollY;
-      if (y > 0) lastScrollYRef.current = y;
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        persistBrowseState(y);
-      }, 100);
+    const handlePageHide = () => {
+      if (!isOnCollectionPage()) return;
+      persistBrowseState(lastScrollYRef.current);
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("pagehide", handlePageHide);
     return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearTimeout(scrollTimeout);
+      window.removeEventListener("pagehide", handlePageHide);
     };
   }, [browseKey, persistBrowseState]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- persistDeps supplied by caller
   useEffect(() => {
-    if (!browseKey || isRestoringRef.current) return;
+    if (!browseKey || isRestoringRef.current || !browseListReady) return;
     persistBrowseState();
-  }, [browseKey, persistBrowseState, ...persistDeps]);
+  }, [browseKey, persistBrowseState, browseListReady, ...persistDeps]);
 
   useEffect(() => {
     return () => {
@@ -91,46 +140,94 @@ export function useCollectionScrollRestore({
       saveCollectionStateOnLeave(
         browseKey,
         snap,
-        lastScrollYRef.current
+        lastScrollYRef.current,
+        collectionPathRef.current || undefined
       );
     };
   }, [browseKey, snapshotRef]);
 
-  useEffect(() => {
-    if (!browseKey || scrollRestoredRef.current) return;
+  const beginRestore = useCallback(() => {
+    if (!browseKey || !browseListReady) return;
 
-    const stored = getCollectionState(browseKey);
-    if (!stored || stored.scrollY <= 0) {
-      scrollRestoredRef.current = true;
+    const frozen = readFrozenCollectionScroll();
+    const targetY = Math.max(
+      resolveRestoreScrollY(),
+      getRestoreScrollTarget(browseKey),
+      getCollectionState(browseKey)?.scrollY ?? 0,
+      frozen?.browseKey === browseKey ? frozen.scrollY : 0
+    );
+
+    if (targetY <= 0) return;
+
+    restoreCompleteRef.current = false;
+    isRestoringRef.current = true;
+    lastScrollYRef.current = targetY;
+
+    runCollectionScrollRestore(targetY, () => {
+      isRestoringRef.current = false;
+      restoreCompleteRef.current = true;
+    });
+  }, [browseKey, browseListReady]);
+
+  useEffect(() => {
+    if (!pathname) return;
+    const prev = prevPathRef.current;
+    const cameFromProduct =
+      prev != null && /\/product\//.test(prev) && /\/collection/.test(pathname);
+    prevPathRef.current = pathname;
+
+    if (cameFromProduct) {
+      unlockCollectionScrollWrites();
+      restoreCompleteRef.current = false;
+    }
+  }, [pathname]);
+
+  useEffect(() => {
+    const onReturn = () => {
+      restoreCompleteRef.current = false;
+      beginRestore();
+    };
+    window.addEventListener(COLLECTION_RETURN_EVENT, onReturn);
+    return () => window.removeEventListener(COLLECTION_RETURN_EVENT, onReturn);
+  }, [beginRestore]);
+
+  useLayoutEffect(() => {
+    if (!browseKey || !browseListReady) return;
+
+    const targetY = Math.max(
+      resolveRestoreScrollY(),
+      getRestoreScrollTarget(browseKey),
+      getCollectionState(browseKey)?.scrollY ?? 0
+    );
+
+    if (targetY <= 0) {
       return;
     }
 
-    if (itemCount === 0) return;
+    restoreCompleteRef.current = false;
+    beginRestore();
+  }, [browseKey, browseListReady, beginRestore]);
 
-    const targetY = stored.scrollY;
-    isRestoringRef.current = true;
-    scrollRestoredRef.current = true;
-    lastScrollYRef.current = targetY;
+  useEffect(() => {
+    if (!browseKey || !browseListReady) return;
+    if (restoreCompleteRef.current) return;
+    beginRestore();
+  }, [browseKey, browseListReady, beginRestore]);
 
-    let attempts = 0;
-    const tryRestore = () => {
-      window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
-      attempts += 1;
-      const tallEnough =
-        document.documentElement.scrollHeight >=
-        targetY + window.innerHeight * 0.5;
-      if (tallEnough || attempts >= RESTORE_MAX_ATTEMPTS) {
-        isRestoringRef.current = false;
-        lastScrollYRef.current = targetY;
-        return;
-      }
-      requestAnimationFrame(tryRestore);
-    };
+  // Re-apply after the grid grows (hydrated pages / images) so scrollY is reachable.
+  useEffect(() => {
+    if (!browseKey || !browseListReady || itemCount === 0) return;
 
-    requestAnimationFrame(() => {
-      requestAnimationFrame(tryRestore);
-    });
-  }, [browseKey, itemCount]);
+    const targetY = Math.max(
+      getRestoreScrollTarget(browseKey),
+      getCollectionState(browseKey)?.scrollY ?? 0
+    );
+    if (targetY <= 0) return;
+    if (Math.abs(window.scrollY - targetY) <= 16) return;
 
-  return { persistBrowseState, lastScrollYRef };
+    restoreCompleteRef.current = false;
+    beginRestore();
+  }, [itemCount, browseKey, browseListReady, beginRestore]);
+
+  return { persistBrowseState, lastScrollYRef, beginRestore };
 }

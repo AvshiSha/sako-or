@@ -16,7 +16,8 @@ import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from './ProductPromoRibbon'
 import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
-import { persistCollectionScroll } from '@/lib/collectionBrowseStore'
+import { persistCollectionBrowseBeforeNavigate } from '@/lib/collectionBrowseStore'
+import { useCollectionBrowseContext } from '@/app/contexts/CollectionBrowseContext'
 
 const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
 const STATUS_BADGE_CLASS = 'text-xs font-medium px-2 py-1 rounded pointer-events-none'
@@ -36,6 +37,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
+  const collectionBrowse = useCollectionBrowseContext()
 
   const [api, setApi] = useState<CarouselApi>()
 
@@ -249,8 +251,12 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   }
 
   const saveBrowseScroll = useCallback(() => {
-    if (browseStoreKey) persistCollectionScroll(browseStoreKey)
-  }, [browseStoreKey])
+    const key = collectionBrowse.browseKey ?? browseStoreKey
+    const snap = collectionBrowse.snapshotRef?.current
+    if (key && snap) {
+      persistCollectionBrowseBeforeNavigate(key, snap)
+    }
+  }, [browseStoreKey, collectionBrowse.browseKey, collectionBrowse.snapshotRef])
 
   const handleLinkClick = useCallback((e: MouseEvent<HTMLAnchorElement>) => {
     if (api && 'clickAllowed' in api && typeof api.clickAllowed === 'function' && !api.clickAllowed()) {
@@ -302,8 +308,11 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       {/* Main Product Image Section - Clickable to go to selected variant */}
       <Link
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
+        scroll={false}
         className="relative aspect-square overflow-hidden bg-gray-50 block"
         onPointerDown={saveBrowseScroll}
+        onMouseDown={saveBrowseScroll}
+        onTouchStart={saveBrowseScroll}
         onClick={handleLinkClick}
       >
         {/* Image Carousel Container */}

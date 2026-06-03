@@ -4,6 +4,7 @@ import HeaderWrapper from '@/app/components/HeaderWrapper'
 import { PromoProvider } from '../contexts/PromoContext'
 import { CouponBadgeProvider } from '../contexts/CouponBadgeContext'
 import { getStorefrontCouponBadgeIndex } from '@/lib/coupon-product-badges.server'
+import LanguageLayoutShell from './LanguageLayoutShell'
 
 export async function generateStaticParams() {
   return languages.map((lng) => ({ lng }))
@@ -40,11 +41,13 @@ export default async function LanguageLayout({
     >
       <PromoProvider>
         <CouponBadgeProvider initialIndex={couponBadgeIndex}>
-          <HeaderWrapper lng={normalizedLng} />
-          <main className="flex-grow">
-            {children}
-          </main>
-          <Footer lng={normalizedLng} />
+          <LanguageLayoutShell>
+            <HeaderWrapper lng={normalizedLng} />
+            <main className="flex-grow">
+              {children}
+            </main>
+            <Footer lng={normalizedLng} />
+          </LanguageLayoutShell>
         </CouponBadgeProvider>
       </PromoProvider>
     </div>

@@ -31,9 +31,9 @@ import {
 import { Slider } from '@/app/components/ui/slider';
 import {
   getCollectionState,
-  setCollectionState,
-  type CollectionBrowseState,
+  type CollectionBrowseSnapshot,
 } from "@/lib/collectionBrowseStore";
+import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -220,7 +220,6 @@ export default function CollectionClient({
   const prevFilterKeyRef = useRef<string>('');
   const isInitialMountRef = useRef<boolean>(true);
   const isLoadingMoreRef = useRef<boolean>(false);
-  const scrollRestoredRef = useRef<boolean>(false);
   const hydratedFromStoreRef = useRef<boolean>(false);
   const restoredFromUrlFetchRef = useRef<boolean>(false);
 
@@ -233,13 +232,7 @@ export default function CollectionClient({
   }, []); // Empty deps - only run once on mount
 
   // Ref to persist latest state on unmount (navigate away to PDP)
-  const stateSnapshotRef = useRef<{
-    useVariantItems: boolean;
-    items: VariantItem[] | Product[];
-    currentPage: number;
-    totalProducts: number;
-    hasMore: boolean;
-  } | null>(null);
+  const stateSnapshotRef = useRef<CollectionBrowseSnapshot | null>(null);
 
   // Hydrate pagination/items state from the per-collection store when available.
   useEffect(() => {
@@ -394,94 +387,6 @@ export default function CollectionClient({
     totalProducts,
     hasMore,
   };
-
-  // Persist to store on unmount (navigating away to product page) so state is never lost
-  useEffect(() => {
-    return () => {
-      const key = collectionKey;
-      const snap = stateSnapshotRef.current;
-      if (!key || !snap) return;
-      const scrollY = typeof window !== "undefined" ? window.scrollY : 0;
-      setCollectionState(key, {
-        useVariantItems: snap.useVariantItems,
-        items: snap.items,
-        currentPage: snap.currentPage,
-        totalProducts: snap.totalProducts,
-        hasMore: snap.hasMore,
-        scrollY,
-        updatedAt: Date.now(),
-      });
-    };
-  }, [collectionKey]);
-
-  // Helper: persist current collection state (including latest scrollY) into the store.
-  const persistCollectionState = useCallback(
-    (scrollYOverride?: number) => {
-      if (!collectionKey) return;
-
-      const scrollY =
-        typeof window !== "undefined"
-          ? scrollYOverride ?? window.scrollY
-          : scrollYOverride ?? 0;
-
-      const state: CollectionBrowseState = {
-        useVariantItems,
-        items: useVariantItems ? allVariantItems : allProducts,
-        currentPage,
-        totalProducts,
-        hasMore,
-        scrollY,
-        updatedAt: Date.now(),
-      };
-
-      setCollectionState(collectionKey, state);
-    },
-    [
-      collectionKey,
-      useVariantItems,
-      allVariantItems,
-      allProducts,
-      currentPage,
-      totalProducts,
-      hasMore,
-    ]
-  );
-
-  // Persist scroll position into the store while the user scrolls.
-  useEffect(() => {
-    if (!collectionKey) return;
-
-    let scrollTimeout: NodeJS.Timeout;
-
-    const handleScroll = () => {
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        persistCollectionState();
-      }, 100);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      clearTimeout(scrollTimeout);
-    };
-  }, [collectionKey, persistCollectionState]);
-
-  // Ensure latest state is stored when core pagination data changes.
-  useEffect(() => {
-    if (!collectionKey) return;
-    persistCollectionState();
-  }, [
-    collectionKey,
-    persistCollectionState,
-    useVariantItems,
-    allVariantItems,
-    allProducts,
-    currentPage,
-    totalProducts,
-    hasMore,
-  ]);
 
   // Load More handler
   const handleLoadMore = useCallback(async () => {
@@ -980,28 +885,19 @@ export default function CollectionClient({
     }
   }, [allVariantItems, allProducts, sortBy, useVariantItems]);
 
-  // Scroll restoration: use stored scrollY for this collection key when returning from PDP.
-  useEffect(() => {
-    if (!collectionKey || scrollRestoredRef.current) return;
-
-    const stored = getCollectionState(collectionKey);
-    if (!stored || stored.scrollY <= 0) {
-      scrollRestoredRef.current = true;
-      return;
-    }
-
-    // Wait until items are rendered to avoid restoring too early.
-    if (sortedItems.length === 0) return;
-
-    scrollRestoredRef.current = true;
-    const targetY = stored.scrollY;
-
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo(0, targetY);
-      });
-    });
-  }, [collectionKey, sortedItems.length]);
+  useCollectionScrollRestore({
+    browseKey: collectionKey,
+    itemCount: sortedItems.length,
+    snapshotRef: stateSnapshotRef,
+    persistDeps: [
+      useVariantItems,
+      allVariantItems.length,
+      allProducts.length,
+      currentPage,
+      totalProducts,
+      hasMore,
+    ],
+  });
 
   // Track view_item_list when items are displayed
   useEffect(() => {
@@ -1520,6 +1416,7 @@ export default function CollectionClient({
                             selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
                             preselectedColorSlug={item.variant.colorSlug}
                             isAboveFold={isAboveFold}
+                            browseStoreKey={collectionKey}
                           />
                         </motion.div>
                       );
@@ -1536,6 +1433,7 @@ export default function CollectionClient({
                             language={lng as 'en' | 'he'}
                             selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
                             isAboveFold={isAboveFold}
+                            browseStoreKey={collectionKey}
                           />
                         </motion.div>
                       );

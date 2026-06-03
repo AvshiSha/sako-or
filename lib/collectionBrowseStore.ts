@@ -86,3 +86,72 @@ export function clearCollectionState(key: CollectionKey): void {
   }
 }
 
+/** Update only scroll position on an existing browse entry. */
+export function mergeCollectionScroll(
+  key: CollectionKey,
+  scrollY: number
+): void {
+  const existing = getCollectionState(key);
+  if (!existing) return;
+  setCollectionState(key, {
+    ...existing,
+    scrollY,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Persist current window scroll for a browse key without clobbering a saved position with 0.
+ */
+export function persistCollectionScroll(key: CollectionKey | undefined): void {
+  if (!key || !isBrowser()) return;
+  const scrollY = window.scrollY;
+  const existing = getCollectionState(key);
+  if (scrollY === 0 && existing && existing.scrollY > 0) return;
+  if (existing) {
+    mergeCollectionScroll(key, scrollY);
+  }
+}
+
+export type CollectionBrowseSnapshot = Omit<
+  CollectionBrowseState,
+  "scrollY" | "updatedAt"
+>;
+
+/**
+ * Save full browse state when leaving the page. If the document is already at scroll 0
+ * (common during Next.js client navigation), keep the last known scroll position.
+ */
+export function saveCollectionStateOnLeave(
+  key: CollectionKey,
+  snapshot: CollectionBrowseSnapshot,
+  lastKnownScrollY?: number
+): void {
+  let scrollY = isBrowser() ? window.scrollY : 0;
+  if (scrollY === 0) {
+    const existing = getCollectionState(key);
+    scrollY = lastKnownScrollY ?? existing?.scrollY ?? 0;
+  }
+  setCollectionState(key, {
+    ...snapshot,
+    scrollY,
+    updatedAt: Date.now(),
+  });
+}
+
+/** Resolve scrollY for persistence, avoiding overwrite with 0 while a restore is pending. */
+export function resolveBrowseScrollY(
+  key: CollectionKey,
+  override?: number,
+  options?: { allowZero?: boolean }
+): number {
+  const y =
+    override ??
+    (isBrowser() ? window.scrollY : 0);
+  if (y === 0 && !options?.allowZero) {
+    const stored = getCollectionState(key);
+    if (stored && stored.scrollY > 0) return stored.scrollY;
+  }
+  return y;
+}
+

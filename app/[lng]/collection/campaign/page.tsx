@@ -131,8 +131,20 @@ export default async function CampaignPage({
       ? resolvedSearchParams.maxPrice
       : undefined;
 
+  const filterSearchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
+    if (key === "page" || key === "slug") continue;
+    if (typeof value === "string") filterSearchParams.set(key, value);
+    else if (Array.isArray(value)) filterSearchParams.set(key, value.join(","));
+  }
+  const campaignFilterKey = [...filterSearchParams.entries()]
+    .map(([k, v]) => `${k}:${v}`)
+    .sort()
+    .join("|");
+
   return (
     <CampaignClient
+      key={campaignFilterKey}
       campaign={serializedCampaign}
       initialVariantItems={serializedVariantItems}
       initialAvailableFilterOptions={result.availableFilterOptions}

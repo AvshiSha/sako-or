@@ -56,8 +56,13 @@ import {
   buildCollectionFilterKey,
   priceRangeToUrlParams,
   readFilterUiStateFromSearchParams,
-  sameSortedStringList,
 } from "@/lib/collectionFilterUrl";
+import { inStockSizeKeysFromVariant } from "@/lib/product-size";
+import {
+  dedupeProducts,
+  dedupeVariantItems,
+  useCollectionProductList,
+} from "@/lib/useCollectionProductList";
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -94,41 +99,6 @@ function productListKey(product: Product): string | null {
       ? product.sku.trim()
       : null;
   return idStr ?? skuStr;
-}
-
-function dedupeVariantItems(
-  existing: VariantItem[],
-  incoming: VariantItem[]
-): VariantItem[] {
-  const seen = new Set<string>();
-  for (const item of existing) {
-    const key = item.variantKey?.trim();
-    if (key) seen.add(key);
-  }
-  const unique: VariantItem[] = [];
-  for (const item of incoming) {
-    const key = item.variantKey?.trim();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    unique.push(item);
-  }
-  return unique;
-}
-
-function dedupeProducts(existing: Product[], incoming: Product[]): Product[] {
-  const seen = new Set<string>();
-  for (const item of existing) {
-    const key = productListKey(item);
-    if (key) seen.add(key);
-  }
-  const unique: Product[] = [];
-  for (const item of incoming) {
-    const key = productListKey(item);
-    if (key === null || seen.has(key)) continue;
-    seen.add(key);
-    unique.push(item);
-  }
-  return unique;
 }
 
 // Translations for the collection page
@@ -229,7 +199,11 @@ interface CollectionClientProps {
   initialProducts: Product[];
   initialVariantItems?: VariantItem[]; // New: variant items (one per color variant)
   /** Stable filter options from full collection so the filter list does not collapse after selection */
-  initialAvailableFilterOptions?: { colors: string[]; sizes: string[] };
+  initialAvailableFilterOptions?: {
+    colors: string[];
+    sizes: string[];
+    subSubCategoryIds?: string[];
+  };
   categories: Category[];
   categoryPath: string | undefined;
   selectedCategory: string;
@@ -273,14 +247,6 @@ export default function CollectionClient({
   // Use variantItems if available (collection pages), otherwise fall back to products (search)
   const useVariantItems = initialVariantItems !== undefined && !searchQuery;
   
-  // Pagination state - accumulated variant items or products stream (never replaced, only appended)
-  const [allVariantItems, setAllVariantItems] = useState<VariantItem[]>(initialVariantItems || []);
-  const [allProducts, setAllProducts] = useState<Product[]>(initialProducts);
-  const [currentPage, setCurrentPage] = useState(searchPage || 1);
-  const [totalProducts, setTotalProducts] = useState(searchTotal ?? (useVariantItems ? (initialVariantItems?.length ?? 0) : initialProducts.length));
-  const [hasMore, setHasMore] = useState(initialHasMore);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
   // Track filter/search key to detect when filters actually change (not just page)
   const filterKey = useMemo(() => {
     return buildCollectionFilterKey(searchParams ?? new URLSearchParams(), {
@@ -295,28 +261,37 @@ export default function CollectionClient({
     return `${base}|${filterKey}`;
   }, [lng, categoryPath, searchQuery, filterKey]);
 
-  const serverListRevision = useMemo(() => {
-    const firstVariantKey = initialVariantItems?.[0]?.variantKey ?? "";
-    const firstProductKey =
-      initialProducts[0]?.id != null
-        ? String(initialProducts[0].id)
-        : initialProducts[0]?.sku ?? "";
-    return `${filterKey}|${searchTotal ?? ""}|${initialVariantItems?.length ?? 0}|${firstVariantKey}|${initialProducts.length}|${firstProductKey}`;
-  }, [filterKey, searchTotal, initialVariantItems, initialProducts]);
+  const [blockServerListSync, setBlockServerListSync] = useState(false);
 
-  const prevFilterKeyRef = useRef<string>(filterKey);
-  const prevServerListRevisionRef = useRef<string>(serverListRevision);
-  const prevCollectionKeyRef = useRef<string>(collectionKey);
-  /** After filter change, keep syncing until server props revision updates. */
-  const expectingServerRefreshRef = useRef(false);
-  const revisionAtFilterChangeRef = useRef<string | null>(null);
-  /** Bumped when filters change so in-flight load-more responses are ignored. */
-  const loadMoreEpochRef = useRef(0);
-  const loadMoreAbortRef = useRef<AbortController | null>(null);
+  const {
+    allVariantItems,
+    setAllVariantItems,
+    allProducts,
+    setAllProducts,
+    currentPage,
+    setCurrentPage,
+    totalProducts,
+    setTotalProducts,
+    hasMore,
+    setHasMore,
+    isLoadingMore,
+    setIsLoadingMore,
+    hydratedFromStoreRef,
+    loadMoreEpochRef,
+    loadMoreAbortRef,
+  } = useCollectionProductList({
+    filterKey,
+    collectionKey,
+    useVariantItems,
+    initialVariantItems,
+    initialProducts,
+    searchTotal,
+    searchPage,
+    initialHasMore,
+    skipServerSync: blockServerListSync,
+  });
+
   const hydrationFallbackLoggedRef = useRef(false);
-  /** Filter key we pushed via updateURL; skip URL→UI sync until router matches it. */
-  const pendingFilterKeyRef = useRef<string | null>(null);
-  const hydratedFromStoreRef = useRef<boolean>(false);
   const restoredFromUrlFetchRef = useRef<boolean>(false);
   const [browseListReady, setBrowseListReady] = useState(false);
   const pathname = usePathname();
@@ -417,13 +392,12 @@ export default function CollectionClient({
 
     const returning = isReturningFromProduct();
     if (!returning) {
-      if (!hydratedFromStoreRef.current) {
-        applyStoredBrowseState();
-      }
       pendingListHydrationRef.current = 0;
       setBrowseListReady(true);
       return;
     }
+
+    setBlockServerListSync(true);
 
     cancelCollectionScrollRestoreWatchdog();
 
@@ -460,16 +434,31 @@ export default function CollectionClient({
           browseRefetchInProgressRef.current = false;
           pendingListHydrationRef.current = 0;
           setBrowseListReady(true);
+          setBlockServerListSync(false);
         });
+      return;
+    }
+
+    // Refetch already started (e.g. Strict Mode re-run) — do not mark list ready yet.
+    if (
+      browseRefetchInProgressRef.current ||
+      (needsRefetch && refetchOnReturnStartedRef.current)
+    ) {
+      setBrowseListReady(false);
+      if (stored?.items?.length) {
+        finishBrowseListHydration(stored.items.length);
+      }
       return;
     }
 
     if (stored?.items?.length) {
       finishBrowseListHydration(stored.items.length);
+      setBlockServerListSync(false);
       return;
     }
 
     finishBrowseListHydration(0);
+    setBlockServerListSync(false);
   }, [
     collectionKey,
     pathname,
@@ -509,6 +498,7 @@ export default function CollectionClient({
           browseRefetchInProgressRef.current = false;
           pendingListHydrationRef.current = 0;
           setBrowseListReady(true);
+          setBlockServerListSync(false);
         });
         return;
       }
@@ -534,12 +524,14 @@ export default function CollectionClient({
           browseRefetchInProgressRef.current = false;
           pendingListHydrationRef.current = 0;
           setBrowseListReady(true);
+          setBlockServerListSync(false);
         });
         return;
       }
 
       pendingListHydrationRef.current = 0;
       setBrowseListReady(true);
+      setBlockServerListSync(false);
     }, 800);
 
     return () => window.clearTimeout(timeout);
@@ -649,123 +641,6 @@ export default function CollectionClient({
     applyHydratedPages,
   ]);
 
-  // Sync list from server when filters/search change or fresh RSC props arrive.
-  // Skip when browse cache hydration is active (PDP back). Do not wipe load-more
-  // accumulation on page-only URL changes.
-  // Intentionally omits allVariantItems/allProducts length from deps: this effect
-  // updates those lists, so length deps would re-fire after every sync (and after
-  // load-more). accumulatedBeyondInitial is read once per filterKey/revision run.
-  useEffect(() => {
-    if (
-      pendingListHydrationRef.current > 0 ||
-      browseRefetchInProgressRef.current ||
-      (returningRestoreActiveRef.current && prevFilterKeyRef.current === filterKey)
-    ) {
-      return;
-    }
-
-    const filterChanged = prevFilterKeyRef.current !== filterKey;
-    const serverDataChanged =
-      prevServerListRevisionRef.current !== serverListRevision;
-
-    if (filterChanged) {
-      if (
-        prevCollectionKeyRef.current &&
-        prevCollectionKeyRef.current !== collectionKey
-      ) {
-        clearCollectionState(prevCollectionKeyRef.current);
-      }
-
-      revisionAtFilterChangeRef.current = serverListRevision;
-      prevFilterKeyRef.current = filterKey;
-      prevCollectionKeyRef.current = collectionKey;
-      hydratedFromStoreRef.current = false;
-      expectingServerRefreshRef.current = true;
-
-      loadMoreAbortRef.current?.abort();
-      loadMoreAbortRef.current = null;
-      loadMoreEpochRef.current += 1;
-      setIsLoadingMore(false);
-
-      resetCollectionScrollForFilterChange();
-      scrollCollectionToTop();
-    }
-
-    if (hydratedFromStoreRef.current) {
-      if (serverDataChanged) {
-        prevServerListRevisionRef.current = serverListRevision;
-      }
-      return;
-    }
-
-    const initialCount = useVariantItems
-      ? (initialVariantItems?.length ?? 0)
-      : initialProducts.length;
-    const accumulatedCount = useVariantItems
-      ? allVariantItems.length
-      : allProducts.length;
-    const accumulatedBeyondInitial = accumulatedCount > initialCount;
-
-    const awaitingFreshServer =
-      expectingServerRefreshRef.current &&
-      revisionAtFilterChangeRef.current !== null &&
-      serverListRevision !== revisionAtFilterChangeRef.current;
-
-    const shouldSyncFromServer =
-      filterChanged ||
-      awaitingFreshServer ||
-      (serverDataChanged && !accumulatedBeyondInitial);
-
-    if (!shouldSyncFromServer) {
-      if (serverDataChanged) {
-        prevServerListRevisionRef.current = serverListRevision;
-      }
-      return;
-    }
-
-    if (useVariantItems && initialVariantItems) {
-      setAllVariantItems(initialVariantItems);
-      setTotalProducts(searchTotal ?? initialVariantItems.length);
-    } else {
-      setAllProducts(initialProducts);
-      setTotalProducts(searchTotal ?? initialProducts.length);
-    }
-    setCurrentPage(searchPage || 1);
-    setHasMore(initialHasMore);
-    if (awaitingFreshServer) {
-      expectingServerRefreshRef.current = false;
-      revisionAtFilterChangeRef.current = null;
-    } else if (filterChanged) {
-      expectingServerRefreshRef.current = true;
-    }
-    prevServerListRevisionRef.current = serverListRevision;
-
-    const stored = getCollectionState(collectionKey);
-    if (stored) {
-      setCollectionState(collectionKey, {
-        ...stored,
-        items: useVariantItems
-          ? (initialVariantItems ?? [])
-          : initialProducts,
-        useVariantItems,
-        currentPage: searchPage || 1,
-        totalProducts: searchTotal ?? stored.totalProducts,
-        hasMore: initialHasMore,
-        scrollY: 0,
-        anchorVariantKey: undefined,
-        updatedAt: Date.now(),
-      });
-    }
-  }, [
-    filterKey,
-    serverListRevision,
-    searchPage,
-    searchTotal,
-    initialHasMore,
-    useVariantItems,
-    collectionKey,
-  ]);
-
   // Keep snapshot ref updated so we can persist on unmount
   stateSnapshotRef.current = {
     useVariantItems,
@@ -837,27 +712,41 @@ export default function CollectionClient({
           return;
         }
 
-        let appended = false;
+        const snap = stateSnapshotRef.current;
+        const prevVariantItems =
+          snap?.useVariantItems && Array.isArray(snap.items)
+            ? (snap.items as VariantItem[])
+            : allVariantItems;
+        const uniqueNewItems = dedupeVariantItems(
+          prevVariantItems,
+          newVariantItems
+        );
+
+        if (uniqueNewItems.length === 0) {
+          console.warn(
+            "All fetched variant items were duplicates, skipping append"
+          );
+          flushSync(() => {
+            setCurrentPage(resolvedPage);
+            setTotalProducts(data.total || totalProducts);
+            setHasMore(data.hasMore || false);
+            setIsLoadingMore(false);
+          });
+          return;
+        }
+
         flushSync(() => {
           setAllVariantItems((prev) => {
-            const uniqueNewItems = dedupeVariantItems(prev, newVariantItems);
-            if (uniqueNewItems.length === 0) {
-              console.warn(
-                "All fetched variant items were duplicates, skipping append"
-              );
-              return prev;
-            }
-            appended = true;
-            return [...prev, ...uniqueNewItems];
+            const unique = dedupeVariantItems(prev, newVariantItems);
+            if (unique.length === 0) return prev;
+            return [...prev, ...unique];
           });
           setCurrentPage(resolvedPage);
           setTotalProducts(data.total || totalProducts);
           setHasMore(data.hasMore || false);
           setIsLoadingMore(false);
         });
-        if (appended) {
-          restoreScrollAfterAppend(snapshot);
-        }
+        restoreScrollAfterAppend(snapshot);
       } else {
         const newItems = data.items || [];
         
@@ -867,27 +756,36 @@ export default function CollectionClient({
           return;
         }
 
-        let appended = false;
+        const snap = stateSnapshotRef.current;
+        const prevProducts =
+          snap && !snap.useVariantItems && Array.isArray(snap.items)
+            ? (snap.items as Product[])
+            : allProducts;
+        const uniqueNewItems = dedupeProducts(prevProducts, newItems);
+
+        if (uniqueNewItems.length === 0) {
+          console.warn("All fetched items were duplicates, skipping append");
+          flushSync(() => {
+            setCurrentPage(resolvedPage);
+            setTotalProducts(data.total || totalProducts);
+            setHasMore(data.hasMore || false);
+            setIsLoadingMore(false);
+          });
+          return;
+        }
+
         flushSync(() => {
           setAllProducts((prev) => {
-            const uniqueNewItems = dedupeProducts(prev, newItems);
-            if (uniqueNewItems.length === 0) {
-              console.warn(
-                "All fetched items were duplicates, skipping append"
-              );
-              return prev;
-            }
-            appended = true;
-            return [...prev, ...uniqueNewItems];
+            const unique = dedupeProducts(prev, newItems);
+            if (unique.length === 0) return prev;
+            return [...prev, ...unique];
           });
           setCurrentPage(resolvedPage);
           setTotalProducts(data.total || totalProducts);
           setHasMore(data.hasMore || false);
           setIsLoadingMore(false);
         });
-        if (appended) {
-          restoreScrollAfterAppend(snapshot);
-        }
+        restoreScrollAfterAppend(snapshot);
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -910,6 +808,8 @@ export default function CollectionClient({
     searchParams,
     totalProducts,
     useVariantItems,
+    allVariantItems,
+    allProducts,
   ]);
 
   const { sentinelRef: loadMoreSentinelRef } = useCollectionInfiniteScroll({
@@ -950,32 +850,30 @@ export default function CollectionClient({
     return translatedCategory || category.charAt(0).toUpperCase() + category.slice(1);
   };
 
-  // Initialize filter state from URL searchParams
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
-  const [selectedColors, setSelectedColors] = useState<string[]>(() => {
-    const colorsParam = safeSearchParams.get('colors');
-    return colorsParam ? colorsParam.split(',').filter(Boolean) : [];
-  });
-
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
-    const sizesParam = safeSearchParams.get('sizes');
-    return sizesParam ? sizesParam.split(',').filter(Boolean) : [];
-  });
-
-  // Add state for selected sub-sub categories
-  const [selectedSubSubCategories, setSelectedSubSubCategories] = useState<string[]>(() => {
-    const subSubCategoriesParam = safeSearchParams.get('subSubCategories');
-    return subSubCategoriesParam ? subSubCategoriesParam.split(',').filter(Boolean) : [];
-  });
-
-  const [sortBy, setSortBy] = useState<string>(() => {
-    return initialSortProp ?? 'relevance';
-  });
+  /** Filter chips and sort from URL (source of truth). */
+  const urlFilterState = useMemo(
+    () => readFilterUiStateFromSearchParams(safeSearchParams, undefined),
+    [filterKey]
+  );
+  const selectedColors = urlFilterState.colors;
+  const selectedSizes = urlFilterState.sizes;
+  const selectedSubSubCategories = urlFilterState.subSubCategories;
+  const sortBy = urlFilterState.sort;
 
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
-  
+  const isFilterPanelOpen = mobileFiltersOpen || desktopFiltersOpen;
+
+  type FilterDraft = {
+    colors: string[];
+    sizes: string[];
+    subSubCategories: string[];
+    uiRange: [number, number];
+  };
+  const [filterDraft, setFilterDraft] = useState<FilterDraft | null>(null);
+
   // Controlled state for accordion sections (desktop and mobile)
   // Using array to allow multiple sections open simultaneously
   const [desktopAccordionValue, setDesktopAccordionValue] = useState<string[]>([]);
@@ -1039,139 +937,13 @@ export default function CollectionClient({
     const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
     const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
 
-    pendingFilterKeyRef.current = buildCollectionFilterKey(urlParams, {
-      categoryPath,
-      searchQuery,
-    });
-
     resetCollectionScrollForFilterChange();
     scrollCollectionToTop();
     router.push(newUrl, { scroll: false });
     requestAnimationFrame(() => scrollCollectionToTop());
   };
 
-  // Handle filter changes
-  const handleColorToggle = (color: string) => {
-    const newColors = selectedColors.includes(color)
-      ? selectedColors.filter((c) => c !== color)
-      : [...selectedColors, color];
-    setSelectedColors(newColors);
-    const { minPrice, maxPrice } = priceRangeToUrlParams(
-      uiRange,
-      collectionPriceBounds
-    );
-    updateURL({ 
-      minPrice, 
-      maxPrice, 
-      colors: newColors, 
-      sizes: selectedSizes, 
-      sort: sortBy,
-      subSubCategories: selectedSubSubCategories
-    });
-  };
-
-  const handleSizeToggle = (size: string) => {
-    const newSizes = selectedSizes.includes(size)
-      ? selectedSizes.filter((s) => s !== size)
-      : [...selectedSizes, size];
-    setSelectedSizes(newSizes);
-    const { minPrice, maxPrice } = priceRangeToUrlParams(
-      uiRange,
-      collectionPriceBounds
-    );
-    updateURL({ 
-      minPrice, 
-      maxPrice, 
-      colors: selectedColors, 
-      sizes: newSizes, 
-      sort: sortBy,
-      subSubCategories: selectedSubSubCategories
-    });
-  };
-
-  // Handle sub-sub category toggle
-  const handleSubSubCategoryToggle = (categoryId: string) => {
-    const newSubSubCategories = selectedSubSubCategories.includes(categoryId)
-      ? selectedSubSubCategories.filter((id) => id !== categoryId)
-      : [...selectedSubSubCategories, categoryId];
-    setSelectedSubSubCategories(newSubSubCategories);
-    const { minPrice, maxPrice } = priceRangeToUrlParams(
-      uiRange,
-      collectionPriceBounds
-    );
-    updateURL({ 
-      minPrice, 
-      maxPrice, 
-      colors: selectedColors, 
-      sizes: selectedSizes, 
-      sort: sortBy,
-      subSubCategories: newSubSubCategories
-    });
-  };
-
-  // LIVE UI: Update slider and label instantly while dragging (no URL update)
-  const handleSliderChange = (values: number[]) => {
-    const [min, max] = values;
-    
-    // Only ensure min <= max (do NOT clamp to collection bounds)
-    // Allow user to set values outside collection range
-    const validatedMin = Math.min(min, max);
-    const validatedMax = Math.max(min, max);
-    
-    // Update UI state immediately (slider moves smoothly)
-    setUiRange([validatedMin, validatedMax]);
-  };
-
-  // COMMIT: Update URL when user releases slider (only place URL is updated)
-  const handleSliderCommit = (values: number[]) => {
-    const [min, max] = values as [number, number];
-    
-    // Only ensure min <= max (do NOT clamp to collection bounds)
-    // Allow user to set values outside collection range
-    const finalRange: [number, number] = [
-      Math.min(min, max),
-      Math.max(min, max),
-    ];
-    
-    // Update UI state to final range
-    setUiRange(finalRange);
-    
-    const { minPrice, maxPrice } = priceRangeToUrlParams(
-      finalRange,
-      collectionPriceBounds
-    );
-    
-    updateURL({
-      minPrice,
-      maxPrice,
-      colors: selectedColors,
-      sizes: selectedSizes,
-      sort: sortBy,
-      subSubCategories: selectedSubSubCategories,
-    });
-  };
-
-  // Reset: Immediately commit full bounds to URL
-  const handlePriceReset = () => {
-    const boundsMin = collectionPriceBounds?.min ?? 0;
-    const boundsMax = collectionPriceBounds?.max ?? 1000;
-    const full: [number, number] = [boundsMin, boundsMax];
-    
-    // Update UI immediately
-    setUiRange(full);
-    
-    updateURL({
-      minPrice: "",
-      maxPrice: "",
-      colors: selectedColors,
-      sizes: selectedSizes,
-      sort: sortBy,
-      subSubCategories: selectedSubSubCategories,
-    });
-  };
-
   const handleSortChange = (newSort: string) => {
-    setSortBy(newSort);
     const { minPrice, maxPrice } = priceRangeToUrlParams(
       uiRange,
       collectionPriceBounds
@@ -1185,31 +957,6 @@ export default function CollectionClient({
       subSubCategories: selectedSubSubCategories
     });
   };
-
-  const handleClearFilters = () => {
-    setSelectedColors([]);
-    setSelectedSizes([]);
-    setSelectedSubSubCategories([]);
-    setSortBy('relevance');
-    
-    const boundsMin = collectionPriceBounds?.min ?? 0;
-    const boundsMax = collectionPriceBounds?.max ?? 1000;
-    const full: [number, number] = [boundsMin, boundsMax];
-    
-    // Update UI immediately
-    setUiRange(full);
-    
-    // Clear all filters in URL
-    updateURL({ 
-      minPrice: '', 
-      maxPrice: '', 
-      colors: [], 
-      sizes: [], 
-      sort: 'relevance',
-      subSubCategories: []
-    });
-  };
-
 
   // Apply sorting to variant items or products (items are already filtered server-side)
   const sortedItems = useMemo(() => {
@@ -1371,8 +1118,8 @@ export default function CollectionClient({
       return [
         ...new Set(
           initialVariantItems
-            .filter(item => item.variant.isActive !== false)
-            .flatMap((item) => Object.keys(item.variant.stockBySize || {}))
+            .filter((item) => item.variant.isActive !== false)
+            .flatMap((item) => inStockSizeKeysFromVariant(item.variant))
         ),
       ] as string[];
     }
@@ -1381,13 +1128,19 @@ export default function CollectionClient({
         ...initialProducts.flatMap((p) =>
           p.colorVariants
             ? Object.values(p.colorVariants)
-                .filter(v => v.isActive !== false)
-                .flatMap((v) => Object.keys(v.stockBySize || {}))
+                .filter((v) => v.isActive !== false)
+                .flatMap((v) => inStockSizeKeysFromVariant(v))
             : []
         ),
       ]),
     ] as string[];
   }, [initialProducts, initialVariantItems, useVariantItems, initialAvailableFilterOptions]);
+
+  const availableSubSubCategoryIds = useMemo(() => {
+    const fromServer = initialAvailableFilterOptions?.subSubCategoryIds;
+    if (fromServer?.length) return new Set(fromServer);
+    return new Set<string>();
+  }, [initialAvailableFilterOptions?.subSubCategoryIds]);
 
   // Build color slug to hex for swatches; ensure every color in allColors has an entry
   const colorSlugToHex = useMemo(() => {
@@ -1500,9 +1253,28 @@ export default function CollectionClient({
     Object.keys(grouped).forEach(parentId => {
       grouped[parentId].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
     });
+
+    if (availableSubSubCategoryIds.size > 0) {
+      for (const parentId of Object.keys(grouped)) {
+        grouped[parentId] = grouped[parentId].filter(
+          (cat) => cat.id != null && availableSubSubCategoryIds.has(cat.id)
+        );
+        if (grouped[parentId].length === 0) {
+          delete grouped[parentId];
+        }
+      }
+    }
     
     return grouped;
-  }, [categories, collectionLevel, selectedSubcategory, selectedCategory, categoryPath, lng]);
+  }, [
+    categories,
+    collectionLevel,
+    selectedSubcategory,
+    selectedCategory,
+    categoryPath,
+    lng,
+    availableSubSubCategoryIds,
+  ]);
 
   // Get parent category name for display
   const getParentCategoryName = (parentId: string): string => {
@@ -1599,72 +1371,274 @@ export default function CollectionClient({
     return [Math.min(validMin, validMax), Math.max(validMin, validMax)];
   });
 
-  // Re-initialize uiRange when collectionPriceBounds becomes available (if it was undefined during initial render).
-  // Use server-provided initialMinPrice/initialMaxPrice (same as useState initializer) to avoid hydration mismatch on static pages.
+  // Sync price slider from URL when filters change (not while filter panel is open).
   useEffect(() => {
-    if (!collectionPriceBounds) return; // Wait for bounds to be computed
-    if (pendingFilterKeyRef.current !== null) return;
-
-    const boundsMin = collectionPriceBounds.min;
-    const boundsMax = collectionPriceBounds.max;
-    const urlMin =
-      initialMinPrice != null && initialMinPrice !== "" ? parseFloat(initialMinPrice) : boundsMin;
-    const urlMax =
-      initialMaxPrice != null && initialMaxPrice !== "" ? parseFloat(initialMaxPrice) : boundsMax;
-    const validMin = isNaN(urlMin) ? boundsMin : urlMin;
-    const validMax = isNaN(urlMax) ? boundsMax : urlMax;
-    const next: [number, number] = [Math.min(validMin, validMax), Math.max(validMin, validMax)];
-
-    if (
-      Math.abs(uiRange[0] - next[0]) > 0.01 ||
-      Math.abs(uiRange[1] - next[1]) > 0.01
-    ) {
-      setUiRange(next);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionPriceBounds?.min, collectionPriceBounds?.max]);
-
-  // Sync filter UI from URL on external navigation (back/forward, shared links).
-  // Uses filterKey (excludes page) so load-more / ?page=N does not re-run chip sync.
-  // While pendingFilterKeyRef is set, wait until filterKey matches the pushed URL
-  // before syncing so stale searchParams cannot overwrite optimistic handler state.
-  useEffect(() => {
-    const pending = pendingFilterKeyRef.current;
-    if (pending !== null) {
-      if (filterKey !== pending) {
-        return;
-      }
-      pendingFilterKeyRef.current = null;
-      return;
-    }
-
+    if (!collectionPriceBounds || isFilterPanelOpen) return;
     const fromUrl = readFilterUiStateFromSearchParams(
       safeSearchParams,
       collectionPriceBounds
     );
-    const [nextMin, nextMax] = fromUrl.uiRange;
+    setUiRange(fromUrl.uiRange);
+  }, [
+    filterKey,
+    collectionPriceBounds?.min,
+    collectionPriceBounds?.max,
+    safeSearchParams,
+    isFilterPanelOpen,
+  ]);
 
-    if (
-      Math.abs(uiRange[0] - nextMin) > 0.01 ||
-      Math.abs(uiRange[1] - nextMax) > 0.01
-    ) {
+  // Seed draft when filter panel opens so toggles do not navigate until Apply.
+  useEffect(() => {
+    if (!isFilterPanelOpen || !collectionPriceBounds) {
+      setFilterDraft(null);
+      return;
+    }
+    const fromUrl = readFilterUiStateFromSearchParams(
+      safeSearchParams,
+      collectionPriceBounds
+    );
+    setFilterDraft({
+      colors: [...fromUrl.colors],
+      sizes: [...fromUrl.sizes],
+      subSubCategories: [...fromUrl.subSubCategories],
+      uiRange: fromUrl.uiRange,
+    });
+  }, [isFilterPanelOpen, filterKey, collectionPriceBounds, safeSearchParams]);
+
+  const panelColors = filterDraft?.colors ?? selectedColors;
+  const panelSizes = filterDraft?.sizes ?? selectedSizes;
+  const panelSubSubCategories =
+    filterDraft?.subSubCategories ?? selectedSubSubCategories;
+  const panelUiRange = filterDraft?.uiRange ?? uiRange;
+
+  const handleCloseFiltersPanel = () => {
+    if (collectionPriceBounds) {
+      const fromUrl = readFilterUiStateFromSearchParams(
+        safeSearchParams,
+        collectionPriceBounds
+      );
       setUiRange(fromUrl.uiRange);
     }
-    if (!sameSortedStringList(selectedColors, fromUrl.colors)) {
-      setSelectedColors(fromUrl.colors);
-    }
-    if (!sameSortedStringList(selectedSizes, fromUrl.sizes)) {
-      setSelectedSizes(fromUrl.sizes);
-    }
-    if (!sameSortedStringList(selectedSubSubCategories, fromUrl.subSubCategories)) {
-      setSelectedSubSubCategories(fromUrl.subSubCategories);
-    }
-    if (sortBy !== fromUrl.sort) {
-      setSortBy(fromUrl.sort);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterKey, collectionPriceBounds?.min, collectionPriceBounds?.max]);
+    setFilterDraft(null);
+    setMobileFiltersOpen(false);
+    setDesktopFiltersOpen(false);
+  };
 
+  const handleApplyFilters = () => {
+    if (!filterDraft || !collectionPriceBounds) {
+      handleCloseFiltersPanel();
+      return;
+    }
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      filterDraft.uiRange,
+      collectionPriceBounds
+    );
+    updateURL({
+      minPrice,
+      maxPrice,
+      colors: filterDraft.colors,
+      sizes: filterDraft.sizes,
+      sort: sortBy,
+      subSubCategories: filterDraft.subSubCategories,
+    });
+    setUiRange(filterDraft.uiRange);
+    setFilterDraft(null);
+    setMobileFiltersOpen(false);
+    setDesktopFiltersOpen(false);
+  };
+
+  const handleColorToggle = (color: string) => {
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => {
+        if (!d) return d;
+        const colors = d.colors.includes(color)
+          ? d.colors.filter((c) => c !== color)
+          : [...d.colors, color];
+        return { ...d, colors };
+      });
+      return;
+    }
+    const newColors = selectedColors.includes(color)
+      ? selectedColors.filter((c) => c !== color)
+      : [...selectedColors, color];
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
+    updateURL({
+      minPrice,
+      maxPrice,
+      colors: newColors,
+      sizes: selectedSizes,
+      sort: sortBy,
+      subSubCategories: selectedSubSubCategories,
+    });
+  };
+
+  const handleSizeToggle = (size: string) => {
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => {
+        if (!d) return d;
+        const sizes = d.sizes.includes(size)
+          ? d.sizes.filter((s) => s !== size)
+          : [...d.sizes, size];
+        return { ...d, sizes };
+      });
+      return;
+    }
+    const newSizes = selectedSizes.includes(size)
+      ? selectedSizes.filter((s) => s !== size)
+      : [...selectedSizes, size];
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
+    updateURL({
+      minPrice,
+      maxPrice,
+      colors: selectedColors,
+      sizes: newSizes,
+      sort: sortBy,
+      subSubCategories: selectedSubSubCategories,
+    });
+  };
+
+  const handleSubSubCategoryToggle = (categoryId: string) => {
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => {
+        if (!d) return d;
+        const subSubCategories = d.subSubCategories.includes(categoryId)
+          ? d.subSubCategories.filter((id) => id !== categoryId)
+          : [...d.subSubCategories, categoryId];
+        return { ...d, subSubCategories };
+      });
+      return;
+    }
+    const newSubSubCategories = selectedSubSubCategories.includes(categoryId)
+      ? selectedSubSubCategories.filter((id) => id !== categoryId)
+      : [...selectedSubSubCategories, categoryId];
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
+    updateURL({
+      minPrice,
+      maxPrice,
+      colors: selectedColors,
+      sizes: selectedSizes,
+      sort: sortBy,
+      subSubCategories: newSubSubCategories,
+    });
+  };
+
+  const handleSliderChange = (values: number[]) => {
+    const [min, max] = values;
+    const validatedMin = Math.min(min, max);
+    const validatedMax = Math.max(min, max);
+    const next: [number, number] = [validatedMin, validatedMax];
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => (d ? { ...d, uiRange: next } : d));
+      return;
+    }
+    setUiRange(next);
+  };
+
+  const handleSliderCommit = (values: number[]) => {
+    const [min, max] = values as [number, number];
+    const finalRange: [number, number] = [Math.min(min, max), Math.max(min, max)];
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => (d ? { ...d, uiRange: finalRange } : d));
+      return;
+    }
+    setUiRange(finalRange);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      finalRange,
+      collectionPriceBounds
+    );
+    updateURL({
+      minPrice,
+      maxPrice,
+      colors: selectedColors,
+      sizes: selectedSizes,
+      sort: sortBy,
+      subSubCategories: selectedSubSubCategories,
+    });
+  };
+
+  const handlePriceReset = () => {
+    const boundsMin = collectionPriceBounds?.min ?? 0;
+    const boundsMax = collectionPriceBounds?.max ?? 1000;
+    const full: [number, number] = [boundsMin, boundsMax];
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => (d ? { ...d, uiRange: full } : d));
+      return;
+    }
+    setUiRange(full);
+    updateURL({
+      minPrice: "",
+      maxPrice: "",
+      colors: selectedColors,
+      sizes: selectedSizes,
+      sort: sortBy,
+      subSubCategories: selectedSubSubCategories,
+    });
+  };
+
+  const handleClearFilters = () => {
+    const boundsMin = collectionPriceBounds?.min ?? 0;
+    const boundsMax = collectionPriceBounds?.max ?? 1000;
+    const full: [number, number] = [boundsMin, boundsMax];
+    if (isFilterPanelOpen) {
+      setFilterDraft({
+        colors: [],
+        sizes: [],
+        subSubCategories: [],
+        uiRange: full,
+      });
+      return;
+    }
+    setUiRange(full);
+    updateURL({
+      minPrice: "",
+      maxPrice: "",
+      colors: [],
+      sizes: [],
+      sort: "relevance",
+      subSubCategories: [],
+    });
+  };
+
+  const countActivePanelFilters = () => {
+    const boundsMin = collectionPriceBounds?.min ?? 0;
+    const boundsMax = collectionPriceBounds?.max ?? 1000;
+    const [currentMin, currentMax] = panelUiRange;
+    const hasPriceFilter =
+      currentMin > boundsMin || currentMax < boundsMax;
+    return (
+      panelColors.length +
+      panelSizes.length +
+      panelSubSubCategories.length +
+      (hasPriceFilter ? 1 : 0)
+    );
+  };
+
+  const openFilterPanel = (target: "mobile" | "desktop") => {
+    if (collectionPriceBounds) {
+      const fromUrl = readFilterUiStateFromSearchParams(
+        safeSearchParams,
+        collectionPriceBounds
+      );
+      setFilterDraft({
+        colors: [...fromUrl.colors],
+        sizes: [...fromUrl.sizes],
+        subSubCategories: [...fromUrl.subSubCategories],
+        uiRange: fromUrl.uiRange,
+      });
+      setUiRange(fromUrl.uiRange);
+    }
+    if (target === "mobile") setMobileFiltersOpen(true);
+    else setDesktopFiltersOpen(true);
+  };
 
   return (
     <CollectionBrowseProvider
@@ -1684,50 +1658,43 @@ export default function CollectionClient({
           <div className={cn("flex items-center gap-3", lng === 'he' ? 'flex-row-reverse' : 'flex-row')}>
             {/* Desktop Filters Button */}
             <button
-              onClick={() => setDesktopFiltersOpen(!desktopFiltersOpen)}
+              onClick={() => {
+                if (desktopFiltersOpen) handleCloseFiltersPanel();
+                else openFilterPanel("desktop");
+              }}
               className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
             >
               <FunnelIcon className={cn("h-4 w-4", lng === 'he' ? 'ml-2' : 'mr-2')} />
               {t.filters}
-              {(() => {
-                const [currentMin, currentMax] = uiRange;
-                const boundsMin = collectionPriceBounds?.min ?? 0;
-                const boundsMax = collectionPriceBounds?.max ?? 1000;
-                const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-                const activeFilterCount = selectedColors.length + selectedSizes.length + selectedSubSubCategories.length + (hasPriceFilter ? 1 : 0);
-                if (activeFilterCount > 0) {
-                  return (
-                    <span className={cn("bg-black text-white text-xs rounded-full px-2 py-1", lng === 'he' ? 'mr-2' : 'ml-2')}>
-                      {activeFilterCount}
-                    </span>
-                  );
-                }
-                return null;
-              })()}
+              {countActivePanelFilters() > 0 && (
+                <span
+                  className={cn(
+                    "bg-black text-white text-xs rounded-full px-2 py-1",
+                    lng === "he" ? "mr-2" : "ml-2"
+                  )}
+                >
+                  {countActivePanelFilters()}
+                </span>
+              )}
             </button>
 
             {/* Mobile Filters Button */}
             <button
-              onClick={() => setMobileFiltersOpen(true)}
+              onClick={() => openFilterPanel("mobile")}
               className="md:hidden inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
             >
               <FunnelIcon className={cn("h-4 w-4", lng === 'he' ? 'ml-1' : 'mr-1')} />
               {t.filters}
-              {(() => {
-                const [currentMin, currentMax] = uiRange;
-                const boundsMin = collectionPriceBounds?.min ?? 0;
-                const boundsMax = collectionPriceBounds?.max ?? 1000;
-                const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-                const activeFilterCount = selectedColors.length + selectedSizes.length + selectedSubSubCategories.length + (hasPriceFilter ? 1 : 0);
-                if (activeFilterCount > 0) {
-                  return (
-                    <span className={cn("bg-black text-white text-xs rounded-full px-2 py-1", lng === 'he' ? 'mr-2' : 'ml-2')}>
-                      {activeFilterCount}
-                    </span>
-                  );
-                }
-                return null;
-              })()}
+              {countActivePanelFilters() > 0 && (
+                <span
+                  className={cn(
+                    "bg-black text-white text-xs rounded-full px-2 py-1",
+                    lng === "he" ? "mr-2" : "ml-2"
+                  )}
+                >
+                  {countActivePanelFilters()}
+                </span>
+              )}
             </button>
 
             <Select value={sortBy} onValueChange={handleSortChange}>
@@ -1891,7 +1858,7 @@ export default function CollectionClient({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className="absolute inset-0 bg-black/30"
-                onClick={() => setDesktopFiltersOpen(false)}
+                onClick={handleCloseFiltersPanel}
               />
             </div>
             
@@ -1902,7 +1869,7 @@ export default function CollectionClient({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className="absolute inset-0 bg-black/30"
-                onClick={() => setDesktopFiltersOpen(false)}
+                onClick={handleCloseFiltersPanel}
               />
             </div>
             
@@ -1918,7 +1885,7 @@ export default function CollectionClient({
           <div className="flex items-center justify-between p-6 border-b border-gray-100">
             <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
             <button
-              onClick={() => setDesktopFiltersOpen(false)}
+              onClick={handleCloseFiltersPanel}
               className="text-black hover:text-gray-600"
             >
               <XMarkIcon className="h-5 w-5" />
@@ -1941,13 +1908,13 @@ export default function CollectionClient({
                   <div className="space-y-4 pt-3 border-t border-gray-100">
                     {/* Price Range Label */}
                     <div className="text-sm font-medium text-gray-900">
-                      ₪{formatPrice(uiRange[0])} - ₪{formatPrice(uiRange[1])}
+                      ₪{formatPrice(panelUiRange[0])} - ₪{formatPrice(panelUiRange[1])}
                     </div>
                     
                     {/* Price Range Slider */}
                     <div className="px-2">
                       <Slider
-                        value={uiRange}
+                        value={panelUiRange}
                         onValueChange={handleSliderChange}
                         onValueCommit={handleSliderCommit}
                         min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)}
@@ -1959,7 +1926,7 @@ export default function CollectionClient({
                     </div>
 
                     {/* Reset Button */}
-                    {(uiRange[0] !== collectionPriceBounds.min || uiRange[1] !== collectionPriceBounds.max) && (
+                    {(panelUiRange[0] !== collectionPriceBounds.min || panelUiRange[1] !== collectionPriceBounds.max) && (
                       <button
                         onClick={handlePriceReset}
                         className="text-xs text-gray-600 hover:text-gray-800 underline"
@@ -1983,7 +1950,7 @@ export default function CollectionClient({
                         key={color}
                         onClick={() => handleColorToggle(color)}
                         className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
-                          selectedColors.includes(color)
+                          panelColors.includes(color)
                             ? 'bg-gray-100 border border-gray-300'
                             : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
                         }`}
@@ -2015,7 +1982,7 @@ export default function CollectionClient({
                               key={size}
                               onClick={() => handleSizeToggle(size)}
                               className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                                selectedSizes.includes(size)
+                                panelSizes.includes(size)
                                   ? 'bg-gray-100 border border-gray-300'
                                   : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
                               }`}
@@ -2036,7 +2003,7 @@ export default function CollectionClient({
                               key={size}
                               onClick={() => handleSizeToggle(size)}
                               className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                                selectedSizes.includes(size)
+                                panelSizes.includes(size)
                                   ? 'bg-gray-100 border border-gray-300'
                                   : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
                               }`}
@@ -2093,11 +2060,11 @@ export default function CollectionClient({
 
             {/* Clear Filters Button */}
             {(() => {
-              const [currentMin, currentMax] = uiRange;
+              const [currentMin, currentMax] = panelUiRange;
               const boundsMin = collectionPriceBounds?.min ?? 0;
               const boundsMax = collectionPriceBounds?.max ?? 1000;
               const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-              if (selectedColors.length > 0 || selectedSizes.length > 0 || selectedSubSubCategories.length > 0 || hasPriceFilter) {
+              if (panelColors.length > 0 || panelSizes.length > 0 || panelSubSubCategories.length > 0 || hasPriceFilter) {
                 return (
                   <div className="mb-6">
                     <button
@@ -2115,7 +2082,7 @@ export default function CollectionClient({
 
           <div className="p-6 border-t border-gray-100">
             <button
-              onClick={() => setDesktopFiltersOpen(false)}
+              onClick={handleApplyFilters}
               className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200"
             >
               {t.applyFilters}
@@ -2137,7 +2104,7 @@ export default function CollectionClient({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               className="absolute inset-0 bg-black/30"
-              onClick={() => setMobileFiltersOpen(false)}
+              onClick={handleCloseFiltersPanel}
             />
             
             <motion.div
@@ -2151,7 +2118,7 @@ export default function CollectionClient({
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
                 <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
                 <button
-                  onClick={() => setMobileFiltersOpen(false)}
+                  onClick={handleCloseFiltersPanel}
                   className="text-black hover:text-gray-600"
                 >
                   <XMarkIcon className="h-5 w-5" />
@@ -2174,13 +2141,13 @@ export default function CollectionClient({
                       <div className="space-y-4 pt-3 border-t border-gray-100">
                         {/* Price Range Label */}
                         <div className="text-sm font-medium text-gray-900">
-                          ₪{formatPrice(uiRange[0])} - ₪{formatPrice(uiRange[1])}
+                          ₪{formatPrice(panelUiRange[0])} - ₪{formatPrice(panelUiRange[1])}
                         </div>
                         
                          {/* Price Range Slider */}
                          <div className="px-2">
                            <Slider
-                             value={uiRange}
+                             value={panelUiRange}
                              onValueChange={handleSliderChange}
                              onValueCommit={handleSliderCommit}
                              min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)}
@@ -2192,7 +2159,7 @@ export default function CollectionClient({
                          </div>
 
                         {/* Reset Button */}
-                        {(uiRange[0] !== collectionPriceBounds.min || uiRange[1] !== collectionPriceBounds.max) && (
+                        {(panelUiRange[0] !== collectionPriceBounds.min || panelUiRange[1] !== collectionPriceBounds.max) && (
                           <button
                             onClick={handlePriceReset}
                             className="text-xs text-gray-600 hover:text-gray-800 underline"
@@ -2246,7 +2213,7 @@ export default function CollectionClient({
                                   key={size}
                                   onClick={() => handleSizeToggle(size)}
                                   className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                                    selectedSizes.includes(size)
+                                    panelSizes.includes(size)
                                       ? 'bg-gray-100 border border-gray-300'
                                       : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
                                   }`}
@@ -2267,7 +2234,7 @@ export default function CollectionClient({
                                   key={size}
                                   onClick={() => handleSizeToggle(size)}
                                   className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                                    selectedSizes.includes(size)
+                                    panelSizes.includes(size)
                                       ? 'bg-gray-100 border border-gray-300'
                                       : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
                                   }`}
@@ -2303,7 +2270,7 @@ export default function CollectionClient({
                                     key={category.id}
                                     onClick={() => handleSubSubCategoryToggle(category.id!)}
                                     className={`w-full flex items-center p-2 rounded-sm transition-all duration-200 ${
-                                      selectedSubSubCategories.includes(category.id!)
+                                      panelSubSubCategories.includes(category.id!)
                                         ? 'bg-gray-100 border border-gray-300'
                                         : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
                                     }`}
@@ -2324,11 +2291,11 @@ export default function CollectionClient({
 
                 {/* Clear Filters Button */}
                 {(() => {
-                  const [currentMin, currentMax] = uiRange;
+                  const [currentMin, currentMax] = panelUiRange;
                   const boundsMin = collectionPriceBounds?.min ?? 0;
                   const boundsMax = collectionPriceBounds?.max ?? 1000;
                   const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-                  if (selectedColors.length > 0 || selectedSizes.length > 0 || selectedSubSubCategories.length > 0 || hasPriceFilter) {
+                  if (panelColors.length > 0 || panelSizes.length > 0 || panelSubSubCategories.length > 0 || hasPriceFilter) {
                     return (
                       <div className="mb-6">
                         <button
@@ -2346,7 +2313,7 @@ export default function CollectionClient({
 
               <div className="p-6 border-t border-gray-100">
                 <button
-                  onClick={() => setMobileFiltersOpen(false)}
+                  onClick={handleApplyFilters}
                   className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200"
                 >
                   {t.applyFilters}

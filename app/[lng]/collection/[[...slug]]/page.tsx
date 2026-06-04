@@ -4,6 +4,7 @@ import { searchProducts } from "@/lib/search-products";
 import { buildMetadata, buildAbsoluteUrl } from "@/lib/seo";
 import type { Metadata } from 'next';
 import { languages } from '@/i18n/settings';
+import { buildCollectionFilterKey } from '@/lib/collectionFilterUrl';
 
 // Helper to serialize Firestore timestamps or other complex objects
 const serializeValue = (value: any): any => {
@@ -307,8 +308,20 @@ export default async function CollectionSlugPage({
   const initialMaxPrice =
     typeof resolvedSearchParams.maxPrice === "string" ? resolvedSearchParams.maxPrice : undefined;
 
+  const filterSearchParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(resolvedSearchParams)) {
+    if (key === "page" || key === "search") continue;
+    if (typeof value === "string") filterSearchParams.set(key, value);
+    else if (Array.isArray(value)) filterSearchParams.set(key, value.join(","));
+  }
+  const collectionFilterKey = buildCollectionFilterKey(filterSearchParams, {
+    categoryPath: searchQuery ? undefined : categoryPath,
+    searchQuery,
+  });
+
   return (
     <CollectionClient
+      key={collectionFilterKey}
       initialProducts={serializedProducts}
       initialVariantItems={serializedVariantItems}
       initialAvailableFilterOptions={collectionAvailableFilterOptions}

@@ -10,6 +10,18 @@ import {
   parseVariantKey,
   MERCHANDISING_COLLECTION,
 } from '@/lib/campaign-merchandising-types';
+import {
+  parseFacetFiltersFromSearchParams,
+  parsePageFromSearchParams,
+  parseSortFromSearchParams,
+  productMatchesListingFilters,
+} from '@/lib/collectionFilters';
+import {
+  inStockSizeKeysFromVariant,
+  variantHasSizeInStock,
+} from '@/lib/product-size';
+
+export { productMatchesListingFilters } from '@/lib/collectionFilters';
 
 // Lazy-init Firebase to avoid auth/invalid-api-key during Next.js build (when env may be missing).
 // Initialization runs on first use of db/auth/storage/app, not at import time.
@@ -1066,7 +1078,11 @@ export type FilteredProductsResult = {
   pageSize: number; // Page size used
   lastDocument?: QueryDocumentSnapshot<DocumentData>;
   /** Stable filter options from full collection (not from filtered result) so UI list does not collapse */
-  availableFilterOptions?: { colors: string[]; sizes: string[] };
+  availableFilterOptions?: {
+    colors: string[];
+    sizes: string[];
+    subSubCategoryIds?: string[];
+  };
 };
 
 /**
@@ -1108,16 +1124,9 @@ export function expandProductsToVariants(
       );
     }
     if (sizes) {
-      // Normalize selected sizes (trim, string) so they match stockBySize keys e.g. "35", "39"
-      const sizeSet = new Set(sizes.map((s) => String(s).trim()).filter(Boolean));
-      activeVariants = activeVariants.filter((v) => {
-        // Variant must have at least one selected size with stock > 0
-        const stockBySize = v.stockBySize || {};
-        return Array.from(sizeSet).some((sizeKey) => {
-          const qty = stockBySize[sizeKey];
-          return typeof qty === 'number' && qty > 0;
-        });
-      });
+      activeVariants = activeVariants.filter((v) =>
+        variantHasSizeInStock(v, sizes)
+      );
     }
 
     // Create one VariantItem per matching variant
@@ -1551,9 +1560,9 @@ export async function getFilteredProducts(
           return productPrice <= filters.maxPrice!;
         }
 
-        // Product matches if the minimum variant price is <= maxPrice
-        const minVariantPrice = Math.min(...variantPrices);
-        return minVariantPrice <= filters.maxPrice!;
+        // Exclude if any variant price exceeds maxPrice
+        const maxVariantPrice = Math.max(...variantPrices);
+        return maxVariantPrice <= filters.maxPrice!;
       });
     }
 
@@ -1662,178 +1671,6 @@ function buildFirestoreProductConstraints(
   return constraints;
 }
 
-function productMatchesListingFilters(product: Product, filters: ProductFilters): boolean {
-  if (filters.categoryIds && filters.categoryIds.length > 0) {
-    const categoryIds = filters.categoryIds;
-    if (!product.categories_path_id || product.categories_path_id.length === 0) {
-      return false;
-    }
-    if (product.categories_path_id.length < categoryIds.length) {
-      return false;
-    }
-    for (let i = 0; i < categoryIds.length; i++) {
-      if (product.categories_path_id[i] !== categoryIds[i]) {
-        return false;
-      }
-    }
-  } else if (filters.categoryId && filters.categoryLevel !== undefined) {
-    const targetLevel = filters.categoryLevel;
-    if (!product.categories_path_id || product.categories_path_id.length === 0) {
-      return false;
-    }
-    if (product.categories_path_id.length > targetLevel) {
-      return product.categories_path_id[targetLevel] === filters.categoryId;
-    }
-    return false;
-  } else if (filters.categoryPath) {
-    const categoryPathLower = filters.categoryPath.toLowerCase();
-    const requestedPath = categoryPathLower;
-    if (!product.categories_path || product.categories_path.length === 0) {
-      return false;
-    }
-    const productPath = product.categories_path.join('/').toLowerCase();
-    if (productPath === requestedPath) {
-      return true;
-    }
-    if (productPath.startsWith(requestedPath + '/')) {
-      return true;
-    }
-    if (requestedPath.startsWith(productPath + '/')) {
-      return true;
-    }
-    return false;
-  }
-
-  if (filters.subSubCategoryIds && filters.subSubCategoryIds.length > 0) {
-    const subSubCategoryIds = filters.subSubCategoryIds;
-    if (!product.categories_path_id || product.categories_path_id.length < 3) {
-      return false;
-    }
-    const productSubSubCategoryId = product.categories_path_id[2];
-    if (!subSubCategoryIds.includes(productSubSubCategoryId)) {
-      return false;
-    }
-  }
-
-  if (filters.excludeSkus && filters.excludeSkus.length > 0) {
-    if (filters.excludeSkus.includes(product.sku)) {
-      return false;
-    }
-  }
-
-  if (filters.color && (Array.isArray(filters.color) ? filters.color.length > 0 : true)) {
-    const colors = Array.isArray(filters.color) ? filters.color : [filters.color];
-    if (!product.colorVariants) {
-      return false;
-    }
-    const hasColor = Object.values(product.colorVariants)
-      .filter((variant) => variant.isActive !== false)
-      .some((variant) => colors.includes(variant.colorSlug || ''));
-    if (!hasColor) {
-      return false;
-    }
-  }
-
-  if (filters.size && (Array.isArray(filters.size) ? filters.size.length > 0 : true)) {
-    const sizeSet = new Set(
-      (Array.isArray(filters.size) ? filters.size : [filters.size])
-        .map((s) => String(s).trim())
-        .filter(Boolean)
-    );
-    if (!product.colorVariants) {
-      return false;
-    }
-    const hasSize = Object.values(product.colorVariants)
-      .filter((variant) => variant.isActive !== false)
-      .some((variant) => {
-        const stockBySize = variant.stockBySize || {};
-        return Array.from(sizeSet).some((sizeKey) => {
-          const qty = stockBySize[sizeKey];
-          return typeof qty === 'number' && qty > 0;
-        });
-      });
-    if (!hasSize) {
-      return false;
-    }
-  }
-
-  if (filters.inStockOnly) {
-    if (!product.colorVariants) {
-      return false;
-    }
-    const inStock = Object.values(product.colorVariants)
-      .filter((variant) => variant.isActive !== false)
-      .some((variant) =>
-        Object.values(variant.stockBySize || {}).some((stock) => stock > 0)
-      );
-    if (!inStock) {
-      return false;
-    }
-  }
-
-  if (filters.minPrice !== undefined && filters.minPrice > 0) {
-    if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
-      const productPrice =
-        product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-      if (productPrice < filters.minPrice) {
-        return false;
-      }
-    } else {
-      const variantPrices = Object.values(product.colorVariants)
-        .filter((variant) => variant.isActive !== false)
-        .map((variant) => {
-          if (variant.salePrice && variant.salePrice > 0) return variant.salePrice;
-          if (product.salePrice && product.salePrice > 0) return product.salePrice;
-          if ((variant as any).priceOverride && (variant as any).priceOverride > 0) {
-            return (variant as any).priceOverride;
-          }
-          return product.price;
-        });
-      if (variantPrices.length === 0) {
-        const productPrice =
-          product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-        if (productPrice < filters.minPrice) {
-          return false;
-        }
-      } else if (Math.min(...variantPrices) < filters.minPrice) {
-        return false;
-      }
-    }
-  }
-
-  if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
-    if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
-      const productPrice =
-        product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-      if (productPrice > filters.maxPrice) {
-        return false;
-      }
-    } else {
-      const variantPrices = Object.values(product.colorVariants)
-        .filter((variant) => variant.isActive !== false)
-        .map((variant) => {
-          if (variant.salePrice && variant.salePrice > 0) return variant.salePrice;
-          if (product.salePrice && product.salePrice > 0) return product.salePrice;
-          if ((variant as any).priceOverride && (variant as any).priceOverride > 0) {
-            return (variant as any).priceOverride;
-          }
-          return product.price;
-        });
-      if (variantPrices.length === 0) {
-        const productPrice =
-          product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-        if (productPrice > filters.maxPrice) {
-          return false;
-        }
-      } else if (Math.min(...variantPrices) > filters.maxPrice) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
 async function hydrateProductsForListing(
   docSnapshots: QueryDocumentSnapshot<DocumentData>[]
 ): Promise<Product[]> {
@@ -1888,8 +1725,17 @@ function sortVariantItemsForListing(
 function collectFacetOptionsFromProduct(
   product: Product,
   colorSlugs: Set<string>,
-  sizes: Set<string>
+  sizes: Set<string>,
+  subSubCategoryIds: Set<string>
 ): void {
+  if (
+    product.categories_path_id &&
+    product.categories_path_id.length >= 3 &&
+    product.categories_path_id[2]
+  ) {
+    subSubCategoryIds.add(product.categories_path_id[2]);
+  }
+
   if (!product.colorVariants) {
     return;
   }
@@ -1901,18 +1747,17 @@ function collectFacetOptionsFromProduct(
     if (variant.colorSlug) {
       colorSlugs.add(variant.colorSlug);
     }
-    for (const [size, qty] of Object.entries(variant.stockBySize || {})) {
-      if (typeof qty === "number" && qty > 0) {
-        sizes.add(size);
-      }
+    for (const sizeKey of inStockSizeKeysFromVariant(variant)) {
+      sizes.add(sizeKey);
     }
   }
 }
 
 function buildAvailableFilterOptions(
   colorSlugs: Set<string>,
-  sizes: Set<string>
-): { colors: string[]; sizes: string[] } {
+  sizes: Set<string>,
+  subSubCategoryIds: Set<string>
+): { colors: string[]; sizes: string[]; subSubCategoryIds: string[] } {
   return {
     colors: [...colorSlugs].sort(),
     sizes: [...sizes].sort((a, b) => {
@@ -1921,6 +1766,7 @@ function buildAvailableFilterOptions(
       if (!Number.isNaN(aNum) && !Number.isNaN(bNum)) return aNum - bNum;
       return String(a).localeCompare(String(b));
     }),
+    subSubCategoryIds: [...subSubCategoryIds].sort(),
   };
 }
 
@@ -1954,6 +1800,7 @@ async function resolveListingVariantPage(
 
   const colorFacetSet = new Set<string>();
   const sizeFacetSet = new Set<string>();
+  const subSubFacetSet = new Set<string>();
   const pageVariantItems: VariantItem[] = [];
   const priceSortItems: VariantItem[] = [];
   let variantIndex = 0;
@@ -2002,7 +1849,12 @@ async function resolveListingVariantPage(
     for (const product of products) {
       if (productMatchesListingFilters(product, filtersNoColorSize)) {
         if (!productLimit || facetProductCount < productLimit) {
-          collectFacetOptionsFromProduct(product, colorFacetSet, sizeFacetSet);
+          collectFacetOptionsFromProduct(
+            product,
+            colorFacetSet,
+            sizeFacetSet,
+            subSubFacetSet
+          );
           facetProductCount += 1;
         }
       }
@@ -2064,7 +1916,11 @@ async function resolveListingVariantPage(
     page: validatedPage,
     pageSize,
     lastDocument: lastDoc,
-    availableFilterOptions: buildAvailableFilterOptions(colorFacetSet, sizeFacetSet),
+    availableFilterOptions: buildAvailableFilterOptions(
+      colorFacetSet,
+      sizeFacetSet,
+      subSubFacetSet
+    ),
   };
 }
 
@@ -2096,90 +1952,10 @@ export async function getCollectionProducts(
     }
   }
 
-  // Color filter
-  const colorsParam = searchParams.colors;
-  if (colorsParam) {
-    const colors = typeof colorsParam === 'string'
-      ? colorsParam.split(',').filter(Boolean)
-      : Array.isArray(colorsParam)
-        ? colorsParam.flatMap(c => c.split(',')).filter(Boolean)
-        : [];
-    if (colors.length > 0) {
-      filters.color = colors;
-    }
-  }
+  Object.assign(filters, parseFacetFiltersFromSearchParams(searchParams));
 
-  // Size filter (normalize and trim so "39" / " 39 " match stockBySize keys)
-  const sizesParam = searchParams.sizes;
-  if (sizesParam) {
-    const raw = typeof sizesParam === 'string'
-      ? sizesParam.split(',').filter(Boolean)
-      : Array.isArray(sizesParam)
-        ? sizesParam.flatMap(s => (typeof s === 'string' ? s.split(',') : [String(s)])).filter(Boolean)
-        : [];
-    const sizes = raw.map((s) => String(s).trim()).filter(Boolean);
-    if (sizes.length > 0) {
-      filters.size = sizes;
-    }
-  }
-
-  // Sub-subcategory filter
-  const subSubCategoriesParam = searchParams.subSubCategories;
-  if (subSubCategoriesParam) {
-    const subSubCategoryIds = typeof subSubCategoriesParam === 'string'
-      ? subSubCategoriesParam.split(',').filter(Boolean)
-      : Array.isArray(subSubCategoriesParam)
-        ? subSubCategoriesParam.flatMap(id => id.split(',')).filter(Boolean)
-        : [];
-    if (subSubCategoryIds.length > 0) {
-      filters.subSubCategoryIds = subSubCategoryIds;
-    }
-  }
-
-  // Price range
-  const minPriceParam = searchParams.minPrice;
-  const maxPriceParam = searchParams.maxPrice;
-
-  if (minPriceParam) {
-    const minPrice = typeof minPriceParam === 'string'
-      ? parseFloat(minPriceParam)
-      : Array.isArray(minPriceParam)
-        ? parseFloat(minPriceParam[0])
-        : undefined;
-    if (!isNaN(minPrice!) && minPrice! > 0) {
-      filters.minPrice = minPrice;
-    }
-  }
-  if (maxPriceParam) {
-    const maxPrice = typeof maxPriceParam === 'string'
-      ? parseFloat(maxPriceParam)
-      : Array.isArray(maxPriceParam)
-        ? parseFloat(maxPriceParam[0])
-        : undefined;
-    if (!isNaN(maxPrice!) && maxPrice! > 0) {
-      filters.maxPrice = maxPrice;
-    }
-  }
-
-  // Sort option - map from URL params to internal sort values
-  const sortParam = searchParams.sort;
-  let sort: ProductSortOption = 'relevance';
-  if (sortParam) {
-    const sortValue = typeof sortParam === 'string' ? sortParam : Array.isArray(sortParam) ? sortParam[0] : '';
-    if (sortValue === 'newest') {
-      sort = 'newest';
-    } else if (sortValue === 'price-low' || sortValue === 'priceAsc') {
-      sort = 'priceAsc';
-    } else if (sortValue === 'price-high' || sortValue === 'priceDesc') {
-      sort = 'priceDesc';
-    }
-  }
-
-  // Pagination
-  const pageParam = searchParams.page;
-  const page = pageParam
-    ? (typeof pageParam === 'string' ? parseInt(pageParam) : Array.isArray(pageParam) ? parseInt(pageParam[0]) : 1)
-    : 1;
+  const sort = parseSortFromSearchParams(searchParams);
+  const page = parsePageFromSearchParams(searchParams);
 
   return resolveListingVariantPage({
     filters,
@@ -2251,17 +2027,8 @@ function variantItemMatchesFilters(item: VariantItem, filters: ProductFilters): 
   }
 
   if (filters.size && (Array.isArray(filters.size) ? filters.size.length > 0 : true)) {
-    const sizeSet = new Set(
-      (Array.isArray(filters.size) ? filters.size : [filters.size])
-        .map((s) => String(s).trim())
-        .filter(Boolean)
-    );
-    const stockBySize = item.variant.stockBySize || {};
-    const hasSize = Array.from(sizeSet).some((sizeKey) => {
-      const qty = stockBySize[sizeKey];
-      return typeof qty === 'number' && qty > 0;
-    });
-    if (!hasSize) {
+    const sizes = Array.isArray(filters.size) ? filters.size : [filters.size];
+    if (!variantHasSizeInStock(item.variant, sizes)) {
       return false;
     }
   }
@@ -2341,12 +2108,17 @@ async function collectTagMatchedVariantItems(
   options: CollectTagVariantsOptions
 ): Promise<{
   items: VariantItem[];
-  availableFilterOptions: { colors: string[]; sizes: string[] };
+  availableFilterOptions: {
+    colors: string[];
+    sizes: string[];
+    subSubCategoryIds?: string[];
+  };
 }> {
   const { filters, excludeVariantKeys, productLimit, expandOptions, productFilter } = options;
   const filtersNoColorSize = { ...filters, color: undefined, size: undefined };
   const colorFacetSet = new Set<string>();
   const sizeFacetSet = new Set<string>();
+  const subSubFacetSet = new Set<string>();
   const matchedProducts: Product[] = [];
   let facetProductCount = 0;
   let matchedProductCount = 0;
@@ -2372,7 +2144,12 @@ async function collectTagMatchedVariantItems(
     for (const product of products) {
       if (productMatchesListingFilters(product, filtersNoColorSize)) {
         if (!productLimit || facetProductCount < productLimit) {
-          collectFacetOptionsFromProduct(product, colorFacetSet, sizeFacetSet);
+          collectFacetOptionsFromProduct(
+            product,
+            colorFacetSet,
+            sizeFacetSet,
+            subSubFacetSet
+          );
           facetProductCount += 1;
         }
       }
@@ -2411,7 +2188,11 @@ async function collectTagMatchedVariantItems(
 
   return {
     items,
-    availableFilterOptions: buildAvailableFilterOptions(colorFacetSet, sizeFacetSet),
+    availableFilterOptions: buildAvailableFilterOptions(
+      colorFacetSet,
+      sizeFacetSet,
+      subSubFacetSet
+    ),
   };
 }
 
@@ -2555,78 +2336,11 @@ export async function getCampaignCollectionProducts(
 
   const filters: ProductFilters = {};
 
-  // Tag-based: only products with this tag
   filters.tag = campaign.productFilter.tag;
+  Object.assign(filters, parseFacetFiltersFromSearchParams(searchParams));
 
-  // Color filter
-  const colorsParam = searchParams.colors;
-  if (colorsParam) {
-    const colors = typeof colorsParam === 'string'
-      ? colorsParam.split(',').filter(Boolean)
-      : Array.isArray(colorsParam)
-        ? colorsParam.flatMap(c => c.split(',')).filter(Boolean)
-        : [];
-    if (colors.length > 0) {
-      filters.color = colors;
-    }
-  }
-
-  // Size filter (normalize and trim so "39" / " 39 " match stockBySize keys)
-  const sizesParam = searchParams.sizes;
-  if (sizesParam) {
-    const raw = typeof sizesParam === 'string'
-      ? sizesParam.split(',').filter(Boolean)
-      : Array.isArray(sizesParam)
-        ? sizesParam.flatMap(s => (typeof s === 'string' ? s.split(',') : [String(s)])).filter(Boolean)
-        : [];
-    const sizes = raw.map((s) => String(s).trim()).filter(Boolean);
-    if (sizes.length > 0) {
-      filters.size = sizes;
-    }
-  }
-
-  // Price range
-  const minPriceParam = searchParams.minPrice;
-  const maxPriceParam = searchParams.maxPrice;
-  if (minPriceParam) {
-    const minPrice = typeof minPriceParam === 'string'
-      ? parseFloat(minPriceParam)
-      : Array.isArray(minPriceParam)
-        ? parseFloat(minPriceParam[0])
-        : undefined;
-    if (!isNaN(minPrice!) && minPrice! > 0) {
-      filters.minPrice = minPrice;
-    }
-  }
-  if (maxPriceParam) {
-    const maxPrice = typeof maxPriceParam === 'string'
-      ? parseFloat(maxPriceParam)
-      : Array.isArray(maxPriceParam)
-        ? parseFloat(maxPriceParam[0])
-        : undefined;
-    if (!isNaN(maxPrice!) && maxPrice! > 0) {
-      filters.maxPrice = maxPrice;
-    }
-  }
-
-  // Sort option
-  const sortParam = searchParams.sort;
-  let sort: ProductSortOption = 'relevance';
-  if (sortParam) {
-    const sortValue = typeof sortParam === 'string' ? sortParam : Array.isArray(sortParam) ? sortParam[0] : '';
-    if (sortValue === 'newest') {
-      sort = 'newest';
-    } else if (sortValue === 'price-low' || sortValue === 'priceAsc') {
-      sort = 'priceAsc';
-    } else if (sortValue === 'price-high' || sortValue === 'priceDesc') {
-      sort = 'priceDesc';
-    }
-  }
-
-  const pageParam = searchParams.page;
-  const page = pageParam
-    ? (typeof pageParam === 'string' ? parseInt(pageParam) : Array.isArray(pageParam) ? parseInt(pageParam[0]) : 1)
-    : 1;
+  const sort = parseSortFromSearchParams(searchParams);
+  const page = parsePageFromSearchParams(searchParams);
 
   const useMerchandising = sort === 'relevance';
   if (useMerchandising) {

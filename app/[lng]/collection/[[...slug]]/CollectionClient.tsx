@@ -53,6 +53,7 @@ import {
 } from "@/lib/preserveScrollOnAppend";
 import { CollectionBrowseProvider } from "@/app/contexts/CollectionBrowseContext";
 import {
+  buildCollectionFilterKey,
   priceRangeToUrlParams,
   readFilterUiStateFromSearchParams,
   sameSortedStringList,
@@ -268,17 +269,10 @@ export default function CollectionClient({
 
   // Track filter/search key to detect when filters actually change (not just page)
   const filterKey = useMemo(() => {
-    const safeSearchParams = searchParams ?? new URLSearchParams();
-    // Build a key from all filter/search params except page
-    const keyParts: string[] = [];
-    if (categoryPath) keyParts.push(`cat:${categoryPath}`);
-    if (searchQuery) keyParts.push(`search:${searchQuery}`);
-    safeSearchParams.forEach((value, key) => {
-      if (key !== 'page' && key !== 'search') {
-        keyParts.push(`${key}:${value}`);
-      }
+    return buildCollectionFilterKey(searchParams ?? new URLSearchParams(), {
+      categoryPath,
+      searchQuery,
     });
-    return keyParts.sort().join('|');
   }, [categoryPath, searchQuery, searchParams]);
 
   // Stable key for this collection + filter/search combination
@@ -306,8 +300,8 @@ export default function CollectionClient({
   const loadMoreEpochRef = useRef(0);
   const loadMoreAbortRef = useRef<AbortController | null>(null);
   const hydrationFallbackLoggedRef = useRef(false);
-  /** Set when this component pushes filter URL changes; skips one URL→state sync pass. */
-  const isCommittingRef = useRef(false);
+  /** Filter key we pushed via updateURL; skip URL→UI sync until router matches it. */
+  const pendingFilterKeyRef = useRef<string | null>(null);
   const hydratedFromStoreRef = useRef<boolean>(false);
   const restoredFromUrlFetchRef = useRef<boolean>(false);
   const [browseListReady, setBrowseListReady] = useState(false);
@@ -644,6 +638,9 @@ export default function CollectionClient({
   // Sync list from server when filters/search change or fresh RSC props arrive.
   // Skip when browse cache hydration is active (PDP back). Do not wipe load-more
   // accumulation on page-only URL changes.
+  // Intentionally omits allVariantItems/allProducts length from deps: this effect
+  // updates those lists, so length deps would re-fire after every sync (and after
+  // load-more). accumulatedBeyondInitial is read once per filterKey/revision run.
   useEffect(() => {
     if (
       pendingListHydrationRef.current > 0 ||
@@ -748,15 +745,11 @@ export default function CollectionClient({
   }, [
     filterKey,
     serverListRevision,
-    initialProducts,
-    initialVariantItems,
     searchPage,
     searchTotal,
     initialHasMore,
     useVariantItems,
     collectionKey,
-    allVariantItems.length,
-    allProducts.length,
   ]);
 
   // Keep snapshot ref updated so we can persist on unmount
@@ -985,7 +978,6 @@ export default function CollectionClient({
     sort?: string;
     subSubCategories?: string[];
   }, resetPage: boolean = true) => {
-    isCommittingRef.current = true;
     // Start with current search params to preserve search query
     const urlParams = new URLSearchParams(safeSearchParams.toString());
     
@@ -1032,7 +1024,12 @@ export default function CollectionClient({
     const queryString = urlParams.toString();
     const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
     const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
-    
+
+    pendingFilterKeyRef.current = buildCollectionFilterKey(urlParams, {
+      categoryPath,
+      searchQuery,
+    });
+
     resetCollectionScrollForFilterChange();
     scrollCollectionToTop();
     router.push(newUrl, { scroll: false });
@@ -1411,9 +1408,7 @@ export default function CollectionClient({
   // Get all sub-sub categories (level 2) grouped by parent
   const subSubCategoriesByParent = useMemo(() => {
     const grouped: Record<string, Category[]> = {};
-    
-    // On level 1 pages, find the current subcategory ID to filter sub-subcategories
-    let currentSubcategoryId: string | undefined;
+
     const pathRootSegment =
       typeof categoryPath === 'string' ? categoryPath.split('/').filter(Boolean)[0]?.trim() ?? '' : '';
     const rootSlugSource =
@@ -1422,14 +1417,21 @@ export default function CollectionClient({
       selectedSubcategory != null && typeof selectedSubcategory === 'string'
         ? selectedSubcategory.trim()
         : '';
-    if (collectionLevel === 2 && rootSlugSource.length > 0 && subSlugSource.length > 0) {
-      const rootSlug = rootSlugSource.toLowerCase();
-      const root = categories.find((cat) => {
+
+    const findRootCategory = (rootSlug: string) => {
+      const normalized = rootSlug.toLowerCase();
+      return categories.find((cat) => {
         if (cat.level !== 0 || !cat.isEnabled) return false;
         const slugEn = typeof cat.slug === 'object' ? cat.slug.en : cat.slug;
         const slugHe = typeof cat.slug === 'object' ? cat.slug.he : cat.slug;
-        return slugEn?.toLowerCase() === rootSlug || slugHe?.toLowerCase() === rootSlug;
+        return slugEn?.toLowerCase() === normalized || slugHe?.toLowerCase() === normalized;
       });
+    };
+
+    // On subcategory pages (e.g. /collection/women/shoes), scope to that subcategory
+    let currentSubcategoryId: string | undefined;
+    if (collectionLevel === 2 && rootSlugSource.length > 0 && subSlugSource.length > 0) {
+      const root = findRootCategory(rootSlugSource);
       const subcategorySlug = subSlugSource.toLowerCase();
       const foundSubcategory = categories.find((cat) => {
         if (cat.level !== 1 || !cat.isEnabled || !root?.id || cat.parentId !== root.id) return false;
@@ -1447,17 +1449,27 @@ export default function CollectionClient({
       });
       currentSubcategoryId = foundSubcategory?.id;
     }
-    
+
     // Get all sub-sub categories (level 2) that are enabled
     let subSubCategories = categories.filter(
-      cat => cat.level === 2 && cat.isEnabled && cat.id
+      (cat) => cat.level === 2 && cat.isEnabled && cat.id
     );
-    
-    // On level 1 pages, filter to only show sub-subcategories of the current subcategory
+
     if (collectionLevel === 2 && currentSubcategoryId) {
-      subSubCategories = subSubCategories.filter(
-        cat => cat.parentId === currentSubcategoryId
-      );
+      subSubCategories = subSubCategories.filter((cat) => cat.parentId === currentSubcategoryId);
+    } else if (collectionLevel === 1 && rootSlugSource.length > 0) {
+      // On root category pages (e.g. /collection/women), only sub-subcategories under that root
+      const root = findRootCategory(rootSlugSource);
+      if (root?.id) {
+        const level1ParentIds = new Set(
+          categories
+            .filter((cat) => cat.level === 1 && cat.isEnabled && cat.parentId === root.id && cat.id)
+            .map((cat) => cat.id!)
+        );
+        subSubCategories = subSubCategories.filter(
+          (cat) => cat.parentId != null && level1ParentIds.has(cat.parentId)
+        );
+      }
     }
     
     // Group by parent category
@@ -1577,6 +1589,7 @@ export default function CollectionClient({
   // Use server-provided initialMinPrice/initialMaxPrice (same as useState initializer) to avoid hydration mismatch on static pages.
   useEffect(() => {
     if (!collectionPriceBounds) return; // Wait for bounds to be computed
+    if (pendingFilterKeyRef.current !== null) return;
 
     const boundsMin = collectionPriceBounds.min;
     const boundsMax = collectionPriceBounds.max;
@@ -1599,10 +1612,15 @@ export default function CollectionClient({
 
   // Sync filter UI from URL on external navigation (back/forward, shared links).
   // Uses filterKey (excludes page) so load-more / ?page=N does not re-run chip sync.
-  // Skips one pass after updateURL/router.push so optimistic handler state is not overwritten.
+  // While pendingFilterKeyRef is set, wait until filterKey matches the pushed URL
+  // before syncing so stale searchParams cannot overwrite optimistic handler state.
   useEffect(() => {
-    if (isCommittingRef.current) {
-      isCommittingRef.current = false;
+    const pending = pendingFilterKeyRef.current;
+    if (pending !== null) {
+      if (filterKey !== pending) {
+        return;
+      }
+      pendingFilterKeyRef.current = null;
       return;
     }
 

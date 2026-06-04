@@ -25,6 +25,26 @@ export function parseCommaList(param: string | null): string[] {
   return param ? param.split(",").map((s) => s.trim()).filter(Boolean) : [];
 }
 
+/** Stable key for collection filter URL state (excludes page and search query param). */
+export function buildCollectionFilterKey(
+  params: URLSearchParams,
+  options?: { categoryPath?: string; searchQuery?: string }
+): string {
+  const keyParts: string[] = [];
+  if (options?.categoryPath) {
+    keyParts.push(`cat:${options.categoryPath}`);
+  }
+  if (options?.searchQuery) {
+    keyParts.push(`search:${options.searchQuery}`);
+  }
+  params.forEach((value, key) => {
+    if (key !== "page" && key !== "search") {
+      keyParts.push(`${key}:${value}`);
+    }
+  });
+  return keyParts.sort().join("|");
+}
+
 const VALID_SORT_VALUES = new Set([
   "relevance",
   "newest",

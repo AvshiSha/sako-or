@@ -20,7 +20,11 @@ import {
 } from "@/lib/collectionScrollRestore";
 import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
 import { CollectionBrowseProvider } from "@/app/contexts/CollectionBrowseContext";
-import { priceRangeToUrlParams } from "@/lib/collectionFilterUrl";
+import {
+  priceRangeToUrlParams,
+  readFilterUiStateFromSearchParams,
+} from "@/lib/collectionFilterUrl";
+import { inStockSizeKeysFromVariant } from "@/lib/product-size";
 import {
   Accordion,
   AccordionContent,
@@ -250,7 +254,6 @@ export default function CampaignClient({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Filter key from URL (all params except page and slug) for store key and reset detection
   const filterKey = useMemo(() => {
     const safe = searchParams ?? new URLSearchParams();
     const parts: string[] = [];
@@ -291,17 +294,22 @@ export default function CampaignClient({
 
   const safeSearchParams = searchParams ?? new URLSearchParams();
 
-  const [selectedColors, setSelectedColors] = useState<string[]>(() => {
-    const p = safeSearchParams.get("colors");
-    return p ? p.split(",").filter(Boolean) : [];
-  });
-  const [selectedSizes, setSelectedSizes] = useState<string[]>(() => {
-    const p = safeSearchParams.get("sizes");
-    return p ? p.split(",").filter(Boolean) : [];
-  });
-  const [sortBy, setSortBy] = useState<string>(() => initialSortProp);
+  const urlFilterState = useMemo(
+    () => readFilterUiStateFromSearchParams(safeSearchParams, undefined),
+    [filterKey]
+  );
+  const selectedColors = urlFilterState.colors;
+  const selectedSizes = urlFilterState.sizes;
+  const sortBy = urlFilterState.sort;
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
+  const isFilterPanelOpen = mobileFiltersOpen || desktopFiltersOpen;
+  type FilterDraft = {
+    colors: string[];
+    sizes: string[];
+    uiRange: [number, number];
+  };
+  const [filterDraft, setFilterDraft] = useState<FilterDraft | null>(null);
   const [desktopAccordionValue, setDesktopAccordionValue] = useState<string[]>([]);
   const [mobileAccordionValue, setMobileAccordionValue] = useState<string[]>([]);
 
@@ -360,7 +368,7 @@ export default function CampaignClient({
       ...new Set(
         initialVariantItems
           .filter((i) => i.variant.isActive !== false)
-          .flatMap((i) => Object.keys(i.variant.stockBySize || {}))
+          .flatMap((i) => inStockSizeKeysFromVariant(i.variant))
       ),
     ] as string[];
   }, [initialVariantItems, initialAvailableFilterOptions]);
@@ -405,47 +413,149 @@ export default function CampaignClient({
     [lng, campaign.slug, currentPage, router]
   );
 
+  const handleSortChange = (newSort: string) => {
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
+    updateURL({
+      minPrice,
+      maxPrice,
+      colors: selectedColors,
+      sizes: selectedSizes,
+      sort: newSort,
+    });
+  };
+  useEffect(() => {
+    if (!collectionPriceBounds || isFilterPanelOpen) return;
+    const fromUrl = readFilterUiStateFromSearchParams(
+      safeSearchParams,
+      collectionPriceBounds
+    );
+    setUiRange(fromUrl.uiRange);
+  }, [
+    filterKey,
+    collectionPriceBounds?.min,
+    collectionPriceBounds?.max,
+    safeSearchParams,
+    isFilterPanelOpen,
+  ]);
+
+  useEffect(() => {
+    if (!isFilterPanelOpen) setFilterDraft(null);
+  }, [isFilterPanelOpen]);
+
+  const panelColors = filterDraft?.colors ?? selectedColors;
+  const panelSizes = filterDraft?.sizes ?? selectedSizes;
+  const panelUiRange = filterDraft?.uiRange ?? uiRange;
+
+  const handleCloseFiltersPanel = () => {
+    const fromUrl = readFilterUiStateFromSearchParams(
+      safeSearchParams,
+      collectionPriceBounds
+    );
+    setUiRange(fromUrl.uiRange);
+    setFilterDraft(null);
+    setMobileFiltersOpen(false);
+    setDesktopFiltersOpen(false);
+  };
+
+  const handleApplyFilters = () => {
+    if (!filterDraft) {
+      handleCloseFiltersPanel();
+      return;
+    }
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      filterDraft.uiRange,
+      collectionPriceBounds
+    );
+    updateURL({
+      minPrice,
+      maxPrice,
+      colors: filterDraft.colors,
+      sizes: filterDraft.sizes,
+      sort: sortBy,
+    });
+    setUiRange(filterDraft.uiRange);
+    setFilterDraft(null);
+    setMobileFiltersOpen(false);
+    setDesktopFiltersOpen(false);
+  };
+
+  const openFilterPanel = (target: "mobile" | "desktop") => {
+    const fromUrl = readFilterUiStateFromSearchParams(
+      safeSearchParams,
+      collectionPriceBounds
+    );
+    setFilterDraft({
+      colors: [...fromUrl.colors],
+      sizes: [...fromUrl.sizes],
+      uiRange: fromUrl.uiRange,
+    });
+    setUiRange(fromUrl.uiRange);
+    if (target === "mobile") setMobileFiltersOpen(true);
+    else setDesktopFiltersOpen(true);
+  };
+
   const handleColorToggle = (color: string) => {
-    const next = selectedColors.includes(color)
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => {
+        if (!d) return d;
+        const colors = d.colors.includes(color)
+          ? d.colors.filter((c) => c !== color)
+          : [...d.colors, color];
+        return { ...d, colors };
+      });
+      return;
+    }
+    const next = panelColors.includes(color)
       ? selectedColors.filter((c) => c !== color)
       : [...selectedColors, color];
-    setSelectedColors(next);
     const { minPrice, maxPrice } = priceRangeToUrlParams(
       uiRange,
       collectionPriceBounds
     );
-    updateURL({
-      colors: next,
-      sizes: selectedSizes,
-      minPrice,
-      maxPrice,
-      sort: sortBy,
-    });
+    updateURL({ colors: next, sizes: selectedSizes, minPrice, maxPrice, sort: sortBy });
   };
+
   const handleSizeToggle = (size: string) => {
-    const next = selectedSizes.includes(size)
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => {
+        if (!d) return d;
+        const sizes = d.sizes.includes(size)
+          ? d.sizes.filter((s) => s !== size)
+          : [...d.sizes, size];
+        return { ...d, sizes };
+      });
+      return;
+    }
+    const next = panelSizes.includes(size)
       ? selectedSizes.filter((s) => s !== size)
       : [...selectedSizes, size];
-    setSelectedSizes(next);
     const { minPrice, maxPrice } = priceRangeToUrlParams(
       uiRange,
       collectionPriceBounds
     );
-    updateURL({
-      colors: selectedColors,
-      sizes: next,
-      minPrice,
-      maxPrice,
-      sort: sortBy,
-    });
+    updateURL({ colors: selectedColors, sizes: next, minPrice, maxPrice, sort: sortBy });
   };
+
   const handleSliderChange = (values: number[]) => {
     const [min, max] = values;
-    setUiRange([Math.min(min, max), Math.max(min, max)]);
+    const next: [number, number] = [Math.min(min, max), Math.max(min, max)];
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => (d ? { ...d, uiRange: next } : d));
+      return;
+    }
+    setUiRange(next);
   };
+
   const handleSliderCommit = (values: number[]) => {
     const [min, max] = values as [number, number];
     const final: [number, number] = [Math.min(min, max), Math.max(min, max)];
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => (d ? { ...d, uiRange: final } : d));
+      return;
+    }
     setUiRange(final);
     const { minPrice, maxPrice } = priceRangeToUrlParams(
       final,
@@ -459,8 +569,13 @@ export default function CampaignClient({
       sort: sortBy,
     });
   };
+
   const handlePriceReset = () => {
     const { min, max } = collectionPriceBounds;
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => (d ? { ...d, uiRange: [min, max] } : d));
+      return;
+    }
     setUiRange([min, max]);
     updateURL({
       minPrice: "",
@@ -470,25 +585,13 @@ export default function CampaignClient({
       sort: sortBy,
     });
   };
-  const handleSortChange = (newSort: string) => {
-    setSortBy(newSort);
-    const { minPrice, maxPrice } = priceRangeToUrlParams(
-      uiRange,
-      collectionPriceBounds
-    );
-    updateURL({
-      minPrice,
-      maxPrice,
-      colors: selectedColors,
-      sizes: selectedSizes,
-      sort: newSort,
-    });
-  };
+
   const handleClearFilters = () => {
-    setSelectedColors([]);
-    setSelectedSizes([]);
-    setSortBy("relevance");
     const { min, max } = collectionPriceBounds;
+    if (isFilterPanelOpen) {
+      setFilterDraft({ colors: [], sizes: [], uiRange: [min, max] });
+      return;
+    }
     setUiRange([min, max]);
     updateURL({
       minPrice: "",
@@ -499,25 +602,14 @@ export default function CampaignClient({
     });
   };
 
-  // Sync filter state from URL when searchParams change (e.g. back/forward, shared link)
-  useEffect(() => {
-    const p = searchParams ?? new URLSearchParams();
-    const colorsParam = p.get("colors");
-    setSelectedColors(colorsParam ? colorsParam.split(",").filter(Boolean) : []);
-    const sizesParam = p.get("sizes");
-    setSelectedSizes(sizesParam ? sizesParam.split(",").filter(Boolean) : []);
-    const sortParam = p.get("sort");
-    setSortBy(sortParam && ["price-low", "price-high", "newest", "relevance"].includes(sortParam) ? sortParam : "relevance");
-    const minP = p.get("minPrice");
-    const maxP = p.get("maxPrice");
-    const boundsMin = collectionPriceBounds?.min ?? 0;
-    const boundsMax = collectionPriceBounds?.max ?? 1000;
-    const minVal = minP ? parseFloat(minP) : boundsMin;
-    const maxVal = maxP ? parseFloat(maxP) : boundsMax;
-    const validMin = isNaN(minVal) ? boundsMin : minVal;
-    const validMax = isNaN(maxVal) ? boundsMax : maxVal;
-    setUiRange([Math.min(validMin, validMax), Math.max(validMin, validMax)]);
-  }, [filterKey, collectionPriceBounds?.min, collectionPriceBounds?.max]);
+  const isReturningFromProduct = useCallback(() => {
+    const pending = readLastCollectionScroll();
+    return (
+      !!campaignKey &&
+      pending?.browseKey === campaignKey &&
+      pending.scrollY > 0
+    );
+  }, [campaignKey]);
 
   const sortedItems = useMemo(() => {
     const sorted = [...variantItems].sort((a, b) => {
@@ -554,17 +646,14 @@ export default function CampaignClient({
       return;
     }
 
-    const pendingScroll = readLastCollectionScroll();
-    const shouldForceHydrate =
-      pendingScroll?.browseKey === campaignKey &&
-      pendingScroll.scrollY > 0;
-
-    if (!hydratedFromStoreRef.current || shouldForceHydrate) {
-      applyStoredBrowseState();
+    if (!isReturningFromProduct()) {
+      setBrowseListReady(true);
+      return;
     }
 
+    applyStoredBrowseState();
     setBrowseListReady(true);
-  }, [campaignKey, pathname, applyStoredBrowseState]);
+  }, [campaignKey, pathname, applyStoredBrowseState, isReturningFromProduct]);
 
   useEffect(() => {
     const onBrowseReturn = () => {
@@ -595,6 +684,11 @@ export default function CampaignClient({
     if (filterChanged) {
       prevFilterKeyRef.current = filterKey;
       hydratedFromStoreRef.current = false;
+      setVariantItems(initialVariantItems);
+      setTotalProducts(initialTotal ?? initialVariantItems.length);
+      setHasMore(initialHasMore ?? false);
+      setCurrentPage(1);
+      return;
     }
     if (hydratedFromStoreRef.current) return;
 
@@ -799,7 +893,10 @@ export default function CampaignClient({
       <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8 pb-8 md:pb-8">
         <div className={cn("flex items-center gap-3 mb-4", lng === "he" ? "flex-row-reverse" : "flex-row")}>
           <button
-            onClick={() => setDesktopFiltersOpen(!desktopFiltersOpen)}
+            onClick={() => {
+              if (desktopFiltersOpen) handleCloseFiltersPanel();
+              else openFilterPanel("desktop");
+            }}
             className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
           >
             <FunnelIcon className={cn("h-4 w-4", lng === "he" ? "ml-2" : "mr-2")} />
@@ -821,7 +918,7 @@ export default function CampaignClient({
             })()}
           </button>
           <button
-            onClick={() => setMobileFiltersOpen(true)}
+            onClick={() => openFilterPanel("mobile")}
             className="md:hidden inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
           >
             <FunnelIcon className={cn("h-4 w-4", lng === "he" ? "ml-1" : "mr-1")} />
@@ -902,7 +999,7 @@ export default function CampaignClient({
       <AnimatePresence>
         {desktopFiltersOpen && (
           <>
-            <div className="fixed inset-0 z-[68] bg-black/30" onClick={() => setDesktopFiltersOpen(false)} />
+            <div className="fixed inset-0 z-[68] bg-black/30" onClick={handleCloseFiltersPanel} />
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
@@ -913,7 +1010,7 @@ export default function CampaignClient({
               <div className="flex flex-col h-full">
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
                   <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
-                  <button onClick={() => setDesktopFiltersOpen(false)} className="text-black hover:text-gray-600">
+                  <button onClick={handleCloseFiltersPanel} className="text-black hover:text-gray-600">
                     <XMarkIcon className="h-5 w-5" />
                   </button>
                 </div>
@@ -930,7 +1027,7 @@ export default function CampaignClient({
                           </div>
                           <div className="px-2">
                             <Slider
-                              value={uiRange}
+                              value={panelUiRange}
                               onValueChange={handleSliderChange}
                               onValueCommit={handleSliderCommit}
                               min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)}
@@ -960,7 +1057,7 @@ export default function CampaignClient({
                               onClick={() => handleColorToggle(color)}
                               className={cn(
                                 "w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200",
-                                selectedColors.includes(color) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
+                                panelColors.includes(color) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
                               )}
                             >
                               <div className="w-6 h-6 rounded-full border border-gray-200" style={{ backgroundColor: colorSlugToHex[color] || getColorHex(color) }} />
@@ -986,7 +1083,7 @@ export default function CampaignClient({
                                     onClick={() => handleSizeToggle(size)}
                                     className={cn(
                                       "p-2 rounded-sm transition-all duration-200 text-center",
-                                      selectedSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
+                                      panelSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
                                     )}
                                   >
                                     <span className="text-sm font-light text-black">{size}</span>
@@ -1005,7 +1102,7 @@ export default function CampaignClient({
                                     onClick={() => handleSizeToggle(size)}
                                     className={cn(
                                       "p-2 rounded-sm transition-all duration-200 text-center",
-                                      selectedSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
+                                      panelSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
                                     )}
                                   >
                                     <span className="text-sm font-light text-black">{size}</span>
@@ -1027,7 +1124,7 @@ export default function CampaignClient({
                   )}
                 </div>
                 <div className="p-6 border-t border-gray-100">
-                  <button onClick={() => setDesktopFiltersOpen(false)} className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200">
+                  <button onClick={handleApplyFilters} className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200">
                     {t.applyFilters}
                   </button>
                 </div>
@@ -1041,7 +1138,7 @@ export default function CampaignClient({
       <AnimatePresence>
         {mobileFiltersOpen && (
           <div className="fixed inset-0 z-[70] md:hidden">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30" onClick={() => setMobileFiltersOpen(false)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30" onClick={handleCloseFiltersPanel} />
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
@@ -1052,7 +1149,7 @@ export default function CampaignClient({
               <div className="flex flex-col h-full">
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
                   <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
-                  <button onClick={() => setMobileFiltersOpen(false)} className="text-black hover:text-gray-600">
+                  <button onClick={handleCloseFiltersPanel} className="text-black hover:text-gray-600">
                     <XMarkIcon className="h-5 w-5" />
                   </button>
                 </div>
@@ -1066,7 +1163,7 @@ export default function CampaignClient({
                         <div className="space-y-4 pt-3 border-t border-gray-100">
                           <div className="text-sm font-medium text-gray-900">₪{formatPrice(uiRange[0])} - ₪{formatPrice(uiRange[1])}</div>
                           <div className="px-2">
-                            <Slider value={uiRange} onValueChange={handleSliderChange} onValueCommit={handleSliderCommit} min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)} max={Math.ceil((collectionPriceBounds.max + 200) / 10) * 10} step={10} className="w-full" dir={lng === "he" ? "rtl" : "ltr"} />
+                            <Slider value={panelUiRange} onValueChange={handleSliderChange} onValueCommit={handleSliderCommit} min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)} max={Math.ceil((collectionPriceBounds.max + 200) / 10) * 10} step={10} className="w-full" dir={lng === "he" ? "rtl" : "ltr"} />
                           </div>
                           {(uiRange[0] !== collectionPriceBounds.min || uiRange[1] !== collectionPriceBounds.max) && (
                             <button onClick={handlePriceReset} className="text-xs text-gray-600 hover:text-gray-800 underline">{lng === "he" ? "איפוס" : "Reset"}</button>
@@ -1081,7 +1178,7 @@ export default function CampaignClient({
                       <AccordionContent className="px-4 pb-4">
                         <div className="space-y-2 pt-3 border-t border-gray-100">
                           {allColors.map((color) => (
-                            <button key={color} onClick={() => handleColorToggle(color)} className={cn("w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200", selectedColors.includes(color) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
+                            <button key={color} onClick={() => handleColorToggle(color)} className={cn("w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200", panelColors.includes(color) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
                               <div className="w-6 h-6 rounded-full border border-gray-200" style={{ backgroundColor: colorSlugToHex[color] || getColorHex(color) }} />
                               <span className="text-sm font-light text-black">{getColorName(color, lng)}</span>
                             </button>
@@ -1100,7 +1197,7 @@ export default function CampaignClient({
                               <h4 className="text-xs font-medium text-gray-600 mb-2">Shoes</h4>
                               <div className="grid grid-cols-4 gap-2">
                                 {numericSizes.map((size) => (
-                                  <button key={size} onClick={() => handleSizeToggle(size)} className={cn("p-2 rounded-sm transition-all duration-200 text-center", selectedSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
+                                  <button key={size} onClick={() => handleSizeToggle(size)} className={cn("p-2 rounded-sm transition-all duration-200 text-center", panelSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
                                     <span className="text-sm font-light text-black">{size}</span>
                                   </button>
                                 ))}
@@ -1112,7 +1209,7 @@ export default function CampaignClient({
                               <h4 className="text-xs font-medium text-gray-600 mb-2">Clothing</h4>
                               <div className="grid grid-cols-3 gap-2">
                                 {alphaSizes.map((size) => (
-                                  <button key={size} onClick={() => handleSizeToggle(size)} className={cn("p-2 rounded-sm transition-all duration-200 text-center", selectedSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
+                                  <button key={size} onClick={() => handleSizeToggle(size)} className={cn("p-2 rounded-sm transition-all duration-200 text-center", panelSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
                                     <span className="text-sm font-light text-black">{size}</span>
                                   </button>
                                 ))}
@@ -1132,7 +1229,7 @@ export default function CampaignClient({
                   )}
                 </div>
                 <div className="p-6 border-t border-gray-100">
-                  <button onClick={() => setMobileFiltersOpen(false)} className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200">
+                  <button onClick={handleApplyFilters} className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200">
                     {t.applyFilters}
                   </button>
                 </div>

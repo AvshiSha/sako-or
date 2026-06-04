@@ -36,6 +36,35 @@ type UseCollectionScrollRestoreParams = {
   browseListReady?: boolean;
 };
 
+function anchorElementInDom(anchorKey: string | undefined): boolean {
+  if (!anchorKey || typeof document === "undefined") return false;
+  try {
+    return !!document.querySelector(
+      `[data-collection-anchor="${CSS.escape(anchorKey)}"]`
+    );
+  } catch {
+    return !!document.querySelector(
+      `[data-collection-anchor="${anchorKey}"]`
+    );
+  }
+}
+
+function isListReadyForScrollRestore(
+  browseKey: CollectionKey,
+  itemCount: number,
+  browseListReady: boolean
+): boolean {
+  if (!browseListReady || itemCount === 0) return false;
+
+  const stored = getCollectionState(browseKey);
+  const expectedLen = stored?.items?.length ?? 0;
+  if (expectedLen === 0) return true;
+  if (itemCount >= expectedLen) return true;
+  if (anchorElementInDom(stored?.anchorVariantKey)) return true;
+
+  return false;
+}
+
 export function useCollectionScrollRestore({
   browseKey,
   itemCount,
@@ -140,6 +169,9 @@ export function useCollectionScrollRestore({
 
   const beginRestore = useCallback(() => {
     if (!browseKey || !browseListReady) return;
+    if (!isListReadyForScrollRestore(browseKey, itemCount, browseListReady)) {
+      return;
+    }
 
     const frozen = readFrozenCollectionScroll();
     const targetY = Math.max(
@@ -165,7 +197,7 @@ export function useCollectionScrollRestore({
       },
       anchorKey
     );
-  }, [browseKey, browseListReady]);
+  }, [browseKey, browseListReady, itemCount]);
 
   useEffect(() => {
     if (!pathname) return;
@@ -191,6 +223,9 @@ export function useCollectionScrollRestore({
 
   useLayoutEffect(() => {
     if (!browseKey || !browseListReady) return;
+    if (!isListReadyForScrollRestore(browseKey, itemCount, browseListReady)) {
+      return;
+    }
 
     const targetY = Math.max(
       resolveRestoreScrollY(),
@@ -204,12 +239,15 @@ export function useCollectionScrollRestore({
 
     restoreCompleteRef.current = false;
     beginRestore();
-  }, [browseKey, browseListReady, beginRestore]);
+  }, [browseKey, browseListReady, itemCount, beginRestore]);
 
   // Re-apply only during an active browser-Back restore (not on load-more append).
   useEffect(() => {
     if (!browseKey || !browseListReady || itemCount === 0) return;
     if (!hasPendingCollectionScrollRestore()) return;
+    if (!isListReadyForScrollRestore(browseKey, itemCount, browseListReady)) {
+      return;
+    }
 
     const targetY = Math.max(
       getRestoreScrollTarget(browseKey),

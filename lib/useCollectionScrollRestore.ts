@@ -27,6 +27,7 @@ import {
   runCollectionScrollRestore,
   unlockCollectionScrollWrites,
 } from "@/lib/collectionScrollRestore";
+import { isCollectionAppendLocked } from "@/lib/collectionAppendLock";
 
 type UseCollectionScrollRestoreParams = {
   browseKey: CollectionKey | undefined;
@@ -83,6 +84,15 @@ export function useCollectionScrollRestore({
     restoreCompleteRef.current = false;
     isRestoringRef.current = false;
   }, [browseKey]);
+
+  // Normal browsing (incl. load-more): do not leave restoreComplete false or back-restore runs on every append.
+  useEffect(() => {
+    if (!browseKey || !browseListReady) return;
+    if (hasPendingCollectionScrollRestore()) return;
+    const frozen = readFrozenCollectionScroll();
+    if (frozen?.browseKey === browseKey && frozen.scrollY > 0) return;
+    restoreCompleteRef.current = true;
+  }, [browseKey, browseListReady]);
 
   useEffect(() => {
     if (!pathname || !/\/collection/.test(pathname) || /\/product\//.test(pathname)) {
@@ -150,6 +160,7 @@ export function useCollectionScrollRestore({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- persistDeps supplied by caller
   useEffect(() => {
     if (!browseKey || isRestoringRef.current || !browseListReady) return;
+    if (isCollectionAppendLocked()) return;
     persistBrowseState();
   }, [browseKey, persistBrowseState, browseListReady, ...persistDeps]);
 
@@ -168,6 +179,7 @@ export function useCollectionScrollRestore({
   }, [browseKey, snapshotRef]);
 
   const beginRestore = useCallback(() => {
+    if (isCollectionAppendLocked()) return;
     if (!browseKey || !browseListReady) return;
     if (!isListReadyForScrollRestore(browseKey, itemCount, browseListReady)) {
       return;
@@ -221,19 +233,22 @@ export function useCollectionScrollRestore({
     return () => window.removeEventListener(COLLECTION_RETURN_EVENT, onReturn);
   }, [beginRestore]);
 
+  // Retry browser-back restore when the list grows — never for load-more alone.
   useLayoutEffect(() => {
     if (!browseKey || !browseListReady) return;
+    if (restoreCompleteRef.current && !hasPendingCollectionScrollRestore()) {
+      return;
+    }
     if (!isListReadyForScrollRestore(browseKey, itemCount, browseListReady)) {
       return;
     }
 
-    const targetY = Math.max(
-      resolveRestoreScrollY(),
-      getRestoreScrollTarget(browseKey),
-      getCollectionState(browseKey)?.scrollY ?? 0
-    );
+    const frozen = readFrozenCollectionScroll();
+    const hasBackIntent =
+      hasPendingCollectionScrollRestore() ||
+      (frozen?.browseKey === browseKey && frozen.scrollY > 0);
 
-    if (targetY <= 0) {
+    if (!hasBackIntent) {
       return;
     }
 

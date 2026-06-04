@@ -1,3 +1,5 @@
+import { isCollectionAppendLocked } from "@/lib/collectionAppendLock";
+
 /**
  * Collection scroll restoration for browser Back.
  * Uses both sessionStorage and history.state on the collection history entry
@@ -371,11 +373,13 @@ export function runCollectionScrollRestore(
     if (finished) return;
     finished = true;
     teardown();
+    clearFrozenCollectionScroll();
     onComplete?.();
   };
 
   const attempt = () => {
     if (finished) return;
+    if (isCollectionAppendLocked()) return;
 
     if (anchorKey) {
       const el = document.querySelector(
@@ -410,6 +414,7 @@ export function runCollectionScrollRestore(
 
   const onScrollGuard = () => {
     if (finished || targetY <= 0) return;
+    if (isCollectionAppendLocked()) return;
     if (Date.now() - startedAt > GUARD_MAX_MS) return;
     // Short page (list not hydrated yet) — do not fight user scroll.
     if (!canScrollToTarget(targetY)) return;

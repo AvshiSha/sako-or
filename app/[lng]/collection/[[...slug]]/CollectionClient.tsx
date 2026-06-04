@@ -48,9 +48,14 @@ import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
 import { fetchCollectionPagesUpTo } from "@/lib/collectionBrowseHydration";
 import { useCollectionInfiniteScroll } from "@/lib/useCollectionInfiniteScroll";
 import {
-  captureScrollSnapshot,
+  captureScrollForAppend,
   restoreScrollAfterAppend,
+  type ScrollAppendSnapshot,
 } from "@/lib/preserveScrollOnAppend";
+import {
+  lockCollectionAppend,
+  unlockCollectionAppend,
+} from "@/lib/collectionAppendLock";
 import { CollectionBrowseProvider } from "@/app/contexts/CollectionBrowseContext";
 import {
   buildCollectionFilterKey,
@@ -70,14 +75,19 @@ import {
 const motion = fmMotion as unknown as any;
 
 /** Grid card wrapper: entrance stagger + hover lift (matches pre-anchor-refactor behavior). */
-function collectionGridItemMotionProps(index: number, isAboveFold: boolean) {
+function collectionGridItemMotionProps(
+  index: number,
+  isAboveFold: boolean,
+  skipEntrance: boolean
+) {
+  const noEntrance = isAboveFold || skipEntrance;
   return {
-    initial: isAboveFold ? false : { opacity: 0, y: 12 },
+    initial: noEntrance ? false : { opacity: 0, y: 12 },
     animate: { opacity: 1, y: 0 },
     transition: {
       duration: 0.3,
       ease: "easeOut",
-      delay: isAboveFold ? 0 : Math.min(index * 0.04, 0.4),
+      delay: noEntrance ? 0 : Math.min(index * 0.04, 0.4),
     },
     whileHover: { y: -4 },
   };
@@ -298,6 +308,10 @@ export default function CollectionClient({
   const refetchOnReturnStartedRef = useRef(false);
   const browseRefetchInProgressRef = useRef(false);
   const returningRestoreActiveRef = useRef(false);
+  /** Item count at load-more start; indices >= this skip entrance motion. */
+  const loadMoreAppendBaselineRef = useRef(0);
+  /** Scroll anchor captured right before append; restored in useLayoutEffect after DOM commit. */
+  const appendRestoreRef = useRef<ScrollAppendSnapshot | null>(null);
   /** Wait until this many products are in the DOM before restoring scroll (browser Back). */
   const pendingListHydrationRef = useRef(0);
 
@@ -479,6 +493,15 @@ export default function CollectionClient({
     }
   }, [allVariantItems.length, allProducts.length, useVariantItems]);
 
+  // Pin viewport after load-more append (after DOM commit, before paint).
+  useLayoutEffect(() => {
+    const snapshot = appendRestoreRef.current;
+    if (!snapshot) return;
+    appendRestoreRef.current = null;
+    restoreScrollAfterAppend(snapshot);
+    unlockCollectionAppend();
+  }, [allVariantItems.length, allProducts.length]);
+
   // Safety: if hydration count stalls, re-apply cache or refetch missing pages.
   useEffect(() => {
     if (!isReturningFromProduct()) return;
@@ -654,9 +677,14 @@ export default function CollectionClient({
   const handleLoadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) return;
 
-    setIsLoadingMore(true);
     const epochAtStart = loadMoreEpochRef.current;
-    const snapshot = captureScrollSnapshot();
+    cancelCollectionScrollRestoreWatchdog();
+    lockCollectionAppend();
+    loadMoreAppendBaselineRef.current = useVariantItems
+      ? allVariantItems.length
+      : allProducts.length;
+    let loadingCleared = false;
+    setIsLoadingMore(true);
     loadMoreAbortRef.current?.abort();
     const abortController = new AbortController();
     loadMoreAbortRef.current = abortController;
@@ -709,6 +737,7 @@ export default function CollectionClient({
         if (newVariantItems.length === 0) {
           setHasMore(false);
           setIsLoadingMore(false);
+          loadingCleared = true;
           return;
         }
 
@@ -731,10 +760,12 @@ export default function CollectionClient({
             setTotalProducts(data.total || totalProducts);
             setHasMore(data.hasMore || false);
             setIsLoadingMore(false);
+            loadingCleared = true;
           });
           return;
         }
 
+        appendRestoreRef.current = captureScrollForAppend();
         flushSync(() => {
           setAllVariantItems((prev) => {
             const unique = dedupeVariantItems(prev, newVariantItems);
@@ -745,14 +776,15 @@ export default function CollectionClient({
           setTotalProducts(data.total || totalProducts);
           setHasMore(data.hasMore || false);
           setIsLoadingMore(false);
+          loadingCleared = true;
         });
-        restoreScrollAfterAppend(snapshot);
       } else {
         const newItems = data.items || [];
         
         if (newItems.length === 0) {
           setHasMore(false);
           setIsLoadingMore(false);
+          loadingCleared = true;
           return;
         }
 
@@ -770,10 +802,12 @@ export default function CollectionClient({
             setTotalProducts(data.total || totalProducts);
             setHasMore(data.hasMore || false);
             setIsLoadingMore(false);
+            loadingCleared = true;
           });
           return;
         }
 
+        appendRestoreRef.current = captureScrollForAppend();
         flushSync(() => {
           setAllProducts((prev) => {
             const unique = dedupeProducts(prev, newItems);
@@ -784,8 +818,8 @@ export default function CollectionClient({
           setTotalProducts(data.total || totalProducts);
           setHasMore(data.hasMore || false);
           setIsLoadingMore(false);
+          loadingCleared = true;
         });
-        restoreScrollAfterAppend(snapshot);
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -796,7 +830,12 @@ export default function CollectionClient({
       if (loadMoreAbortRef.current === abortController) {
         loadMoreAbortRef.current = null;
       }
-      setIsLoadingMore(false);
+      if (!loadingCleared) {
+        setIsLoadingMore(false);
+      }
+      if (!appendRestoreRef.current) {
+        unlockCollectionAppend();
+      }
     }
   }, [
     isLoadingMore,
@@ -961,7 +1000,10 @@ export default function CollectionClient({
   // Apply sorting to variant items or products (items are already filtered server-side)
   const sortedItems = useMemo(() => {
     if (useVariantItems) {
-      // Sort variant items
+      // Keep server append order for relevance — re-sorting on load-more moves cards in the grid.
+      if (sortBy === "relevance") {
+        return allVariantItems;
+      }
       const sorted = [...allVariantItems].sort((a, b) => {
         // Get variant-specific price for comparison
         const getVariantPrice = (item: VariantItem): number => {
@@ -989,7 +1031,9 @@ export default function CollectionClient({
       });
       return sorted;
     } else {
-      // Sort products (for search)
+      if (sortBy === "relevance") {
+        return allProducts;
+      }
       const sorted = [...allProducts].sort((a, b) => {
         const priceA = (a.salePrice && a.salePrice > 0) ? a.salePrice : a.price;
         const priceB = (b.salePrice && b.salePrice > 0) ? b.salePrice : b.price;
@@ -1771,19 +1815,28 @@ export default function CollectionClient({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3">
+              <div
+                className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3"
+                style={{ overflowAnchor: "none" }}
+              >
                 {useVariantItems
                   ? (sortedItems as VariantItem[]).map((item, index) => {
                       // Calculate if item is above the fold (first 6-8 items)
                       // Mobile: 2 rows = 4 items, Desktop: 1-2 rows = 3-6 items
                       const isAboveFold = index < 6;
+                      const skipEntrance =
+                        index >= loadMoreAppendBaselineRef.current;
                       
                       return (
                         <motion.div
                           key={item.variantKey}
                           data-collection-anchor={item.variantKey}
                           className="min-h-0"
-                          {...collectionGridItemMotionProps(index, isAboveFold)}
+                          {...collectionGridItemMotionProps(
+                            index,
+                            isAboveFold,
+                            skipEntrance
+                          )}
                         >
                           <ProductCard 
                             product={item.product} 
@@ -1801,13 +1854,19 @@ export default function CollectionClient({
                       // Calculate if product is above the fold (first 6-8 products)
                       // Mobile: 2 rows = 4 products, Desktop: 1-2 rows = 3-6 products
                       const isAboveFold = index < 6;
+                      const skipEntrance =
+                        index >= loadMoreAppendBaselineRef.current;
                       
                       return (
                         <motion.div
                           key={product.id}
                           data-collection-anchor={String(product.id ?? product.sku)}
                           className="min-h-0"
-                          {...collectionGridItemMotionProps(index, isAboveFold)}
+                          {...collectionGridItemMotionProps(
+                            index,
+                            isAboveFold,
+                            skipEntrance
+                          )}
                         >
                           <ProductCard 
                             product={product} 
@@ -2039,7 +2098,7 @@ export default function CollectionClient({
                                 key={category.id}
                                 onClick={() => handleSubSubCategoryToggle(category.id!)}
                                 className={`w-full flex items-center p-2 rounded-sm transition-all duration-200 ${
-                                  selectedSubSubCategories.includes(category.id!)
+                                  panelSubSubCategories.includes(category.id!)
                                     ? 'bg-gray-100 border border-gray-300'
                                     : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
                                 }`}

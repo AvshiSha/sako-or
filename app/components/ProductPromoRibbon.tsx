@@ -17,7 +17,7 @@ const sizeStyles: Record<
   card: {
     root: 'text-[10px] leading-tight',
     bogo: 'px-2 py-1',
-    code: 'px-2 py-1',
+    code: 'px-1 py-1',
     divider: 'my-1',
   },
   page: {

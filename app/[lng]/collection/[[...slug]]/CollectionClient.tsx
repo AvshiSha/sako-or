@@ -64,6 +64,20 @@ import {
 // (Runtime behavior remains unchanged.)
 const motion = fmMotion as unknown as any;
 
+/** Grid card wrapper: entrance stagger + hover lift (matches pre-anchor-refactor behavior). */
+function collectionGridItemMotionProps(index: number, isAboveFold: boolean) {
+  return {
+    initial: isAboveFold ? false : { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0 },
+    transition: {
+      duration: 0.3,
+      ease: "easeOut",
+      delay: isAboveFold ? 0 : Math.min(index * 0.04, 0.4),
+    },
+    whileHover: { y: -4 },
+  };
+}
+
 // Deterministic price formatting so server and client output matches (avoids hydration mismatch on mobile).
 function formatPrice(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -1798,10 +1812,11 @@ export default function CollectionClient({
                       const isAboveFold = index < 6;
                       
                       return (
-                        <div
+                        <motion.div
                           key={item.variantKey}
                           data-collection-anchor={item.variantKey}
                           className="min-h-0"
+                          {...collectionGridItemMotionProps(index, isAboveFold)}
                         >
                           <ProductCard 
                             product={item.product} 
@@ -1812,7 +1827,7 @@ export default function CollectionClient({
                             browseStoreKey={collectionKey}
                             collectionAnchorKey={item.variantKey}
                           />
-                        </div>
+                        </motion.div>
                       );
                     })
                   : (sortedItems as Product[]).map((product, index) => {
@@ -1821,10 +1836,11 @@ export default function CollectionClient({
                       const isAboveFold = index < 6;
                       
                       return (
-                        <div
+                        <motion.div
                           key={product.id}
                           data-collection-anchor={String(product.id ?? product.sku)}
                           className="min-h-0"
+                          {...collectionGridItemMotionProps(index, isAboveFold)}
                         >
                           <ProductCard 
                             product={product} 
@@ -1834,7 +1850,7 @@ export default function CollectionClient({
                             browseStoreKey={collectionKey}
                             collectionAnchorKey={String(product.id ?? product.sku)}
                           />
-                        </div>
+                        </motion.div>
                       );
                     })}
               </div>

@@ -31,6 +31,7 @@ import {
 } from '@/app/components/ui/select';
 import { Slider } from '@/app/components/ui/slider';
 import {
+  clearCollectionState,
   getCollectionState,
   isStoredBrowseListIncomplete,
   setCollectionState,
@@ -51,6 +52,11 @@ import {
   restoreScrollAfterAppend,
 } from "@/lib/preserveScrollOnAppend";
 import { CollectionBrowseProvider } from "@/app/contexts/CollectionBrowseContext";
+import {
+  priceRangeToUrlParams,
+  readFilterUiStateFromSearchParams,
+  sameSortedStringList,
+} from "@/lib/collectionFilterUrl";
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -281,12 +287,27 @@ export default function CollectionClient({
     return `${base}|${filterKey}`;
   }, [lng, categoryPath, searchQuery, filterKey]);
 
-  const prevFilterKeyRef = useRef<string>("");
-  const filterKeySeededRef = useRef(false);
+  const serverListRevision = useMemo(() => {
+    const firstVariantKey = initialVariantItems?.[0]?.variantKey ?? "";
+    const firstProductKey =
+      initialProducts[0]?.id != null
+        ? String(initialProducts[0].id)
+        : initialProducts[0]?.sku ?? "";
+    return `${filterKey}|${searchTotal ?? ""}|${initialVariantItems?.length ?? 0}|${firstVariantKey}|${initialProducts.length}|${firstProductKey}`;
+  }, [filterKey, searchTotal, initialVariantItems, initialProducts]);
+
+  const prevFilterKeyRef = useRef<string>(filterKey);
+  const prevServerListRevisionRef = useRef<string>(serverListRevision);
+  const prevCollectionKeyRef = useRef<string>(collectionKey);
+  /** After filter change, keep syncing until server props revision updates. */
+  const expectingServerRefreshRef = useRef(false);
+  const revisionAtFilterChangeRef = useRef<string | null>(null);
   /** Bumped when filters change so in-flight load-more responses are ignored. */
   const loadMoreEpochRef = useRef(0);
   const loadMoreAbortRef = useRef<AbortController | null>(null);
   const hydrationFallbackLoggedRef = useRef(false);
+  /** Set when this component pushes filter URL changes; skips one URL→state sync pass. */
+  const isCommittingRef = useRef(false);
   const hydratedFromStoreRef = useRef<boolean>(false);
   const restoredFromUrlFetchRef = useRef<boolean>(false);
   const [browseListReady, setBrowseListReady] = useState(false);
@@ -620,64 +641,113 @@ export default function CollectionClient({
     applyHydratedPages,
   ]);
 
-  // CRITICAL: Only reset products/variantItems when filters/search actually change, NOT when page changes
-  // Do NOT overwrite when we just hydrated from store (returning from PDP with restored state).
+  // Sync list from server when filters/search change or fresh RSC props arrive.
+  // Skip when browse cache hydration is active (PDP back). Do not wipe load-more
+  // accumulation on page-only URL changes.
   useEffect(() => {
     if (
       pendingListHydrationRef.current > 0 ||
       browseRefetchInProgressRef.current ||
-      returningRestoreActiveRef.current
+      (returningRestoreActiveRef.current && prevFilterKeyRef.current === filterKey)
     ) {
       return;
     }
 
-    if (!filterKeySeededRef.current) {
-      prevFilterKeyRef.current = filterKey;
-      filterKeySeededRef.current = true;
-      return;
-    }
-
     const filterChanged = prevFilterKeyRef.current !== filterKey;
+    const serverDataChanged =
+      prevServerListRevisionRef.current !== serverListRevision;
 
     if (filterChanged) {
-      if (isReturningFromProduct()) {
-        prevFilterKeyRef.current = filterKey;
-        return;
+      if (
+        prevCollectionKeyRef.current &&
+        prevCollectionKeyRef.current !== collectionKey
+      ) {
+        clearCollectionState(prevCollectionKeyRef.current);
       }
+
+      revisionAtFilterChangeRef.current = serverListRevision;
+      prevFilterKeyRef.current = filterKey;
+      prevCollectionKeyRef.current = collectionKey;
+      hydratedFromStoreRef.current = false;
+      expectingServerRefreshRef.current = true;
 
       loadMoreAbortRef.current?.abort();
       loadMoreAbortRef.current = null;
       loadMoreEpochRef.current += 1;
       setIsLoadingMore(false);
 
-      hydratedFromStoreRef.current = false; // New filter context, clear hydration flag
-      // Filters/search changed - reset accumulated items to start fresh
-      if (useVariantItems && initialVariantItems) {
-        setAllVariantItems(initialVariantItems);
-        setTotalProducts(searchTotal ?? initialVariantItems.length);
-      } else {
-        setAllProducts(initialProducts);
-        setTotalProducts(searchTotal ?? initialProducts.length);
-      }
-      setCurrentPage(searchPage || 1);
-      setHasMore(initialHasMore);
-      prevFilterKeyRef.current = filterKey;
       resetCollectionScrollForFilterChange();
-      const stored = getCollectionState(collectionKey);
-      if (stored) {
-        setCollectionState(collectionKey, {
-          ...stored,
-          scrollY: 0,
-          anchorVariantKey: undefined,
-          updatedAt: Date.now(),
-        });
-      }
       scrollCollectionToTop();
     }
-    // Page-only URL changes (?page=N) must not reset the client-accumulated stream from
-    // infinite scroll — server initialVariantItems/initialProducts are always a single page.
+
+    if (hydratedFromStoreRef.current) {
+      if (serverDataChanged) {
+        prevServerListRevisionRef.current = serverListRevision;
+      }
+      return;
+    }
+
+    const initialCount = useVariantItems
+      ? (initialVariantItems?.length ?? 0)
+      : initialProducts.length;
+    const accumulatedCount = useVariantItems
+      ? allVariantItems.length
+      : allProducts.length;
+    const accumulatedBeyondInitial = accumulatedCount > initialCount;
+
+    const awaitingFreshServer =
+      expectingServerRefreshRef.current &&
+      revisionAtFilterChangeRef.current !== null &&
+      serverListRevision !== revisionAtFilterChangeRef.current;
+
+    const shouldSyncFromServer =
+      filterChanged ||
+      awaitingFreshServer ||
+      (serverDataChanged && !accumulatedBeyondInitial);
+
+    if (!shouldSyncFromServer) {
+      if (serverDataChanged) {
+        prevServerListRevisionRef.current = serverListRevision;
+      }
+      return;
+    }
+
+    if (useVariantItems && initialVariantItems) {
+      setAllVariantItems(initialVariantItems);
+      setTotalProducts(searchTotal ?? initialVariantItems.length);
+    } else {
+      setAllProducts(initialProducts);
+      setTotalProducts(searchTotal ?? initialProducts.length);
+    }
+    setCurrentPage(searchPage || 1);
+    setHasMore(initialHasMore);
+    if (awaitingFreshServer) {
+      expectingServerRefreshRef.current = false;
+      revisionAtFilterChangeRef.current = null;
+    } else if (filterChanged) {
+      expectingServerRefreshRef.current = true;
+    }
+    prevServerListRevisionRef.current = serverListRevision;
+
+    const stored = getCollectionState(collectionKey);
+    if (stored) {
+      setCollectionState(collectionKey, {
+        ...stored,
+        items: useVariantItems
+          ? (initialVariantItems ?? [])
+          : initialProducts,
+        useVariantItems,
+        currentPage: searchPage || 1,
+        totalProducts: searchTotal ?? stored.totalProducts,
+        hasMore: initialHasMore,
+        scrollY: 0,
+        anchorVariantKey: undefined,
+        updatedAt: Date.now(),
+      });
+    }
   }, [
     filterKey,
+    serverListRevision,
     initialProducts,
     initialVariantItems,
     searchPage,
@@ -685,7 +755,8 @@ export default function CollectionClient({
     initialHasMore,
     useVariantItems,
     collectionKey,
-    isReturningFromProduct,
+    allVariantItems.length,
+    allProducts.length,
   ]);
 
   // Keep snapshot ref updated so we can persist on unmount
@@ -703,6 +774,7 @@ export default function CollectionClient({
 
     setIsLoadingMore(true);
     const epochAtStart = loadMoreEpochRef.current;
+    const snapshot = captureScrollSnapshot();
     loadMoreAbortRef.current?.abort();
     const abortController = new AbortController();
     loadMoreAbortRef.current = abortController;
@@ -747,8 +819,6 @@ export default function CollectionClient({
       }
 
       const resolvedPage = data.page || nextPage;
-      // Snapshot immediately before DOM grows (not after fetch started elsewhere).
-      const snapshot = captureScrollSnapshot();
 
       // Handle variantItems (collection pages) or items (search)
       if (useVariantItems && data.variantItems) {
@@ -915,6 +985,7 @@ export default function CollectionClient({
     sort?: string;
     subSubCategories?: string[];
   }, resetPage: boolean = true) => {
+    isCommittingRef.current = true;
     // Start with current search params to preserve search query
     const urlParams = new URLSearchParams(safeSearchParams.toString());
     
@@ -974,11 +1045,13 @@ export default function CollectionClient({
       ? selectedColors.filter((c) => c !== color)
       : [...selectedColors, color];
     setSelectedColors(newColors);
-    // Use current UI range for URL update
-    const { minStr, maxStr } = rangeToUrlParams(uiRange);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
     updateURL({ 
-      minPrice: minStr, 
-      maxPrice: maxStr, 
+      minPrice, 
+      maxPrice, 
       colors: newColors, 
       sizes: selectedSizes, 
       sort: sortBy,
@@ -991,11 +1064,13 @@ export default function CollectionClient({
       ? selectedSizes.filter((s) => s !== size)
       : [...selectedSizes, size];
     setSelectedSizes(newSizes);
-    // Use current UI range for URL update
-    const { minStr, maxStr } = rangeToUrlParams(uiRange);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
     updateURL({ 
-      minPrice: minStr, 
-      maxPrice: maxStr, 
+      minPrice, 
+      maxPrice, 
       colors: selectedColors, 
       sizes: newSizes, 
       sort: sortBy,
@@ -1009,25 +1084,18 @@ export default function CollectionClient({
       ? selectedSubSubCategories.filter((id) => id !== categoryId)
       : [...selectedSubSubCategories, categoryId];
     setSelectedSubSubCategories(newSubSubCategories);
-    // Use current UI range for URL update
-    const { minStr, maxStr } = rangeToUrlParams(uiRange);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
     updateURL({ 
-      minPrice: minStr, 
-      maxPrice: maxStr, 
+      minPrice, 
+      maxPrice, 
       colors: selectedColors, 
       sizes: selectedSizes, 
       sort: sortBy,
       subSubCategories: newSubSubCategories
     });
-  };
-
-  // Helper to convert range to URL params
-  // Always use the actual range values - server will handle filtering
-  const rangeToUrlParams = (range: [number, number]) => {
-    const minStr = String(Math.round(range[0]));
-    const maxStr = String(Math.round(range[1]));
-    
-    return { minStr, maxStr };
   };
 
   // LIVE UI: Update slider and label instantly while dragging (no URL update)
@@ -1057,15 +1125,14 @@ export default function CollectionClient({
     // Update UI state to final range
     setUiRange(finalRange);
     
-    // Mark that we're committing (prevents URL sync effect from running)
-    isCommittingRef.current = true;
-    
-    // Convert to URL params and update URL
-    const { minStr, maxStr } = rangeToUrlParams(finalRange);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      finalRange,
+      collectionPriceBounds
+    );
     
     updateURL({
-      minPrice: minStr,
-      maxPrice: maxStr,
+      minPrice,
+      maxPrice,
       colors: selectedColors,
       sizes: selectedSizes,
       sort: sortBy,
@@ -1082,10 +1149,6 @@ export default function CollectionClient({
     // Update UI immediately
     setUiRange(full);
     
-    // Mark that we're committing
-    isCommittingRef.current = true;
-    
-    // Immediately commit to URL (no debounce)
     updateURL({
       minPrice: "",
       maxPrice: "",
@@ -1098,11 +1161,13 @@ export default function CollectionClient({
 
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort);
-    // Use current UI range for URL update
-    const { minStr, maxStr } = rangeToUrlParams(uiRange);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
     updateURL({ 
-      minPrice: minStr, 
-      maxPrice: maxStr, 
+      minPrice, 
+      maxPrice, 
       colors: selectedColors, 
       sizes: selectedSizes, 
       sort: newSort,
@@ -1532,47 +1597,41 @@ export default function CollectionClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collectionPriceBounds?.min, collectionPriceBounds?.max]);
 
-  // Track if we're currently committing (to prevent sync loop)
-  const isCommittingRef = useRef(false);
-  
-  // Sync UI range from URL when URL changes externally (back/forward, shared link)
-  // Only sync if URL changed and we're not in the middle of a commit
-  const urlKey = safeSearchParams?.toString() ?? "";
-  
+  // Sync filter UI from URL on external navigation (back/forward, shared links).
+  // Uses filterKey (excludes page) so load-more / ?page=N does not re-run chip sync.
+  // Skips one pass after updateURL/router.push so optimistic handler state is not overwritten.
   useEffect(() => {
-    // Skip sync if we just committed (prevents feedback loop)
     if (isCommittingRef.current) {
       isCommittingRef.current = false;
       return;
     }
-    
-    const urlMinStr = safeSearchParams.get("minPrice") || "";
-    const urlMaxStr = safeSearchParams.get("maxPrice") || "";
-    const boundsMin = collectionPriceBounds?.min ?? 0;
-    const boundsMax = collectionPriceBounds?.max ?? 1000;
-    
-    // Use URL values directly, or default to bounds if not set
-    const urlMin = urlMinStr ? parseFloat(urlMinStr) : boundsMin;
-    const urlMax = urlMaxStr ? parseFloat(urlMaxStr) : boundsMax;
-    
-    // Only validate that values are numbers and min <= max (no clamping to bounds)
-    const validMin = isNaN(urlMin) ? boundsMin : urlMin;
-    const validMax = isNaN(urlMax) ? boundsMax : urlMax;
-    
-    const next: [number, number] = [
-      Math.min(validMin, validMax),
-      Math.max(validMin, validMax),
-    ];
-    
-    // Only update if changed (tolerance for floating point)
+
+    const fromUrl = readFilterUiStateFromSearchParams(
+      safeSearchParams,
+      collectionPriceBounds
+    );
+    const [nextMin, nextMax] = fromUrl.uiRange;
+
     if (
-      Math.abs(uiRange[0] - next[0]) > 0.01 ||
-      Math.abs(uiRange[1] - next[1]) > 0.01
+      Math.abs(uiRange[0] - nextMin) > 0.01 ||
+      Math.abs(uiRange[1] - nextMax) > 0.01
     ) {
-      setUiRange(next);
+      setUiRange(fromUrl.uiRange);
+    }
+    if (!sameSortedStringList(selectedColors, fromUrl.colors)) {
+      setSelectedColors(fromUrl.colors);
+    }
+    if (!sameSortedStringList(selectedSizes, fromUrl.sizes)) {
+      setSelectedSizes(fromUrl.sizes);
+    }
+    if (!sameSortedStringList(selectedSubSubCategories, fromUrl.subSubCategories)) {
+      setSelectedSubSubCategories(fromUrl.subSubCategories);
+    }
+    if (sortBy !== fromUrl.sort) {
+      setSortBy(fromUrl.sort);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlKey, collectionPriceBounds?.min, collectionPriceBounds?.max]);
+  }, [filterKey, collectionPriceBounds?.min, collectionPriceBounds?.max]);
 
 
   return (

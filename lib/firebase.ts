@@ -1901,8 +1901,10 @@ function collectFacetOptionsFromProduct(
     if (variant.colorSlug) {
       colorSlugs.add(variant.colorSlug);
     }
-    for (const size of Object.keys(variant.stockBySize || {})) {
-      sizes.add(size);
+    for (const [size, qty] of Object.entries(variant.stockBySize || {})) {
+      if (typeof qty === "number" && qty > 0) {
+        sizes.add(size);
+      }
     }
   }
 }

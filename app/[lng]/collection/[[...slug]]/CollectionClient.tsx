@@ -53,6 +53,54 @@ function formatPrice(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
+/** Stable dedupe key for product streams (non-empty id preferred, else sku). */
+function productListKey(product: Product): string | null {
+  const idStr =
+    product.id != null && String(product.id).trim() !== ""
+      ? String(product.id).trim()
+      : null;
+  const skuStr =
+    typeof product.sku === "string" && product.sku.trim() !== ""
+      ? product.sku.trim()
+      : null;
+  return idStr ?? skuStr;
+}
+
+function dedupeVariantItems(
+  existing: VariantItem[],
+  incoming: VariantItem[]
+): VariantItem[] {
+  const seen = new Set<string>();
+  for (const item of existing) {
+    const key = item.variantKey?.trim();
+    if (key) seen.add(key);
+  }
+  const unique: VariantItem[] = [];
+  for (const item of incoming) {
+    const key = item.variantKey?.trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  return unique;
+}
+
+function dedupeProducts(existing: Product[], incoming: Product[]): Product[] {
+  const seen = new Set<string>();
+  for (const item of existing) {
+    const key = productListKey(item);
+    if (key) seen.add(key);
+  }
+  const unique: Product[] = [];
+  for (const item of incoming) {
+    const key = productListKey(item);
+    if (key === null || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  return unique;
+}
+
 // Translations for the collection page
 const translations = {
   en: {
@@ -224,15 +272,16 @@ export default function CollectionClient({
     return `${base}|${filterKey}`;
   }, [lng, categoryPath, searchQuery, filterKey]);
 
-  // Seed with current filter so remount (browser Back) is not treated as a filter change.
-  const prevFilterKeyRef = useRef<string>(filterKey);
-  const isInitialMountRef = useRef<boolean>(true);
-  const isLoadingMoreRef = useRef<boolean>(false);
+  const prevFilterKeyRef = useRef<string>("");
+  const filterKeySeededRef = useRef(false);
+  /** Bumped when filters change so in-flight load-more responses are ignored. */
+  const loadMoreEpochRef = useRef(0);
   const hydratedFromStoreRef = useRef<boolean>(false);
   const restoredFromUrlFetchRef = useRef<boolean>(false);
   const [browseListReady, setBrowseListReady] = useState(false);
   const pathname = usePathname();
   const refetchOnReturnStartedRef = useRef(false);
+  const browseRefetchInProgressRef = useRef(false);
   const returningRestoreActiveRef = useRef(false);
   /** Wait until this many products are in the DOM before restoring scroll (browser Back). */
   const pendingListHydrationRef = useRef(0);
@@ -267,14 +316,6 @@ export default function CollectionClient({
     );
   }, [collectionKey]);
 
-  // Initialize on mount only - set initial state
-  useEffect(() => {
-    if (isInitialMountRef.current) {
-      prevFilterKeyRef.current = filterKey;
-      isInitialMountRef.current = false;
-    }
-  }, []); // Empty deps - only run once on mount
-
   // Ref to persist latest state on unmount (navigate away to PDP)
   const stateSnapshotRef = useRef<CollectionBrowseSnapshot | null>(null);
 
@@ -292,31 +333,52 @@ export default function CollectionClient({
     async (targetPage: number): Promise<number> => {
       if (targetPage < 1) return 0;
 
+      try {
       const safeSearchParams = searchParams ?? new URLSearchParams();
-      const fetchPage = async (
-        page: number
-      ): Promise<{
+      type CollectionPageResponse = {
         variantItems?: VariantItem[];
         items?: Product[];
         total?: number;
         hasMore?: boolean;
-      }> => {
-        const apiUrl = new URL("/api/products/collection", window.location.origin);
-        apiUrl.searchParams.set("page", String(page));
-        apiUrl.searchParams.set("language", lng);
-        if (categoryPath) apiUrl.searchParams.set("categoryPath", categoryPath);
-        if (searchQuery) apiUrl.searchParams.set("search", searchQuery);
-        safeSearchParams.forEach((value, key) => {
-          if (key !== "page" && key !== "search") apiUrl.searchParams.set(key, value);
-        });
-        const r = await fetch(apiUrl.toString());
-        return r.ok ? r.json() : {};
       };
 
-      const results = [];
+      const fetchPage = async (page: number): Promise<CollectionPageResponse> => {
+        try {
+          const apiUrl = new URL("/api/products/collection", window.location.origin);
+          apiUrl.searchParams.set("page", String(page));
+          apiUrl.searchParams.set("language", lng);
+          if (categoryPath) apiUrl.searchParams.set("categoryPath", categoryPath);
+          if (searchQuery) apiUrl.searchParams.set("search", searchQuery);
+          safeSearchParams.forEach((value, key) => {
+            if (key !== "page" && key !== "search") apiUrl.searchParams.set(key, value);
+          });
+          const r = await fetch(apiUrl.toString());
+          if (!r.ok) {
+            console.warn(
+              `[collection] refetch page ${page} failed with status ${r.status}`
+            );
+            return {};
+          }
+          return (await r.json()) as CollectionPageResponse;
+        } catch (error) {
+          console.error(`[collection] refetch page ${page} failed:`, error);
+          return {};
+        }
+      };
+
+      const results: CollectionPageResponse[] = [];
+      let lastSuccessfulPage = 0;
       for (let page = 1; page <= targetPage; page++) {
-        results.push(await fetchPage(page));
+        const data = await fetchPage(page);
+        results.push(data);
+        const hasRows =
+          (data.variantItems?.length ?? 0) > 0 || (data.items?.length ?? 0) > 0;
+        if (hasRows) {
+          lastSuccessfulPage = page;
+        }
       }
+
+      const resolvedPage = lastSuccessfulPage || 1;
 
       if (useVariantItems) {
         const allKeys = new Set<string>();
@@ -338,7 +400,7 @@ export default function CollectionClient({
         if (combined.length > 0) {
           hydratedFromStoreRef.current = true;
           setAllVariantItems(combined);
-          setCurrentPage(targetPage);
+          setCurrentPage(resolvedPage);
           setTotalProducts(total || combined.length);
           setHasMore(!!hasMore);
         }
@@ -355,9 +417,9 @@ export default function CollectionClient({
         total = data?.total ?? total;
         hasMore = i === results.length - 1 ? !!data?.hasMore : true;
         list.forEach((item: Product) => {
-          const id = item.id ?? item.sku;
-          if (id && !allIds.has(String(id))) {
-            allIds.add(String(id));
+          const key = productListKey(item);
+          if (key && !allIds.has(key)) {
+            allIds.add(key);
             combined.push(item);
           }
         });
@@ -365,11 +427,15 @@ export default function CollectionClient({
       if (combined.length > 0) {
         hydratedFromStoreRef.current = true;
         setAllProducts(combined);
-        setCurrentPage(targetPage);
+        setCurrentPage(resolvedPage);
         setTotalProducts(total || combined.length);
         setHasMore(!!hasMore);
       }
       return combined.length;
+      } catch (error) {
+        console.error("[collection] refetchBrowsePagesUpTo failed:", error);
+        return 0;
+      }
     },
     [
       searchParams,
@@ -413,15 +479,27 @@ export default function CollectionClient({
 
     if (needsRefetch && pagesToLoad >= 1 && !refetchOnReturnStartedRef.current) {
       refetchOnReturnStartedRef.current = true;
+      browseRefetchInProgressRef.current = true;
       setBrowseListReady(false);
-      pendingListHydrationRef.current = -1;
-      void refetchBrowsePagesUpTo(pagesToLoad).then((count) => {
-        pendingListHydrationRef.current = 0;
-        setBrowseListReady(true);
-        if (count > 0) {
-          hydratedFromStoreRef.current = true;
-        }
-      });
+      void refetchBrowsePagesUpTo(pagesToLoad)
+        .then((count) => {
+          if (count > 0) {
+            hydratedFromStoreRef.current = true;
+          } else if (stored?.items?.length) {
+            applyStoredBrowseState();
+          }
+        })
+        .catch((error) => {
+          console.error("[collection] refetch on browser back failed:", error);
+          if (stored?.items?.length) {
+            applyStoredBrowseState();
+          }
+        })
+        .finally(() => {
+          browseRefetchInProgressRef.current = false;
+          pendingListHydrationRef.current = 0;
+          setBrowseListReady(true);
+        });
       return;
     }
 
@@ -453,9 +531,23 @@ export default function CollectionClient({
 
   // Safety: if hydration count stalls, re-apply cache or refetch missing pages.
   useEffect(() => {
-    if (!isReturningFromProduct() || pendingListHydrationRef.current <= 0) return;
+    if (!isReturningFromProduct()) return;
+    if (pendingListHydrationRef.current <= 0 && !browseRefetchInProgressRef.current) {
+      return;
+    }
 
     const timeout = window.setTimeout(() => {
+      if (browseRefetchInProgressRef.current) {
+        const stored = getCollectionState(collectionKey);
+        const pages = Math.max(stored?.currentPage ?? 1, 1);
+        void refetchBrowsePagesUpTo(pages).finally(() => {
+          browseRefetchInProgressRef.current = false;
+          pendingListHydrationRef.current = 0;
+          setBrowseListReady(true);
+        });
+        return;
+      }
+
       if (pendingListHydrationRef.current <= 0) return;
 
       const stored = getCollectionState(collectionKey);
@@ -472,7 +564,9 @@ export default function CollectionClient({
         (stored?.currentPage ?? 1) >= 2
       ) {
         refetchOnReturnStartedRef.current = true;
+        browseRefetchInProgressRef.current = true;
         void refetchBrowsePagesUpTo(stored?.currentPage ?? 2).finally(() => {
+          browseRefetchInProgressRef.current = false;
           pendingListHydrationRef.current = 0;
           setBrowseListReady(true);
         });
@@ -619,9 +713,9 @@ export default function CollectionClient({
             total = data?.total ?? total;
             hasMore = i === results.length - 1 ? !!data?.hasMore : true;
             list.forEach((item: Product) => {
-              const id = item.id ?? item.sku;
-              if (id && !allIds.has(String(id))) {
-                allIds.add(String(id));
+              const key = productListKey(item);
+              if (key && !allIds.has(key)) {
+                allIds.add(key);
                 combined.push(item);
               }
             });
@@ -640,24 +734,26 @@ export default function CollectionClient({
   // CRITICAL: Only reset products/variantItems when filters/search actually change, NOT when page changes
   // Do NOT overwrite when we just hydrated from store (returning from PDP with restored state).
   useEffect(() => {
-    if (pendingListHydrationRef.current > 0) return;
+    if (pendingListHydrationRef.current > 0 || browseRefetchInProgressRef.current) {
+      return;
+    }
+
+    if (!filterKeySeededRef.current) {
+      prevFilterKeyRef.current = filterKey;
+      filterKeySeededRef.current = true;
+      return;
+    }
 
     const filterChanged = prevFilterKeyRef.current !== filterKey;
-    
-    // Only reset if:
-    // 1. Filters actually changed (not just page number) 
-    // 2. We're NOT in the middle of loading more
-    // 3. This is not just a page number change (check if page is the only thing that changed)
-    const pageOnlyChanged = !filterChanged && prevFilterKeyRef.current !== '';
-    
-    if (filterChanged && !isLoadingMoreRef.current) {
-      const pending = readLastCollectionScroll();
-      const returningFromProduct =
-        pending?.browseKey === collectionKey && pending.scrollY > 0;
-      if (returningFromProduct) {
+
+    if (filterChanged) {
+      if (isReturningFromProduct()) {
         prevFilterKeyRef.current = filterKey;
         return;
       }
+
+      loadMoreEpochRef.current += 1;
+      setIsLoadingMore(false);
 
       hydratedFromStoreRef.current = false; // New filter context, clear hydration flag
       // Filters/search changed - reset accumulated items to start fresh
@@ -671,28 +767,9 @@ export default function CollectionClient({
       setCurrentPage(searchPage || 1);
       setHasMore(initialHasMore);
       prevFilterKeyRef.current = filterKey;
-    } else if (
-      pageOnlyChanged &&
-      !isLoadingMoreRef.current &&
-      !hydratedFromStoreRef.current &&
-      !isReturningFromProduct()
-    ) {
-      // Only page number changed - sync to server data ONLY if we did NOT hydrate from store.
-      // When returning from PDP we hydrate from store and must not overwrite with server payload.
-      if (searchPage && searchPage !== currentPage) {
-        if (useVariantItems && initialVariantItems) {
-          setAllVariantItems(initialVariantItems);
-          setTotalProducts(searchTotal ?? initialVariantItems.length);
-        } else {
-          setAllProducts(initialProducts);
-          setTotalProducts(searchTotal ?? initialProducts.length);
-        }
-        setCurrentPage(searchPage);
-        setHasMore(initialHasMore);
-      }
     }
-    // If filterKey hasn't changed and we're loading more, DON'T RESET!
-    // The accumulated stream should remain intact
+    // Page-only URL changes (?page=N) must not reset the client-accumulated stream from
+    // infinite scroll — server initialVariantItems/initialProducts are always a single page.
   }, [
     filterKey,
     initialProducts,
@@ -700,7 +777,6 @@ export default function CollectionClient({
     searchPage,
     searchTotal,
     initialHasMore,
-    currentPage,
     useVariantItems,
     collectionKey,
     isReturningFromProduct,
@@ -715,16 +791,57 @@ export default function CollectionClient({
     hasMore,
   };
 
+  const syncCollectionPageInUrl = useCallback(
+    (page: number) => {
+      if (typeof window === "undefined") return;
+
+      const safeSearchParams = searchParams ?? new URLSearchParams();
+      const urlParams = new URLSearchParams(safeSearchParams.toString());
+      if (page < 2) {
+        urlParams.delete("page");
+      } else {
+        urlParams.set("page", String(page));
+      }
+
+      const queryString = urlParams.toString();
+      const currentPath = `/${lng}/collection${slug?.length ? `/${slug.join("/")}` : ""}`;
+      const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
+
+      window.history.replaceState(
+        { ...window.history.state, as: newUrl, url: newUrl },
+        "",
+        newUrl
+      );
+    },
+    [lng, slug, searchParams]
+  );
+
+  const preserveScrollAfterAppend = useCallback(
+    (scrollYBefore: number, scrollXBefore: number) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (Math.abs(window.scrollY - scrollYBefore) > 4) {
+            window.scrollTo({
+              top: scrollYBefore,
+              left: scrollXBefore,
+              behavior: "auto",
+            });
+          }
+        });
+      });
+    },
+    []
+  );
+
   // Load More handler
   const handleLoadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) return;
 
-    // CRITICAL: Preserve scroll position before any DOM changes
-    // Store current scroll position to restore after new items are rendered
     const scrollYBefore = window.scrollY;
     const scrollXBefore = window.scrollX;
 
     setIsLoadingMore(true);
+    const epochAtStart = loadMoreEpochRef.current;
     try {
       const nextPage = currentPage + 1;
       
@@ -755,7 +872,11 @@ export default function CollectionClient({
       }
 
       const data = await response.json();
-      
+
+      if (epochAtStart !== loadMoreEpochRef.current) {
+        return;
+      }
+
       // Handle variantItems (collection pages) or items (search)
       if (useVariantItems && data.variantItems) {
         const newVariantItems = data.variantItems || [];
@@ -769,16 +890,14 @@ export default function CollectionClient({
         
         // Prevent duplicates by checking existing variant keys (Set-based deduplication)
         // This ensures stable stream even if API returns overlapping results
-        setAllVariantItems(prev => {
-          const existingVariantKeys = new Set(prev.map(item => item.variantKey));
-          const uniqueNewItems = newVariantItems.filter((item: VariantItem) => !existingVariantKeys.has(item.variantKey));
-          
+        setAllVariantItems((prev) => {
+          const uniqueNewItems = dedupeVariantItems(prev, newVariantItems);
+
           if (uniqueNewItems.length === 0) {
             console.warn('All fetched variant items were duplicates, skipping append');
-            return prev; // Return unchanged if all duplicates
+            return prev;
           }
-          
-          // CRITICAL: Append new variant items (NEVER replace!)
+
           return [...prev, ...uniqueNewItems];
         });
       } else {
@@ -794,59 +913,46 @@ export default function CollectionClient({
         
         // Prevent duplicates by checking existing product IDs
         // This ensures stable stream even if API returns overlapping results
-        setAllProducts(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const uniqueNewItems = newItems.filter((item: Product) => !existingIds.has(item.id));
-          
+        setAllProducts((prev) => {
+          const uniqueNewItems = dedupeProducts(prev, newItems);
+
           if (uniqueNewItems.length === 0) {
             console.warn('All fetched items were duplicates, skipping append');
-            return prev; // Return unchanged if all duplicates
+            return prev;
           }
-          
-          // CRITICAL: Append new products (NEVER replace!)
+
           return [...prev, ...uniqueNewItems];
         });
       }
-      
-      isLoadingMoreRef.current = true;
 
-      setCurrentPage(data.page || nextPage);
+      const resolvedPage = data.page || nextPage;
+      setCurrentPage(resolvedPage);
       setTotalProducts(data.total || totalProducts);
       setHasMore(data.hasMore || false);
 
-      // CRITICAL: Restore scroll position after React renders new items
-      // Use requestAnimationFrame to ensure DOM has updated with new products
-      // Multiple rAF calls ensure we restore after layout is complete
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // Restore exact scroll position to prevent any jump
-          window.scrollTo({
-            top: scrollYBefore,
-            left: scrollXBefore,
-            behavior: 'auto' // Instant, no smooth scroll
-          });
-        });
-      });
-      
-      // Reset flag after URL update completes
-      // This allows useEffect to run normally for future filter changes
-      setTimeout(() => {
-        isLoadingMoreRef.current = false;
-      }, 200);
+      syncCollectionPageInUrl(resolvedPage);
+      preserveScrollAfterAppend(scrollYBefore, scrollXBefore);
     } catch (error) {
       console.error('Error loading more products:', error);
-      // Restore scroll even on error
-      requestAnimationFrame(() => {
-        window.scrollTo({
-          top: scrollYBefore,
-          left: scrollXBefore,
-          behavior: 'auto'
-        });
-      });
+      preserveScrollAfterAppend(scrollYBefore, scrollXBefore);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [isLoadingMore, hasMore, currentPage, categoryPath, searchQuery, lng, searchParams, totalProducts, useVariantItems]);
+  }, [
+    isLoadingMore,
+    hasMore,
+    currentPage,
+    categoryPath,
+    searchQuery,
+    lng,
+    searchParams,
+    totalProducts,
+    useVariantItems,
+    syncCollectionPageInUrl,
+    preserveScrollAfterAppend,
+  ]);
+
+  const loadMoreInFlightRef = useRef(false);
 
   // Infinite scroll: load next page when sentinel nears the viewport.
   useEffect(() => {
@@ -856,16 +962,19 @@ export default function CollectionClient({
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          void handleLoadMore();
-        }
+        if (!entries.some((e) => e.isIntersecting)) return;
+        if (loadMoreInFlightRef.current || isLoadingMore) return;
+        loadMoreInFlightRef.current = true;
+        void handleLoadMore().finally(() => {
+          loadMoreInFlightRef.current = false;
+        });
       },
-      { root: null, rootMargin: "600px 0px", threshold: 0 }
+      { root: null, rootMargin: "200px 0px", threshold: 0 }
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, browseListReady, handleLoadMore]);
+  }, [hasMore, browseListReady, isLoadingMore, handleLoadMore]);
 
   const collectionLevel = slug ? slug.length : 0; // 0 = all/main, 1 = level 0, 2 = level 1, 3+ = level 2+
   const showSubSubCategoryFilter = collectionLevel <= 2; // Show only on level 0 and level 1 pages
@@ -1734,7 +1843,10 @@ export default function CollectionClient({
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3 ">
+              <div
+                className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3"
+                style={{ overflowAnchor: "auto" }}
+              >
                 {useVariantItems
                   ? (sortedItems as VariantItem[]).map((item, index) => {
                       // Calculate if item is above the fold (first 6-8 items)
@@ -1742,9 +1854,10 @@ export default function CollectionClient({
                       const isAboveFold = index < 6;
                       
                       return (
-                        <motion.div
+                        <div
                           key={item.variantKey}
                           data-collection-anchor={item.variantKey}
+                          className="min-h-0"
                         >
                           <ProductCard 
                             product={item.product} 
@@ -1755,7 +1868,7 @@ export default function CollectionClient({
                             browseStoreKey={collectionKey}
                             collectionAnchorKey={item.variantKey}
                           />
-                        </motion.div>
+                        </div>
                       );
                     })
                   : (sortedItems as Product[]).map((product, index) => {
@@ -1764,9 +1877,10 @@ export default function CollectionClient({
                       const isAboveFold = index < 6;
                       
                       return (
-                        <motion.div
+                        <div
                           key={product.id}
                           data-collection-anchor={String(product.id ?? product.sku)}
+                          className="min-h-0"
                         >
                           <ProductCard 
                             product={product} 
@@ -1776,7 +1890,7 @@ export default function CollectionClient({
                             browseStoreKey={collectionKey}
                             collectionAnchorKey={String(product.id ?? product.sku)}
                           />
-                        </motion.div>
+                        </div>
                       );
                     })}
               </div>
@@ -1784,12 +1898,17 @@ export default function CollectionClient({
               {(hasMore || isLoadingMore) && (
                 <div
                   ref={loadMoreSentinelRef}
-                  className="mt-8 flex min-h-[3rem] items-center justify-center"
-                  aria-hidden={!isLoadingMore}
+                  className="mt-8 flex h-12 items-center justify-center"
+                  aria-busy={isLoadingMore}
                 >
-                  {isLoadingMore && (
-                    <p className="text-sm text-gray-500">{t.loading}</p>
-                  )}
+                  <p
+                    className={cn(
+                      "text-sm text-gray-500 transition-opacity",
+                      isLoadingMore ? "opacity-100" : "opacity-0"
+                    )}
+                  >
+                    {t.loading}
+                  </p>
                 </div>
               )}
             </>

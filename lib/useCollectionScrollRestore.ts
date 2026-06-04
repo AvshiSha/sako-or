@@ -206,9 +206,10 @@ export function useCollectionScrollRestore({
     beginRestore();
   }, [browseKey, browseListReady, beginRestore]);
 
-  // Re-apply after the grid grows (hydrated pages / images) so scrollY is reachable.
+  // Re-apply only during an active browser-Back restore (not on load-more append).
   useEffect(() => {
     if (!browseKey || !browseListReady || itemCount === 0) return;
+    if (!hasPendingCollectionScrollRestore()) return;
 
     const targetY = Math.max(
       getRestoreScrollTarget(browseKey),

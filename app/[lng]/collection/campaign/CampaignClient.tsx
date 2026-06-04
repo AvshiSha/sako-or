@@ -20,6 +20,7 @@ import {
 } from "@/lib/collectionScrollRestore";
 import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
 import { CollectionBrowseProvider } from "@/app/contexts/CollectionBrowseContext";
+import { priceRangeToUrlParams } from "@/lib/collectionFilterUrl";
 import {
   Accordion,
   AccordionContent,
@@ -409,11 +410,15 @@ export default function CampaignClient({
       ? selectedColors.filter((c) => c !== color)
       : [...selectedColors, color];
     setSelectedColors(next);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
     updateURL({
       colors: next,
       sizes: selectedSizes,
-      minPrice: String(Math.round(uiRange[0])),
-      maxPrice: String(Math.round(uiRange[1])),
+      minPrice,
+      maxPrice,
       sort: sortBy,
     });
   };
@@ -422,11 +427,15 @@ export default function CampaignClient({
       ? selectedSizes.filter((s) => s !== size)
       : [...selectedSizes, size];
     setSelectedSizes(next);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
     updateURL({
       colors: selectedColors,
       sizes: next,
-      minPrice: String(Math.round(uiRange[0])),
-      maxPrice: String(Math.round(uiRange[1])),
+      minPrice,
+      maxPrice,
       sort: sortBy,
     });
   };
@@ -438,9 +447,13 @@ export default function CampaignClient({
     const [min, max] = values as [number, number];
     const final: [number, number] = [Math.min(min, max), Math.max(min, max)];
     setUiRange(final);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      final,
+      collectionPriceBounds
+    );
     updateURL({
-      minPrice: String(Math.round(final[0])),
-      maxPrice: String(Math.round(final[1])),
+      minPrice,
+      maxPrice,
       colors: selectedColors,
       sizes: selectedSizes,
       sort: sortBy,
@@ -459,9 +472,13 @@ export default function CampaignClient({
   };
   const handleSortChange = (newSort: string) => {
     setSortBy(newSort);
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
     updateURL({
-      minPrice: String(Math.round(uiRange[0])),
-      maxPrice: String(Math.round(uiRange[1])),
+      minPrice,
+      maxPrice,
       colors: selectedColors,
       sizes: selectedSizes,
       sort: newSort,

@@ -251,6 +251,49 @@ export function clearLastCollectionScroll(): void {
   }
 }
 
+export function clearFrozenCollectionScroll(): void {
+  if (!isBrowser()) return;
+  try {
+    sessionStorage.removeItem(FROZEN_SCROLL_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function clearCollectionScrollFromHistoryState(): void {
+  if (!isBrowser()) return;
+  const prev =
+    typeof window.history.state === "object" && window.history.state
+      ? { ...(window.history.state as Record<string, unknown>) }
+      : null;
+  if (!prev || !(HISTORY_SCROLL_KEY in prev)) return;
+  const next = { ...prev };
+  delete next[HISTORY_SCROLL_KEY];
+  try {
+    history.replaceState(next, "");
+  } catch {
+    // ignore
+  }
+}
+
+/** Clear saved scroll targets so filter/search changes are not restored to an old offset. */
+export function resetCollectionScrollForFilterChange(): void {
+  if (!isBrowser()) return;
+  cancelCollectionScrollRestoreWatchdog();
+  clearLastCollectionScroll();
+  clearFrozenCollectionScroll();
+  clearCollectionScrollFromHistoryState();
+}
+
+/** Scroll to top after filter changes (call again on rAF if navigation runs after paint). */
+export function scrollCollectionToTop(): void {
+  if (!isBrowser()) return;
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  });
+}
+
 function isAtScrollTarget(targetY: number): boolean {
   return Math.abs(window.scrollY - targetY) <= SCROLL_TOLERANCE_PX;
 }

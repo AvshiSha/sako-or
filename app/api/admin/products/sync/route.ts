@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { productService, categoryService } from '@/lib/firebase'
+import { extractColorsSearchNorm } from '@/lib/hebrew-normalize'
+import { deleteMeilisearchProduct, upsertMeilisearchProduct } from '@/lib/meilisearch'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
@@ -54,6 +56,11 @@ export async function POST(request: NextRequest) {
           await prisma.product.delete({
             where: { id: neonProduct.id }
           })
+          try {
+            await deleteMeilisearchProduct(neonProduct.id)
+          } catch (meiliError) {
+            console.warn(`Meilisearch delete skipped for ${neonProduct.title_en}:`, meiliError)
+          }
           deletedCount++
           console.log(`Deleted product: ${neonProduct.title_en}`)
         } catch (error) {
@@ -324,24 +331,33 @@ export async function POST(request: NextRequest) {
           shippingReturns_en: (firebaseProduct as any).materialCare?.shippingReturns_en || null,
           shippingReturns_he: (firebaseProduct as any).materialCare?.shippingReturns_he || null,
           colorVariants,
+          colors_search_norm: extractColorsSearchNorm(colorVariants),
           tags: (firebaseProduct as any).tags || []
         }
 
         if (existingProduct) {
-          // Update existing product
-          await prisma.product.update({
+          const updated = await prisma.product.update({
             where: { id: existingProduct.id },
             data: productData
           })
           updatedCount++
           console.log(`Updated product: ${productTitleEn}`)
+          try {
+            await upsertMeilisearchProduct(updated)
+          } catch (meiliError) {
+            console.warn(`Meilisearch upsert skipped for ${productTitleEn}:`, meiliError)
+          }
         } else {
-          // Create new product
-          await prisma.product.create({
+          const created = await prisma.product.create({
             data: productData
           })
           createdCount++
           console.log(`Created product: ${productTitleEn}`)
+          try {
+            await upsertMeilisearchProduct(created)
+          } catch (meiliError) {
+            console.warn(`Meilisearch upsert skipped for ${productTitleEn}:`, meiliError)
+          }
         }
         
         syncedCount++

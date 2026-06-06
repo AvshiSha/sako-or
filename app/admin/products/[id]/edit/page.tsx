@@ -168,6 +168,7 @@ function EditProductPage() {
   const [currentVariantForGoogleDriveVideo, setCurrentVariantForGoogleDriveVideo] = useState<string | null>(null)
   const [originalFormData, setOriginalFormData] = useState<ProductFormData | null>(null)
   const [tagsInputValue, setTagsInputValue] = useState('')
+  const [searchKeywordsInputValue, setSearchKeywordsInputValue] = useState('')
 
   const [formData, setFormData] = useState<ProductFormData>({
     sku: '',
@@ -332,6 +333,7 @@ function EditProductPage() {
           flushSync(() => {
             setFormData(nextFormData)
             setTagsInputValue(loadedTags.join(', '))
+            setSearchKeywordsInputValue((product.searchKeywords || []).join(', '))
             // Deep snapshot so nested arrays/objects (tags, colorVariants, etc.) are not shared with formData
             setOriginalFormData(structuredClone(nextFormData))
           })
@@ -2135,6 +2137,31 @@ function EditProductPage() {
                 />
                 <span className="ml-2 text-sm text-gray-700">Enabled</span>
               </label>
+            </div>
+          </div>
+
+          {/* Search Keywords */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Search Keywords</h2>
+            <div>
+              <label htmlFor="searchKeywords" className="block text-sm font-medium text-gray-700 mb-2">
+                Keywords (comma-separated)
+              </label>
+              <input
+                type="text"
+                id="searchKeywords"
+                value={searchKeywordsInputValue}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  setSearchKeywordsInputValue(raw)
+                  handleInputChange('searchKeywords', parseCommaSeparatedTags(raw))
+                }}
+                className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600 text-gray-700"
+                placeholder="leather, boot, women, classic"
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                Enter keywords separated by commas to help customers find this product
+              </p>
             </div>
           </div>
 

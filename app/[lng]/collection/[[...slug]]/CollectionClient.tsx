@@ -1,6 +1,14 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useCallback,
+  useTransition,
+} from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -16,6 +24,11 @@ import { trackViewItemList } from "@/lib/dataLayer";
 import { getColorName, getColorHex } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import ScrollToTopButton from "@/app/components/ScrollToTopButton";
+import Loader from "@/app/components/ui/Loader";
+import {
+  markCollectionFilterNavPending,
+  takeCollectionFilterNavPending,
+} from "@/lib/collectionFilterNav";
 import {
   Accordion,
   AccordionContent,
@@ -73,6 +86,9 @@ import {
 // animation props in this file. We cast it to avoid a build-blocking type error.
 // (Runtime behavior remains unchanged.)
 const motion = fmMotion as unknown as any;
+
+/** Stable empty params — avoids `new URLSearchParams()` on every render when search is absent. */
+const EMPTY_SEARCH_PARAMS = new URLSearchParams();
 
 /** Grid card wrapper: entrance stagger + hover lift (matches pre-anchor-refactor behavior). */
 function collectionGridItemMotionProps(
@@ -257,13 +273,19 @@ export default function CollectionClient({
   // Use variantItems if available (collection pages), otherwise fall back to products (search)
   const useVariantItems = initialVariantItems !== undefined && !searchQuery;
   
+  // Serialized query string — stable across renders when URL params are unchanged.
+  const searchParamsKey = searchParams?.toString() ?? "";
+
   // Track filter/search key to detect when filters actually change (not just page)
   const filterKey = useMemo(() => {
-    return buildCollectionFilterKey(searchParams ?? new URLSearchParams(), {
+    const params = searchParamsKey
+      ? new URLSearchParams(searchParamsKey)
+      : EMPTY_SEARCH_PARAMS;
+    return buildCollectionFilterKey(params, {
       categoryPath,
       searchQuery,
     });
-  }, [categoryPath, searchQuery, searchParams]);
+  }, [categoryPath, searchQuery, searchParamsKey]);
 
   // Stable key for this collection + filter/search combination
   const collectionKey = useMemo(() => {
@@ -705,7 +727,6 @@ export default function CollectionClient({
       }
 
       // Add all current filter params
-      const safeSearchParams = searchParams ?? new URLSearchParams();
       safeSearchParams.forEach((value, key) => {
         if (key !== 'page' && key !== 'search') {
           apiUrl.searchParams.set(key, value);
@@ -889,12 +910,79 @@ export default function CollectionClient({
     return translatedCategory || category.charAt(0).toUpperCase() + category.slice(1);
   };
 
-  const safeSearchParams = searchParams ?? new URLSearchParams();
+  const safeSearchParams = useMemo(() => {
+    if (!searchParamsKey) return EMPTY_SEARCH_PARAMS;
+    return new URLSearchParams(searchParamsKey);
+  }, [searchParamsKey]);
 
-  /** Filter chips and sort from URL (source of truth). */
+  // Collection price bounds (full range for slider) — needed when parsing URL price params.
+  const collectionPriceBounds = useMemo(() => {
+    const prices: number[] = [];
+
+    if (useVariantItems && initialVariantItems) {
+      if (initialVariantItems.length === 0) {
+        return { min: 0, max: 1000 };
+      }
+
+      initialVariantItems.forEach((item) => {
+        if (item.variant.isActive !== false) {
+          if (item.variant.salePrice && item.variant.salePrice > 0) {
+            prices.push(item.variant.salePrice);
+          } else if (item.product.salePrice && item.product.salePrice > 0) {
+            prices.push(item.product.salePrice);
+          } else if (item.variant.priceOverride && item.variant.priceOverride > 0) {
+            prices.push(item.variant.priceOverride);
+          } else {
+            prices.push(item.product.price);
+          }
+        }
+      });
+    } else {
+      if (initialProducts.length === 0) {
+        return { min: 0, max: 1000 };
+      }
+
+      initialProducts.forEach((product) => {
+        if (product.colorVariants && Object.keys(product.colorVariants).length > 0) {
+          Object.values(product.colorVariants)
+            .filter((v) => v.isActive !== false)
+            .forEach((variant) => {
+              if ((variant as any).salePrice && (variant as any).salePrice > 0) {
+                prices.push((variant as any).salePrice);
+              } else if (product.salePrice && product.salePrice > 0) {
+                prices.push(product.salePrice);
+              } else if ((variant as any).priceOverride && (variant as any).priceOverride > 0) {
+                prices.push((variant as any).priceOverride);
+              } else {
+                prices.push(product.price);
+              }
+            });
+        } else {
+          const productPrice =
+            product.salePrice && product.salePrice > 0
+              ? product.salePrice
+              : product.price;
+          prices.push(productPrice);
+        }
+      });
+    }
+
+    if (prices.length === 0) {
+      return { min: 0, max: 1000 };
+    }
+
+    const min = Math.floor(Math.min(...prices));
+    const max = Math.ceil(Math.max(...prices));
+    const minRounded = Math.floor(min / 10) * 10;
+    const maxRounded = Math.ceil(max / 10) * 10;
+
+    return { min: minRounded, max: maxRounded };
+  }, [initialProducts, initialVariantItems, useVariantItems]);
+
+  /** Filter chips, sort, and price range from URL (source of truth). */
   const urlFilterState = useMemo(
-    () => readFilterUiStateFromSearchParams(safeSearchParams, undefined),
-    [filterKey]
+    () => readFilterUiStateFromSearchParams(safeSearchParams, collectionPriceBounds),
+    [filterKey, collectionPriceBounds, searchParamsKey]
   );
   const selectedColors = urlFilterState.colors;
   const selectedSizes = urlFilterState.sizes;
@@ -904,6 +992,11 @@ export default function CollectionClient({
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
   const isFilterPanelOpen = mobileFiltersOpen || desktopFiltersOpen;
+  const [isFilterNavigating, setIsFilterNavigating] = useState(() =>
+    takeCollectionFilterNavPending()
+  );
+  const [isFilterTransitionPending, startFilterTransition] = useTransition();
+  const isFilterLoading = isFilterNavigating || isFilterTransitionPending;
 
   type FilterDraft = {
     colors: string[];
@@ -976,9 +1069,24 @@ export default function CollectionClient({
     const currentPath = `/${lng}/collection${slug ? '/' + slug.join('/') : ''}`;
     const newUrl = queryString ? `${currentPath}?${queryString}` : currentPath;
 
+    const currentUrl =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "";
+    const isSameUrl = currentUrl === newUrl;
+
+    if (isSameUrl) {
+      return;
+    }
+
+    markCollectionFilterNavPending();
+    flushSync(() => setIsFilterNavigating(true));
     resetCollectionScrollForFilterChange();
     scrollCollectionToTop();
-    router.push(newUrl, { scroll: false });
+
+    startFilterTransition(() => {
+      router.push(newUrl, { scroll: false });
+    });
     requestAnimationFrame(() => scrollCollectionToTop());
   };
 
@@ -1332,76 +1440,6 @@ export default function CollectionClient({
     return lng === 'he' ? category.name.he : category.name.en;
   };
 
-  // STATIC: Collection Price Bounds - calculated from ALL variant items or products in collection
-  // These represent the full available range and NEVER change when user drags slider
-  const collectionPriceBounds = useMemo(() => {
-    const prices: number[] = [];
-    
-    if (useVariantItems && initialVariantItems) {
-      // Calculate from variant items
-      if (initialVariantItems.length === 0) {
-        return { min: 0, max: 1000 };
-      }
-      
-      initialVariantItems.forEach((item) => {
-        if (item.variant.isActive !== false) {
-          // Priority: variant.salePrice > product.salePrice > variant.priceOverride > product.price
-          if (item.variant.salePrice && item.variant.salePrice > 0) {
-            prices.push(item.variant.salePrice);
-          } else if (item.product.salePrice && item.product.salePrice > 0) {
-            prices.push(item.product.salePrice);
-          } else if (item.variant.priceOverride && item.variant.priceOverride > 0) {
-            prices.push(item.variant.priceOverride);
-          } else {
-            prices.push(item.product.price);
-          }
-        }
-      });
-    } else {
-      // Calculate from products (for search)
-      if (initialProducts.length === 0) {
-        return { min: 0, max: 1000 };
-      }
-
-      initialProducts.forEach((product) => {
-        if (product.colorVariants && Object.keys(product.colorVariants).length > 0) {
-          // Get prices from all active variants
-          Object.values(product.colorVariants)
-            .filter(v => v.isActive !== false)
-            .forEach((variant) => {
-              // Priority: variant.salePrice > product.salePrice > variant.priceOverride > product.price
-              if ((variant as any).salePrice && (variant as any).salePrice > 0) {
-                prices.push((variant as any).salePrice);
-              } else if (product.salePrice && product.salePrice > 0) {
-                prices.push(product.salePrice);
-              } else if ((variant as any).priceOverride && (variant as any).priceOverride > 0) {
-                prices.push((variant as any).priceOverride);
-              } else {
-                prices.push(product.price);
-              }
-            });
-        } else {
-          // No variants, use product-level price
-          const productPrice = product.salePrice && product.salePrice > 0 ? product.salePrice : product.price;
-          prices.push(productPrice);
-        }
-      });
-    }
-
-    if (prices.length === 0) {
-      return { min: 0, max: 1000 };
-    }
-
-    const min = Math.floor(Math.min(...prices));
-    const max = Math.ceil(Math.max(...prices));
-    
-    // Round to nice numbers
-    const minRounded = Math.floor(min / 10) * 10;
-    const maxRounded = Math.ceil(max / 10) * 10;
-    
-    return { min: minRounded, max: maxRounded };
-  }, [initialProducts, initialVariantItems, useVariantItems]);
-
   // UI State: Live price range for slider. Initialize from server-passed params so static pages (e.g. women/accessories/bags) match on mobile.
   const [uiRange, setUiRange] = useState<[number, number]>(() => {
     const boundsMin = collectionPriceBounds?.min ?? 0;
@@ -1415,39 +1453,28 @@ export default function CollectionClient({
     return [Math.min(validMin, validMax), Math.max(validMin, validMax)];
   });
 
-  // Sync price slider from URL when filters change (not while filter panel is open).
+  const urlUiRangeMin = urlFilterState.uiRange[0];
+  const urlUiRangeMax = urlFilterState.uiRange[1];
+
+  // Sync applied price slider when URL filters change (not while filter panel is open).
   useEffect(() => {
-    if (!collectionPriceBounds || isFilterPanelOpen) return;
-    const fromUrl = readFilterUiStateFromSearchParams(
-      safeSearchParams,
-      collectionPriceBounds
-    );
-    setUiRange(fromUrl.uiRange);
-  }, [
-    filterKey,
-    collectionPriceBounds?.min,
-    collectionPriceBounds?.max,
-    safeSearchParams,
-    isFilterPanelOpen,
-  ]);
+    if (isFilterPanelOpen) return;
+    setUiRange([urlUiRangeMin, urlUiRangeMax]);
+  }, [filterKey, isFilterPanelOpen, urlUiRangeMin, urlUiRangeMax]);
 
   // Seed draft when filter panel opens so toggles do not navigate until Apply.
   useEffect(() => {
-    if (!isFilterPanelOpen || !collectionPriceBounds) {
+    if (!isFilterPanelOpen) {
       setFilterDraft(null);
       return;
     }
-    const fromUrl = readFilterUiStateFromSearchParams(
-      safeSearchParams,
-      collectionPriceBounds
-    );
     setFilterDraft({
-      colors: [...fromUrl.colors],
-      sizes: [...fromUrl.sizes],
-      subSubCategories: [...fromUrl.subSubCategories],
-      uiRange: fromUrl.uiRange,
+      colors: [...selectedColors],
+      sizes: [...selectedSizes],
+      subSubCategories: [...selectedSubSubCategories],
+      uiRange: [urlUiRangeMin, urlUiRangeMax],
     });
-  }, [isFilterPanelOpen, filterKey, collectionPriceBounds, safeSearchParams]);
+  }, [isFilterPanelOpen, filterKey, urlUiRangeMin, urlUiRangeMax]);
 
   const panelColors = filterDraft?.colors ?? selectedColors;
   const panelSizes = filterDraft?.sizes ?? selectedSizes;
@@ -1456,13 +1483,7 @@ export default function CollectionClient({
   const panelUiRange = filterDraft?.uiRange ?? uiRange;
 
   const handleCloseFiltersPanel = () => {
-    if (collectionPriceBounds) {
-      const fromUrl = readFilterUiStateFromSearchParams(
-        safeSearchParams,
-        collectionPriceBounds
-      );
-      setUiRange(fromUrl.uiRange);
-    }
+    setUiRange(urlFilterState.uiRange);
     setFilterDraft(null);
     setMobileFiltersOpen(false);
     setDesktopFiltersOpen(false);
@@ -1666,20 +1687,25 @@ export default function CollectionClient({
     );
   };
 
+  // New instance after navigation: data is ready — hide bridged loader before paint.
+  useLayoutEffect(() => {
+    setIsFilterNavigating(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isFilterLoading) return;
+    const id = window.setTimeout(() => setIsFilterNavigating(false), 30000);
+    return () => window.clearTimeout(id);
+  }, [isFilterLoading]);
+
   const openFilterPanel = (target: "mobile" | "desktop") => {
-    if (collectionPriceBounds) {
-      const fromUrl = readFilterUiStateFromSearchParams(
-        safeSearchParams,
-        collectionPriceBounds
-      );
-      setFilterDraft({
-        colors: [...fromUrl.colors],
-        sizes: [...fromUrl.sizes],
-        subSubCategories: [...fromUrl.subSubCategories],
-        uiRange: fromUrl.uiRange,
-      });
-      setUiRange(fromUrl.uiRange);
-    }
+    setFilterDraft({
+      colors: [...urlFilterState.colors],
+      sizes: [...urlFilterState.sizes],
+      subSubCategories: [...urlFilterState.subSubCategories],
+      uiRange: urlFilterState.uiRange,
+    });
+    setUiRange(urlFilterState.uiRange);
     if (target === "mobile") setMobileFiltersOpen(true);
     else setDesktopFiltersOpen(true);
   };
@@ -1690,7 +1716,16 @@ export default function CollectionClient({
       snapshotRef={stateSnapshotRef}
     >
     <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pb-16 relative">
+      {isFilterLoading && (
+        <Loader label={t.loadingProducts} />
+      )}
+      <div
+        className={cn(
+          "max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pb-16 relative",
+          isFilterLoading && "pointer-events-none"
+        )}
+        aria-busy={isFilterLoading}
+      >
         {/* Header with Filters Button */}
         <div className="mb-4 md:mb-4">
           <div className="mb-4">
@@ -1741,11 +1776,16 @@ export default function CollectionClient({
               )}
             </button>
 
-            <Select value={sortBy} onValueChange={handleSortChange}>
+            <Select
+              value={sortBy}
+              onValueChange={handleSortChange}
+              disabled={isFilterLoading}
+            >
               <SelectTrigger 
                 className={cn(
                   "w-full sm:w-auto text-black md:py-3 md:px-4 md:text-base md:text-right",
-                  lng === 'he' && "md:ml-auto"
+                  lng === 'he' && "md:ml-auto",
+                  isFilterLoading && "opacity-60 pointer-events-none"
                 )} 
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
               >
@@ -2142,7 +2182,8 @@ export default function CollectionClient({
           <div className="p-6 border-t border-gray-100">
             <button
               onClick={handleApplyFilters}
-              className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200"
+              disabled={isFilterLoading}
+              className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {t.applyFilters}
             </button>
@@ -2241,7 +2282,7 @@ export default function CollectionClient({
                             key={color}
                             onClick={() => handleColorToggle(color)}
                             className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
-                              selectedColors.includes(color)
+                              panelColors.includes(color)
                                 ? 'bg-gray-100 border border-gray-300'
                                 : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
                             }`}
@@ -2373,7 +2414,8 @@ export default function CollectionClient({
               <div className="p-6 border-t border-gray-100">
                 <button
                   onClick={handleApplyFilters}
-                  className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200"
+                  disabled={isFilterLoading}
+                  className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {t.applyFilters}
                 </button>

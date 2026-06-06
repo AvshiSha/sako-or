@@ -1,22 +1,17 @@
 /**
- * Hebrew text normalization utilities
- * Handles singular/plural forms, gender variations, and common morphological patterns
+ * Hebrew text normalization utilities.
+ * Keep in sync with PostgreSQL function normalize_hebrew_search() in
+ * prisma/migrations/20260606000000_hebrew_search_pg_trgm/migration.sql
  */
 
-/**
- * Common Hebrew plural endings
- */
-const HEBREW_PLURAL_ENDINGS = ['ים', 'ות'];
+const MAX_SEARCH_TERMS = 20;
 
 /**
  * Product type variations (Hebrew)
- * Maps plural forms to singular and vice versa
- * Based on common product categories
  */
 const PRODUCT_TYPE_VARIATIONS: Record<string, string[]> = {
-  // Shoes and footwear
-  'כפכפים': ['כפכף', 'כפכפ','קבקב','קבקבים'],
-  'כפכף': ['כפכפים','קבקב','קבקבים'],
+  'כפכפים': ['כפכף', 'כפכפ', 'קבקב', 'קבקבים'],
+  'כפכף': ['כפכפים', 'קבקב', 'קבקבים'],
   'נעליים': ['נעל', 'נעלה', 'נעליה'],
   'נעל': ['נעליים', 'נעליות'],
   'נעלה': ['נעליים', 'נעליות'],
@@ -36,7 +31,6 @@ const PRODUCT_TYPE_VARIATIONS: Record<string, string[]> = {
   'סירות שטוחות': ['בלרינה וסירות שטוחות', 'סירה שטוחה'],
   'סירה שטוחה': ['בלרינה וסירות שטוחות', 'סירות שטוחות'],
   'אוקספורד': ['אוקספורד', 'אוקספורדים'],
-  // Accessories
   'תיקים': ['תיק', 'תיקה'],
   'תיק': ['תיקים', 'תיקות'],
   'תיקה': ['תיקים', 'תיקות'],
@@ -45,70 +39,45 @@ const PRODUCT_TYPE_VARIATIONS: Record<string, string[]> = {
   'מעילה': ['מעילים', 'מעילות'],
 };
 
-/**
- * Generate singular from plural
- * כפכפים → כפכף
- * Note: This is a simplified approach - Hebrew morphology is complex
- */
 function pluralToSingular(word: string): string | null {
-  // Check product type variations first
   if (PRODUCT_TYPE_VARIATIONS[word]) {
     const variations = PRODUCT_TYPE_VARIATIONS[word];
-    // Return the first singular form if available
     for (const variant of variations) {
       if (!variant.endsWith('ים') && !variant.endsWith('ות')) {
         return variant;
       }
     }
   }
-  
-  // Remove -ים ending (most common plural)
+
   if (word.endsWith('ים') && word.length > 2) {
     return word.slice(0, -2);
   }
-  // Remove -ות ending and add ה (feminine plural)
   if (word.endsWith('ות') && word.length > 2) {
     return word.slice(0, -2) + 'ה';
   }
   return null;
 }
 
-/**
- * Generate plural from singular
- * כפכף → כפכפים
- */
 function singularToPlural(word: string): string[] {
   const plurals: string[] = [];
-  
-  // Check product type variations first
+
   if (PRODUCT_TYPE_VARIATIONS[word]) {
-    const variations = PRODUCT_TYPE_VARIATIONS[word];
-    // Add all variations that are plural forms
-    variations.forEach((variant: string) => {
+    PRODUCT_TYPE_VARIATIONS[word].forEach((variant: string) => {
       if (variant.endsWith('ים') || variant.endsWith('ות') || variant.includes(' ')) {
         plurals.push(variant);
       }
     });
   }
-  
-  // If ends with ה, replace with ות
+
   if (word.endsWith('ה')) {
     plurals.push(word.slice(0, -1) + 'ות');
   }
-  
-  // Always add -ים (most common)
+
   plurals.push(word + 'ים');
-  
   return plurals;
 }
 
-/**
- * Hebrew color variations
- * Maps different forms of color words
- * Includes all colors from lib/colors.ts
- */
 const HEBREW_COLOR_VARIATIONS: Record<string, string[]> = {
-  // Basic colors
   'אדום': ['אדומים', 'אדומה', 'אדומות', 'אד'],
   'שחור': ['שחורים', 'שחורה', 'שחורות', 'שח'],
   'לבן': ['לבנים', 'לבנה', 'לבנות', 'לב'],
@@ -120,7 +89,6 @@ const HEBREW_COLOR_VARIATIONS: Record<string, string[]> = {
   'ורוד': ['ורודים', 'ורודה', 'ורודות'],
   'סגול': ['סגולים', 'סגולה', 'סגולות'],
   'כתום': ['כתומים', 'כתומה', 'כתומות'],
-  // Additional colors from colors.ts
   'חום בהיר': ['חום בהיר', 'חומים בהירים', 'חומה בהירה', 'חומות בהירות'],
   'חום כהה': ['חום כהה', 'חומים כהים', 'חומה כהה', 'חומות כהות'],
   'כחול כהה': ['כחול כהה', 'כחולים כהים', 'כחולה כהה', 'כחולות כהות'],
@@ -142,132 +110,193 @@ const HEBREW_COLOR_VARIATIONS: Record<string, string[]> = {
   'שחור ואדום': ['שחור ואדום', 'שחורים ואדומים', 'שחורה ואדומה', 'שחורות ואדומות'],
 };
 
-/**
- * Generate search variations for a Hebrew word
- * Returns array of possible forms (singular, plural, base)
- */
 export function generateHebrewVariations(word: string): string[] {
-  const variations = new Set<string>([word]); // Always include original
-  
-  // Check if word is plural (ends with ים or ות)
+  if (!word || !/[\u0590-\u05FF]/.test(word)) {
+    return word ? [word] : []
+  }
+
+  const variations = new Set<string>([word]);
   const isPlural = word.endsWith('ים') || word.endsWith('ות');
-  
+
   if (isPlural) {
-    // Generate singular form
     const singular = pluralToSingular(word);
     if (singular) {
       variations.add(singular);
     }
   } else {
-    // Generate plural forms
-    const plurals = singularToPlural(word);
-    plurals.forEach(plural => variations.add(plural));
+    singularToPlural(word).forEach((plural) => variations.add(plural));
   }
-  
-  // Handle color variations
+
   const lowerWord = word.toLowerCase();
   if (HEBREW_COLOR_VARIATIONS[lowerWord]) {
-    HEBREW_COLOR_VARIATIONS[lowerWord].forEach(variant => {
-      variations.add(variant);
-    });
+    HEBREW_COLOR_VARIATIONS[lowerWord].forEach((variant) => variations.add(variant));
   }
-  
-  // Also check reverse - if word is a variant, add base form
+
   for (const [base, variants] of Object.entries(HEBREW_COLOR_VARIATIONS)) {
     if (variants.includes(lowerWord) || variants.includes(word)) {
       variations.add(base);
-      variants.forEach(v => variations.add(v));
+      variants.forEach((v) => variations.add(v));
     }
   }
-  
-  // Handle product type variations
+
   if (PRODUCT_TYPE_VARIATIONS[word]) {
-    PRODUCT_TYPE_VARIATIONS[word].forEach((variant: string) => {
-      variations.add(variant);
-    });
+    PRODUCT_TYPE_VARIATIONS[word].forEach((variant: string) => variations.add(variant));
   }
-  
-  // Also check reverse - if word is a product type variant, add all variations
+
   for (const [base, variants] of Object.entries(PRODUCT_TYPE_VARIATIONS)) {
     if ((variants as string[]).includes(word)) {
       variations.add(base);
       (variants as string[]).forEach((v: string) => variations.add(v));
     }
   }
-  
-  return Array.from(variations).filter(v => v.length > 0);
+
+  return Array.from(variations).filter((v) => v.length > 0);
 }
 
-/**
- * Expand a Hebrew search query to include morphological variations
- * Example: "כפכף אדום" → ["כפכף", "כפכפים", "אדום", "אדומים", "אדומה", "אד"]
- * 
- * For multi-word queries, we generate variations for each word and also
- * try to match the phrase as a whole (important for category names like "נעלי סירה")
- */
 export function expandHebrewQuery(query: string): string[] {
   if (!query || typeof query !== 'string') {
     return [];
   }
-  
-  const words = query.split(/\s+/).filter(w => w && typeof w === 'string' && w.length > 0);
+
+  const words = query.split(/\s+/).filter((w) => w && typeof w === 'string' && w.length > 0);
   const expandedWords: string[] = [];
-  
-  // Generate variations for each word
-  words.forEach(word => {
+
+  words.forEach((word) => {
     if (word && typeof word === 'string') {
-      const variations = generateHebrewVariations(word);
-      variations.forEach(v => {
+      generateHebrewVariations(word).forEach((v) => {
         if (v && typeof v === 'string' && v.length > 0) {
           expandedWords.push(v);
         }
       });
     }
   });
-  
-  // Also generate variations for the entire phrase (important for category names)
-  // For "כפכף אדום", we want to try "כפכפים אדומים" as well
+
   if (words.length > 1) {
-    // Try all combinations of word variations
-    expandedWords.push(query); // Always include original
-    
-    // Generate a few common combinations
+    expandedWords.push(query);
+
     const firstWordVariations = generateHebrewVariations(words[0]);
-    const lastWordVariations = words.length > 1 ? generateHebrewVariations(words[words.length - 1]) : [];
-    
-    // Add combinations: first word variations + rest, or last word variations
-    firstWordVariations.slice(0, 3).forEach(v1 => {
+    const lastWordVariations =
+      words.length > 1 ? generateHebrewVariations(words[words.length - 1]) : [];
+
+    firstWordVariations.slice(0, 3).forEach((v1) => {
       if (v1 && typeof v1 === 'string') {
-        const rest = words.slice(1).join(' ');
-        expandedWords.push(`${v1} ${rest}`);
+        expandedWords.push(`${v1} ${words.slice(1).join(' ')}`);
       }
     });
-    
-    if (lastWordVariations.length > 0) {
-      lastWordVariations.slice(0, 3).forEach(vLast => {
-        if (vLast && typeof vLast === 'string') {
-          const beginning = words.slice(0, -1).join(' ');
-          expandedWords.push(`${beginning} ${vLast}`);
-        }
-      });
-    }
+
+    lastWordVariations.slice(0, 3).forEach((vLast) => {
+      if (vLast && typeof vLast === 'string') {
+        expandedWords.push(`${words.slice(0, -1).join(' ')} ${vLast}`);
+      }
+    });
   } else if (words.length === 1) {
-    // Single word - just add original
     expandedWords.push(query);
   }
-  
-  // Remove duplicates and filter out invalid values
-  return Array.from(new Set(expandedWords)).filter(v => v && typeof v === 'string' && v.trim().length > 0);
+
+  return Array.from(new Set(expandedWords)).filter(
+    (v) => v && typeof v === 'string' && v.trim().length > 0
+  );
 }
 
 /**
- * Normalize Hebrew text for search (removes common suffixes/prefixes)
- * This helps with partial matches
+ * Normalize text for search: sofit letters, niqqud, punctuation, whitespace.
  */
 export function normalizeHebrewForSearch(text: string): string {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
+
   return text
     .trim()
-    .replace(/\s+/g, ' ') // Normalize whitespace
-    .toLowerCase();
+    .replace(/[\u0591-\u05C7]/g, '')
+    .replace(/ם/g, 'מ')
+    .replace(/ן/g, 'נ')
+    .replace(/ץ/g, 'צ')
+    .replace(/ף/g, 'פ')
+    .replace(/ך/g, 'כ')
+    .replace(/[''"״׳]/g, '')
+    .replace(/[-–—]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .trim();
 }
 
+/**
+ * Build deduplicated search terms from a query (normalized + morphological variants).
+ */
+export function buildSearchQueryTerms(query: string): string[] {
+  if (!query?.trim()) {
+    return [];
+  }
+
+  const terms = new Set<string>();
+  const trimmed = query.trim();
+  const normalized = normalizeHebrewForSearch(trimmed);
+
+  terms.add(trimmed);
+  if (normalized) {
+    terms.add(normalized);
+  }
+
+  expandHebrewQuery(trimmed).forEach((t) => {
+    terms.add(t);
+    const n = normalizeHebrewForSearch(t);
+    if (n) {
+      terms.add(n);
+    }
+  });
+
+  if (normalized !== trimmed) {
+    expandHebrewQuery(normalized).forEach((t) => terms.add(t));
+  }
+
+  const tokens = normalized.split(/\s+/).filter((w) => w.length > 0);
+  tokens.forEach((token) => {
+    terms.add(token);
+    if (/[\u0590-\u05FF]/.test(token)) {
+      generateHebrewVariations(token).forEach((v) => {
+        terms.add(v);
+        const n = normalizeHebrewForSearch(v);
+        if (n) {
+          terms.add(n);
+        }
+      });
+    }
+  });
+
+  return Array.from(terms)
+    .filter((t) => t && t.trim().length > 0)
+    .slice(0, MAX_SEARCH_TERMS);
+}
+
+/**
+ * Extract normalized color search text from colorVariants JSON.
+ */
+export function extractColorsSearchNorm(colorVariants: unknown): string {
+  if (!colorVariants || typeof colorVariants !== 'object') {
+    return '';
+  }
+
+  const parts = new Set<string>();
+  for (const [slug, data] of Object.entries(colorVariants as Record<string, unknown>)) {
+    if (slug) {
+      const normalizedSlug = normalizeHebrewForSearch(slug);
+      if (normalizedSlug) {
+        parts.add(normalizedSlug);
+      }
+    }
+    if (data && typeof data === 'object') {
+      const variant = data as Record<string, unknown>;
+      if (variant.colorSlug) {
+        const n = normalizeHebrewForSearch(String(variant.colorSlug));
+        if (n) parts.add(n);
+      }
+      if (variant.colorName) {
+        const n = normalizeHebrewForSearch(String(variant.colorName));
+        if (n) parts.add(n);
+      }
+    }
+  }
+
+  return Array.from(parts).join(' ');
+}

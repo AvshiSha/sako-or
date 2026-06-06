@@ -78,6 +78,7 @@ export type ProductMinAggregateOutputType = {
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
+  colors_search_norm: string | null
   bogoGroupId: string | null
 }
 
@@ -123,6 +124,7 @@ export type ProductMaxAggregateOutputType = {
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
+  colors_search_norm: string | null
   bogoGroupId: string | null
 }
 
@@ -172,6 +174,7 @@ export type ProductCountAggregateOutputType = {
   category_he: number
   subCategory_he: number
   subSubCategory_he: number
+  colors_search_norm: number
   tags: number
   bogoGroupId: number
   _all: number
@@ -230,6 +233,7 @@ export type ProductMinAggregateInputType = {
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
+  colors_search_norm?: true
   bogoGroupId?: true
 }
 
@@ -275,6 +279,7 @@ export type ProductMaxAggregateInputType = {
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
+  colors_search_norm?: true
   bogoGroupId?: true
 }
 
@@ -324,6 +329,7 @@ export type ProductCountAggregateInputType = {
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
+  colors_search_norm?: true
   tags?: true
   bogoGroupId?: true
   _all?: true
@@ -461,6 +467,7 @@ export type ProductGroupByOutputType = {
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
+  colors_search_norm: string
   tags: string[]
   bogoGroupId: string | null
   _count: ProductCountAggregateOutputType | null
@@ -534,6 +541,7 @@ export type ProductWhereInput = {
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  colors_search_norm?: Prisma.StringFilter<"Product"> | string
   tags?: Prisma.StringNullableListFilter<"Product">
   bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
   categoryRelation?: Prisma.XOR<Prisma.CategoryScalarRelationFilter, Prisma.CategoryWhereInput>
@@ -587,6 +595,7 @@ export type ProductOrderByWithRelationInput = {
   category_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  colors_search_norm?: Prisma.SortOrder
   tags?: Prisma.SortOrder
   bogoGroupId?: Prisma.SortOrderInput | Prisma.SortOrder
   categoryRelation?: Prisma.CategoryOrderByWithRelationInput
@@ -643,6 +652,7 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  colors_search_norm?: Prisma.StringFilter<"Product"> | string
   tags?: Prisma.StringNullableListFilter<"Product">
   bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
   categoryRelation?: Prisma.XOR<Prisma.CategoryScalarRelationFilter, Prisma.CategoryWhereInput>
@@ -696,6 +706,7 @@ export type ProductOrderByWithAggregationInput = {
   category_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  colors_search_norm?: Prisma.SortOrder
   tags?: Prisma.SortOrder
   bogoGroupId?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ProductCountOrderByAggregateInput
@@ -754,6 +765,7 @@ export type ProductScalarWhereWithAggregatesInput = {
   category_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  colors_search_norm?: Prisma.StringWithAggregatesFilter<"Product"> | string
   tags?: Prisma.StringNullableListFilter<"Product">
   bogoGroupId?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
 }
@@ -803,6 +815,7 @@ export type ProductCreateInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
   bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
@@ -855,6 +868,7 @@ export type ProductUncheckedCreateInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
   productTags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
@@ -905,6 +919,7 @@ export type ProductUpdateInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
   bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
@@ -957,6 +972,7 @@ export type ProductUncheckedUpdateInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   productTags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
@@ -1008,6 +1024,7 @@ export type ProductCreateManyInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
 }
@@ -1057,6 +1074,7 @@ export type ProductUpdateManyMutationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
 }
 
@@ -1106,6 +1124,7 @@ export type ProductUncheckedUpdateManyInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -1174,6 +1193,7 @@ export type ProductCountOrderByAggregateInput = {
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
+  colors_search_norm?: Prisma.SortOrder
   tags?: Prisma.SortOrder
   bogoGroupId?: Prisma.SortOrder
 }
@@ -1225,6 +1245,7 @@ export type ProductMaxOrderByAggregateInput = {
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
+  colors_search_norm?: Prisma.SortOrder
   bogoGroupId?: Prisma.SortOrder
 }
 
@@ -1270,6 +1291,7 @@ export type ProductMinOrderByAggregateInput = {
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
+  colors_search_norm?: Prisma.SortOrder
   bogoGroupId?: Prisma.SortOrder
 }
 
@@ -1470,6 +1492,7 @@ export type ProductCreateWithoutCategoryRelationInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
   productTags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
@@ -1520,6 +1543,7 @@ export type ProductUncheckedCreateWithoutCategoryRelationInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
   productTags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
@@ -1600,6 +1624,7 @@ export type ProductScalarWhereInput = {
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  colors_search_norm?: Prisma.StringFilter<"Product"> | string
   tags?: Prisma.StringNullableListFilter<"Product">
   bogoGroupId?: Prisma.StringNullableFilter<"Product"> | string | null
 }
@@ -1649,6 +1674,7 @@ export type ProductCreateWithoutBogoGroupInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
   productTags?: Prisma.ProductTagCreateNestedManyWithoutProductInput
@@ -1700,6 +1726,7 @@ export type ProductUncheckedCreateWithoutBogoGroupInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   productTags?: Prisma.ProductTagUncheckedCreateNestedManyWithoutProductInput
 }
@@ -1775,6 +1802,7 @@ export type ProductCreateWithoutProductTagsInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   categoryRelation: Prisma.CategoryCreateNestedOneWithoutProductsInput
   bogoGroup?: Prisma.BogoGroupCreateNestedOneWithoutProductsInput
@@ -1826,6 +1854,7 @@ export type ProductUncheckedCreateWithoutProductTagsInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
 }
@@ -1891,6 +1920,7 @@ export type ProductUpdateWithoutProductTagsInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
   bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
@@ -1942,6 +1972,7 @@ export type ProductUncheckedUpdateWithoutProductTagsInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -1991,6 +2022,7 @@ export type ProductCreateManyCategoryRelationInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
   bogoGroupId?: string | null
 }
@@ -2040,6 +2072,7 @@ export type ProductUpdateWithoutCategoryRelationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroup?: Prisma.BogoGroupUpdateOneWithoutProductsNestedInput
   productTags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
@@ -2090,6 +2123,7 @@ export type ProductUncheckedUpdateWithoutCategoryRelationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   productTags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
@@ -2140,6 +2174,7 @@ export type ProductUncheckedUpdateManyWithoutCategoryRelationInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   bogoGroupId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
 }
@@ -2190,6 +2225,7 @@ export type ProductCreateManyBogoGroupInput = {
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
+  colors_search_norm?: string
   tags?: Prisma.ProductCreatetagsInput | string[]
 }
 
@@ -2238,6 +2274,7 @@ export type ProductUpdateWithoutBogoGroupInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   categoryRelation?: Prisma.CategoryUpdateOneRequiredWithoutProductsNestedInput
   productTags?: Prisma.ProductTagUpdateManyWithoutProductNestedInput
@@ -2289,6 +2326,7 @@ export type ProductUncheckedUpdateWithoutBogoGroupInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
   productTags?: Prisma.ProductTagUncheckedUpdateManyWithoutProductNestedInput
 }
@@ -2339,6 +2377,7 @@ export type ProductUncheckedUpdateManyWithoutBogoGroupInput = {
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  colors_search_norm?: Prisma.StringFieldUpdateOperationsInput | string
   tags?: Prisma.ProductUpdatetagsInput | string[]
 }
 
@@ -2419,6 +2458,7 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  colors_search_norm?: boolean
   tags?: boolean
   bogoGroupId?: boolean
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
@@ -2473,6 +2513,7 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  colors_search_norm?: boolean
   tags?: boolean
   bogoGroupId?: boolean
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
@@ -2525,6 +2566,7 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  colors_search_norm?: boolean
   tags?: boolean
   bogoGroupId?: boolean
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
@@ -2577,11 +2619,12 @@ export type ProductSelectScalar = {
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
+  colors_search_norm?: boolean
   tags?: boolean
   bogoGroupId?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "category_he" | "subCategory_he" | "subSubCategory_he" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "category_he" | "subCategory_he" | "subSubCategory_he" | "colors_search_norm" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
   bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
@@ -2650,6 +2693,7 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     category_he: string | null
     subCategory_he: string | null
     subSubCategory_he: string | null
+    colors_search_norm: string
     tags: string[]
     bogoGroupId: string | null
   }, ExtArgs["result"]["product"]>
@@ -3123,6 +3167,7 @@ export interface ProductFieldRefs {
   readonly category_he: Prisma.FieldRef<"Product", 'String'>
   readonly subCategory_he: Prisma.FieldRef<"Product", 'String'>
   readonly subSubCategory_he: Prisma.FieldRef<"Product", 'String'>
+  readonly colors_search_norm: Prisma.FieldRef<"Product", 'String'>
   readonly tags: Prisma.FieldRef<"Product", 'String[]'>
   readonly bogoGroupId: Prisma.FieldRef<"Product", 'String'>
 }

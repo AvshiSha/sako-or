@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  useTransition,
+} from "react";
+import { flushSync } from "react-dom";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
@@ -8,6 +17,11 @@ import { FunnelIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { Campaign, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
 import ScrollToTopButton from "@/app/components/ScrollToTopButton";
+import Loader from "@/app/components/ui/Loader";
+import {
+  markCollectionFilterNavPending,
+  takeCollectionFilterNavPending,
+} from "@/lib/collectionFilterNav";
 import { getColorName, getColorHex } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import {
@@ -63,6 +77,7 @@ const campaignTranslations = {
     items: "items",
     loadMore: "Load More",
     loading: "Loading...",
+    loadingProducts: "Loading products...",
     noProducts: "No products found for this campaign",
   },
   he: {
@@ -81,6 +96,7 @@ const campaignTranslations = {
     items: "מוצרים",
     loadMore: "טען עוד",
     loading: "טוען...",
+    loadingProducts: "טוען מוצרים...",
     noProducts: "לא נמצאו מוצרים במבצע זה",
   },
 };
@@ -310,6 +326,11 @@ export default function CampaignClient({
     uiRange: [number, number];
   };
   const [filterDraft, setFilterDraft] = useState<FilterDraft | null>(null);
+  const [isFilterNavigating, setIsFilterNavigating] = useState(() =>
+    takeCollectionFilterNavPending()
+  );
+  const [isFilterTransitionPending, startFilterTransition] = useTransition();
+  const isFilterLoading = isFilterNavigating || isFilterTransitionPending;
   const [desktopAccordionValue, setDesktopAccordionValue] = useState<string[]>([]);
   const [mobileAccordionValue, setMobileAccordionValue] = useState<string[]>([]);
 
@@ -408,9 +429,22 @@ export default function CampaignClient({
       if (newFilters.maxPrice?.trim()) params.set("maxPrice", newFilters.maxPrice);
       if (newFilters.sort && newFilters.sort !== "relevance") params.set("sort", newFilters.sort);
       const qs = params.toString();
-      router.push(`${basePath}?${qs}`, { scroll: false });
+      const newUrl = `${basePath}?${qs}`;
+      const currentUrl =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : "";
+      if (currentUrl === newUrl) {
+        return;
+      }
+
+      markCollectionFilterNavPending();
+      flushSync(() => setIsFilterNavigating(true));
+      startFilterTransition(() => {
+        router.push(newUrl, { scroll: false });
+      });
     },
-    [lng, campaign.slug, currentPage, router]
+    [basePath, campaign.slug, currentPage, router]
   );
 
   const handleSortChange = (newSort: string) => {
@@ -819,12 +853,23 @@ export default function CampaignClient({
     }
   }, [isLoadingMore, hasMore, currentPage, lng, campaign.slug, totalProducts, searchParams]);
 
+  useLayoutEffect(() => {
+    setIsFilterNavigating(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isFilterLoading) return;
+    const id = window.setTimeout(() => setIsFilterNavigating(false), 30000);
+    return () => window.clearTimeout(id);
+  }, [isFilterLoading]);
+
   return (
     <CollectionBrowseProvider
       browseKey={campaignKey}
       snapshotRef={stateSnapshotRef}
     >
     <div className="min-h-screen bg-white">
+      {isFilterLoading && <Loader label={t.loadingProducts} />}
       {/* Hero Section - video plays only when in view; tap-to-play on mobile when blocked */}
       {(hasDesktopBanner || hasMobileBanner) && (
         <>
@@ -890,7 +935,13 @@ export default function CampaignClient({
       )}
 
       {/* Products Grid Section with Filters */}
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8 pb-8 md:pb-8">
+      <div
+        className={cn(
+          "max-w-7xl mx-auto px-4 md:px-8 pt-8 pb-8 md:pb-8",
+          isFilterLoading && "pointer-events-none"
+        )}
+        aria-busy={isFilterLoading}
+      >
         <div className={cn("flex items-center gap-3 mb-4", lng === "he" ? "flex-row-reverse" : "flex-row")}>
           <button
             onClick={() => {
@@ -939,8 +990,19 @@ export default function CampaignClient({
               return null;
             })()}
           </button>
-          <Select value={sortBy} onValueChange={handleSortChange}>
-            <SelectTrigger className={cn("w-full sm:w-auto text-black md:py-3 md:px-4", lng === "he" && "md:ml-auto")} dir={lng === "he" ? "rtl" : "ltr"}>
+          <Select
+            value={sortBy}
+            onValueChange={handleSortChange}
+            disabled={isFilterLoading}
+          >
+            <SelectTrigger
+              className={cn(
+                "w-full sm:w-auto text-black md:py-3 md:px-4",
+                lng === "he" && "md:ml-auto",
+                isFilterLoading && "opacity-60 pointer-events-none"
+              )}
+              dir={lng === "he" ? "rtl" : "ltr"}
+            >
               <SelectValue placeholder={t.relevance} />
             </SelectTrigger>
             <SelectContent dir={lng === "he" ? "rtl" : "ltr"}>
@@ -1124,7 +1186,11 @@ export default function CampaignClient({
                   )}
                 </div>
                 <div className="p-6 border-t border-gray-100">
-                  <button onClick={handleApplyFilters} className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200">
+                  <button
+                    onClick={handleApplyFilters}
+                    disabled={isFilterLoading}
+                    className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
                     {t.applyFilters}
                   </button>
                 </div>
@@ -1229,7 +1295,11 @@ export default function CampaignClient({
                   )}
                 </div>
                 <div className="p-6 border-t border-gray-100">
-                  <button onClick={handleApplyFilters} className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200">
+                  <button
+                    onClick={handleApplyFilters}
+                    disabled={isFilterLoading}
+                    className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
                     {t.applyFilters}
                   </button>
                 </div>

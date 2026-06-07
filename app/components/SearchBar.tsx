@@ -6,6 +6,8 @@ import { Search, X } from 'lucide-react'
 import { Product } from '@/lib/firebase'
 import ProductCard from './ProductCard'
 
+type SearchResultProduct = Product & { matchedColorSlug?: string }
+
 interface SearchBarProps {
   language: string
   variant?: 'default' | 'inline'
@@ -16,7 +18,7 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
   const pathname = usePathname()
   const [isExpanded, setIsExpanded] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<Product[]>([])
+  const [searchResults, setSearchResults] = useState<SearchResultProduct[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const searchContainerRef = useRef<HTMLDivElement>(null)
@@ -274,6 +276,7 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
                         <ProductCard
                           product={product}
                           language={language as 'en' | 'he'}
+                          preselectedColorSlug={product.matchedColorSlug}
                         />
                       </div>
                     ))}
@@ -378,6 +381,7 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
                             <ProductCard
                               product={product}
                               language={language as 'en' | 'he'}
+                              preselectedColorSlug={product.matchedColorSlug}
                             />
                           </div>
                         ))}

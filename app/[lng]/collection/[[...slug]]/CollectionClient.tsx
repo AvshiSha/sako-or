@@ -1912,6 +1912,11 @@ export default function CollectionClient({
                             product={product} 
                             language={lng as 'en' | 'he'}
                             selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+                            preselectedColorSlug={
+                              selectedColors.length === 0
+                                ? (product as { matchedColorSlug?: string }).matchedColorSlug
+                                : undefined
+                            }
                             isAboveFold={isAboveFold}
                             browseStoreKey={collectionKey}
                             collectionAnchorKey={String(product.id ?? product.sku)}

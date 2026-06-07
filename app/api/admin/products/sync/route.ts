@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { productService, categoryService } from '@/lib/firebase'
-import { extractColorsSearchNorm } from '@/lib/hebrew-normalize'
+import { buildProductSearchDerivedFields } from '@/lib/build-product-search-keywords'
 import { deleteMeilisearchProduct, upsertMeilisearchProduct } from '@/lib/meilisearch'
 import { prisma } from '@/lib/prisma'
 
@@ -331,14 +331,36 @@ export async function POST(request: NextRequest) {
           shippingReturns_en: (firebaseProduct as any).materialCare?.shippingReturns_en || null,
           shippingReturns_he: (firebaseProduct as any).materialCare?.shippingReturns_he || null,
           colorVariants,
-          colors_search_norm: extractColorsSearchNorm(colorVariants),
           tags: (firebaseProduct as any).tags || []
+        }
+
+        const searchDerived = buildProductSearchDerivedFields({
+          title_he: productTitleHe,
+          title_en: productTitleEn,
+          category: categoryEn || firebaseProduct.category || '',
+          subCategory: subCategoryEn || firebaseProduct.subCategory || null,
+          subSubCategory: subSubCategoryEn || firebaseProduct.subSubCategory || null,
+          category_he: categoryHe || null,
+          subCategory_he: subCategoryHe || null,
+          subSubCategory_he: subSubCategoryHe || null,
+          brand: firebaseProduct.brand || '',
+          tags: (firebaseProduct as any).tags || [],
+          upperMaterial_he: (firebaseProduct as any).materialCare?.upperMaterial_he || null,
+          lining_he: (firebaseProduct as any).materialCare?.lining_he || null,
+          sole_he: (firebaseProduct as any).materialCare?.sole_he || null,
+          colorVariants,
+        })
+
+        const productDataWithSearch = {
+          ...productData,
+          colors_search_norm: searchDerived.colors_search_norm,
+          generated_search_keywords: searchDerived.generated_search_keywords,
         }
 
         if (existingProduct) {
           const updated = await prisma.product.update({
             where: { id: existingProduct.id },
-            data: productData
+            data: productDataWithSearch
           })
           updatedCount++
           console.log(`Updated product: ${productTitleEn}`)
@@ -349,7 +371,7 @@ export async function POST(request: NextRequest) {
           }
         } else {
           const created = await prisma.product.create({
-            data: productData
+            data: productDataWithSearch
           })
           createdCount++
           console.log(`Created product: ${productTitleEn}`)

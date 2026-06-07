@@ -4,7 +4,9 @@
  */
 
 import { extractColorsSearchNorm } from '../lib/hebrew-normalize'
-import { prisma } from '../lib/prisma'
+import { createScriptPrisma } from './script-prisma'
+
+const prisma = createScriptPrisma()
 
 async function backfillColorsSearchNorm() {
   console.log('Backfilling colors_search_norm for all products...\n')

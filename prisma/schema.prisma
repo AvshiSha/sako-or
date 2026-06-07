@@ -167,6 +167,7 @@ model Product {
   subCategory_he       String?
   subSubCategory_he    String?
   colors_search_norm   String                   @default("")
+  generated_search_keywords String[]            @default([])
   title_search_norm    String?                  @ignore
   category_search_norm String?                  @ignore
   sku_search_norm      String?                  @ignore

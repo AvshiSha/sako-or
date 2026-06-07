@@ -3,69 +3,15 @@ import { Prisma } from '@prisma/client'
 import {
   buildSearchQueryTerms,
   expandHebrewQuery,
-  generateHebrewVariations,
   normalizeHebrewForSearch,
 } from '@/lib/hebrew-normalize'
+import {
+  enrichSearchItemWithMatchedColor,
+  extractSearchColorTerms,
+} from '@/lib/match-search-color-variant'
 import type { SearchProductsResult } from '@/lib/search-types'
 
 export type { SearchProductsResult } from '@/lib/search-types'
-
-const HEBREW_TO_ENGLISH_COLORS: Record<string, string> = {
-  שחור: 'black',
-  לבן: 'white',
-  אדום: 'red',
-  כחול: 'blue',
-  ירוק: 'green',
-  צהוב: 'yellow',
-  חום: 'brown',
-  אפור: 'gray',
-  ורוד: 'pink',
-  סגול: 'purple',
-  כתום: 'orange',
-  ניוד: 'nude',
-  בורדו: 'bordeaux',
-  'שחור ואדום': 'black-red',
-  'שחור ולבן': 'black-white',
-  שקוף: 'transparent',
-  כאמל: 'camel',
-  'ורוד בהיר': 'light-pink',
-  קרמל: 'caramel',
-  ארד: 'bronze',
-  'חום בהיר': 'light-brown',
-  'חום כהה': 'dark-brown',
-  'כחול כהה': 'dark-blue',
-  בז: 'beige',
-  זהב: 'gold',
-  כסף: 'silver',
-  'אוף וויט': 'off-white',
-  תכלת: 'light-blue',
-}
-
-const BASE_COLOR_KEYWORDS = [
-  'black',
-  'white',
-  'red',
-  'blue',
-  'green',
-  'yellow',
-  'brown',
-  'gray',
-  'grey',
-  'pink',
-  'purple',
-  'orange',
-  'שחור',
-  'לבן',
-  'אדום',
-  'כחול',
-  'ירוק',
-  'צהוב',
-  'חום',
-  'אפור',
-  'ורוד',
-  'סגול',
-  'כתום',
-]
 
 function sanitizeFtsToken(token: string): string {
   return token.replace(/[&|!():*'"]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -96,44 +42,6 @@ function buildFtsQuery(terms: string[]): string {
   }
 
   return parts.join(' | ')
-}
-
-function extractColorKeywords(searchQuery: string): string[] {
-  const words = searchQuery.split(/\s+/)
-  const colorKeywords = new Set<string>()
-
-  words
-    .filter((word) => {
-      const trimmedWord = word.trim()
-      if (trimmedWord.length <= 2) return false
-      const lowerWord = trimmedWord.toLowerCase()
-      return (
-        BASE_COLOR_KEYWORDS.includes(trimmedWord) ||
-        BASE_COLOR_KEYWORDS.includes(lowerWord)
-      )
-    })
-    .forEach((color) => {
-      const isHebrew = /[\u0590-\u05FF]/.test(color)
-      if (isHebrew) {
-        const trimmedColor = color.trim()
-        colorKeywords.add(trimmedColor)
-        generateHebrewVariations(trimmedColor).forEach((v) => {
-          if (v?.trim()) colorKeywords.add(v.trim())
-        })
-        const englishTranslation = HEBREW_TO_ENGLISH_COLORS[trimmedColor]
-        if (englishTranslation) {
-          colorKeywords.add(englishTranslation.toLowerCase())
-        }
-        generateHebrewVariations(trimmedColor).forEach((v) => {
-          const eng = HEBREW_TO_ENGLISH_COLORS[v.trim()]
-          if (eng) colorKeywords.add(eng.toLowerCase())
-        })
-      } else {
-        colorKeywords.add(color.trim().toLowerCase())
-      }
-    })
-
-  return Array.from(colorKeywords)
 }
 
 function extractCategoryPhrase(searchQuery: string): string {
@@ -261,11 +169,14 @@ async function searchProductsPostgres(
     SELECT column_name
     FROM information_schema.columns
     WHERE table_name = 'products'
-      AND column_name IN ('search_vector', 'search_blob_norm')
+      AND column_name IN ('search_vector', 'search_blob_norm', 'generated_search_keywords')
   `
 
   const hasSearchVector = columnCheck.some((c) => c.column_name === 'search_vector')
   const hasTrigramSearch = columnCheck.some((c) => c.column_name === 'search_blob_norm')
+  const hasGeneratedKeywords = columnCheck.some(
+    (c) => c.column_name === 'generated_search_keywords'
+  )
 
   if (!hasSearchVector) {
     console.error('search_vector column does not exist. Please run the migration.')
@@ -279,7 +190,7 @@ async function searchProductsPostgres(
 
   const sizeMatch = searchQuery.match(/\b(\d{2,3})\b/)
   const sizeNumbers = sizeMatch ? [sizeMatch[1]] : []
-  const colorKeywords = extractColorKeywords(searchQuery)
+  const colorKeywords = extractSearchColorTerms(searchQuery)
   const categoryPhrase = extractCategoryPhrase(searchQuery)
   const categoryPhraseVariations = expandHebrewQuery(categoryPhrase).filter(
     (v) => v && typeof v === 'string' && v.trim().length > 0
@@ -301,6 +212,37 @@ async function searchProductsPostgres(
   const trigramMatchSql = hasTrigramSearch
     ? Prisma.sql`p.search_blob_norm % normalize_hebrew_search(${normQuery || searchQuery})`
     : Prisma.sql`false`
+
+  const generatedKeywordsMatchSql = hasGeneratedKeywords
+    ? Prisma.sql`EXISTS (
+        SELECT 1
+        FROM unnest(p.generated_search_keywords) AS kw
+        WHERE normalize_hebrew_search(kw) = normalize_hebrew_search(${normQuery || searchQuery})
+          OR normalize_hebrew_search(kw) LIKE '%' || normalize_hebrew_search(${normQuery || searchQuery}) || '%'
+      )`
+    : Prisma.sql`false`
+
+  const generatedKeywordsRankSql = hasGeneratedKeywords
+    ? Prisma.sql`
+        + GREATEST(
+            similarity(
+              normalize_hebrew_search(immutable_text_array_flat(p.generated_search_keywords)),
+              normalize_hebrew_search(${normQuery || searchQuery})
+            ),
+            0
+          ) * 850
+        + CASE
+            WHEN EXISTS (
+              SELECT 1
+              FROM unnest(p.generated_search_keywords) AS kw
+              WHERE normalize_hebrew_search(kw) = normalize_hebrew_search(${normQuery || searchQuery})
+                OR normalize_hebrew_search(kw) LIKE '%' || normalize_hebrew_search(${normQuery || searchQuery}) || '%'
+            )
+            THEN 350
+            ELSE 0
+          END
+      `
+    : Prisma.sql``
 
   const rankingSql = hasTrigramSearch
     ? Prisma.sql`
@@ -347,6 +289,7 @@ async function searchProductsPostgres(
         + ${categoryMatchRankSql}
         + CASE WHEN ${sizeMatchSql} THEN 20 ELSE 0 END
         + CASE WHEN ${colorMatchSql} THEN 500 ELSE 0 END
+        ${generatedKeywordsRankSql}
       `
     : Prisma.sql`
         ${categoryMatchRankSql}
@@ -362,6 +305,7 @@ async function searchProductsPostgres(
       OR ${sizeMatchSql}
       OR ${colorMatchSql}
       OR ${categoryMatchWhereSql}
+      OR ${generatedKeywordsMatchSql}
     )
     AND p."isActive" = true
     AND p."isDeleted" = false
@@ -462,40 +406,45 @@ async function searchProductsPostgres(
 
   const total = totalResult[0]?.count ? Number(totalResult[0].count) : 0
 
-  const items = results.map((product) => ({
-    id: product.id,
-    sku: product.sku,
-    title_en: product.title_en,
-    title_he: product.title_he,
-    description_en: product.description_en,
-    description_he: product.description_he,
-    brand: product.brand,
-    price: product.price,
-    salePrice: product.salePrice,
-    currency: product.currency,
-    category: product.category,
-    subCategory: product.subCategory,
-    subSubCategory: product.subSubCategory,
-    categories_path: product.categories_path,
-    categories_path_id: product.categories_path_id,
-    categoryId: product.categoryId,
-    isEnabled: product.isEnabled,
-    isDeleted: product.isDeleted,
-    featured: product.featured,
-    isNew: product.isNew,
-    isActive: product.isActive,
-    seo: {
-      title_en: product.seo_title_en,
-      title_he: product.seo_title_he,
-      description_en: product.seo_description_en,
-      description_he: product.seo_description_he,
-      slug: product.seo_slug,
-    },
-    searchKeywords: product.searchKeywords,
-    colorVariants: product.colorVariants,
-    createdAt: product.createdAt,
-    updatedAt: product.updatedAt,
-  }))
+  const items = results.map((product) =>
+    enrichSearchItemWithMatchedColor(
+      {
+        id: product.id,
+        sku: product.sku,
+        title_en: product.title_en,
+        title_he: product.title_he,
+        description_en: product.description_en,
+        description_he: product.description_he,
+        brand: product.brand,
+        price: product.price,
+        salePrice: product.salePrice,
+        currency: product.currency,
+        category: product.category,
+        subCategory: product.subCategory,
+        subSubCategory: product.subSubCategory,
+        categories_path: product.categories_path,
+        categories_path_id: product.categories_path_id,
+        categoryId: product.categoryId,
+        isEnabled: product.isEnabled,
+        isDeleted: product.isDeleted,
+        featured: product.featured,
+        isNew: product.isNew,
+        isActive: product.isActive,
+        seo: {
+          title_en: product.seo_title_en,
+          title_he: product.seo_title_he,
+          description_en: product.seo_description_en,
+          description_he: product.seo_description_he,
+          slug: product.seo_slug,
+        },
+        searchKeywords: product.searchKeywords,
+        colorVariants: product.colorVariants,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+      },
+      searchQuery
+    )
+  )
 
   return {
     items,

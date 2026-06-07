@@ -15,6 +15,7 @@
  */
 
 import { adminDb } from './firebase-admin';
+import { buildProductSearchDerivedFields } from './build-product-search-keywords';
 import { prisma } from './prisma';
 import { getStockByModel } from './verifone';
 
@@ -731,7 +732,23 @@ export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonS
 
   try {
     const products = await prisma.product.findMany({
-      select: { id: true, sku: true },
+      select: {
+        id: true,
+        sku: true,
+        title_he: true,
+        title_en: true,
+        category: true,
+        subCategory: true,
+        subSubCategory: true,
+        category_he: true,
+        subCategory_he: true,
+        subSubCategory_he: true,
+        brand: true,
+        tags: true,
+        upperMaterial_he: true,
+        lining_he: true,
+        sole_he: true,
+      },
     });
 
     console.log(
@@ -763,7 +780,23 @@ export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonS
     const totalBatches = Math.ceil(productsToProcess.length / BATCH_SIZE) || 0;
 
     // Helper to sync a single product (Firestore -> Neon)
-    const syncSingleProduct = async (product: { id: string; sku: string | null }) => {
+    const syncSingleProduct = async (product: {
+      id: string
+      sku: string | null
+      title_he: string
+      title_en: string
+      category: string
+      subCategory: string | null
+      subSubCategory: string | null
+      category_he: string | null
+      subCategory_he: string | null
+      subSubCategory_he: string | null
+      brand: string
+      tags: string[]
+      upperMaterial_he: string | null
+      lining_he: string | null
+      sole_he: string | null
+    }) => {
       const { id, sku } = product;
 
       if (!sku) {
@@ -802,11 +835,30 @@ export async function syncInventoryFromFirebaseToNeon(): Promise<FirebaseToNeonS
           return;
         }
 
+        const searchDerived = buildProductSearchDerivedFields({
+          title_he: product.title_he,
+          title_en: product.title_en,
+          category: product.category,
+          subCategory: product.subCategory,
+          subSubCategory: product.subSubCategory,
+          category_he: product.category_he,
+          subCategory_he: product.subCategory_he,
+          subSubCategory_he: product.subSubCategory_he,
+          brand: product.brand,
+          tags: product.tags,
+          upperMaterial_he: product.upperMaterial_he,
+          lining_he: product.lining_he,
+          sole_he: product.sole_he,
+          colorVariants,
+        });
+
         const neonUpdateStart = Date.now();
         await prisma.product.update({
           where: { id },
           data: {
             colorVariants: JSON.parse(JSON.stringify(colorVariants)),
+            colors_search_norm: searchDerived.colors_search_norm,
+            generated_search_keywords: searchDerived.generated_search_keywords,
             updatedAt: new Date(),
           },
         });

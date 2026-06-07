@@ -2,6 +2,7 @@ import {
   extractColorsSearchNorm,
   normalizeHebrewForSearch,
 } from '@/lib/hebrew-normalize'
+import { enrichSearchItemWithMatchedColor } from '@/lib/match-search-color-variant'
 import type { SearchProductsResult } from '@/lib/search-types'
 
 const MEILI_INDEX = process.env.MEILISEARCH_INDEX || 'products'
@@ -235,40 +236,45 @@ export async function searchProductsMeilisearch(
   const items = ids
     .map((id) => productMap.get(id))
     .filter(Boolean)
-    .map((product) => ({
-      id: product!.id,
-      sku: product!.sku,
-      title_en: product!.title_en,
-      title_he: product!.title_he,
-      description_en: product!.description_en,
-      description_he: product!.description_he,
-      brand: product!.brand,
-      price: product!.price,
-      salePrice: product!.salePrice,
-      currency: product!.currency,
-      category: product!.category,
-      subCategory: product!.subCategory,
-      subSubCategory: product!.subSubCategory,
-      categories_path: product!.categories_path,
-      categories_path_id: product!.categories_path_id,
-      categoryId: product!.categoryId,
-      isEnabled: product!.isEnabled,
-      isDeleted: product!.isDeleted,
-      featured: product!.featured,
-      isNew: product!.isNew,
-      isActive: product!.isActive,
-      seo: {
-        title_en: product!.seo_title_en,
-        title_he: product!.seo_title_he,
-        description_en: product!.seo_description_en,
-        description_he: product!.seo_description_he,
-        slug: product!.seo_slug,
-      },
-      searchKeywords: product!.searchKeywords,
-      colorVariants: product!.colorVariants,
-      createdAt: product!.createdAt,
-      updatedAt: product!.updatedAt,
-    }))
+    .map((product) =>
+      enrichSearchItemWithMatchedColor(
+        {
+          id: product!.id,
+          sku: product!.sku,
+          title_en: product!.title_en,
+          title_he: product!.title_he,
+          description_en: product!.description_en,
+          description_he: product!.description_he,
+          brand: product!.brand,
+          price: product!.price,
+          salePrice: product!.salePrice,
+          currency: product!.currency,
+          category: product!.category,
+          subCategory: product!.subCategory,
+          subSubCategory: product!.subSubCategory,
+          categories_path: product!.categories_path,
+          categories_path_id: product!.categories_path_id,
+          categoryId: product!.categoryId,
+          isEnabled: product!.isEnabled,
+          isDeleted: product!.isDeleted,
+          featured: product!.featured,
+          isNew: product!.isNew,
+          isActive: product!.isActive,
+          seo: {
+            title_en: product!.seo_title_en,
+            title_he: product!.seo_title_he,
+            description_en: product!.seo_description_en,
+            description_he: product!.seo_description_he,
+            slug: product!.seo_slug,
+          },
+          searchKeywords: product!.searchKeywords,
+          colorVariants: product!.colorVariants,
+          createdAt: product!.createdAt,
+          updatedAt: product!.updatedAt,
+        },
+        searchQuery
+      )
+    )
 
   return {
     items,

@@ -15,7 +15,6 @@ import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from './ProductPromoRibbon'
-import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
 import { persistCollectionBrowseBeforeNavigate } from '@/lib/collectionBrowseStore'
 import { useCollectionBrowseContext } from '@/app/contexts/CollectionBrowseContext'
 
@@ -175,7 +174,6 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   }, [totalStock])
 
   const promoBadge = useProductCouponBadge(product.sku, product.baseSku)
-  const showBogoSecondPairPromo = isBogoSecondPairPromoSku(product.sku, product.baseSku)
 
   const statusBadge = useMemo(() => {
     if (isOutOfStock) {
@@ -424,7 +422,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         {statusBadge && (
           <div
             className={`absolute left-2 z-10 pointer-events-none md:top-2 md:bottom-auto ${
-              showBogoSecondPairPromo || promoBadge ? 'bottom-11 md:bottom-auto' : 'bottom-2'
+              promoBadge ? 'bottom-11 md:bottom-auto' : 'bottom-2'
             }`}
           >
             {renderStatusBadge()}
@@ -432,10 +430,9 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         )}
 
         {/* Promo ribbon — bottom-left inside image */}
-        {(showBogoSecondPairPromo || promoBadge) && (
+        {promoBadge && (
           <ProductPromoRibbon
             language={language}
-            showBogoSecondPair={showBogoSecondPairPromo}
             promoBadge={promoBadge}
             size="card"
             className="absolute bottom-3 left-3 z-20 max-w-[calc(100%-3.75rem)]"

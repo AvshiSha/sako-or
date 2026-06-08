@@ -12,47 +12,35 @@ const RIBBON_FONT = { fontFamily: 'Assistant, sans-serif' } as const
 
 const sizeStyles: Record<
   ProductPromoRibbonSize,
-  { root: string; bogo: string; code: string; divider: string }
+  { root: string; code: string }
 > = {
   card: {
     root: 'text-[10px] leading-tight',
-    bogo: 'px-2 py-1',
-    code: 'px-1 py-1',
-    divider: 'my-1',
+    code: 'px-2 py-1',
   },
   page: {
     root: 'text-xs leading-snug',
-    bogo: 'px-2.5 py-1.5',
     code: 'px-2.5 py-1.5',
-    divider: 'my-1.5',
   },
 }
 
 export function ProductPromoRibbon({
   language,
-  showBogoSecondPair,
   promoBadge,
   size = 'card',
   className,
 }: {
   language: 'en' | 'he'
-  showBogoSecondPair: boolean
   promoBadge: ProductCouponBadge | null
   size?: ProductPromoRibbonSize
   className?: string
 }) {
-  const { bogoLabel, couponCode } = getProductPromoRibbonParts(language, {
-    showBogoSecondPair,
-    promoBadge,
-    size,
-  })
+  const { couponCode } = getProductPromoRibbonParts(promoBadge)
 
-  if (!bogoLabel && !couponCode) return null
+  if (!couponCode) return null
 
   const styles = sizeStyles[size]
-  const ariaLabel = getProductPromoRibbonAriaLabel(language, bogoLabel, couponCode)
-  const codeOnly = !bogoLabel && couponCode
-  const bogoOnly = bogoLabel && !couponCode
+  const ariaLabel = getProductPromoRibbonAriaLabel(language, couponCode)
 
   return (
     <div
@@ -66,37 +54,14 @@ export function ProductPromoRibbon({
         className
       )}
     >
-      {bogoLabel && (
-        <span
-          className={cn(
-            'inline-flex shrink-0 items-center font-semibold text-white',
-            bogoOnly ? 'rounded-full' : 'rounded-s-full',
-            styles.bogo,
-            'bg-[#856D55]'
-          )}
-        >
-          {bogoLabel}
-        </span>
-      )}
-
-      {bogoLabel && couponCode && (
-        <span
-          aria-hidden
-          className={cn('w-px shrink-0 self-stretch bg-[#856D55]/25', styles.divider)}
-        />
-      )}
-
-      {couponCode && (
-        <span
-          className={cn(
-            'inline-flex shrink-0 items-center whitespace-nowrap font-semibold tracking-wide text-[#5C4A3A]',
-            codeOnly ? 'rounded-full' : 'rounded-e-full',
-            styles.code
-          )}
-        >
-          {couponCode}
-        </span>
-      )}
+      <span
+        className={cn(
+          'inline-flex shrink-0 items-center whitespace-nowrap rounded-full font-semibold tracking-wide text-[#5C4A3A]',
+          styles.code
+        )}
+      >
+        {couponCode}
+      </span>
     </div>
   )
 }

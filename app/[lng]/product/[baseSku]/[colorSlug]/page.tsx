@@ -26,7 +26,6 @@ import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
-import { isBogoSecondPairPromoSku } from '@/lib/bogo-second-pair-promo'
 
 interface ProductWithVariants extends Product {
   colorVariants: Record<string, {
@@ -123,8 +122,6 @@ export default function ProductColorPage() {
     couponBadgeLookup.sku,
     couponBadgeLookup.baseSku
   )
-
-  const showBogoSecondPairPromo = isBogoSecondPairPromoSku(baseSku, product?.baseSku ?? product?.sku)
 
   // Client-side only effect
   useEffect(() => {
@@ -517,10 +514,9 @@ export default function ProductColorPage() {
                 )}
               </button>
 
-              {(showBogoSecondPairPromo || promoBadge) && (
+              {promoBadge && (
                 <ProductPromoRibbon
                   language={lng as 'en' | 'he'}
-                  showBogoSecondPair={showBogoSecondPairPromo}
                   promoBadge={promoBadge}
                   size="card"
                   className="absolute left-4 top-14 z-20 max-w-[calc(100%-4rem)] lg:hidden"
@@ -796,10 +792,9 @@ export default function ProductColorPage() {
 
               {/* Desktop Layout */}
               <div className="hidden lg:block space-y-2">
-                {(showBogoSecondPairPromo || promoBadge) && (
+                {promoBadge && (
                   <ProductPromoRibbon
                     language={lng as 'en' | 'he'}
-                    showBogoSecondPair={showBogoSecondPairPromo}
                     promoBadge={promoBadge}
                     size="page"
                     className="w-fit max-w-full"

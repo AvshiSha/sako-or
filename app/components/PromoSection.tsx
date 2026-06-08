@@ -23,32 +23,35 @@ const DEFAULT_PROMOS: PromoItem[] = [
   //   // Countdown until May 3, 2026 midnight (local time).
   //   // countdownEnd: '2026-05-03T00:00:00',
   // },
-   {
-     text: {
-       he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
-       en: 'Outlet category – up to 70% discount + 10% extra | Coupon: OUT10',
-     },
-     href: '/collection/women/outlet',
-     icon: '🔥',
-   },
-   {
-    text: {
-      he: 'זוג שני ב־40% הנחה על מגוון מוצרי סניקרס | קוד: SNK40',
-      en: '20% off on all of the SAKO SNEAKERS collection | code: SNEAK20',
-    },
-    href: '/collection/women/shoes/sneakers',
-    icon: '👟',
-    // Countdown until May 17, 2026 midnight (local time).
-    // countdownEnd: '2026-05-17T00:00:00',
-  },
   // {
+  //    text: {
+  //      he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
+  //      en: 'Outlet category – up to 70% discount + 10% extra | Coupon: OUT10',
+  //    },
+  //    href: '/collection/women/outlet',
+  //    icon: '🔥',
+  //  },
+  //  {
   //   text: {
-  //     he: 'חג שבועות שמח עם מגוון פריטים ב־20% הנחה | קוד קופון: SHVT20',
-  //     en: 'Happy Shavuot 20% off on selected items | Coupon code: SHVT20',
+  //     he: 'זוג שני ב־40% הנחה על מגוון מוצרי סניקרס | קוד: SNK40',
+  //     en: '20% off on all of the SAKO SNEAKERS collection | code: SNEAK20',
   //   },
-  //   href: '/collection/campaign?slug=shavuot',
-  //   icon: '🌸',
+  //   href: '/collection/women/shoes/sneakers',
+  //   icon: '👟',
+  //   // Countdown until May 17, 2026 midnight (local time).
+  //   // countdownEnd: '2026-05-17T00:00:00',
   // },
+  {
+    text: {
+      he: 'נשאיר אתזה בסוד.. 10% הנחה על כל האתר, עד חצות | קוד: MON10',
+      en: 'Let’s Keep It a Secret... 10% Off Sitewide | Until Midnight | Code: MON10',
+    },
+    href: '/collection/women/',
+    icon: '🤫',
+    // Countdown until June 9, 2026 midnight (local time).
+    countdownEnd: '2026-06-09T00:00:00',
+  },
+
 ]
 
 interface PromoSectionProps {
@@ -61,7 +64,6 @@ interface PromoSectionProps {
 
 const ROTATION_MS_DEFAULT = 4000
 const TRANSITION_MS = 400
-const RESERVED_COUNTDOWN_HEIGHT_PX = 18
 
 // Work around occasional framer-motion typing mismatches in this codebase (see other usage sites).
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -273,8 +275,7 @@ export default function PromoSection({
 
             {hasAnyCountdown && (
               <div
-                className="mt-0.5 flex items-center justify-center text-[11px] font-medium tabular-nums text-white/90 md:text-xs"
-                style={{ height: RESERVED_COUNTDOWN_HEIGHT_PX }}
+                className="mt-0.5 flex min-h-6 items-center justify-center text-base font-semibold tabular-nums leading-none text-white md:min-h-7 md:text-lg"
                 aria-live={countdownVisible ? 'polite' : 'off'}
                 role={countdownVisible ? 'timer' : undefined}
               >

@@ -13,24 +13,22 @@ export type PromoItem = {
 }
 
 const DEFAULT_PROMOS: PromoItem[] = [
-  // {
-  //   text: {
-  //     he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
-  //     en: 'Shipping is free to all Israel, on orders over 300₪',
-  //   },
-  //   href: '/collection/women/',
-  //   icon: '🚚',
-  //   // Countdown until May 3, 2026 midnight (local time).
-  //   // countdownEnd: '2026-05-03T00:00:00',
-  // },
-  // {
-  //    text: {
-  //      he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
-  //      en: 'Outlet category – up to 70% discount + 10% extra | Coupon: OUT10',
-  //    },
-  //    href: '/collection/women/outlet',
-  //    icon: '🔥',
-  //  },
+  {
+    text: {
+      he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
+      en: 'Shipping is free to all Israel, on orders over 300₪',
+    },
+    href: '/collection/women/',
+    icon: '🚚',
+  },
+  {
+     text: {
+       he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
+       en: 'Outlet category – up to 70% discount + 10% extra | Coupon: OUT10',
+     },
+     href: '/collection/women/outlet',
+     icon: '🔥',
+   },
   //  {
   //   text: {
   //     he: 'זוג שני ב־40% הנחה על מגוון מוצרי סניקרס | קוד: SNK40',
@@ -41,16 +39,16 @@ const DEFAULT_PROMOS: PromoItem[] = [
   //   // Countdown until May 17, 2026 midnight (local time).
   //   // countdownEnd: '2026-05-17T00:00:00',
   // },
-  {
-    text: {
-      he: 'נשאיר אתזה בסוד.. 10% הנחה על כל האתר, עד חצות | קוד: MON10',
-      en: 'Let’s Keep It a Secret... 10% Off Sitewide | Until Midnight | Code: MON10',
-    },
-    href: '/collection/women/',
-    icon: '🤫',
-    // Countdown until June 9, 2026 midnight (local time).
-    countdownEnd: '2026-06-09T00:00:00',
-  },
+  // {
+  //   text: {
+  //     he: 'נשאיר אתזה בסוד.. 10% הנחה על כל האתר, עד חצות | קוד: MON10',
+  //     en: 'Let’s Keep It a Secret... 10% Off Sitewide | Until Midnight | Code: MON10',
+  //   },
+  //   href: '/collection/women/',
+  //   icon: '🤫',
+  //   // Countdown until June 9, 2026 midnight (local time).
+  //   countdownEnd: '2026-06-09T00:00:00',
+  // },
 
 ]
 

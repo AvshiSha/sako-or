@@ -25,6 +25,7 @@ const translations = {
     home: 'Home',
     newCollection: 'New Collection',
     about: 'About',
+    blog: 'Blog',
     contact: 'Contact',
     copyright: '© 2025 SAKO-OR. All rights reserved.',
     newsletterDescription: 'Subscribe to our newsletter for updates and exclusive offers.',
@@ -54,6 +55,7 @@ const translations = {
     home: 'בית',
     newCollection: 'קולקציה חדשה',
     about: 'אודות',
+    blog: 'בלוג',
     contact: 'צור קשר',
     copyright: '© 2025 סכו עור. כל הזכויות שמורות.',
     newsletterDescription: 'הירשמו לעולמנו לקבלת עדכונים בלעדיים, גישה מוקדמת לקולקציה החדשה והמלצות לסגנון מותאמות אישית אלייך',
@@ -136,6 +138,14 @@ function FooterInner({ lng }: { lng: string }) {
                       className="block text-sm hover:opacity-70 transition-opacity"
                     >
                       {t.about}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/news`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.blog}
                     </Link>
                   </li>
                   <li>
@@ -293,6 +303,14 @@ function FooterInner({ lng }: { lng: string }) {
                       className="block text-sm hover:opacity-70 transition-opacity"
                     >
                       {t.about}
+                    </Link>
+                  </li>
+                  <li>
+                    <Link 
+                      href={`/${lng}/news`}
+                      className="block text-sm hover:opacity-70 transition-opacity"
+                    >
+                      {t.blog}
                     </Link>
                   </li>
                   <li>

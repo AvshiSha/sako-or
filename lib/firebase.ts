@@ -264,6 +264,10 @@ export interface Category {
   isEnabled: boolean; // Enable/disable toggle
   sortOrder: number; // For ordering within the same level
   path: string; // Full path like "women/shoes/heels"
+  contentTitle?: LocalizedString;
+  seoTitle?: LocalizedString;
+  seoDescription?: LocalizedString;
+  seoContent?: LocalizedString;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -374,6 +378,27 @@ export interface CampaignProductFilter {
   limit?: number;
   orderBy?: 'createdAt' | 'salePrice' | 'popularity';
   orderDirection?: 'asc' | 'desc';
+}
+
+export type BlogArticleStatus = 'draft' | 'published';
+
+export interface BlogArticle {
+  id: string;
+  slug: string;
+  title: LocalizedString;
+  excerpt: LocalizedString;
+  content: LocalizedString;
+  featuredImage: string;
+  featuredImageAlt: LocalizedString;
+  status: BlogArticleStatus;
+  publishedAt: string;
+  seoTitle?: LocalizedString;
+  seoDescription?: LocalizedString;
+  ogTitle?: LocalizedString;
+  ogDescription?: LocalizedString;
+  ogImage?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Campaign {
@@ -3762,4 +3787,151 @@ export const campaignService = {
       throw error;
     }
   }
+};
+
+const BLOG_COLLECTION = 'blogArticles';
+
+function hasLocalizedContent(value?: LocalizedString): boolean {
+  return Boolean(value && (value.en?.trim() || value.he?.trim()));
+}
+
+function cleanBlogLocalizedFields(data: Partial<BlogArticle>): Record<string, unknown> {
+  const clean: Record<string, unknown> = {};
+
+  if (data.title) clean.title = data.title;
+  if (data.excerpt) clean.excerpt = data.excerpt;
+  if (data.content) clean.content = data.content;
+  if (data.featuredImage) clean.featuredImage = data.featuredImage;
+  if (data.featuredImageAlt) clean.featuredImageAlt = data.featuredImageAlt;
+  if (data.status) clean.status = data.status;
+  if (data.publishedAt) clean.publishedAt = data.publishedAt;
+  if (hasLocalizedContent(data.seoTitle)) clean.seoTitle = data.seoTitle;
+  if (hasLocalizedContent(data.seoDescription)) clean.seoDescription = data.seoDescription;
+  if (hasLocalizedContent(data.ogTitle)) clean.ogTitle = data.ogTitle;
+  if (hasLocalizedContent(data.ogDescription)) clean.ogDescription = data.ogDescription;
+  if (data.ogImage) clean.ogImage = data.ogImage;
+
+  return clean;
+}
+
+export const blogService = {
+  async getAllArticles(): Promise<BlogArticle[]> {
+    try {
+      const q = query(collection(db, BLOG_COLLECTION), orderBy('updatedAt', 'desc'));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as BlogArticle[];
+    } catch (error) {
+      console.error('Error fetching blog articles:', error);
+      throw error;
+    }
+  },
+
+  async getPublishedArticles(
+    page = 1,
+    pageSize = 12
+  ): Promise<{ articles: BlogArticle[]; total: number; page: number; hasMore: boolean }> {
+    try {
+      const q = query(
+        collection(db, BLOG_COLLECTION),
+        where('status', '==', 'published'),
+        orderBy('publishedAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      const all = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as BlogArticle[];
+
+      const total = all.length;
+      const start = (page - 1) * pageSize;
+      const articles = all.slice(start, start + pageSize);
+      const hasMore = start + pageSize < total;
+
+      return { articles, total, page, hasMore };
+    } catch (error) {
+      console.error('Error fetching published articles:', error);
+      throw error;
+    }
+  },
+
+  async getArticleById(id: string): Promise<BlogArticle | null> {
+    try {
+      const docRef = doc(db, BLOG_COLLECTION, id);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return null;
+      return { id: docSnap.id, ...docSnap.data() } as BlogArticle;
+    } catch (error) {
+      console.error('Error fetching blog article:', error);
+      throw error;
+    }
+  },
+
+  async getArticleBySlug(slug: string): Promise<BlogArticle | null> {
+    try {
+      const q = query(collection(db, BLOG_COLLECTION), where('slug', '==', slug), limit(1));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) return null;
+      const docSnap = snapshot.docs[0];
+      return { id: docSnap.id, ...docSnap.data() } as BlogArticle;
+    } catch (error) {
+      console.error('Error fetching blog article by slug:', error);
+      throw error;
+    }
+  },
+
+  async checkSlugUnique(slug: string, excludeId?: string): Promise<boolean> {
+    const existing = await this.getArticleBySlug(slug);
+    if (!existing) return true;
+    return excludeId ? existing.id === excludeId : false;
+  },
+
+  async createArticle(data: Omit<BlogArticle, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      const now = new Date().toISOString();
+      const docRef = await addDoc(collection(db, BLOG_COLLECTION), {
+        ...cleanBlogLocalizedFields(data),
+        slug: data.slug,
+        featuredImage: data.featuredImage || '',
+        featuredImageAlt: data.featuredImageAlt || { en: '', he: '' },
+        status: data.status,
+        publishedAt: data.publishedAt || now,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating blog article:', error);
+      throw error;
+    }
+  },
+
+  async updateArticle(id: string, data: Partial<BlogArticle>): Promise<void> {
+    try {
+      const docRef = doc(db, BLOG_COLLECTION, id);
+      await updateDoc(docRef, {
+        ...cleanBlogLocalizedFields(data),
+        ...(data.slug !== undefined ? { slug: data.slug } : {}),
+        ...(data.featuredImage !== undefined ? { featuredImage: data.featuredImage } : {}),
+        ...(data.featuredImageAlt !== undefined ? { featuredImageAlt: data.featuredImageAlt } : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.publishedAt !== undefined ? { publishedAt: data.publishedAt } : {}),
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Error updating blog article:', error);
+      throw error;
+    }
+  },
+
+  async deleteArticle(id: string): Promise<void> {
+    try {
+      await deleteDoc(doc(db, BLOG_COLLECTION, id));
+    } catch (error) {
+      console.error('Error deleting blog article:', error);
+      throw error;
+    }
+  },
 }; 

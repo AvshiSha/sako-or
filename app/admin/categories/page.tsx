@@ -11,11 +11,15 @@ import {
   ChevronDownIcon,
   EyeIcon,
   EyeSlashIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  ChevronUpIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import SuccessMessage from '@/app/components/SuccessMessage'
+import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
+import { uploadCmsImage } from '@/lib/upload-cms-image'
+import { revalidateCmsPaths } from '@/lib/cms-utils'
 
 interface CategoryWithChildren extends Category {
   children?: CategoryWithChildren[]
@@ -31,6 +35,8 @@ function CategoriesPage() {
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+  const [seoSectionOpen, setSeoSectionOpen] = useState(false)
+  const [seoActiveTab, setSeoActiveTab] = useState<'en' | 'he'>('en')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -43,7 +49,15 @@ function CategoriesPage() {
     image: '',
     level: 0,
     parentId: '',
-    isEnabled: true
+    isEnabled: true,
+    contentTitleEn: '',
+    contentTitleHe: '',
+    seoTitleEn: '',
+    seoTitleHe: '',
+    seoDescriptionEn: '',
+    seoDescriptionHe: '',
+    seoContentEn: '',
+    seoContentHe: '',
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -396,6 +410,31 @@ function CategoriesPage() {
         categoryData.parentId = formData.parentId
       }
 
+      if (formData.contentTitleEn.trim() || formData.contentTitleHe.trim()) {
+        categoryData.contentTitle = {
+          en: formData.contentTitleEn,
+          he: formData.contentTitleHe,
+        }
+      }
+      if (formData.seoTitleEn.trim() || formData.seoTitleHe.trim()) {
+        categoryData.seoTitle = {
+          en: formData.seoTitleEn,
+          he: formData.seoTitleHe,
+        }
+      }
+      if (formData.seoDescriptionEn.trim() || formData.seoDescriptionHe.trim()) {
+        categoryData.seoDescription = {
+          en: formData.seoDescriptionEn,
+          he: formData.seoDescriptionHe,
+        }
+      }
+      if (formData.seoContentEn.trim() || formData.seoContentHe.trim()) {
+        categoryData.seoContent = {
+          en: formData.seoContentEn,
+          he: formData.seoContentHe,
+        }
+      }
+
       if (editingCategory && editingCategory.id) {
         // Update existing category
         await categoryService.updateCategory(editingCategory.id, categoryData)
@@ -412,6 +451,13 @@ function CategoriesPage() {
       setSelectedParent(null)
       resetForm()
       fetchCategories()
+
+      if (editingCategory?.path) {
+        await revalidateCmsPaths([
+          `/en/collection/${editingCategory.path}`,
+          `/he/collection/${editingCategory.path}`,
+        ])
+      }
       
       setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
@@ -431,9 +477,19 @@ function CategoriesPage() {
       image: '',
       level: 0,
       parentId: '',
-      isEnabled: true
+      isEnabled: true,
+      contentTitleEn: '',
+      contentTitleHe: '',
+      seoTitleEn: '',
+      seoTitleHe: '',
+      seoDescriptionEn: '',
+      seoDescriptionHe: '',
+      seoContentEn: '',
+      seoContentHe: '',
     })
     setErrors({})
+    setSeoSectionOpen(false)
+    setSeoActiveTab('en')
   }
 
   const handleEdit = (category: Category) => {
@@ -448,8 +504,21 @@ function CategoriesPage() {
       image: category.image || '',
       level: category.level,
       parentId: category.parentId || '',
-      isEnabled: category.isEnabled
+      isEnabled: category.isEnabled,
+      contentTitleEn: category.contentTitle?.en || '',
+      contentTitleHe: category.contentTitle?.he || '',
+      seoTitleEn: category.seoTitle?.en || '',
+      seoTitleHe: category.seoTitle?.he || '',
+      seoDescriptionEn: category.seoDescription?.en || '',
+      seoDescriptionHe: category.seoDescription?.he || '',
+      seoContentEn: category.seoContent?.en || '',
+      seoContentHe: category.seoContent?.he || '',
     })
+    setSeoSectionOpen(Boolean(
+      category.contentTitle?.en || category.contentTitle?.he ||
+      category.seoTitle?.en || category.seoTitle?.he ||
+      category.seoContent?.en || category.seoContent?.he
+    ))
     setShowForm(true)
   }
 
@@ -465,8 +534,17 @@ function CategoriesPage() {
       image: '',
       level: parentCategory.level + 1,
       parentId: parentCategory.id!,
-      isEnabled: true
+      isEnabled: true,
+      contentTitleEn: '',
+      contentTitleHe: '',
+      seoTitleEn: '',
+      seoTitleHe: '',
+      seoDescriptionEn: '',
+      seoDescriptionHe: '',
+      seoContentEn: '',
+      seoContentHe: '',
     })
+    setSeoSectionOpen(false)
     setShowForm(true)
   }
 
@@ -914,6 +992,131 @@ function CategoriesPage() {
                 <p className="mt-1 text-xs text-gray-500">
                   Disabled categories will not appear in the navigation
                 </p>
+              </div>
+
+              {/* SEO Content Section */}
+              <div className="border-t border-gray-200 pt-6">
+                <button
+                  type="button"
+                  onClick={() => setSeoSectionOpen((v) => !v)}
+                  className="flex w-full items-center justify-between text-left"
+                >
+                  <div>
+                    <h3 className="text-base font-medium text-gray-900">SEO Content</h3>
+                    <p className="text-sm text-gray-500">
+                      Visible page content and meta tags for the collection page
+                    </p>
+                  </div>
+                  {seoSectionOpen ? (
+                    <ChevronUpIcon className="h-5 w-5 text-gray-500" />
+                  ) : (
+                    <ChevronDownIcon className="h-5 w-5 text-gray-500" />
+                  )}
+                </button>
+
+                {seoSectionOpen && (
+                  <div className="mt-6 space-y-6">
+                    <div className="flex gap-2 border-b border-gray-200">
+                      {(['en', 'he'] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setSeoActiveTab(tab)}
+                          className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+                            seoActiveTab === tab
+                              ? 'border-indigo-600 text-indigo-600'
+                              : 'border-transparent text-gray-500 hover:text-gray-700'
+                          }`}
+                        >
+                          {tab === 'en' ? 'English' : 'Hebrew'}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Visible Content Title ({seoActiveTab.toUpperCase()})
+                      </label>
+                      <input
+                        type="text"
+                        value={seoActiveTab === 'en' ? formData.contentTitleEn : formData.contentTitleHe}
+                        onChange={(e) =>
+                          handleInputChange(
+                            seoActiveTab === 'en' ? 'contentTitleEn' : 'contentTitleHe',
+                            e.target.value
+                          )
+                        }
+                        dir={seoActiveTab === 'he' ? 'rtl' : 'ltr'}
+                        className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Displayed above the SEO content section on the collection page"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Separate from Collection Name — used only as the heading above the content block
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        SEO Title / Meta Title ({seoActiveTab.toUpperCase()})
+                      </label>
+                      <input
+                        type="text"
+                        value={seoActiveTab === 'en' ? formData.seoTitleEn : formData.seoTitleHe}
+                        onChange={(e) =>
+                          handleInputChange(
+                            seoActiveTab === 'en' ? 'seoTitleEn' : 'seoTitleHe',
+                            e.target.value
+                          )
+                        }
+                        dir={seoActiveTab === 'he' ? 'rtl' : 'ltr'}
+                        className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Used only for Google and browser tabs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        SEO Description / Meta Description ({seoActiveTab.toUpperCase()})
+                      </label>
+                      <textarea
+                        value={seoActiveTab === 'en' ? formData.seoDescriptionEn : formData.seoDescriptionHe}
+                        onChange={(e) =>
+                          handleInputChange(
+                            seoActiveTab === 'en' ? 'seoDescriptionEn' : 'seoDescriptionHe',
+                            e.target.value
+                          )
+                        }
+                        dir={seoActiveTab === 'he' ? 'rtl' : 'ltr'}
+                        rows={2}
+                        className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Used only for search engine meta description"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Rich Content ({seoActiveTab.toUpperCase()})
+                      </label>
+                      <RichTextEditor
+                        key={seoActiveTab}
+                        editorKey={seoActiveTab}
+                        value={seoActiveTab === 'en' ? formData.seoContentEn : formData.seoContentHe}
+                        onChange={(html) =>
+                          handleInputChange(
+                            seoActiveTab === 'en' ? 'seoContentEn' : 'seoContentHe',
+                            html
+                          )
+                        }
+                        onUploadImage={(file) => uploadCmsImage(file, 'categories', true)}
+                        dir={seoActiveTab === 'he' ? 'rtl' : 'ltr'}
+                        placeholder={seoActiveTab === 'he' ? 'כתבו תוכן SEO לקולקציה…' : 'Write collection SEO content…'}
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Images are resized to max 1200×628 before upload
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end space-x-4">

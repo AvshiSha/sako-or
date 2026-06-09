@@ -126,6 +126,7 @@ export async function generateMetadata({
     ? 'גלה את כל המוצרים שלנו - נעליים, תיקים ואביזרי אופנה באיכות גבוהה'
     : 'Discover all our products - shoes, bags, and fashion accessories of the highest quality';
   let categoryImage: string | undefined;
+  let categorySeoTitle: string | undefined;
 
   if (categoryPath) {
     try {
@@ -139,6 +140,7 @@ export async function generateMetadata({
 
         if (category) {
           categoryName = category.name[locale] || category.name.en || categoryName;
+          categorySeoTitle = category.seoTitle?.[locale] || category.seoTitle?.en;
 
           // If we are on a level-2 category page, prepend the parent (level-1) category name.
           // Example: women/shoes/boots -> "Shoes Boots" (localized)
@@ -153,7 +155,8 @@ export async function generateMetadata({
             }
           }
 
-          categoryDescription = category.description?.[locale] ||
+          categoryDescription = category.seoDescription?.[locale] ||
+            category.description?.[locale] ||
             category.description?.en ||
             categoryDescription;
           categoryImage = category.image;
@@ -172,8 +175,7 @@ export async function generateMetadata({
   const queryString = page > 1 ? `?page=${page}` : '';
   const url = `${baseUrl}${queryString}`;
 
-  // Generate title and description
-  const title = `${categoryName} | SAKO-OR`;
+  const title = categorySeoTitle || `${categoryName} | SAKO-OR`;
   const description = categoryDescription;
 
   // Build alternate locales with page param
@@ -319,6 +321,32 @@ export default async function CollectionSlugPage({
     searchQuery,
   });
 
+  let categorySeoContentTitle: string | undefined;
+  let categorySeoContentHtml: string | undefined;
+
+  if (!searchQuery && categoryPath) {
+    try {
+      const locale = lng as 'en' | 'he';
+      const categoryIdsResult = await categoryService.getCategoryIdsFromPath(categoryPath, locale);
+      if (categoryIdsResult?.categoryIds.length) {
+        const targetId = categoryIdsResult.categoryIds[categoryIdsResult.categoryIds.length - 1];
+        const targetCategory = await categoryService.getCategoryById(targetId);
+        if (targetCategory) {
+          categorySeoContentTitle =
+            targetCategory.contentTitle?.[locale] ||
+            targetCategory.contentTitle?.en ||
+            undefined;
+          categorySeoContentHtml =
+            targetCategory.seoContent?.[locale] ||
+            targetCategory.seoContent?.en ||
+            undefined;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching category SEO content:', error);
+    }
+  }
+
   return (
     <CollectionClient
       key={collectionFilterKey}
@@ -337,6 +365,8 @@ export default async function CollectionSlugPage({
       initialSort={initialSort}
       initialMinPrice={initialMinPrice}
       initialMaxPrice={initialMaxPrice}
+      categorySeoContentTitle={categorySeoContentTitle}
+      categorySeoContentHtml={categorySeoContentHtml}
     />
   );
 }

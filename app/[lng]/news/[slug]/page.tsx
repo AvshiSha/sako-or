@@ -126,16 +126,20 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           {locale === 'he' ? '← חזרה לבלוג' : '← Back to News'}
         </Link>
 
-        <header className="mb-8 md:mb-10">
-          <time className="text-sm text-gray-500">{date}</time>
+        <header className="mb-4 md:mb-6 text-center">
           <h1
-            className="mt-2 text-3xl md:text-4xl font-bold text-black leading-tight"
+            className="text-3xl md:text-4xl font-bold text-black leading-tight"
             style={{ fontFamily: 'Poppins, sans-serif' }}
           >
             {title}
           </h1>
+          {date && (
+            <time className="mt-4 block text-sm text-gray-500">{date}</time>
+          )}
           {excerpt && (
-            <p className="mt-4 text-lg text-gray-600 leading-relaxed">{excerpt}</p>
+            <p className="mt-6 text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto">
+              {excerpt}
+            </p>
           )}
         </header>
 

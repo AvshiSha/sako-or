@@ -248,7 +248,7 @@ export default function RichTextEditor({
       </div>
       <div
         dir={dir}
-        className="relative text-gray-900 [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:px-3 [&_.ProseMirror]:py-2 [&_.ProseMirror]:text-gray-900 [&_.ProseMirror]:caret-black [&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:ps-6 [&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:ps-6 [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold"
+        className="cms-content relative text-gray-900 [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:px-3 [&_.ProseMirror]:py-2 [&_.ProseMirror]:text-gray-900 [&_.ProseMirror]:caret-black [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold"
       >
         <EditorContent editor={editor} />
         {placeholder && !editor.getText().trim() && (

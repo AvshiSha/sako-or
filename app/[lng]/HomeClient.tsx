@@ -7,8 +7,8 @@ import Image from 'next/image'
 import { useParams, usePathname } from 'next/navigation'
 import {
   getImageUrl,
-  getHeroDesktopVideoUrl,
-  getHeroMobileVideoUrl,
+  getSummerSaleHeroDesktopImageUrl,
+  getSummerSaleHeroMobileImageUrl,
   getSakoOrMobileVideoUrl,
   getSakoOrDesktopVideoUrl,
   getHero3DesktopVideoUrl,
@@ -25,12 +25,18 @@ function HeroVideoSection({
   posterSrc,
   children,
   overlayOpacity = 'bg-neutral-900/60',
+  desktopObjectPosition = 'center',
+  mobileObjectPosition = 'center',
 }: {
   desktopSrc: string
   mobileSrc: string
   posterSrc: string
   children?: React.ReactNode
   overlayOpacity?: string
+  /** CSS object-position for desktop media (e.g. "center top", "50% 20%") */
+  desktopObjectPosition?: string
+  /** CSS object-position for mobile media (e.g. "center top", "50% 20%") */
+  mobileObjectPosition?: string
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const desktopRef = useRef<HTMLVideoElement>(null)
@@ -114,6 +120,7 @@ function HeroVideoSection({
           <video
             ref={desktopRef}
             className="hidden md:block h-full w-full object-cover"
+            style={{ objectPosition: desktopObjectPosition }}
             muted
             loop
             playsInline
@@ -130,6 +137,7 @@ function HeroVideoSection({
             fill
             sizes="(min-width: 768px) 100vw, 0px"
             className="hidden md:block object-cover"
+            style={{ objectPosition: desktopObjectPosition }}
             priority={false}
             aria-hidden="true"
           />
@@ -139,6 +147,7 @@ function HeroVideoSection({
           <video
             ref={mobileRef}
             className="block md:hidden h-full w-full object-cover"
+            style={{ objectPosition: mobileObjectPosition }}
             muted
             loop
             playsInline
@@ -155,6 +164,7 @@ function HeroVideoSection({
             fill
             sizes="(max-width: 768px) 100vw, 0px"
             className="block md:hidden object-cover"
+            style={{ objectPosition: mobileObjectPosition }}
             priority={false}
             aria-hidden="true"
           />
@@ -503,8 +513,8 @@ export default function HomeClient() {
   const t = translations[lng]
 
   const heroImageSrc = getImageUrl('/images/hero/main-hero.jpg')
-  const heroDesktopVideoSrc = getHeroDesktopVideoUrl()
-  const heroMobileVideoSrc = getHeroMobileVideoUrl()
+  const heroDesktopSrc = getSummerSaleHeroDesktopImageUrl()
+  const heroMobileSrc = getSummerSaleHeroMobileImageUrl()
   const sakoOrMobileVideoSrc = getSakoOrMobileVideoUrl()
   const sakoOrDesktopVideoSrc = getSakoOrDesktopVideoUrl()
   const hero3DesktopVideoSrc = getHero3DesktopVideoUrl()
@@ -514,10 +524,11 @@ export default function HomeClient() {
     <div className={isRTL ? 'text-right' : 'text-left'} style={{ backgroundColor: '#FFFFFF' }}>
       {/* Hero section */}
       <HeroVideoSection
-        desktopSrc={heroDesktopVideoSrc}
-        mobileSrc={heroMobileVideoSrc}
+        desktopSrc={heroDesktopSrc}
+        mobileSrc={heroMobileSrc}
         posterSrc={heroImageSrc}
         overlayOpacity="bg-transparent"
+        mobileObjectPosition="center top"
       >
         <div className="relative h-full flex flex-col items-center text-center">
           <div className="absolute bottom-[15%] md:bottom-[10%] left-0 right-0 max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">

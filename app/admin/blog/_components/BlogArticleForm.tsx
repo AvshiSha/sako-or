@@ -311,7 +311,13 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
           onChange={(html) => updateLocalized('content', activeTab, html)}
           onUploadImage={uploadBlogImage}
           dir={activeTab === 'he' ? 'rtl' : 'ltr'}
-          placeholder={activeTab === 'he' ? 'כתבו את תוכן המאמר…' : 'Write your article content…'}
+          placeholder={
+            isEdit
+              ? undefined
+              : activeTab === 'he'
+                ? 'כתבו את תוכן המאמר…'
+                : 'Write your article content…'
+          }
         />
       </div>
 

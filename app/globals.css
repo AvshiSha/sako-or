@@ -225,11 +225,77 @@ body {
 }
 
 /* Shared CMS rich text: editor + public article/collection content (LTR + RTL) */
+.cms-content {
+  max-width: none;
+  line-height: 1.625;
+}
+
+.cms-content p {
+  margin-block: 0 1rem;
+  font-size: 1.125rem;
+  line-height: 1.625;
+  color: #374151;
+}
+
+.cms-content p:last-child {
+  margin-block-end: 0;
+}
+
+.cms-content h2 {
+  margin-block: 2rem 1rem;
+  font-size: 1.5rem;
+  line-height: 1.3;
+  font-weight: 600;
+  color: #111827;
+}
+
+.cms-content h3 {
+  margin-block: 1.5rem 0.75rem;
+  font-size: 1.25rem;
+  line-height: 1.35;
+  font-weight: 600;
+  color: #111827;
+}
+
+.cms-content strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.cms-content em {
+  font-style: italic;
+}
+
+.cms-content a {
+  color: #856d55;
+  text-decoration: underline;
+}
+
+.cms-content a:hover {
+  text-decoration: underline;
+}
+
+.cms-content img {
+  margin-block: 1.5rem;
+  max-width: 100%;
+  border-radius: 0.375rem;
+}
+
+.cms-content .youtube-embed,
+.cms-content iframe {
+  margin-block: 1.5rem;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 0.375rem;
+}
+
 .cms-content ul,
 .cms-content ol {
   margin-block: 0 1rem;
   padding-inline-start: 1.125rem;
   list-style-position: outside;
+  color: #374151;
 }
 
 .cms-content ul {
@@ -245,10 +311,13 @@ body {
   padding-inline-start: 0.125rem;
 }
 
-/* Tiptap wraps list item text in <p> — remove extra block gap */
+/* Tiptap may wrap list item text in <p> — remove extra block gap */
 .cms-content li > p {
   margin: 0;
   display: inline;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
 }
 
 .cms-content li > p + p {
@@ -265,4 +334,22 @@ body {
 /* Intentional blank line between paragraphs (empty <p> from pressing Enter) */
 .cms-content p:empty {
   min-height: 1.25rem;
+}
+
+/* Admin editor: match public article column width and editing chrome */
+.cms-editor .ProseMirror {
+  min-height: 280px;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding: 1rem 0.75rem;
+  outline: none;
+  caret-color: #111827;
+}
+
+.cms-editor .ProseMirror:focus {
+  outline: none;
+}
+
+.cms-editor .ProseMirror ::selection {
+  background-color: rgb(133 109 85 / 0.2);
 }

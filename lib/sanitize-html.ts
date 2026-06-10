@@ -1,4 +1,5 @@
 import sanitizeHtmlLib from 'sanitize-html'
+import { cleanupCmsHtml } from './cms-html-cleanup'
 
 const ALLOWED_TAGS = [
   'p',
@@ -21,9 +22,10 @@ const ALLOWED_TAGS = [
  * Uses sanitize-html (Node-safe) instead of jsdom-based DOMPurify for Vercel compatibility.
  */
 export function sanitizeCmsHtml(html: string): string {
-  if (!html?.trim()) return ''
+  const cleaned = cleanupCmsHtml(html)
+  if (!cleaned) return ''
 
-  return sanitizeHtmlLib(html, {
+  return sanitizeHtmlLib(cleaned, {
     allowedTags: ALLOWED_TAGS,
     allowedAttributes: {
       a: ['href', 'target', 'rel', 'title', 'class'],

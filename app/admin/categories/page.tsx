@@ -18,6 +18,7 @@ import Link from 'next/link'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
+import { cleanupCmsHtml } from '@/lib/cms-html-cleanup'
 import { uploadCmsImage } from '@/lib/upload-cms-image'
 import { revalidateCmsPaths } from '@/lib/cms-utils'
 
@@ -430,8 +431,8 @@ function CategoriesPage() {
       }
       if (formData.seoContentEn.trim() || formData.seoContentHe.trim()) {
         categoryData.seoContent = {
-          en: formData.seoContentEn,
-          he: formData.seoContentHe,
+          en: cleanupCmsHtml(formData.seoContentEn),
+          he: cleanupCmsHtml(formData.seoContentHe),
         }
       }
 
@@ -511,8 +512,8 @@ function CategoriesPage() {
       seoTitleHe: category.seoTitle?.he || '',
       seoDescriptionEn: category.seoDescription?.en || '',
       seoDescriptionHe: category.seoDescription?.he || '',
-      seoContentEn: category.seoContent?.en || '',
-      seoContentHe: category.seoContent?.he || '',
+      seoContentEn: cleanupCmsHtml(category.seoContent?.en || ''),
+      seoContentHe: cleanupCmsHtml(category.seoContent?.he || ''),
     })
     setSeoSectionOpen(Boolean(
       category.contentTitle?.en || category.contentTitle?.he ||

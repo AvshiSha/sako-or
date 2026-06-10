@@ -20,7 +20,7 @@ const translations = {
     next: 'Next',
   },
   he: {
-    title: 'חדשות ובלוג',
+    title: 'הבלוג של סכו עור',
     description: 'טיפים לסגנון, מדריכי מוצרים וחדשות מסכו עור.',
     readMore: 'קרא את המאמר',
     page: 'עמוד',
@@ -68,10 +68,10 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 md:py-16">
-        <header className="mb-12 text-center">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-8 md:py-12">
+        <header className="mb-10 md:mb-12 text-center">
           <h1
-            className="text-3xl md:text-4xl font-bold text-black mb-4"
+            className="text-3xl md:text-4xl font-bold text-black mb-2"
             style={{ fontFamily: 'Poppins, sans-serif' }}
           >
             {t.title}
@@ -81,7 +81,7 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
         {articles.length === 0 ? (
           <p className="text-center text-gray-500">{locale === 'he' ? 'אין מאמרים עדיין.' : 'No articles yet.'}</p>
         ) : (
-          <div className="space-y-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
             {articles.map((article) => {
               const title = article.title[locale] || article.title.en || article.slug
               const excerpt = article.excerpt[locale] || article.excerpt.en || ''
@@ -96,26 +96,28 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
               return (
                 <article
                   key={article.id}
-                  className="group border-b border-gray-100 pb-10 last:border-0"
+                  className="group flex flex-col"
                 >
-                  <Link href={`/${lng}/news/${article.slug}`} className="block">
+                  <Link href={`/${lng}/news/${article.slug}`} className="flex flex-col h-full">
                     {article.featuredImage && (
-                      <div className="relative mb-5 aspect-[16/9] overflow-hidden rounded-md bg-gray-100">
+                      <div className="relative mb-4 aspect-[16/9] overflow-hidden rounded-md bg-gray-100">
                         <Image
                           src={article.featuredImage}
                           alt={article.featuredImageAlt?.[locale] || title}
                           fill
                           className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                          sizes="(max-width: 768px) 100vw, 896px"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                       </div>
                     )}
                     <time className="text-sm text-gray-500">{date}</time>
-                    <h2 className="mt-2 text-xl md:text-2xl font-semibold text-black group-hover:text-[#856D55] transition-colors">
+                    <h2 className="mt-2 text-lg md:text-xl font-semibold text-black group-hover:text-[#856D55] transition-colors line-clamp-2">
                       {title}
                     </h2>
                     {excerpt && (
-                      <p className="mt-3 text-gray-600 leading-relaxed line-clamp-3">{excerpt}</p>
+                      <p className="mt-2 text-sm md:text-base text-gray-600 leading-relaxed line-clamp-3 flex-grow">
+                        {excerpt}
+                      </p>
                     )}
                     <span className="mt-4 inline-block text-sm font-medium text-[#856D55]">
                       {t.readMore} →

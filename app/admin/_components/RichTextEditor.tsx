@@ -1,13 +1,16 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, useEditorState } from '@tiptap/react'
+import type { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import ListItem from '@tiptap/extension-list-item'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import Youtube from '@tiptap/extension-youtube'
 import { cleanupCmsHtml, isCmsHtmlEmpty } from '@/lib/cms-html-cleanup'
+import { toggleListFromSelection } from '@/lib/tiptap-list-commands'
+import { cn } from '@/lib/utils'
 import {
   BoldIcon,
   ItalicIcon,
@@ -52,14 +55,125 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`rounded p-1.5 transition-colors ${
+      aria-pressed={active}
+      className={cn(
+        'rounded-md border p-1.5 transition-all',
         active
-          ? 'bg-gray-200 text-black'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-black'
-      } disabled:opacity-40`}
+          ? 'border-[#856D55] bg-[#856D55]/15 text-gray-900 shadow-sm ring-1 ring-[#856D55]/30'
+          : 'border-transparent text-gray-500 hover:border-gray-300 hover:bg-white hover:text-gray-900',
+        disabled && 'cursor-not-allowed opacity-40'
+      )}
     >
       {children}
     </button>
+  )
+}
+
+function EditorToolbar({
+  editor,
+  onUploadImage,
+  onAddImage,
+  onAddYoutube,
+  onSetLink,
+}: {
+  editor: Editor
+  onUploadImage?: (file: File) => Promise<string>
+  onAddImage: () => void
+  onAddYoutube: () => void
+  onSetLink: () => void
+}) {
+  const active = useEditorState({
+    editor,
+    selector: ({ editor: ed }) => ({
+      h2: ed.isActive('heading', { level: 2 }),
+      h3: ed.isActive('heading', { level: 3 }),
+      bold: ed.isActive('bold'),
+      italic: ed.isActive('italic'),
+      bulletList: ed.isActive('bulletList'),
+      orderedList: ed.isActive('orderedList'),
+      link: ed.isActive('link'),
+    }),
+  })
+
+  const toggleHeading = (level: 2 | 3) => {
+    if (editor.isActive('heading', { level })) {
+      editor.chain().focus().setParagraph().run()
+    } else {
+      editor.chain().focus().setHeading({ level }).run()
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
+      <ToolbarButton
+        onClick={() => toggleHeading(2)}
+        active={active.h2}
+        title="Heading 2"
+      >
+        <span className={cn('text-xs font-bold px-0.5', active.h2 && 'text-[#856D55]')}>H2</span>
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => toggleHeading(3)}
+        active={active.h3}
+        title="Heading 3"
+      >
+        <span className={cn('text-xs font-bold px-0.5', active.h3 && 'text-[#856D55]')}>H3</span>
+      </ToolbarButton>
+      <span className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleBold().run()}
+        active={active.bold}
+        title="Bold (Ctrl+B)"
+      >
+        <BoldIcon className={cn('h-4 w-4', active.bold && 'stroke-[2.5px] text-[#856D55]')} />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleItalic().run()}
+        active={active.italic}
+        title="Italic (Ctrl+I)"
+      >
+        <ItalicIcon className={cn('h-4 w-4', active.italic && 'stroke-[2.5px] text-[#856D55]')} />
+      </ToolbarButton>
+      <span className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
+      <ToolbarButton
+        onClick={() => toggleListFromSelection(editor, 'bulletList')}
+        active={active.bulletList}
+        title="Bullet list"
+      >
+        <ListBulletIcon
+          className={cn('h-4 w-4', active.bulletList && 'stroke-[2.5px] text-[#856D55]')}
+        />
+      </ToolbarButton>
+      <ToolbarButton
+        onClick={() => toggleListFromSelection(editor, 'orderedList')}
+        active={active.orderedList}
+        title="Numbered list"
+      >
+        <span
+          className={cn(
+            'text-xs font-semibold px-0.5',
+            active.orderedList && 'text-[#856D55]'
+          )}
+        >
+          1.
+        </span>
+      </ToolbarButton>
+      <span className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
+      <ToolbarButton onClick={onSetLink} active={active.link} title="Link">
+        <LinkIcon className={cn('h-4 w-4', active.link && 'stroke-[2.5px] text-[#856D55]')} />
+      </ToolbarButton>
+      {onUploadImage && (
+        <ToolbarButton onClick={onAddImage} title="Insert image">
+          <PhotoIcon className="h-4 w-4" />
+        </ToolbarButton>
+      )}
+      <ToolbarButton onClick={onAddYoutube} title="Insert YouTube video">
+        <VideoCameraIcon className="h-4 w-4" />
+      </ToolbarButton>
+      <span className="ms-auto hidden text-[11px] text-gray-400 sm:inline">
+        Enter = blank line · Shift+Enter = line break
+      </span>
+    </div>
   )
 }
 
@@ -105,8 +219,7 @@ export default function RichTextEditor({
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class:
-          'prose prose-sm max-w-none min-h-[200px] px-3 py-2 focus:outline-none text-gray-900 prose-headings:text-gray-900 prose-p:text-gray-900 prose-li:text-gray-900 prose-strong:text-gray-900',
+        class: 'outline-none',
         dir,
       },
     },
@@ -195,6 +308,11 @@ export default function RichTextEditor({
     editor.commands.setYoutubeVideo({ src: url.trim() })
   }, [editor])
 
+  const hasText = useEditorState({
+    editor,
+    selector: ({ editor: ed }) => Boolean(ed && ed.getText().trim().length > 0),
+  })
+
   if (!editor) {
     return (
       <div className="rounded-md border border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
@@ -205,74 +323,17 @@ export default function RichTextEditor({
 
   return (
     <div dir={dir} className="rounded-md border border-gray-300 bg-white overflow-hidden">
-      <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          active={editor.isActive('heading', { level: 2 })}
-          title="Heading 2"
-        >
-          <span className="text-xs font-bold px-0.5">H2</span>
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          active={editor.isActive('heading', { level: 3 })}
-          title="Heading 3"
-        >
-          <span className="text-xs font-bold px-0.5">H3</span>
-        </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-gray-300" />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          active={editor.isActive('bold')}
-          title="Bold"
-        >
-          <BoldIcon className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          active={editor.isActive('italic')}
-          title="Italic"
-        >
-          <ItalicIcon className="h-4 w-4" />
-        </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-gray-300" />
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          active={editor.isActive('bulletList')}
-          title="Bullet list"
-        >
-          <ListBulletIcon className="h-4 w-4" />
-        </ToolbarButton>
-        <ToolbarButton
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          active={editor.isActive('orderedList')}
-          title="Numbered list"
-        >
-          <span className="text-xs font-medium px-0.5">1.</span>
-        </ToolbarButton>
-        <span className="mx-1 h-5 w-px bg-gray-300" />
-        <ToolbarButton onClick={setLink} active={editor.isActive('link')} title="Link">
-          <LinkIcon className="h-4 w-4" />
-        </ToolbarButton>
-        {onUploadImage && (
-          <ToolbarButton onClick={addImage} title="Insert image">
-            <PhotoIcon className="h-4 w-4" />
-          </ToolbarButton>
-        )}
-        <ToolbarButton onClick={addYoutube} title="Insert YouTube video">
-          <VideoCameraIcon className="h-4 w-4" />
-        </ToolbarButton>
-        <span className="ms-auto hidden text-[11px] text-gray-400 sm:inline">
-          Enter = blank line · Shift+Enter = line break
-        </span>
-      </div>
-      <div
-        dir={dir}
-        className="cms-content relative text-gray-900 [&_.ProseMirror]:min-h-[200px] [&_.ProseMirror]:px-3 [&_.ProseMirror]:py-2 [&_.ProseMirror]:text-gray-900 [&_.ProseMirror]:caret-black [&_.ProseMirror_h2]:text-xl [&_.ProseMirror_h2]:font-bold [&_.ProseMirror_h3]:text-lg [&_.ProseMirror_h3]:font-semibold"
-      >
+      <EditorToolbar
+        editor={editor}
+        onUploadImage={onUploadImage}
+        onAddImage={addImage}
+        onAddYoutube={addYoutube}
+        onSetLink={setLink}
+      />
+      <div dir={dir} className="cms-content cms-editor relative bg-white">
         <EditorContent editor={editor} />
-        {placeholder && !editor.getText().trim() && (
-          <p className="pointer-events-none absolute start-3 top-2 text-sm text-gray-400">
+        {placeholder && !hasText && (
+          <p className="pointer-events-none absolute start-3 top-4 text-sm text-gray-400">
             {placeholder}
           </p>
         )}

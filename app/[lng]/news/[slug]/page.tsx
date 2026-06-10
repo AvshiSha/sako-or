@@ -105,15 +105,28 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 md:py-16">
+      {article.featuredImage && (
+        <div className="relative w-full overflow-hidden bg-gray-100 aspect-[4/3] sm:aspect-[16/9] md:aspect-[21/9]">
+          <Image
+            src={article.featuredImage}
+            alt={featuredAlt}
+            fill
+            className="object-cover object-center"
+            priority
+            sizes="100vw"
+          />
+        </div>
+      )}
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 md:py-12">
         <Link
           href={`/${lng}/news`}
-          className="inline-block text-sm text-[#856D55] hover:underline mb-8"
+          className="inline-block text-sm text-[#856D55] hover:underline mb-6 md:mb-8"
         >
           {locale === 'he' ? '← חזרה לבלוג' : '← Back to News'}
         </Link>
 
-        <header className="mb-8">
+        <header className="mb-8 md:mb-10">
           <time className="text-sm text-gray-500">{date}</time>
           <h1
             className="mt-2 text-3xl md:text-4xl font-bold text-black leading-tight"
@@ -125,19 +138,6 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             <p className="mt-4 text-lg text-gray-600 leading-relaxed">{excerpt}</p>
           )}
         </header>
-
-        {article.featuredImage && (
-          <div className="relative mb-10 aspect-[16/9] overflow-hidden rounded-md bg-gray-100">
-            <Image
-              src={article.featuredImage}
-              alt={featuredAlt}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 768px) 100vw, 768px"
-            />
-          </div>
-        )}
 
         <RichContent
           html={content}

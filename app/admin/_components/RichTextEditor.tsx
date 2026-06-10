@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import ListItem from '@tiptap/extension-list-item'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import Youtube from '@tiptap/extension-youtube'
+import { cleanupCmsHtml, isCmsHtmlEmpty } from '@/lib/cms-html-cleanup'
 import {
   BoldIcon,
   ItalicIcon,
@@ -26,16 +28,8 @@ interface RichTextEditorProps {
 }
 
 function normalizeEditorHtml(html: string): string {
-  const trimmed = html?.trim() ?? ''
-  if (
-    !trimmed ||
-    trimmed === '<p></p>' ||
-    trimmed === '<p><br></p>' ||
-    trimmed === '<p><br class="ProseMirror-trailingBreak"></p>'
-  ) {
-    return ''
-  }
-  return trimmed
+  const cleaned = cleanupCmsHtml(html)
+  return isCmsHtmlEmpty(cleaned) ? '' : cleaned
 }
 
 function ToolbarButton({
@@ -83,6 +77,10 @@ export default function RichTextEditor({
     extensions: [
       StarterKit.configure({
         heading: { levels: [2, 3] },
+        listItem: false,
+      }),
+      ListItem.extend({
+        content: 'inline*',
       }),
       Link.configure({
         openOnClick: false,
@@ -103,7 +101,7 @@ export default function RichTextEditor({
         },
       }),
     ],
-    content: value || '',
+    content: normalizeEditorHtml(value) || '',
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -125,13 +123,32 @@ export default function RichTextEditor({
 
   useEffect(() => {
     if (!editor) return
+
+    const handleBlur = () => {
+      const raw = editor.getHTML()
+      const cleaned = normalizeEditorHtml(raw)
+      if (cleaned !== raw) {
+        isInternalUpdate.current = true
+        editor.commands.setContent(cleaned || '', { emitUpdate: false })
+        onChange(cleaned)
+      }
+    }
+
+    editor.on('blur', handleBlur)
+    return () => {
+      editor.off('blur', handleBlur)
+    }
+  }, [editor, onChange])
+
+  useEffect(() => {
+    if (!editor) return
     if (isInternalUpdate.current) {
       isInternalUpdate.current = false
       return
     }
     const current = editor.getHTML()
     if (normalizeEditorHtml(value) !== normalizeEditorHtml(current)) {
-      editor.commands.setContent(value || '', { emitUpdate: false })
+      editor.commands.setContent(normalizeEditorHtml(value) || '', { emitUpdate: false })
     }
   }, [editor, value, editorKey])
 
@@ -245,6 +262,9 @@ export default function RichTextEditor({
         <ToolbarButton onClick={addYoutube} title="Insert YouTube video">
           <VideoCameraIcon className="h-4 w-4" />
         </ToolbarButton>
+        <span className="ms-auto hidden text-[11px] text-gray-400 sm:inline">
+          Enter = blank line · Shift+Enter = line break
+        </span>
       </div>
       <div
         dir={dir}

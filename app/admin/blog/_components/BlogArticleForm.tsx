@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
 import { uploadCmsImage } from '@/lib/upload-cms-image'
 import { slugify, revalidateCmsPaths } from '@/lib/cms-utils'
+import { cleanupCmsHtml } from '@/lib/cms-html-cleanup'
 
 interface BlogFormData {
   slug: string
@@ -43,7 +44,12 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
     slug: initialData?.slug || '',
     title: initialData?.title || emptyLocalized(),
     excerpt: initialData?.excerpt || emptyLocalized(),
-    content: initialData?.content || emptyLocalized(),
+    content: initialData?.content
+      ? {
+          en: cleanupCmsHtml(initialData.content.en || ''),
+          he: cleanupCmsHtml(initialData.content.he || ''),
+        }
+      : emptyLocalized(),
     featuredImage: initialData?.featuredImage || '',
     featuredImageAlt: initialData?.featuredImageAlt || emptyLocalized(),
     publishedAt: initialData?.publishedAt
@@ -135,7 +141,10 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
         slug: formData.slug,
         title: formData.title,
         excerpt: formData.excerpt,
-        content: formData.content,
+        content: {
+          en: cleanupCmsHtml(formData.content.en),
+          he: cleanupCmsHtml(formData.content.he),
+        },
         featuredImage: formData.featuredImage,
         featuredImageAlt: formData.featuredImageAlt,
         status,

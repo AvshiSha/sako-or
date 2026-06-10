@@ -261,3 +261,8 @@ body {
   margin-block: 0.25rem 0;
   padding-inline-start: 1rem;
 }
+
+/* Intentional blank line between paragraphs (empty <p> from pressing Enter) */
+.cms-content p:empty {
+  min-height: 1.25rem;
+}

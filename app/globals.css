@@ -37,6 +37,12 @@ body {
   z-index: 999999 !important;
 }
 
+/* Hide storefront widgets on admin pages */
+body.admin-panel #vpplugin-toggler,
+body.admin-panel #vpplugin-interface {
+  display: none !important;
+}
+
 /* Accordion animations */
 @keyframes accordion-down {
   from {

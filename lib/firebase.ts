@@ -20,6 +20,7 @@ import {
   inStockSizeKeysFromVariant,
   variantHasSizeInStock,
 } from '@/lib/product-size';
+import { getBaseSku } from '@/lib/sku-parser';
 
 export { productMatchesListingFilters } from '@/lib/collectionFilters';
 
@@ -502,6 +503,92 @@ export const productHelpers = {
   }
 };
 
+export type AdminProductFilter = 'all' | 'featured' | 'new' | 'active' | 'inactive';
+
+export const ADMIN_PRODUCTS_PAGE_SIZE = 25;
+const ADMIN_FIRESTORE_BATCH_SIZE = 75;
+
+export function productMatchesAdminFilter(
+  product: Product,
+  filter: AdminProductFilter = 'all'
+): boolean {
+  if (filter === 'all') return true;
+
+  const isFeatured = product.featuredProduct ?? product.featured ?? false;
+  const isNew = product.newProduct ?? product.isNew ?? false;
+  const isActive = product.isEnabled ?? product.isActive ?? false;
+
+  switch (filter) {
+    case 'featured':
+      return isFeatured;
+    case 'new':
+      return isNew;
+    case 'active':
+      return isActive;
+    case 'inactive':
+      return !isActive;
+    default:
+      return true;
+  }
+}
+
+function productMatchesAdminSearch(product: Product, term: string): boolean {
+  if (!term) return true;
+
+  const haystacks = [
+    product.sku,
+    product.baseSku,
+    product.title_en,
+    product.title_he,
+    product.brand,
+    productHelpers.getField(product, 'name', 'en'),
+    productHelpers.getField(product, 'name', 'he'),
+    productHelpers.getField(product, 'slug', 'en'),
+    productHelpers.getField(product, 'slug', 'he'),
+    ...(product.searchKeywords ?? []),
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+
+  return haystacks.some((value) => value.includes(term));
+}
+
+function mapProductDoc(docSnapshot: QueryDocumentSnapshot<DocumentData>): Product {
+  return { id: docSnapshot.id, ...docSnapshot.data() } as Product;
+}
+
+async function collectFilteredProducts(
+  filter: AdminProductFilter,
+  searchTerm?: string
+): Promise<Product[]> {
+  const term = searchTerm?.trim().toLowerCase() ?? '';
+  const matches: Product[] = [];
+  let lastDoc: QueryDocumentSnapshot<DocumentData> | undefined;
+
+  while (true) {
+    const constraints: Parameters<typeof query>[1][] = [orderBy('createdAt', 'desc')];
+    if (lastDoc) {
+      constraints.push(startAfter(lastDoc));
+    }
+    constraints.push(limit(ADMIN_FIRESTORE_BATCH_SIZE));
+
+    const snapshot = await getDocs(query(collection(db, 'products'), ...constraints));
+    if (snapshot.empty) break;
+
+    for (const docSnapshot of snapshot.docs) {
+      const product = mapProductDoc(docSnapshot);
+      if (!productMatchesAdminFilter(product, filter)) continue;
+      if (term && !productMatchesAdminSearch(product, term)) continue;
+      matches.push(product);
+    }
+
+    lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    if (snapshot.docs.length < ADMIN_FIRESTORE_BATCH_SIZE) break;
+  }
+
+  return matches;
+}
+
 // Product Services
 export const productService = {
   // Get all products
@@ -562,6 +649,92 @@ export const productService = {
       console.error('Error fetching products:', error);
       throw error;
     }
+  },
+
+  async getProductsPage(options?: {
+    pageSize?: number;
+    cursorId?: string | null;
+    page?: number;
+    filter?: AdminProductFilter;
+  }): Promise<{
+    products: Product[];
+    nextCursor: string | null;
+    hasMore: boolean;
+  }> {
+    const pageSize = options?.pageSize ?? ADMIN_PRODUCTS_PAGE_SIZE;
+    const filter = options?.filter ?? 'all';
+
+    if (filter !== 'all') {
+      const page = Math.max(1, options?.page ?? 1);
+      const allMatches = await collectFilteredProducts(filter);
+      const start = (page - 1) * pageSize;
+      const products = allMatches.slice(start, start + pageSize);
+      return {
+        products,
+        nextCursor: null,
+        hasMore: start + pageSize < allMatches.length,
+      };
+    }
+
+    const constraints: Parameters<typeof query>[1][] = [orderBy('createdAt', 'desc')];
+
+    if (options?.cursorId) {
+      const cursorSnap = await getDoc(doc(db, 'products', options.cursorId));
+      if (cursorSnap.exists()) {
+        constraints.push(startAfter(cursorSnap));
+      }
+    }
+
+    constraints.push(limit(pageSize + 1));
+
+    const snapshot = await getDocs(query(collection(db, 'products'), ...constraints));
+    const hasMore = snapshot.docs.length > pageSize;
+    const pageDocs = hasMore ? snapshot.docs.slice(0, pageSize) : snapshot.docs;
+    const products = pageDocs.map(mapProductDoc);
+    const nextCursor = hasMore && pageDocs.length > 0 ? pageDocs[pageDocs.length - 1].id : null;
+
+    return { products, nextCursor, hasMore };
+  },
+
+  async searchProducts(
+    searchQuery: string,
+    options?: {
+      page?: number;
+      pageSize?: number;
+      filter?: AdminProductFilter;
+    }
+  ): Promise<{
+    products: Product[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
+    const trimmed = searchQuery.trim();
+    const page = Math.max(1, options?.page ?? 1);
+    const pageSize = options?.pageSize ?? ADMIN_PRODUCTS_PAGE_SIZE;
+    const filter = options?.filter ?? 'all';
+
+    if (!trimmed) {
+      return { products: [], total: 0, page: 1, totalPages: 0 };
+    }
+
+    const baseSku = getBaseSku(trimmed);
+    const skuCandidates = Array.from(new Set([baseSku, trimmed].filter(Boolean)));
+
+    for (const sku of skuCandidates) {
+      const skuProduct = await productService.getProductBySku(sku);
+      if (skuProduct && productMatchesAdminFilter(skuProduct, filter)) {
+        return { products: [skuProduct], total: 1, page: 1, totalPages: 1 };
+      }
+    }
+
+    const matches = await collectFilteredProducts(filter, trimmed);
+    const total = matches.length;
+    const totalPages = total === 0 ? 0 : Math.ceil(total / pageSize);
+    const start = (page - 1) * pageSize;
+    const products = matches.slice(start, start + pageSize);
+
+    return { products, total, page, totalPages };
   },
 
   // Get product by ID

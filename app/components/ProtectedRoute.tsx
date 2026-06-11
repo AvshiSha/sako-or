@@ -3,10 +3,22 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
+import { adminTheme } from '@/app/admin/_components/adminTheme'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
   requireAdmin?: boolean
+}
+
+function AuthLoadingState({ message }: { message: string }) {
+  return (
+    <div className={`${adminTheme.pageBg} flex items-center justify-center`}>
+      <div className="text-center">
+        <div className={adminTheme.spinner} />
+        <p className="mt-4 text-[#856D55]">{message}</p>
+      </div>
+    </div>
+  )
 }
 
 export default function ProtectedRoute({ children, requireAdmin = true }: ProtectedRouteProps) {
@@ -16,41 +28,23 @@ export default function ProtectedRoute({ children, requireAdmin = true }: Protec
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        // User not logged in, redirect to login
         router.push('/admin/login')
         return
       }
-      
+
       if (requireAdmin && !isAdmin) {
-        // User logged in but not admin, redirect to home
         router.push('/')
         return
       }
     }
   }, [user, loading, isAdmin, router, requireAdmin])
 
-  // Show loading spinner while checking authentication
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
-        </div>
-      </div>
-    )
+    return <AuthLoadingState message="Checking authentication..." />
   }
 
-  // Show loading if user is not authenticated or not admin (when required)
   if (!user || (requireAdmin && !isAdmin)) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting...</p>
-        </div>
-      </div>
-    )
+    return <AuthLoadingState message="Redirecting..." />
   }
 
   return <>{children}</>

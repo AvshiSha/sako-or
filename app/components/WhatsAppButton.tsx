@@ -6,7 +6,11 @@ import { usePathname } from 'next/navigation'
 export default function WhatsAppButton() {
   const phoneNumber = '+972504487979'
   const pathname = usePathname()
-  
+
+  if (pathname?.startsWith('/admin')) {
+    return null
+  }
+
   // Detect language from URL path
   const isHebrew = pathname?.startsWith('/he')
   const defaultMessage = isHebrew 

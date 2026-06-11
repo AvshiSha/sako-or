@@ -16,7 +16,8 @@ import {
   ArchiveBoxIcon,
   TicketIcon,
   CurrencyDollarIcon,
-  MegaphoneIcon
+  MegaphoneIcon,
+  PencilSquareIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { useAuth } from '@/app/contexts/AuthContext'
@@ -73,6 +74,12 @@ function AdminDashboard() {
       href: '/admin/campaigns',
       icon: MegaphoneIcon,
       description: 'Create and manage promotional landing pages'
+    },
+    {
+      name: 'Manage Blog',
+      href: '/admin/blog',
+      icon: PencilSquareIcon,
+      description: 'Create and publish news articles'
     },
     {
       name: 'Manual Verifone Invoice',

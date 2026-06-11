@@ -24,6 +24,8 @@ import { trackViewItemList } from "@/lib/dataLayer";
 import { getColorName, getColorHex } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import ScrollToTopButton from "@/app/components/ScrollToTopButton";
+import ReadMoreContent from "@/app/components/ReadMoreContent";
+import RichContent from "@/app/components/RichContent";
 import Loader from "@/app/components/ui/Loader";
 import {
   markCollectionFilterNavPending,
@@ -243,6 +245,8 @@ interface CollectionClientProps {
   initialSort?: string;
   initialMinPrice?: string;
   initialMaxPrice?: string;
+  categorySeoContentTitle?: string;
+  categorySeoContentHtml?: string;
 }
 
 export default function CollectionClient({
@@ -261,6 +265,8 @@ export default function CollectionClient({
   initialSort: initialSortProp,
   initialMinPrice,
   initialMaxPrice,
+  categorySeoContentTitle,
+  categorySeoContentHtml,
 }: CollectionClientProps) {
   const params = useParams();
   const router = useRouter();
@@ -1948,6 +1954,32 @@ export default function CollectionClient({
             </>
           )}
         </div>
+
+        {/* Category SEO Content */}
+        {!searchQuery && categorySeoContentHtml?.trim() && (
+          <section
+            className={cn(
+              'mt-12 md:mt-16 pt-8 border-t border-gray-100',
+              lng === 'he' ? 'text-right' : 'text-left'
+            )}
+            aria-label={lng === 'he' ? 'תוכן SEO' : 'Collection content'}
+          >
+            {categorySeoContentTitle && (
+              <h2
+                className="text-xl md:text-2xl font-semibold text-black mb-4"
+                style={{ fontFamily: 'Poppins, sans-serif' }}
+              >
+                {categorySeoContentTitle}
+              </h2>
+            )}
+            <ReadMoreContent lng={lng as 'en' | 'he'}>
+              <RichContent
+                html={categorySeoContentHtml}
+                dir={lng === 'he' ? 'rtl' : 'ltr'}
+              />
+            </ReadMoreContent>
+          </section>
+        )}
       </div>
 
       {/* Desktop Filter Overlay and Sidebar */}

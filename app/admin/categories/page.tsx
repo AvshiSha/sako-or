@@ -18,7 +18,8 @@ import Link from 'next/link'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
-import { cleanupCmsHtml } from '@/lib/cms-html-cleanup'
+import { deleteField } from 'firebase/firestore'
+import { cleanupCmsHtml, isCmsHtmlEmpty } from '@/lib/cms-html-cleanup'
 import { uploadCmsImage } from '@/lib/upload-cms-image'
 import { revalidateCmsPaths } from '@/lib/cms-utils'
 
@@ -394,20 +395,24 @@ function CategoriesPage() {
         sortOrder: 0 // Will be set by the service
       }
 
-      // Add description if provided
+      const isEdit = Boolean(editingCategory?.id)
+
       if (formData.descriptionEn.trim() || formData.descriptionHe.trim()) {
         categoryData.description = {
           en: formData.descriptionEn,
-          he: formData.descriptionHe
+          he: formData.descriptionHe,
         }
+      } else if (isEdit) {
+        categoryData.description = deleteField()
       }
 
-      // Only add optional fields if they have values
-      if (formData.image && formData.image.trim()) {
+      if (formData.image?.trim()) {
         categoryData.image = formData.image
+      } else if (isEdit) {
+        categoryData.image = deleteField()
       }
-      
-      if (formData.parentId && formData.parentId.trim()) {
+
+      if (formData.parentId?.trim()) {
         categoryData.parentId = formData.parentId
       }
 
@@ -416,24 +421,37 @@ function CategoriesPage() {
           en: formData.contentTitleEn,
           he: formData.contentTitleHe,
         }
+      } else if (isEdit) {
+        categoryData.contentTitle = deleteField()
       }
+
       if (formData.seoTitleEn.trim() || formData.seoTitleHe.trim()) {
         categoryData.seoTitle = {
           en: formData.seoTitleEn,
           he: formData.seoTitleHe,
         }
+      } else if (isEdit) {
+        categoryData.seoTitle = deleteField()
       }
+
       if (formData.seoDescriptionEn.trim() || formData.seoDescriptionHe.trim()) {
         categoryData.seoDescription = {
           en: formData.seoDescriptionEn,
           he: formData.seoDescriptionHe,
         }
+      } else if (isEdit) {
+        categoryData.seoDescription = deleteField()
       }
-      if (formData.seoContentEn.trim() || formData.seoContentHe.trim()) {
+
+      const seoContentEn = cleanupCmsHtml(formData.seoContentEn)
+      const seoContentHe = cleanupCmsHtml(formData.seoContentHe)
+      if (!isCmsHtmlEmpty(seoContentEn) || !isCmsHtmlEmpty(seoContentHe)) {
         categoryData.seoContent = {
-          en: cleanupCmsHtml(formData.seoContentEn),
-          he: cleanupCmsHtml(formData.seoContentHe),
+          en: seoContentEn,
+          he: seoContentHe,
         }
+      } else if (isEdit) {
+        categoryData.seoContent = deleteField()
       }
 
       if (editingCategory && editingCategory.id) {

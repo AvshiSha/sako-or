@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import ScrollToTopButton from "@/app/components/ScrollToTopButton";
 import ReadMoreContent from "@/app/components/ReadMoreContent";
 import RichContent from "@/app/components/RichContent";
+import InlineHeadingContent from "@/app/components/InlineHeadingContent";
 import Loader from "@/app/components/ui/Loader";
 import {
   markCollectionFilterNavPending,
@@ -1969,7 +1970,7 @@ export default function CollectionClient({
                 className="text-xl md:text-2xl font-semibold text-black mb-4"
                 style={{ fontFamily: 'Poppins, sans-serif' }}
               >
-                {categorySeoContentTitle}
+                <InlineHeadingContent html={categorySeoContentTitle} />
               </h2>
             )}
             <ReadMoreContent lng={lng as 'en' | 'he'}>

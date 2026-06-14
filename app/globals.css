@@ -352,6 +352,18 @@ body.admin-panel #vpplugin-interface {
   caret-color: #111827;
 }
 
+/* Compact single-line fields (article title, collection content title) */
+.cms-editor-inline .ProseMirror {
+  min-height: 2.25rem;
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
+}
+
+.cms-editor-inline .ProseMirror p {
+  margin: 0;
+}
+
 .cms-editor .ProseMirror:focus {
   outline: none;
 }

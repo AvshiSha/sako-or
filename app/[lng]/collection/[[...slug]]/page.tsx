@@ -2,6 +2,7 @@ import { getCollectionProducts, categoryService, VariantItem } from "@/lib/fireb
 import CollectionClient from "./CollectionClient";
 import { searchProducts } from "@/lib/search-products";
 import { buildMetadata, buildAbsoluteUrl } from "@/lib/seo";
+import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup';
 import type { Metadata } from 'next';
 import { languages } from '@/i18n/settings';
 import { buildCollectionFilterKey } from '@/lib/collectionFilterUrl';
@@ -175,7 +176,7 @@ export async function generateMetadata({
   const queryString = page > 1 ? `?page=${page}` : '';
   const url = `${baseUrl}${queryString}`;
 
-  const title = categorySeoTitle || `${categoryName} | SAKO-OR`;
+  const title = cmsHtmlToPlainText(categorySeoTitle || '') || `${categoryName} | SAKO-OR`;
   const description = categoryDescription;
 
   // Build alternate locales with page param

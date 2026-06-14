@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { blogService, BlogArticle } from '@/lib/firebase'
+import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import {
   ArrowLeftIcon,
@@ -108,7 +109,7 @@ function BlogListPage() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filtered.map((article) => {
-                  const title = article.title.en || article.title.he || article.slug
+                  const title = cmsHtmlToPlainText(article.title.en || article.title.he || '') || article.slug
                   return (
                     <tr key={article.id}>
                       <td className="px-4 py-3">

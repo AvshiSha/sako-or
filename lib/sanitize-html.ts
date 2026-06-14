@@ -87,3 +87,57 @@ export function sanitizeCmsHtml(html: string): string {
     },
   })
 }
+
+const INLINE_ALLOWED_TAGS = ['p', 'a', 'strong', 'em', 'br']
+
+function transformAnchorTag(tagName: string, attribs: Record<string, string>) {
+  const href = attribs.href || ''
+  if (href.startsWith('http://') || href.startsWith('https://')) {
+    return {
+      tagName,
+      attribs: {
+        ...attribs,
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        class: attribs.class || 'text-[#856D55] underline',
+      },
+    }
+  }
+  return {
+    tagName,
+    attribs: {
+      ...attribs,
+      class: attribs.class || 'text-[#856D55] underline',
+    },
+  }
+}
+
+/** Sanitize inline title HTML — links and basic emphasis only. */
+export function sanitizeInlineHtml(html: string): string {
+  const cleaned = cleanupCmsHtml(html)
+  if (!cleaned) return ''
+
+  return sanitizeHtmlLib(cleaned, {
+    allowedTags: INLINE_ALLOWED_TAGS,
+    allowedAttributes: {
+      a: ['href', 'target', 'rel', 'title', 'class'],
+      p: ['class'],
+      strong: ['class'],
+      em: ['class'],
+    },
+    transformTags: {
+      a: transformAnchorTag,
+    },
+  })
+}
+
+/** Remove block wrapper so inline HTML can live inside h1/h2. */
+export function stripInlineBlockWrapper(html: string): string {
+  let result = sanitizeInlineHtml(html).trim()
+  for (let i = 0; i < 3; i++) {
+    const unwrapped = result.replace(/^<p(?:\s[^>]*)?>([\s\S]*)<\/p>$/i, '$1').trim()
+    if (unwrapped === result) break
+    result = unwrapped
+  }
+  return result
+}

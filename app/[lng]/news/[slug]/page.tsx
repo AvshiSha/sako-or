@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { blogService } from '@/lib/firebase'
 import { buildMetadata, buildAbsoluteUrl } from '@/lib/seo'
 import { languages } from '@/i18n/settings'
+import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
+import InlineHeadingContent from '@/app/components/InlineHeadingContent'
 import RichContent from '@/app/components/RichContent'
 import type { Metadata } from 'next'
 
@@ -28,10 +30,9 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     })
   }
 
-  const title =
+  const titlePlain =
     article.seoTitle?.[locale] ||
-    article.title[locale] ||
-    article.title.en ||
+    cmsHtmlToPlainText(article.title[locale] || article.title.en || '') ||
     article.slug
 
   const description =
@@ -40,12 +41,12 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     article.excerpt.en ||
     ''
 
-  const ogTitle = article.ogTitle?.[locale] || title
+  const ogTitle = article.ogTitle?.[locale] || titlePlain
   const ogDescription = article.ogDescription?.[locale] || description
   const ogImage = article.ogImage || article.featuredImage
 
   return buildMetadata({
-    title,
+    title: titlePlain,
     description,
     url: `/${lng}/news/${slug}`,
     image: ogImage,
@@ -66,10 +67,11 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     notFound()
   }
 
-  const title = article.title[locale] || article.title.en || article.slug
+  const titleHtml = article.title[locale] || article.title.en || article.slug
+  const titlePlain = cmsHtmlToPlainText(titleHtml) || article.slug
   const excerpt = article.excerpt[locale] || article.excerpt.en || ''
   const content = article.content[locale] || article.content.en || ''
-  const featuredAlt = article.featuredImageAlt?.[locale] || title
+  const featuredAlt = article.featuredImageAlt?.[locale] || titlePlain
 
   const date = article.publishedAt
     ? new Date(article.publishedAt).toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US', {
@@ -82,7 +84,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: title,
+    headline: titlePlain,
     description: excerpt,
     image: article.featuredImage ? [article.featuredImage] : undefined,
     datePublished: article.publishedAt,
@@ -131,7 +133,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             className="text-3xl md:text-4xl font-bold text-black leading-tight"
             style={{ fontFamily: 'Poppins, sans-serif' }}
           >
-            {title}
+            <InlineHeadingContent html={titleHtml} fallback={article.slug} />
           </h1>
           {date && (
             <time className="mt-4 block text-sm text-gray-500">{date}</time>

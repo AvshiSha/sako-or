@@ -108,6 +108,23 @@ export function cleanupCmsHtml(html: string): string {
   return result.trim()
 }
 
+/** Extract visible text from CMS HTML (for slugs, meta titles, alt text). */
+export function cmsHtmlToPlainText(html: string): string {
+  return innerText(html)
+}
+
+/** Convert stored inline field (plain text or HTML) into editor-safe HTML. */
+export function normalizeInlineFieldHtml(value: string): string {
+  const trimmed = value?.trim() ?? ''
+  if (!trimmed) return ''
+  if (/<[a-z][\s\S]*>/i.test(trimmed)) return cleanupCmsHtml(trimmed)
+  const escaped = trimmed
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return `<p>${escaped}</p>`
+}
+
 /** True when editor/content field has no meaningful text (ignores spacing-only empty paragraphs). */
 export function isCmsHtmlEmpty(html: string): boolean {
   return innerText(html).length === 0

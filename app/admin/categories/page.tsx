@@ -19,7 +19,7 @@ import ProtectedRoute from '@/app/components/ProtectedRoute'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
 import { deleteField } from 'firebase/firestore'
-import { cleanupCmsHtml, isCmsHtmlEmpty } from '@/lib/cms-html-cleanup'
+import { cleanupCmsHtml, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'
 import { uploadCmsImage } from '@/lib/upload-cms-image'
 import { revalidateCmsPaths } from '@/lib/cms-utils'
 
@@ -416,10 +416,12 @@ function CategoriesPage() {
         categoryData.parentId = formData.parentId
       }
 
-      if (formData.contentTitleEn.trim() || formData.contentTitleHe.trim()) {
+      const contentTitleEn = cleanupCmsHtml(formData.contentTitleEn)
+      const contentTitleHe = cleanupCmsHtml(formData.contentTitleHe)
+      if (!isCmsHtmlEmpty(contentTitleEn) || !isCmsHtmlEmpty(contentTitleHe)) {
         categoryData.contentTitle = {
-          en: formData.contentTitleEn,
-          he: formData.contentTitleHe,
+          en: contentTitleEn,
+          he: contentTitleHe,
         }
       } else if (isEdit) {
         categoryData.contentTitle = deleteField()
@@ -524,8 +526,8 @@ function CategoriesPage() {
       level: category.level,
       parentId: category.parentId || '',
       isEnabled: category.isEnabled,
-      contentTitleEn: category.contentTitle?.en || '',
-      contentTitleHe: category.contentTitle?.he || '',
+      contentTitleEn: normalizeInlineFieldHtml(category.contentTitle?.en || ''),
+      contentTitleHe: normalizeInlineFieldHtml(category.contentTitle?.he || ''),
       seoTitleEn: category.seoTitle?.en || '',
       seoTitleHe: category.seoTitle?.he || '',
       seoDescriptionEn: category.seoDescription?.en || '',
@@ -1056,21 +1058,22 @@ function CategoriesPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Visible Content Title ({seoActiveTab.toUpperCase()})
                       </label>
-                      <input
-                        type="text"
+                      <RichTextEditor
+                        key={`content-title-${seoActiveTab}`}
+                        editorKey={`content-title-${seoActiveTab}`}
+                        variant="inline"
                         value={seoActiveTab === 'en' ? formData.contentTitleEn : formData.contentTitleHe}
-                        onChange={(e) =>
+                        onChange={(html) =>
                           handleInputChange(
                             seoActiveTab === 'en' ? 'contentTitleEn' : 'contentTitleHe',
-                            e.target.value
+                            html
                           )
                         }
                         dir={seoActiveTab === 'he' ? 'rtl' : 'ltr'}
-                        className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         placeholder="Displayed above the SEO content section on the collection page"
                       />
                       <p className="mt-1 text-xs text-gray-500">
-                        Separate from Collection Name — used only as the heading above the content block
+                        Separate from Collection Name — used only as the heading above the content block. Select text and use the link button to add a hyperlink.
                       </p>
                     </div>
 

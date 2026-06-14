@@ -3,6 +3,8 @@ import Image from 'next/image'
 import { blogService } from '@/lib/firebase'
 import { buildMetadata } from '@/lib/seo'
 import { languages } from '@/i18n/settings'
+import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
+import InlineHeadingContent from '@/app/components/InlineHeadingContent'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -83,8 +85,10 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
             {articles.map((article) => {
-              const title = article.title[locale] || article.title.en || article.slug
+              const titleHtml = article.title[locale] || article.title.en || article.slug
+              const titlePlain = cmsHtmlToPlainText(titleHtml) || article.slug
               const excerpt = article.excerpt[locale] || article.excerpt.en || ''
+              const articleHref = `/${lng}/news/${article.slug}`
               const date = article.publishedAt
                 ? new Date(article.publishedAt).toLocaleDateString(locale === 'he' ? 'he-IL' : 'en-US', {
                     year: 'numeric',
@@ -98,30 +102,35 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
                   key={article.id}
                   className="group flex flex-col"
                 >
-                  <Link href={`/${lng}/news/${article.slug}`} className="flex flex-col h-full">
+                  <Link href={articleHref} className="block">
                     {article.featuredImage && (
                       <div className="relative mb-4 aspect-[16/9] overflow-hidden rounded-md bg-gray-100">
                         <Image
                           src={article.featuredImage}
-                          alt={article.featuredImageAlt?.[locale] || title}
+                          alt={article.featuredImageAlt?.[locale] || titlePlain}
                           fill
                           className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
                           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         />
                       </div>
                     )}
-                    <time className="text-sm text-gray-500">{date}</time>
-                    <h2 className="mt-2 text-lg md:text-xl font-semibold text-black group-hover:text-[#856D55] transition-colors line-clamp-2">
-                      {title}
-                    </h2>
-                    {excerpt && (
-                      <p className="mt-2 text-sm md:text-base text-gray-600 leading-relaxed line-clamp-3 flex-grow">
+                  </Link>
+                  <time className="text-sm text-gray-500">{date}</time>
+                  <h2 className="mt-2 text-lg md:text-xl font-semibold text-black line-clamp-2">
+                    <InlineHeadingContent html={titleHtml} fallback={article.slug} />
+                  </h2>
+                  {excerpt && (
+                    <Link href={articleHref} className="mt-2 flex-grow">
+                      <p className="text-sm md:text-base text-gray-600 leading-relaxed line-clamp-3 group-hover:text-gray-800 transition-colors">
                         {excerpt}
                       </p>
-                    )}
-                    <span className="mt-4 inline-block text-sm font-medium text-[#856D55]">
-                      {t.readMore} →
-                    </span>
+                    </Link>
+                  )}
+                  <Link
+                    href={articleHref}
+                    className="mt-4 inline-block text-sm font-medium text-[#856D55] hover:underline"
+                  >
+                    {t.readMore} →
                   </Link>
                 </article>
               )

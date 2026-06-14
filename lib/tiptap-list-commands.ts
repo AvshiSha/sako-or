@@ -48,7 +48,7 @@ export function toggleListFromSelection(editor: Editor, listType: ListType): boo
   const lastBlock = blocks[blocks.length - 1]
   const lastEnd = lastBlock.pos + lastBlock.node.nodeSize
 
-  const listItems = blocks.map(({ node }) => listItemType.create(null, node.content))
+  const listItems = blocks.map(({ node }) => listItemType.create(null, node))
   const list = listNodeType.create(null, listItems)
 
   view.dispatch(state.tr.replaceWith(firstPos, lastEnd, list).scrollIntoView())

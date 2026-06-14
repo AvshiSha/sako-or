@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
 import { uploadCmsImage } from '@/lib/upload-cms-image'
 import { slugify, revalidateCmsPaths } from '@/lib/cms-utils'
-import { cleanupCmsHtml } from '@/lib/cms-html-cleanup'
+import { cleanupCmsHtml, cmsHtmlToPlainText, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'
 
 interface BlogFormData {
   slug: string
@@ -42,7 +42,12 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
 
   const [formData, setFormData] = useState<BlogFormData>({
     slug: initialData?.slug || '',
-    title: initialData?.title || emptyLocalized(),
+    title: initialData?.title
+      ? {
+          en: normalizeInlineFieldHtml(initialData.title.en || ''),
+          he: normalizeInlineFieldHtml(initialData.title.he || ''),
+        }
+      : emptyLocalized(),
     excerpt: initialData?.excerpt || emptyLocalized(),
     content: initialData?.content
       ? {
@@ -63,8 +68,11 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
   })
 
   useEffect(() => {
-    if (!slugManuallyEdited && formData.title.en) {
-      setFormData((prev) => ({ ...prev, slug: slugify(formData.title.en) }))
+    if (!slugManuallyEdited) {
+      const plainTitle = cmsHtmlToPlainText(formData.title.en)
+      if (plainTitle) {
+        setFormData((prev) => ({ ...prev, slug: slugify(plainTitle) }))
+      }
     }
   }, [formData.title.en, slugManuallyEdited])
 
@@ -88,7 +96,7 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
       newErrors.slug = 'Slug must be lowercase alphanumeric with hyphens only'
     }
 
-    if (!formData.title.en.trim() && !formData.title.he.trim()) {
+    if (isCmsHtmlEmpty(formData.title.en) && isCmsHtmlEmpty(formData.title.he)) {
       newErrors.title = 'At least one language must have a title'
     }
 
@@ -139,7 +147,10 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
 
       const payload = {
         slug: formData.slug,
-        title: formData.title,
+        title: {
+          en: cleanupCmsHtml(formData.title.en),
+          he: cleanupCmsHtml(formData.title.he),
+        },
         excerpt: formData.excerpt,
         content: {
           en: cleanupCmsHtml(formData.content.en),
@@ -280,13 +291,18 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
       {/* Localized fields */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
-        <input
-          type="text"
+        <RichTextEditor
+          key={`title-${activeTab}`}
+          editorKey={`title-${activeTab}`}
+          variant="inline"
           value={formData.title[activeTab]}
-          onChange={(e) => updateLocalized('title', activeTab, e.target.value)}
+          onChange={(html) => updateLocalized('title', activeTab, html)}
           dir={activeTab === 'he' ? 'rtl' : 'ltr'}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
+          placeholder={activeTab === 'he' ? 'כותרת המאמר…' : 'Article title…'}
         />
+        <p className="mt-1 text-xs text-gray-500">
+          Select text and use the link button to add a hyperlink, like in the content editor.
+        </p>
         {errors.title && <p className="mt-1 text-sm text-red-600">{errors.title}</p>}
       </div>
 

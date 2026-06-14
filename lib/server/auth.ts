@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth } from '@/lib/firebase-admin'
-import { isAdminEmail, normalizeEmail } from '@/lib/admin'
+import { normalizeEmail } from '@/lib/admin'
+import { resolveIsAdmin } from '@/lib/server/admin'
 
 export type AuthedRequestContext = {
   token: string
@@ -57,7 +58,7 @@ export async function requireUserAuth(
   const firebaseUser = await adminAuth.getUser(firebaseUid)
 
   const email = normalizeEmail(firebaseUser.email ?? decoded.email ?? null)
-  const isAdmin = isAdminEmail(email)
+  const isAdmin = await resolveIsAdmin(email, firebaseUid)
   const authProvider = pickAuthProvider(firebaseUser, decoded)
 
   if (authProvider === 'password' && !isAdmin) {
@@ -70,4 +71,13 @@ export async function requireUserAuth(
   return { token, decoded, firebaseUid, firebaseUser, email, isAdmin, authProvider }
 }
 
-
+export async function requireAdmin(
+  request: NextRequest
+): Promise<AuthedRequestContext | NextResponse> {
+  const auth = await requireUserAuth(request)
+  if (auth instanceof NextResponse) return auth
+  if (!auth.isAdmin) {
+    return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+  }
+  return auth
+}

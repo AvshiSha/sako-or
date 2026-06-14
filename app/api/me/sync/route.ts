@@ -53,9 +53,26 @@ export async function POST(request: NextRequest) {
       parseDisplayName(firebaseUser.displayName)
 
     // Find existing user - do NOT create on sync
-    const existingUser = await prisma.user.findUnique({
+    let existingUser = await prisma.user.findUnique({
       where: { firebaseUid }
     })
+
+    // Fallback: admin/storefront records may exist by email before firebaseUid is linked
+    if (!existingUser && email) {
+      const userByEmail = await prisma.user.findUnique({
+        where: { email }
+      })
+
+      if (
+        userByEmail &&
+        (!userByEmail.firebaseUid || userByEmail.firebaseUid === firebaseUid)
+      ) {
+        existingUser = await prisma.user.update({
+          where: { id: userByEmail.id },
+          data: { firebaseUid }
+        })
+      }
+    }
 
     // If user doesn't exist in DB yet, return early with needsProfileCompletion = true
     // The user will be created when they submit the profile form via /api/me/profile PATCH

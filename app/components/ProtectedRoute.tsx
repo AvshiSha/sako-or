@@ -22,11 +22,11 @@ function AuthLoadingState({ message }: { message: string }) {
 }
 
 export default function ProtectedRoute({ children, requireAdmin = true }: ProtectedRouteProps) {
-  const { user, loading, isAdmin } = useAuth()
+  const { user, loading, isAdmin, adminCheckPending } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !adminCheckPending) {
       if (!user) {
         router.push('/admin/login')
         return
@@ -37,9 +37,9 @@ export default function ProtectedRoute({ children, requireAdmin = true }: Protec
         return
       }
     }
-  }, [user, loading, isAdmin, router, requireAdmin])
+  }, [user, loading, isAdmin, adminCheckPending, router, requireAdmin])
 
-  if (loading) {
+  if (loading || (requireAdmin && adminCheckPending)) {
     return <AuthLoadingState message="Checking authentication..." />
   }
 

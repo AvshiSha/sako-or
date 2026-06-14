@@ -1,14 +1,13 @@
 /**
- * Central place for admin authorization rules.
- *
- * Note: in production, consider storing admins/roles in your database or Firebase custom claims.
+ * Central place for admin authorization rules (client-safe).
  */
+
+export const ADMIN_ROLE = 'ADMIN' as const
 
 export const ADMIN_EMAILS = [
   'admin@sako-or.com',
   'manager@sako-or.com',
   'avshisakoor@gmail.com', // Firebase emails are always lowercase
-  // Add more admin emails here
 ] as const
 
 export function normalizeEmail(email: string | null | undefined): string | null {
@@ -23,4 +22,6 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   return (ADMIN_EMAILS as readonly string[]).includes(normalized)
 }
 
-
+export function isAdminRole(role: string | null | undefined): boolean {
+  return role === ADMIN_ROLE
+}

@@ -4,8 +4,26 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { isAdminEmail } from '@/lib/admin'
+import { auth } from '@/lib/firebase'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import { adminTheme } from '../_components/adminTheme'
+
+async function verifyAdminAccess(): Promise<boolean> {
+  const currentUser = auth.currentUser
+  if (!currentUser) return false
+
+  if (isAdminEmail(currentUser.email)) return true
+
+  const token = await currentUser.getIdToken()
+  const res = await fetch('/api/admin/check-access', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (!res.ok) return false
+
+  const data = await res.json().catch(() => ({}))
+  return data.isAdmin === true
+}
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState('')
@@ -14,28 +32,31 @@ export default function AdminLoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  const { signIn, user, isAdmin } = useAuth()
+  const { signIn, logout, user, isAdmin, adminCheckPending } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (user && isAdmin) {
+    if (user && isAdmin && !adminCheckPending) {
       router.push('/admin')
     }
-  }, [user, isAdmin, router])
+  }, [user, isAdmin, adminCheckPending, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    if (!isAdminEmail(email)) {
-      setError('This account does not have admin access.')
-      setLoading(false)
-      return
-    }
-
     try {
       await signIn(email, password)
+
+      const hasAdminAccess = await verifyAdminAccess()
+      if (!hasAdminAccess) {
+        await logout()
+        setError('This account does not have admin access.')
+        return
+      }
+
+      router.push('/admin')
     } catch (error: unknown) {
       console.error('Login error:', error)
       const code = (error as { code?: string })?.code

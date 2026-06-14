@@ -18,6 +18,7 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   isAdmin: boolean
+  adminCheckPending: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -25,13 +26,53 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [serverIsAdmin, setServerIsAdmin] = useState<boolean | null>(null)
 
-  const isAdmin = user ? isAdminEmail(user.email) : false
+  const isAdmin = user
+    ? isAdminEmail(user.email) || serverIsAdmin === true
+    : false
+
+  const adminCheckPending = !!user && !isAdminEmail(user.email) && serverIsAdmin === null
+
+  const resolveAdminAccess = async (firebaseUser: User) => {
+    if (isAdminEmail(firebaseUser.email)) {
+      setServerIsAdmin(true)
+      return
+    }
+
+    setServerIsAdmin(null)
+
+    try {
+      const token = await firebaseUser.getIdToken().catch((err) => {
+        console.warn('[AUTH_CONTEXT] Failed to get ID token for admin check:', err?.message || err)
+        return null
+      })
+
+      if (!token) {
+        setServerIsAdmin(false)
+        return
+      }
+
+      const res = await fetch('/api/admin/check-access', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (!res.ok) {
+        setServerIsAdmin(false)
+        return
+      }
+
+      const data = await res.json().catch(() => ({}))
+      setServerIsAdmin(data.isAdmin === true)
+    } catch (error) {
+      console.error('[AUTH_CONTEXT] Admin access check failed:', error)
+      setServerIsAdmin(false)
+    }
+  }
 
   const syncUserToNeon = async (firebaseUser: User) => {
     try {
       const token = await firebaseUser.getIdToken().catch((err) => {
-        // Handle token retrieval errors gracefully
         console.warn('[AUTH_CONTEXT] Failed to get ID token:', err?.message || err)
         return null
       })
@@ -51,7 +92,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }))
         const errorMessage = errorData.error || `HTTP ${res.status}`
-        // Only log as error if it's not a 400 Bad Request (which might be API key issues)
         if (res.status === 400) {
           console.warn(
             `[AUTH_CONTEXT] Sync failed (400) - may be API key/domain issue: ${errorMessage}`,
@@ -72,7 +112,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         neonId: data.id
       })
     } catch (error: any) {
-      // Network errors or other exceptions - log as warning for 400 errors
       const is400Error = error?.message?.includes('400') || error?.code === 'auth/network-request-failed'
       if (is400Error) {
         console.warn(
@@ -93,6 +132,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user)
+      if (!user) {
+        setServerIsAdmin(null)
+      }
       setLoading(false)
     }, (error) => {
       console.error('[AUTH_CONTEXT] onAuthStateChanged error:', error)
@@ -102,9 +144,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe
   }, [])
 
-  // Keep Neon user record up to date on login / refresh
   useEffect(() => {
     if (!user) return
+    void resolveAdminAccess(user)
     void syncUserToNeon(user)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid])
@@ -142,7 +184,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     logout,
-    isAdmin
+    isAdmin,
+    adminCheckPending
   }
 
   return (

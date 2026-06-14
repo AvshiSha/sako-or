@@ -7,6 +7,11 @@ import ProfileShell from '@/app/components/profile/ProfileShell'
 import { profileTheme } from '@/app/components/profile/profileTheme'
 import { signInWithCustomToken, onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import {
+  isTurnstileSessionExpired,
+  parseTurnstileSessionResponse,
+  type OtpTurnstileSessionResponse,
+} from '@/lib/otp-turnstile-session'
 
 const translations = {
   en: {
@@ -128,8 +133,13 @@ export default function VerifySmsPage() {
   const [error, setError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const [otpResendToken, setOtpResendToken] = useState<string>('')
+  const [otpTurnstileExpiresAt, setOtpTurnstileExpiresAt] = useState<number | null>(null)
+  const [serverClockOffsetMs, setServerClockOffsetMs] = useState(0)
+  const [resendTurnstileRequired, setResendTurnstileRequired] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const hasAttemptedSendRef = useRef(false)
+  const pendingResendRef = useRef(false)
   const turnstileWidgetIdRef = useRef<number | null>(null)
 
   // Client-side: detect localhost (Turnstile skipped in development)
@@ -235,9 +245,33 @@ export default function VerifySmsPage() {
         turnstileWidgetIdRef.current = null
       }
     }
-  }, [isMounted, isLocalhost, pendingSignup, t])
+  }, [isMounted, isLocalhost, pendingSignup, resendTurnstileRequired, t])
 
-  // Auto-send SMS when component is ready (only once). When not localhost, wait for Turnstile token.
+  function isOtpResendTurnstileExpired() {
+    return isTurnstileSessionExpired(otpTurnstileExpiresAt, serverClockOffsetMs)
+  }
+
+  function applyOtpTurnstileSession(data: OtpTurnstileSessionResponse | null) {
+    const session = parseTurnstileSessionResponse(data)
+    if (!session) return
+    setServerClockOffsetMs(session.clockOffsetMs)
+    if (session.turnstileExpiresAt != null) {
+      setOtpTurnstileExpiresAt(session.turnstileExpiresAt)
+    }
+    if (session.resendToken) {
+      setOtpResendToken(session.resendToken)
+    }
+  }
+
+  function smsSendNeedsTurnstile() {
+    if (isLocalhost) return false
+    if (!otpSent) return true
+    if (resendTurnstileRequired || isOtpResendTurnstileExpired()) return true
+    if (!otpResendToken) return true
+    return false
+  }
+
+  // Auto-send SMS when component is ready (initial send only). Resend uses handleResendSmsCode.
   useEffect(() => {
     if (!pendingSignup || otpSent || busy || hasAttemptedSendRef.current) return
     if (!isLocalhost && !turnstileToken) return
@@ -253,12 +287,54 @@ export default function VerifySmsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingSignup, otpSent, busy, isLocalhost, turnstileToken])
 
+  // Complete a pending resend once Turnstile is ready (without resetting otpSent)
+  useEffect(() => {
+    if (!pendingResendRef.current || !otpSent || busy || resendCooldown > 0 || !pendingSignup) return
+    if (smsSendNeedsTurnstile() && !isLocalhost && !turnstileToken) return
+
+    void sendSmsCode()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnstileToken, otpSent, busy, resendCooldown, pendingSignup, resendTurnstileRequired, isLocalhost])
+
+  function handleResendSmsCode() {
+    if (busy || resendCooldown > 0 || !pendingSignup) return
+
+    pendingResendRef.current = true
+
+    if (smsSendNeedsTurnstile() && !isLocalhost && !turnstileToken) {
+      setResendTurnstileRequired(true)
+      setError(t.recaptchaError)
+      if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
+        try {
+          (window as any).turnstile.reset(turnstileWidgetIdRef.current)
+        } catch (_) {}
+      }
+      return
+    }
+
+    void sendSmsCode()
+  }
+
   async function sendSmsCode() {
     if (!pendingSignup) {
+      pendingResendRef.current = false
       return
     }
 
     if (resendCooldown > 0) {
+      pendingResendRef.current = false
+      return
+    }
+
+    if (smsSendNeedsTurnstile() && !turnstileToken) {
+      setResendTurnstileRequired(true)
+      setError(t.recaptchaError)
+      pendingResendRef.current = true
+      if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
+        try {
+          (window as any).turnstile.reset(turnstileWidgetIdRef.current)
+        } catch (_) {}
+      }
       return
     }
 
@@ -282,7 +358,8 @@ export default function VerifySmsPage() {
           otpType: 'sms',
           otpValue: phoneForInforu,
           checkUserExists: false, // Signup flow - user may not exist
-          ...(turnstileToken && { turnstileToken })
+          ...(otpSent && otpResendToken && { resendToken: otpResendToken }),
+          ...(smsSendNeedsTurnstile() && turnstileToken && { turnstileToken }),
         }),
       })
 
@@ -299,6 +376,9 @@ export default function VerifySmsPage() {
             setResendCooldown(60)
           }
         } else if (res.status === 400 && data?.error?.toLowerCase?.().includes('verification')) {
+          setResendTurnstileRequired(true)
+          setOtpTurnstileExpiresAt(null)
+          setOtpResendToken('')
           setError(t.recaptchaError)
           if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
             try {
@@ -314,6 +394,8 @@ export default function VerifySmsPage() {
 
       setOtpSent(true)
       setResendCooldown(60)
+      applyOtpTurnstileSession(data)
+      setResendTurnstileRequired(false)
       if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
           (window as any).turnstile.reset(turnstileWidgetIdRef.current)
@@ -324,6 +406,7 @@ export default function VerifySmsPage() {
       console.error('[SEND-SMS] Error:', err)
       setError(t.errorSendingSms)
     } finally {
+      pendingResendRef.current = false
       setBusy(false)
     }
   }
@@ -672,12 +755,8 @@ export default function VerifySmsPage() {
             <div className="flex items-center justify-between border-t border-slate-200 pt-4">
               <button
                 type="button"
-                onClick={() => {
-                  hasAttemptedSendRef.current = false
-                  setOtpSent(false)
-                  void sendSmsCode()
-                }}
-                disabled={busy || resendCooldown > 0 || (!isLocalhost && !turnstileToken)}
+                onClick={() => void handleResendSmsCode()}
+                disabled={busy || resendCooldown > 0 || (smsSendNeedsTurnstile() && !isLocalhost && !turnstileToken)}
                 className="text-sm font-medium text-slate-700 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {busy

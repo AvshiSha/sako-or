@@ -18,6 +18,11 @@ import { profileTheme } from '@/app/components/profile/profileTheme'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/app/components/ui/tabs'
 import { OtpInput } from '@/app/components/ui/otp-input'
 import { IsraelPhoneInput } from '@/app/components/ui/israel-phone-input'
+import {
+  isTurnstileSessionExpired,
+  parseTurnstileSessionResponse,
+  type OtpTurnstileSessionResponse,
+} from '@/lib/otp-turnstile-session'
 
 type SyncResponse = { ok: true; needsProfileCompletion: boolean } | { error: string }
 
@@ -177,12 +182,24 @@ function SignInClient() {
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [emailError, setEmailError] = useState<string | null>(null)
-  const [resendCooldown, setResendCooldown] = useState(0)
+  const [phoneResendCooldown, setPhoneResendCooldown] = useState(0)
+  const [emailResendCooldown, setEmailResendCooldown] = useState(0)
   const [gate, setGate] = useState<'idle' | 'checking' | 'redirecting'>('idle')
-  const [turnstileToken, setTurnstileToken] = useState<string>('')
+  const [phoneTurnstileToken, setPhoneTurnstileToken] = useState<string>('')
+  const [emailTurnstileToken, setEmailTurnstileToken] = useState<string>('')
+  const [phoneTurnstileExpiresAt, setPhoneTurnstileExpiresAt] = useState<number | null>(null)
+  const [emailTurnstileExpiresAt, setEmailTurnstileExpiresAt] = useState<number | null>(null)
+  const [phoneServerClockOffsetMs, setPhoneServerClockOffsetMs] = useState(0)
+  const [emailServerClockOffsetMs, setEmailServerClockOffsetMs] = useState(0)
+  const [phoneResendToken, setPhoneResendToken] = useState<string>('')
+  const [emailResendToken, setEmailResendToken] = useState<string>('')
+  const [phoneResendTurnstileRequired, setPhoneResendTurnstileRequired] = useState(false)
+  const [emailResendTurnstileRequired, setEmailResendTurnstileRequired] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
   const syncedUidRef = useRef<string | null>(null)
+  const activeTabRef = useRef(activeTab)
+  const turnstileWidgetIdRef = useRef<string | null>(null)
 
   // Check if running on localhost (skip Turnstile in development)
   const isLocalhost = typeof window !== 'undefined' && (
@@ -200,23 +217,34 @@ function SignInClient() {
   useEffect(() => {
     if (!isMounted || isLocalhost) return
 
-    // Reset token when switching tabs
-    setTurnstileToken('')
+    const renderForTab = activeTab
+
+    const applyTurnstileToken = (token: string) => {
+      if (renderForTab === 'phone') {
+        setPhoneTurnstileToken(token)
+      } else {
+        setEmailTurnstileToken(token)
+      }
+    }
 
     const renderTurnstile = () => {
+      // Ignore stale retries after tab switch
+      if (renderForTab !== activeTabRef.current) return
+
       // Find the visible Turnstile container (based on active tab)
-      const containerId = activeTab === 'phone' ? '#cf-turnstile-phone' : '#cf-turnstile-email'
+      const containerId = renderForTab === 'phone' ? '#cf-turnstile-phone' : '#cf-turnstile-email'
       const container = document.querySelector(containerId)
       
       if (!container) return
 
       // Remove any existing widget first
-      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+      if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
-          (window as any).turnstile.remove((window as any).turnstileWidgetId)
+          (window as any).turnstile.remove(turnstileWidgetIdRef.current)
         } catch (e) {
           // Ignore errors if widget doesn't exist
         }
+        turnstileWidgetIdRef.current = null
       }
 
       if ((window as any).turnstile) {
@@ -226,14 +254,20 @@ function SignInClient() {
             theme: 'light',
             size: 'normal',
             callback: (token: string) => {
-              setTurnstileToken(token)
+              // Ignore callbacks from removed or superseded widgets
+              if (turnstileWidgetIdRef.current !== widgetId) return
+              if (renderForTab !== activeTabRef.current) return
+              applyTurnstileToken(token)
             },
             'error-callback': () => {
               console.error('Turnstile verification failed')
-              setTurnstileToken('')
+              if (turnstileWidgetIdRef.current !== widgetId) return
+              if (renderForTab !== activeTabRef.current) return
+              applyTurnstileToken('')
             }
           })
-          ; (window as any).turnstileWidgetId = widgetId
+          turnstileWidgetIdRef.current = widgetId
+          ;(window as any).turnstileWidgetId = widgetId
         } catch (error) {
           console.error('Turnstile render error:', error)
         }
@@ -249,43 +283,69 @@ function SignInClient() {
     return () => {
       clearTimeout(timer)
       // Clean up widget when component unmounts or tab changes
-      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+      if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
-          (window as any).turnstile.remove((window as any).turnstileWidgetId)
+          (window as any).turnstile.remove(turnstileWidgetIdRef.current)
         } catch (e) {
           // Ignore errors
         }
+        turnstileWidgetIdRef.current = null
       }
     }
-  }, [isMounted, activeTab])
+  }, [isMounted, activeTab, phoneOtpSent, emailOtpSent, phoneResendTurnstileRequired, emailResendTurnstileRequired])
 
   // Handle query params (reset success + auto-open forgot password)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  // Cooldown timers
+  // Cooldown timers (per channel)
   useEffect(() => {
-    if (resendCooldown > 0) {
-      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000)
+    if (phoneResendCooldown > 0) {
+      const timer = setTimeout(() => setPhoneResendCooldown(phoneResendCooldown - 1), 1000)
       return () => clearTimeout(timer)
     }
-  }, [resendCooldown])
+  }, [phoneResendCooldown])
+
+  useEffect(() => {
+    if (emailResendCooldown > 0) {
+      const timer = setTimeout(() => setEmailResendCooldown(emailResendCooldown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [emailResendCooldown])
 
   // No longer need recaptcha verifier for Inforu OTP
 
-  // Reset state when switching tabs
+  // Reset OTP progress for the tab being left; keep activeTabRef in sync for Turnstile callbacks
   useEffect(() => {
-    setError(null)
-    setPhoneError(null)
-    setEmailError(null)
-    if (activeTab === 'phone') {
-      setPhoneCode('')
-      setPhoneOtpSent(false)
-    } else if (activeTab === 'email') {
-      setEmailCode('')
-      setEmailOtpSent(false)
+    const previousTab = activeTabRef.current
+    if (previousTab !== activeTab) {
+      setError(null)
+      setPhoneError(null)
+      setEmailError(null)
+
+      if (previousTab === 'phone') {
+        setPhoneOtpSent(false)
+        setPhoneCode('')
+        setPhoneTurnstileToken('')
+        setPhoneTurnstileExpiresAt(null)
+        setPhoneResendToken('')
+        setPhoneServerClockOffsetMs(0)
+        setPhoneResendTurnstileRequired(false)
+        setPhoneResendCooldown(0)
+      } else if (previousTab === 'email') {
+        setEmailOtpSent(false)
+        setEmailCode('')
+        setEmailTurnstileToken('')
+        setEmailTurnstileExpiresAt(null)
+        setEmailResendToken('')
+        setEmailServerClockOffsetMs(0)
+        setEmailResendTurnstileRequired(false)
+        setEmailResendCooldown(0)
+      }
     }
+
+    activeTabRef.current = activeTab
   }, [activeTab])
 
   // Clear phone error when phone number changes
@@ -310,6 +370,62 @@ function SignInClient() {
     if (msg) return msg
     return fallback
   }
+
+  function isTurnstileVerificationError(status: number, error: unknown): boolean {
+    if (status !== 400 || typeof error !== 'string') return false
+    const lower = error.toLowerCase()
+    return lower.includes('verification') || lower.includes('security')
+  }
+
+  function isPhoneResendTurnstileExpired() {
+    return isTurnstileSessionExpired(phoneTurnstileExpiresAt, phoneServerClockOffsetMs)
+  }
+
+  function isEmailResendTurnstileExpired() {
+    return isTurnstileSessionExpired(emailTurnstileExpiresAt, emailServerClockOffsetMs)
+  }
+
+  function applyPhoneTurnstileSession(data: OtpTurnstileSessionResponse | null) {
+    const session = parseTurnstileSessionResponse(data)
+    if (!session) return
+    setPhoneServerClockOffsetMs(session.clockOffsetMs)
+    if (session.turnstileExpiresAt != null) {
+      setPhoneTurnstileExpiresAt(session.turnstileExpiresAt)
+    }
+    if (session.resendToken) {
+      setPhoneResendToken(session.resendToken)
+    }
+  }
+
+  function applyEmailTurnstileSession(data: OtpTurnstileSessionResponse | null) {
+    const session = parseTurnstileSessionResponse(data)
+    if (!session) return
+    setEmailServerClockOffsetMs(session.clockOffsetMs)
+    if (session.turnstileExpiresAt != null) {
+      setEmailTurnstileExpiresAt(session.turnstileExpiresAt)
+    }
+    if (session.resendToken) {
+      setEmailResendToken(session.resendToken)
+    }
+  }
+
+  function phoneSendNeedsTurnstile() {
+    if (isLocalhost) return false
+    if (!phoneOtpSent) return true
+    if (phoneResendTurnstileRequired || isPhoneResendTurnstileExpired()) return true
+    if (!phoneResendToken) return true
+    return false
+  }
+
+  function emailSendNeedsTurnstile() {
+    if (isLocalhost) return false
+    if (!emailOtpSent) return true
+    if (emailResendTurnstileRequired || isEmailResendTurnstileExpired()) return true
+    if (!emailResendToken) return true
+    return false
+  }
+
+  const turnstileRequiredMessage = lng === 'he' ? 'נא להשלים את האימות' : 'Please complete the verification'
 
   async function postLoginRedirect(user: User) {
     const token = await user.getIdToken()
@@ -409,14 +525,17 @@ function SignInClient() {
       return
     }
 
-    if (resendCooldown > 0) {
-      setPhoneError(t.cooldownMessage.replace('{seconds}', String(resendCooldown)))
+    if (phoneResendCooldown > 0) {
+      setPhoneError(t.cooldownMessage.replace('{seconds}', String(phoneResendCooldown)))
       return
     }
 
-    // Skip Turnstile validation on localhost
-    if (!isLocalhost && !turnstileToken) {
-      setPhoneError(lng === 'he' ? 'נא להשלים את האימות' : 'Please complete the verification')
+    // Turnstile required for initial send and for resends after the server window expires
+    if (phoneSendNeedsTurnstile() && !phoneTurnstileToken) {
+      if (phoneOtpSent) {
+        setPhoneResendTurnstileRequired(true)
+      }
+      setPhoneError(turnstileRequiredMessage)
       return
     }
 
@@ -436,7 +555,8 @@ function SignInClient() {
           otpType: 'sms', 
           otpValue: phoneForInforu,
           checkUserExists: true, // Sign-in requires existing user
-          ...(turnstileToken && { turnstileToken })
+          ...(phoneOtpSent && phoneResendToken && { resendToken: phoneResendToken }),
+          ...(phoneSendNeedsTurnstile() && phoneTurnstileToken && { turnstileToken: phoneTurnstileToken })
         }),
       })
 
@@ -449,51 +569,50 @@ function SignInClient() {
         } else if (res.status === 429) {
           if (data?.error === 'COOLDOWN') {
             const cooldownSeconds = data.message?.match(/\d+/)?.[0] || '60'
-            setResendCooldown(parseInt(cooldownSeconds))
+            setPhoneResendCooldown(parseInt(cooldownSeconds))
             setPhoneError(data.message || t.cooldownMessage.replace('{seconds}', cooldownSeconds))
           } else {
             setPhoneError(data?.message || t.tooManyAttempts)
           }
         } else {
-          setPhoneError(data?.message || t.errorSendingCode)
+          setPhoneError(data?.message || data?.error || t.errorSendingCode)
+        }
+
+        if (phoneOtpSent && isTurnstileVerificationError(res.status, data?.error)) {
+          setPhoneResendTurnstileRequired(true)
+          setPhoneTurnstileExpiresAt(null)
+          setPhoneResendToken('')
         }
         
         // Reset Turnstile widget on error
-        if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+        if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
           try {
-            (window as any).turnstile.reset((window as any).turnstileWidgetId)
+            (window as any).turnstile.reset(turnstileWidgetIdRef.current)
           } catch (e) {
             // Ignore errors
           }
         }
-        setTurnstileToken('')
+        setPhoneTurnstileToken('')
         return
       }
 
       setPhoneOtpSent(true)
-      setResendCooldown(60)
-      
-      // Reset Turnstile widget after successful send
-      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
-        try {
-          (window as any).turnstile.reset((window as any).turnstileWidgetId)
-        } catch (e) {
-          // Ignore errors
-        }
-      }
-      setTurnstileToken('')
+      setPhoneResendCooldown(60)
+      applyPhoneTurnstileSession(data)
+      setPhoneResendTurnstileRequired(false)
+      setPhoneTurnstileToken('')
     } catch (err: any) {
       setPhoneError(formatAuthError(err, t.errorSendingCode))
       
       // Reset Turnstile widget on error
-      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+      if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
-          (window as any).turnstile.reset((window as any).turnstileWidgetId)
+          (window as any).turnstile.reset(turnstileWidgetIdRef.current)
         } catch (e) {
           // Ignore errors
         }
       }
-      setTurnstileToken('')
+      setPhoneTurnstileToken('')
     } finally {
       setBusy(false)
     }
@@ -563,14 +682,17 @@ function SignInClient() {
       return
     }
 
-    if (resendCooldown > 0) {
-      setEmailError(t.cooldownMessage.replace('{seconds}', String(resendCooldown)))
+    if (emailResendCooldown > 0) {
+      setEmailError(t.cooldownMessage.replace('{seconds}', String(emailResendCooldown)))
       return
     }
 
-    // Skip Turnstile validation on localhost
-    if (!isLocalhost && !turnstileToken) {
-      setEmailError(lng === 'he' ? 'נא להשלים את האימות' : 'Please complete the verification')
+    // Turnstile required for initial send and for resends after the server window expires
+    if (emailSendNeedsTurnstile() && !emailTurnstileToken) {
+      if (emailOtpSent) {
+        setEmailResendTurnstileRequired(true)
+      }
+      setEmailError(turnstileRequiredMessage)
       return
     }
 
@@ -587,7 +709,8 @@ function SignInClient() {
           otpType: 'email', 
           otpValue: trimmedEmail,
           checkUserExists: true, // Sign-in requires existing user
-          ...(turnstileToken && { turnstileToken })
+          ...(emailOtpSent && emailResendToken && { resendToken: emailResendToken }),
+          ...(emailSendNeedsTurnstile() && emailTurnstileToken && { turnstileToken: emailTurnstileToken })
         }),
       })
 
@@ -600,51 +723,50 @@ function SignInClient() {
         } else if (res.status === 429) {
           if (data?.error === 'COOLDOWN') {
             const cooldownSeconds = data.message?.match(/\d+/)?.[0] || '60'
-            setResendCooldown(parseInt(cooldownSeconds))
+            setEmailResendCooldown(parseInt(cooldownSeconds))
             setEmailError(data.message || t.cooldownMessage.replace('{seconds}', cooldownSeconds))
           } else {
             setEmailError(data?.message || t.tooManyAttempts)
           }
         } else {
-          setEmailError(data?.message || t.errorSendingCode)
+          setEmailError(data?.message || data?.error || t.errorSendingCode)
+        }
+
+        if (emailOtpSent && isTurnstileVerificationError(res.status, data?.error)) {
+          setEmailResendTurnstileRequired(true)
+          setEmailTurnstileExpiresAt(null)
+          setEmailResendToken('')
         }
         
         // Reset Turnstile widget on error
-        if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+        if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
           try {
-            (window as any).turnstile.reset((window as any).turnstileWidgetId)
+            (window as any).turnstile.reset(turnstileWidgetIdRef.current)
           } catch (e) {
             // Ignore errors
           }
         }
-        setTurnstileToken('')
+        setEmailTurnstileToken('')
         return
       }
 
       setEmailOtpSent(true)
-      setResendCooldown(60)
-      
-      // Reset Turnstile widget after successful send
-      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
-        try {
-          (window as any).turnstile.reset((window as any).turnstileWidgetId)
-        } catch (e) {
-          // Ignore errors
-        }
-      }
-      setTurnstileToken('')
+      setEmailResendCooldown(60)
+      applyEmailTurnstileSession(data)
+      setEmailResendTurnstileRequired(false)
+      setEmailTurnstileToken('')
     } catch (err: any) {
       setEmailError(formatAuthError(err, t.errorSendingCode))
       
       // Reset Turnstile widget on error
-      if ((window as any).turnstile && (window as any).turnstileWidgetId) {
+      if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
-          (window as any).turnstile.reset((window as any).turnstileWidgetId)
+          (window as any).turnstile.reset(turnstileWidgetIdRef.current)
         } catch (e) {
           // Ignore errors
         }
       }
-      setTurnstileToken('')
+      setEmailTurnstileToken('')
     } finally {
       setBusy(false)
     }
@@ -819,13 +941,11 @@ function SignInClient() {
                   <button
                     type="button"
                     onClick={handleSendPhoneCode}
-                    disabled={busy || !phoneLocalNumber || (phoneLocalNumber.replace(/\D/g, '').length < 8) || (!isLocalhost && !turnstileToken)}
+                    disabled={busy || !phoneLocalNumber || (phoneLocalNumber.replace(/\D/g, '').length < 8) || phoneResendCooldown > 0 || (!isLocalhost && !phoneTurnstileToken)}
                     className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {busy ? t.sending : t.sendCodeToPhone}
+                    {busy ? t.sending : phoneResendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(phoneResendCooldown)) : t.sendCodeToPhone}
                   </button>
-                  
-                  {/* Cloudflare Turnstile Widget - Hidden on localhost */}
                   {isMounted && !isLocalhost && (
                     <div className="flex justify-center">
                       <div id="cf-turnstile-phone"></div>
@@ -837,6 +957,11 @@ function SignInClient() {
                   <div className={`rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
                     {t.codeSentToPhone.replace('{phone}', phoneLocalNumber ? (phoneLocalNumber.startsWith('0') ? phoneLocalNumber : `0${phoneLocalNumber}`) : '')}
                   </div>
+                  {phoneError && (
+                    <p className={`text-sm text-red-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                      {phoneError}
+                    </p>
+                  )}
                   <div>
                     <label className={profileTheme.label} dir={isRTL ? 'rtl' : 'ltr'}>{t.enterCode}</label>
                     <div className="mt-2">
@@ -857,14 +982,19 @@ function SignInClient() {
                   >
                     {busy ? t.verifying : t.verifyCode}
                   </button>
+                  {phoneResendTurnstileRequired && isMounted && !isLocalhost && (
+                    <div className="flex justify-center">
+                      <div id="cf-turnstile-phone"></div>
+                    </div>
+                  )}
                   <div className="text-center">
                     <button
                       type="button"
                       onClick={handleSendPhoneCode}
-                      disabled={busy || resendCooldown > 0}
+                      disabled={busy || phoneResendCooldown > 0 || (phoneResendTurnstileRequired && !isLocalhost && !phoneTurnstileToken)}
                       className="text-sm text-[#856D55] hover:underline disabled:opacity-50"
                     >
-                      {resendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(resendCooldown)) : t.resendCode}
+                      {phoneResendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(phoneResendCooldown)) : t.resendCode}
                     </button>
                   </div>
                 </>
@@ -895,13 +1025,11 @@ function SignInClient() {
                   <button
                     type="button"
                     onClick={handleSendEmailCode}
-                    disabled={busy || !email.trim() || resendCooldown > 0 || (!isLocalhost && !turnstileToken)}
+                    disabled={busy || !email.trim() || emailResendCooldown > 0 || (!isLocalhost && !emailTurnstileToken)}
                     className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {busy ? t.sending : resendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(resendCooldown)) : t.sendCodeToEmail}
+                    {busy ? t.sending : emailResendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(emailResendCooldown)) : t.sendCodeToEmail}
                   </button>
-                  
-                  {/* Cloudflare Turnstile Widget - Hidden on localhost */}
                   {isMounted && !isLocalhost && (
                     <div className="flex justify-center">
                       <div id="cf-turnstile-email"></div>
@@ -913,6 +1041,11 @@ function SignInClient() {
                   <div className={`rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
                     {t.codeSentToEmail.replace('{email}', email)}
                   </div>
+                  {emailError && (
+                    <p className={`text-sm text-red-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
+                      {emailError}
+                    </p>
+                  )}
                   <div>
                     <label className={profileTheme.label} dir={isRTL ? 'rtl' : 'ltr'}>{t.enterCode}</label>
                     <div className="mt-2">
@@ -933,14 +1066,19 @@ function SignInClient() {
                   >
                     {busy ? t.verifying : t.verifyCode}
                   </button>
+                  {emailResendTurnstileRequired && isMounted && !isLocalhost && (
+                    <div className="flex justify-center">
+                      <div id="cf-turnstile-email"></div>
+                    </div>
+                  )}
                   <div className="text-center">
                     <button
                       type="button"
                       onClick={handleSendEmailCode}
-                      disabled={busy || resendCooldown > 0}
+                      disabled={busy || emailResendCooldown > 0 || (emailResendTurnstileRequired && !isLocalhost && !emailTurnstileToken)}
                       className="text-sm text-[#856D55] hover:underline disabled:opacity-50"
                     >
-                      {resendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(resendCooldown)) : t.resendCode}
+                      {emailResendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(emailResendCooldown)) : t.resendCode}
                     </button>
                   </div>
                 </>

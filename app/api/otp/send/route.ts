@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { randomUUID } from 'crypto';
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone';
 import { userExistsByPhone, userExistsByEmail } from '@/lib/user-check';
 import { NextRequest } from 'next/server';
@@ -8,6 +9,7 @@ const requestSchema = z.object({
   otpValue: z.string().trim().min(1),
   checkUserExists: z.boolean().optional(),
   turnstileToken: z.string().optional(),
+  resendToken: z.string().optional(),
 });
 
 // 🔐 Verify Cloudflare Turnstile token
@@ -39,9 +41,45 @@ const INFORU_USERNAME = process.env.INFORU_USERNAME;
 const INFORU_TOKEN = process.env.INFORU_TOKEN;
 
 const COOLDOWN_MS = 60 * 1000; // 60 seconds
+const TURNSTILE_RESEND_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
 
 // Simple in-memory cooldown store (keyed by otpValue)
 const cooldownStore = new Map<string, number>();
+
+type TurnstileVerifiedEntry = {
+  verifiedAt: number;
+  resendToken: string;
+};
+
+// Tracks Turnstile-verified OTP sessions; resend skip requires matching resendToken
+const turnstileVerifiedStore = new Map<string, TurnstileVerifiedEntry>();
+
+function canSkipTurnstileForResend(otpValue: string, resendToken?: string): boolean {
+  if (!resendToken) return false;
+
+  const entry = turnstileVerifiedStore.get(otpValue);
+  if (!entry) return false;
+  if (resendToken !== entry.resendToken) return false;
+
+  if (Date.now() - entry.verifiedAt > TURNSTILE_RESEND_WINDOW_MS) {
+    turnstileVerifiedStore.delete(otpValue);
+    return false;
+  }
+
+  return true;
+}
+
+function issueTurnstileSession(otpValue: string): {
+  verifiedAt: number;
+  expiresAt: number;
+  resendToken: string;
+} {
+  const verifiedAt = Date.now();
+  const expiresAt = verifiedAt + TURNSTILE_RESEND_WINDOW_MS;
+  const resendToken = randomUUID();
+  turnstileVerifiedStore.set(otpValue, { verifiedAt, resendToken });
+  return { verifiedAt, expiresAt, resendToken };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,36 +93,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { otpType, otpValue, checkUserExists, turnstileToken } = parsed.data;
+    const { otpType, otpValue, checkUserExists, turnstileToken, resendToken } = parsed.data;
 
     // Check if running on localhost (skip Turnstile validation in development)
     const host = request.headers.get('host') || '';
     const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1') || process.env.NODE_ENV === 'development';
 
-    // 🔐 VERIFY TURNSTILE TOKEN (skip on localhost)
+    // 🔐 VERIFY TURNSTILE TOKEN (skip on localhost; resends skip after a verified initial send)
     if (!isLocalhost) {
-      if (!turnstileToken) {
-        console.warn('[OTP SEND] No Turnstile token provided');
-        return Response.json(
-          { error: 'Security verification required. Please complete the verification.' },
-          { status: 400 }
-        );
-      }
+      const skipTurnstile = canSkipTurnstileForResend(otpValue, resendToken);
 
-      // Extract client IP for Turnstile validation
-      const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
-                 request.headers.get('x-real-ip') || 
-                 'unknown';
+      if (!skipTurnstile) {
+        if (!turnstileToken) {
+          console.warn('[OTP SEND] No Turnstile token provided');
+          return Response.json(
+            { error: 'Security verification required. Please complete the verification.' },
+            { status: 400 }
+          );
+        }
 
-      // 🔐 TURNSTILE VERIFICATION
-      const validation = await validateTurnstile(turnstileToken, ip);
+        // Extract client IP for Turnstile validation
+        const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
+                   request.headers.get('x-real-ip') || 
+                   'unknown';
 
-      if (!validation.success) {
-        console.error('[OTP SEND] Invalid Turnstile token:', validation['error-codes']);
-        return Response.json(
-          { error: 'Invalid verification. Please try again.' },
-          { status: 400 }
-        );
+        // 🔐 TURNSTILE VERIFICATION
+        const validation = await validateTurnstile(turnstileToken, ip);
+
+        if (!validation.success) {
+          console.error('[OTP SEND] Invalid Turnstile token:', validation['error-codes']);
+          return Response.json(
+            { error: 'Invalid verification. Please try again.' },
+            { status: 400 }
+          );
+        }
       }
     } else {
       console.log('[OTP SEND] Skipping Turnstile validation on localhost');
@@ -231,10 +273,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update cooldown
+    // Update cooldown and issue a session-scoped resend token
     cooldownStore.set(otpValue, Date.now());
+    const turnstileSession = !isLocalhost ? issueTurnstileSession(otpValue) : undefined;
+    const serverNow = Date.now();
 
-    return Response.json({ ok: true }, { status: 200 });
+    return Response.json(
+      {
+        ok: true,
+        serverNow,
+        ...(turnstileSession && {
+          turnstileVerifiedAt: turnstileSession.verifiedAt,
+          turnstileExpiresAt: turnstileSession.expiresAt,
+          resendToken: turnstileSession.resendToken,
+        }),
+      },
+      { status: 200 }
+    );
   } catch (err: any) {
     console.error('[OTP SEND] Handler error:', err);
     return Response.json(

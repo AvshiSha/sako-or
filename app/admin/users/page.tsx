@@ -3,18 +3,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/app/contexts/AuthContext'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
-import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, EyeIcon, EyeSlashIcon, TrashIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { getAdminAuthHeaders } from '@/lib/admin-api'
 import { adminTheme } from '@/app/admin/_components/adminTheme'
+import { DeleteAdminUserModal } from './_components/DeleteAdminUserModal'
 
 interface AdminUserRow {
+  id?: string
   email: string | null
   firstName: string | null
   lastName: string | null
   createdAt: string | null
   lastLoginAt: string | null
   isLegacy?: boolean
+  deletable?: boolean
+  notDeletableReason?: string
 }
 
 type MessageState = {
@@ -32,6 +36,7 @@ function formatAdminName(user: AdminUserRow): string {
 function AdminUsersPage() {
   const { user, logout } = useAuth()
   const [adminUsers, setAdminUsers] = useState<AdminUserRow[]>([])
+  const [canDeleteAdmins, setCanDeleteAdmins] = useState(false)
   const [isLoadingList, setIsLoadingList] = useState(true)
   const [listError, setListError] = useState<string | null>(null)
 
@@ -42,6 +47,10 @@ function AdminUsersPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [message, setMessage] = useState<MessageState>(null)
+
+  const [deleteTarget, setDeleteTarget] = useState<AdminUserRow | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const loadAdminUsers = useCallback(async () => {
     if (!user) return
@@ -58,6 +67,7 @@ function AdminUsersPage() {
         throw new Error(data.error || 'Failed to load admin users')
       }
 
+      setCanDeleteAdmins(data.canDeleteAdmins === true)
       setAdminUsers(data.users ?? [])
     } catch (error) {
       setListError(error instanceof Error ? error.message : 'Failed to load admin users')
@@ -123,6 +133,54 @@ function AdminUsersPage() {
     }
   }
 
+  const openDeleteModal = (adminUser: AdminUserRow) => {
+    setDeleteError(null)
+    setDeleteTarget(adminUser)
+  }
+
+  const closeDeleteModal = () => {
+    if (isDeleting) return
+    setDeleteTarget(null)
+    setDeleteError(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!user || !deleteTarget?.email) return
+
+    const revokedEmail = deleteTarget.email
+
+    setIsDeleting(true)
+    setDeleteError(null)
+
+    try {
+      const headers = await getAdminAuthHeaders(user)
+      const res = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers,
+        body: JSON.stringify({ email: revokedEmail }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to revoke admin access')
+      }
+
+      setDeleteTarget(null)
+      setMessage({
+        type: 'success',
+        text: `Admin access revoked for ${revokedEmail}.`,
+      })
+      await loadAdminUsers()
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : 'Failed to revoke admin access. Please try again.'
+      )
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <div className={`${adminTheme.pageBg} pt-20`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -159,6 +217,18 @@ function AdminUsersPage() {
         <div className={`${adminTheme.card} p-6 mb-8`}>
           <h2 className="text-lg font-medium text-black mb-4">Admin Users</h2>
 
+          {message && (
+            <div
+              className={`mb-4 p-3 rounded-md text-sm border ${
+                message.type === 'success'
+                  ? 'bg-green-50 border-green-200 text-green-700'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}
+            >
+              {message.text}
+            </div>
+          )}
+
           {isLoadingList ? (
             <div className="py-8 text-center">
               <div className={adminTheme.spinner} />
@@ -181,11 +251,34 @@ function AdminUsersPage() {
                     <p className="text-sm font-medium text-black">{adminUser.email}</p>
                     <p className="text-sm text-[#856D55]">{formatAdminName(adminUser)}</p>
                   </div>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${adminTheme.badgeActive}`}
-                  >
-                    Active
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${adminTheme.badgeActive}`}
+                    >
+                      Active
+                    </span>
+                    {adminUser.deletable ? (
+                      <button
+                        type="button"
+                        onClick={() => openDeleteModal(adminUser)}
+                        className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 border border-red-200"
+                        title="Revoke admin access"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                        Delete
+                      </button>
+                    ) : canDeleteAdmins && adminUser.notDeletableReason ? (
+                      <button
+                        type="button"
+                        disabled
+                        title={adminUser.notDeletableReason}
+                        className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-[#95816C] border border-[#B2A28E]/50 opacity-50 cursor-not-allowed"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                        Delete
+                      </button>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>
@@ -281,20 +374,17 @@ function AdminUsersPage() {
               {isCreating ? 'Creating...' : 'Create Admin User'}
             </button>
           </form>
-
-          {message && (
-            <div
-              className={`mt-4 p-3 rounded-md text-sm border ${
-                message.type === 'success'
-                  ? 'bg-green-50 border-green-200 text-green-700'
-                  : 'bg-red-50 border-red-200 text-red-700'
-              }`}
-            >
-              {message.text}
-            </div>
-          )}
         </div>
       </div>
+
+      <DeleteAdminUserModal
+        isOpen={deleteTarget !== null}
+        email={deleteTarget?.email ?? null}
+        isDeleting={isDeleting}
+        error={deleteError}
+        onClose={closeDeleteModal}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   )
 }

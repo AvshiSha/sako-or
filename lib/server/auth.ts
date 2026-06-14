@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth } from '@/lib/firebase-admin'
-import { normalizeEmail } from '@/lib/admin'
+import { normalizeEmail, SUPER_ADMIN_EMAIL } from '@/lib/admin'
 import { resolveIsAdmin } from '@/lib/server/admin'
 
 export type AuthedRequestContext = {
@@ -78,6 +78,17 @@ export async function requireAdmin(
   if (auth instanceof NextResponse) return auth
   if (!auth.isAdmin) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+  }
+  return auth
+}
+
+export async function requireSuperAdmin(
+  request: NextRequest
+): Promise<AuthedRequestContext | NextResponse> {
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
+  if (auth.email !== SUPER_ADMIN_EMAIL) {
+    return NextResponse.json({ error: 'Super admin access required' }, { status: 403 })
   }
   return auth
 }

@@ -10,6 +10,8 @@ export const ADMIN_EMAILS = [
   'avshisakoor@gmail.com', // Firebase emails are always lowercase
 ] as const
 
+export const SUPER_ADMIN_EMAIL = 'avshisakoor@gmail.com' as const
+
 export function normalizeEmail(email: string | null | undefined): string | null {
   if (!email) return null
   const trimmed = email.trim().toLowerCase()
@@ -24,4 +26,9 @@ export function isAdminEmail(email: string | null | undefined): boolean {
 
 export function isAdminRole(role: string | null | undefined): boolean {
   return role === ADMIN_ROLE
+}
+
+export function isSuperAdminEmail(email: string | null | undefined): boolean {
+  const normalized = normalizeEmail(email)
+  return normalized === SUPER_ADMIN_EMAIL
 }

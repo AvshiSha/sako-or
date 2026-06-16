@@ -49,42 +49,49 @@ export async function POST(
     );
   }
 
-  const syncedKeys = await syncCategoryMerchandisingVariantKeys(id);
-  const existing = await getCategoryMerchandisingAdmin(id);
+  try {
+    const syncedKeys = await syncCategoryMerchandisingVariantKeys(id);
+    const existing = await getCategoryMerchandisingAdmin(id);
 
-  let orderedVariantKeys: string[];
-  if (parsed.data.strategy === 'append') {
-    const seen = new Set(existing.orderedVariantKeys);
-    orderedVariantKeys = [...existing.orderedVariantKeys];
-    for (const key of syncedKeys) {
-      if (!seen.has(key)) {
-        seen.add(key);
-        orderedVariantKeys.push(key);
+    let orderedVariantKeys: string[];
+    if (parsed.data.strategy === 'append') {
+      const seen = new Set(existing.orderedVariantKeys);
+      orderedVariantKeys = [...existing.orderedVariantKeys];
+      for (const key of syncedKeys) {
+        if (!seen.has(key)) {
+          seen.add(key);
+          orderedVariantKeys.push(key);
+        }
       }
+    } else {
+      orderedVariantKeys = syncedKeys;
     }
-  } else {
-    orderedVariantKeys = syncedKeys;
-  }
 
-  let merchandising = existing;
-  if (parsed.data.save) {
-    const mode =
-      existing.mode === 'auto' && orderedVariantKeys.length > 0 ? 'manual' : existing.mode;
-    merchandising = await saveCategoryMerchandisingAdmin(id, {
-      mode,
-      orderedVariantKeys,
-      updatedBy: auth.email ?? undefined,
+    let merchandising = existing;
+    if (parsed.data.save) {
+      const mode =
+        existing.mode === 'auto' && orderedVariantKeys.length > 0 ? 'manual' : existing.mode;
+      merchandising = await saveCategoryMerchandisingAdmin(id, {
+        mode,
+        orderedVariantKeys,
+        updatedBy: auth.email ?? undefined,
+      });
+    } else {
+      merchandising = { ...existing, orderedVariantKeys };
+    }
+
+    const previews = await resolveMerchandisingPreviewRows(orderedVariantKeys, { lang: 'en' });
+
+    return NextResponse.json({
+      merchandising,
+      previews,
+      syncedCount: syncedKeys.length,
     });
-  } else {
-    merchandising = { ...existing, orderedVariantKeys };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : 'Failed to sync category merchandising';
+    // Client expects `{ error }` payload on non-2xx.
+    return NextResponse.json({ error: message }, { status: 400 });
   }
-
-  const previews = await resolveMerchandisingPreviewRows(orderedVariantKeys, { lang: 'en' });
-
-  return NextResponse.json({
-    merchandising,
-    previews,
-    syncedCount: syncedKeys.length,
-  });
 }
 

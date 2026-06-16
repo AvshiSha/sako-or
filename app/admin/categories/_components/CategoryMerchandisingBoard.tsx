@@ -132,6 +132,7 @@ export default function CategoryMerchandisingBoard({ categoryId }: { categoryId:
   const [poolSearch, setPoolSearch] = useState('');
   const [poolItems, setPoolItems] = useState<MerchandisingPreviewRow[]>([]);
   const [poolLoading, setPoolLoading] = useState(false);
+  const [poolError, setPoolError] = useState<string | null>(null);
   const [poolPage, setPoolPage] = useState(1);
   const [poolHasMore, setPoolHasMore] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -238,6 +239,7 @@ export default function CategoryMerchandisingBoard({ categoryId }: { categoryId:
       if (showSpinner) setPoolLoading(true);
 
       try {
+        setPoolError(null);
         const headers = await getAdminAuthHeaders(currentUser);
         const exclude = excludeKeys ?? orderedKeysRef.current;
         const params = new URLSearchParams({
@@ -250,7 +252,10 @@ export default function CategoryMerchandisingBoard({ categoryId }: { categoryId:
         const res = await fetch(`/api/admin/categories/${categoryId}/merchandising/pool?${params}`, {
           headers,
         });
-        if (!res.ok) return;
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Failed to load pool (HTTP ${res.status})`);
+        }
         const data = await res.json();
         setPoolHasMore(Boolean(data.hasMore));
         setPoolPage(data.page || page);
@@ -263,6 +268,15 @@ export default function CategoryMerchandisingBoard({ categoryId }: { categoryId:
           });
         } else {
           setPoolItems(data.previews ?? []);
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : 'Failed to load pool';
+        setPoolError(message);
+        // Avoid misleading "No more variants" on failure.
+        if (!append) {
+          setPoolItems([]);
+          setPoolHasMore(false);
+          setPoolPage(page);
         }
       } finally {
         if (showSpinner) setPoolLoading(false);
@@ -538,7 +552,11 @@ export default function CategoryMerchandisingBoard({ categoryId }: { categoryId:
                 />
               </div>
               <div className="flex-1 overflow-y-auto space-y-2 min-h-0">
-                {poolLoading && poolItems.length === 0 ? (
+                {poolError ? (
+                  <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-md p-2">
+                    {poolError}
+                  </div>
+                ) : poolLoading && poolItems.length === 0 ? (
                   <p className="text-sm text-gray-500">Loading pool…</p>
                 ) : poolItems.length === 0 ? (
                   <p className="text-sm text-gray-500">No more variants in pool.</p>
@@ -576,7 +594,7 @@ export default function CategoryMerchandisingBoard({ categoryId }: { categoryId:
                   ))
                 )}
               </div>
-              {mode !== 'auto' && poolHasMore && (
+              {poolHasMore && (
                 <div className="pt-3">
                   <button
                     type="button"

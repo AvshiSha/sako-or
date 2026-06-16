@@ -3,7 +3,6 @@ import 'server-only';
 import type { QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import {
-  MAX_MERCHANDISING_VARIANT_KEYS,
   dedupeVariantKeys,
   isValidVariantKey,
 } from '@/lib/campaign-merchandising-types';
@@ -12,6 +11,7 @@ import {
   CATEGORY_MERCHANDISING_VERSION,
   CategoryMerchandising,
   CategoryMerchandisingMode,
+  MAX_CATEGORY_MERCHANDISING_VARIANT_KEYS,
   defaultCategoryMerchandising,
 } from '@/lib/category-merchandising-types';
 import { resolveMerchandisingPreviewRows } from '@/lib/campaign-merchandising';
@@ -54,9 +54,10 @@ export async function saveCategoryMerchandisingAdmin(
   }
 ): Promise<CategoryMerchandising> {
   const orderedVariantKeys = dedupeVariantKeys(payload.orderedVariantKeys);
-  // Keep the same hard cap used by campaign merchandising.
-  if (orderedVariantKeys.length > MAX_MERCHANDISING_VARIANT_KEYS) {
-    throw new Error(`Cannot save more than ${MAX_MERCHANDISING_VARIANT_KEYS} variant keys`);
+  if (orderedVariantKeys.length > MAX_CATEGORY_MERCHANDISING_VARIANT_KEYS) {
+    throw new Error(
+      `Cannot save more than ${MAX_CATEGORY_MERCHANDISING_VARIANT_KEYS} variant keys`
+    );
   }
   for (const key of orderedVariantKeys) {
     if (!isValidVariantKey(key)) {

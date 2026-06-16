@@ -19,8 +19,23 @@ import {
 import {
   getProductCardCarouselOpts,
   getProductImageCarouselOpts,
+  PDP_GALLERY_MAX_HEIGHT,
 } from "@/lib/product-image-carousel";
 import { cn } from "@/lib/utils";
+
+function useLgDesktop() {
+  const [isLgDesktop, setIsLgDesktop] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setIsLgDesktop(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  return isLgDesktop;
+}
 
 const ProductImageSlide = memo(function ProductImageSlide({
   src,
@@ -164,6 +179,10 @@ function ProductImageCarouselInner({
 }: ProductImageCarouselProps) {
   const [api, setLocalApi] = useState<CarouselApi>();
   const settledIndex = useEmblaSettledIndex(api);
+  const isLgDesktop = useLgDesktop();
+  const isPdp = variant === "pdp";
+  const pdpMaxHeightStyle =
+    isPdp && isLgDesktop ? { maxHeight: PDP_GALLERY_MAX_HEIGHT } : undefined;
 
   useEffect(() => {
     if (!api || initialIndex <= 0) return;
@@ -196,7 +215,10 @@ function ProductImageCarouselInner({
 
   if (images.length === 1) {
     return (
-      <div className={cn("relative aspect-square w-full", className)}>
+      <div
+        className={cn("relative aspect-square w-full overflow-hidden", className)}
+        style={pdpMaxHeightStyle}
+      >
         <ProductImageSlide src={images[0]} alt={alt} eager={isAboveFold} />
         {children}
       </div>
@@ -210,9 +232,15 @@ function ProductImageCarouselInner({
       itemVariant="flush"
       performanceMode="grid"
       opts={opts}
-      className={cn("h-full w-full", className)}
+      className={cn(isPdp ? "w-full h-auto" : "h-full w-full", className)}
+      style={pdpMaxHeightStyle}
     >
-      <div className="relative aspect-square h-full w-full overflow-hidden">
+      <div
+        className={cn(
+          "group relative aspect-square w-full overflow-hidden",
+          isPdp ? "max-h-[inherit]" : "h-full"
+        )}
+      >
         <CarouselContent className="h-full">
           {images.map((src, index) => (
             <CarouselItem key={`${src}-${index}`} className="h-full basis-full">

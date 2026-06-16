@@ -24,6 +24,29 @@ import { getBaseSku } from '@/lib/sku-parser';
 
 export { productMatchesListingFilters } from '@/lib/collectionFilters';
 
+export type MerchandisingMode = 'auto' | 'pinned' | 'manual';
+
+export const CATEGORY_MERCHANDISING_COLLECTION = 'categoryMerchandising';
+
+export type CategoryMerchandising = {
+  categoryId: string;
+  mode: MerchandisingMode;
+  orderedVariantKeys: string[];
+  updatedAt: string;
+  updatedBy?: string;
+  version: number;
+};
+
+export function defaultCategoryMerchandising(categoryId: string): CategoryMerchandising {
+  return {
+    categoryId,
+    mode: 'auto',
+    orderedVariantKeys: [],
+    updatedAt: new Date().toISOString(),
+    version: 1,
+  };
+}
+
 // Lazy-init Firebase to avoid auth/invalid-api-key during Next.js build (when env may be missing).
 // Initialization runs on first use of db/auth/storage/app, not at import time.
 let _app: FirebaseApp | null = null;
@@ -2133,6 +2156,7 @@ export async function getCollectionProducts(
 ): Promise<FilteredProductsResult> {
   // Parse filters from searchParams
   const filters: ProductFilters = {};
+  let deepestCategoryId: string | undefined;
 
   // Category filtering: resolve all category IDs from path
   if (categoryPath) {
@@ -2140,6 +2164,7 @@ export async function getCollectionProducts(
       const categoryInfo = await categoryService.getCategoryIdsFromPath(categoryPath, language);
       if (categoryInfo && categoryInfo.categoryIds.length > 0) {
         filters.categoryIds = categoryInfo.categoryIds;
+        deepestCategoryId = categoryInfo.categoryIds[categoryInfo.categoryIds.length - 1];
       } else {
         // Fallback to path-based filtering if category not found
         filters.categoryPath = categoryPath;
@@ -2154,6 +2179,20 @@ export async function getCollectionProducts(
 
   const sort = parseSortFromSearchParams(searchParams);
   const page = parsePageFromSearchParams(searchParams);
+
+  const useMerchandising = sort === 'relevance';
+  if (useMerchandising && deepestCategoryId) {
+    const merchandising = await getCategoryMerchandising(deepestCategoryId);
+    if (merchandising.mode !== 'auto') {
+      return resolveCategoryMerchandisedVariantPage({
+        categoryId: deepestCategoryId,
+        merchandising,
+        filters,
+        page,
+        pageSize: LISTING_PAGE_SIZE,
+      });
+    }
+  }
 
   return resolveListingVariantPage({
     filters,
@@ -2182,6 +2221,28 @@ export async function getCampaignMerchandising(campaignSlug: string): Promise<Ca
   } catch (error) {
     console.error('Error fetching campaign merchandising:', error);
     return defaultCampaignMerchandising(campaignSlug);
+  }
+}
+
+/** Read per-category merchandising config (defaults to auto when missing). */
+export async function getCategoryMerchandising(categoryId: string): Promise<CategoryMerchandising> {
+  try {
+    const snap = await getDoc(doc(db, CATEGORY_MERCHANDISING_COLLECTION, categoryId));
+    if (!snap.exists()) {
+      return defaultCategoryMerchandising(categoryId);
+    }
+    const data = snap.data() as Partial<CategoryMerchandising>;
+    return {
+      categoryId,
+      mode: (data.mode as MerchandisingMode) ?? 'auto',
+      orderedVariantKeys: Array.isArray(data.orderedVariantKeys) ? data.orderedVariantKeys : [],
+      updatedAt: data.updatedAt ?? new Date().toISOString(),
+      updatedBy: data.updatedBy,
+      version: data.version ?? 1,
+    };
+  } catch (error) {
+    console.error('Error fetching category merchandising:', error);
+    return defaultCategoryMerchandising(categoryId);
   }
 }
 
@@ -2465,6 +2526,120 @@ async function resolveCampaignMerchandisedVariantPage(
       productLimit,
       expandOptions,
       productFilter: campaign.productFilter,
+    });
+    availableFilterOptions = facets;
+
+    let merged: VariantItem[];
+    if (merchandising.mode === 'manual') {
+      const pinnedByKey = new Map(pinnedItems.map((item) => [item.variantKey, item]));
+      const orderedPinned = curatedKeys
+        .map((key) => pinnedByKey.get(key))
+        .filter((item): item is VariantItem => !!item);
+      const pinnedKeySet = new Set(orderedPinned.map((item) => item.variantKey));
+      const tail = tailItems.filter((item) => !pinnedKeySet.has(item.variantKey));
+      merged = [...orderedPinned, ...tail];
+    } else {
+      const pinnedByKey = new Map(pinnedItems.map((item) => [item.variantKey, item]));
+      const orderedPinned = curatedKeys
+        .map((key) => pinnedByKey.get(key))
+        .filter((item): item is VariantItem => !!item);
+      merged = [...orderedPinned, ...tailItems];
+    }
+
+    const filtered = merged.filter((item) => variantItemMatchesFilters(item, filters));
+    total = filtered.length;
+    pageItems = filtered.slice(startIndex, endIndex);
+  }
+
+  const filteredPageItems = pageItems.filter((item) => variantItemMatchesFilters(item, filters));
+  const hasMore = endIndex < total;
+  const uniqueProducts = new Map<string, Product>();
+  filteredPageItems.forEach((item) => {
+    const productId = item.product.id || item.product.sku;
+    if (!uniqueProducts.has(productId)) {
+      uniqueProducts.set(productId, item.product);
+    }
+  });
+
+  return {
+    products: Array.from(uniqueProducts.values()),
+    variantItems: filteredPageItems,
+    hasMore,
+    total,
+    page: validatedPage,
+    pageSize,
+    availableFilterOptions,
+  };
+}
+
+type ResolveCategoryMerchandisedOptions = {
+  categoryId: string;
+  merchandising: CategoryMerchandising;
+  filters: ProductFilters;
+  page: number;
+  pageSize?: number;
+};
+
+async function resolveCategoryMerchandisedVariantPage(
+  options: ResolveCategoryMerchandisedOptions
+): Promise<FilteredProductsResult> {
+  const { merchandising, filters } = options;
+  const pageSize = options.pageSize ?? LISTING_PAGE_SIZE;
+  const validatedPage = Number.isInteger(options.page) && options.page > 0 ? options.page : 1;
+  const startIndex = (validatedPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+
+  const normalizedColors = filters.color
+    ? (Array.isArray(filters.color) ? filters.color : [filters.color]).filter(Boolean)
+    : undefined;
+  const normalizedSizes = filters.size
+    ? (Array.isArray(filters.size) ? filters.size : [filters.size]).filter(Boolean)
+    : undefined;
+  const expandOptions =
+    normalizedColors || normalizedSizes
+      ? { colorSlugs: normalizedColors, sizes: normalizedSizes }
+      : undefined;
+
+  const curatedKeys = merchandising.orderedVariantKeys;
+  const excludeSet = new Set(curatedKeys);
+  const useKeySlice = merchandising.mode === 'manual' && curatedKeys.length > pageSize;
+
+  let pageItems: VariantItem[] = [];
+  let availableFilterOptions = { colors: [] as string[], sizes: [] as string[] };
+  let total = 0;
+
+  if (useKeySlice) {
+    const curatedCount = curatedKeys.length;
+    const { items: tailItems, availableFilterOptions: facets } = await collectTagMatchedVariantItems({
+      filters,
+      excludeVariantKeys: excludeSet,
+      productLimit: undefined,
+      expandOptions,
+      productFilter: undefined,
+    });
+    availableFilterOptions = facets;
+    total = curatedCount + tailItems.length;
+
+    if (endIndex <= curatedCount) {
+      const sliceKeys = curatedKeys.slice(startIndex, endIndex);
+      pageItems = await fetchVariantItemsByKeys(sliceKeys, expandOptions);
+    } else if (startIndex >= curatedCount) {
+      const tailOffset = startIndex - curatedCount;
+      pageItems = tailItems.slice(tailOffset, tailOffset + pageSize);
+    } else {
+      const curatedSlice = curatedKeys.slice(startIndex, curatedCount);
+      const curatedItems = await fetchVariantItemsByKeys(curatedSlice, expandOptions);
+      const tailNeeded = pageSize - curatedItems.length;
+      pageItems = [...curatedItems, ...tailItems.slice(0, tailNeeded)];
+    }
+  } else {
+    const pinnedItems = await fetchVariantItemsByKeys(curatedKeys, expandOptions);
+    const { items: tailItems, availableFilterOptions: facets } = await collectTagMatchedVariantItems({
+      filters,
+      excludeVariantKeys: merchandising.mode === 'pinned' || merchandising.mode === 'manual' ? excludeSet : new Set(),
+      productLimit: undefined,
+      expandOptions,
+      productFilter: undefined,
     });
     availableFilterOptions = facets;
 

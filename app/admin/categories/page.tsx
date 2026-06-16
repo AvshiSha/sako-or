@@ -685,6 +685,13 @@ function CategoriesPage() {
           </div>
 
           <div className="flex items-center space-x-2">
+            <Link
+              href={`/admin/categories/${category.id}/merchandising`}
+              className="p-2 text-gray-700 hover:bg-gray-100 rounded-md"
+              title="Merchandising (product order)"
+            >
+              <span className="text-xs font-medium">Order</span>
+            </Link>
             <button
               onClick={() => handleToggleStatus(category.id!, category.isEnabled)}
               className={`p-2 rounded-md ${

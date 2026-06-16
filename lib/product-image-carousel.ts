@@ -1,5 +1,8 @@
 import type { CarouselOptions } from "@/app/components/ui/carousel";
 
+/** Max height for sticky PDP gallery below the site header (desktop). */
+export const PDP_GALLERY_MAX_HEIGHT = "calc(100dvh - 7rem)";
+
 /** Shared Embla options for product image galleries (grid cards + PDP). */
 export const productImageCarouselOpts: CarouselOptions = {
   align: "start",

@@ -499,8 +499,8 @@ export default function ProductColorPage() {
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         <div>
-        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_2fr] gap-0">            {/* Product Images - Full Width */}
-            <div className="relative w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_2fr] gap-0 lg:items-start">            {/* Product Images - Full Width */}
+            <div className="relative w-full lg:sticky lg:top-28 lg:self-start lg:z-10 lg:max-h-[calc(100dvh-7rem)]">
               {/* Favorite Heart Icon - Top Left */}
               <button
                 onClick={() => void toggleFavorite(buildFavoriteKey(baseSku, colorSlug))}
@@ -529,7 +529,7 @@ export default function ProductColorPage() {
                 alt={`${productName} - ${currentVariant.colorSlug}`}
                 direction={isRTL ? "rtl" : "ltr"}
                 variant="pdp"
-                className="w-full group"
+                className="w-full"
                 dotSelectLabelPrefix={
                   lng === "he" ? "עבור לתמונה" : "Go to image"
                 }
@@ -537,7 +537,7 @@ export default function ProductColorPage() {
             </div>
 
             {/* Product Details */}
-            <div className={`space-y-6 px-4 sm:px-6 py-4 ${isRTL ? 'lg:pl-48 lg:pr-4' : 'lg:pl-4 lg:pr-48'}`}>
+            <div className={`space-y-6 px-4 sm:px-6 py-4 lg:pb-8 ${isRTL ? 'lg:pl-48 lg:pr-4' : 'lg:pl-4 lg:pr-48'}`}>
               {/* Mobile Layout — promo labels on image carousel */}
               <div className="lg:hidden space-y-2">
                 {/* Product Title + Price (same row) */}

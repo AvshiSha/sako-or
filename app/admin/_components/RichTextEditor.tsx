@@ -1,16 +1,21 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useEditor, EditorContent, useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import Youtube from '@tiptap/extension-youtube'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableHeader } from '@tiptap/extension-table-header'
+import { TableCell } from '@tiptap/extension-table-cell'
 import { cleanupCmsHtml, isCmsHtmlEmpty } from '@/lib/cms-html-cleanup'
 import { toggleListFromSelection } from '@/lib/tiptap-list-commands'
 import { promptAndApplyLink } from '@/lib/tiptap-link-command'
 import { cn } from '@/lib/utils'
+import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover'
 import {
   BoldIcon,
   ItalicIcon,
@@ -91,17 +96,42 @@ function EditorToolbar({
   onSetLink: () => void
   variant?: 'default' | 'inline'
 }) {
+  const [tablePopoverOpen, setTablePopoverOpen] = useState(false)
+  const [tableGridHover, setTableGridHover] = useState<{ rows: number; cols: number } | null>(
+    null
+  )
+
+  const maxGrid = 8
+  const gridRows = useMemo(() => Array.from({ length: maxGrid }, (_, i) => i + 1), [])
+  const gridCols = useMemo(() => Array.from({ length: maxGrid }, (_, i) => i + 1), [])
+
   const active = useEditorState({
     editor,
-    selector: ({ editor: ed }) => ({
-      h2: ed.isActive('heading', { level: 2 }),
-      h3: ed.isActive('heading', { level: 3 }),
-      bold: ed.isActive('bold'),
-      italic: ed.isActive('italic'),
-      bulletList: ed.isActive('bulletList'),
-      orderedList: ed.isActive('orderedList'),
-      link: ed.isActive('link'),
-    }),
+    selector: ({ editor: ed }) => {
+      if (!ed || ed.isDestroyed) {
+        return {
+          h2: false,
+          h3: false,
+          bold: false,
+          italic: false,
+          bulletList: false,
+          orderedList: false,
+          link: false,
+          table: false,
+        }
+      }
+
+      return {
+        h2: ed.isActive('heading', { level: 2 }),
+        h3: ed.isActive('heading', { level: 3 }),
+        bold: ed.isActive('bold'),
+        italic: ed.isActive('italic'),
+        bulletList: ed.isActive('bulletList'),
+        orderedList: ed.isActive('orderedList'),
+        link: ed.isActive('link'),
+        table: ed.isActive('table'),
+      }
+    },
   })
 
   const toggleHeading = (level: 2 | 3) => {
@@ -111,6 +141,60 @@ function EditorToolbar({
       editor.chain().focus().setHeading({ level }).run()
     }
   }
+
+  const insertTable = (rows: number, cols: number) => {
+    if (!rows || !cols) return
+    editor
+      .chain()
+      .focus()
+      .insertTable({ rows, cols, withHeaderRow: false })
+      .run()
+    setTablePopoverOpen(false)
+    setTableGridHover(null)
+  }
+
+  const can = useEditorState({
+    editor,
+    selector: ({ editor: ed }) => {
+      if (!ed || ed.isDestroyed) {
+        return {
+          addColumnBefore: false,
+          addColumnAfter: false,
+          deleteColumn: false,
+          addRowBefore: false,
+          addRowAfter: false,
+          deleteRow: false,
+          mergeCells: false,
+          splitCell: false,
+          deleteTable: false,
+        }
+      }
+
+      return {
+        addColumnBefore:
+          typeof ed.commands.addColumnBefore === 'function' &&
+          ed.can().chain().focus().addColumnBefore().run(),
+        addColumnAfter:
+          typeof ed.commands.addColumnAfter === 'function' &&
+          ed.can().chain().focus().addColumnAfter().run(),
+        deleteColumn:
+          typeof ed.commands.deleteColumn === 'function' &&
+          ed.can().chain().focus().deleteColumn().run(),
+        addRowBefore:
+          typeof ed.commands.addRowBefore === 'function' && ed.can().chain().focus().addRowBefore().run(),
+        addRowAfter:
+          typeof ed.commands.addRowAfter === 'function' && ed.can().chain().focus().addRowAfter().run(),
+        deleteRow:
+          typeof ed.commands.deleteRow === 'function' && ed.can().chain().focus().deleteRow().run(),
+        mergeCells:
+          typeof ed.commands.mergeCells === 'function' && ed.can().chain().focus().mergeCells().run(),
+        splitCell:
+          typeof ed.commands.splitCell === 'function' && ed.can().chain().focus().splitCell().run(),
+        deleteTable:
+          typeof ed.commands.deleteTable === 'function' && ed.can().chain().focus().deleteTable().run(),
+      }
+    },
+  })
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
@@ -179,6 +263,138 @@ function EditorToolbar({
       <ToolbarButton onMouseDown={onSetLink} active={active.link} title="Link">
         <LinkIcon className={cn('h-4 w-4', active.link && 'stroke-[2.5px] text-[#856D55]')} />
       </ToolbarButton>
+      {variant === 'default' && (
+        <Popover open={tablePopoverOpen} onOpenChange={setTablePopoverOpen}>
+          <PopoverTrigger asChild>
+            <span>
+              <ToolbarButton
+                title="Table"
+                active={active.table}
+                disabled={!editor.isEditable}
+                onClick={() => setTablePopoverOpen((v) => !v)}
+              >
+                <span className={cn('text-xs font-semibold px-0.5', active.table && 'text-[#856D55]')}>
+                  Tbl
+                </span>
+              </ToolbarButton>
+            </span>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-auto p-3">
+            <div className="space-y-3">
+              <div>
+                <div className="text-xs font-medium text-gray-700">Insert table</div>
+                <div className="mt-2 grid gap-1" style={{ gridTemplateColumns: `repeat(${maxGrid}, 1fr)` }}>
+                  {gridRows.flatMap((r) =>
+                    gridCols.map((c) => {
+                      const isActive =
+                        tableGridHover != null &&
+                        r <= tableGridHover.rows &&
+                        c <= tableGridHover.cols
+                      return (
+                        <button
+                          key={`${r}-${c}`}
+                          type="button"
+                          onMouseEnter={() => setTableGridHover({ rows: r, cols: c })}
+                          onFocus={() => setTableGridHover({ rows: r, cols: c })}
+                          onClick={() => insertTable(r, c)}
+                          className={cn(
+                            'h-5 w-5 rounded-sm border transition-colors',
+                            isActive ? 'border-[#856D55] bg-[#856D55]/15' : 'border-gray-200 bg-white'
+                          )}
+                          aria-label={`Insert ${r} by ${c} table`}
+                        />
+                      )
+                    })
+                  )}
+                </div>
+                <div className="mt-2 text-[11px] text-gray-500">
+                  {tableGridHover ? `${tableGridHover.rows} × ${tableGridHover.cols}` : `Up to ${maxGrid} × ${maxGrid}`}
+                </div>
+              </div>
+
+              {active.table && (
+                <div className="border-t pt-3 space-y-2">
+                  <div className="text-xs font-medium text-gray-700">Table actions</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      disabled={!can.addRowBefore}
+                      onClick={() => editor.chain().focus().addRowBefore().run()}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-40"
+                    >
+                      Add row above
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can.addRowAfter}
+                      onClick={() => editor.chain().focus().addRowAfter().run()}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-40"
+                    >
+                      Add row below
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can.deleteRow}
+                      onClick={() => editor.chain().focus().deleteRow().run()}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-40"
+                    >
+                      Delete row
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can.addColumnBefore}
+                      onClick={() => editor.chain().focus().addColumnBefore().run()}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-40"
+                    >
+                      Add column left
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can.addColumnAfter}
+                      onClick={() => editor.chain().focus().addColumnAfter().run()}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-40"
+                    >
+                      Add column right
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can.deleteColumn}
+                      onClick={() => editor.chain().focus().deleteColumn().run()}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-40"
+                    >
+                      Delete column
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can.mergeCells}
+                      onClick={() => editor.chain().focus().mergeCells().run()}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-40"
+                    >
+                      Merge cells
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can.splitCell}
+                      onClick={() => editor.chain().focus().splitCell().run()}
+                      className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-700 disabled:opacity-40"
+                    >
+                      Split cell
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!can.deleteTable}
+                      onClick={() => editor.chain().focus().deleteTable().run()}
+                      className="col-span-2 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700 disabled:opacity-40"
+                    >
+                      Delete table
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
+      )}
       {variant === 'default' && onUploadImage && (
         <ToolbarButton onClick={onAddImage} title="Insert image">
           <PhotoIcon className="h-4 w-4" />
@@ -221,6 +437,18 @@ export default function RichTextEditor({
         codeBlock: isInline ? false : undefined,
         horizontalRule: isInline ? false : undefined,
       }),
+      ...(isInline
+        ? []
+        : [
+            Table.configure({
+              HTMLAttributes: {
+                class: 'cms-table',
+              },
+            }),
+            TableRow,
+            TableHeader,
+            TableCell,
+          ]),
       ...(isInline
         ? []
         : [

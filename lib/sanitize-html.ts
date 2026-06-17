@@ -15,6 +15,15 @@ const ALLOWED_TAGS = [
   'iframe',
   'br',
   'div',
+  'table',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'th',
+  'td',
+  'colgroup',
+  'col',
 ]
 
 /**
@@ -47,6 +56,15 @@ export function sanitizeCmsHtml(html: string): string {
       ul: ['class'],
       ol: ['class'],
       li: ['class'],
+      table: ['class'],
+      thead: ['class'],
+      tbody: ['class'],
+      tfoot: ['class'],
+      tr: ['class'],
+      th: ['class', 'colspan', 'rowspan'],
+      td: ['class', 'colspan', 'rowspan'],
+      colgroup: ['class', 'span'],
+      col: ['class', 'span', 'width'],
     },
     allowedIframeHostnames: [
       'www.youtube.com',

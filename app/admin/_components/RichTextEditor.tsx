@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useEditor, EditorContent, useEditorState } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
@@ -42,29 +42,32 @@ function normalizeEditorHtml(html: string): string {
   return isCmsHtmlEmpty(cleaned) ? '' : cleaned
 }
 
-function ToolbarButton({
-  onClick,
-  onMouseDown,
-  active,
-  disabled,
-  title,
-  children,
-}: {
-  onClick?: () => void
-  onMouseDown?: () => void
-  active?: boolean
-  disabled?: boolean
-  title: string
-  children: React.ReactNode
-}) {
+const ToolbarButton = forwardRef<
+  HTMLButtonElement,
+  {
+    onClick?: () => void
+    onMouseDown?: () => void
+    active?: boolean
+    disabled?: boolean
+    title: string
+    children: React.ReactNode
+  } & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'onMouseDown' | 'title'>
+>(function ToolbarButton(
+  { onClick, onMouseDown, active, disabled, title, children, className, ...rest },
+  ref
+) {
   return (
     <button
+      {...rest}
+      ref={ref}
       type="button"
       onMouseDown={(e) => {
         e.preventDefault()
         onMouseDown?.()
       }}
-      onClick={() => onClick?.()}
+      onClick={(e) => {
+        onClick?.()
+      }}
       disabled={disabled}
       title={title}
       aria-pressed={active}
@@ -73,13 +76,14 @@ function ToolbarButton({
         active
           ? 'border-[#856D55] bg-[#856D55]/15 text-gray-900 shadow-sm ring-1 ring-[#856D55]/30'
           : 'border-transparent text-gray-500 hover:border-gray-300 hover:bg-white hover:text-gray-900',
-        disabled && 'cursor-not-allowed opacity-40'
+        disabled && 'cursor-not-allowed opacity-40',
+        className
       )}
     >
       {children}
     </button>
   )
-}
+})
 
 function EditorToolbar({
   editor,
@@ -266,18 +270,16 @@ function EditorToolbar({
       {variant === 'default' && (
         <Popover open={tablePopoverOpen} onOpenChange={setTablePopoverOpen}>
           <PopoverTrigger asChild>
-            <span>
-              <ToolbarButton
-                title="Table"
-                active={active.table}
-                disabled={!editor.isEditable}
-                onClick={() => setTablePopoverOpen((v) => !v)}
-              >
-                <span className={cn('text-xs font-semibold px-0.5', active.table && 'text-[#856D55]')}>
-                  Tbl
-                </span>
-              </ToolbarButton>
-            </span>
+            <ToolbarButton
+              title="Table"
+              active={active.table}
+              disabled={!editor.isEditable}
+              onClick={() => setTablePopoverOpen((v) => !v)}
+            >
+              <span className={cn('text-xs font-semibold px-0.5', active.table && 'text-[#856D55]')}>
+                Tbl
+              </span>
+            </ToolbarButton>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-3">
             <div className="space-y-3">

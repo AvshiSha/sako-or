@@ -146,6 +146,13 @@ function EditorToolbar({
     }
   }
 
+  const handleTablePopoverOpenChange = (open: boolean) => {
+    setTablePopoverOpen(open)
+    if (!open) {
+      setTableGridHover(null)
+    }
+  }
+
   const insertTable = (rows: number, cols: number) => {
     if (!rows || !cols) return
     editor
@@ -153,8 +160,7 @@ function EditorToolbar({
       .focus()
       .insertTable({ rows, cols, withHeaderRow: false })
       .run()
-    setTablePopoverOpen(false)
-    setTableGridHover(null)
+    handleTablePopoverOpenChange(false)
   }
 
   const can = useEditorState({
@@ -268,13 +274,12 @@ function EditorToolbar({
         <LinkIcon className={cn('h-4 w-4', active.link && 'stroke-[2.5px] text-[#856D55]')} />
       </ToolbarButton>
       {variant === 'default' && (
-        <Popover open={tablePopoverOpen} onOpenChange={setTablePopoverOpen}>
+        <Popover open={tablePopoverOpen} onOpenChange={handleTablePopoverOpenChange}>
           <PopoverTrigger asChild>
             <ToolbarButton
               title="Table"
               active={active.table}
               disabled={!editor.isEditable}
-              onClick={() => setTablePopoverOpen((v) => !v)}
             >
               <span className={cn('text-xs font-semibold px-0.5', active.table && 'text-[#856D55]')}>
                 Tbl
@@ -426,7 +431,12 @@ export default function RichTextEditor({
   variant = 'default',
 }: RichTextEditorProps) {
   const isInternalUpdate = useRef(false)
+  const onChangeRef = useRef(onChange)
   const isInline = variant === 'inline'
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
   const editor = useEditor({
     extensions: [
@@ -491,7 +501,7 @@ export default function RichTextEditor({
     },
     onUpdate: ({ editor: ed }) => {
       isInternalUpdate.current = true
-      onChange(ed.getHTML())
+      onChangeRef.current(ed.getHTML())
     },
   }, [editorKey, variant])
 
@@ -509,7 +519,7 @@ export default function RichTextEditor({
       if (cleaned !== raw) {
         isInternalUpdate.current = true
         editor.commands.setContent(cleaned || '', { emitUpdate: false })
-        onChange(cleaned)
+        onChangeRef.current(cleaned)
       }
     }
 
@@ -517,7 +527,7 @@ export default function RichTextEditor({
     return () => {
       editor.off('blur', handleBlur)
     }
-  }, [editor, onChange])
+  }, [editor])
 
   useEffect(() => {
     if (!editor) return

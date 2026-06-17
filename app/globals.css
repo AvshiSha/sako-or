@@ -337,6 +337,40 @@ body.admin-panel #vpplugin-interface {
   padding-inline-start: 1rem;
 }
 
+/* Tables (Tiptap) - shared editor + storefront */
+.cms-content .tableWrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+}
+
+.cms-content table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.cms-content th,
+.cms-content td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  color: #374151;
+}
+
+.cms-content th {
+  background: #f9fafb;
+  font-weight: 600;
+  color: #111827;
+}
+
+.cms-content td > p,
+.cms-content th > p {
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
 /* Intentional blank line between paragraphs (empty <p> from pressing Enter) */
 .cms-content p:empty {
   min-height: 1.25rem;

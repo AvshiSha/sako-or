@@ -6,6 +6,7 @@ import FacebookPixel from './components/FacebookPixel'
 import CookieConsent from './components/CookieConsent'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata } from 'next'
+import { buildAbsoluteUrl } from '@/lib/seo'
 
 const assistant = Assistant({ subsets: ['latin'] })
 
@@ -26,6 +27,7 @@ export default function RootLayout({
 }) {
   // Get the accessibility key at build time (server-side)
   const accessibilityKey = process.env.NEXT_PUBLIC_ACCESSIBILITY_KEY || '';
+  const accessibilityPolicyUrl = buildAbsoluteUrl('en/accessibility');
   const facebookPixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
   
   return (
@@ -162,12 +164,12 @@ window.args = {
 		slider_right_color:  '#177fab',
 		icon_vertical_position: 'bottom',
 		icon_offset_top: 0,
-		icon_offset_bottom: 90,
+		icon_offset_bottom: 120,
 		highlight_focus_color: '#177fab',
 		toggler_icon_color: '#ffffff',
 	},
 	links : {
-		acc_policy: '',
+		acc_policy: ` + JSON.stringify(accessibilityPolicyUrl) + `,
 		additional_link: 'https://vee.co.il/pricing/'
 	},
 	options : {
@@ -182,13 +184,15 @@ window.args = {
 		icon_vertical_position_tablet: 'bottom',
 		icon_vertical_position_mobile: 'bottom',
 		icon_offset_top_tablet: 0,
-		icon_offset_bottom_tablet: 60,
+		icon_offset_bottom_tablet: 120,
 		icon_offset_top_mobile: 0,
 		icon_offset_bottom_mobile: 120,
 		keyboard_shortcut: true,
+		// Keep widget section labels out of the page heading outline (SEO tools + document structure)
+		disable_headings: true,
 		hide_purchase_link: false,
 		display_checkmark_icon: false,
-		active_toggler_color: '#118f38'
+		active_toggler_color: '#856D55'
 	},
 	exclude : []
 };

@@ -46,8 +46,8 @@ export default async function LanguageLayout({
             <main className="flex-grow">
               {children}
             </main>
-            <Footer lng={normalizedLng} />
           </LanguageLayoutShell>
+          <Footer lng={normalizedLng} />
         </CouponBadgeProvider>
       </PromoProvider>
     </div>

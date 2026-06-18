@@ -55,7 +55,7 @@ const ProductImageSlide = memo(function ProductImageSlide({
         width={600}
         height={600}
         loading={eager ? "eager" : "lazy"}
-        decoding="async"
+        decoding={eager ? "sync" : "async"}
         fetchPriority={eager ? "high" : "auto"}
         draggable={false}
         className="h-full w-full object-cover object-center select-none [-webkit-user-drag:none] [user-drag:none]"
@@ -171,7 +171,7 @@ function ProductImageCarouselInner({
   direction = "ltr",
   variant = "card",
   className,
-  isAboveFold = false,
+  isAboveFold = variant === "pdp",
   initialIndex = 0,
   setApi,
   children,
@@ -247,7 +247,7 @@ function ProductImageCarouselInner({
               <ProductImageSlide
                 src={src}
                 alt={`${alt} - ${index + 1}`}
-                eager={index < 2 || (isAboveFold && index === 0)}
+                eager={isPdp ? index === 0 : index < 2 || (isAboveFold && index === 0)}
               />
             </CarouselItem>
           ))}

@@ -5,6 +5,21 @@ import type { Metadata } from 'next'
 import { languages } from '@/i18n/settings'
 import { getImageUrl } from '@/lib/image-urls'
 
+function reorderImagesByPrimary(images: string[] | undefined, primaryImage: string | undefined): string[] {
+  const list = Array.isArray(images) ? images : []
+  if (!primaryImage) return list
+  const idx = list.findIndex((img) => img === primaryImage)
+  if (idx <= 0) return list
+  return [primaryImage, ...list.slice(0, idx), ...list.slice(idx + 1)]
+}
+
+function getLcpImageUrl(variant: { images?: string[]; primaryImage?: string }): string | null {
+  const ordered = reorderImagesByPrimary(variant.images, variant.primaryImage)
+  const first = ordered[0]
+  if (!first) return null
+  return first.startsWith('http') ? first : buildAbsoluteUrl(first)
+}
+
 interface ProductColorLayoutProps {
   children: React.ReactNode
   params: Promise<{
@@ -124,8 +139,9 @@ export default async function ProductColorLayout({ children, params }: ProductCo
     notFound()
   }
 
-  // Fetch product for JSON-LD structured data
+  // Fetch product for JSON-LD structured data and LCP image preload
   let structuredData: object | null = null
+  let lcpImageUrl: string | null = null
   try {
     const product = await productService.getProductByBaseSku(baseSku)
     if (product) {
@@ -134,6 +150,7 @@ export default async function ProductColorLayout({ children, params }: ProductCo
       )
 
       if (variant && variant.isActive !== false) {
+        lcpImageUrl = getLcpImageUrl(variant)
         // Get current price (prefer variant price, fallback to product price)
         const currentPrice = variant.priceOverride || variant.salePrice || product.salePrice || product.price
         const currency = product.currency || 'ILS'
@@ -176,6 +193,14 @@ export default async function ProductColorLayout({ children, params }: ProductCo
   
   return (
     <div className={`${lng === 'he' ? 'rtl' : 'ltr'}`}>
+      {lcpImageUrl && (
+        <link
+          rel="preload"
+          as="image"
+          href={lcpImageUrl}
+          fetchPriority="high"
+        />
+      )}
       {structuredData && (
         <script
           type="application/ld+json"

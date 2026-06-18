@@ -5,6 +5,7 @@ import WhatsAppButton from './components/WhatsAppButton'
 import FacebookPixel from './components/FacebookPixel'
 import CookieConsent from './components/CookieConsent'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import type { Metadata } from 'next'
 import { buildAbsoluteUrl } from '@/lib/seo'
 
@@ -211,6 +212,7 @@ window.args = {
         {/* End Accessibility */}
         
         <Analytics mode="production" />
+        <SpeedInsights />
       </body>
     </html>
   )

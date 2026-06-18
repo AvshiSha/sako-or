@@ -199,12 +199,23 @@ window.args = {
 };
 
 (function(doc, head, body){
-	var embed = doc.createElement('script');
-	embed.src = window.args['access'] + '/js/';
-	embed.defer = true;
-	embed.crossOrigin = 'anonymous';
-	embed.setAttribute('data-cfasync', true );
-	body? body.appendChild(embed) : head.appendChild(embed);
+	function loadAccessibilityWidget() {
+		var embed = doc.createElement('script');
+		embed.src = window.args['access'] + '/js/';
+		embed.defer = true;
+		embed.crossOrigin = 'anonymous';
+		embed.setAttribute('data-cfasync', true );
+		body? body.appendChild(embed) : head.appendChild(embed);
+	}
+	if (window.requestIdleCallback) {
+		window.addEventListener('load', function() {
+			window.requestIdleCallback(loadAccessibilityWidget, { timeout: 4000 });
+		});
+	} else {
+		window.addEventListener('load', function() {
+			setTimeout(loadAccessibilityWidget, 2000);
+		});
+	}
 })(document, document.head, document.body);
             `
           }}

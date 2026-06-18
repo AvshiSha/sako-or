@@ -14,6 +14,8 @@ import { TableCell } from '@tiptap/extension-table-cell'
 import { cleanupCmsHtml, isCmsHtmlEmpty } from '@/lib/cms-html-cleanup'
 import { toggleListFromSelection } from '@/lib/tiptap-list-commands'
 import { promptAndApplyLink } from '@/lib/tiptap-link-command'
+import { promptAndInsertImage } from '@/lib/tiptap-image-command'
+import { beginPendingInsertPosition } from '@/lib/tiptap-pending-insert-position'
 import { cn } from '@/lib/utils'
 import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/popover'
 import {
@@ -403,7 +405,7 @@ function EditorToolbar({
         </Popover>
       )}
       {variant === 'default' && onUploadImage && (
-        <ToolbarButton onClick={onAddImage} title="Insert image">
+        <ToolbarButton onMouseDown={onAddImage} title="Insert image at cursor">
           <PhotoIcon className="h-4 w-4" />
         </ToolbarButton>
       )}
@@ -465,6 +467,8 @@ export default function RichTextEditor({
         ? []
         : [
             Image.configure({
+              inline: false,
+              allowBase64: false,
               HTMLAttributes: {
                 class: 'max-w-full h-auto rounded-md',
               },
@@ -546,25 +550,11 @@ export default function RichTextEditor({
     promptAndApplyLink(editor)
   }, [editor])
 
-  const addImage = useCallback(async () => {
+  const addImage = useCallback(() => {
     if (!editor || !onUploadImage) return
-
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = async () => {
-      const file = input.files?.[0]
-      if (!file) return
-      try {
-        const url = await onUploadImage(file)
-        const alt = window.prompt('Alt text (for accessibility)', '') || ''
-        editor.chain().focus().setImage({ src: url, alt }).run()
-      } catch (err) {
-        console.error('Image upload failed:', err)
-        alert('Failed to upload image')
-      }
-    }
-    input.click()
+    // Capture on toolbar mousedown (ToolbarButton preventDefault keeps editor selection).
+    beginPendingInsertPosition(editor)
+    void promptAndInsertImage(editor, onUploadImage)
   }, [editor, onUploadImage])
 
   const addYoutube = useCallback(() => {

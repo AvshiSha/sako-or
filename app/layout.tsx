@@ -9,7 +9,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import type { Metadata } from 'next'
 import { buildAbsoluteUrl } from '@/lib/seo'
 
-const assistant = Assistant({ subsets: ['latin'] })
+const assistant = Assistant({ subsets: ['latin'], display: 'swap' })
 
 export const metadata: Metadata = {
   title: "SAKO OR",

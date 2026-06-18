@@ -2,6 +2,11 @@ import type { Metadata } from 'next'
 import { buildMetadata } from '@/lib/seo'
 import { getImageUrl } from '@/lib/image-urls'
 import { languages } from '@/i18n/settings'
+import {
+  fetchHomeBestSellers,
+  fetchHomeBagsProducts,
+} from '@/lib/home-products'
+import { serializeFirestoreValue } from '@/lib/serialize-firestore'
 import HomeClient from './HomeClient'
 
 const homeDescriptions = {
@@ -38,5 +43,15 @@ export async function generateMetadata({
 }
 
 export default async function HomePage() {
-  return <HomeClient />
+  const [bestSellers, sakoOrProducts] = await Promise.all([
+    fetchHomeBestSellers(),
+    fetchHomeBagsProducts(),
+  ])
+
+  return (
+    <HomeClient
+      initialBestSellers={bestSellers.map(serializeFirestoreValue)}
+      initialSakoOrProducts={sakoOrProducts.map(serializeFirestoreValue)}
+    />
+  )
 }

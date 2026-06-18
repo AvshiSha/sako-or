@@ -47,7 +47,7 @@ const ProductImageSlide = memo(function ProductImageSlide({
   eager: boolean;
 }) {
   return (
-    <div className="relative aspect-square h-full w-full overflow-hidden bg-gray-50">
+    <div className="relative aspect-square h-full w-full overflow-hidden bg-gray-50" style={{ aspectRatio: '1 / 1' }}>
       {/* Native img: lighter than Next/Image during Embla drag (especially in grids). */}
       <img
         src={src}
@@ -207,7 +207,7 @@ function ProductImageCarouselInner({
 
   if (images.length === 0) {
     return (
-      <div className="flex aspect-square w-full items-center justify-center bg-gray-100">
+      <div className="flex aspect-square w-full items-center justify-center bg-gray-100" style={{ aspectRatio: '1 / 1' }}>
         <span className="text-sm text-gray-400">No image</span>
       </div>
     );
@@ -217,7 +217,7 @@ function ProductImageCarouselInner({
     return (
       <div
         className={cn("relative aspect-square w-full overflow-hidden", className)}
-        style={pdpMaxHeightStyle}
+        style={{ aspectRatio: '1 / 1', ...(pdpMaxHeightStyle ?? {}) }}
       >
         <ProductImageSlide src={images[0]} alt={alt} eager={isAboveFold} />
         {children}
@@ -240,6 +240,7 @@ function ProductImageCarouselInner({
           "group relative aspect-square w-full overflow-hidden",
           isPdp ? "max-h-[inherit]" : "h-full"
         )}
+        style={{ aspectRatio: '1 / 1' }}
       >
         <CarouselContent className="h-full">
           {images.map((src, index) => (

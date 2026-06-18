@@ -15,7 +15,7 @@ import {
   getHero3MobileVideoUrl,
 } from '@/lib/image-urls'
 import ProductCarousel from '@/app/components/ProductCarousel'
-import { productService, getFilteredProducts, type Product } from '@/lib/firebase'
+import { type Product } from '@/lib/firebase'
 import CollectionTiles from '@/app/components/CollectionTiles'
 
 /** Hero video block: poster, programmatic play, tap-to-play when blocked, and play only when in view (independent). */
@@ -110,7 +110,7 @@ function HeroVideoSection({
   }, [isMobile, hasDesktopVideo, hasMobileVideo])
 
   return (
-    <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]">
+    <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]" style={{ aspectRatio: '3 / 4' }}>
       <div
         className={`absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden ${
           showPlayButton ? 'z-10' : 'z-0'
@@ -125,7 +125,7 @@ function HeroVideoSection({
             loop
             playsInline
             preload="metadata"
-            //poster={posterSrc}
+            poster={posterSrc}
             aria-hidden="true"
           >
             <source src={desktopSrc} type="video/mp4" />
@@ -152,7 +152,7 @@ function HeroVideoSection({
             loop
             playsInline
             preload="metadata"
-            //poster={posterSrc}
+            poster={posterSrc}
             aria-hidden="true"
           >
             <source src={mobileSrc} type="video/mp4" />
@@ -192,107 +192,12 @@ function HeroVideoSection({
 }
 
 // Define the exact SKUs you want to feature as "Best Sellers"
-// You can edit this array as needed.
-const BEST_SELLER_SKUS: string[] = [
-  '5003-0030',
-  '5004-0010',
-  '5025-3418',
-  '5025-3509',
-  '5025-3516',
-  '5025-3513',
-  '5025-4204',
-  '5022-3102',
-  '5025-2901',
-  '5026-0872',
-  '5025-7830',
-  '5025-7821',
-  '5029-8695',
-  '5004-0016',
-  '5004-0070',
-  '5025-3517'
-]
+// You can edit this array in lib/home-products.ts.
 
-// BOGO pair deal – SKUs from all groups (match assign-bogo-groups.ts)
-const BOGO_PAIR_SKUS: string[] = [
-  ...['4925-2703', '4925-2704', '4725-1310', '4725-2725'],
-  ...[
-    '4929-3123',
-    '4724-0231',
-    '4725-1201',
-    '4725-1326',
-    '4725-2521',
-    '4725-2718',
-    '4725-4007',
-    '4725-6110',
-    '4725-6119',
-    '4726-8916',
-  ],
-  ...[
-    '4925-1304',
-    '4925-1309',
-    '4925-1320',
-    '4925-1327',
-    '4925-2714',
-    '4925-2715',
-    '4925-2901',
-    '4925-2913',
-    '4925-4013',
-    '4925-4031',
-    '4925-6113',
-    '4929-9281',
-    '4929-9988',
-    '4715-0603',
-    '4715-0701',
-    '4725-1007',
-    '4725-1011',
-    '4725-1207',
-    '4725-1305',
-    '4725-2915',
-    '4725-6108',
-    '4725-6109',
-  ],
-  ...[
-    '4922-1804',
-    '4924-0001',
-    '4925-0301',
-    '4925-0310',
-    '4925-1205',
-    '4925-1210',
-    '4925-1329',
-    '4925-2512',
-    '4925-4001',
-    '4925-6107',
-    '4925-6108',
-    '4925-6170',
-    '4925-6180',
-    '4929-2318',
-    '4929-3985',
-    '4929-9521',
-    '4725-1210',
-    '4725-3315',
-    '4725-6105',
-    '4824-6873',
-    '4824-6870',
-    '4824-8761',
-    '4827-2268',
-  ],
-  ...[
-    '4922-5394',
-    '4924-0605',
-    '4924-7168',
-    '4924-7187',
-    '4924-8017',
-    '4925-1302',
-    '4929-2668',
-    '4704-0007',
-    '4704-0010',
-    '4704-0061',
-    '4712-4218',
-    '4713-0100',
-    '4713-0201',
-    '4824-0070',
-  ],
-]
+interface HomeClientProps {
+  initialBestSellers?: Product[]
+  initialSakoOrProducts?: Product[]
+}
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -345,16 +250,15 @@ const translations = {
   },
 }
 
-export default function HomeClient() {
+export default function HomeClient({
+  initialBestSellers = [],
+  initialSakoOrProducts = [],
+}: HomeClientProps) {
   const params = useParams()
   const pathname = usePathname()
   const [showCountdownPopup, setShowCountdownPopup] = useState(false)
-  const [bestSellers, setBestSellers] = useState<Product[]>([])
-  const [sakoOrProducts, setSakoOrProducts] = useState<Product[]>([])
-  const [bogoPairProducts, setBogoPairProducts] = useState<Product[]>([])
-  const [loadingProducts, setLoadingProducts] = useState(true)
-  const [loadingSakoOrProducts, setLoadingSakoOrProducts] = useState(true)
-  const [loadingBogoPairProducts, setLoadingBogoPairProducts] = useState(true)
+  const bestSellers = initialBestSellers
+  const sakoOrProducts = initialSakoOrProducts
 
   // Extract language from pathname or params to avoid hydration mismatch
   // Prioritize pathname (available during SSR) for consistency between server and client
@@ -374,126 +278,6 @@ export default function HomeClient() {
     }
     return 'en'
   }, [pathname, params?.lng])
-
-  // Fetch best sellers products (by explicit SKU list)
-  useEffect(() => {
-    const fetchBestSellers = async () => {
-      try {
-        setLoadingProducts(true)
-        console.log('Fetching best sellers, SKUs count:', BEST_SELLER_SKUS.length)
-        // If no SKUs configured, fall back to newest active products
-        if (BEST_SELLER_SKUS.length === 0) {
-          const products: Product[] = await productService.getAllProducts({
-            isActive: true,
-            limit: 12, // Limit to 12 products for the carousel
-          })
-          setBestSellers(products)
-          return
-        }
-
-        // Firestore `in` operator supports max 10 items – chunk SKUs
-        const chunkSize = 10
-        const skuChunks: string[][] = []
-        for (let i = 0; i < BEST_SELLER_SKUS.length; i += chunkSize) {
-          skuChunks.push(BEST_SELLER_SKUS.slice(i, i + chunkSize))
-        }
-
-        const results = await Promise.all(
-          skuChunks.map((chunk) =>
-            getFilteredProducts({
-              includeSkus: chunk,
-            })
-          )
-        )
-
-        // Merge and de-duplicate by SKU
-        const productBySku = new Map<string, Product>()
-        for (const result of results) {
-          for (const product of result.products as Product[]) {
-            if (product.sku) {
-              productBySku.set(product.sku, product)
-            }
-          }
-        }
-
-        // Preserve the order defined in BEST_SELLER_SKUS
-        const orderedBestSellers: Product[] = []
-        for (const sku of BEST_SELLER_SKUS) {
-          const product = productBySku.get(sku)
-          if (product) {
-            orderedBestSellers.push(product)
-          }
-        }
-
-        setBestSellers(orderedBestSellers)
-      } catch (error) {
-        console.error('Error fetching best sellers:', error)
-      } finally {
-        setLoadingProducts(false)
-      }
-    }
-
-    fetchBestSellers()
-  }, [])
-
-  // Fetch SAKO-OR brand products (random order)
-  useEffect(() => {
-    const fetchSakoOrProducts = async () => {
-      try {
-        setLoadingSakoOrProducts(true)
-        // Women's Accessories -> Bags (women/accessories/bags)
-        const result = await getFilteredProducts(
-          { categoryPath: 'women/accessories/bags' },
-          'newest',
-          { page: 1, pageSize: 200 }
-        )
-
-        setSakoOrProducts(result.products ?? [])
-      } catch (error) {
-        console.error('Error fetching women accessories bags products:', error)
-      } finally {
-        setLoadingSakoOrProducts(false)
-      }
-    }
-
-    fetchSakoOrProducts()
-  }, [])
-
-  // Fetch BOGO pair products (SKUs from assign-bogo-groups.ts)
-  useEffect(() => {
-    const fetchBogoPairProducts = async () => {
-      try {
-        setLoadingBogoPairProducts(true)
-        if (BOGO_PAIR_SKUS.length === 0) {
-          setBogoPairProducts([])
-          return
-        }
-        const chunkSize = 10
-        const skuChunks: string[][] = []
-        for (let i = 0; i < BOGO_PAIR_SKUS.length; i += chunkSize) {
-          skuChunks.push(BOGO_PAIR_SKUS.slice(i, i + chunkSize))
-        }
-        const results = await Promise.all(skuChunks.map((chunk) => getFilteredProducts({ includeSkus: chunk })))
-        const productBySku = new Map<string, Product>()
-        for (const result of results) {
-          for (const product of result.products as Product[]) {
-            if (product.sku) productBySku.set(product.sku, product)
-          }
-        }
-        const ordered: Product[] = []
-        for (const sku of BOGO_PAIR_SKUS) {
-          const product = productBySku.get(sku)
-          if (product) ordered.push(product)
-        }
-        setBogoPairProducts(ordered)
-      } catch (error) {
-        console.error('Error fetching BOGO pair products:', error)
-      } finally {
-        setLoadingBogoPairProducts(false)
-      }
-    }
-    fetchBogoPairProducts()
-  }, [])
 
   // Show countdown popup on home page
   useEffect(() => {
@@ -569,7 +353,7 @@ export default function HomeClient() {
       </HeroVideoSection>
 
       {/* Product Carousel - Best Sellers */}
-      {!loadingProducts && bestSellers.length > 0 && (
+      {bestSellers.length > 0 && (
         <ProductCarousel products={bestSellers} title={lng === 'he' ? 'Summer Collection Essentials' : 'Summer Collection Essentials'} language={lng as 'en' | 'he'} />
       )}
 
@@ -603,7 +387,7 @@ export default function HomeClient() {
       </HeroVideoSection>
 
       {/* Product Carousel - SAKO-OR Products - Second */}
-      {!loadingSakoOrProducts && sakoOrProducts.length > 0 && (
+      {sakoOrProducts.length > 0 && (
         <ProductCarousel products={sakoOrProducts} title={'SAKO OR BAGS'} language={lng as 'en' | 'he'} />
       )}
 

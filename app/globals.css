@@ -26,20 +26,20 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Force Vee accessibility icon to be visible */
-#vpplugin-toggler {
+/* Force Vee accessibility icon to be visible (VEE v1.7 IDs) */
+#vplugin-toggler {
   display: block !important;
   z-index: 999999 !important;
 }
 
 /* Optional: make sure the interface (panel) can appear above everything too */
-#vpplugin-interface {
+#vplugin-interface {
   z-index: 999999 !important;
 }
 
 /* Hide storefront widgets on admin pages */
-body.admin-panel #vpplugin-toggler,
-body.admin-panel #vpplugin-interface {
+body.admin-panel #vplugin-toggler,
+body.admin-panel #vplugin-interface {
   display: none !important;
 }
 

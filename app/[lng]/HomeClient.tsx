@@ -110,7 +110,7 @@ function HeroVideoSection({
   }, [isMobile, hasDesktopVideo, hasMobileVideo])
 
   return (
-    <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]" style={{ aspectRatio: '3 / 4' }}>
+    <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]">
       <div
         className={`absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden ${
           showPlayButton ? 'z-10' : 'z-0'

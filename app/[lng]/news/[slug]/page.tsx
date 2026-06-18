@@ -108,12 +108,12 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
       />
 
       {article.featuredImage && (
-        <div className="relative w-full overflow-hidden bg-gray-100 aspect-[4/3] sm:aspect-[16/9] md:aspect-[3/1]">
+        <div className="relative w-full overflow-hidden bg-gray-100 aspect-[4/3] sm:aspect-[16/9] md:aspect-auto md:h-[min(60vh,720px)]">
           <Image
             src={article.featuredImage}
             alt={featuredAlt}
             fill
-            className="object-cover object-center"
+            className="object-cover object-center md:object-contain"
             priority
             sizes="100vw"
           />

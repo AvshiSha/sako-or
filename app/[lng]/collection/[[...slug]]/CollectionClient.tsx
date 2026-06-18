@@ -101,8 +101,8 @@ function collectionGridItemMotionProps(
 ) {
   const noEntrance = isAboveFold || skipEntrance;
   return {
-    initial: noEntrance ? false : { opacity: 0, y: 12 },
-    animate: { opacity: 1, y: 0 },
+    initial: noEntrance ? false : { opacity: 0 },
+    animate: { opacity: 1 },
     transition: {
       duration: 0.3,
       ease: "easeOut",
@@ -1174,6 +1174,12 @@ export default function CollectionClient({
     }
   }, [allVariantItems, allProducts, sortBy, useVariantItems]);
 
+  const gridMinHeightPx = useMemo(() => {
+    if (sortedItems.length === 0) return undefined;
+    const rows = Math.ceil(sortedItems.length / 2);
+    return rows * 380;
+  }, [sortedItems.length]);
+
   useCollectionScrollRestore({
     browseKey: collectionKey,
     itemCount: sortedItems.length,
@@ -1864,7 +1870,7 @@ export default function CollectionClient({
             <>
               <div
                 className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3"
-                style={{ overflowAnchor: "none" }}
+                style={{ overflowAnchor: "none", minHeight: gridMinHeightPx }}
               >
                 {useVariantItems
                   ? (sortedItems as VariantItem[]).map((item, index) => {

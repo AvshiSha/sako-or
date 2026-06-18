@@ -1,40 +1,16 @@
 'use client'
 
 import Link from 'next/link';
-import { FaFacebook, FaInstagram, FaTiktok, FaWhatsapp } from 'react-icons/fa';
-import { Suspense, useState, useEffect } from 'react';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { FaFacebook, FaInstagram, FaWhatsapp } from 'react-icons/fa';
+import { useRouter, usePathname } from 'next/navigation';
 import { languageMetadata } from '../../i18n/settings';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/app/components/ui/accordion';
 
-// Hardcoded translations for build-time rendering
 const translations = {
   en: {
     brand: 'SAKO OR',
-    description: 'Discover our curated collection of premium footwear, sourced from Europe\'s finest artisans and China\'s most prestigious manufacturers.',
-    navigation: 'Navigation',
-    newsletter: 'Newsletter',
-    subscribe: 'Subscribe',
-    subscribePlaceholder: 'Enter your email',
-    subscribeSuccess: 'Thank you for subscribing!',
-    home: 'Home',
-    newCollection: 'New Collection',
     about: 'About',
     blog: 'Blog',
     contact: 'Contact',
-    copyright: '© 2025 SAKO-OR. All rights reserved.',
-    newsletterDescription: 'Subscribe to our newsletter for updates and exclusive offers.',
-    emailRequired: 'Email is required',
-    emailInvalid: 'Please enter a valid email address',
-    subscriptionError: 'Failed to subscribe. Please try again.',
-    privacyPolicy: 'Privacy Policy',
-    termsOfService: 'Terms of Service',
-    termsReturns: 'Terms & Returns',
     company: 'COMPANY',
     customerSupport: 'CUSTOMER SUPPORT',
     language: 'LANGUAGE',
@@ -46,25 +22,9 @@ const translations = {
   },
   he: {
     brand: 'SAKO OR',
-    description: 'גלי את הקולקציה שלנו של נעליים יוקרתיות, שמקורן מהאומנים הטובים ביותר באירופה והיצרנים היוקרתיים ביותר בסין',
-    navigation: 'ניווט',
-    newsletter: 'ניוזלטר',
-    subscribe: 'הירשם',
-    subscribePlaceholder: 'הזן את האימייל שלך',
-    subscribeSuccess: 'תודה שנרשמת!',
-    home: 'בית',
-    newCollection: 'קולקציה חדשה',
     about: 'אודות',
     blog: 'בלוג',
     contact: 'צור קשר',
-    copyright: '© 2025 סכו עור. כל הזכויות שמורות.',
-    newsletterDescription: 'הירשמו לעולמנו לקבלת עדכונים בלעדיים, גישה מוקדמת לקולקציה החדשה והמלצות לסגנון מותאמות אישית אלייך',
-    emailRequired: 'נדרש אימייל',
-    emailInvalid: 'אנא הזן כתובת אימייל תקינה',
-    subscriptionError: 'ההרשמה נכשלה. אנא נסה שוב.',
-    privacyPolicy: 'מדיניות פרטיות',
-    termsOfService: 'תנאי שימוש',
-    termsReturns: 'מדיניות החזרות',
     company: 'פרטי החברה',
     customerSupport: 'תמיכה ללקוחות',
     language: 'שפה',
@@ -76,395 +36,122 @@ const translations = {
   }
 }
 
-/** Renders children only after mount so Radix Accordion IDs match (avoids server/client hydration mismatch). */
-function ClientOnlyAccordion({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) {
-    return <div className="w-full min-h-[180px]" aria-hidden />;
-  }
-  return <>{children}</>;
+const socialLinks = {
+  instagram: 'https://www.instagram.com/sako.or/',
+  facebook: 'https://www.facebook.com/sakoorbrand',
+  whatsapp: 'https://wa.me/972504487979'
 }
 
-function FooterInner({ lng }: { lng: string }) {
+function FooterLinks({ lng, t }: { lng: string; t: (typeof translations)['en'] }) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  
-  const t = translations[lng as keyof typeof translations]
 
   const handleLanguageChange = (newLanguage: string) => {
     if (!pathname) return
-    
+
     const pathSegments = pathname.split('/')
     if (pathSegments[1] && Object.keys(languageMetadata).includes(pathSegments[1])) {
       pathSegments[1] = newLanguage
     } else {
       pathSegments.splice(1, 0, newLanguage)
     }
-    
-    const queryString = searchParams?.toString() || ''
-    const queryParams = queryString ? `?${queryString}` : ''
-    
-    const newPath = pathSegments.join('/') + queryParams
-    router.push(newPath)
-  }
 
-  // Social Media Links
-  const socialLinks = {
-    instagram: 'https://www.instagram.com/sako.or/',
-    facebook: 'https://www.facebook.com/sakoorbrand',
-    tiktok: '#', // Placeholder
-    whatsapp: 'https://wa.me/972504487979'
+    const queryString = typeof window !== 'undefined' ? window.location.search : ''
+    router.push(pathSegments.join('/') + queryString)
   }
 
   return (
-    <>
-      {/* Mobile Footer */}
-      <footer className="md:hidden bg-[#B2A28E] text-black">
-        <div className="w-full">
-          <ClientOnlyAccordion>
-          <Accordion type="single" collapsible className="w-full">
-            {/* COMPANY Accordion */}
-            <AccordionItem value="company" className="border-b border-black/20">
-              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
-                {t.company}
-              </AccordionTrigger>
-              <AccordionContent className="px-4">
-                <ul className="space-y-3">
-                  <li>
-                    <Link 
-                      href={`/${lng}/about`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.about}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/news`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.blog}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/contact`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.contact}
-                    </Link>
-                  </li>
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* CUSTOMER SUPPORT Accordion */}
-            <AccordionItem value="support" className="border-b border-black/20">
-              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
-                {t.customerSupport}
-              </AccordionTrigger>
-              <AccordionContent className="px-4">
-                <ul className="space-y-3">
-                  <li>
-                    <Link 
-                      href={`/${lng}/terms`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.terms}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/contact`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.contact}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/privacy`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.privacy}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/accessibility`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.accessibility}
-                    </Link>
-                  </li>
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* LANGUAGE Accordion */}
-            <AccordionItem value="language" className="border-b border-black/20">
-              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
-                {`${t.language} / ${lng.toUpperCase()}`}
-              </AccordionTrigger>
-              <AccordionContent className="px-4">
-                <ul className="space-y-3">
-                  <li>
-                    <button
-                      onClick={() => handleLanguageChange('he')}
-                      className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
-                        lng === 'he' ? 'font-bold' : ''
-                      }`}
-                    >
-                      {t.hebrew}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => handleLanguageChange('en')}
-                      className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
-                        lng === 'en' ? 'font-bold' : ''
-                      }`}
-                    >
-                      {t.english}
-                    </button>
-                  </li>
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-          </ClientOnlyAccordion>
-
-          {/* Social Icons Row */}
-          <div className="flex items-center justify-center gap-6 py-6 px-4 border-b border-black/20">
-            <a
-              href={socialLinks.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black hover:opacity-70 transition-opacity"
-              aria-label="Instagram"
-            >
-              <FaInstagram size={24} />
-            </a>
-            <a
-              href={socialLinks.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black hover:opacity-70 transition-opacity"
-              aria-label="Facebook"
-            >
-              <FaFacebook size={24} />
-            </a>
-            {/* <a
-              href={socialLinks.tiktok}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black hover:opacity-70 transition-opacity"
-              aria-label="TikTok"
-            >
-              <FaTiktok size={24} />
-            </a> */}
-            <a
-              href={socialLinks.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black hover:opacity-70 transition-opacity"
-              aria-label="WhatsApp"
-            >
-              <FaWhatsapp size={24} />
-            </a>
-          </div>
-
-          {/* Big Brand Name */}
-          <div className="py-6 px-4">
-            <h2 className="text-6xl md:text-6xl font-bold tracking-wider text-center">
-              {t.brand}
-            </h2>
-          </div>
+    <div className="w-full">
+      <details className="group border-b border-black/20">
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center uppercase px-4 text-sm font-bold tracking-wide [&::-webkit-details-marker]:hidden">
+          {t.company}
+        </summary>
+        <div className="px-4 pb-4">
+          <ul className="space-y-3">
+            <li><Link href={`/${lng}/about`} className="block text-sm hover:opacity-70 transition-opacity">{t.about}</Link></li>
+            <li><Link href={`/${lng}/news`} className="block text-sm hover:opacity-70 transition-opacity">{t.blog}</Link></li>
+            <li><Link href={`/${lng}/contact`} className="block text-sm hover:opacity-70 transition-opacity">{t.contact}</Link></li>
+          </ul>
         </div>
-      </footer>
+      </details>
 
-      {/* Desktop Footer */}
-      <footer className="hidden md:block bg-[#B2A28E] text-black">
-        <div className="w-full">
-          <ClientOnlyAccordion>
-          <Accordion type="single" collapsible className="w-full">
-            {/* COMPANY Accordion */}
-            <AccordionItem value="company" className="border-b border-black/20">
-              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
-                {t.company}
-              </AccordionTrigger>
-              <AccordionContent className="px-4">
-                <ul className="space-y-3">
-                  <li>
-                    <Link 
-                      href={`/${lng}/about`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.about}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/news`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.blog}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/contact`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.contact}
-                    </Link>
-                  </li>
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* CUSTOMER SUPPORT Accordion */}
-            <AccordionItem value="support" className="border-b border-black/20">
-              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
-                {t.customerSupport}
-              </AccordionTrigger>
-              <AccordionContent className="px-4">
-                <ul className="space-y-3">
-                  <li>
-                    <Link 
-                      href={`/${lng}/terms`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.terms}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/contact`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.contact}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/privacy`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.privacy}
-                    </Link>
-                  </li>
-                  <li>
-                    <Link 
-                      href={`/${lng}/accessibility`}
-                      className="block text-sm hover:opacity-70 transition-opacity"
-                    >
-                      {t.accessibility}
-                    </Link>
-                  </li>
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-
-            {/* LANGUAGE Accordion */}
-            <AccordionItem value="language" className="border-b border-black/20">
-              <AccordionTrigger className="uppercase font-bold text-sm tracking-wide px-4 hover:no-underline">
-                {`${t.language} / ${lng.toUpperCase()}`}
-              </AccordionTrigger>
-              <AccordionContent className="px-4">
-                <ul className="space-y-3">
-                  <li>
-                    <button
-                      onClick={() => handleLanguageChange('he')}
-                      className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
-                        lng === 'he' ? 'font-bold' : ''
-                      }`}
-                    >
-                      {t.hebrew}
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      onClick={() => handleLanguageChange('en')}
-                      className={`block text-sm text-right w-full hover:opacity-70 transition-opacity ${
-                        lng === 'en' ? 'font-bold' : ''
-                      }`}
-                    >
-                      {t.english}
-                    </button>
-                  </li>
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-          </ClientOnlyAccordion>
-
-          {/* Social Icons Row */}
-          <div className="flex items-center justify-center gap-6 py-6 px-4 border-b border-black/20">
-            <a
-              href={socialLinks.instagram}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black hover:opacity-70 transition-opacity"
-              aria-label="Instagram"
-            >
-              <FaInstagram size={24} />
-            </a>
-            <a
-              href={socialLinks.facebook}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black hover:opacity-70 transition-opacity"
-              aria-label="Facebook"
-            >
-              <FaFacebook size={24} />
-            </a>
-            {/* <a
-              href={socialLinks.tiktok}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black hover:opacity-70 transition-opacity"
-              aria-label="TikTok"
-            >
-              <FaTiktok size={24} />
-            </a> */}
-            <a
-              href={socialLinks.whatsapp}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-black hover:opacity-70 transition-opacity"
-              aria-label="WhatsApp"
-            >
-              <FaWhatsapp size={24} />
-            </a>
-          </div>
-
-          {/* Big Brand Name */}
-          <div className="py-6 px-4">
-            <h2 className="text-6xl md:text-6xl font-bold tracking-wider text-center">
-              {t.brand}
-            </h2>
-          </div>
+      <details className="group border-b border-black/20">
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center uppercase px-4 text-sm font-bold tracking-wide [&::-webkit-details-marker]:hidden">
+          {t.customerSupport}
+        </summary>
+        <div className="px-4 pb-4">
+          <ul className="space-y-3">
+            <li><Link href={`/${lng}/terms`} className="block text-sm hover:opacity-70 transition-opacity">{t.terms}</Link></li>
+            <li><Link href={`/${lng}/contact`} className="block text-sm hover:opacity-70 transition-opacity">{t.contact}</Link></li>
+            <li><Link href={`/${lng}/privacy`} className="block text-sm hover:opacity-70 transition-opacity">{t.privacy}</Link></li>
+            <li><Link href={`/${lng}/accessibility`} className="block text-sm hover:opacity-70 transition-opacity">{t.accessibility}</Link></li>
+          </ul>
         </div>
-      </footer>
-    </>
+      </details>
+
+      <details className="group border-b border-black/20">
+        <summary className="flex min-h-[52px] cursor-pointer list-none items-center uppercase px-4 text-sm font-bold tracking-wide [&::-webkit-details-marker]:hidden">
+          {`${t.language} / ${lng.toUpperCase()}`}
+        </summary>
+        <div className="px-4 pb-4">
+          <ul className="space-y-3">
+            <li>
+              <button type="button" onClick={() => handleLanguageChange('he')} className={`block w-full text-sm text-right hover:opacity-70 transition-opacity ${lng === 'he' ? 'font-bold' : ''}`}>
+                {t.hebrew}
+              </button>
+            </li>
+            <li>
+              <button type="button" onClick={() => handleLanguageChange('en')} className={`block w-full text-sm text-right hover:opacity-70 transition-opacity ${lng === 'en' ? 'font-bold' : ''}`}>
+                {t.english}
+              </button>
+            </li>
+          </ul>
+        </div>
+      </details>
+    </div>
+  )
+}
+
+function FooterSocialRow() {
+  return (
+    <div className="flex min-h-[72px] items-center justify-center gap-6 border-b border-black/20 px-4 py-6">
+      <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-black hover:opacity-70 transition-opacity" aria-label="Instagram">
+        <FaInstagram size={24} />
+      </a>
+      <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-black hover:opacity-70 transition-opacity" aria-label="Facebook">
+        <FaFacebook size={24} />
+      </a>
+      <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="text-black hover:opacity-70 transition-opacity" aria-label="WhatsApp">
+        <FaWhatsapp size={24} />
+      </a>
+    </div>
+  )
+}
+
+function FooterBrand({ brand }: { brand: string }) {
+  return (
+    <div className="min-h-[108px] px-4 py-6">
+      <h2 className="text-center text-6xl font-bold tracking-wider">{brand}</h2>
+    </div>
   )
 }
 
 export default function Footer({ lng }: { lng: string }) {
+  const t = translations[lng as keyof typeof translations]
+
   return (
-    <Suspense fallback={
-      <footer className="md:hidden bg-[#B2A28E] text-black min-h-[200px]">
-        <div className="w-full py-8 px-4">
-          <h2 className="text-5xl font-bold tracking-wider text-center">
-            {translations[lng as keyof typeof translations].brand}
-          </h2>
-        </div>
+    <>
+      <footer className="bg-[#B2A28E] text-black md:hidden">
+        <FooterLinks lng={lng} t={t} />
+        <FooterSocialRow />
+        <FooterBrand brand={t.brand} />
       </footer>
-    }>
-      <FooterInner lng={lng} />
-    </Suspense>
+
+      <footer className="hidden bg-[#B2A28E] text-black md:block">
+        <FooterLinks lng={lng} t={t} />
+        <FooterSocialRow />
+        <FooterBrand brand={t.brand} />
+      </footer>
+    </>
   )
-} 
+}

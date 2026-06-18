@@ -311,6 +311,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
         scroll={false}
         className="relative aspect-square overflow-hidden bg-gray-50 block"
+        style={{ aspectRatio: '1 / 1' }}
         onPointerDown={saveBrowseScroll}
         onMouseDown={saveBrowseScroll}
         onTouchStart={saveBrowseScroll}
@@ -356,7 +357,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
               )}
             </>
           ) : primaryImage ? (
-            <div className="w-full h-full relative aspect-square">
+            <div className="w-full h-full relative aspect-square" style={{ aspectRatio: '1 / 1' }}>
               <Image
                 src={typeof primaryImage === 'string' ? primaryImage : primaryImage?.url || ''}
                 alt={`${productName} - ${activeVariant.colorSlug}`}

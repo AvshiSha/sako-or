@@ -89,7 +89,7 @@ export default function CollectionTiles({ lng }: CollectionTilesProps) {
               href={`/${lng}${tile.href}`}
               className="group relative block overflow-hidden rounded-none"
             >
-              <div className="relative w-full aspect-[3/4] bg-neutral-200">
+              <div className="relative w-full aspect-[3/4] bg-neutral-200" style={{ aspectRatio: '3 / 4' }}>
                 <Image
                   src={tile.image}
                   alt={tile.title || ''}

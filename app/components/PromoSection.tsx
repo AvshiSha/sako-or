@@ -21,14 +21,14 @@ const DEFAULT_PROMOS: PromoItem[] = [
     href: '/collection/women/',
     icon: '🚚',
   },
-  {
-     text: {
-       he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
-       en: 'Outlet category – up to 70% discount + 10% extra | Coupon: OUT10',
-     },
-     href: '/collection/women/outlet',
-     icon: '🔥',
-   },
+  // {
+  //    text: {
+  //      he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
+  //      en: 'Outlet category – up to 70% discount + 10% extra | Coupon: OUT10',
+  //    },
+  //    href: '/collection/women/outlet',
+  //    icon: '🔥',
+  //  },
   //  {
   //   text: {
   //     he: 'זוג שני ב־40% הנחה על מגוון מוצרי סניקרס | קוד: SNK40',

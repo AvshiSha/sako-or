@@ -3,11 +3,11 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useMemo, type MouseEvent } from 'react'
-import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
+import { Product, ColorVariant, productHelpers } from '@/lib/product-types'
 import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+import dynamic from 'next/dynamic'
 import { useFavorites } from '@/app/hooks/useFavorites'
-import QuickBuyDrawer from './QuickBuyDrawer'
 import { trackSelectItem } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import type { CarouselApi } from '@/app/components/ui/carousel'
@@ -17,6 +17,12 @@ import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from './ProductPromoRibbon'
 import { persistCollectionBrowseBeforeNavigate } from '@/lib/collectionBrowseStore'
 import { useCollectionBrowseContext } from '@/app/contexts/CollectionBrowseContext'
+import {
+  PRODUCT_CARD_IMAGE_SIZES,
+  PRODUCT_SWATCH_IMAGE_SIZES,
+} from '@/lib/product-image-sizes'
+
+const QuickBuyDrawer = dynamic(() => import('./QuickBuyDrawer'), { ssr: false })
 
 const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
 const STATUS_BADGE_CLASS = 'text-xs font-medium px-2 py-1 rounded pointer-events-none'
@@ -364,8 +370,8 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                 width={500}
                 height={500}
                 className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                sizes={PRODUCT_CARD_IMAGE_SIZES}
                 priority={isAboveFold}
-                unoptimized={true}
                 loading={isAboveFold ? undefined : 'lazy'}
                 draggable={false}
                 style={{ aspectRatio: '1 / 1' }} // Ensure fixed aspect ratio to prevent layout shift
@@ -491,6 +497,10 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
               .filter(variant => variant.isActive !== false) // Filter out inactive variants
               .map((variant) => {
                 const variantImage = variant.primaryImage || variant.images?.[0]
+                const variantImageSrc =
+                  typeof variantImage === 'string'
+                    ? variantImage
+                    : (variantImage as { url?: string } | undefined)?.url || ''
                 const isSelected = variant.colorSlug === activeVariant.colorSlug
 
                 return (
@@ -501,13 +511,14 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                     title={getColorName(variant.colorSlug, language)}
                   >
                     {/* Product image */}
-                    {variantImage && (
+                    {variantImageSrc && (
                       <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-transparent">
                         <Image
-                          src={variantImage}
+                          src={variantImageSrc}
                           alt={variant.colorSlug}
                           width={32}
                           height={32}
+                          sizes={PRODUCT_SWATCH_IMAGE_SIZES}
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -528,13 +539,15 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       )}
 
       {/* Quick Buy Drawer */}
-      <QuickBuyDrawer
-        isOpen={isQuickBuyOpen}
-        onClose={() => setIsQuickBuyOpen(false)}
-        product={product}
-        language={language}
-        initialColorSlug={activeVariant?.colorSlug}
-      />
+      {isQuickBuyOpen && (
+        <QuickBuyDrawer
+          isOpen={isQuickBuyOpen}
+          onClose={() => setIsQuickBuyOpen(false)}
+          product={product}
+          language={language}
+          initialColorSlug={activeVariant?.colorSlug}
+        />
+      )}
     </div>
   )
 } 

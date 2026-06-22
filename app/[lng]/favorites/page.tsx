@@ -25,6 +25,7 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { parseFavoriteKey } from '@/lib/favorites'
+import { FAVORITES_PAGE_IMAGE_SIZES } from '@/lib/product-image-sizes'
 
 interface FavoriteProduct extends Product {
   isUnavailable?: boolean
@@ -453,8 +454,8 @@ export default function FavoritesPage() {
                                     width={500}
                                     height={500}
                                     className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                                    sizes={FAVORITES_PAGE_IMAGE_SIZES}
                                     priority={isPrimary}
-                                    unoptimized={true}
                                     {...(isPrimary ? {} : { loading: shouldPreload ? undefined : 'lazy' })}
                                     draggable={false}
                                   />

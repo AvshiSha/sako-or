@@ -90,6 +90,12 @@
     "web-streams-polyfill": "^4.2.0",
     "zod": "^3.23.8"
   },
+  "browserslist": [
+    "chrome >= 111",
+    "edge >= 111",
+    "firefox >= 111",
+    "safari >= 16.4"
+  ],
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@react-email/components": "0.5.5",

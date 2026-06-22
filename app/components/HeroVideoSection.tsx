@@ -1,7 +1,11 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Image from 'next/image'
+import {
+  getDesktopVideoPosterUrl,
+  getMobileVideoPosterUrl,
+} from '@/lib/optimized-image-url'
 
 /** Hero video block: poster, programmatic play, tap-to-play when blocked, and play only when in view. */
 export default function HeroVideoSection({
@@ -117,6 +121,8 @@ export default function HeroVideoSection({
   }, [isMobile, hasDesktopVideo, hasMobileVideo, safeSetShowPlayButton])
 
   const videoPreload = isInView ? 'metadata' : 'none'
+  const mobilePoster = useMemo(() => getMobileVideoPosterUrl(posterSrc), [posterSrc])
+  const desktopPoster = useMemo(() => getDesktopVideoPosterUrl(posterSrc), [posterSrc])
 
   return (
     <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]">
@@ -136,7 +142,7 @@ export default function HeroVideoSection({
             loop
             playsInline
             preload={videoPreload}
-            poster={posterSrc}
+            poster={desktopPoster}
             aria-hidden="true"
           >
             <source src={desktopSrc} type="video/mp4" />
@@ -167,7 +173,7 @@ export default function HeroVideoSection({
             loop
             playsInline
             preload={videoPreload}
-            poster={posterSrc}
+            poster={mobilePoster}
             aria-hidden="true"
           >
             <source src={mobileSrc} type="video/mp4" />

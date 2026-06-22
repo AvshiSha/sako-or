@@ -8,6 +8,7 @@ import SuccessMessage from '@/app/components/SuccessMessage'
 import GoogleDrivePicker from '@/app/components/GoogleDrivePicker'
 import Image from 'next/image'
 import { getColorHex } from '@/lib/colors'
+import { resizeProductImageFile } from '@/lib/resize-image-file'
 
 interface ImageFile {
   file: File;
@@ -709,9 +710,10 @@ export default function NewProductPage() {
         });
 
         // Upload to Firebase Storage
-        const fileName = `products/${formData.sku}/${variant.colorSlug}/${Date.now()}-${i}-${imageFile.file.name}`;
+        const processedFile = await resizeProductImageFile(imageFile.file)
+        const fileName = `products/${formData.sku}/${variant.colorSlug}/${Date.now()}-${i}-${processedFile.name}`;
         const storageRef = ref(storage, fileName);
-        const snapshot = await uploadBytes(storageRef, imageFile.file);
+        const snapshot = await uploadBytes(storageRef, processedFile);
         const downloadURL = await getDownloadURL(snapshot.ref);
 
         // Mark as uploaded

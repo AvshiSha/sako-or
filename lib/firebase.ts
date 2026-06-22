@@ -1558,31 +1558,27 @@ export async function getFilteredProducts(
     let lastDoc: QueryDocumentSnapshot<DocumentData> | undefined;
     let hasMore = false;
 
-    // Process results - fetch all documents first (we'll paginate after client-side filtering)
+    // Process results - hydrate variants in parallel batches, then enrich categories
     const docs = querySnapshot.docs;
+    const hydratedProducts = await hydrateProductsForListing(docs);
 
-    for (const docSnapshot of docs) {
-      const docData = docSnapshot.data();
-      const product = { id: docSnapshot.id, ...docData } as Product;
-
-      // Fetch category data if needed
-      if (product.categoryId) {
+    await Promise.all(
+      hydratedProducts.map(async (product) => {
+        if (!product.categoryId) return;
         try {
           const categoryDoc = await getDoc(doc(db, 'categories', product.categoryId));
           if (categoryDoc.exists()) {
             product.categoryObj = { id: categoryDoc.id, ...categoryDoc.data() } as Category;
           }
         } catch (err) {
-          // Continue if category fetch fails
           console.warn(`Failed to fetch category for product ${product.id}:`, err);
         }
-      }
+      })
+    );
 
-      // Populate colorVariants from separate collection when not embedded (so collection shows all color variants)
-      await loadColorVariantsForProduct(product);
-
-      products.push(product);
-      lastDoc = docSnapshot;
+    products.push(...hydratedProducts);
+    if (docs.length > 0) {
+      lastDoc = docs[docs.length - 1];
     }
 
     // Apply client-side filtering for complex cases

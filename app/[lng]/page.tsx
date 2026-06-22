@@ -1,13 +1,17 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
+
 import { buildMetadata } from '@/lib/seo'
-import { getImageUrl } from '@/lib/image-urls'
-import { languages } from '@/i18n/settings'
 import {
-  fetchHomeBestSellers,
-  fetchHomeBagsProducts,
-} from '@/lib/home-products'
-import { serializeFirestoreValue } from '@/lib/serialize-firestore'
-import HomeClient from './HomeClient'
+  getHeroImageUrl,
+  getSummerSaleHeroDesktopImageUrl,
+  getSummerSaleHeroMobileImageUrl,
+} from '@/lib/image-urls'
+import { languages } from '@/i18n/settings'
+
+import HomeHero from '@/app/components/HomeHero'
+
+import HomeProducts, { HomeProductsFallback } from './HomeProducts'
 
 const homeDescriptions = {
   he: 'סכו עור - SAKO OR – מותג ישראלי לנעלי נשים, תיקים ואקססוריז מעור איכותי בעבודת יד. קולקציות עדכניות ומשלוחים מהירים לכל הארץ.',
@@ -30,7 +34,7 @@ export async function generateMetadata({
     title,
     description,
     url,
-    image: getImageUrl('/images/hero/main-hero.jpg'),
+    image: getHeroImageUrl(),
     type: 'website',
     locale,
     alternateLocales: languages
@@ -42,16 +46,36 @@ export async function generateMetadata({
   })
 }
 
-export default async function HomePage() {
-  const [bestSellers, sakoOrProducts] = await Promise.all([
-    fetchHomeBestSellers(),
-    fetchHomeBagsProducts(),
-  ])
+export default async function HomePage({
+  params,
+}: {
+  params: Promise<{ lng: string }>
+}) {
+  const { lng } = await params
+  const locale = (lng === 'he' ? 'he' : 'en') as 'en' | 'he'
+  const heroMobileSrc = getSummerSaleHeroMobileImageUrl()
+  const heroDesktopSrc = getSummerSaleHeroDesktopImageUrl()
 
   return (
-    <HomeClient
-      initialBestSellers={bestSellers.map(serializeFirestoreValue)}
-      initialSakoOrProducts={sakoOrProducts.map(serializeFirestoreValue)}
-    />
+    <>
+      <link
+        rel="preload"
+        as="image"
+        href={heroMobileSrc}
+        media="(max-width: 768px)"
+        fetchPriority="high"
+      />
+      <link
+        rel="preload"
+        as="image"
+        href={heroDesktopSrc}
+        media="(min-width: 769px)"
+        fetchPriority="high"
+      />
+      <HomeHero lng={locale} />
+      <Suspense fallback={<HomeProductsFallback />}>
+        <HomeProducts />
+      </Suspense>
+    </>
   )
 }

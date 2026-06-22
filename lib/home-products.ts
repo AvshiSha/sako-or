@@ -1,4 +1,19 @@
-import { getFilteredProducts, type Product } from '@/lib/firebase'
+import { unstable_cache } from 'next/cache'
+
+import {
+  categoryService,
+  getFilteredProducts,
+  type Product,
+  type ProductFilters,
+} from '@/lib/firebase'
+import { serializeFirestoreValue } from '@/lib/serialize-firestore'
+
+const HOME_PRODUCTS_REVALIDATE_SECONDS = 600
+const HOME_BAGS_PAGE_SIZE = 20
+
+function serializeProducts(products: Product[]): Product[] {
+  return products.map((product) => serializeFirestoreValue(product))
+}
 
 export const BEST_SELLER_SKUS: string[] = [
   '5003-0030',
@@ -138,17 +153,44 @@ async function fetchProductsBySkus(skus: string[]): Promise<Product[]> {
   return ordered
 }
 
+async function loadHomeBestSellers(): Promise<Product[]> {
+  return serializeProducts(await fetchProductsBySkus(BEST_SELLER_SKUS))
+}
+
+async function loadHomeBagsProducts(): Promise<Product[]> {
+  const categoryInfo = await categoryService.getCategoryIdsFromPath(
+    'women/accessories/bags',
+    'en'
+  )
+  const filters: ProductFilters = categoryInfo?.categoryIds?.length
+    ? { categoryIds: categoryInfo.categoryIds }
+    : { categoryPath: 'women/accessories/bags' }
+
+  const result = await getFilteredProducts(filters, 'newest', {
+    page: 1,
+    pageSize: HOME_BAGS_PAGE_SIZE,
+  })
+  return serializeProducts(result.products ?? [])
+}
+
+const getCachedHomeBestSellers = unstable_cache(
+  loadHomeBestSellers,
+  ['home-best-sellers'],
+  { revalidate: HOME_PRODUCTS_REVALIDATE_SECONDS }
+)
+
+const getCachedHomeBagsProducts = unstable_cache(
+  loadHomeBagsProducts,
+  ['home-bags-products'],
+  { revalidate: HOME_PRODUCTS_REVALIDATE_SECONDS }
+)
+
 export async function fetchHomeBestSellers(): Promise<Product[]> {
-  return fetchProductsBySkus(BEST_SELLER_SKUS)
+  return getCachedHomeBestSellers()
 }
 
 export async function fetchHomeBagsProducts(): Promise<Product[]> {
-  const result = await getFilteredProducts(
-    { categoryPath: 'women/accessories/bags' },
-    'newest',
-    { page: 1, pageSize: 200 }
-  )
-  return result.products ?? []
+  return getCachedHomeBagsProducts()
 }
 
 export async function fetchHomeBogoPairProducts(): Promise<Product[]> {

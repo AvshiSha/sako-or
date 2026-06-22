@@ -23,6 +23,7 @@ import {
   parseTurnstileSessionResponse,
   type OtpTurnstileSessionResponse,
 } from '@/lib/otp-turnstile-session'
+import TurnstileScript from '@/app/components/TurnstileScript'
 
 type SyncResponse = { ok: true; needsProfileCompletion: boolean } | { error: string }
 
@@ -124,9 +125,12 @@ let redirectChecked = false
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={<SignInLoading />}>
-      <SignInClient />
-    </Suspense>
+    <>
+      <TurnstileScript />
+      <Suspense fallback={<SignInLoading />}>
+        <SignInClient />
+      </Suspense>
+    </>
   )
 }
 

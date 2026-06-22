@@ -16,54 +16,12 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/app/components/ui/carousel";
+import { ProductGalleryImage } from "@/app/components/ProductGalleryImage";
 import {
   getProductCardCarouselOpts,
   getProductImageCarouselOpts,
-  PDP_GALLERY_MAX_HEIGHT,
 } from "@/lib/product-image-carousel";
 import { cn } from "@/lib/utils";
-
-function useLgDesktop() {
-  const [isLgDesktop, setIsLgDesktop] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const update = () => setIsLgDesktop(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  return isLgDesktop;
-}
-
-const ProductImageSlide = memo(function ProductImageSlide({
-  src,
-  alt,
-  eager,
-}: {
-  src: string;
-  alt: string;
-  eager: boolean;
-}) {
-  return (
-    <div className="relative aspect-square h-full w-full overflow-hidden bg-gray-50" style={{ aspectRatio: '1 / 1' }}>
-      {/* Native img: lighter than Next/Image during Embla drag (especially in grids). */}
-      <img
-        src={src}
-        alt={alt}
-        width={600}
-        height={600}
-        loading={eager ? "eager" : "lazy"}
-        decoding={eager ? "sync" : "async"}
-        fetchPriority={eager ? "high" : "auto"}
-        draggable={false}
-        className="h-full w-full object-cover object-center select-none [-webkit-user-drag:none] [user-drag:none]"
-        style={{ aspectRatio: "1 / 1" }}
-      />
-    </div>
-  );
-});
 
 /** Updates only after swipe settles — avoids parent/slide re-renders mid-drag. */
 function useEmblaSettledIndex(api: CarouselApi | undefined) {
@@ -179,10 +137,7 @@ function ProductImageCarouselInner({
 }: ProductImageCarouselProps) {
   const [api, setLocalApi] = useState<CarouselApi>();
   const settledIndex = useEmblaSettledIndex(api);
-  const isLgDesktop = useLgDesktop();
   const isPdp = variant === "pdp";
-  const pdpMaxHeightStyle =
-    isPdp && isLgDesktop ? { maxHeight: PDP_GALLERY_MAX_HEIGHT } : undefined;
 
   useEffect(() => {
     if (!api || initialIndex <= 0) return;
@@ -217,9 +172,9 @@ function ProductImageCarouselInner({
     return (
       <div
         className={cn("relative aspect-square w-full overflow-hidden", className)}
-        style={{ aspectRatio: '1 / 1', ...(pdpMaxHeightStyle ?? {}) }}
+        style={{ aspectRatio: "1 / 1" }}
       >
-        <ProductImageSlide src={images[0]} alt={alt} eager={isAboveFold} />
+        <ProductGalleryImage src={images[0]} alt={alt} eager={isAboveFold} />
         {children}
       </div>
     );
@@ -233,7 +188,6 @@ function ProductImageCarouselInner({
       performanceMode="grid"
       opts={opts}
       className={cn(isPdp ? "w-full h-auto" : "h-full w-full", className)}
-      style={pdpMaxHeightStyle}
     >
       <div
         className={cn(
@@ -245,10 +199,14 @@ function ProductImageCarouselInner({
         <CarouselContent className="h-full">
           {images.map((src, index) => (
             <CarouselItem key={`${src}-${index}`} className="h-full basis-full">
-              <ProductImageSlide
+              <ProductGalleryImage
                 src={src}
                 alt={`${alt} - ${index + 1}`}
-                eager={isPdp ? index === 0 : index < 2 || (isAboveFold && index === 0)}
+                eager={
+                  isPdp
+                    ? index === 0
+                    : index < 2 || (isAboveFold && index === 0)
+                }
               />
             </CarouselItem>
           ))}

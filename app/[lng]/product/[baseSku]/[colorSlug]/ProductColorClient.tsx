@@ -21,7 +21,7 @@ import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
-import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
+import { ProductImageGallery } from '@/app/components/ProductImageGallery'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { buildAbsoluteUrl } from '@/lib/seo'
 import { getImageUrl } from '@/lib/image-urls'
@@ -457,11 +457,12 @@ export default function ProductColorClient({
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         <div>
         <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_2fr] gap-0 lg:items-start">            {/* Product Images - Full Width */}
-            <div className="relative w-full lg:sticky lg:top-28 lg:self-start lg:z-10 lg:max-h-[calc(100dvh-7rem)]">
-              {/* Favorite Heart Icon - Top Left */}
-              <button
-                onClick={() => void toggleFavorite(buildFavoriteKey(baseSku, colorSlug))}
-                className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors"
+            <div className="relative w-full">
+              {/* Favorite Heart Icon - stays visible while scrolling images on desktop */}
+              <div className="relative h-0 lg:sticky lg:top-32 lg:z-20">
+                <button
+                  onClick={() => void toggleFavorite(buildFavoriteKey(baseSku, colorSlug))}
+                  className="absolute top-4 left-4 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors"
                 aria-label={isFavorite(buildFavoriteKey(baseSku, colorSlug)) ? (lng === 'he' ? 'הסר ממועדפים' : 'Remove from favorites') : (lng === 'he' ? 'הוסף למועדפים' : 'Add to favorites')}
               >
                 {isFavorite(buildFavoriteKey(baseSku, colorSlug)) ? (
@@ -470,6 +471,7 @@ export default function ProductColorClient({
                   <HeartIcon className="h-4 w-4 text-gray-700" />
                 )}
               </button>
+              </div>
 
               {promoBadge && (
                 <ProductPromoRibbon
@@ -480,22 +482,24 @@ export default function ProductColorClient({
                 />
               )}
 
-              <ProductImageCarousel
+              <ProductImageGallery
                 key={colorSlug}
                 images={productImages}
                 alt={`${productName} - ${currentVariant.colorSlug}`}
                 direction={isRTL ? "rtl" : "ltr"}
-                variant="pdp"
                 isAboveFold
                 className="w-full"
                 dotSelectLabelPrefix={
                   lng === "he" ? "עבור לתמונה" : "Go to image"
                 }
+                fullscreenLabelPrefix={
+                  lng === "he" ? "הצג תמונה במסך מלא" : "View image"
+                }
               />
             </div>
 
             {/* Product Details */}
-            <div className={`space-y-6 px-4 sm:px-6 py-4 lg:pb-8 ${isRTL ? 'lg:pl-48 lg:pr-4' : 'lg:pl-4 lg:pr-48'}`}>
+            <div className={`space-y-6 px-4 sm:px-6 py-4 lg:pb-8 lg:sticky lg:top-28 lg:self-start lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto ${isRTL ? 'lg:pl-48 lg:pr-4' : 'lg:pl-4 lg:pr-48'}`}>
               {/* Mobile Layout — promo labels on image carousel */}
               <div className="lg:hidden space-y-2">
                 {/* Product Title + Price (same row) */}

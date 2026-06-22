@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { XMarkIcon, ShoppingBagIcon, MinusIcon, PlusIcon } from '@heroicons/react/24/outline'
-import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
+import { Product, ColorVariant, productHelpers } from '@/lib/product-types'
 import { useCart } from '@/app/hooks/useCart'
 import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import {
@@ -13,6 +13,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from '@/app/components/ui/carousel'
+import { FAVORITE_CARD_IMAGE_SIZES } from '@/lib/product-image-sizes'
 
 interface FavoriteMobileCardProps {
   product: Product
@@ -266,8 +267,8 @@ export default function FavoriteMobileCard({
                         width={160}
                         height={160}
                         className="w-full h-full object-contain object-center"
+                        sizes={FAVORITE_CARD_IMAGE_SIZES}
                         priority={index === 0}
-                        unoptimized={true}
                         draggable={false}
                         loading={index === 0 ? undefined : 'lazy'}
                       />
@@ -284,8 +285,8 @@ export default function FavoriteMobileCard({
                 width={160}
                 height={160}
                 className="w-full h-full object-contain object-center"
+                sizes={FAVORITE_CARD_IMAGE_SIZES}
                 priority={true}
-                unoptimized={true}
                 draggable={false}
               />
             </div>

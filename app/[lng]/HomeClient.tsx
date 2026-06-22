@@ -26,9 +26,11 @@ import {
 
 import ProductCarousel from '@/app/components/ProductCarousel'
 
-import { type Product } from '@/lib/firebase'
+import type { Product } from '@/lib/product-types'
 
-import CollectionTiles from '@/app/components/CollectionTiles'
+const CollectionTiles = dynamic(() => import('@/app/components/CollectionTiles'), {
+  ssr: true,
+})
 
 
 

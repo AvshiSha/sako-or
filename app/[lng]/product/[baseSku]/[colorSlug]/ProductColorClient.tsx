@@ -439,7 +439,7 @@ export default function ProductColorClient({
       "price": currentPrice,
       "priceCurrency": product.currency || 'ILS',
       "availability": isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-      "url": window.location.href
+      "url": buildAbsoluteUrl(`/${lng}/product/${baseSku}/${colorSlug}`)
     },
     "image": structuredDataImages,
     "category": product.category,

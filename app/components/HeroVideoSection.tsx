@@ -127,71 +127,73 @@ export default function HeroVideoSection({
   return (
     <div ref={containerRef} className="relative aspect-[3/4] md:aspect-[21/9]">
       <div
-        className={`absolute inset-0 flex md:block items-center justify-center bg-black md:bg-transparent md:overflow-hidden ${
+        className={`absolute inset-0 bg-black md:bg-transparent overflow-hidden ${
           showPlayButton ? 'z-10' : 'z-0'
         }`}
       >
-        {hasDesktopVideo ? (
-          <video
-            ref={desktopRef}
-            className="hidden md:block h-full w-full object-cover"
-            style={{ objectPosition: desktopObjectPosition }}
-            width={1920}
-            height={823}
-            muted
-            loop
-            playsInline
-            preload={videoPreload}
-            poster={desktopPoster}
-            aria-hidden="true"
-          >
-            <source src={desktopSrc} type="video/mp4" />
-          </video>
-        ) : (
-          <Image
-            src={desktopSrc || posterSrc}
-            alt=""
-            fill
-            sizes="(min-width: 768px) 100vw, 0px"
-            className="hidden md:block object-cover"
-            style={{ objectPosition: desktopObjectPosition }}
-            priority={priority}
-            fetchPriority={priority ? 'high' : undefined}
-            loading={priority ? undefined : 'lazy'}
-            aria-hidden="true"
-          />
-        )}
+        <div className="absolute inset-0 hidden md:block">
+          {hasDesktopVideo ? (
+            <video
+              ref={desktopRef}
+              className="h-full w-full object-cover"
+              style={{ objectPosition: desktopObjectPosition }}
+              width={1920}
+              height={823}
+              muted
+              loop
+              playsInline
+              preload={videoPreload}
+              poster={desktopPoster}
+              aria-hidden="true"
+            >
+              <source src={desktopSrc} type="video/mp4" />
+            </video>
+          ) : (
+            <Image
+              src={desktopSrc || posterSrc}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+              style={{ objectPosition: desktopObjectPosition }}
+              loading="lazy"
+              aria-hidden="true"
+            />
+          )}
+        </div>
 
-        {hasMobileVideo ? (
-          <video
-            ref={mobileRef}
-            className="block md:hidden h-full w-full object-cover"
-            style={{ objectPosition: mobileObjectPosition }}
-            width={768}
-            height={1024}
-            muted
-            loop
-            playsInline
-            preload={videoPreload}
-            poster={mobilePoster}
-            aria-hidden="true"
-          >
-            <source src={mobileSrc} type="video/mp4" />
-          </video>
-        ) : (
-          <Image
-            src={mobileSrc || posterSrc}
-            alt=""
-            fill
-            sizes="(max-width: 768px) 100vw, 0px"
-            className="block md:hidden object-cover"
-            style={{ objectPosition: mobileObjectPosition }}
-            priority={priority}
-            fetchPriority={priority ? 'high' : undefined}
-            loading={priority ? undefined : 'lazy'}
-            aria-hidden="true"
-          />
-        )}
+        <div className="absolute inset-0 md:hidden">
+          {hasMobileVideo ? (
+            <video
+              ref={mobileRef}
+              className="h-full w-full object-cover"
+              style={{ objectPosition: mobileObjectPosition }}
+              width={768}
+              height={1024}
+              muted
+              loop
+              playsInline
+              preload={videoPreload}
+              poster={mobilePoster}
+              aria-hidden="true"
+            >
+              <source src={mobileSrc} type="video/mp4" />
+            </video>
+          ) : (
+            <Image
+              src={mobileSrc || posterSrc}
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover"
+              style={{ objectPosition: mobileObjectPosition }}
+              priority={priority}
+              fetchPriority={priority ? 'high' : undefined}
+              loading={priority ? undefined : 'lazy'}
+              aria-hidden="true"
+            />
+          )}
+        </div>
 
         {showPlayButton && (hasDesktopVideo || hasMobileVideo) && (
           <button

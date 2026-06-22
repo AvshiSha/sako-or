@@ -451,12 +451,11 @@ export default function FavoritesPage() {
                                   <Image
                                     src={imageUrl}
                                     alt={`${lng === 'he' ? product.title_he : product.title_en} - ${selectedVariant?.colorSlug || favoriteColorSlug || 'default'} - ${index + 1}`}
-                                    width={500}
-                                    height={500}
-                                    className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                                    fill
+                                    className="object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
                                     sizes={FAVORITES_PAGE_IMAGE_SIZES}
                                     priority={isPrimary}
-                                    {...(isPrimary ? {} : { loading: shouldPreload ? undefined : 'lazy' })}
+                                    {...(!isPrimary && !shouldPreload ? { loading: 'lazy' as const } : {})}
                                     draggable={false}
                                   />
                                 </div>
@@ -515,6 +514,7 @@ export default function FavoritesPage() {
                       alt={selectedVariant?.colorSlug || favoriteColorSlug || 'default'}
                       fill
                       className="object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                      sizes={FAVORITES_PAGE_IMAGE_SIZES}
                     />
                   )}
                   

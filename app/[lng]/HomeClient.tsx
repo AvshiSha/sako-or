@@ -25,14 +25,8 @@ import {
 } from '@/lib/image-urls'
 
 import ProductCarousel from '@/app/components/ProductCarousel'
-
+import CollectionTiles from '@/app/components/CollectionTiles'
 import type { Product } from '@/lib/product-types'
-
-const CollectionTiles = dynamic(() => import('@/app/components/CollectionTiles'), {
-  ssr: true,
-})
-
-
 
 const HeroVideoSection = dynamic(() => import('@/app/components/HeroVideoSection'), {
 

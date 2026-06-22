@@ -688,7 +688,7 @@ export default function Navigation({ lng }: { lng: string }) {
             {/* Desktop: Search Bar, User, Cart, Favorites, Language Switcher */}
             <div className="hidden md:flex items-center space-x-4">
               <SearchBar language={lng} />
-              <div className="flex flex-col items-center gap-0.5">
+              <div className="relative flex items-center justify-center">
                 <Link
                   href={user ? `/${lng}/profile` : `/${lng}/signin`}
                   className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50 flex items-center justify-center"
@@ -704,13 +704,20 @@ export default function Navigation({ lng }: { lng: string }) {
                       : translations[lng as keyof typeof translations].signIn
                   }
                 >
-                  <User strokeWidth={1.5} className="h-6 w-6" />
+                  <User className="h-6 w-6" />
                 </Link>
-                {user && !authLoading && !profileLoading && greetingName && (
-                  <span className="text-[11px] text-gray-500 leading-none whitespace-nowrap">
-                    {lng === 'he' ? `היי, ${greetingName}` : `Hi, ${greetingName}`}
-                  </span>
-                )}
+                <span
+                  className={`absolute top-full left-1/2 -translate-x-1/2 pt-0.5 text-[11px] text-gray-500 leading-none whitespace-nowrap min-h-[14px] ${
+                    user && !authLoading && !profileLoading && greetingName ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  aria-hidden={!(user && greetingName)}
+                >
+                  {greetingName
+                    ? lng === 'he'
+                      ? `היי, ${greetingName}`
+                      : `Hi, ${greetingName}`
+                    : '\u00A0'}
+                </span>
               </div>
               <Link
                 href={`/${lng}/cart`}
@@ -881,7 +888,6 @@ export default function Navigation({ lng }: { lng: string }) {
                 <Link
                   href={`/${lng}/collection/${selectedGender}`}
                   className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-900 font-bold border-b border-gray-300 uppercase text-sm tracking-wide"
-                  style={{ fontFamily: 'Poppins, sans-serif' }}
                   dir={lng === 'he' ? 'rtl' : 'ltr'}
                   suppressHydrationWarning
                 >
@@ -904,7 +910,6 @@ export default function Navigation({ lng }: { lng: string }) {
                           <Link
                             href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
                             className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
-                            style={{ fontFamily: 'Poppins, sans-serif' }}
                             dir={lng === 'he' ? 'rtl' : 'ltr'}
                             suppressHydrationWarning
                           >

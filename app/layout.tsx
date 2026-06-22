@@ -2,8 +2,8 @@ import './globals.css'
 import { Assistant } from 'next/font/google'  
 import ClientAuthProvider from './components/ClientAuthProvider'
 import WhatsAppButton from './components/WhatsAppButton'
-import FacebookPixel from './components/FacebookPixel'
 import CookieConsent from './components/CookieConsent'
+import DeferredAnalytics from './components/DeferredAnalytics'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import type { Metadata } from 'next'
@@ -26,37 +26,16 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Get the accessibility key at build time (server-side)
   const accessibilityKey = process.env.NEXT_PUBLIC_ACCESSIBILITY_KEY || '';
   const accessibilityPolicyUrl = buildAbsoluteUrl('en/accessibility');
-  const facebookPixelId = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
   
   return (
     <html className="light" suppressHydrationWarning>
       <head>
-        {/* Google Tag Manager */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-T6QKL299');`
-          }}
-        />
-        {/* End Google Tag Manager */}
-        
-        {/* Cloudflare Turnstile */}
-        <script
-          src="https://challenges.cloudflare.com/turnstile/v0/api.js"
-          async
-          defer
-        ></script>
-        {/* End Cloudflare Turnstile */}
-        
+        <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
+        <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
       </head>
       <body className={assistant.className} suppressHydrationWarning>
-        {/* Strip viewport/font-scaling extension attributes before React hydrates. Extension often runs after our first strip, so we keep stripping via MutationObserver + short polling. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -113,7 +92,6 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             `.trim(),
           }}
         />
-        {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe 
             src="https://www.googletagmanager.com/ns.html?id=GTM-T6QKL299"
@@ -122,29 +100,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             style={{display:'none',visibility:'hidden'}}
           />
         </noscript>
-        {/* End Google Tag Manager (noscript) */}
-        
-        {/* Facebook Pixel (noscript) */}
-        {facebookPixelId && (
-          <noscript>
-            <img
-              height="1"
-              width="1"
-              style={{ display: 'none' }}
-              src={`https://www.facebook.com/tr?id=${facebookPixelId}&ev=PageView&noscript=1`}
-              alt=""
-            />
-          </noscript>
-        )}
-        {/* End Facebook Pixel (noscript) */}
         <ClientAuthProvider>
-          <FacebookPixel />
+          <DeferredAnalytics />
           <CookieConsent />
           {children}
           <WhatsAppButton />
         </ClientAuthProvider>
         
-        {/* Accessibility */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -189,7 +151,6 @@ window.args = {
 		icon_offset_top_mobile: 0,
 		icon_offset_bottom_mobile: 120,
 		keyboard_shortcut: true,
-		// Keep widget section labels out of the page heading outline (SEO tools + document structure)
 		disable_headings: true,
 		hide_purchase_link: false,
 		display_checkmark_icon: false,
@@ -220,13 +181,10 @@ window.args = {
             `
           }}
         />
-        {/* End Accessibility */}
         
         <Analytics mode="production" />
         <SpeedInsights />
       </body>
     </html>
   )
-
-  
 }

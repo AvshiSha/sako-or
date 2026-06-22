@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { MapPin, Phone, Mail, Clock } from 'lucide-react'
+import TurnstileScript from '@/app/components/TurnstileScript'
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -268,6 +269,8 @@ export default function ContactPage() {
   }
 
   return (
+    <>
+      <TurnstileScript />
     <div className={`bg-white min-h-screen ${isRTL ? 'text-right' : 'text-left'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
@@ -497,5 +500,6 @@ export default function ContactPage() {
         </div>
       </div>
     </div>
+    </>
   )
 }

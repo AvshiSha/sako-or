@@ -16,9 +16,15 @@ interface ProductCarouselProps {
   products: Product[]
   title: string
   language?: 'en' | 'he'
+  isAboveFold?: boolean
 }
 
-export default function ProductCarousel({ products, title, language = 'en' }: ProductCarouselProps) {
+export default function ProductCarousel({
+  products,
+  title,
+  language = 'en',
+  isAboveFold = false,
+}: ProductCarouselProps) {
   const [api, setApi] = useState<CarouselApi>()
   const isRTL = language === 'he'
 
@@ -27,41 +33,43 @@ export default function ProductCarousel({ products, title, language = 'en' }: Pr
   }
 
   return (
-    <div className="w-full py-12" style={{ backgroundColor: '#E1DBD7' }}>
+    <div className="w-full py-12 min-h-[420px] md:min-h-[480px]" style={{ backgroundColor: '#E1DBD7' }}>
       <div className="max-w-[90rem] lg:max-w-[90%] xl:max-w-[90%] mx-auto px-2 sm:px-6 lg:px-4">
-        {/* Section Title */}
-        <h2 className={`text-2xl md:text-3xl font-bold text-black mb-6 ${isRTL ? 'text-center' : 'text-center'}`} style={{ fontFamily: 'Poppins, sans-serif' }}>
+        <h2 className="text-2xl md:text-3xl font-bold text-black mb-6 text-center">
           {title}
         </h2>
         <div className="border-b border-gray-200 mb-6"></div>
 
-        {/* Carousel */}
         <div className="relative group">
           <Carousel
             setApi={setApi}
             opts={{
               align: 'start',
               loop: true,
-              dragFree: false, // Disable free drag for stiffer, snappier behavior
+              dragFree: false,
               containScroll: 'trimSnaps',
-              duration: 25, // Shorter duration for stiffer feel (default is 25)
+              duration: 25,
               direction: isRTL ? 'rtl' : 'ltr',
             }}
             direction={isRTL ? 'rtl' : 'ltr'}
             className="w-full"
           >
             <CarouselContent>
-              {products.map((product) => (
+              {products.map((product, index) => (
                 <CarouselItem
                   key={product.id || product.sku}
                   className="basis-[85%] sm:basis-[45%] lg:basis-[30%]"
                 >
-                  <ProductCard product={product} language={language} disableImageCarousel={true} />
+                  <ProductCard
+                    product={product}
+                    language={language}
+                    disableImageCarousel={true}
+                    isAboveFold={isAboveFold && index < 3}
+                  />
                 </CarouselItem>
               ))}
             </CarouselContent>
 
-            {/* Desktop Arrows - Only visible on hover */}
             <div className="hidden md:block">
               {isRTL ? (
                 <>

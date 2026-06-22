@@ -12,6 +12,7 @@ import {
   parseTurnstileSessionResponse,
   type OtpTurnstileSessionResponse,
 } from '@/lib/otp-turnstile-session'
+import TurnstileScript from '@/app/components/TurnstileScript'
 
 const translations = {
   en: {
@@ -697,6 +698,8 @@ export default function VerifySmsPage() {
   const smsSent = t.smsSent.replace('{phone}', displayPhone)
 
   return (
+    <>
+      <TurnstileScript />
     <ProfileShell title={t.title} subtitle={t.subtitle}>
       <div className={profileTheme.section}>
         {error && (
@@ -780,5 +783,6 @@ export default function VerifySmsPage() {
 
       </div>
     </ProfileShell>
+    </>
   )
 }

@@ -236,7 +236,7 @@ export default function PromoSection({
       <div className="mx-auto max-w-7xl px-4">
         <Link
           href={href}
-          className="mx-auto block w-full max-w-3xl py-2.5 text-center"
+          className="mx-auto block w-full max-w-3xl min-h-[44px] py-2.5 text-center"
           suppressHydrationWarning
           onClick={() =>
             track('promo_ribbon_click', {
@@ -251,17 +251,17 @@ export default function PromoSection({
         >
           <div className="mx-auto flex w-full flex-col items-center justify-center">
             <div className="relative w-full max-w-[720px] overflow-hidden">
-              <div className="relative flex min-h-[20px] items-center justify-center px-2 text-center">
+              <div className="relative flex h-[24px] items-center justify-center px-2 text-center">
                 <AnimatePresence mode="wait" initial={false}>
                   {activeItem && (
                     <motion.div
                       key={promoMotionKey}
                       className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium md:text-base"
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
                       transition={{ duration: TRANSITION_MS / 1000, ease: 'easeInOut' }}
-                      style={{ willChange: 'transform, opacity' }}
+                      style={{ willChange: 'opacity' }}
                     >
                       <span className="opacity-95">{activeItem.icon ?? ''}</span>
                       <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{activeItem.text[lng]}</span>

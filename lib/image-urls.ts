@@ -21,6 +21,8 @@ const imageUrlMappings: Record<string, string> = {
   "/images/hero/shavout-2026-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fshavout-2026-mobile.webp?alt=media&token=b33dcc64-7b6d-4186-828e-feadf2f5eb13",
   "/images/hero/summer-sale-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_sale_2026_fix_desktop.webp?alt=media&token=05788250-422d-423e-aac9-64cbc4242c20",
   "/images/hero/summer-sale-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
+  "/images/hero/main-hero.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
+  "/images/hero/bags-hero-poster.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbags_image_hero_mobile.webp?alt=media&token=d55a6e62-028f-4793-988e-65aa54d63536",
 };
 
 const videoUrlMappings: Record<string, string> = {
@@ -54,7 +56,11 @@ export function getVideoUrl(localPath: string): string {
  * Get Firebase Storage URL for hero image
  */
 export function getHeroImageUrl(): string {
-  return getImageUrl("/images/hero/main-hero.jpg");
+  return getSummerSaleHeroMobileImageUrl();
+}
+
+export function getBagsHeroPosterUrl(): string {
+  return getImageUrl("/images/hero/bags-hero-poster.webp");
 }
 
 /**

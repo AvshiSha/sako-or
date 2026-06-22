@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/app/components/ui/button';
 import { hasCookieNoticeBeenSeen, setCookieNoticeSeen } from '@/lib/cookies';
+import { COOKIE_NOTICE_SEEN_EVENT } from '@/app/components/DeferredAnalytics';
 import Link from 'next/link';
 
 const translations = {
@@ -47,6 +48,7 @@ export default function CookieConsent() {
   const handleClose = () => {
     setCookieNoticeSeen();
     setShowBanner(false);
+    window.dispatchEvent(new Event(COOKIE_NOTICE_SEEN_EVENT));
   };
 
   if (!showBanner) return null;

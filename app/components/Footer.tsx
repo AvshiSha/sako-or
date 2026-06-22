@@ -141,7 +141,7 @@ export default function Footer({ lng }: { lng: string }) {
 
   return (
     <>
-      <footer className="bg-[#B2A28E] text-black md:hidden">
+      <footer className="bg-[#B2A28E] text-black md:hidden min-h-[340px]">
         <FooterLinks lng={lng} t={t} />
         <FooterSocialRow />
         <FooterBrand brand={t.brand} />

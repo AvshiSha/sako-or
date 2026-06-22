@@ -27,6 +27,7 @@ export function GuestAuthProvider({
     },
     logout: async () => {
       onEnsureAuth()
+      return authNotReady()
     },
     isAdmin: false,
     adminCheckPending: false,

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import ProductCard from './ProductCard'
-import { Product } from '@/lib/firebase'
+import type { Product } from '@/lib/product-types'
 import {
   Carousel,
   CarouselContent,

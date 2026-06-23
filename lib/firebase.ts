@@ -21,6 +21,23 @@ import {
   variantHasSizeInStock,
 } from '@/lib/product-size';
 import { getBaseSku } from '@/lib/sku-parser';
+import type {
+  Product,
+  ColorVariant,
+  ColorVariantImage,
+  ColorVariantSize,
+  VariantItem,
+} from '@/lib/product-types';
+import { productHelpers } from '@/lib/product-types';
+
+export type {
+  Product,
+  ColorVariant,
+  ColorVariantImage,
+  ColorVariantSize,
+  VariantItem,
+} from '@/lib/product-types';
+export { productHelpers } from '@/lib/product-types';
 
 export { productMatchesListingFilters } from '@/lib/collectionFilters';
 
@@ -103,7 +120,7 @@ function getAnalyticsInstance(): Analytics | null {
     return _analytics;
   } catch (error) {
     console.warn('Analytics initialization failed:', error);
-    return null;
+    return null; 
   }
 }
 
@@ -122,27 +139,24 @@ const db = getDb();
 const auth = getAuthInstance();
 const storage = getStorageInstance();
 
-let analytics: Analytics | null = null;
-if (typeof window !== 'undefined') {
-  try {
-    analytics = getAnalyticsInstance();
-  } catch {
-    analytics = null;
-  }
+/** Lazily initialized on first call (not at module import). */
+export function getClientAnalytics(): Analytics | null {
+  return getAnalyticsInstance();
 }
 
-// Export Firebase instances (app, db, auth, storage are lazy; analytics is client-only)
-export { app, analytics, db, auth, storage };
+// Export Firebase instances (app, db, auth, storage are lazy via proxy)
+export { app, db, auth, storage };
 
 /** Use with modular API: logEvent(analytics, 'event_name', params). No-op if analytics is null. */
 export function logEvent(
-  analyticsInstance: Analytics | null,
+  analyticsInstance: Analytics | null | undefined,
   eventName: string,
   params?: Record<string, unknown>
 ): void {
-  if (analyticsInstance) {
+  const instance = analyticsInstance ?? getAnalyticsInstance();
+  if (instance) {
     try {
-      firebaseLogEvent(analyticsInstance, eventName, params);
+      firebaseLogEvent(instance, eventName, params);
     } catch (e) {
       console.warn('Analytics logEvent error:', e);
     }
@@ -152,122 +166,6 @@ export function logEvent(
 
 
 // Types
-export interface Product {
-  id?: string;
-  // New structure fields
-  sku: string;
-  title_en: string;
-  title_he: string;
-  description_en: string;
-  description_he: string;
-  category: string;
-  subCategory?: string;
-  subSubCategory?: string;
-  categories_path: string[];
-  categories_path_id: string[];
-  brand: string;
-  price: number;
-  salePrice?: number;
-  currency: string;
-  colorVariants: Record<string, {
-    colorSlug: string;
-    isActive?: boolean;
-    priceOverride?: number;
-    salePrice?: number;
-    stockBySize: Record<string, number>;
-    metaTitle?: string;
-    metaDescription?: string;
-    images: string[];
-    primaryImage?: string;
-    videos?: string[];
-  }>;
-  isEnabled: boolean;
-  isDeleted: boolean;
-  newProduct: boolean;
-  featuredProduct: boolean;
-  materialCare?: {
-    upperMaterial_en?: string;
-    upperMaterial_he?: string;
-    materialInnerSole_en?: string;
-    materialInnerSole_he?: string;
-    lining_en?: string;
-    lining_he?: string;
-    sole_en?: string;
-    sole_he?: string;
-    heelHeight_en?: string;
-    heelHeight_he?: string;
-    height_en?: string;
-    height_he?: string;
-    depth_en?: string;
-    depth_he?: string;
-    width_en?: string;
-    width_he?: string;
-  };
-  seo?: {
-    title_en?: string;
-    title_he?: string;
-    description_en?: string;
-    description_he?: string;
-    slug?: string;
-  };
-  searchKeywords?: string[];
-  createdAt: Date;
-  updatedAt: Date;
-
-  // Legacy fields for backward compatibility
-  name?: {
-    en: string;
-    he: string;
-  };
-  slug?: {
-    en: string;
-    he: string;
-  };
-  description?: {
-    en: string;
-    he: string;
-  };
-  baseSku?: string;
-  featured?: boolean;
-  isNew?: boolean;
-  isActive?: boolean;
-  categoryId?: string;
-  categorySlug?: string;
-  categoryObj?: Category;
-  categoryPath?: string;
-
-  // Material & Care information
-  upperMaterial?: {
-    en: string;
-    he: string;
-  };
-  materialInnerSole?: {
-    en: string;
-    he: string;
-  };
-  lining?: {
-    en: string;
-    he: string;
-  };
-  sole?: {
-    en: string;
-    he: string;
-  };
-  heelHeight?: {
-    en: string;
-    he: string;
-  };
-
-  // Shipping & Returns information
-  shippingReturns?: {
-    en: string;
-    he: string;
-  };
-
-  tags: string[];
-  videoUrl?: string;
-}
-
 export interface Category {
   id?: string;
   name: {
@@ -294,80 +192,6 @@ export interface Category {
   seoContent?: LocalizedString;
   createdAt: Date;
   updatedAt: Date;
-}
-
-// Color-specific variant with its own images, pricing, and stock
-export interface ColorVariant {
-  id?: string;
-  // Color information
-  colorName: string; // Display name (e.g., "Black", "Red")
-  colorSlug: string; // URL slug (e.g., "black", "red")
-  colorHex?: string; // Hex color code for swatches
-
-  // Pricing (can override base product pricing)
-  price?: number; // Override price for this color
-  salePrice?: number; // Sale price for this color
-  saleStartDate?: Date;
-  saleEndDate?: Date;
-
-  // Stock and availability
-  stock: number;
-  isActive: boolean;
-
-  // Video
-  videoUrl?: string; // Video URL for this color variant
-
-  // SEO
-  metaTitle?: string;
-  metaDescription?: string;
-
-  createdAt: Date;
-  updatedAt: Date;
-
-  // Relations
-  images: ColorVariantImage[];
-  sizes: ColorVariantSize[];
-}
-
-// Images specific to each color variant
-export interface ColorVariantImage {
-  id?: string;
-  url: string;
-  alt?: string;
-  isPrimary: boolean;
-  order: number;
-  createdAt: Date;
-}
-
-// Size and stock information per color variant
-export interface ColorVariantSize {
-  id?: string;
-  size: string; // Size value (e.g., "S", "M", "L", "36", "37")
-  stock: number;
-  sku?: string; // Full SKU for this size/color combination
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-/**
- * VariantItem represents a single color variant of a product as a displayable item.
- * Used for collection pages where each color variant gets its own card.
- */
-export interface VariantItem {
-  product: Product;
-  variant: {
-    colorSlug: string;
-    isActive?: boolean;
-    priceOverride?: number;
-    salePrice?: number;
-    stockBySize: Record<string, number>;
-    metaTitle?: string;
-    metaDescription?: string;
-    images: string[];
-    primaryImage?: string;
-    videos?: string[];
-  };
-  variantKey: string; // Unique identifier: "productId-colorSlug"
 }
 
 export interface AppUser {
@@ -456,75 +280,6 @@ export {
   defaultCampaignMerchandising,
   parseVariantKey,
 } from '@/lib/campaign-merchandising-types';
-
-// Helper functions for bilingual products
-export const productHelpers = {
-  // Get product field in specific language
-  getField: (product: Product, field: 'name' | 'description' | 'slug', language: 'en' | 'he'): string => {
-    return product[field]?.[language] || product[field]?.en || '';
-  },
-
-  // Get product image alt text in specific language
-  getImageAlt: (image: ColorVariantImage, _language: 'en' | 'he'): string => {
-    return image.alt || '';
-  },
-
-  // Generate slug from text
-  generateSlug: (text: string): string => {
-    return text
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, '') // Remove special characters
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single
-      .trim();
-  },
-
-  // Validate bilingual product data
-  validateBilingualProduct: (product: any): { isValid: boolean; errors: string[] } => {
-    const errors: string[] = [];
-
-    // Check required bilingual fields
-    if (!product.name || typeof product.name !== 'object') {
-      errors.push('Product name must be an object with en and he properties');
-    } else {
-      if (!product.name.en || product.name.en.trim() === '') {
-        errors.push('English name is required');
-      }
-      if (!product.name.he || product.name.he.trim() === '') {
-        errors.push('Hebrew name is required');
-      }
-    }
-
-    if (!product.description || typeof product.description !== 'object') {
-      errors.push('Product description must be an object with en and he properties');
-    } else {
-      if (!product.description.en || product.description.en.trim() === '') {
-        errors.push('English description is required');
-      }
-      if (!product.description.he || product.description.he.trim() === '') {
-        errors.push('Hebrew description is required');
-      }
-    }
-
-    // Check slugs (can be auto-generated if missing)
-    if (!product.slug || typeof product.slug !== 'object') {
-      // Slugs can be auto-generated, so this is not a critical error
-      console.log('Slug will be auto-generated for product:', product.name?.en);
-    } else {
-      if (!product.slug.en || product.slug.en.trim() === '') {
-        console.log('English slug will be auto-generated for product:', product.name?.en);
-      }
-      if (!product.slug.he || product.slug.he.trim() === '') {
-        console.log('Hebrew slug will be auto-generated for product:', product.name?.en);
-      }
-    }
-
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
-  }
-};
 
 export type AdminProductFilter = 'all' | 'featured' | 'new' | 'active' | 'inactive';
 

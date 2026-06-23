@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   User,
   signInWithEmailAndPassword,
@@ -10,18 +10,10 @@ import {
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { isAdminEmail } from '@/lib/admin'
+import { AuthContext, type AuthContextType } from '@/app/contexts/auth-context-shared'
 
-interface AuthContextType {
-  user: User | null
-  loading: boolean
-  signIn: (email: string, password: string) => Promise<void>
-  signUp: (email: string, password: string) => Promise<void>
-  logout: () => Promise<void>
-  isAdmin: boolean
-  adminCheckPending: boolean
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export type { AuthContextType } from '@/app/contexts/auth-context-shared'
+export { AuthContext } from '@/app/contexts/auth-context-shared'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -195,10 +187,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
+export { useAuth } from '@/app/hooks/useAuth'

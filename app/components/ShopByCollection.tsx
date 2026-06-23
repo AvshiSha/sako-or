@@ -25,7 +25,7 @@ function CollectionBannerCard({
       className="group relative block overflow-hidden"
       aria-label={title}
     >
-      <div className="relative w-full aspect-[3/4] bg-neutral-200">
+      <div className="relative w-full aspect-[9/16] bg-neutral-200">
         <Image
           src={banner.image}
           alt={title}

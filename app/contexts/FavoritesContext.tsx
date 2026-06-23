@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { useAuth } from '@/app/contexts/AuthContext'
+import { useAuth } from '@/app/hooks/useAuth'
 
 export interface FavoritesHook {
   favorites: string[]

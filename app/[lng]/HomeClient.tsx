@@ -25,12 +25,8 @@ import {
 } from '@/lib/image-urls'
 
 import ProductCarousel from '@/app/components/ProductCarousel'
-
-import { type Product } from '@/lib/firebase'
-
 import CollectionTiles from '@/app/components/CollectionTiles'
-
-
+import type { Product } from '@/lib/product-types'
 
 const HeroVideoSection = dynamic(() => import('@/app/components/HeroVideoSection'), {
 

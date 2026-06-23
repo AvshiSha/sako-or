@@ -7,13 +7,13 @@ import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { track } from '@vercel/analytics'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
-import SearchBar from './SearchBar'
+import LazySearchBar from './LazySearchBar'
 import MobileAuthGreeting from './MobileAuthGreeting'
 import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
-import { useAuth } from '@/app/contexts/AuthContext'
-import { categoryService } from '@/lib/firebase'
+import { useAuth } from '@/app/hooks/useAuth'
 import { getImageUrl } from '@/lib/image-urls'
+import type { NavigationCategoriesData } from '@/lib/navigation-categories'
 import {
   Accordion,
   AccordionContent,
@@ -73,13 +73,19 @@ const translations = {
   }
 }
 
-export default function Navigation({ lng }: { lng: string }) {
+export default function Navigation({
+  lng,
+  initialNavData,
+}: {
+  lng: string
+  initialNavData: NavigationCategoriesData
+}) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [womenSubcategories, setWomenSubcategories] = useState<Array<{ id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> }>>([])
-  const [menSubcategories, setMenSubcategories] = useState<Array<{ id: string, slug: string, name: string, subChildren?: Array<{ id: string, slug: string, name: string }> }>>([])
+  const [womenSubcategories, setWomenSubcategories] = useState(initialNavData.womenSubcategories)
+  const [menSubcategories, setMenSubcategories] = useState(initialNavData.menSubcategories)
   const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
   const [isMenDropdownOpen, setIsMenDropdownOpen] = useState(false)
-  const [availableCategories, setAvailableCategories] = useState<Array<{ id: string, slug: string, name: string, level: number }>>([])
+  const [availableCategories, setAvailableCategories] = useState(initialNavData.availableCategories)
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const [openTimeout, setOpenTimeout] = useState<NodeJS.Timeout | null>(null)
   const [selectedGender, setSelectedGender] = useState<'women' | 'men'>('women')
@@ -117,6 +123,7 @@ export default function Navigation({ lng }: { lng: string }) {
   // Function to refresh navigation categories
   const refreshNavigation = async () => {
     try {
+      const { categoryService } = await import('@/lib/firebase')
       const navCategories = await categoryService.getNavigationCategories()
 
       // Store available categories for dynamic rendering (only enabled, level 0)
@@ -190,12 +197,13 @@ export default function Navigation({ lng }: { lng: string }) {
     }
   }
 
-  // Fetch navigation categories and subcategories on mount
   useEffect(() => {
-    refreshNavigation()
-  }, [lng])
+    setAvailableCategories(initialNavData.availableCategories)
+    setWomenSubcategories(initialNavData.womenSubcategories)
+    setMenSubcategories(initialNavData.menSubcategories)
+  }, [initialNavData])
 
-  // Add listener for page visibility changes to refresh navigation when user returns
+  // Refresh navigation when user returns to the tab (e.g. after admin changes)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
@@ -687,7 +695,7 @@ export default function Navigation({ lng }: { lng: string }) {
           <div className="flex items-center">
             {/* Desktop: Search Bar, User, Cart, Favorites, Language Switcher */}
             <div className="hidden md:flex items-center space-x-4">
-              <SearchBar language={lng} />
+              <LazySearchBar language={lng} />
               <div className="relative flex items-center justify-center">
                 <Link
                   href={user ? `/${lng}/profile` : `/${lng}/signin`}
@@ -796,7 +804,7 @@ export default function Navigation({ lng }: { lng: string }) {
           {/* Header with Search Bar */}
           <div className="border-b border-gray-300 px-4 py-4">
             <div className="mb-3">
-              <SearchBar language={lng} variant="inline" />
+              <LazySearchBar language={lng} variant="inline" />
             </div>
             
             {/* MEN/WOMEN Toggle */}

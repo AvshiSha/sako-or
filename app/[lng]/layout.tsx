@@ -4,6 +4,7 @@ import HeaderWrapper from '@/app/components/HeaderWrapper'
 import { PromoProvider } from '../contexts/PromoContext'
 import { CouponBadgeProvider } from '../contexts/CouponBadgeContext'
 import { getStorefrontCouponBadgeIndex } from '@/lib/coupon-product-badges.server'
+import { getServerNavigationCategories } from '@/lib/navigation-categories.server'
 import LanguageLayoutShell from './LanguageLayoutShell'
 
 export async function generateStaticParams() {
@@ -31,7 +32,10 @@ export default async function LanguageLayout({
 
   // Determine direction based on language
   const direction = getLanguageDirection(normalizedLng)
-  const couponBadgeIndex = await getStorefrontCouponBadgeIndex()
+  const [couponBadgeIndex, initialNavData] = await Promise.all([
+    getStorefrontCouponBadgeIndex(),
+    getServerNavigationCategories(normalizedLng),
+  ])
 
   return (
     <div 
@@ -42,7 +46,7 @@ export default async function LanguageLayout({
       <PromoProvider>
         <CouponBadgeProvider initialIndex={couponBadgeIndex}>
           <LanguageLayoutShell>
-            <HeaderWrapper lng={normalizedLng} />
+            <HeaderWrapper lng={normalizedLng} initialNavData={initialNavData} />
             <main className="flex-grow">
               {children}
             </main>

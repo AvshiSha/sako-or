@@ -12,6 +12,7 @@ import {
 import { productService, colorVariantService, Product } from '@/lib/firebase'
 import { storage } from '@/lib/firebase'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { resizeProductImageFile } from '@/lib/resize-image-file'
 
 interface ImageFile {
   file: File;
@@ -131,11 +132,12 @@ export default function NewColorVariantPage() {
   }
 
   const uploadImageToFirebase = async (imageFile: ImageFile): Promise<string> => {
+    const processedFile = await resizeProductImageFile(imageFile.file)
     const timestamp = Date.now()
-    const fileName = `${timestamp}_${imageFile.file.name}`
+    const fileName = `${timestamp}_${processedFile.name}`
     const storageRef = ref(storage, `color-variants/${fileName}`)
     
-    await uploadBytes(storageRef, imageFile.file)
+    await uploadBytes(storageRef, processedFile)
     const downloadURL = await getDownloadURL(storageRef)
     return downloadURL
   }

@@ -9,6 +9,7 @@ import SuccessMessage from '@/app/components/SuccessMessage'
 import GoogleDrivePicker from '@/app/components/GoogleDrivePicker'
 import Image from 'next/image'
 import { getColorHex } from '@/lib/colors'
+import { resizeProductImageFile } from '@/lib/resize-image-file'
 import { 
   ArrowLeftIcon, 
   TrashIcon, 
@@ -839,11 +840,12 @@ function EditProductPage() {
     }
     
     console.log('Uploading image:', imageFile.file.name)
+    const processedFile = await resizeProductImageFile(imageFile.file)
     const timestamp = Date.now();
-    const fileName = `${timestamp}_${imageFile.file.name}`;
+    const fileName = `${timestamp}_${processedFile.name}`;
     const storageRef = ref(storage, `products/${fileName}`);
     
-    const snapshot = await uploadBytes(storageRef, imageFile.file);
+    const snapshot = await uploadBytes(storageRef, processedFile);
     const downloadURL = await getDownloadURL(snapshot.ref);
     
     console.log('Download URL obtained:', downloadURL)
@@ -895,9 +897,10 @@ function EditProductPage() {
         });
 
         // Upload to Firebase Storage
-        const fileName = `products/${formData.sku}/${variant.colorSlug}/${Date.now()}-${i}-${imageFile.file.name}`;
+        const processedFile = await resizeProductImageFile(imageFile.file)
+        const fileName = `products/${formData.sku}/${variant.colorSlug}/${Date.now()}-${i}-${processedFile.name}`;
         const storageRef = ref(storage, fileName);
-        const snapshot = await uploadBytes(storageRef, imageFile.file);
+        const snapshot = await uploadBytes(storageRef, processedFile);
         const downloadURL = await getDownloadURL(snapshot.ref);
 
         // Mark as uploaded

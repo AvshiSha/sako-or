@@ -14,7 +14,7 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
-import { productService, productHelpers, Product, analytics, logEvent } from '@/lib/firebase'
+import { productService, productHelpers, Product, getClientAnalytics, logEvent } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
@@ -176,7 +176,7 @@ export default function ProductColorClient({
 
     const fireAnalytics = () => {
       try {
-        logEvent(analytics, 'view_item', {
+        logEvent(getClientAnalytics(), 'view_item', {
           currency: product.currency || 'ILS',
           value: currentVariant.salePrice || product.price,
           items: [{
@@ -330,7 +330,7 @@ export default function ProductColorClient({
     const categories = product.categories_path || [product.category || 'Unknown']
 
     // Fire Add to Cart analytics event (Firebase)
-    logEvent(analytics, 'add_to_cart', {
+    logEvent(getClientAnalytics(), 'add_to_cart', {
       currency: product.currency || 'ILS',
       value: currentPrice * quantity,
       items: [{

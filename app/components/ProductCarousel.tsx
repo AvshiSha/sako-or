@@ -33,7 +33,7 @@ export default function ProductCarousel({
   }
 
   return (
-    <div className="w-full py-12 min-h-[420px] md:min-h-[480px] bg-[#E1DBD7]">
+    <div className="w-full py-12 min-h-[420px] md:min-h-[480px] bg-[#FFFFFF]">
       <div className="max-w-[90rem] lg:max-w-[90%] xl:max-w-[90%] mx-auto px-2 sm:px-6 lg:px-4">
         <h2 className="text-2xl md:text-3xl font-bold text-black mb-6 text-center">
           {title}

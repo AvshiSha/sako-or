@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Heart, ShoppingBag, ChevronDown, TextSearch, User } from 'lucide-react'
+import { Menu, Heart, ShoppingBag, ChevronDown, User } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { track } from '@vercel/analytics'
@@ -415,45 +415,37 @@ export default function Navigation({
             </Link>
           </div>
 
-          {/* Mobile Layout: Three-column layout */}
-          {/* Left: Menu + Search */}
-          <div className="flex items-center flex-1 md:hidden">
-            {/* Mobile Menu Button */}
+          {/* Mobile Layout: Menu + Profile | Logo | Cart + Favorites */}
+          <div className="flex items-center md:hidden shrink-0">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="text-gray-700 hover:text-gray-900 p-2"
               aria-label="Menu"
               suppressHydrationWarning
             >
-              {/* <Menu className="h-6 w-6" /> */}
-              <TextSearch strokeWidth={1.5} className="h-6.5 w-6.5" aria-hidden="true" />
+              <Menu className="h-6 w-6" aria-hidden="true" />
             </button>
-
-            {/* Search Bar */}
-            <div className={lng === 'he' ? 'mr-2' : 'ml-2'}>
             <Link
-                href={user ? `/${lng}/profile` : `/${lng}/signin`}
-                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
-                suppressHydrationWarning
-                aria-label={
-                  user
-                    ? translations[lng as keyof typeof translations].myProfile
-                    : translations[lng as keyof typeof translations].signIn
-                }
-                title={
-                  user
-                    ? translations[lng as keyof typeof translations].myProfile
-                    : translations[lng as keyof typeof translations].signIn
-                }
-              >
-                <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" aria-hidden="true" />
-              </Link>
-              {/* <SearchBar language={lng} /> */}
-            </div>
+              href={user ? `/${lng}/profile` : `/${lng}/signin`}
+              className="text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+              suppressHydrationWarning
+              aria-label={
+                user
+                  ? translations[lng as keyof typeof translations].myProfile
+                  : translations[lng as keyof typeof translations].signIn
+              }
+              title={
+                user
+                  ? translations[lng as keyof typeof translations].myProfile
+                  : translations[lng as keyof typeof translations].signIn
+              }
+            >
+              <User strokeWidth={1.5} className="h-6 w-6" aria-hidden="true" />
+            </Link>
           </div>
 
-          {/* Center: Logo (Mobile only, positioned more to the left) */}
-          <div className="flex-1 flex justify-start items-center md:hidden ml-1">
+          {/* Center: Logo (Mobile only) */}
+          <div className="flex-1 flex justify-center items-center md:hidden min-w-0">
             <Link href={`/${lng}`} suppressHydrationWarning>
               <span className="text-xl font-bold text-gray-900">SAKO OR</span>
             </Link>

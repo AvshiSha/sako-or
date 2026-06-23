@@ -23,8 +23,8 @@ export default function ShopByCategory({ categories, lng }: ShopByCategoryProps)
     return null
   }
 
-  const sectionTitle = lng === 'he' ? 'קנו לפי קטגוריה' : 'SHOP BY CATEGORY'
-  const sectionLabel = lng === 'he' ? 'קנו לפי קטגוריה' : 'Shop by category'
+  const sectionTitle = lng === 'he' ? 'SHOP BY CATEGORY' : 'SHOP BY CATEGORY'
+  const sectionLabel = lng === 'he' ? 'Shop by category' : 'Shop by category'
 
   return (
     <section

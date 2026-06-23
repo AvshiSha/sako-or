@@ -27,8 +27,8 @@ export interface HomeShoeCategory {
 }
 
 const CATEGORY_FALLBACK_IMAGES: Record<HomeShoeCategoryPath, string> = {
-  'women/shoes/sandals': getImageUrl('sako-women-sandals.jpg'),
-  'women/shoes/sneakers': getImageUrl('sako-women-sneakers.webp'),
+  'women/shoes/sandals': getImageUrl('home-category-sandals.webp'),
+  'women/shoes/sneakers': getImageUrl('home-category-sneakers.webp'),
   'women/shoes/pumps': getImageUrl('sako-women-high-heels.jpg'),
   'women/shoes/low-boots': getImageUrl('low-boots.jpg'),
   'women/shoes/slippers': getImageUrl('sako-women-slippers.jpg'),

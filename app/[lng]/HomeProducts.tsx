@@ -1,4 +1,6 @@
-import { fetchHomeBestSellers, fetchHomeBagsProducts } from '@/lib/home-products'
+import { fetchHomeBestSellers } from '@/lib/home-products'
+import { fetchHomeShoeCategories } from '@/lib/home-categories'
+import { HOME_COLLECTION_BANNERS } from '@/lib/home-collections'
 
 import HomeClient from './HomeClient'
 
@@ -11,16 +13,21 @@ export function HomeProductsFallback() {
   )
 }
 
-export default async function HomeProducts() {
-  const [bestSellers, sakoOrProducts] = await Promise.all([
+export default async function HomeProducts({
+  lng,
+}: {
+  lng: 'en' | 'he'
+}) {
+  const [bestSellers, categories] = await Promise.all([
     fetchHomeBestSellers(),
-    fetchHomeBagsProducts(),
+    fetchHomeShoeCategories(lng),
   ])
 
   return (
     <HomeClient
       initialBestSellers={bestSellers}
-      initialSakoOrProducts={sakoOrProducts}
+      initialCategories={categories}
+      collectionBanners={HOME_COLLECTION_BANNERS}
     />
   )
 }

@@ -33,12 +33,12 @@ export default function ProductCarousel({
   }
 
   return (
-    <div className="w-full py-12 min-h-[420px] md:min-h-[480px] bg-[#FFFFFF]">
+    <div className="w-full pt-4 md:pt-6 pb-12 min-h-[420px] md:min-h-[480px] bg-[#FFFFFF]">
       <div className="max-w-[90rem] lg:max-w-[90%] xl:max-w-[90%] mx-auto px-2 sm:px-6 lg:px-4">
-        <h2 className="text-2xl md:text-3xl font-bold text-black mb-6 text-center">
+        <h2 className="text-2xl md:text-3xl font-bold text-black mb-4 text-center">
           {title}
         </h2>
-        <div className="border-b border-gray-200 mb-6"></div>
+        <div className="border-b border-gray-200 mb-4"></div>
 
         <div className="relative group">
           <Carousel

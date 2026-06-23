@@ -23,6 +23,9 @@ const imageUrlMappings: Record<string, string> = {
   "/images/hero/summer-sale-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
   "/images/hero/main-hero.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
   "/images/hero/bags-hero-poster.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbags_image_hero_mobile.webp?alt=media&token=d55a6e62-028f-4793-988e-65aa54d63536",
+  "home-collection-outlet.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-women-shoes.jpg?alt=media&token=702da283-bf49-4070-8b32-9c1f36fccc68",
+  "home-collection-accessories.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-accs.jpg?alt=media&token=f64145b0-00fb-459a-b2f1-1b4e103b9258",
+  "home-collection-men.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhf_20260405_220729_6d371807-79a6-4187-8e4e-70a8dcaa709c.webp?alt=media&token=b83ad02b-454a-4be3-acb6-af6c7a0e397a",
 };
 
 const videoUrlMappings: Record<string, string> = {
@@ -129,6 +132,18 @@ export function getHero3MobileVideoUrl(): string {
  */
 export function getLogoUrl(): string {
   return getImageUrl("/images/logo/sako-logo.png");
+}
+
+export function getHomeCollectionOutletImageUrl(): string {
+  return getImageUrl("home-collection-outlet.webp");
+}
+
+export function getHomeCollectionAccessoriesImageUrl(): string {
+  return getImageUrl("home-collection-accessories.webp");
+}
+
+export function getHomeCollectionMenImageUrl(): string {
+  return getImageUrl("home-collection-men.webp");
 }
 
 /**

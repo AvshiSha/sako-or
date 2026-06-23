@@ -74,7 +74,7 @@ export default async function HomePage({
       />
       <HomeHero lng={locale} />
       <Suspense fallback={<HomeProductsFallback />}>
-        <HomeProducts />
+        <HomeProducts lng={locale} />
       </Suspense>
     </>
   )

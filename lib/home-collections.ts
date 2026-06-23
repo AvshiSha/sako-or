@@ -14,19 +14,19 @@ export interface HomeCollectionBanner {
 export const HOME_COLLECTION_BANNERS: HomeCollectionBanner[] = [
   {
     id: 'outlet',
-    title: { en: 'Outlet Collection', he: 'קולקציית אאוטלט' },
+    title: { en: 'Outlet Collection', he: 'Outlet' },
     href: '/collection/women/outlet',
     image: getHomeCollectionOutletImageUrl(),
   },
   {
     id: 'accessories',
-    title: { en: 'Accessories Collection', he: 'קולקציית אקססוריז' },
+    title: { en: 'Accessories Collection', he: 'Accessories' },
     href: '/collection/women/accessories',
     image: getHomeCollectionAccessoriesImageUrl(),
   },
   {
     id: 'men',
-    title: { en: 'Men Collection', he: 'קולקציית גברים' },
+    title: { en: 'Men Collection', he: 'Men' },
     href: '/collection/men',
     image: getHomeCollectionMenImageUrl(),
   },

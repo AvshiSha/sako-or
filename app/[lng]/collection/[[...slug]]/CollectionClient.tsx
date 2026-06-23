@@ -101,8 +101,8 @@ function collectionGridItemMotionProps(
 ) {
   const noEntrance = isAboveFold || skipEntrance;
   return {
-    initial: noEntrance ? false : { opacity: 0 },
-    animate: { opacity: 1 },
+    initial: noEntrance ? false : { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0 },
     transition: {
       duration: 0.3,
       ease: "easeOut",
@@ -1863,7 +1863,7 @@ export default function CollectionClient({
           ) : (
             <>
               <div
-                className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 gap-y-2 sm:gap-6 -mx-3"
+                className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3"
                 style={{ overflowAnchor: "none" }}
               >
                 {useVariantItems

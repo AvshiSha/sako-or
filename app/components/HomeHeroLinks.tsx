@@ -12,7 +12,7 @@ export default function HomeHeroLinks({ lng }: HomeHeroLinksProps) {
       </div>
       <div className="absolute bottom-6 md:bottom-8 left-0 right-0 flex flex-row justify-center items-center px-4">
         <span className="text-white text-base md:text-xl font-light tracking-wide underline decoration-white underline-offset-4">
-          {lng === 'he' ? 'לצפייה' : 'Shop now'}
+          {lng === 'he' ? 'Shop now' : 'Shop now'}
         </span>
       </div>
     </div>

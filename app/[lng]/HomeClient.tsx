@@ -112,7 +112,7 @@ export default function HomeClient({
 
   return (
 
-    <div className={isRTL ? 'text-right' : 'text-left'} style={{ backgroundColor: '#FFFFFF' }}>
+    <div className={isRTL ? 'text-right bg-white' : 'text-left bg-white'}>
 
       {bestSellers.length > 0 && (
 
@@ -178,7 +178,7 @@ export default function HomeClient({
 
 
 
-      <div className="relative aspect-[3/4] md:aspect-[21/9] bg-black">
+      <div className="relative aspect-[3/4] md:aspect-[21/9] bg-white">
 
         <div className="absolute inset-0 grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 bg-white p-2 md:p-3">
 

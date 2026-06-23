@@ -84,7 +84,7 @@ export default function PromoCountdown({ targetDate, lng = 'en' }: PromoCountdow
 
   return (
     <div
-      className="fixed left-0 right-0 top-10 z-[60] border-t border-white/20 bg-[#B2A28E] text-white"
+      className="fixed left-0 right-0 top-10 z-[60] border-t border-white/20 bg-[#856D55] text-white"
       style={{ height: PROMO_COUNTDOWN_BAR_HEIGHT }}
       role="timer"
       aria-live="polite"
@@ -105,14 +105,14 @@ export default function PromoCountdown({ targetDate, lng = 'en' }: PromoCountdow
 
 function Segment({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex min-w-[52px] flex-col items-center rounded-md bg-white/10 px-2.5 py-1.5 sm:min-w-[56px] sm:px-3 sm:py-2">
+    <div className="flex min-w-[52px] flex-col items-center rounded-md bg-white/15 px-2.5 py-1.5 sm:min-w-[56px] sm:px-3 sm:py-2">
       <span
         className="font-semibold tabular-nums text-base leading-tight text-white sm:text-lg"
         suppressHydrationWarning
       >
         {value}
       </span>
-      <span className="text-[10px] font-medium uppercase tracking-wider text-white/80 sm:text-[11px]">
+      <span className="text-[10px] font-medium uppercase tracking-wider text-white/85 sm:text-[11px]">
         {label}
       </span>
     </div>

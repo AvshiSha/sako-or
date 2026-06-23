@@ -78,7 +78,7 @@ export default function CollectionTiles({ lng }: CollectionTilesProps) {
 
   return (
     <section
-      className="w-full"
+      className="w-full bg-white"
       aria-label={lng === 'he' ? 'אוספי קולקציות' : 'Collection tiles'}
     >
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">

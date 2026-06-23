@@ -5,8 +5,7 @@ import HomeClient from './HomeClient'
 export function HomeProductsFallback() {
   return (
     <div
-      className="w-full py-12 min-h-[420px] md:min-h-[480px] animate-pulse"
-      style={{ backgroundColor: '#E1DBD7' }}
+      className="w-full py-12 min-h-[420px] md:min-h-[480px] animate-pulse bg-[#E1DBD7]"
       aria-hidden="true"
     />
   )

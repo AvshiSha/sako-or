@@ -116,13 +116,13 @@ function FooterSocialRow() {
   return (
     <div className="flex min-h-[72px] items-center justify-center gap-6 border-b border-black/20 px-4 py-6">
       <a href={socialLinks.instagram} target="_blank" rel="noopener noreferrer" className="text-black hover:opacity-70 transition-opacity" aria-label="Instagram">
-        <FaInstagram size={24} />
+        <FaInstagram size={24} aria-hidden="true" />
       </a>
       <a href={socialLinks.facebook} target="_blank" rel="noopener noreferrer" className="text-black hover:opacity-70 transition-opacity" aria-label="Facebook">
-        <FaFacebook size={24} />
+        <FaFacebook size={24} aria-hidden="true" />
       </a>
       <a href={socialLinks.whatsapp} target="_blank" rel="noopener noreferrer" className="text-black hover:opacity-70 transition-opacity" aria-label="WhatsApp">
-        <FaWhatsapp size={24} />
+        <FaWhatsapp size={24} aria-hidden="true" />
       </a>
     </div>
   )

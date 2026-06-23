@@ -151,6 +151,12 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       : null
   const productName = language === 'he' ? (product.title_he || product.title_en) : (product.title_en || product.title_he) || 'Unnamed Product'
 
+  const favoriteKey = buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')
+  const isWishlisted = isFavorite(favoriteKey)
+  const wishlistAriaLabel = isWishlisted
+    ? (language === 'he' ? 'הסר מרשימת המשאלות' : 'Remove product from wishlist')
+    : (language === 'he' ? 'הוסף לרשימת המשאלות' : 'Add product to wishlist')
+
   // Get primary image from the active variant (for fallback)
   const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
 
@@ -173,6 +179,10 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const isOutOfStock = useMemo(() => {
     return totalStock <= 0
   }, [totalStock])
+
+  const quickBuyAriaLabel = isOutOfStock
+    ? (language === 'he' ? 'אזל מהמלאי' : 'Out of stock')
+    : (language === 'he' ? 'קניה מהירה' : 'Quick buy')
 
   // Check if the active variant is in "last call" (stock between 1 and 4)
   const isLastCall = useMemo(() => {
@@ -235,9 +245,6 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     e.stopPropagation()
 
     // Save favorite as product + specific displayed color (when available)
-    const baseSku = product.baseSku || product.sku || ''
-    const colorSlug = activeVariant?.colorSlug || ''
-    const favoriteKey = buildFavoriteKey(baseSku, colorSlug)
     if (favoriteKey) {
       void toggleFavorite(favoriteKey)
     }
@@ -348,7 +355,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                     className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 hidden md:flex items-center justify-center"
                     aria-label={language === 'he' ? 'תמונה קודמת' : 'Previous image'}
                   >
-                    <ChevronLeftIcon className="h-5 w-5 text-gray-800" />
+                    <ChevronLeftIcon className="h-5 w-5 text-gray-800" aria-hidden="true" />
                   </button>
 
                   {/* Right Arrow (Next) */}
@@ -357,7 +364,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                     className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 hidden md:flex items-center justify-center"
                     aria-label={language === 'he' ? 'תמונה הבאה' : 'Next image'}
                   >
-                    <ChevronRightIcon className="h-5 w-5 text-gray-800" />
+                    <ChevronRightIcon className="h-5 w-5 text-gray-800" aria-hidden="true" />
                   </button>
                 </>
               )}
@@ -388,40 +395,45 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         <div className="absolute top-2 right-2 flex flex-col gap-1 md:hidden">
           {/* Wishlist Button */}
           <button
+            type="button"
             onClick={handleWishlistToggle}
+            aria-label={wishlistAriaLabel}
             className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
           >
-            {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
-              <HeartSolidIcon className="h-4 w-4 text-red-500" />
+            {isWishlisted ? (
+              <HeartSolidIcon className="h-4 w-4 text-red-500" aria-hidden="true" />
             ) : (
-              <HeartIcon className="h-4 w-4 text-gray-600" />
+              <HeartIcon className="h-4 w-4 text-gray-600" aria-hidden="true" />
             )}
           </button>
 
           {/* Quick Buy Icon */}
           <button
+            type="button"
             onClick={handleQuickBuy}
             disabled={isOutOfStock}
+            aria-label={quickBuyAriaLabel}
             className={`bg-white/80 rounded-full p-1.5 shadow-sm transition-colors ${
               isOutOfStock 
                 ? 'opacity-50 cursor-not-allowed' 
                 : 'hover:bg-white'
             }`}
-            title={isOutOfStock ? (language === 'he' ? 'אזל מהמלאי' : 'Out of Stock') : (language === 'he' ? 'קניה מהירה' : 'Quick Buy')}
           >
-            <ShoppingCartIcon className={`h-4 w-4 ${isOutOfStock ? 'text-gray-400' : 'text-gray-600'}`} />
+            <ShoppingCartIcon className={`h-4 w-4 ${isOutOfStock ? 'text-gray-400' : 'text-gray-600'}`} aria-hidden="true" />
           </button>
         </div>
 
         {/* Desktop Wishlist Button */}
         <button
+          type="button"
           onClick={handleWishlistToggle}
+          aria-label={wishlistAriaLabel}
           className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"
         >
-          {isFavorite(buildFavoriteKey(product.baseSku || product.sku || '', activeVariant?.colorSlug || '')) ? (
-            <HeartSolidIcon className="h-4 w-4 text-red-500" />
+          {isWishlisted ? (
+            <HeartSolidIcon className="h-4 w-4 text-red-500" aria-hidden="true" />
           ) : (
-            <HeartIcon className="h-4 w-4 text-gray-600" />
+            <HeartIcon className="h-4 w-4 text-gray-600" aria-hidden="true" />
           )}
         </button>
 
@@ -466,7 +478,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       </Link>
 
       {/* Product Information Section */}
-      <div className="mt-0 bg-[#E1DBD7]/60 p-3 pb-1">
+      <div className="mt-0 bg-[#E1DBD7] p-3 pb-1">
         <div className={`flex items-center justify-between mb-1 ${language === 'he' ? 'flex-row' : 'flex-row-reverse'}`}>
           <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{productName}</h3>
         </div>
@@ -476,10 +488,10 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         <div className="text-sm font-medium text-gray-900">
           {hasSalePrice() && salePrice && salePrice < originalPrice ? (
             <div className="flex items-center gap-2">
-              <span className="text-gray-500 line-through">
+              <span className="text-gray-700 line-through">
                 ₪{originalPrice.toFixed(2)}
               </span>
-              <span className="text-red-600 font-bold">
+              <span className="text-red-800 font-bold">
                 ₪{salePrice.toFixed(2)}
               </span>
             </div>
@@ -491,7 +503,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
       {/* Color Variants Section */}
       {product.colorVariants && Object.keys(product.colorVariants).length >= 1 && (
-        <div className="mt-0 bg-[#E1DBD7]/60 p-3 pt-1">
+        <div className="mt-0 bg-[#E1DBD7] p-3 pt-1">
           <div className="flex gap-2 overflow-x-auto pb-2">
             {Object.values(product.colorVariants)
               .filter(variant => variant.isActive !== false) // Filter out inactive variants
@@ -505,10 +517,12 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
                 return (
                   <button
+                    type="button"
                     key={variant.colorSlug}
                     onClick={(e) => handleVariantSelect(variant, e)}
                     className="flex-shrink-0 relative group"
-                    title={getColorName(variant.colorSlug, language)}
+                    aria-label={getColorName(variant.colorSlug, language)}
+                    aria-pressed={isSelected}
                   >
                     {/* Product image */}
                     {variantImageSrc && (

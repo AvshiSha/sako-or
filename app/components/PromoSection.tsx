@@ -232,7 +232,7 @@ export default function PromoSection({
   }
 
   return (
-    <div className="relative w-full bg-[#B2A28E] text-white">
+    <div className="relative w-full bg-[#B2A28E] text-black">
       <div className="mx-auto max-w-7xl px-4">
         <Link
           href={href}
@@ -256,7 +256,7 @@ export default function PromoSection({
                   {activeItem && (
                     <motion.div
                       key={promoMotionKey}
-                      className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium md:text-base"
+                      className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-black md:text-base"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
@@ -264,7 +264,7 @@ export default function PromoSection({
                       style={{ willChange: 'opacity' }}
                     >
                       <span className="opacity-95">{activeItem.icon ?? ''}</span>
-                      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{activeItem.text[lng]}</span>
+                      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-black">{activeItem.text[lng]}</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -273,7 +273,7 @@ export default function PromoSection({
 
             {hasAnyCountdown && (
               <div
-                className="mt-0.5 flex min-h-6 items-center justify-center text-base font-semibold tabular-nums leading-none text-white md:min-h-7 md:text-lg"
+                className="mt-0.5 flex min-h-6 items-center justify-center text-base font-semibold tabular-nums leading-none text-black md:min-h-7 md:text-lg"
                 aria-live={countdownVisible ? 'polite' : 'off'}
                 role={countdownVisible ? 'timer' : undefined}
               >

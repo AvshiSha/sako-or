@@ -295,10 +295,10 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                       <div className="mb-6">
                         {hasSalePrice() && salePrice && salePrice < originalPrice ? (
                           <div>
-                            <div className="text-2xl font-bold text-red-600">
+                            <div className="text-2xl font-bold text-red-800">
                               ₪{(salePrice * quantity).toFixed(2)}
                             </div>
-                            <div className="text-lg text-gray-500 line-through">
+                            <div className="text-lg text-gray-700 line-through">
                               ₪{(originalPrice * quantity).toFixed(2)}
                             </div>
                             {quantity > 1 && (

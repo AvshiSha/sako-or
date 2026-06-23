@@ -56,7 +56,9 @@ const translations = {
     categories: 'Categories',
     allProducts: 'Show All',
     signIn: 'Sign in',
-    myProfile: 'My Profile'
+    myProfile: 'My Profile',
+    favorites: 'Favorites',
+    shoppingCart: 'Shopping cart',
   },
   he: {
     home: 'בית',
@@ -69,8 +71,19 @@ const translations = {
     categories: 'קטגוריות',
     allProducts: 'לכל המוצרים',
     signIn: 'התחברות',
-    myProfile: 'הפרופיל שלי'
+    myProfile: 'הפרופיל שלי',
+    favorites: 'מועדפים',
+    shoppingCart: 'עגלת קניות',
   }
+}
+
+type NavIconLinkKey = 'favorites' | 'shoppingCart'
+
+function getIconLinkAriaLabel(lng: string, key: NavIconLinkKey, count: number): string {
+  const locale = lng === 'he' ? 'he' : 'en'
+  const base = translations[locale][key]
+  if (count <= 0) return base
+  return lng === 'he' ? `${base}, ${count} פריטים` : `${base}, ${count} items`
 }
 
 export default function Navigation({
@@ -94,6 +107,9 @@ export default function Navigation({
   const { favorites } = useFavorites()
   const { user, loading: authLoading } = useAuth()
   const pathname = usePathname()
+
+  const favoritesAriaLabel = getIconLinkAriaLabel(lng, 'favorites', favorites.length)
+  const cartAriaLabel = getIconLinkAriaLabel(lng, 'shoppingCart', items.length)
 
   // Desktop greeting state
   const [greetingName, setGreetingName] = useState<string | null>(null)
@@ -410,7 +426,7 @@ export default function Navigation({
               suppressHydrationWarning
             >
               {/* <Menu className="h-6 w-6" /> */}
-              <TextSearch strokeWidth={1.5} className="h-6.5 w-6.5" />
+              <TextSearch strokeWidth={1.5} className="h-6.5 w-6.5" aria-hidden="true" />
             </button>
 
             {/* Search Bar */}
@@ -430,7 +446,7 @@ export default function Navigation({
                     : translations[lng as keyof typeof translations].signIn
                 }
               >
-                <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" />
+                <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" aria-hidden="true" />
               </Link>
               {/* <SearchBar language={lng} /> */}
             </div>
@@ -712,7 +728,7 @@ export default function Navigation({
                       : translations[lng as keyof typeof translations].signIn
                   }
                 >
-                  <User className="h-6 w-6" />
+                  <User className="h-6 w-6" aria-hidden="true" />
                 </Link>
                 <span
                   className={`absolute top-full left-1/2 -translate-x-1/2 pt-0.5 text-[11px] text-gray-500 leading-none whitespace-nowrap min-h-[14px] ${
@@ -731,10 +747,11 @@ export default function Navigation({
                 href={`/${lng}/cart`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
                 suppressHydrationWarning
+                aria-label={cartAriaLabel}
               >
-                <ShoppingBag className="h-5 w-5" />
+                <ShoppingBag className="h-5 w-5" aria-hidden="true" />
                 {items.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10" aria-hidden="true">
                     {items.length}
                   </span>
                 )}
@@ -744,10 +761,11 @@ export default function Navigation({
                 href={`/${lng}/favorites`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
                 suppressHydrationWarning
+                aria-label={favoritesAriaLabel}
               >
-                <Heart className="h-5 w-5" />
+                <Heart className="h-5 w-5" aria-hidden="true" />
                 {favorites.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10">
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold z-10" aria-hidden="true">
                     {favorites.length}
                   </span>
                 )}
@@ -762,10 +780,11 @@ export default function Navigation({
                 href={`/${lng}/favorites`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"
                 suppressHydrationWarning
+                aria-label={favoritesAriaLabel}
               >
-                <Heart className="h-5 w-5" />
+                <Heart className="h-5 w-5" aria-hidden="true" />
                 {favorites.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold z-10">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold z-10" aria-hidden="true">
                     {favorites.length}
                   </span>
                 )}
@@ -775,10 +794,11 @@ export default function Navigation({
                 href={`/${lng}/cart`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"
                 suppressHydrationWarning
+                aria-label={cartAriaLabel}
               >
-                <ShoppingBag className="h-5 w-5" />
+                <ShoppingBag className="h-5 w-5" aria-hidden="true" />
                 {items.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold z-10">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold z-10" aria-hidden="true">
                     {items.length}
                   </span>
                 )}

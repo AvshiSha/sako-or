@@ -99,13 +99,30 @@ function collectionGridItemMotionProps(
   isAboveFold: boolean,
   skipEntrance: boolean
 ) {
-  const noEntrance = isAboveFold || skipEntrance;
-  if (noEntrance) {
+  const hover = { whileHover: { y: -4 } } as const
+
+  // Appended rows: skip entrance to avoid scroll/layout jank.
+  if (skipEntrance) {
     return {
       initial: false,
-      whileHover: { y: -4 },
-    };
+      ...hover,
+    }
   }
+
+  // Above-fold: fade in only (no y offset) for LCP-friendly entrance.
+  if (isAboveFold) {
+    return {
+      initial: { opacity: 0 },
+      animate: { opacity: 1, y: 0 },
+      transition: {
+        duration: 0.3,
+        ease: "easeOut",
+        delay: 0,
+      },
+      ...hover,
+    }
+  }
+
   return {
     initial: { opacity: 0, y: 12 },
     animate: { opacity: 1, y: 0 },
@@ -114,8 +131,8 @@ function collectionGridItemMotionProps(
       ease: "easeOut",
       delay: Math.min(index * 0.04, 0.4),
     },
-    whileHover: { y: -4 },
-  };
+    ...hover,
+  }
 }
 
 // Deterministic price formatting so server and client output matches (avoids hydration mismatch on mobile).

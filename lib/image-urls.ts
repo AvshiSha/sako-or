@@ -41,7 +41,8 @@ const videoUrlMappings: Record<string, string> = {
   "/videos/sako-or-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fsako_world_fab_2026.mp4?alt=media&token=5d5a19f1-316a-45a6-8f10-1eb9bbefc663",
   "/videos/sako-or-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION.mp4?alt=media&token=84b2745c-0008-4c91-9c88-ea251489954c",
   "/videos/hero3-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_SALES_DESKTOP.mp4?alt=media&token=7b109db9-67f6-47c8-b8cd-99c072f68a02",
-  "/videos/hero3-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fthird_section_new.mp4?alt=media&token=a049aaf7-08de-43be-ba86-1e4251ae6e53"
+  "/videos/hero3-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fthird_section_new.mp4?alt=media&token=a049aaf7-08de-43be-ba86-1e4251ae6e53",
+  "/videos/home-hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_1.mp4?alt=media&token=b33fc32f-df6a-4dba-a16d-948374eb9f82",
 };
 
 /**
@@ -93,6 +94,11 @@ export function getSummerSaleHeroDesktopImageUrl(): string {
 
 export function getSummerSaleHeroMobileImageUrl(): string {
   return getImageUrl("/images/hero/summer-sale-mobile.webp");
+}
+
+/** Homepage mobile hero video (first fold, mobile only). */
+export function getHomeHeroMobileVideoUrl(): string {
+  return getVideoUrl("/videos/home-hero-mobile.mp4");
 }
 
 /**

@@ -34,6 +34,7 @@ const HOME_CATEGORY_IMAGES: Partial<Record<HomeShoeCategoryPath, string>> = {
   'women/shoes/platform-loafers': getImageUrl('home-category-loafers.webp'),
   'women/shoes/slippers': getImageUrl('home-category-slippers.webp'),
   'women/shoes/oxford': getImageUrl('home-category-oxford.webp'),
+  'women/shoes/pumps': getImageUrl('home-category-heels.jpg'),
 }
 
 const HOME_CATEGORY_LABELS: Record<HomeShoeCategoryPath, { en: string; he: string }> = {
@@ -50,7 +51,7 @@ const HOME_CATEGORY_LABELS: Record<HomeShoeCategoryPath, { en: string; he: strin
 const CATEGORY_FALLBACK_IMAGES: Record<HomeShoeCategoryPath, string> = {
   'women/shoes/sandals': getImageUrl('home-category-sandals.webp'),
   'women/shoes/sneakers': getImageUrl('home-category-sneakers.webp'),
-  'women/shoes/pumps': getImageUrl('sako-women-high-heels.jpg'),
+  'women/shoes/pumps': getImageUrl('home-category-heels.jpg'),
   'women/shoes/low-boots': getImageUrl('home-category-low-boots.webp'),
   'women/shoes/slippers': getImageUrl('home-category-slippers.webp'),
   'women/shoes/platform-loafers': getImageUrl('home-category-loafers.webp'),

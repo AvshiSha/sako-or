@@ -25,13 +25,13 @@ function CollectionBannerCard({
       className="group relative block w-full overflow-hidden"
       aria-label={title}
     >
-      <div className="relative w-full aspect-[3/4] bg-neutral-200">
+      <div className="relative w-full aspect-[3/4] bg-white">
         <Image
           src={banner.image}
           alt={title}
           fill
           sizes="(max-width: 768px) 100vw, 33vw"
-          className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+          className="object-contain"
           loading="lazy"
         />
         <div

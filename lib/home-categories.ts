@@ -26,15 +26,32 @@ export interface HomeShoeCategory {
   path: string
 }
 
+/** Homepage category carousel images — always used when defined (overrides CMS). */
+const HOME_CATEGORY_IMAGES: Partial<Record<HomeShoeCategoryPath, string>> = {
+  'women/shoes/sandals': getImageUrl('home-category-sandals.webp'),
+  'women/shoes/sneakers': getImageUrl('home-category-sneakers.webp'),
+  'women/shoes/low-boots': getImageUrl('home-category-low-boots.webp'),
+}
+
 const CATEGORY_FALLBACK_IMAGES: Record<HomeShoeCategoryPath, string> = {
   'women/shoes/sandals': getImageUrl('home-category-sandals.webp'),
   'women/shoes/sneakers': getImageUrl('home-category-sneakers.webp'),
   'women/shoes/pumps': getImageUrl('sako-women-high-heels.jpg'),
-  'women/shoes/low-boots': getImageUrl('low-boots.jpg'),
+  'women/shoes/low-boots': getImageUrl('home-category-low-boots.webp'),
   'women/shoes/slippers': getImageUrl('sako-women-slippers.jpg'),
   'women/shoes/platform-loafers': getImageUrl('sako-women-laofer.jpg'),
   'women/shoes/oxford': getImageUrl('/images/placeholder.svg'),
   'women/shoes/moccasin': getImageUrl('sako-women-moccasin.jpg'),
+}
+
+function resolveCategoryImage(cat: Category, path: HomeShoeCategoryPath): string {
+  const homeImage = HOME_CATEGORY_IMAGES[path]
+  if (homeImage) return homeImage
+
+  const cmsImage = cat.image?.trim()
+  if (cmsImage) return cmsImage
+
+  return CATEGORY_FALLBACK_IMAGES[path]
 }
 
 const HOME_CATEGORIES_REVALIDATE_SECONDS = 600
@@ -52,7 +69,7 @@ function mapCategory(
   return {
     id: cat.id!,
     name: categoryName(cat, lng),
-    image: cat.image?.trim() || CATEGORY_FALLBACK_IMAGES[path],
+    image: resolveCategoryImage(cat, path),
     href: `/collection/${path}`,
     path,
   }

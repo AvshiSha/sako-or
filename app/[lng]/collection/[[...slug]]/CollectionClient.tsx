@@ -100,13 +100,19 @@ function collectionGridItemMotionProps(
   skipEntrance: boolean
 ) {
   const noEntrance = isAboveFold || skipEntrance;
+  if (noEntrance) {
+    return {
+      initial: false,
+      whileHover: { y: -4 },
+    };
+  }
   return {
-    initial: noEntrance ? false : { opacity: 0, y: 12 },
+    initial: { opacity: 0, y: 12 },
     animate: { opacity: 1, y: 0 },
     transition: {
       duration: 0.3,
       ease: "easeOut",
-      delay: noEntrance ? 0 : Math.min(index * 0.04, 0.4),
+      delay: Math.min(index * 0.04, 0.4),
     },
     whileHover: { y: -4 },
   };

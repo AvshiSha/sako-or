@@ -37,7 +37,7 @@ export default function ShopByCategory({ categories, lng }: ShopByCategoryProps)
         </h2>
         <div className="border-b border-gray-200 mb-6" />
 
-        <div className="relative group px-4 sm:px-4 md:px-8">
+        <div className="relative group px-2 sm:px-4 md:px-8">
           <Carousel
             opts={{
               align: 'start',

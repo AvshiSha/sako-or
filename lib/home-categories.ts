@@ -34,13 +34,14 @@ const HOME_CATEGORY_IMAGES: Partial<Record<HomeShoeCategoryPath, string>> = {
   'women/shoes/platform-loafers': getImageUrl('home-category-loafers.webp'),
   'women/shoes/slippers': getImageUrl('home-category-slippers.webp'),
   'women/shoes/oxford': getImageUrl('home-category-oxford.webp'),
-  'women/shoes/pumps': getImageUrl('home-category-heels.jpg'),
+  'women/shoes/pumps': getImageUrl('home-category-pumps.webp'),
+  'women/shoes/moccasin': getImageUrl('home-category-moccasin.webp'),
 }
 
 const HOME_CATEGORY_LABELS: Record<HomeShoeCategoryPath, { en: string; he: string }> = {
   'women/shoes/sandals': { en: 'Sandals', he: 'סנדלים' },
   'women/shoes/sneakers': { en: 'Sneakers', he: 'סניקרס' },
-  'women/shoes/pumps': { en: 'Pumps', he: 'עקבים' },
+  'women/shoes/pumps': { en: 'Pumps', he: 'נעלי סירה' },
   'women/shoes/low-boots': { en: 'Low Boots', he: 'מגפונים' },
   'women/shoes/slippers': { en: 'Slippers', he: 'נעלי בית' },
   'women/shoes/platform-loafers': { en: 'Loafers', he: 'לואפרים' },
@@ -51,12 +52,12 @@ const HOME_CATEGORY_LABELS: Record<HomeShoeCategoryPath, { en: string; he: strin
 const CATEGORY_FALLBACK_IMAGES: Record<HomeShoeCategoryPath, string> = {
   'women/shoes/sandals': getImageUrl('home-category-sandals.webp'),
   'women/shoes/sneakers': getImageUrl('home-category-sneakers.webp'),
-  'women/shoes/pumps': getImageUrl('home-category-heels.jpg'),
+  'women/shoes/pumps': getImageUrl('home-category-pumps.webp'),
   'women/shoes/low-boots': getImageUrl('home-category-low-boots.webp'),
   'women/shoes/slippers': getImageUrl('home-category-slippers.webp'),
   'women/shoes/platform-loafers': getImageUrl('home-category-loafers.webp'),
   'women/shoes/oxford': getImageUrl('home-category-oxford.webp'),
-  'women/shoes/moccasin': getImageUrl('sako-women-moccasin.jpg'),
+  'women/shoes/moccasin': getImageUrl('home-category-moccasin.webp'),
 }
 
 function resolveCategoryImage(cat: Category, path: HomeShoeCategoryPath): string {

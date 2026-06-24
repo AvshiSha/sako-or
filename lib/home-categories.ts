@@ -31,6 +31,20 @@ const HOME_CATEGORY_IMAGES: Partial<Record<HomeShoeCategoryPath, string>> = {
   'women/shoes/sandals': getImageUrl('home-category-sandals.webp'),
   'women/shoes/sneakers': getImageUrl('home-category-sneakers.webp'),
   'women/shoes/low-boots': getImageUrl('home-category-low-boots.webp'),
+  'women/shoes/platform-loafers': getImageUrl('home-category-loafers.webp'),
+  'women/shoes/slippers': getImageUrl('home-category-slippers.webp'),
+  'women/shoes/oxford': getImageUrl('home-category-oxford.webp'),
+}
+
+const HOME_CATEGORY_LABELS: Record<HomeShoeCategoryPath, { en: string; he: string }> = {
+  'women/shoes/sandals': { en: 'Sandals', he: 'סנדלים' },
+  'women/shoes/sneakers': { en: 'Sneakers', he: 'סניקרס' },
+  'women/shoes/pumps': { en: 'Pumps', he: 'עקבים' },
+  'women/shoes/low-boots': { en: 'Low Boots', he: 'מגפונים' },
+  'women/shoes/slippers': { en: 'Slippers', he: 'נעלי בית' },
+  'women/shoes/platform-loafers': { en: 'Loafers', he: 'לואפרים' },
+  'women/shoes/oxford': { en: 'Oxford', he: 'אוקספורד' },
+  'women/shoes/moccasin': { en: 'Moccasin', he: 'מוקסין' },
 }
 
 const CATEGORY_FALLBACK_IMAGES: Record<HomeShoeCategoryPath, string> = {
@@ -38,9 +52,9 @@ const CATEGORY_FALLBACK_IMAGES: Record<HomeShoeCategoryPath, string> = {
   'women/shoes/sneakers': getImageUrl('home-category-sneakers.webp'),
   'women/shoes/pumps': getImageUrl('sako-women-high-heels.jpg'),
   'women/shoes/low-boots': getImageUrl('home-category-low-boots.webp'),
-  'women/shoes/slippers': getImageUrl('sako-women-slippers.jpg'),
-  'women/shoes/platform-loafers': getImageUrl('sako-women-laofer.jpg'),
-  'women/shoes/oxford': getImageUrl('/images/placeholder.svg'),
+  'women/shoes/slippers': getImageUrl('home-category-slippers.webp'),
+  'women/shoes/platform-loafers': getImageUrl('home-category-loafers.webp'),
+  'women/shoes/oxford': getImageUrl('home-category-oxford.webp'),
   'women/shoes/moccasin': getImageUrl('sako-women-moccasin.jpg'),
 }
 
@@ -75,13 +89,27 @@ function mapCategory(
   }
 }
 
+function mapStaticCategory(path: HomeShoeCategoryPath, lng: 'en' | 'he'): HomeShoeCategory | null {
+  const image = HOME_CATEGORY_IMAGES[path] ?? CATEGORY_FALLBACK_IMAGES[path]
+  const labels = HOME_CATEGORY_LABELS[path]
+  if (!image || !labels) return null
+
+  return {
+    id: path,
+    name: lng === 'he' ? labels.he : labels.en,
+    image,
+    href: `/collection/${path}`,
+    path,
+  }
+}
+
 async function loadHomeShoeCategories(lng: 'en' | 'he'): Promise<HomeShoeCategory[]> {
   const results = await Promise.all(
     HOME_SHOE_CATEGORY_PATHS.map(async (path) => {
       const categories = await categoryService.getCategoriesByPath(path)
       const cat = categories.find((c) => c.isEnabled !== false)
-      if (!cat?.id) return null
-      return mapCategory(cat, path, lng)
+      if (cat?.id) return mapCategory(cat, path, lng)
+      return mapStaticCategory(path, lng)
     })
   )
 
@@ -91,7 +119,7 @@ async function loadHomeShoeCategories(lng: 'en' | 'he'): Promise<HomeShoeCategor
 function createCachedHomeShoeCategories(lng: 'en' | 'he') {
   return unstable_cache(
     () => loadHomeShoeCategories(lng),
-    ['home-shoe-categories', lng],
+    ['home-shoe-categories', 'v2', lng],
     { revalidate: HOME_CATEGORIES_REVALIDATE_SECONDS }
   )
 }

@@ -11,9 +11,9 @@ const imageUrlMappings: Record<string, string> = {
   "high-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fhigh-heels.jpg?alt=media&token=977d2f7d-ed75-4e9f-94ed-1c8f0eb5f590",
   // "sako-women-sneakers.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsneakers_tiles.webp?alt=media&token=8d1ee31f-ecbc-467b-ae6f-831f53d4dc88",
   "sako-women-high-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2FIMG_0866%20(1).jpg?alt=media&token=87e620a6-ddbc-4f5c-a95f-7b0f4b3ce6a5",
-  "sako-women-laofer.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollection_tile_laofer.webp?alt=media&token=35cabf51-3876-477f-b0d9-630b45f106af",
+  // "sako-women-laofer.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollection_tile_laofer.webp?alt=media&token=35cabf51-3876-477f-b0d9-630b45f106af",
   "sako-women-moccasin.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fmoccasin_tiles.webp?alt=media&token=f1db8295-2ea8-4c33-9674-39d7d3afe49a",
-  "sako-women-slippers.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fslippers_collection_tile.webp?alt=media&token=707229b0-68ef-4a09-8855-1df8b6429b2b",
+  // "sako-women-slippers.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fslippers_collection_tile.webp?alt=media&token=707229b0-68ef-4a09-8855-1df8b6429b2b",
   // "sako-women-sandals.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollection_tile_sandals.webp?alt=media&token=f52c78e2-bc54-47e2-bd18-5e8ff88278c0",
   "sako-women-belts.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbelts_tiles.webp?alt=media&token=db6c451c-0332-463f-9580-6e89b1190828",
   "/images/hero/shavout-2026-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fshavout-2026-desktop.webp?alt=media&token=e6d46a34-d6a4-4099-b3f1-defdf266549c",
@@ -28,6 +28,9 @@ const imageUrlMappings: Record<string, string> = {
   "home-category-sandals.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Fsandals_cate.webp?alt=media&token=fac73869-3b93-4838-a1c0-8a36635aae7d",
   "home-category-sneakers.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Fsneakers_cate.webp?alt=media&token=65d2a30e-1d29-434c-9f81-067aa8778c45",
   "home-category-low-boots.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Flow_boots_cate.webp?alt=media&token=a1702c1b-970f-4faa-8844-83f63bb4ceba",
+  "home-category-loafers.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Floafer_cate.webp?alt=media&token=eba08b3f-3659-464b-97a9-57e826b13748",
+  "home-category-slippers.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Fslippers_cate.webp?alt=media&token=77667666-4094-4e73-8d75-256b29426231",
+  "home-category-oxford.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Foxford_cate.webp?alt=media&token=820a1a4f-2820-4481-a78d-64a8dd4da52d"
 };
 
 const videoUrlMappings: Record<string, string> = {

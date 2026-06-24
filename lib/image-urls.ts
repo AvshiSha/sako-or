@@ -31,7 +31,7 @@ const imageUrlMappings: Record<string, string> = {
   "home-category-loafers.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Floafer_cate.webp?alt=media&token=eba08b3f-3659-464b-97a9-57e826b13748",
   "home-category-slippers.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Fslippers_cate.webp?alt=media&token=77667666-4094-4e73-8d75-256b29426231",
   "home-category-oxford.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Foxford_cate.webp?alt=media&token=820a1a4f-2820-4481-a78d-64a8dd4da52d",
-  "home-category-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Fheel_test.jpg?alt=media&token=68343107-25b7-4468-be96-97ca8b6b6a44"
+  "home-category-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Fheel_test.webp?alt=media&token=abd0f358-aa5d-4a49-b8a8-8e8a33bf5c25"
 };
 
 const videoUrlMappings: Record<string, string> = {

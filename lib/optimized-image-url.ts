@@ -16,6 +16,11 @@ export function getOptimizedRemoteImageUrl(
   return `/_next/image?${params.toString()}`
 }
 
+/** Mobile hero video poster (9:16, ~2× typical phone width). */
+export function getHomeHeroMobilePosterUrl(posterSrc: string): string {
+  return getOptimizedRemoteImageUrl(posterSrc, 1080, 80)
+}
+
 /** Mobile hero video poster (~412px display width). */
 export function getMobileVideoPosterUrl(posterSrc: string): string {
   return getOptimizedRemoteImageUrl(posterSrc, 828, 80)

@@ -1180,12 +1180,6 @@ export default function CollectionClient({
     }
   }, [allVariantItems, allProducts, sortBy, useVariantItems]);
 
-  const collectionGridRows = Math.ceil(sortedItems.length / 2);
-  const collectionContentMinHeight =
-    sortedItems.length > 0
-      ? `max(100vh, calc(${collectionGridRows} * (50vw + 8.75rem) + 10rem))`
-      : undefined;
-
   useCollectionScrollRestore({
     browseKey: collectionKey,
     itemCount: sortedItems.length,
@@ -1734,14 +1728,7 @@ export default function CollectionClient({
       browseKey={collectionKey}
       snapshotRef={stateSnapshotRef}
     >
-    <div
-      className="min-h-screen bg-white"
-      style={
-        collectionContentMinHeight
-          ? { minHeight: collectionContentMinHeight }
-          : undefined
-      }
-    >
+    <div className="min-h-screen bg-white">
       {isFilterLoading && (
         <Loader label={t.loadingProducts} />
       )}

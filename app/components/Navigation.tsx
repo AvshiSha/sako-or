@@ -5,7 +5,6 @@ import Image from 'next/image'
 import { Menu, X, Heart, ShoppingBag, ChevronDown, TextSearch, User } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { track } from '@vercel/analytics'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
 import LazySearchBar from './LazySearchBar'
 import MobileAuthGreeting from './MobileAuthGreeting'
@@ -33,14 +32,6 @@ import {
   womenSalesLinkLabel,
   womenSalesSectionTitle,
 } from '@/lib/navigation/women-sales-nav'
-import {
-  WOMEN_FEATURED_NAV_LINKS,
-  womenFeaturedCampaignHref,
-  womenFeaturedBadgeTone,
-  womenFeaturedLinkBadge,
-  womenFeaturedLinkLabel,
-} from '@/lib/navigation/women-featured-nav'
-
 
 
 // Hardcoded translations for build-time rendering
@@ -497,53 +488,7 @@ export default function Navigation({
                 onMouseLeave={() => handleMouseLeave('women')}
               >
                 <div className="w-full px-20">
-                  {/* Featured campaign shortcuts (static, fast, above everything) */}
-                  <div className="pb-8">
-                    <div
-                      className="grid grid-cols-2 lg:grid-cols-3 gap-3"
-                      aria-label={lng === 'he' ? 'קיצורי דרך מובילים' : 'Featured shortcuts'}
-                    >
-                      {WOMEN_FEATURED_NAV_LINKS.map((link) => {
-                        const badge = womenFeaturedLinkBadge(lng, link)
-                        const tone = womenFeaturedBadgeTone(link)
-                        return (
-                          <Link
-                            key={link.slug}
-                            href={womenFeaturedCampaignHref(lng, link.slug)}
-                            className="group relative flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 transition-colors duration-150 hover:bg-gray-50 hover:border-gray-300 active:bg-gray-100"
-                            suppressHydrationWarning
-                            onClick={() =>
-                              track('nav_women_featured_click', {
-                                slug: link.slug,
-                                location: 'desktop_dropdown',
-                                lng,
-                              })
-                            }
-                          >
-                            <span className="font-medium tracking-wide">
-                              {womenFeaturedLinkLabel(lng, link)}
-                            </span>
-                            {badge && (
-                              <span
-                                className={[
-                                  'shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
-                                  tone === 'warm'
-                                    ? 'border-amber-200 bg-amber-50 text-amber-900 group-hover:border-amber-300'
-                                    : tone === 'cool'
-                                      ? 'border-rose-200 bg-rose-50 text-rose-900 group-hover:border-rose-300'
-                                      : 'border-gray-200 bg-gray-50 text-gray-700 group-hover:border-gray-300',
-                                ].join(' ')}
-                              >
-                                {badge}
-                              </span>
-                            )}
-                          </Link>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 pt-8 grid grid-flow-col auto-cols-[minmax(150px,auto)] gap-x-20 justify-start">
+                  <div className="grid grid-flow-col auto-cols-[minmax(150px,auto)] gap-x-20 justify-start">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       {translations[lng as keyof typeof translations].categories}
@@ -867,54 +812,6 @@ export default function Navigation({
           {/* Scrollable Categories List */}
           <ScrollArea className="flex-1">
             <div className="px-4 py-2">
-              {/* Featured campaign shortcuts (Women only) */}
-              {selectedGender === 'women' && (
-                <div className="border-b border-gray-300 pb-2 mb-2">
-                  <div
-                    className="overflow-hidden rounded-md border border-gray-200 bg-white divide-y divide-gray-200"
-                    aria-label={lng === 'he' ? 'קיצורי דרך מובילים' : 'Featured shortcuts'}
-                  >
-                    {WOMEN_FEATURED_NAV_LINKS.map((link) => {
-                      const badge = womenFeaturedLinkBadge(lng, link)
-                      const tone = womenFeaturedBadgeTone(link)
-                      return (
-                        <SheetClose key={link.slug} asChild>
-                          <Link
-                            href={womenFeaturedCampaignHref(lng, link.slug)}
-                            className="flex items-center justify-between min-h-[44px] py-3 px-3 text-gray-900 font-medium transition-colors hover:bg-gray-50 active:bg-gray-100"
-                            dir={lng === 'he' ? 'rtl' : 'ltr'}
-                            suppressHydrationWarning
-                            onClick={() =>
-                              track('nav_women_featured_click', {
-                                slug: link.slug,
-                                location: 'mobile_sheet',
-                                lng,
-                              })
-                            }
-                          >
-                            <span className="text-sm tracking-wide">{womenFeaturedLinkLabel(lng, link)}</span>
-                            {badge && (
-                              <span
-                                className={[
-                                  'shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium',
-                                  tone === 'warm'
-                                    ? 'border-amber-200 bg-amber-50 text-amber-900'
-                                    : tone === 'cool'
-                                      ? 'border-rose-200 bg-rose-50 text-rose-900'
-                                      : 'border-gray-200 bg-gray-50 text-gray-700',
-                                ].join(' ')}
-                              >
-                                {badge}
-                              </span>
-                            )}
-                          </Link>
-                        </SheetClose>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
               {/* All Products Link */}
               <SheetClose asChild>
                 <Link

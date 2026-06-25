@@ -1,4 +1,5 @@
 import { getCollectionProducts, categoryService, VariantItem } from "@/lib/firebase";
+import { getCollectionProductsUpToPage } from "@/lib/collectionPageMerge";
 import CollectionClient from "./CollectionClient";
 import { searchProducts } from "@/lib/search-products";
 import { buildMetadata, buildAbsoluteUrl } from "@/lib/seo";
@@ -276,14 +277,34 @@ export default async function CollectionSlugPage({
       }
     }
 
-    // Fetch filtered products server-side with pagination
-    const collectionData = await getCollectionProducts(categoryPath, resolvedSearchParams, lng as 'en' | 'he');
-    products = collectionData.products;
-    collectionTotal = collectionData.total || 0;
-    collectionPage = collectionData.page || 1;
-    collectionHasMore = collectionData.hasMore || false;
-    collectionVariantItems = collectionData.variantItems; // Get variant items for collection pages
-    collectionAvailableFilterOptions = collectionData.availableFilterOptions; // Stable options so filter list does not collapse
+    // Fetch filtered products server-side with pagination.
+    // For ?page=N (N >= 2), SSR pages 1..N so client hydration does not expand the grid.
+    if (page >= 2) {
+      const merged = await getCollectionProductsUpToPage(
+        categoryPath,
+        resolvedSearchParams,
+        lng as "en" | "he",
+        page
+      );
+      products = merged.products;
+      collectionTotal = merged.total;
+      collectionPage = merged.page;
+      collectionHasMore = merged.hasMore;
+      collectionVariantItems = merged.variantItems;
+      collectionAvailableFilterOptions = merged.availableFilterOptions;
+    } else {
+      const collectionData = await getCollectionProducts(
+        categoryPath,
+        resolvedSearchParams,
+        lng as "en" | "he"
+      );
+      products = collectionData.products;
+      collectionTotal = collectionData.total || 0;
+      collectionPage = collectionData.page || 1;
+      collectionHasMore = collectionData.hasMore || false;
+      collectionVariantItems = collectionData.variantItems;
+      collectionAvailableFilterOptions = collectionData.availableFilterOptions;
+    }
   }
 
   // Fetch categories for the client component (needed for breadcrumbs and other UI)
@@ -368,6 +389,7 @@ export default async function CollectionSlugPage({
       initialMaxPrice={initialMaxPrice}
       categorySeoContentTitle={categorySeoContentTitle}
       categorySeoContentHtml={categorySeoContentHtml}
+      initialPagesBootstrapped={!searchQuery && page >= 2}
     />
   );
 }

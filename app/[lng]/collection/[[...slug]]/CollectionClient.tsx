@@ -20,6 +20,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { Product, Category, productHelpers, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
+import CollectionProductCardSkeleton from "@/app/components/CollectionProductCardSkeleton";
 import { trackViewItemList } from "@/lib/dataLayer";
 import { getColorName, getColorHex } from "@/lib/colors";
 import { cn } from "@/lib/utils";
@@ -84,6 +85,9 @@ import {
   dedupeVariantItems,
   useCollectionProductList,
 } from "@/lib/useCollectionProductList";
+import { poppins } from "@/lib/fonts";
+
+const LISTING_PAGE_SIZE = 24;
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -92,48 +96,6 @@ const motion = fmMotion as unknown as any;
 
 /** Stable empty params — avoids `new URLSearchParams()` on every render when search is absent. */
 const EMPTY_SEARCH_PARAMS = new URLSearchParams();
-
-/** Grid card wrapper: entrance stagger + hover lift (matches pre-anchor-refactor behavior). */
-function collectionGridItemMotionProps(
-  index: number,
-  isAboveFold: boolean,
-  skipEntrance: boolean
-) {
-  const hover = { whileHover: { y: -4 } } as const
-
-  // Appended rows: skip entrance to avoid scroll/layout jank.
-  if (skipEntrance) {
-    return {
-      initial: false,
-      ...hover,
-    }
-  }
-
-  // Above-fold: fade in only (no y offset) for LCP-friendly entrance.
-  if (isAboveFold) {
-    return {
-      initial: { opacity: 0 },
-      animate: { opacity: 1, y: 0 },
-      transition: {
-        duration: 0.3,
-        ease: "easeOut",
-        delay: 0,
-      },
-      ...hover,
-    }
-  }
-
-  return {
-    initial: { opacity: 0, y: 12 },
-    animate: { opacity: 1, y: 0 },
-    transition: {
-      duration: 0.3,
-      ease: "easeOut",
-      delay: Math.min(index * 0.04, 0.4),
-    },
-    ...hover,
-  }
-}
 
 // Deterministic price formatting so server and client output matches (avoids hydration mismatch on mobile).
 function formatPrice(n: number): string {
@@ -271,6 +233,8 @@ interface CollectionClientProps {
   initialMaxPrice?: string;
   categorySeoContentTitle?: string;
   categorySeoContentHtml?: string;
+  /** True when SSR already merged pages 1..N (?page=N deep link). */
+  initialPagesBootstrapped?: boolean;
 }
 
 export default function CollectionClient({
@@ -291,6 +255,7 @@ export default function CollectionClient({
   initialMaxPrice,
   categorySeoContentTitle,
   categorySeoContentHtml,
+  initialPagesBootstrapped = false,
 }: CollectionClientProps) {
   const params = useParams();
   const router = useRouter();
@@ -354,8 +319,10 @@ export default function CollectionClient({
   });
 
   const hydrationFallbackLoggedRef = useRef(false);
-  const restoredFromUrlFetchRef = useRef<boolean>(false);
+  const restoredFromUrlFetchRef = useRef<boolean>(initialPagesBootstrapped);
   const [browseListReady, setBrowseListReady] = useState(false);
+  const [pinnedGridItemCount, setPinnedGridItemCount] = useState(0);
+  const [isBrowseRefetching, setIsBrowseRefetching] = useState(false);
   const pathname = usePathname();
   const refetchOnReturnStartedRef = useRef(false);
   const browseRefetchInProgressRef = useRef(false);
@@ -481,6 +448,13 @@ export default function CollectionClient({
     if (needsRefetch && pagesToLoad >= 1 && !refetchOnReturnStartedRef.current) {
       refetchOnReturnStartedRef.current = true;
       browseRefetchInProgressRef.current = true;
+      const currentLen = useVariantItems
+        ? allVariantItems.length
+        : allProducts.length;
+      setPinnedGridItemCount(
+        Math.max(stored?.items?.length ?? 0, currentLen)
+      );
+      setIsBrowseRefetching(true);
       setBrowseListReady(false);
       void refetchBrowsePagesUpTo(pagesToLoad)
         .then((count) => {
@@ -498,6 +472,8 @@ export default function CollectionClient({
         })
         .finally(() => {
           browseRefetchInProgressRef.current = false;
+          setIsBrowseRefetching(false);
+          setPinnedGridItemCount(0);
           pendingListHydrationRef.current = 0;
           setBrowseListReady(true);
           setBlockServerListSync(false);
@@ -682,8 +658,14 @@ export default function CollectionClient({
   ]);
 
   // Deep-link bootstrap: ?page=N without browse cache fetches pages 1..N sequentially once.
+  // Skipped when SSR already merged pages (initialPagesBootstrapped).
   useEffect(() => {
-    if (!collectionKey || hydratedFromStoreRef.current || restoredFromUrlFetchRef.current) {
+    if (
+      initialPagesBootstrapped ||
+      !collectionKey ||
+      hydratedFromStoreRef.current ||
+      restoredFromUrlFetchRef.current
+    ) {
       return;
     }
 
@@ -714,6 +696,7 @@ export default function CollectionClient({
     useVariantItems,
     searchParams,
     applyHydratedPages,
+    initialPagesBootstrapped,
   ]);
 
   // Keep snapshot ref updated so we can persist on unmount
@@ -1759,7 +1742,7 @@ export default function CollectionClient({
         {/* Header with Filters Button */}
         <div className="mb-4 md:mb-4">
           <div className="mb-4">
-            <h1 className="text-2xl md:text-4xl font-bold leading-tight text-black text-center" style={{ fontFamily: 'Poppins, sans-serif' }}>
+            <h1 className={cn("text-2xl md:text-4xl font-bold leading-tight text-black text-center", poppins.className)}>
               Sako's {getTranslatedName(selectedCategory, selectedSubcategory)} Collection
             </h1>
           </div>
@@ -1855,19 +1838,34 @@ export default function CollectionClient({
           </div>
         )}
 
-        {/* Showing X of Y counter */}
-        {sortedItems.length > 0 && (
-          <div className="mb-4 text-sm text-gray-600">
-            {lng === 'he' 
+        {/* Showing X of Y counter — always reserve row height */}
+        <div
+          className={cn(
+            "mb-4 min-h-[20px] text-sm text-gray-600",
+            sortedItems.length === 0 && "invisible"
+          )}
+          aria-hidden={sortedItems.length === 0}
+        >
+          {sortedItems.length > 0 &&
+            (lng === 'he'
               ? `${t.showing} ${useVariantItems ? allVariantItems.length : allProducts.length} ${t.of} ${totalProducts} ${t.items}`
-              : `${t.showing} ${useVariantItems ? allVariantItems.length : allProducts.length} ${t.of} ${totalProducts} ${t.items}`
-            }
-          </div>
-        )}
+              : `${t.showing} ${useVariantItems ? allVariantItems.length : allProducts.length} ${t.of} ${totalProducts} ${t.items}`)}
+        </div>
 
         {/* Products Grid - Full Width */}
         <div className="w-full">
-          {sortedItems.length === 0 ? (
+          {isFilterLoading ? (
+            <div
+              className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 gap-y-2 sm:gap-6 -mx-3 items-start"
+              aria-busy="true"
+            >
+              {Array.from({ length: LISTING_PAGE_SIZE }).map((_, index) => (
+                <div key={`skeleton-${index}`}>
+                  <CollectionProductCardSkeleton />
+                </div>
+              ))}
+            </div>
+          ) : sortedItems.length === 0 ? (
             <div className="text-center py-4">
               <CubeIcon className="mx-auto h-14 w-14 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">
@@ -1886,57 +1884,37 @@ export default function CollectionClient({
           ) : (
             <>
               <div
-                className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-2 sm:gap-6 -mx-3"
-                style={{ overflowAnchor: "none" }}
+                className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 gap-y-2 sm:gap-6 -mx-3 items-start"
               >
                 {useVariantItems
                   ? (sortedItems as VariantItem[]).map((item, index) => {
-                      // Calculate if item is above the fold (first 6-8 items)
-                      // Mobile: 2 rows = 4 items, Desktop: 1-2 rows = 3-6 items
                       const isAboveFold = index < 6;
-                      const skipEntrance =
-                        index >= loadMoreAppendBaselineRef.current;
-                      
+
                       return (
-                        <motion.div
+                        <div
                           key={item.variantKey}
                           data-collection-anchor={item.variantKey}
-                          className="min-h-0"
-                          {...collectionGridItemMotionProps(
-                            index,
-                            isAboveFold,
-                            skipEntrance
-                          )}
                         >
                           <ProductCard 
                             product={item.product} 
                             language={lng as 'en' | 'he'}
                             selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
                             preselectedColorSlug={item.variant.colorSlug}
+                            disableImageCarousel
                             isAboveFold={isAboveFold}
                             browseStoreKey={collectionKey}
                             collectionAnchorKey={item.variantKey}
                           />
-                        </motion.div>
+                        </div>
                       );
                     })
                   : (sortedItems as Product[]).map((product, index) => {
-                      // Calculate if product is above the fold (first 6-8 products)
-                      // Mobile: 2 rows = 4 products, Desktop: 1-2 rows = 3-6 products
                       const isAboveFold = index < 6;
-                      const skipEntrance =
-                        index >= loadMoreAppendBaselineRef.current;
-                      
+
                       return (
-                        <motion.div
+                        <div
                           key={product.id}
                           data-collection-anchor={String(product.id ?? product.sku)}
-                          className="min-h-0"
-                          {...collectionGridItemMotionProps(
-                            index,
-                            isAboveFold,
-                            skipEntrance
-                          )}
                         >
                           <ProductCard 
                             product={product} 
@@ -1947,13 +1925,22 @@ export default function CollectionClient({
                                 ? (product as { matchedColorSlug?: string }).matchedColorSlug
                                 : undefined
                             }
+                            disableImageCarousel
                             isAboveFold={isAboveFold}
                             browseStoreKey={collectionKey}
                             collectionAnchorKey={String(product.id ?? product.sku)}
                           />
-                        </motion.div>
+                        </div>
                       );
                     })}
+                {isBrowseRefetching &&
+                  Array.from({
+                    length: Math.max(0, pinnedGridItemCount - sortedItems.length),
+                  }).map((_, index) => (
+                    <div key={`refetch-skeleton-${index}`} aria-hidden>
+                      <CollectionProductCardSkeleton />
+                    </div>
+                  ))}
               </div>
               
               {(hasMore || isLoadingMore) && (
@@ -1990,8 +1977,10 @@ export default function CollectionClient({
           >
             {categorySeoContentTitle && (
               <h2
-                className="text-xl md:text-2xl font-semibold text-black mb-4"
-                style={{ fontFamily: 'Poppins, sans-serif' }}
+                className={cn(
+                  "text-xl md:text-2xl font-semibold text-black mb-4",
+                  poppins.className
+                )}
               >
                 <InlineHeadingContent html={categorySeoContentTitle} />
               </h2>

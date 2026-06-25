@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, Heart, ShoppingBag, ChevronDown, TextSearch, User } from 'lucide-react'
+import { Menu, Heart, ShoppingBag, ChevronDown, TextSearch, User } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'

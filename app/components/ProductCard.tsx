@@ -387,33 +387,18 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
             </>
           ) : primaryImage ? (
             <div className="w-full h-full relative aspect-square" style={{ aspectRatio: '1 / 1' }}>
-              {disableImageCarousel ? (
-                <img
-                  src={typeof primaryImage === 'string' ? primaryImage : primaryImage?.url || ''}
-                  alt={`${productName} - ${activeVariant.colorSlug}`}
-                  width={500}
-                  height={500}
-                  loading={isAboveFold ? 'eager' : 'lazy'}
-                  decoding={isAboveFold ? 'sync' : 'async'}
-                  fetchPriority={isAboveFold ? 'high' : 'auto'}
-                  draggable={false}
-                  className="h-full w-full object-cover object-center"
-                  style={{ aspectRatio: '1 / 1' }}
-                />
-              ) : (
               <Image
                 src={typeof primaryImage === 'string' ? primaryImage : primaryImage?.url || ''}
                 alt={`${productName} - ${activeVariant.colorSlug}`}
                 width={500}
                 height={500}
-                className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                className={`h-full w-full object-cover object-center${disableImageCarousel ? '' : ' transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100'}`}
                 sizes={PRODUCT_CARD_IMAGE_SIZES}
                 priority={isAboveFold}
                 loading={isAboveFold ? undefined : 'lazy'}
                 draggable={false}
-                style={{ aspectRatio: '1 / 1' }} // Ensure fixed aspect ratio to prevent layout shift
+                style={{ aspectRatio: '1 / 1' }}
               />
-              )}
             </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gray-200">

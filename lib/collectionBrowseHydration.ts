@@ -1,4 +1,5 @@
 import type { Product, VariantItem } from "@/lib/firebase";
+import { mergeCollectionPageResults } from "@/lib/collectionPageMerge";
 
 export type CollectionPageFetchParams = {
   lng: string;
@@ -14,18 +15,6 @@ export type CollectionPageResponse = {
   hasMore?: boolean;
   page?: number;
 };
-
-function productListKey(product: Product): string | null {
-  const idStr =
-    product.id != null && String(product.id).trim() !== ""
-      ? String(product.id).trim()
-      : null;
-  const skuStr =
-    typeof product.sku === "string" && product.sku.trim() !== ""
-      ? product.sku.trim()
-      : null;
-  return idStr ?? skuStr;
-}
 
 export async function fetchCollectionPage(
   page: number,
@@ -104,58 +93,27 @@ export async function fetchCollectionPagesUpTo(
       }
     }
 
-    const resolvedPage = lastSuccessfulPage || 1;
+    const merged = mergeCollectionPageResults(
+      results.map((data, i) => ({
+        products: data.items ?? [],
+        variantItems: data.variantItems,
+        total: data.total ?? 0,
+        hasMore: data.hasMore ?? false,
+        page: data.page ?? i + 1,
+        pageSize: 24,
+      }))
+    );
 
-    if (useVariantItems) {
-      const allKeys = new Set<string>();
-      const combined: VariantItem[] = [];
-      let total = 0;
-      let hasMore = false;
-      for (let i = 0; i < results.length; i++) {
-        const data = results[i];
-        const list = data?.variantItems || [];
-        total = data?.total ?? total;
-        hasMore = i === results.length - 1 ? !!data?.hasMore : true;
-        list.forEach((item: VariantItem) => {
-          if (!allKeys.has(item.variantKey)) {
-            allKeys.add(item.variantKey);
-            combined.push(item);
-          }
-        });
-      }
-      return {
-        useVariantItems: true,
-        combined,
-        resolvedPage,
-        total: total || combined.length,
-        hasMore: !!hasMore,
-        count: combined.length,
-      };
-    }
+    const combined = useVariantItems
+      ? (merged.variantItems ?? [])
+      : merged.products;
 
-    const allIds = new Set<string>();
-    const combined: Product[] = [];
-    let total = 0;
-    let hasMore = false;
-    for (let i = 0; i < results.length; i++) {
-      const data = results[i];
-      const list = data?.items || [];
-      total = data?.total ?? total;
-      hasMore = i === results.length - 1 ? !!data?.hasMore : true;
-      list.forEach((item: Product) => {
-        const key = productListKey(item);
-        if (key && !allIds.has(key)) {
-          allIds.add(key);
-          combined.push(item);
-        }
-      });
-    }
     return {
-      useVariantItems: false,
+      useVariantItems,
       combined,
-      resolvedPage,
-      total: total || combined.length,
-      hasMore: !!hasMore,
+      resolvedPage: lastSuccessfulPage || merged.page,
+      total: merged.total,
+      hasMore: merged.hasMore,
       count: combined.length,
     };
   } catch (error) {

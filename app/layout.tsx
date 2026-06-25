@@ -9,7 +9,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next'
 import type { Metadata } from 'next'
 import { buildAbsoluteUrl } from '@/lib/seo'
 
-const assistant = Assistant({ subsets: ['latin'], display: 'swap' })
+const assistant = Assistant({ subsets: ['latin'], display: 'optional' })
 
 export const metadata: Metadata = {
   title: "SAKO OR",
@@ -161,6 +161,8 @@ window.args = {
 
 (function(doc, head, body){
 	function loadAccessibilityWidget() {
+		if (window.__veeWidgetLoaded) return;
+		window.__veeWidgetLoaded = true;
 		var embed = doc.createElement('script');
 		embed.src = window.args['access'] + '/js/';
 		embed.defer = true;
@@ -168,15 +170,13 @@ window.args = {
 		embed.setAttribute('data-cfasync', true );
 		body? body.appendChild(embed) : head.appendChild(embed);
 	}
-	if (window.requestIdleCallback) {
-		window.addEventListener('load', function() {
-			window.requestIdleCallback(loadAccessibilityWidget, { timeout: 4000 });
-		});
-	} else {
-		window.addEventListener('load', function() {
-			setTimeout(loadAccessibilityWidget, 2000);
-		});
+	// Defer until interaction so VEE font/DOM injections do not shift layout during load (CLS).
+	var signals = ['scroll', 'pointerdown', 'keydown'];
+	for (var i = 0; i < signals.length; i++) {
+		window.addEventListener(signals[i], loadAccessibilityWidget, { once: true, passive: true });
 	}
+	// Fallback for keyboard-only users who do not scroll before the timeout.
+	setTimeout(loadAccessibilityWidget, 15000);
 })(document, document.head, document.body);
             `
           }}

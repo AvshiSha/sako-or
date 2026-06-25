@@ -6,6 +6,7 @@ import { CouponBadgeProvider } from '../contexts/CouponBadgeContext'
 import { getStorefrontCouponBadgeIndex } from '@/lib/coupon-product-badges.server'
 import { getServerNavigationCategories } from '@/lib/navigation-categories.server'
 import LanguageLayoutShell from './LanguageLayoutShell'
+import { COLLECTION_GRID_CRITICAL_CSS } from '@/lib/collection-grid-critical-css'
 
 export async function generateStaticParams() {
   return languages.map((lng) => ({ lng }))
@@ -39,10 +40,11 @@ export default async function LanguageLayout({
 
   return (
     <div 
-      className={`flex flex-col min-h-screen ${direction}`}
+      className={`flex flex-col ${direction}`}
       dir={direction}
       lang={normalizedLng}
     >
+      <style dangerouslySetInnerHTML={{ __html: COLLECTION_GRID_CRITICAL_CSS }} />
       <PromoProvider>
         <CouponBadgeProvider initialIndex={couponBadgeIndex}>
           <LanguageLayoutShell>

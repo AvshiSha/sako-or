@@ -21,6 +21,13 @@ import {
   PRODUCT_CARD_IMAGE_SIZES,
   PRODUCT_SWATCH_IMAGE_SIZES,
 } from '@/lib/product-image-sizes'
+import {
+  PRODUCT_CARD_IMAGE_ASPECT,
+  PRODUCT_CARD_IMAGE_STYLE,
+  PRODUCT_CARD_INFO_MIN_H,
+  PRODUCT_CARD_PRICE_MIN_H,
+  PRODUCT_CARD_SWATCH_MIN_H,
+} from '@/lib/product-card-layout'
 
 const QuickBuyDrawer = dynamic(() => import('./QuickBuyDrawer'), { ssr: false })
 
@@ -112,7 +119,16 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   }, [activeVariant, variantImages, totalImages])
 
   if (!activeVariant) {
-    return null
+    return (
+      <div className="group relative bg-gray-100" aria-hidden>
+        <div
+          className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-gray-200 block`}
+          style={PRODUCT_CARD_IMAGE_STYLE}
+        />
+        <div className={`mt-0 bg-[#E1DBD7] p-3 pb-1 ${PRODUCT_CARD_INFO_MIN_H}`} />
+        <div className={`mt-0 bg-[#E1DBD7] p-3 pt-1 ${PRODUCT_CARD_SWATCH_MIN_H}`} />
+      </div>
+    )
   }
 
   // Get current price (variant price takes precedence)
@@ -323,8 +339,8 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       <Link
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
         scroll={false}
-        className="relative aspect-square overflow-hidden bg-gray-50 block"
-        style={{ aspectRatio: '1 / 1' }}
+        className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-gray-50 block`}
+        style={PRODUCT_CARD_IMAGE_STYLE}
         onPointerDown={saveBrowseScroll}
         onMouseDown={saveBrowseScroll}
         onTouchStart={saveBrowseScroll}
@@ -376,12 +392,12 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                 alt={`${productName} - ${activeVariant.colorSlug}`}
                 width={500}
                 height={500}
-                className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100"
+                className={`h-full w-full object-cover object-center${disableImageCarousel ? '' : ' transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100'}`}
                 sizes={PRODUCT_CARD_IMAGE_SIZES}
                 priority={isAboveFold}
                 loading={isAboveFold ? undefined : 'lazy'}
                 draggable={false}
-                style={{ aspectRatio: '1 / 1' }} // Ensure fixed aspect ratio to prevent layout shift
+                style={{ aspectRatio: '1 / 1' }}
               />
             </div>
           ) : (
@@ -478,14 +494,14 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       </Link>
 
       {/* Product Information Section */}
-      <div className="mt-0 bg-[#E1DBD7] p-3 pb-1">
+      <div className={`mt-0 bg-[#E1DBD7] p-3 pb-1 product-card-info-block ${PRODUCT_CARD_INFO_MIN_H}`}>
         <div className={`flex items-center justify-between mb-1 ${language === 'he' ? 'flex-row' : 'flex-row-reverse'}`}>
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">{productName}</h3>
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide line-clamp-1">{productName}</h3>
         </div>
 
-        <div className="text-sm font-medium text-gray-900">{language === 'he' ? 'מספר דגם: ' : 'SKU: '}{product.sku}</div>
+        <div className="text-sm font-medium text-gray-900 line-clamp-1">{language === 'he' ? 'מספר דגם: ' : 'SKU: '}{product.sku}</div>
 
-        <div className="text-sm font-medium text-gray-900">
+        <div className={`text-sm font-medium text-gray-900 product-card-price-block ${PRODUCT_CARD_PRICE_MIN_H}`}>
           {hasSalePrice() && salePrice && salePrice < originalPrice ? (
             <div className="flex items-center gap-2">
               <span className="text-gray-700 line-through">
@@ -501,12 +517,12 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         </div>
       </div>
 
-      {/* Color Variants Section */}
-      {product.colorVariants && Object.keys(product.colorVariants).length >= 1 && (
-        <div className="mt-0 bg-[#E1DBD7] p-3 pt-1">
-          <div className="flex gap-2 overflow-x-auto pb-2">
-            {Object.values(product.colorVariants)
-              .filter(variant => variant.isActive !== false) // Filter out inactive variants
+      {/* Color Variants Section — always reserve swatch row height */}
+      <div className={`mt-0 bg-[#E1DBD7] p-3 pt-1 product-card-swatch-block ${PRODUCT_CARD_SWATCH_MIN_H}`}>
+        <div className="flex h-8 gap-2 overflow-x-auto pb-2">
+          {product.colorVariants &&
+            Object.values(product.colorVariants)
+              .filter(variant => variant.isActive !== false)
               .map((variant) => {
                 const variantImage = variant.primaryImage || variant.images?.[0]
                 const variantImageSrc =
@@ -548,9 +564,8 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                   </button>
                 )
               })}
-          </div>
         </div>
-      )}
+      </div>
 
       {/* Quick Buy Drawer */}
       {isQuickBuyOpen && (

@@ -7,7 +7,10 @@ import {
   getSummerSaleHeroDesktopImageUrl,
   getSummerSaleHeroMobileImageUrl,
 } from '@/lib/image-urls'
-import { getHomeHeroMobilePosterUrl } from '@/lib/optimized-image-url'
+import {
+  getDesktopVideoPosterUrl,
+  getHomeHeroMobilePosterUrl,
+} from '@/lib/optimized-image-url'
 import { languages } from '@/i18n/settings'
 
 import HomeHero from '@/app/components/HomeHero'
@@ -69,7 +72,7 @@ export default async function HomePage({
       <link
         rel="preload"
         as="image"
-        href={heroDesktopSrc}
+        href={getDesktopVideoPosterUrl(heroDesktopSrc)}
         media="(min-width: 769px)"
         fetchPriority="high"
       />

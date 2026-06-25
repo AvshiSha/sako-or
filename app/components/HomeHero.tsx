@@ -1,15 +1,18 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { track } from '@vercel/analytics'
 import {
   getHomeHeroMobileVideoUrl,
+  getHomeHeroDesktopVideoUrl,
   getSummerSaleHeroDesktopImageUrl,
   getSummerSaleHeroMobileImageUrl,
 } from '@/lib/image-urls'
-import { getHomeHeroMobilePosterUrl } from '@/lib/optimized-image-url'
+import {
+  getDesktopVideoPosterUrl,
+  getHomeHeroMobilePosterUrl,
+} from '@/lib/optimized-image-url'
 import HomeHeroLinks from './HomeHeroLinks'
 
 interface HomeHeroProps {
@@ -20,18 +23,30 @@ interface HomeHeroProps {
 const MOBILE_HERO_VIDEO_WIDTH = 1080
 const MOBILE_HERO_VIDEO_HEIGHT = 1920
 
-function HomeHeroMobileVideo({
+/** Native dimensions of the desktop hero MP4 (1920×823, ~21:9). */
+const DESKTOP_HERO_VIDEO_WIDTH = 1920
+const DESKTOP_HERO_VIDEO_HEIGHT = 823
+
+function HomeHeroVideo({
   videoSrc,
   posterSrc,
+  width,
+  height,
+  getPosterUrl,
+  showPlayButton = true,
 }: {
   videoSrc: string
   posterSrc: string
+  width: number
+  height: number
+  getPosterUrl: (src: string) => string
+  showPlayButton?: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [isInView, setIsInView] = useState(false)
-  const [showPlayButton, setShowPlayButton] = useState(false)
-  const posterUrl = useMemo(() => getHomeHeroMobilePosterUrl(posterSrc), [posterSrc])
+  const [showPlayButtonOverlay, setShowPlayButtonOverlay] = useState(false)
+  const posterUrl = useMemo(() => getPosterUrl(posterSrc), [getPosterUrl, posterSrc])
 
   useEffect(() => {
     const el = containerRef.current
@@ -52,9 +67,9 @@ function HomeHeroMobileVideo({
     if (!video) return
     try {
       await video.play()
-      setShowPlayButton(false)
+      setShowPlayButtonOverlay(false)
     } catch {
-      setShowPlayButton(true)
+      setShowPlayButtonOverlay(true)
     }
   }, [])
 
@@ -69,17 +84,25 @@ function HomeHeroMobileVideo({
 
     const playPromise = video.play()
     if (playPromise !== undefined) {
-      playPromise.catch(() => setShowPlayButton(true))
+      playPromise.catch(() => setShowPlayButtonOverlay(true))
     }
   }, [isInView])
+
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const onPlaying = () => setShowPlayButtonOverlay(false)
+    video.addEventListener('playing', onPlaying)
+    return () => video.removeEventListener('playing', onPlaying)
+  }, [])
 
   return (
     <div ref={containerRef} className="absolute inset-0">
       <video
         ref={videoRef}
-        className="h-full w-full object-cover object-center"
-        width={MOBILE_HERO_VIDEO_WIDTH}
-        height={MOBILE_HERO_VIDEO_HEIGHT}
+        className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
+        width={width}
+        height={height}
         muted
         loop
         playsInline
@@ -89,7 +112,7 @@ function HomeHeroMobileVideo({
       >
         <source src={videoSrc} type="video/mp4" />
       </video>
-      {showPlayButton && (
+      {showPlayButton && showPlayButtonOverlay && (
         <button
           type="button"
           onClick={(event) => {
@@ -117,13 +140,10 @@ function HomeHeroMobileVideo({
 }
 
 export default function HomeHero({ lng }: HomeHeroProps) {
-  const desktopSrc = getSummerSaleHeroDesktopImageUrl()
+  const desktopPosterSrc = getSummerSaleHeroDesktopImageUrl()
   const mobilePosterSrc = getSummerSaleHeroMobileImageUrl()
   const mobileVideoSrc = getHomeHeroMobileVideoUrl()
-  const heroAlt =
-    lng === 'he'
-      ? 'קולקציה חדשה של סכו עור'
-      : 'SAKO OR new collection'
+  const desktopVideoSrc = getHomeHeroDesktopVideoUrl()
   const ariaLabel =
     lng === 'he' ? 'לקולקציה החדשה' : 'Shop new collection'
 
@@ -136,20 +156,22 @@ export default function HomeHero({ lng }: HomeHeroProps) {
     >
       <div className="absolute inset-0 bg-black md:bg-transparent overflow-hidden">
         <div className="absolute inset-0 hidden md:block">
-          <Image
-            src={desktopSrc}
-            alt={heroAlt}
-            fill
-            sizes="100vw"
-            className="object-cover transition-transform duration-700 group-hover:scale-[1.02]"
-            style={{ objectPosition: 'center' }}
-            loading="lazy"
+          <HomeHeroVideo
+            videoSrc={desktopVideoSrc}
+            posterSrc={desktopPosterSrc}
+            width={DESKTOP_HERO_VIDEO_WIDTH}
+            height={DESKTOP_HERO_VIDEO_HEIGHT}
+            getPosterUrl={getDesktopVideoPosterUrl}
+            showPlayButton={false}
           />
         </div>
         <div className="absolute inset-0 md:hidden">
-          <HomeHeroMobileVideo
+          <HomeHeroVideo
             videoSrc={mobileVideoSrc}
             posterSrc={mobilePosterSrc}
+            width={MOBILE_HERO_VIDEO_WIDTH}
+            height={MOBILE_HERO_VIDEO_HEIGHT}
+            getPosterUrl={getHomeHeroMobilePosterUrl}
           />
         </div>
       </div>

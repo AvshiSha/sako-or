@@ -410,14 +410,14 @@ export default function Navigation({
         >
           {/* Desktop: Logo on left */}
           <div className="hidden md:flex items-center">
-            <Link href={`/${lng}`} className="text-1xl font-bold text-gray-900" suppressHydrationWarning>
+            <Link href={`/${lng}`} className="whitespace-nowrap text-1xl font-bold text-gray-900" suppressHydrationWarning>
               SAKO OR
             </Link>
           </div>
 
           {/* Mobile Layout: Three-column layout */}
           {/* Left: Menu + Search */}
-          <div className="flex items-center flex-1 md:hidden">
+          <div className="flex flex-1 min-w-0 items-center justify-start md:hidden">
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
@@ -452,10 +452,14 @@ export default function Navigation({
             </div>
           </div>
 
-          {/* Center: Logo (Mobile only, positioned more to the left) */}
-          <div className="flex-1 flex justify-start items-center md:hidden ml-1">
-            <Link href={`/${lng}`} suppressHydrationWarning>
-              <span className="text-xl font-bold text-gray-900">SAKO OR</span>
+          {/* Center: Logo (Mobile only) — shrink-0 + nowrap so flex never wraps the brand name */}
+          <div className="flex shrink-0 items-center md:hidden px-1">
+            <Link
+              href={`/${lng}`}
+              className="whitespace-nowrap text-lg font-bold text-gray-900 sm:text-xl"
+              suppressHydrationWarning
+            >
+              SAKO OR
             </Link>
           </div>
 
@@ -775,7 +779,7 @@ export default function Navigation({
             </div>
 
             {/* Mobile: Favorites and Cart (right side) */}
-            <div className="flex items-center space-x-2 md:hidden">
+            <div className="flex flex-1 items-center justify-end md:hidden">
               <Link
                 href={`/${lng}/favorites`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"

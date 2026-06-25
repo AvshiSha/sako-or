@@ -8,13 +8,6 @@ const imageUrlMappings: Record<string, string> = {
   "sako-men-shoes.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhf_20260405_220729_6d371807-79a6-4187-8e4e-70a8dcaa709c.webp?alt=media&token=b83ad02b-454a-4be3-acb6-af6c7a0e397a",
   "sako-women-shoes.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-women-shoes.jpg?alt=media&token=702da283-bf49-4070-8b32-9c1f36fccc68",
   "sako-accs.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fsako-accs.jpg?alt=media&token=f64145b0-00fb-459a-b2f1-1b4e103b9258",
-  // "high-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fon-footer%2Fhigh-heels.jpg?alt=media&token=977d2f7d-ed75-4e9f-94ed-1c8f0eb5f590",
-  // "sako-women-sneakers.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsneakers_tiles.webp?alt=media&token=8d1ee31f-ecbc-467b-ae6f-831f53d4dc88",
-  // "sako-women-high-heels.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2FIMG_0866%20(1).jpg?alt=media&token=87e620a6-ddbc-4f5c-a95f-7b0f4b3ce6a5",
-  // "sako-women-laofer.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollection_tile_laofer.webp?alt=media&token=35cabf51-3876-477f-b0d9-630b45f106af",
-  // "sako-women-moccasin.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fmoccasin_tiles.webp?alt=media&token=f1db8295-2ea8-4c33-9674-39d7d3afe49a",
-  // "sako-women-slippers.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fslippers_collection_tile.webp?alt=media&token=707229b0-68ef-4a09-8855-1df8b6429b2b",
-  // "sako-women-sandals.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fcollection_tile_sandals.webp?alt=media&token=f52c78e2-bc54-47e2-bd18-5e8ff88278c0",
   "sako-women-belts.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbelts_tiles.webp?alt=media&token=db6c451c-0332-463f-9580-6e89b1190828",
   "/images/hero/shavout-2026-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fshavout-2026-desktop.webp?alt=media&token=e6d46a34-d6a4-4099-b3f1-defdf266549c",
   "/images/hero/shavout-2026-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fshavout-2026-mobile.webp?alt=media&token=b33dcc64-7b6d-4186-828e-feadf2f5eb13",
@@ -42,7 +35,8 @@ const videoUrlMappings: Record<string, string> = {
   "/videos/sako-or-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION.mp4?alt=media&token=84b2745c-0008-4c91-9c88-ea251489954c",
   "/videos/hero3-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_SALES_DESKTOP.mp4?alt=media&token=7b109db9-67f6-47c8-b8cd-99c072f68a02",
   "/videos/hero3-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fthird_section_new.mp4?alt=media&token=a049aaf7-08de-43be-ba86-1e4251ae6e53",
-  "/videos/home-hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_1.mp4?alt=media&token=b33fc32f-df6a-4dba-a16d-948374eb9f82",
+  "/videos/home-hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_1_fix.mp4?alt=media&token=fa0c6485-eb87-4548-8be3-4f4e377fc686",
+  "/videos/home-hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_desktop_fix.mp4?alt=media&token=3f52cdac-dead-49cb-90d9-ff64deec95f0",
 };
 
 /**
@@ -99,6 +93,10 @@ export function getSummerSaleHeroMobileImageUrl(): string {
 /** Homepage mobile hero video (first fold, mobile only). */
 export function getHomeHeroMobileVideoUrl(): string {
   return getVideoUrl("/videos/home-hero-mobile.mp4");
+}
+
+export function getHomeHeroDesktopVideoUrl(): string {
+  return getVideoUrl("/videos/home-hero-desktop.mp4");
 }
 
 /**

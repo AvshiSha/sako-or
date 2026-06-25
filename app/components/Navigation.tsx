@@ -405,7 +405,7 @@ export default function Navigation({
     <nav className="relative w-full shadow-lg" style={{ backgroundColor: '#FFFFFF' }}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
-          className="flex justify-between items-center h-16"
+          className="relative flex justify-between items-center h-16"
           onMouseLeave={handleNavigationMouseLeave}
         >
           {/* Desktop: Logo on left */}
@@ -452,8 +452,8 @@ export default function Navigation({
             </div>
           </div>
 
-          {/* Center: Logo (Mobile only) — shrink-0 + nowrap so flex never wraps the brand name */}
-          <div className="flex shrink-0 items-center md:hidden px-1">
+          {/* Center: Logo (Mobile only) — absolutely centered; nowrap prevents wrapping */}
+          <div className="absolute left-1/2 top-1/2 z-10 flex shrink-0 -translate-x-1/2 -translate-y-1/2 items-center md:hidden px-1">
             <Link
               href={`/${lng}`}
               className="whitespace-nowrap text-lg font-bold text-gray-900 sm:text-xl"
@@ -712,7 +712,7 @@ export default function Navigation({
 
 
           {/* Right side icons - Desktop and Mobile */}
-          <div className="flex items-center">
+          <div className="flex flex-1 items-center justify-end md:flex-none md:justify-start">
             {/* Desktop: Search Bar, User, Cart, Favorites, Language Switcher */}
             <div className="hidden md:flex items-center space-x-4">
               <LazySearchBar language={lng} />
@@ -779,7 +779,7 @@ export default function Navigation({
             </div>
 
             {/* Mobile: Favorites and Cart (right side) */}
-            <div className="flex flex-1 items-center justify-end md:hidden">
+            <div className="flex items-center md:hidden">
               <Link
                 href={`/${lng}/favorites`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"

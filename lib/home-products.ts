@@ -27,7 +27,7 @@ export const BEST_SELLER_SKUS: string[] = [
   '5004-0700',
   '5025-3417',
   '5025-7826',
-  '5005-0205'
+  '5022-3102'
 ]
 
 export const BOGO_PAIR_SKUS: string[] = [

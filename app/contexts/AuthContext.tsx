@@ -63,13 +63,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setServerIsAdmin(confirmed)
       }
 
-      // Force-refresh the ID token so the admin custom claim set by the server
-      // is picked up immediately by the Firestore client SDK. Without this,
-      // Firestore admin writes would fail until the token naturally expires
-      // (up to 1 hour). The refresh is non-fatal if it fails.
-      if (confirmed) {
+      // Force-refresh the ID token whenever the admin claim state changed:
+      //   - claim just granted  (confirmed=true,  hadClaim=false) → refresh so Firestore accepts writes
+      //   - claim just revoked  (confirmed=false, hadClaim=true)  → refresh so Firestore rejects writes
+      //   - no change                                             → skip (saves a round-trip)
+      //
+      // getIdTokenResult() reads the currently cached token without forcing a
+      // network call, so hadAdminClaim reflects the old state before the server
+      // may have just changed it via setCustomUserClaims.
+      const tokenResult = await firebaseUser.getIdTokenResult().catch(() => null)
+      const hadAdminClaim = tokenResult?.claims?.admin === true
+      if (confirmed !== hadAdminClaim) {
         await firebaseUser.getIdToken(true).catch((err) => {
-          console.warn('[AUTH_CONTEXT] Token refresh after admin claim failed:', err?.message || err)
+          console.warn('[AUTH_CONTEXT] Token refresh after admin claim change failed:', err?.message || err)
         })
       }
     } catch (error) {

@@ -3981,6 +3981,27 @@ export const blogService = {
     }
   },
 
+  // Public variant: adds status == 'published' so the query satisfies the
+  // Firestore security rule for unauthenticated callers (storefront pages).
+  // Use this everywhere the client SDK is called without a user auth token.
+  async getPublishedArticleBySlug(slug: string): Promise<BlogArticle | null> {
+    try {
+      const q = query(
+        collection(db, BLOG_COLLECTION),
+        where('slug', '==', slug),
+        where('status', '==', 'published'),
+        limit(1)
+      );
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) return null;
+      const docSnap = snapshot.docs[0];
+      return { id: docSnap.id, ...docSnap.data() } as BlogArticle;
+    } catch (error) {
+      console.error('Error fetching published blog article by slug:', error);
+      throw error;
+    }
+  },
+
   async checkSlugUnique(slug: string, excludeId?: string): Promise<boolean> {
     const existing = await this.getArticleBySlug(slug);
     if (!existing) return true;

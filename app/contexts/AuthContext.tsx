@@ -27,12 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const adminCheckPending = !!user && !isAdminEmail(user.email) && serverIsAdmin === null
 
   const resolveAdminAccess = async (firebaseUser: User) => {
+    // Fast path for known admin emails: show admin UI immediately without
+    // waiting for the API response. We still call the API below so the server
+    // can set the Firebase custom claim used by Firestore security rules.
     if (isAdminEmail(firebaseUser.email)) {
       setServerIsAdmin(true)
-      return
+    } else {
+      setServerIsAdmin(null)
     }
-
-    setServerIsAdmin(null)
 
     try {
       const token = await firebaseUser.getIdToken().catch((err) => {
@@ -41,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (!token) {
-        setServerIsAdmin(false)
+        if (!isAdminEmail(firebaseUser.email)) setServerIsAdmin(false)
         return
       }
 
@@ -50,15 +52,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       if (!res.ok) {
-        setServerIsAdmin(false)
+        if (!isAdminEmail(firebaseUser.email)) setServerIsAdmin(false)
         return
       }
 
       const data = await res.json().catch(() => ({}))
-      setServerIsAdmin(data.isAdmin === true)
+      const confirmed = data.isAdmin === true
+
+      if (!isAdminEmail(firebaseUser.email)) {
+        setServerIsAdmin(confirmed)
+      }
+
+      // Force-refresh the ID token so the admin custom claim set by the server
+      // is picked up immediately by the Firestore client SDK. Without this,
+      // Firestore admin writes would fail until the token naturally expires
+      // (up to 1 hour). The refresh is non-fatal if it fails.
+      if (confirmed) {
+        await firebaseUser.getIdToken(true).catch((err) => {
+          console.warn('[AUTH_CONTEXT] Token refresh after admin claim failed:', err?.message || err)
+        })
+      }
     } catch (error) {
       console.error('[AUTH_CONTEXT] Admin access check failed:', error)
-      setServerIsAdmin(false)
+      if (!isAdminEmail(firebaseUser.email)) setServerIsAdmin(false)
     }
   }
 

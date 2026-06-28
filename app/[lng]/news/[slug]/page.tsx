@@ -18,9 +18,9 @@ interface ArticlePageProps {
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { lng, slug } = await params
   const locale = lng as 'en' | 'he'
-  const article = await blogService.getArticleBySlug(slug)
+  const article = await blogService.getPublishedArticleBySlug(slug)
 
-  if (!article || article.status !== 'published') {
+  if (!article) {
     return buildMetadata({
       title: 'Article Not Found',
       description: '',
@@ -62,8 +62,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   const { lng, slug } = await params
   const locale = lng as 'en' | 'he'
 
-  const article = await blogService.getArticleBySlug(slug)
-  if (!article || article.status !== 'published') {
+  const article = await blogService.getPublishedArticleBySlug(slug)
+  if (!article) {
     notFound()
   }
 

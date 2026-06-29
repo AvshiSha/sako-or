@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { syncInventoryFromVerifone } from '@/lib/inventory';
 
 /**
@@ -49,7 +50,16 @@ export async function GET(request: NextRequest) {
     console.log('[CRON_INVENTORY_SYNC] Starting inventory sync from Verifone to Firebase...');
 
     // Execute the inventory sync
-    const result = await syncInventoryFromVerifone();
+    const result = await Sentry.withMonitor(
+      'inventory-sync',
+      () => syncInventoryFromVerifone(),
+      {
+        schedule: { type: 'crontab', value: '0 */3 * * *' },
+        checkinMargin: 5,
+        maxRuntime: 5,
+        timezone: 'UTC',
+      }
+    );
 
     const duration = Date.now() - startTime;
 

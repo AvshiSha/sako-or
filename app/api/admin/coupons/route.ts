@@ -268,13 +268,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(coupon, { status: 201 })
   } catch (error) {
-    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.flatten() },
         { status: 400 }
       )
     }
+    Sentry.captureException(error);
 
     console.error('[ADMIN_COUPONS_CREATE_ERROR]', error)
     return NextResponse.json(

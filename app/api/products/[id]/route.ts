@@ -185,7 +185,6 @@ export async function PUT(
 
     return NextResponse.json(updatedProduct)
   } catch (error) {
-    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       console.error('Validation error details:', error.errors)
       return NextResponse.json(
@@ -193,6 +192,7 @@ export async function PUT(
         { status: 400 }
       )
     }
+    Sentry.captureException(error);
     
     console.error('Error updating product:', error)
     return NextResponse.json(

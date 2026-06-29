@@ -200,13 +200,13 @@ export async function PUT(
 
     return NextResponse.json(updatedCoupon)
   } catch (error) {
-    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.flatten() },
         { status: 400 }
       )
     }
+    Sentry.captureException(error);
 
     console.error('[ADMIN_COUPONS_UPDATE_ERROR]', error)
     return NextResponse.json(

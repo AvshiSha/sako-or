@@ -93,13 +93,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(category, { status: 201 })
   } catch (error) {
-    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
         { status: 400 }
       )
     }
+    Sentry.captureException(error);
     
     console.error('Error creating category:', error)
     return NextResponse.json(

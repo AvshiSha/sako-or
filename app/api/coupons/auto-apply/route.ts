@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 200 })
   } catch (error) {
-    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
@@ -68,6 +67,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    Sentry.captureException(error);
 
     console.error('[COUPON_AUTO_APPLY_ERROR]', error)
     return NextResponse.json(

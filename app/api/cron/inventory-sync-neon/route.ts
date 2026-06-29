@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { syncInventoryFromFirebaseToNeon } from '@/lib/inventory';
 
 /**
@@ -44,7 +45,16 @@ export async function GET(request: NextRequest) {
 
     console.log('[CRON_INVENTORY_SYNC_NEON] Starting Firebase->Neon inventory sync...');
 
-    const result = await syncInventoryFromFirebaseToNeon();
+    const result = await Sentry.withMonitor(
+      'inventory-sync-neon',
+      () => syncInventoryFromFirebaseToNeon(),
+      {
+        schedule: { type: 'crontab', value: '15 */3 * * *' },
+        checkinMargin: 5,
+        maxRuntime: 1,
+        timezone: 'UTC',
+      }
+    );
 
     const duration = Date.now() - startTime;
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { syncAllUserPointsFromVerifone } from '@/lib/points';
 
 /**
@@ -61,11 +62,21 @@ export async function GET(request: NextRequest) {
       concurrency
     });
 
-    const result = await syncAllUserPointsFromVerifone({
-      batchSize,
-      maxBatchesPerRun: maxBatches,
-      concurrency
-    });
+    const result = await Sentry.withMonitor(
+      'verifone-points-sync',
+      () =>
+        syncAllUserPointsFromVerifone({
+          batchSize,
+          maxBatchesPerRun: maxBatches,
+          concurrency,
+        }),
+      {
+        schedule: { type: 'crontab', value: '0 */2 * * *' },
+        checkinMargin: 5,
+        maxRuntime: 10,
+        timezone: 'UTC',
+      }
+    );
 
     const duration = Date.now() - startTime;
 

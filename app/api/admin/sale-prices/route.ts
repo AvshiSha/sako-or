@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs'
 import { processSalePriceCsv } from '@/lib/sale-prices';
 
 /**
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
       })),
     });
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Sale price update error:', error);
     return NextResponse.json(
       {

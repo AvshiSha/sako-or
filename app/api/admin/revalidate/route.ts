@@ -1,4 +1,5 @@
 import { revalidatePath } from 'next/cache'
+import * as Sentry from '@sentry/nextjs'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ revalidated: true, paths })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Revalidation error:', error)
     return NextResponse.json({ error: 'Revalidation failed' }, { status: 500 })
   }

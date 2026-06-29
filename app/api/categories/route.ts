@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { categoryService } from '@/lib/firebase'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -30,6 +31,7 @@ export async function GET() {
     const categories = await categoryService.getAllCategories()
     return NextResponse.json(categories)
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error fetching categories:', error)
     return NextResponse.json(
       { error: 'Failed to fetch categories' },
@@ -80,6 +82,7 @@ export async function POST(request: NextRequest) {
       })
       console.log(`Category "${validatedData.name.en}" created in both Firebase and Neon DB`)
     } catch (prismaError) {
+      Sentry.captureException(prismaError);
       console.error('Failed to create category in Neon DB:', prismaError)
       // Don't fail the request if Neon DB creation fails, just log it
     }
@@ -90,6 +93,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(category, { status: 201 })
   } catch (error) {
+    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },

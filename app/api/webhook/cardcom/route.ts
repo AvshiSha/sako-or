@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { LowProfileResult } from '../../../../app/types/cardcom';
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
     createVerifoneInvoiceAsync(orderId, {
       transactionInfo: body.TranzactionInfo
     }).catch(err => {
+      Sentry.captureException(err, { tags: { async: 'verifone-invoice', webhook: 'cardcom' } });
       console.error('[VERIFONE_INVOICE] Failed to trigger invoice creation:', err);
       // Don't fail webhook - order still succeeds
     });
@@ -94,6 +96,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
 
   } catch (error) {
+    Sentry.captureException(error, { tags: { webhook: 'cardcom' } });
     console.error('Webhook processing error:', error);
     return NextResponse.json({ success: true });
   }
@@ -256,11 +259,13 @@ async function ensureOrderItemsComplete(orderId: string) {
 
         console.log(`[ensureOrderItemsComplete] Updated item ${item.id} for order ${orderId}`);
       } catch (itemError) {
+        Sentry.captureException(itemError, { extra: { orderId, itemId: item.id } });
         console.error(`[ensureOrderItemsComplete] Error updating item ${item.id}:`, itemError);
         // Continue with other items
       }
     }
   } catch (error) {
+    Sentry.captureException(error, { extra: { orderId } });
     console.error(`[ensureOrderItemsComplete] Error ensuring order items complete for ${orderId}:`, error);
     // Don't throw - this is best-effort data enrichment
   }
@@ -291,6 +296,7 @@ async function savePaymentToken(orderId: string, tokenInfo: any) {
     });
     
   } catch (error) {
+    Sentry.captureException(error, { extra: { orderId } });
     console.error('Failed to save payment token:', error);
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { requireUserAuth } from '@/lib/server/auth'
 import { adminAuth } from '@/lib/firebase-admin'
 
@@ -18,6 +19,7 @@ export async function GET(request: NextRequest) {
       await adminAuth.setCustomUserClaims(auth.firebaseUid, { admin: false })
     }
   } catch (err) {
+    Sentry.captureException(err);
     // Non-fatal: the UI still works; the Firestore rule will just require a
     // token refresh on the next page load before write operations succeed.
     console.error('[check-access] Failed to sync admin custom claim:', err)

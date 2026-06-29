@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 
 type IncomingItem = {
@@ -165,6 +166,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[cart/validate] Error:', error)
     return NextResponse.json(
       { error: 'Failed to validate cart' },

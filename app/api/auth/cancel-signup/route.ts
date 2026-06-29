@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 import { adminAuth } from '@/lib/firebase-admin'
 import { requireUserAuth } from '@/lib/server/auth'
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
       await adminAuth.deleteUser(firebaseUid)
       console.log('[CANCEL_SIGNUP] Deleted Firebase Auth user:', firebaseUid)
     } catch (firebaseError: any) {
+      Sentry.captureException(firebaseError);
       // If Firebase user doesn't exist or is already deleted, that's fine
       if (firebaseError?.code !== 'auth/user-not-found') {
         throw firebaseError
@@ -74,6 +76,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error: any) {
+    Sentry.captureException(error);
     console.error('[CANCEL_SIGNUP_ERROR]', error)
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to cancel signup'

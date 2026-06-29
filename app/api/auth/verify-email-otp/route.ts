@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import * as Sentry from '@sentry/nextjs'
 import { adminAuth } from '@/lib/firebase-admin';
 import { getOtpStore, safeLowerEmail } from '@/lib/otp-store';
 
@@ -74,6 +75,7 @@ export async function POST(request: Request) {
       const userRecord = await adminAuth.getUserByEmail(normalizedEmail);
       firebaseUser = userRecord;
     } catch (err: any) {
+      Sentry.captureException(err);
       // User doesn't exist - we'll create them
       if (err?.code === 'auth/user-not-found') {
         // Create new user - use a secure random password
@@ -102,6 +104,7 @@ export async function POST(request: Request) {
       isNewUser,
     });
   } catch (err: any) {
+    Sentry.captureException(err);
     console.error('[VERIFY EMAIL OTP] Error:', err);
     const message =
       typeof err?.message === 'string' ? err.message : 'Failed to verify code';

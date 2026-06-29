@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server'
 import { categoryService } from '@/lib/firebase'
 import { prisma } from '@/lib/prisma'
@@ -137,6 +138,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result)
     
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Category synchronization error:', error)
     return NextResponse.json(
       { 
@@ -186,6 +188,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error comparing categories:', error)
     return NextResponse.json(
       { 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '../../../lib/prisma';
 import { CheckoutFormData } from '../../types/checkout';
 
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Checkout submission error:', error);
     
     return NextResponse.json(
@@ -131,6 +133,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error fetching checkouts:', error);
     
     return NextResponse.json(

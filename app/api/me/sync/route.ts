@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164 } from '@/lib/phone'
 import { requireUserAuth } from '@/lib/server/auth'
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     )
   } catch (error: any) {
+    Sentry.captureException(error);
     // Prisma unique constraint violation
     if (error?.code === 'P2002') {
       const target = error?.meta?.target

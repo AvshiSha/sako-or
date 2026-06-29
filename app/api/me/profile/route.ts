@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
@@ -118,6 +119,7 @@ async function triggerInforuNewsletterEvent(user: User): Promise<void> {
       console.error('[INFORU NEWSLETTER] Failed to trigger isNewsletter event:', result.error)
     }
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[INFORU NEWSLETTER] Error triggering isNewsletter event:', error)
     throw error // Re-throw so caller can handle it
   }
@@ -152,6 +154,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     )
   } catch (error: any) {
+    Sentry.captureException(error);
     console.error('[ME_PROFILE_GET_ERROR]', error)
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to load profile'
@@ -302,6 +305,7 @@ export async function PATCH(request: NextRequest) {
         try {
           await triggerInforuNewsletterEvent(user)
         } catch (error) {
+          Sentry.captureException(error);
           // Log error but don't fail the profile update process
           console.error('[ME_PROFILE] Failed to trigger Inforu newsletter event:', error)
         }
@@ -313,6 +317,7 @@ export async function PATCH(request: NextRequest) {
       { status: 200 }
     )
   } catch (error: any) {
+    Sentry.captureException(error);
     // Prisma unique constraint violation
     if (error?.code === 'P2002') {
       const target = error?.meta?.target

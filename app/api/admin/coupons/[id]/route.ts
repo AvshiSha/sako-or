@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { CouponDiscountType } from '@prisma/client'
@@ -95,6 +96,7 @@ export async function GET(
       }
     })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[ADMIN_COUPONS_GET_ERROR]', error)
     return NextResponse.json(
       { error: 'Failed to fetch coupon' },
@@ -198,6 +200,7 @@ export async function PUT(
 
     return NextResponse.json(updatedCoupon)
   } catch (error) {
+    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.flatten() },
@@ -234,6 +237,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[ADMIN_COUPONS_DELETE_ERROR]', error)
     return NextResponse.json(
       { error: 'Failed to delete coupon' },

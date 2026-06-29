@@ -6,6 +6,8 @@ import * as Sentry from '@sentry/nextjs'
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,
+  release: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA,
 
   integrations: [Sentry.replayIntegration()],
 
@@ -17,6 +19,22 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0,
 
   sendDefaultPii: true,
+
+  beforeSend(event, hint) {
+    const error = hint.originalException
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') return null
+      if ((error as any)?.code === 'auth/popup-closed-by-user') return null
+      if (error.message?.includes('ResizeObserver loop')) return null
+    }
+    // Drop errors injected by browser extensions
+    const frames = event.exception?.values?.[0]?.stacktrace?.frames
+    if (frames?.some(f =>
+      f.filename?.startsWith('chrome-extension://') ||
+      f.filename?.startsWith('moz-extension://')
+    )) return null
+    return event
+  },
 })
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart

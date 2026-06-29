@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs'
 import { getCollectionProducts } from '@/lib/firebase';
 import { searchProducts } from '@/lib/search-products';
 
@@ -57,6 +58,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json(result);
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error fetching collection products:', error);
     return NextResponse.json(
       { error: 'Failed to fetch products', items: [], total: 0, page: 1, pageSize: 24, hasMore: false },

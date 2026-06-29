@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server'
 import { categoryService } from '@/lib/firebase'
 
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
     })
     
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Migration error:', error)
     return NextResponse.json(
       { 
@@ -83,6 +85,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error checking categories:', error)
     return NextResponse.json(
       { 

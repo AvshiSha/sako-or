@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import * as Sentry from '@sentry/nextjs'
 import { userExistsByPhone } from '@/lib/user-check';
 
 const requestSchema = z.object({
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
 
     return Response.json({ ok: true, exists: true }, { status: 200 });
   } catch (err) {
+    Sentry.captureException(err);
     console.error('[CHECK PHONE USER] Handler error:', err);
     return Response.json(
       { error: 'INTERNAL_ERROR', message: 'An error occurred. Please try again.' },

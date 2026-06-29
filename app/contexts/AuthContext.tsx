@@ -1,5 +1,6 @@
 'use client'
 
+import * as Sentry from '@sentry/nextjs'
 import React, { useEffect, useState } from 'react'
 import {
   User,
@@ -146,7 +147,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user)
-      if (!user) {
+      if (user) {
+        Sentry.setUser({ id: user.uid, email: user.email ?? undefined })
+      } else {
+        Sentry.setUser(null)
         setServerIsAdmin(null)
       }
       setLoading(false)

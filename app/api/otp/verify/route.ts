@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import * as Sentry from '@sentry/nextjs'
 import { adminAuth } from '@/lib/firebase-admin';
 import { normalizeIsraelE164 } from '@/lib/phone';
 import { userExistsByPhone, userExistsByEmail } from '@/lib/user-check';
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
         }),
       ]) as Response;
     } catch (timeoutError) {
+      Sentry.captureException(timeoutError);
       console.error('[OTP VERIFY] Inforu API timeout:', timeoutError);
       return Response.json(
         { error: 'OTP service is currently unavailable. Please try again.' },
@@ -185,6 +187,7 @@ export async function POST(request: Request) {
                 });
                 firebaseUser = await adminAuth.getUser(existingFirebaseUid); // Re-fetch to get updated user object
               } catch (updateErr: any) {
+                Sentry.captureException(updateErr);
                 if (updateErr?.code === 'auth/phone-number-already-exists') {
                   return Response.json(
                     { error: 'Phone number is already in use.' },
@@ -195,6 +198,7 @@ export async function POST(request: Request) {
               }
             }
           } catch (err: any) {
+            Sentry.captureException(err);
             if (err?.code === 'auth/user-not-found') {
               return Response.json(
                 { error: 'User account not found.' },
@@ -223,6 +227,7 @@ export async function POST(request: Request) {
                   });
                   firebaseUser = await adminAuth.getUser(dbUser.firebaseUid);
                 } catch (updateErr: any) {
+                  Sentry.captureException(updateErr);
                   if (updateErr?.code === 'auth/phone-number-already-exists') {
                     return Response.json(
                       { error: 'Phone number is already in use.' },
@@ -234,6 +239,7 @@ export async function POST(request: Request) {
                 }
               }
             } catch (err: any) {
+              Sentry.captureException(err);
               if (err?.code === 'auth/user-not-found') {
                 // Firebase user doesn't exist but DB user does - create Firebase user
                 // Don't set password - user will authenticate via custom tokens only
@@ -255,6 +261,7 @@ export async function POST(request: Request) {
           }
         }
       } catch (err: any) {
+        Sentry.captureException(err);
         if (err?.code === 'auth/phone-number-already-exists') {
           // Phone already exists in Firebase
           console.error('[OTP VERIFY] Phone number already exists in Firebase:', err);
@@ -284,6 +291,7 @@ export async function POST(request: Request) {
       try {
         firebaseUser = await adminAuth.getUserByEmail(normalizedIdentifier);
       } catch (err: any) {
+        Sentry.captureException(err);
         // User doesn't exist - we'll create them
         if (err?.code === 'auth/user-not-found') {
           // Don't set password - user will authenticate via custom tokens only
@@ -308,6 +316,7 @@ export async function POST(request: Request) {
       isNewUser,
     });
   } catch (err: any) {
+    Sentry.captureException(err);
     console.error('[OTP VERIFY] Handler error:', err);
     const message =
       typeof err?.message === 'string' ? err.message : 'Failed to verify code';

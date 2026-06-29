@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { z } from 'zod'
 import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
@@ -114,6 +115,7 @@ async function triggerInforuWelcomeEvent(user: User, data: SignupData): Promise<
       console.error('[INFORU WELCOME] Failed to trigger welcomeCustomerClub event:', result.error)
     }
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[INFORU WELCOME] Error triggering welcomeCustomerClub event:', error)
     throw error // Re-throw so caller can handle it
   }
@@ -382,6 +384,7 @@ export async function POST(request: NextRequest) {
           )
         }
       } catch (verifoneError) {
+        Sentry.captureException(verifoneError);
         console.error(
           '[VERIFONE_GET_CUSTOMERS] Error syncing Verifone customer/points for existing user',
           verifoneError
@@ -393,6 +396,7 @@ export async function POST(request: NextRequest) {
         try {
           await triggerInforuWelcomeEvent(user, data)
         } catch (error) {
+          Sentry.captureException(error);
           // Log error but don't fail the signup process
           console.error('[COMPLETE_SIGNUP] Failed to trigger Inforu welcome event:', error)
         }
@@ -616,6 +620,7 @@ export async function POST(request: NextRequest) {
         )
       }
     } catch (verifoneError) {
+      Sentry.captureException(verifoneError);
       console.error(
         '[VERIFONE_GET_CUSTOMERS] Error syncing Verifone customer/points for new user',
         verifoneError
@@ -626,6 +631,7 @@ export async function POST(request: NextRequest) {
     try {
       await triggerInforuWelcomeEvent(user, data)
     } catch (error) {
+      Sentry.captureException(error);
       // Log error but don't fail the signup process
       console.error('[COMPLETE_SIGNUP] Failed to trigger Inforu welcome event:', error)
     }
@@ -639,6 +645,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     )
   } catch (error: any) {
+    Sentry.captureException(error);
     // Prisma unique constraint violation
     if (error?.code === 'P2002') {
       const target = error?.meta?.target

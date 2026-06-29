@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 import { requireUserAuth } from '@/lib/server/auth'
 
@@ -77,6 +78,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ merged }, { status: 200 })
   } catch (error: any) {
+    Sentry.captureException(error);
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to merge favorites'
     const status = message.includes('Bearer token') ? 401 : 400

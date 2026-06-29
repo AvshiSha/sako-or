@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 import { requireUserAuth } from '@/lib/server/auth'
 
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     )
   } catch (error: any) {
+    Sentry.captureException(error);
     console.error('[ME_POINTS_GET_ERROR]', error)
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to load points'

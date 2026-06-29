@@ -5,11 +5,12 @@
 import * as Sentry from '@sentry/nextjs'
 
 Sentry.init({
-  dsn: 'https://599e02faa8f8bff952bba6cf2193335a@o4511647294291968.ingest.de.sentry.io/4511647300452432',
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
 
   integrations: [Sentry.replayIntegration()],
 
-  tracesSampleRate: 1,
+  // 100% in dev, 10% in production (sampling 100% in prod is expensive)
+  tracesSampleRate: process.env.NODE_ENV === 'development' ? 1.0 : 0.1,
   enableLogs: true,
 
   replaysSessionSampleRate: 0.1,

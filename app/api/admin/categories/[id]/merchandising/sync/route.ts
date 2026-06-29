@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUserAuth } from '@/lib/server/auth';
@@ -88,6 +89,7 @@ export async function POST(
       syncedCount: syncedKeys.length,
     });
   } catch (error) {
+    Sentry.captureException(error);
     const message =
       error instanceof Error ? error.message : 'Failed to sync category merchandising';
     // Client expects `{ error }` payload on non-2xx.

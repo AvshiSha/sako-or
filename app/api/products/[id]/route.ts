@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { productService } from '@/lib/firebase'
 import { z } from 'zod'
 
@@ -79,6 +80,7 @@ export async function GET(
 
     return NextResponse.json(product)
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error fetching product:', error)
     return NextResponse.json(
       { error: 'Failed to fetch product' },
@@ -183,6 +185,7 @@ export async function PUT(
 
     return NextResponse.json(updatedProduct)
   } catch (error) {
+    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       console.error('Validation error details:', error.errors)
       return NextResponse.json(
@@ -221,6 +224,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Product deleted successfully' })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error deleting product:', error)
     return NextResponse.json(
       { error: 'Failed to delete product' },

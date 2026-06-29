@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs'
 import { CardComAPI, createPaymentSessionRequest } from '../../../../lib/cardcom';
 import { CreateLowProfileRequest } from '../../../../app/types/checkout';
 import { createOrder, generateOrderNumber } from '../../../../lib/orders';
@@ -253,6 +254,7 @@ export async function POST(request: NextRequest) {
               modelNumber,
             };
           } catch (error) {
+            Sentry.captureException(error);
             console.error(`[CREATE_LOW_PROFILE] Error fetching product data for ${item.productSku}:`, error);
             // Return item without enrichment if fetch fails
             const parsedSku = parseSku(item.productSku);
@@ -367,6 +369,7 @@ export async function POST(request: NextRequest) {
             }))
       });
     } catch (createError: any) {
+      Sentry.captureException(createError);
       // If we still get a unique constraint error, retry with a new order number
       if (createError.code === 'P2002') {
         console.log('Duplicate order number detected, generating new one');
@@ -535,6 +538,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Payment creation error:', error);
     
     return NextResponse.json(

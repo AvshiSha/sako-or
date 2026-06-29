@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { adminAuth } from '@/lib/firebase-admin'
 import { z } from 'zod'
 import { requireUserAuth } from '@/lib/server/auth'
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
       // Email already linked to this user
       return NextResponse.json({ ok: true, message: 'Email already linked' }, { status: 200 })
     } catch (err: any) {
+      Sentry.captureException(err);
       // User not found by email is fine - we can link it
       if (err?.code !== 'auth/user-not-found') {
         throw err
@@ -57,6 +59,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, message: 'Email linked successfully' }, { status: 200 })
   } catch (error: any) {
+    Sentry.captureException(error);
     console.error('[LINK_EMAIL_ERROR]', error)
     
     if (error?.code === 'auth/email-already-exists') {

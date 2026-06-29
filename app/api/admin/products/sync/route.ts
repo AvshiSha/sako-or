@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { productService, categoryService } from '@/lib/firebase'
 import { buildProductSearchDerivedFields } from '@/lib/build-product-search-keywords'
 import { deleteMeilisearchProduct, upsertMeilisearchProduct } from '@/lib/meilisearch'
@@ -416,6 +417,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result)
     
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Product synchronization error:', error)
     return NextResponse.json(
       { 
@@ -463,6 +465,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error comparing products:', error)
     return NextResponse.json(
       { 

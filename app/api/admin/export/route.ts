@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { productService } from '@/lib/firebase'
 
 export async function GET() {
@@ -55,6 +56,7 @@ export async function GET() {
       }
     })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error exporting products:', error)
     return NextResponse.json(
       { error: 'Failed to export products' },

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '../../../../lib/prisma';
 
 // GET method to retrieve a specific checkout record
@@ -25,6 +26,7 @@ export async function GET(
     });
 
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error fetching checkout:', error);
     
     return NextResponse.json(
@@ -86,6 +88,7 @@ export async function PUT(
     });
 
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error updating checkout:', error);
     
     return NextResponse.json(
@@ -128,6 +131,7 @@ export async function DELETE(
     });
 
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error deleting checkout:', error);
     
     return NextResponse.json(

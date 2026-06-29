@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUserAuth } from '@/lib/server/auth';
@@ -93,6 +94,7 @@ export async function PUT(
 
     return NextResponse.json({ merchandising, previews });
   } catch (error) {
+    Sentry.captureException(error);
     const message = error instanceof Error ? error.message : 'Failed to save merchandising';
     return NextResponse.json({ error: message }, { status: 400 });
   }

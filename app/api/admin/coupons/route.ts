@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { CouponDiscountType } from '@prisma/client'
@@ -206,6 +207,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[ADMIN_COUPONS_LIST_ERROR]', error)
     return NextResponse.json(
       { error: 'Failed to fetch coupons' },
@@ -266,6 +268,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(coupon, { status: 201 })
   } catch (error) {
+    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.flatten() },

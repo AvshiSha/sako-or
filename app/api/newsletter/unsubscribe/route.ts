@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
@@ -25,6 +26,7 @@ export async function POST(request: NextRequest) {
       message: 'Successfully unsubscribed from newsletter',
     })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Newsletter unsubscribe error:', error)
     return NextResponse.json(
       {

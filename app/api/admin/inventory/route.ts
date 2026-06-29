@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs'
 import { parseCsvContent, updateInventoryFromCsv, parseInventorySku, InventoryUpdateRow } from '@/lib/inventory';
 
 /**
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
       details: result.details,
     });
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Inventory update error:', error);
     return NextResponse.json(
       {

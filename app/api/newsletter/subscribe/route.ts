@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { prisma } from '@/lib/prisma'
 
 // Neon-only: subscribe/upsert into Postgres
@@ -29,6 +30,7 @@ export async function POST(request: NextRequest) {
       id: record.id, // optional: now Neon row id (not Firebase)
     })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Newsletter subscription error:', error)
     return NextResponse.json(
       {

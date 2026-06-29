@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { CardComAPI } from '../../../../lib/cardcom';
 import { prisma } from '../../../../lib/prisma';
@@ -112,11 +113,13 @@ export async function POST(request: NextRequest) {
                   });
                   console.log(`[POINTS_SPEND] Deducted ${pointsToSpend} points for order ${order.orderNumber}`);
                 } catch (spendError: any) {
+                  Sentry.captureException(spendError, { extra: { orderId: order.id } });
                   console.error('[POINTS_SPEND_ERROR] Failed to deduct points for order', order.id, spendError);
                 }
               }
               // Note: Points earning is now handled by Verifone sync in createVerifoneInvoiceAsync
             } catch (pointsError) {
+              Sentry.captureException(pointsError, { extra: { orderId: order.id } });
               console.warn('[POINTS_SPEND_ERROR] Failed to handle points for order', order.id, pointsError);
             }
           }
@@ -134,6 +137,7 @@ export async function POST(request: NextRequest) {
           createVerifoneInvoiceAsync(order.orderNumber, {
             transactionInfo: transactionInfo
           }).catch(err => {
+            Sentry.captureException(err, { tags: { async: 'verifone-invoice' } });
             console.error('[VERIFONE_INVOICE] Failed to trigger invoice creation:', err);
             // Don't fail payment check - order still succeeds
           });
@@ -176,6 +180,7 @@ export async function POST(request: NextRequest) {
           createVerifoneInvoiceAsync(order.orderNumber, {
             transactionInfo: transactionInfoForInvoice
           }).catch(err => {
+            Sentry.captureException(err, { tags: { async: 'verifone-invoice' } });
             console.error('[VERIFONE_INVOICE] Failed to trigger invoice creation:', err);
             // Don't fail payment check - order still succeeds
           });
@@ -273,6 +278,7 @@ export async function POST(request: NextRequest) {
               }
             }
           } catch (usageError) {
+            Sentry.captureException(usageError, { extra: { orderId: order.id } });
             console.warn('Failed to update coupon usage', usageError)
           }
         }
@@ -353,9 +359,10 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error checking payment status:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to check payment status',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -444,11 +451,13 @@ async function ensureOrderItemsComplete(orderId: string) {
 
         console.log(`[ensureOrderItemsComplete] Updated item ${item.id} for order ${orderId}`);
       } catch (itemError) {
+        Sentry.captureException(itemError, { extra: { orderId, itemId: item.id } });
         console.error(`[ensureOrderItemsComplete] Error updating item ${item.id}:`, itemError);
         // Continue with other items
       }
     }
   } catch (error) {
+    Sentry.captureException(error, { extra: { orderId } });
     console.error(`[ensureOrderItemsComplete] Error ensuring order items complete for ${orderId}:`, error);
     // Don't throw - this is best-effort data enrichment
   }

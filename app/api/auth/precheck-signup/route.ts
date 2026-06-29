@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true }, { status: 200 })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[PRECHECK_SIGNUP_ERROR]', error)
     return NextResponse.json(
       { ok: false, error: 'Unable to precheck signup' },

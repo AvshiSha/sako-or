@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { productService } from '@/lib/firebase'
 import { z } from 'zod'
 
@@ -90,6 +91,7 @@ export async function GET(request: NextRequest) {
       }
     })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('Error fetching products:', error)
     return NextResponse.json(
       { error: 'Failed to fetch products' },
@@ -168,6 +170,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(product, { status: 201 })
   } catch (error) {
+    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },

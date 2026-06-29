@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { z } from 'zod'
 import {
   evaluateAutoApplyCoupons,
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result, { status: 200 })
   } catch (error) {
+    Sentry.captureException(error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {

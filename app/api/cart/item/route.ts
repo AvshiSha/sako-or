@@ -15,6 +15,7 @@
  * This ensures data integrity for purchase history, analytics, and automations.
  */
 
+import * as Sentry from '@sentry/nextjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { requireUserAuth } from '@/lib/server/auth'
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
           // Prisma errors - continue with cart operation
           // UI validation should have caught this
         } else {
-          // Other errors - return error response
+          Sentry.captureException(stockValidationError);
           return NextResponse.json(
             { error: 'Failed to validate stock availability' },
             { status: 500 }
@@ -441,6 +442,7 @@ export async function POST(request: NextRequest) {
     const message =
       typeof error?.message === 'string' ? error.message : 'Unable to update cart item'
     const status = message.includes('Bearer token') ? 401 : 400
+    if (status === 400) Sentry.captureException(error);
     return NextResponse.json({ error: message }, { status })
   }
 }

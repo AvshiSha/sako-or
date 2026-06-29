@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import * as Sentry from '@sentry/nextjs'
 import { z } from 'zod'
 import { adminAuth } from '@/lib/firebase-admin'
 import { prisma } from '@/lib/prisma'
@@ -121,6 +122,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ ok: true, canDeleteAdmins, users })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[ADMIN_USERS_LIST_ERROR]', error)
     return NextResponse.json({ error: 'Failed to fetch admin users' }, { status: 500 })
   }
@@ -221,6 +223,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error: any) {
+    Sentry.captureException(error);
     if (typeof error?.code === 'string' && error.code.startsWith('auth/')) {
       const mapped = mapFirebaseAuthError(error)
       return NextResponse.json({ error: mapped.message }, { status: mapped.status })
@@ -307,6 +310,7 @@ export async function DELETE(request: NextRequest) {
       role: 'USER',
     })
   } catch (error) {
+    Sentry.captureException(error);
     console.error('[ADMIN_USERS_DELETE_ERROR]', error)
     return NextResponse.json({ error: 'Failed to revoke admin access' }, { status: 500 })
   }

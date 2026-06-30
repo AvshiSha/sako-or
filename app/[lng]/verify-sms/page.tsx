@@ -205,9 +205,16 @@ export default function VerifySmsPage() {
     const container = document.querySelector(containerId)
     if (!container) return
 
+    const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    if (typeof sitekey !== 'string' || !sitekey) {
+      console.error('[Turnstile] Missing NEXT_PUBLIC_TURNSTILE_SITE_KEY — widget cannot render')
+      return
+    }
+
     const renderTurnstile = () => {
       const el = document.querySelector(containerId)
       if (!el) return
+
       if ((window as any).turnstile) {
         try {
           if (turnstileWidgetIdRef.current != null && (window as any).turnstile.remove) {
@@ -215,7 +222,7 @@ export default function VerifySmsPage() {
             turnstileWidgetIdRef.current = null
           }
           const widgetId = (window as any).turnstile.render(containerId, {
-            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+            sitekey,
             theme: 'light',
             size: 'invisible',
             callback: (token: string) => {

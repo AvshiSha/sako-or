@@ -231,6 +231,12 @@ function SignInClient() {
       }
     }
 
+    const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    if (typeof sitekey !== 'string' || !sitekey) {
+      console.error('[Turnstile] Missing NEXT_PUBLIC_TURNSTILE_SITE_KEY — widget cannot render')
+      return
+    }
+
     const renderTurnstile = () => {
       // Ignore stale retries after tab switch
       if (renderForTab !== activeTabRef.current) return
@@ -238,7 +244,7 @@ function SignInClient() {
       // Find the visible Turnstile container (based on active tab)
       const containerId = renderForTab === 'phone' ? '#cf-turnstile-phone' : '#cf-turnstile-email'
       const container = document.querySelector(containerId)
-      
+
       if (!container) return
 
       // Remove any existing widget first
@@ -254,7 +260,7 @@ function SignInClient() {
       if ((window as any).turnstile) {
         try {
           const widgetId = (window as any).turnstile.render(containerId, {
-            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+            sitekey,
             theme: 'light',
             size: 'normal',
             callback: (token: string) => {

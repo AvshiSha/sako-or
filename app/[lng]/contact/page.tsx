@@ -106,6 +106,12 @@ export default function ContactPage() {
   React.useEffect(() => {
     if (!isMounted) return
 
+    const sitekey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+    if (typeof sitekey !== 'string' || !sitekey) {
+      console.error('[Turnstile] Missing NEXT_PUBLIC_TURNSTILE_SITE_KEY — widget cannot render')
+      return
+    }
+
     const renderTurnstile = () => {
       const container = document.querySelector('.cf-turnstile')
       if (!container || (window as any).turnstileRendered) return
@@ -113,7 +119,7 @@ export default function ContactPage() {
       if ((window as any).turnstile) {
         try {
           (window as any).turnstile.render('.cf-turnstile', {
-            sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+            sitekey,
             theme: 'light',
             size: 'normal',
             callback: (token: string) => {

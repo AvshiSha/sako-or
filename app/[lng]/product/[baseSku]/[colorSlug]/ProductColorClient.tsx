@@ -23,8 +23,6 @@ import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/data
 import { getColorName } from '@/lib/colors'
 import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
 import { buildFavoriteKey } from '@/lib/favorites'
-import { buildAbsoluteUrl } from '@/lib/seo'
-import { getImageUrl } from '@/lib/image-urls'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
 
@@ -416,43 +414,8 @@ export default function ProductColorClient({
     }
   }
 
-  // Generate structured data for SEO
-  const structuredDataImages =
-    productImages.length > 0
-      ? productImages.map((img) =>
-          img.startsWith('http') ? img : buildAbsoluteUrl(img)
-        )
-      : [getImageUrl('/images/placeholder.svg')]
-
-  const structuredData = {
-    "@context": "https://schema.org",
-    "@type": "Product",
-    "name": `${productName} - ${currentVariant.colorSlug}`,
-    "description": currentVariant.metaDescription || productDescription,
-    "sku": `${baseSku}-${colorSlug}`,
-    "brand": {
-      "@type": "Brand",
-      "name": "Sako"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": currentPrice,
-      "priceCurrency": product.currency || 'ILS',
-      "availability": isOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
-      "url": buildAbsoluteUrl(`/${lng}/product/${baseSku}/${colorSlug}`)
-    },
-    "image": structuredDataImages,
-    "category": product.category,
-    "color": currentVariant.colorSlug
-  }
-
   return (
     <>
-      {/* Structured Data (client-side price/stock refresh) */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         <div>

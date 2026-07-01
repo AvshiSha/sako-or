@@ -398,6 +398,13 @@ export function runCollectionScrollRestore(
     // Never scroll to maxScrollTop as a stand-in — that lands on page-1 bottom.
     if (!reachable) return;
 
+    // User is already at or past the target — restoration succeeded.
+    // Do not fight user scroll by resetting their position.
+    if (window.scrollY >= targetY - SCROLL_TOLERANCE_PX) {
+      finish();
+      return;
+    }
+
     window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
 
     if (isAtScrollTarget(targetY)) {
@@ -419,6 +426,12 @@ export function runCollectionScrollRestore(
     // Short page (list not hydrated yet) — do not fight user scroll.
     if (!canScrollToTarget(targetY)) return;
     const y = window.scrollY;
+    // User reached or passed the target — restoration succeeded.
+    if (y >= targetY - SCROLL_TOLERANCE_PX) {
+      finish();
+      return;
+    }
+    // Only fight a large upward jump (e.g. Next.js snap-to-top after navigation).
     if (y < targetY - 80 && !isAtScrollTarget(targetY)) {
       window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
     }
@@ -491,6 +504,11 @@ export function restoreCollectionScrollIfPending(
   if (targetY <= 0) return;
 
   cancelCollectionScrollRestoreWatchdog();
+
+  // Already at or past the target — restoration succeeded on a prior burst tick.
+  // Skip re-dispatching so the burst does not restart a watchdog that fights user scroll.
+  if (window.scrollY >= targetY - SCROLL_TOLERANCE_PX) return;
+
   dispatchCollectionBrowseReturn();
 }
 

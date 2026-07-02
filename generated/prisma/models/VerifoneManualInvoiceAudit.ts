@@ -212,7 +212,7 @@ export type VerifoneManualInvoiceAuditGroupByOutputType = {
   _max: VerifoneManualInvoiceAuditMaxAggregateOutputType | null
 }
 
-type GetVerifoneManualInvoiceAuditGroupByPayload<T extends VerifoneManualInvoiceAuditGroupByArgs> = Prisma.PrismaPromise<
+export type GetVerifoneManualInvoiceAuditGroupByPayload<T extends VerifoneManualInvoiceAuditGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<VerifoneManualInvoiceAuditGroupByOutputType, T['by']> &
       {
@@ -1106,6 +1106,11 @@ export type VerifoneManualInvoiceAuditFindManyArgs<ExtArgs extends runtime.Types
    * Skip the first `n` VerifoneManualInvoiceAudits.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of VerifoneManualInvoiceAudits.
+   */
   distinct?: Prisma.VerifoneManualInvoiceAuditScalarFieldEnum | Prisma.VerifoneManualInvoiceAuditScalarFieldEnum[]
 }
 

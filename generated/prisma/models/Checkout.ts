@@ -256,7 +256,7 @@ export type CheckoutGroupByOutputType = {
   _max: CheckoutMaxAggregateOutputType | null
 }
 
-type GetCheckoutGroupByPayload<T extends CheckoutGroupByArgs> = Prisma.PrismaPromise<
+export type GetCheckoutGroupByPayload<T extends CheckoutGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<CheckoutGroupByOutputType, T['by']> &
       {
@@ -1352,6 +1352,11 @@ export type CheckoutFindManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Skip the first `n` Checkouts.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of Checkouts.
+   */
   distinct?: Prisma.CheckoutScalarFieldEnum | Prisma.CheckoutScalarFieldEnum[]
 }
 

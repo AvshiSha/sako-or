@@ -178,7 +178,7 @@ export type BogoGroupGroupByOutputType = {
   _max: BogoGroupMaxAggregateOutputType | null
 }
 
-type GetBogoGroupGroupByPayload<T extends BogoGroupGroupByArgs> = Prisma.PrismaPromise<
+export type GetBogoGroupGroupByPayload<T extends BogoGroupGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<BogoGroupGroupByOutputType, T['by']> &
       {
@@ -1078,6 +1078,11 @@ export type BogoGroupFindManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Skip the first `n` BogoGroups.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of BogoGroups.
+   */
   distinct?: Prisma.BogoGroupScalarFieldEnum | Prisma.BogoGroupScalarFieldEnum[]
 }
 

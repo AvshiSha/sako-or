@@ -224,7 +224,7 @@ export default function VerifySmsPage() {
           const widgetId = (window as any).turnstile.render(containerId, {
             sitekey,
             theme: 'light',
-            size: 'invisible',
+            size: 'normal',
             callback: (token: string) => {
               setTurnstileToken(token)
             },

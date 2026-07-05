@@ -143,33 +143,25 @@ function mergeAdvancedMatchingInput(partial: AdvancedMatchingInput): AdvancedMat
   return merged;
 }
 
-const ADVANCED_MATCHING_PIXEL_KEYS = [
-  'em',
-  'ph',
-  'fn',
-  'ln',
-  'ct',
-  'st',
-  'zp',
-  'country',
-  'db',
-  'ge',
-  'external_id',
-] as const;
-
+/**
+ * fbq exposes no public API to clear previously-set advanced matching fields, and
+ * re-init without a third argument has been observed to merge rather than replace them.
+ * Reaching into fbq's private internals (e.g. `fbq.instance`) isn't a contract Meta
+ * guarantees to keep stable, so instead we fully tear down the pixel — remove our
+ * injected script and the global fbq object — and rebuild it from scratch. That way no
+ * hashed PII from the previous identity can linger into the next user's session.
+ */
 function clearFbqAdvancedMatchingOnPixel(): void {
-  const pixelId = FACEBOOK_PIXEL_ID;
-  if (typeof window === 'undefined' || !pixelId || !window.fbq) return;
+  if (typeof window === 'undefined') return;
+  const win = window as any;
+  if (!win.fbq && !win._fbq) return;
 
-  // Re-init without a third param replaces prior manual advanced matching on the pixel.
-  window.fbq('init', pixelId);
+  teardownFbqStub();
+  fbqReadyCallbacks = [];
+  stopFbqPolling();
+  cancelFbqLoadRetry();
 
-  const pixelState = (window.fbq as any)?.instance?.pixelsByID?.[pixelId];
-  if (pixelState?.userData && typeof pixelState.userData === 'object') {
-    for (const key of ADVANCED_MATCHING_PIXEL_KEYS) {
-      delete pixelState.userData[key];
-    }
-  }
+  initFacebookPixel();
 }
 
 export function resetFacebookPixelAdvancedMatching(): void {
@@ -222,16 +214,82 @@ function getAccumulatedAdvancedMatchingData(): AdvancedMatchingData | undefined 
 
 const FBQ_POLL_INTERVAL_MS = 200;
 const FBQ_WARN_AFTER_MS = 10_000;
-const FBQ_INIT_RETRY_INTERVAL_MS = 10_000;
+const FBQ_LOAD_RETRY_DELAY_MS = 10_000;
+const FBQ_MAX_LOAD_RETRIES = 3;
 
+/** Flipped by the injected script's own onload handler — see initFacebookPixel(). */
+let fbqScriptLoaded = false;
 let fbqReadyCallbacks: Array<() => void> = [];
 let fbqPollTimer: ReturnType<typeof setTimeout> | null = null;
 let fbqPollStartedAt: number | null = null;
 let fbqWarnLogged = false;
-let fbqLastInitRetryAt = 0;
+let fbqLoadRetryTimer: ReturnType<typeof setTimeout> | null = null;
+let fbqLoadRetryCount = 0;
+
+/** Removes our injected script tag and the global fbq object so the next initFacebookPixel() call starts clean. */
+function teardownFbqStub(): void {
+  if (typeof window === 'undefined') return;
+  const win = window as any;
+  document
+    .querySelectorAll('script[src*="connect.facebook.net"]')
+    .forEach((el) => el.parentNode?.removeChild(el));
+  delete win.fbq;
+  delete win._fbq;
+  fbqScriptLoaded = false;
+}
+
+function cancelFbqLoadRetry(): void {
+  if (fbqLoadRetryTimer !== null) {
+    clearTimeout(fbqLoadRetryTimer);
+    fbqLoadRetryTimer = null;
+  }
+  fbqLoadRetryCount = 0;
+}
+
+/**
+ * Called when the injected fbevents.js script fails to load (network error, blocked by
+ * an ad/privacy blocker, etc). Tears down the failed stub/script and re-attempts a fresh
+ * load a few times before giving up, so a transient failure doesn't permanently strand
+ * callers waiting on isFbqReady() forever.
+ */
+function scheduleFbqLoadRetry(): void {
+  if (typeof window === 'undefined' || fbqLoadRetryTimer !== null) return;
+
+  if (fbqLoadRetryCount >= FBQ_MAX_LOAD_RETRIES) {
+    console.warn('[FacebookPixel] fbevents.js failed to load after retries; giving up for now');
+    // Clean up the broken stub so a later event (next login, next checkout) isn't
+    // permanently blocked by initFacebookPixel()'s "already have window.fbq" guard.
+    teardownFbqStub();
+    fbqLoadRetryCount = 0;
+    fbqReadyCallbacks = [];
+    stopFbqPolling();
+    return;
+  }
+
+  fbqLoadRetryCount += 1;
+  fbqLoadRetryTimer = setTimeout(() => {
+    fbqLoadRetryTimer = null;
+    teardownFbqStub();
+    initFacebookPixel(getAccumulatedAdvancedMatchingData());
+  }, FBQ_LOAD_RETRY_DELAY_MS);
+}
+
+/**
+ * `window.fbq` exists as soon as the stub is installed — synchronously, before the real
+ * fbevents.js has even started downloading — so checking its truthiness alone doesn't
+ * tell us the pixel is actually ready; it's true almost immediately regardless. Gate on
+ * `fbqScriptLoaded`, which only flips once the injected script's onload has fired.
+ */
+function isFbqReady(): boolean {
+  if (typeof window === 'undefined' || !window.fbq) return false;
+  // fbqScriptLoaded covers the script we inject ourselves; callMethod covers a pixel
+  // initialized by another script (e.g. GTM) whose own script tag we never touch —
+  // it's the same public stub-vs-loaded signal fbq's own base code switches on.
+  return fbqScriptLoaded || Boolean((window.fbq as any).callMethod);
+}
 
 function runFbqReadyCallbacks(): void {
-  if (typeof window === 'undefined' || !window.fbq) return;
+  if (!isFbqReady()) return;
 
   const callbacks = fbqReadyCallbacks;
   fbqReadyCallbacks = [];
@@ -258,7 +316,7 @@ function stopFbqPolling(): void {
 function pollForFbq(): void {
   if (typeof window === 'undefined') return;
 
-  if (window.fbq) {
+  if (isFbqReady()) {
     runFbqReadyCallbacks();
     return;
   }
@@ -272,11 +330,6 @@ function pollForFbq(): void {
   const startedAt = fbqPollStartedAt ?? now;
   fbqPollStartedAt = startedAt;
 
-  if (now - fbqLastInitRetryAt >= FBQ_INIT_RETRY_INTERVAL_MS) {
-    fbqLastInitRetryAt = now;
-    initFacebookPixel(getAccumulatedAdvancedMatchingData());
-  }
-
   if (!fbqWarnLogged && now - startedAt >= FBQ_WARN_AFTER_MS) {
     fbqWarnLogged = true;
     console.warn('[FacebookPixel] fbq still loading; continuing to wait for advanced matching');
@@ -287,7 +340,7 @@ function pollForFbq(): void {
 
 function whenFbqReady(callback: () => void): void {
   if (typeof window === 'undefined') return;
-  if (window.fbq) {
+  if (isFbqReady()) {
     callback();
     return;
   }
@@ -297,7 +350,6 @@ function whenFbqReady(callback: () => void): void {
   if (fbqPollTimer !== null) return;
 
   fbqPollStartedAt = Date.now();
-  fbqLastInitRetryAt = Date.now();
   fbqWarnLogged = false;
   initFacebookPixel(getAccumulatedAdvancedMatchingData());
   fbqPollTimer = setTimeout(pollForFbq, FBQ_POLL_INTERVAL_MS);
@@ -363,6 +415,14 @@ export function initFacebookPixel(advancedMatching?: AdvancedMatchingData): void
     t = b.createElement(e);
     t.async = true;
     t.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    t.onload = function () {
+      fbqScriptLoaded = true;
+      fbqLoadRetryCount = 0;
+      runFbqReadyCallbacks();
+    };
+    t.onerror = function () {
+      scheduleFbqLoadRetry();
+    };
     s = b.getElementsByTagName(e)[0];
     s.parentNode!.insertBefore(t, s);
   })(window, document, 'script');

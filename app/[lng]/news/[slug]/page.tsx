@@ -7,6 +7,8 @@ import { languages } from '@/i18n/settings'
 import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
 import InlineHeadingContent from '@/app/components/InlineHeadingContent'
 import RichContent from '@/app/components/RichContent'
+import ProductCarousel from '@/app/components/ProductCarousel'
+import { fetchRelatedProductsForArticle } from '@/lib/blog-related-products'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -66,6 +68,8 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
   if (!article) {
     notFound()
   }
+
+  const relatedProducts = await fetchRelatedProductsForArticle(article.relatedProductsCarousel)
 
   const titleHtml = article.title[locale] || article.title.en || article.slug
   const titlePlain = cmsHtmlToPlainText(titleHtml) || article.slug
@@ -151,6 +155,14 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           className={locale === 'he' ? 'text-right' : 'text-left'}
         />
       </div>
+
+      {relatedProducts.length > 0 && (
+        <ProductCarousel
+          products={relatedProducts}
+          title={locale === 'he' ? 'מוצרים שיעניינו אותך' : 'You Might Also Like'}
+          language={locale}
+        />
+      )}
     </article>
   )
 }

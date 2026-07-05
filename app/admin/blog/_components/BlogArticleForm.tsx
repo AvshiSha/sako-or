@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { BlogArticle, blogService } from '@/lib/firebase'
+import { BlogArticle, blogService, categoryService, type Category } from '@/lib/firebase'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -40,6 +40,16 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
   const [activeTab, setActiveTab] = useState<'en' | 'he'>('en')
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(Boolean(initialData?.slug))
 
+  const initialRelated = initialData?.relatedProductsCarousel
+  const [mainCategories, setMainCategories] = useState<Category[]>([])
+  const [relatedSubCategories, setRelatedSubCategories] = useState<Category[]>([])
+  const [relatedSubSubCategories, setRelatedSubSubCategories] = useState<Category[]>([])
+  const [relatedEnabled, setRelatedEnabled] = useState(initialRelated?.enabled ?? false)
+  const [relatedCategory, setRelatedCategory] = useState(initialRelated?.categoryIds?.[0] || '')
+  const [relatedSubCategory, setRelatedSubCategory] = useState(initialRelated?.categoryIds?.[1] || '')
+  const [relatedSubSubCategory, setRelatedSubSubCategory] = useState(initialRelated?.categoryIds?.[2] || '')
+  const [relatedMaxProducts, setRelatedMaxProducts] = useState(initialRelated?.maxProducts || 8)
+
   const [formData, setFormData] = useState<BlogFormData>({
     slug: initialData?.slug || '',
     title: initialData?.title
@@ -75,6 +85,65 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
       }
     }
   }, [formData.title.en, slugManuallyEdited])
+
+  useEffect(() => {
+    categoryService
+      .getAllCategories()
+      .then((cats) => setMainCategories(cats.filter((cat) => cat.level === 0 && cat.isEnabled)))
+      .catch((error) => console.error('Error fetching categories:', error))
+  }, [])
+
+  // Hydrate the subcategory/sub-subcategory dropdowns when editing an article
+  // that already has a related-products category path selected.
+  useEffect(() => {
+    const categoryIds = initialData?.relatedProductsCarousel?.categoryIds
+    if (!categoryIds || categoryIds.length === 0) return
+
+    const hydrate = async () => {
+      try {
+        if (categoryIds[0]) {
+          const subs = await categoryService.getSubCategories(categoryIds[0])
+          setRelatedSubCategories(subs.filter((cat) => cat.isEnabled))
+        }
+        if (categoryIds[1]) {
+          const subSubs = await categoryService.getSubCategories(categoryIds[1])
+          setRelatedSubSubCategories(subSubs.filter((cat) => cat.isEnabled))
+        }
+      } catch (error) {
+        console.error('Error hydrating related products categories:', error)
+      }
+    }
+    hydrate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const handleRelatedCategoryChange = async (categoryId: string) => {
+    setRelatedCategory(categoryId)
+    setRelatedSubCategory('')
+    setRelatedSubSubCategory('')
+    setRelatedSubCategories([])
+    setRelatedSubSubCategories([])
+    if (!categoryId) return
+    try {
+      const subs = await categoryService.getSubCategories(categoryId)
+      setRelatedSubCategories(subs.filter((cat) => cat.isEnabled))
+    } catch (error) {
+      console.error('Error fetching subcategories:', error)
+    }
+  }
+
+  const handleRelatedSubCategoryChange = async (subCategoryId: string) => {
+    setRelatedSubCategory(subCategoryId)
+    setRelatedSubSubCategory('')
+    setRelatedSubSubCategories([])
+    if (!subCategoryId) return
+    try {
+      const subSubs = await categoryService.getSubCategories(subCategoryId)
+      setRelatedSubSubCategories(subSubs.filter((cat) => cat.isEnabled))
+    } catch (error) {
+      console.error('Error fetching sub-subcategories:', error)
+    }
+  }
 
   const updateLocalized = (
     field: keyof Pick<BlogFormData, 'title' | 'excerpt' | 'content' | 'featuredImageAlt' | 'seoTitle' | 'seoDescription' | 'ogTitle' | 'ogDescription'>,
@@ -165,6 +234,12 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
         ogTitle: formData.ogTitle,
         ogDescription: formData.ogDescription,
         ogImage: formData.ogImage || undefined,
+        relatedProductsCarousel: {
+          enabled: relatedEnabled,
+          mode: 'random' as const,
+          categoryIds: [relatedCategory, relatedSubCategory, relatedSubSubCategory].filter(Boolean),
+          maxProducts: relatedMaxProducts > 0 ? relatedMaxProducts : 8,
+        },
       }
 
       if (isEdit && initialData?.id) {
@@ -411,6 +486,112 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Related Products Carousel */}
+      <div className="border-t border-gray-200 pt-6">
+        <h2 className="text-lg font-medium text-gray-900 mb-4">Related Products Carousel</h2>
+        <div className="space-y-4">
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={relatedEnabled}
+              onChange={(e) => setRelatedEnabled(e.target.checked)}
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              Show a related products carousel at the bottom of this article
+            </span>
+          </label>
+
+          {relatedEnabled && (
+            <>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+                <div>
+                  <label htmlFor="relatedCategory" className="block text-sm font-medium text-gray-700">
+                    Category
+                  </label>
+                  <select
+                    id="relatedCategory"
+                    value={relatedCategory}
+                    onChange={(e) => handleRelatedCategoryChange(e.target.value)}
+                    className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Select a category</option>
+                    {mainCategories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {typeof category.name === 'object' ? category.name.en : category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {relatedCategory && relatedSubCategories.length > 0 && (
+                  <div>
+                    <label htmlFor="relatedSubCategory" className="block text-sm font-medium text-gray-700">
+                      Subcategory
+                    </label>
+                    <select
+                      id="relatedSubCategory"
+                      value={relatedSubCategory}
+                      onChange={(e) => handleRelatedSubCategoryChange(e.target.value)}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select a subcategory (optional)</option>
+                      {relatedSubCategories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {typeof category.name === 'object' ? category.name.en : category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {relatedSubCategory && relatedSubSubCategories.length > 0 && (
+                  <div>
+                    <label htmlFor="relatedSubSubCategory" className="block text-sm font-medium text-gray-700">
+                      Sub-subcategory
+                    </label>
+                    <select
+                      id="relatedSubSubCategory"
+                      value={relatedSubSubCategory}
+                      onChange={(e) => setRelatedSubSubCategory(e.target.value)}
+                      className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Select a sub-subcategory (optional)</option>
+                      {relatedSubSubCategories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {typeof category.name === 'object' ? category.name.en : category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              <div className="max-w-xs">
+                <label htmlFor="relatedMaxProducts" className="block text-sm font-medium text-gray-700">
+                  Max products
+                </label>
+                <input
+                  id="relatedMaxProducts"
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={relatedMaxProducts}
+                  onChange={(e) => setRelatedMaxProducts(Number(e.target.value) || 8)}
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {!relatedCategory && (
+                <p className="text-xs text-amber-600">
+                  Select a category — the carousel won&apos;t appear on the published article until one is chosen.
+                </p>
+              )}
+            </>
+          )}
         </div>
       </div>
 

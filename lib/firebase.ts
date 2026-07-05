@@ -262,6 +262,7 @@ export interface BlogArticle {
   ogTitle?: LocalizedString;
   ogDescription?: LocalizedString;
   ogImage?: string;
+  canonicalUrl?: string;
   relatedProductsCarousel?: RelatedProductsCarouselConfig;
   createdAt: string;
   updatedAt: string;
@@ -3927,6 +3928,9 @@ function cleanBlogLocalizedFields(data: Partial<BlogArticle>): Record<string, un
   if (hasLocalizedContent(data.ogTitle)) clean.ogTitle = data.ogTitle;
   if (hasLocalizedContent(data.ogDescription)) clean.ogDescription = data.ogDescription;
   if (data.ogImage) clean.ogImage = data.ogImage;
+  // Explicit undefined check (not truthy) so clearing the field reverts the
+  // article to its own self-canonical URL instead of being silently ignored.
+  if (data.canonicalUrl !== undefined) clean.canonicalUrl = data.canonicalUrl;
   if (data.relatedProductsCarousel) clean.relatedProductsCarousel = data.relatedProductsCarousel;
 
   return clean;

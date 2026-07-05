@@ -23,6 +23,7 @@ interface BlogFormData {
   ogTitle: { he: string; en: string }
   ogDescription: { he: string; en: string }
   ogImage: string
+  canonicalUrl: string
 }
 
 interface BlogArticleFormProps {
@@ -75,6 +76,7 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
     ogTitle: initialData?.ogTitle || emptyLocalized(),
     ogDescription: initialData?.ogDescription || emptyLocalized(),
     ogImage: initialData?.ogImage || '',
+    canonicalUrl: initialData?.canonicalUrl || '',
   })
 
   useEffect(() => {
@@ -234,6 +236,7 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
         ogTitle: formData.ogTitle,
         ogDescription: formData.ogDescription,
         ogImage: formData.ogImage || undefined,
+        canonicalUrl: formData.canonicalUrl.trim(),
         relatedProductsCarousel: {
           enabled: relatedEnabled,
           mode: 'random' as const,
@@ -622,6 +625,21 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
               rows={2}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Canonical URL</label>
+            <input
+              type="text"
+              value={formData.canonicalUrl}
+              onChange={(e) => setFormData((prev) => ({ ...prev, canonicalUrl: e.target.value }))}
+              placeholder="/en/collection/women/shoes/oxford"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Optional. Points search engines at another page (e.g. the matching collection page) as the
+              primary page for ranking, while this article serves as supporting content. Leave empty to use
+              this article&apos;s own URL as canonical (default).
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

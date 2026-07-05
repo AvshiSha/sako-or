@@ -31,6 +31,10 @@ export interface SEOConfig {
   alternateLocales?: Array<{ locale: string; url: string }>
   robots?: 'index, follow' | 'noindex, nofollow'
   structuredData?: object // For JSON-LD
+  /** Overrides the canonical link (e.g. pointing a supporting blog article at its
+   * money-page collection). Accepts a relative path or full URL. Falls back to `url`
+   * (self-canonical) when omitted or empty. */
+  canonicalUrl?: string
 }
 
 /**
@@ -83,17 +87,25 @@ export function buildMetadata(config: SEOConfig): Metadata {
     locale = 'en',
     alternateLocales = [],
     robots = seoConfig.defaultRobots,
+    canonicalUrl,
   } = config
 
   // Ensure title includes brand suffix
   const fullTitle = title.includes('| SAKO-OR') ? title : `${title} | SAKO-OR`
-  
+
   // Truncate description
   const truncatedDescription = truncateDescription(description)
-  
+
   // Ensure absolute URLs
   const absoluteUrl = url.startsWith('http') ? url : buildAbsoluteUrl(url)
   const absoluteImage = ensureAbsoluteImageUrl(image)
+
+  // An explicit canonicalUrl overrides self-canonical (e.g. a supporting blog
+  // article pointing at its money-page collection); falls back to absoluteUrl.
+  const trimmedCanonicalUrl = canonicalUrl?.trim()
+  const canonicalHref = trimmedCanonicalUrl
+    ? (trimmedCanonicalUrl.startsWith('http') ? trimmedCanonicalUrl : buildAbsoluteUrl(trimmedCanonicalUrl))
+    : absoluteUrl
   
   // Build hreflang alternates
   const languages: Record<string, string> = {}
@@ -113,7 +125,7 @@ export function buildMetadata(config: SEOConfig): Metadata {
     title: fullTitle,
     description: truncatedDescription,
     alternates: {
-      canonical: absoluteUrl,
+      canonical: canonicalHref,
       languages: Object.keys(languages).length > 0 ? languages : undefined,
     },
     robots: {

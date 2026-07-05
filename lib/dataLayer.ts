@@ -9,6 +9,7 @@ import {
   fbqTrackInitiateCheckout,
   fbqTrackPurchase,
   fbqTrackViewContent,
+  setFacebookPixelAdvancedMatching,
 } from '@/lib/facebookPixel';
 
 declare global {
@@ -625,6 +626,19 @@ export function trackPurchase(
   }
 
   pushEvent(eventData);
+
+  if (options.userProperties) {
+    setFacebookPixelAdvancedMatching({
+      email: options.userProperties.customer_email,
+      phone: options.userProperties.customer_phone,
+      firstName: options.userProperties.customer_first_name,
+      lastName: options.userProperties.customer_last_name,
+      city: options.userProperties.customer_city,
+      zip: options.userProperties.customer_zip,
+      country: options.userProperties.customer_country,
+      state: options.userProperties.customer_province,
+    });
+  }
 
   fbqTrackPurchase(
     items.map((item) => ({

@@ -56,6 +56,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     alternateLocales: languages
       .filter((l) => l !== locale)
       .map((altLng) => ({ locale: altLng, url: `/${altLng}/news/${slug}` })),
+    canonicalUrl: article.canonicalUrl,
     type: 'website',
   })
 }

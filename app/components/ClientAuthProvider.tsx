@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ComponentType } from 're
 import { usePathname } from 'next/navigation'
 import { GuestAuthProvider } from '@/app/contexts/GuestAuthContext'
 import { FavoritesProvider } from '@/app/contexts/FavoritesContext'
+import FacebookPixelInit from '@/app/components/FacebookPixelInit'
 
 const AUTH_ROUTE_PATTERN =
   /\/(signin|signup|profile|verify-sms|complete-profile|admin)(\/|$)/
@@ -76,6 +77,7 @@ export default function ClientAuthProvider({
   if (!AuthShell) {
     return (
       <GuestAuthProvider onEnsureAuth={ensureAuth}>
+        <FacebookPixelInit />
         <FavoritesProvider>{children}</FavoritesProvider>
       </GuestAuthProvider>
     )

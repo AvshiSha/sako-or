@@ -5,6 +5,8 @@ import { AuthProvider } from '@/app/contexts/AuthContext'
 import { useAuth } from '@/app/hooks/useAuth'
 import { FavoritesProvider } from '@/app/contexts/FavoritesContext'
 import ProfileCompletionGate from '@/app/components/ProfileCompletionGate'
+import FacebookPixelInit from '@/app/components/FacebookPixelInit'
+import FacebookPixelAdvancedMatching from '@/app/components/FacebookPixel'
 import { resetOnLogout } from '@/lib/guestReset'
 
 function AuthTransitionListener({ children }: { children: React.ReactNode }) {
@@ -37,6 +39,8 @@ export default function AuthenticatedAppShell({
 }) {
   return (
     <AuthProvider>
+      <FacebookPixelInit />
+      <FacebookPixelAdvancedMatching />
       <AuthTransitionListener>
         <ProfileCompletionGate>
           <FavoritesProvider>{children}</FavoritesProvider>

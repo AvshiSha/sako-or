@@ -4,6 +4,7 @@
  * Clears all localStorage keys that hold guest/user session data,
  * ensuring a clean "continue as guest" experience after logout.
  */
+import { resetFacebookPixelAdvancedMatching } from '@/lib/facebookPixel';
 
 /**
  * Clears cart state from localStorage and dispatches a cartUpdated event
@@ -53,6 +54,8 @@ export function resetOnLogout(): void {
   if (typeof window === 'undefined') return
 
   try {
+    resetFacebookPixelAdvancedMatching()
+
     // Clear cart (includes dispatching cartUpdated event)
     clearCartState()
     

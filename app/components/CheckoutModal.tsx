@@ -6,6 +6,7 @@ import PayerDetailsForm from './PayerDetailsForm';
 import PaymentIframe from './PaymentIframe';
 import OrderSummary from './OrderSummary';
 import { trackBeginCheckout } from '@/lib/dataLayer';
+import { setFacebookPixelAdvancedMatching } from '@/lib/facebookPixel';
 import { CartItem } from '../hooks/useCart';
 import { ArrowLeftIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/app/contexts/AuthContext';
@@ -455,6 +456,16 @@ export default function CheckoutModal({
     setError(null);
 
     try {
+      setFacebookPixelAdvancedMatching({
+        email: formData.payer.email,
+        phone: formData.payer.mobile,
+        firstName: formData.payer.firstName,
+        lastName: formData.payer.lastName,
+        city: formData.deliveryAddress.city,
+        zip: formData.deliveryAddress.zipCode,
+        country: 'israel',
+      });
+
       // Mark cart items as CHECKED_OUT for signed-in users
       if (firebaseUser) {
         try {

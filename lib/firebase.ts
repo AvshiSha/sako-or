@@ -230,6 +230,23 @@ export interface CampaignProductFilter {
 
 export type BlogArticleStatus = 'draft' | 'published';
 
+// Only 'random' is implemented today; other modes are reserved so the schema
+// doesn't need to change when manual/bestsellers/new-arrivals/custom selection
+// modes are added later (mirrors CampaignProductFilterMode above).
+export type RelatedProductsSelectionMode =
+  | 'random'
+  | 'manual'
+  | 'bestsellers'
+  | 'new-arrivals'
+  | 'custom';
+
+export interface RelatedProductsCarouselConfig {
+  enabled: boolean;
+  mode: RelatedProductsSelectionMode;
+  categoryIds: string[]; // hierarchical path, e.g. [womenId, shoesId, oxfordId]
+  maxProducts: number;
+}
+
 export interface BlogArticle {
   id: string;
   slug: string;
@@ -245,6 +262,7 @@ export interface BlogArticle {
   ogTitle?: LocalizedString;
   ogDescription?: LocalizedString;
   ogImage?: string;
+  relatedProductsCarousel?: RelatedProductsCarouselConfig;
   createdAt: string;
   updatedAt: string;
 }
@@ -3909,6 +3927,7 @@ function cleanBlogLocalizedFields(data: Partial<BlogArticle>): Record<string, un
   if (hasLocalizedContent(data.ogTitle)) clean.ogTitle = data.ogTitle;
   if (hasLocalizedContent(data.ogDescription)) clean.ogDescription = data.ogDescription;
   if (data.ogImage) clean.ogImage = data.ogImage;
+  if (data.relatedProductsCarousel) clean.relatedProductsCarousel = data.relatedProductsCarousel;
 
   return clean;
 }

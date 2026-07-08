@@ -271,6 +271,11 @@ export default function CollectionClient({
   // Serialized query string — stable across renders when URL params are unchanged.
   const searchParamsKey = searchParams?.toString() ?? "";
 
+  const safeSearchParams = useMemo(() => {
+    if (!searchParamsKey) return EMPTY_SEARCH_PARAMS;
+    return new URLSearchParams(searchParamsKey);
+  }, [searchParamsKey]);
+
   // Track filter/search key to detect when filters actually change (not just page)
   const filterKey = useMemo(() => {
     const params = searchParamsKey
@@ -878,7 +883,7 @@ export default function CollectionClient({
     categoryPath,
     searchQuery,
     lng,
-    searchParams,
+    safeSearchParams,
     totalProducts,
     useVariantItems,
     allVariantItems,
@@ -922,11 +927,6 @@ export default function CollectionClient({
     const translatedCategory = t.categoriesList[categoryKey as keyof typeof t.categoriesList];
     return translatedCategory || category.charAt(0).toUpperCase() + category.slice(1);
   };
-
-  const safeSearchParams = useMemo(() => {
-    if (!searchParamsKey) return EMPTY_SEARCH_PARAMS;
-    return new URLSearchParams(searchParamsKey);
-  }, [searchParamsKey]);
 
   // Collection price bounds (full range for slider) — needed when parsing URL price params.
   const collectionPriceBounds = useMemo(() => {
@@ -1092,15 +1092,20 @@ export default function CollectionClient({
       return;
     }
 
-    markCollectionFilterNavPending();
-    flushSync(() => setIsFilterNavigating(true));
-    resetCollectionScrollForFilterChange();
-    scrollCollectionToTop();
+    // Deferred one tick: this can fire from Radix Select's onValueChange, which is
+    // still tearing down its portal/focus when flushSync would otherwise force a
+    // synchronous DOM swap here — that race throws removeChild NotFoundError on iOS WebKit.
+    setTimeout(() => {
+      markCollectionFilterNavPending();
+      flushSync(() => setIsFilterNavigating(true));
+      resetCollectionScrollForFilterChange();
+      scrollCollectionToTop();
 
-    startFilterTransition(() => {
-      router.push(newUrl, { scroll: false });
-    });
-    requestAnimationFrame(() => scrollCollectionToTop());
+      startFilterTransition(() => {
+        router.push(newUrl, { scroll: false });
+      });
+      requestAnimationFrame(() => scrollCollectionToTop());
+    }, 0);
   };
 
   const handleSortChange = (newSort: string) => {

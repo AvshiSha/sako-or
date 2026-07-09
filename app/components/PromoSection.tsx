@@ -13,22 +13,24 @@ export type PromoItem = {
 }
 
 const DEFAULT_PROMOS: PromoItem[] = [
-  {
-    text: {
-      he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
-      en: 'Shipping is free to all Israel, on orders over 300₪',
-    },
-    href: '/collection/women/',
-    icon: '🚚',
-  },
+   {
+  //   text: {
+  //     he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
+  //     en: 'Shipping is free to all Israel, on orders over 300₪',
+  //   },
+  //   href: '/collection/women/',
+  //   icon: '🚚',
+  // },
   // {
-  //    text: {
-  //      he: 'מחלקת האוטלט – עד 70% הנחה + 10% נוספים | קופון: OUT10',
-  //      en: 'Outlet category – up to 70% discount + 10% extra | Coupon: OUT10',
-  //    },
-  //    href: '/collection/women/outlet',
-  //    icon: '🔥',
-  //  },
+     text: {
+       he: 'כפל מבצעים | 10% הנחה נוספים על כל האתר | קוד: WEEK10',
+       en: 'Women\'s Outlet – 10% extra discount on all site | Coupon: WEEK10',
+     },
+     href: '/collection/women/',
+     icon: '',
+     // Countdown until July 12, 2026 midnight (local time).
+     countdownEnd: '2026-07-12T00:00:00',
+   },
   //  {
   //   text: {
   //     he: 'זוג שני ב־40% הנחה על מגוון מוצרי סניקרס | קוד: SNK40',

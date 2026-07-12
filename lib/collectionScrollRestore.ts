@@ -219,7 +219,11 @@ export function freezeCollectionScrollForBack(
 
 export function readFrozenCollectionScroll(): LastCollectionScroll | undefined {
   if (!isBrowser()) return undefined;
-  return parseScrollPayload(sessionStorage.getItem(FROZEN_SCROLL_KEY));
+  try {
+    return parseScrollPayload(sessionStorage.getItem(FROZEN_SCROLL_KEY));
+  } catch {
+    return undefined;
+  }
 }
 
 export function saveLastCollectionScroll(
@@ -241,7 +245,11 @@ export function saveLastCollectionScroll(
 
 export function readLastCollectionScroll(): LastCollectionScroll | undefined {
   if (!isBrowser()) return undefined;
-  return parseScrollPayload(sessionStorage.getItem(LAST_SCROLL_KEY));
+  try {
+    return parseScrollPayload(sessionStorage.getItem(LAST_SCROLL_KEY));
+  } catch {
+    return undefined;
+  }
 }
 
 export function clearLastCollectionScroll(): void {

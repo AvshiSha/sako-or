@@ -26,6 +26,10 @@ Sentry.init({
       if (error.name === 'AbortError') return null
       if ((error as any)?.code === 'auth/popup-closed-by-user') return null
       if (error.message?.includes('ResizeObserver loop')) return null
+      // Instagram in-app browser injects its own native-bridge script; on some
+      // iOS/IAB versions `window.webkit` isn't set up, and that script throws.
+      // Not our code, nothing we can fix — see SAKO-OR-PROJ-5.
+      if (error.message?.includes('webkit.messageHandlers')) return null
     }
     // Drop errors injected by browser extensions
     const frames = event.exception?.values?.[0]?.stacktrace?.frames

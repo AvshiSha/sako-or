@@ -3,6 +3,22 @@ import { languages } from './i18n/settings'
 
 const PUBLIC_FILE = /\.(?:json|xml|txt|png|jpe?g|svg|ico|webmanifest)$/i
 
+// Default locale used when redirecting a request that has no language prefix
+// at all (e.g. an old backlink, or a URL a crawler guessed). Matches the
+// existing root `/` -> `/he` redirect in app/page.tsx.
+const DEFAULT_LOCALE = 'he'
+
+// Top-level routes that intentionally live OUTSIDE the [lng] structure and
+// must keep working at their literal, unprefixed path: Cancel/Failed/Success
+// are payment-gateway callback URLs hardcoded on the processor's side, so
+// redirecting them would break checkout. They're marked noindex in their own
+// layouts rather than redirected.
+const UNLOCALIZED_ROUTES = new Set([
+  'Cancel',
+  'Failed',
+  'Success',
+])
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -26,6 +42,31 @@ export function middleware(request: NextRequest) {
     return new NextResponse('', { status: 404 })
   }
 
+  const segments = pathname.split('/').filter(Boolean)
+  const firstSegment = segments[0]
+
+  // Enforce a canonical, always-localized URL structure: any path that isn't
+  // already under a supported language prefix (and isn't one of the special
+  // unprefixed utility routes above) permanently redirects to its localized
+  // equivalent. Without this, unprefixed URLs (e.g. /collection/women/...)
+  // 404 instead of consolidating onto the one canonical, indexable URL,
+  // which is what let Google discover and keep re-crawling them.
+  if (
+    firstSegment &&
+    !languages.includes(firstSegment as any) &&
+    !UNLOCALIZED_ROUTES.has(firstSegment)
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/${DEFAULT_LOCALE}${pathname}`
+    return NextResponse.redirect(url, 308)
+  }
+
+  if (!firstSegment) {
+    const url = request.nextUrl.clone()
+    url.pathname = `/${DEFAULT_LOCALE}`
+    return NextResponse.redirect(url, 308)
+  }
+
   // Check if this is an old slug-based product URL
   const slugProductMatch = pathname.match(/^\/(en|he)\/product\/([^\/\?]+)(\?.*)?$/)
 
@@ -38,15 +79,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  const segments = pathname.split('/').filter(Boolean)
-  const firstSegment = segments[0]
-
-  // If the path already starts with a supported language, just continue
-  if (firstSegment && languages.includes(firstSegment as any)) {
-    return NextResponse.next()
-  }
-
-  // For now, do not perform any language-based rewriting.
+  // Path already has a supported language prefix (or is an excluded
+  // unlocalized utility route) - continue as normal.
   return NextResponse.next()
 }
 

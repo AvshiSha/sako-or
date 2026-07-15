@@ -5,6 +5,28 @@ import { productService, categoryService, blogService } from '@/lib/firebase'
 
 const baseUrl = seoConfig.baseUrl.replace(/\/$/, '')
 
+// Firestore's client SDK returns Timestamp objects (with a `.toDate()`
+// method) for timestamp fields at runtime, not plain JS Dates - even though
+// our TS types say `Date`. `new Date(timestamp)` on one of those silently
+// produces an Invalid Date (no throw until something calls .toISOString()),
+// which crashed the whole sitemap prerender. Normalize defensively and never
+// return a value that can fail toISOString().
+function toValidDate(value: unknown, fallback: Date): Date {
+  if (!value) return fallback
+  if (value instanceof Date) {
+    return isNaN(value.getTime()) ? fallback : value
+  }
+  if (typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
+    const date = (value as { toDate: () => Date }).toDate()
+    return isNaN(date.getTime()) ? fallback : date
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const date = new Date(value)
+    return isNaN(date.getTime()) ? fallback : date
+  }
+  return fallback
+}
+
 // Static marketing pages. NOTE: `/favorites` is intentionally excluded - it's
 // a per-user page (guest localStorage or signed-in account state), not
 // indexable content.
@@ -41,7 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       for (const lng of languages) {
         entries.push({
           url: `${baseUrl}/${lng}/collection/${category.path}`,
-          lastModified: category.updatedAt ? new Date(category.updatedAt) : now,
+          lastModified: toValidDate(category.updatedAt, now),
           changeFrequency: 'weekly',
           priority: 0.8,
         })
@@ -57,7 +79,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const product of products) {
       const colorSlugs = Object.keys(product.colorVariants || {})
       if (colorSlugs.length === 0) continue
-      const lastModified = product.updatedAt ? new Date(product.updatedAt) : now
+      const lastModified = toValidDate(product.updatedAt, now)
       for (const lng of languages) {
         for (const colorSlug of colorSlugs) {
           entries.push({
@@ -77,7 +99,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { articles } = await blogService.getPublishedArticles(1, 10000)
     for (const article of articles) {
-      const lastModified = article.updatedAt ? new Date(article.updatedAt) : now
+      const lastModified = toValidDate(article.updatedAt, now)
       for (const lng of languages) {
         entries.push({
           url: `${baseUrl}/${lng}/news/${article.slug}`,

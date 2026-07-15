@@ -13,10 +13,14 @@ const DEFAULT_LOCALE = 'he'
 // are payment-gateway callback URLs hardcoded on the processor's side, so
 // redirecting them would break checkout. They're marked noindex in their own
 // layouts rather than redirected.
+// Matched case-insensitively: the actual Next.js routes (app/Cancel etc.) are
+// case-sensitive and would 404 on a differently-cased request regardless,
+// but we still must not let a case variant slip past this guard and get
+// redirected to a locale-prefixed URL, silently breaking the callback.
 const UNLOCALIZED_ROUTES = new Set([
-  'Cancel',
-  'Failed',
-  'Success',
+  'cancel',
+  'failed',
+  'success',
 ])
 
 export function middleware(request: NextRequest) {
@@ -54,7 +58,7 @@ export function middleware(request: NextRequest) {
   if (
     firstSegment &&
     !languages.includes(firstSegment as any) &&
-    !UNLOCALIZED_ROUTES.has(firstSegment)
+    !UNLOCALIZED_ROUTES.has(firstSegment.toLowerCase())
   ) {
     const url = request.nextUrl.clone()
     url.pathname = `/${DEFAULT_LOCALE}${pathname}`

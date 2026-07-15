@@ -60,11 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json().catch(() => ({}))
       const confirmed = data.isAdmin === true
 
-      if (!isAdminEmail(firebaseUser.email)) {
-        setServerIsAdmin(confirmed)
-      }
-
-      // Force-refresh the ID token whenever the admin claim state changed:
+      // Force-refresh the ID token whenever the admin claim state changed, and
+      // do this BEFORE unblocking the UI below. Firestore rules gate writes on
+      // request.auth.token.admin, so flipping serverIsAdmin first would let the
+      // UI (and any write it triggers) race a token that doesn't carry the
+      // claim yet, causing PERMISSION_DENIED on the very first admin action.
       //   - claim just granted  (confirmed=true,  hadClaim=false) → refresh so Firestore accepts writes
       //   - claim just revoked  (confirmed=false, hadClaim=true)  → refresh so Firestore rejects writes
       //   - no change                                             → skip (saves a round-trip)
@@ -78,6 +78,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await firebaseUser.getIdToken(true).catch((err) => {
           console.warn('[AUTH_CONTEXT] Token refresh after admin claim change failed:', err?.message || err)
         })
+      }
+
+      if (!isAdminEmail(firebaseUser.email)) {
+        setServerIsAdmin(confirmed)
       }
     } catch (error) {
       console.error('[AUTH_CONTEXT] Admin access check failed:', error)

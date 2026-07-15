@@ -5,8 +5,8 @@
  * for end-of-season sales.
  */
 
-import { db } from './firebase';
-import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
+import 'server-only';
+import { adminDb } from './firebase-admin';
 import { Product } from './firebase';
 
 /**
@@ -291,8 +291,10 @@ export async function fetchProductsBySkus(skus: string[]): Promise<
   const batchSize = 10;
   for (let i = 0; i < skus.length; i += batchSize) {
     const batch = skus.slice(i, i + batchSize);
-    const q = query(collection(db, 'products'), where('sku', 'in', batch));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await adminDb
+      .collection('products')
+      .where('sku', 'in', batch)
+      .get();
 
     querySnapshot.docs.forEach((docSnapshot) => {
       const data = docSnapshot.data() as Product;
@@ -345,7 +347,10 @@ export async function updateSalePrices(
     return result;
   }
 
-  // Actual update: process in batches
+  // Actual update: process in batches. This runs only from the
+  // /api/admin/sale-prices route (a trusted server context guarded by
+  // requireAdmin), so it writes via the Admin SDK, which bypasses
+  // firestore.rules entirely — there is no client ID token to check here.
   const batches: ProcessedSalePriceRow[][] = [];
   for (let i = 0; i < rowsToUpdate.length; i += PRICE_VALIDATION_CONFIG.batchSize) {
     batches.push(rowsToUpdate.slice(i, i + PRICE_VALIDATION_CONFIG.batchSize));
@@ -353,7 +358,7 @@ export async function updateSalePrices(
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
-    const firestoreBatch = writeBatch(db);
+    const firestoreBatch = adminDb.batch();
 
     for (const row of batch) {
       if (!row.validation.productId) {
@@ -362,7 +367,7 @@ export async function updateSalePrices(
       }
 
       try {
-        const productRef = doc(db, 'products', row.validation.productId);
+        const productRef = adminDb.collection('products').doc(row.validation.productId);
         firestoreBatch.update(productRef, {
           salePrice: row.salePrice,
           updatedAt: new Date(),

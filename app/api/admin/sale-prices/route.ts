@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs'
+import { requireAdmin } from '@/lib/server/auth';
 import { processSalePriceCsv } from '@/lib/sale-prices';
 
 /**
@@ -12,6 +13,9 @@ import { processSalePriceCsv } from '@/lib/sale-prices';
  * - preview: boolean (optional, if true only validate without updating)
  */
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth instanceof NextResponse) return auth;
+
   try {
     const body = await request.json();
     const { csvContent, preview } = body;

@@ -14,6 +14,8 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import ProtectedRoute from '@/app/components/ProtectedRoute';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { getAdminAuthHeaders } from '@/lib/admin-api';
 
 interface PreviewRow {
   rowNumber: number;
@@ -45,6 +47,7 @@ interface UpdateResult {
 
 function SalePriceManagement() {
   const router = useRouter();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [csvFile, setCsvFile] = useState<File | null>(null);
@@ -87,16 +90,19 @@ function SalePriceManagement() {
       setError('No CSV content to preview');
       return;
     }
+    if (!user) {
+      setError('Not signed in');
+      return;
+    }
 
     setLoading(true);
     setError(null);
 
     try {
+      const headers = await getAdminAuthHeaders(user);
       const response = await fetch('/api/admin/sale-prices', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           csvContent,
           preview: true,
@@ -124,6 +130,10 @@ function SalePriceManagement() {
       setError('No CSV content to update');
       return;
     }
+    if (!user) {
+      setError('Not signed in');
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -131,11 +141,10 @@ function SalePriceManagement() {
     setShowConfirmModal(false);
 
     try {
+      const headers = await getAdminAuthHeaders(user);
       const response = await fetch('/api/admin/sale-prices', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           csvContent,
           preview: false,

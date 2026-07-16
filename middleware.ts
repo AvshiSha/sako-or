@@ -11,8 +11,10 @@ const DEFAULT_LOCALE = 'he'
 // Top-level routes that intentionally live OUTSIDE the [lng] structure and
 // must keep working at their literal, unprefixed path: Cancel/Failed/Success
 // are payment-gateway callback URLs hardcoded on the processor's side, so
-// redirecting them would break checkout. They're marked noindex in their own
-// layouts rather than redirected.
+// redirecting them would break checkout. `admin` is the internal admin panel
+// (app/admin), which also lives outside [lng] and isn't meant to be indexed
+// or localized at all. They're marked noindex in their own layouts rather
+// than redirected.
 // Matched case-insensitively: the actual Next.js routes (app/Cancel etc.) are
 // case-sensitive and would 404 on a differently-cased request regardless,
 // but we still must not let a case variant slip past this guard and get
@@ -21,6 +23,7 @@ const UNLOCALIZED_ROUTES = new Set([
   'cancel',
   'failed',
   'success',
+  'admin',
 ])
 
 export function middleware(request: NextRequest) {

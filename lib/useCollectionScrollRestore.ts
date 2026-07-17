@@ -20,6 +20,7 @@ import {
   COLLECTION_RETURN_EVENT,
   getRestoreScrollTarget,
   hasPendingCollectionScrollRestore,
+  isAnchorAvailable,
   isCollectionScrollLocked,
   isOnCollectionPage,
   readFrozenCollectionScroll,
@@ -39,15 +40,7 @@ type UseCollectionScrollRestoreParams = {
 
 function anchorElementInDom(anchorKey: string | undefined): boolean {
   if (!anchorKey || typeof document === "undefined") return false;
-  try {
-    return !!document.querySelector(
-      `[data-collection-anchor="${CSS.escape(anchorKey)}"]`
-    );
-  } catch {
-    return !!document.querySelector(
-      `[data-collection-anchor="${anchorKey}"]`
-    );
-  }
+  return isAnchorAvailable(anchorKey);
 }
 
 function isListReadyForScrollRestore(

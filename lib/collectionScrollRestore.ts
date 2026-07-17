@@ -34,6 +34,47 @@ let pendingRestoreTargetY = 0;
 /** True after leaving collection for PDP — blocks any scroll snapshot writes. */
 let collectionScrollLocked = false;
 
+/**
+ * When the grid is virtualized, an anchor card may be absent from the DOM
+ * simply because it's scrolled outside the rendered window — not because the
+ * list hasn't loaded that far. CollectionClient registers a mounter here that
+ * maps an anchor key to a flat item index: if the anchor exists in the data,
+ * it nudges the virtualizer to scroll to (and thus mount) it and returns
+ * true; if the data hasn't loaded that anchor yet, it returns false.
+ */
+let anchorMounter: ((anchorKey: string) => boolean) | null = null;
+
+export function registerCollectionAnchorMounter(
+  fn: ((anchorKey: string) => boolean) | null
+): void {
+  anchorMounter = fn;
+}
+
+function escapeAnchorKey(anchorKey: string): string {
+  try {
+    return CSS.escape(anchorKey);
+  } catch {
+    return anchorKey;
+  }
+}
+
+function queryAnchorElement(anchorKey: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(
+    `[data-collection-anchor="${escapeAnchorKey(anchorKey)}"]`
+  );
+}
+
+/**
+ * True once the anchor is either already mounted, or known to the data and
+ * the virtualizer has been nudged to scroll it into the rendered window
+ * (a later retry tick will find it once that scroll/mount completes).
+ */
+export function isAnchorAvailable(anchorKey: string | undefined): boolean {
+  if (!anchorKey) return false;
+  if (queryAnchorElement(anchorKey)) return true;
+  return anchorMounter?.(anchorKey) ?? false;
+}
+
 export const COLLECTION_RETURN_EVENT = "collection-browse-return";
 
 export function isCollectionScrollLocked(): boolean {
@@ -329,10 +370,15 @@ function isAnchorInView(el: HTMLElement): boolean {
 }
 
 function scrollToCollectionAnchor(anchorKey: string): boolean {
-  const el = document.querySelector(
-    `[data-collection-anchor="${CSS.escape(anchorKey)}"]`
-  );
-  if (!el || !(el instanceof HTMLElement)) return false;
+  let el = queryAnchorElement(anchorKey);
+  if (!el) {
+    // Not mounted — likely virtualized out of the rendered window. Nudge the
+    // virtualizer to it; the element mounts asynchronously, so this attempt
+    // still returns false and a later retry tick will find it in the DOM.
+    anchorMounter?.(anchorKey);
+    el = queryAnchorElement(anchorKey);
+  }
+  if (!el) return false;
   el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
   return isAnchorInView(el);
 }
@@ -390,10 +436,15 @@ export function runCollectionScrollRestore(
     if (isCollectionAppendLocked()) return;
 
     if (anchorKey) {
-      const el = document.querySelector(
-        `[data-collection-anchor="${CSS.escape(anchorKey)}"]`
-      );
-      if (el instanceof HTMLElement) {
+      let el = queryAnchorElement(anchorKey);
+      if (!el) {
+        // Not mounted — may just be virtualized out of the rendered window.
+        // Nudge the virtualizer toward it; if it mounts, a later attempt()
+        // tick (driven by the MutationObserver below) will find it.
+        anchorMounter?.(anchorKey);
+        el = queryAnchorElement(anchorKey);
+      }
+      if (el) {
         if (scrollToCollectionAnchor(anchorKey) || isAnchorInView(el)) {
           finish();
           return;

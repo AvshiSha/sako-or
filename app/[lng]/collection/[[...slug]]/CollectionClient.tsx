@@ -58,12 +58,18 @@ import {
   cancelCollectionScrollRestoreWatchdog,
   COLLECTION_RETURN_EVENT,
   readLastCollectionScroll,
+  registerCollectionAnchorMounter,
   resetCollectionScrollForFilterChange,
   scrollCollectionToTop,
 } from "@/lib/collectionScrollRestore";
 import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
 import { fetchCollectionPagesUpTo } from "@/lib/collectionBrowseHydration";
 import { useCollectionInfiniteScroll } from "@/lib/useCollectionInfiniteScroll";
+import {
+  useResponsiveColumnCount,
+  type ColumnBreakpoint,
+} from "@/lib/useResponsiveColumnCount";
+import { useProductGridVirtualizer } from "@/lib/useProductGridVirtualizer";
 import {
   captureScrollForAppend,
   restoreScrollAfterAppend,
@@ -88,6 +94,18 @@ import {
 import { poppins } from "@/lib/fonts";
 
 const LISTING_PAGE_SIZE = 24;
+
+// Mirrors the "collection-product-grid" grid-cols-2 lg:grid-cols-3 breakpoint
+// (lib/collection-grid-critical-css.ts uses the same 1024px cutoff).
+const COLLECTION_GRID_BREAKPOINTS: ColumnBreakpoint[] = [
+  { minWidthPx: 0, columns: 2 },
+  { minWidthPx: 1024, columns: 3 },
+];
+// Same 8.75rem (140px) reserved below the aspect-square image as the critical
+// CSS in lib/collection-grid-critical-css.ts, so the initial size estimate
+// lines up with what's already reserved before Tailwind/measureElement settle.
+const COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX = 140;
+const COLLECTION_GRID_ROW_GAP_PX = 16;
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -1093,11 +1111,20 @@ export default function CollectionClient({
     }
 
     // Deferred one tick: this can fire from Radix Select's onValueChange, which is
-    // still tearing down its portal/focus when flushSync would otherwise force a
-    // synchronous DOM swap here — that race throws removeChild NotFoundError on iOS WebKit.
+    // still tearing down its portal/focus when a synchronous DOM swap here would
+    // race with it (removeChild NotFoundError on iOS WebKit).
+    //
+    // IMPORTANT: setIsFilterNavigating must NOT be wrapped in flushSync. This flag
+    // swaps the entire (potentially large, infinite-scroll-accumulated) product grid
+    // out for skeleton placeholders. flushSync forces that whole subtree teardown to
+    // happen synchronously, inline, on the current call stack — React's commit-phase
+    // deletion-effects walk recurses one JS stack frame per unmounted DOM node, and on
+    // a big grid this can exceed WebKit's (Safari/iOS) much shallower call stack,
+    // throwing "RangeError: Maximum call stack size exceeded". Using a plain state
+    // update lets React schedule the commit normally (on a fresh stack) instead.
     setTimeout(() => {
       markCollectionFilterNavPending();
-      flushSync(() => setIsFilterNavigating(true));
+      setIsFilterNavigating(true);
       resetCollectionScrollForFilterChange();
       scrollCollectionToTop();
 
@@ -1184,6 +1211,53 @@ export default function CollectionClient({
       return sorted;
     }
   }, [allVariantItems, allProducts, sortBy, useVariantItems]);
+
+  const getGridItemKey = useCallback(
+    (item: VariantItem | Product): string =>
+      useVariantItems
+        ? (item as VariantItem).variantKey
+        : String((item as Product).id ?? (item as Product).sku),
+    [useVariantItems]
+  );
+
+  const gridColumns = useResponsiveColumnCount(COLLECTION_GRID_BREAKPOINTS);
+
+  const {
+    containerRef: gridContainerRef,
+    rows: gridRows,
+    virtualItems: gridVirtualItems,
+    totalSize: gridTotalSize,
+    measureElement: measureGridRow,
+    scrollToFlatIndex: scrollGridToFlatIndex,
+  } = useProductGridVirtualizer<VariantItem | Product>({
+    items: sortedItems as Array<VariantItem | Product>,
+    columns: gridColumns,
+    getItemKey: getGridItemKey,
+    extraRowHeightPx: COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
+    rowGapPx: COLLECTION_GRID_ROW_GAP_PX,
+  });
+
+  // Lets the scroll-restore lib (lib/collectionScrollRestore.ts) force-mount a
+  // virtualized-out anchor card by index when back-navigation needs to scroll
+  // to a product the current render window doesn't include.
+  const gridItemIndexRef = useRef<Map<string, number>>(new Map());
+  useEffect(() => {
+    const map = new Map<string, number>();
+    (sortedItems as Array<VariantItem | Product>).forEach((item, index) => {
+      map.set(getGridItemKey(item), index);
+    });
+    gridItemIndexRef.current = map;
+  }, [sortedItems, getGridItemKey]);
+
+  useEffect(() => {
+    registerCollectionAnchorMounter((anchorKey) => {
+      const index = gridItemIndexRef.current.get(anchorKey);
+      if (index === undefined) return false;
+      scrollGridToFlatIndex(index, "center");
+      return true;
+    });
+    return () => registerCollectionAnchorMounter(null);
+  }, [scrollGridToFlatIndex]);
 
   useCollectionScrollRestore({
     browseKey: collectionKey,
@@ -1889,65 +1963,92 @@ export default function CollectionClient({
           ) : (
             <>
               <div
-                className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 gap-y-2 sm:gap-6 -mx-3 items-start"
+                ref={gridContainerRef}
+                className="-mx-3"
+                style={{ position: "relative", height: gridTotalSize }}
               >
-                {useVariantItems
-                  ? (sortedItems as VariantItem[]).map((item, index) => {
-                      const isAboveFold = index < 6;
+                {gridVirtualItems.map((virtualRow) => {
+                  const row = gridRows[virtualRow.index];
+                  if (!row) return null;
 
-                      return (
-                        <div
-                          key={item.variantKey}
-                          data-collection-anchor={item.variantKey}
-                        >
-                          <ProductCard 
-                            product={item.product} 
-                            language={lng as 'en' | 'he'}
-                            selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
-                            preselectedColorSlug={item.variant.colorSlug}
-                            disableImageCarousel
-                            isAboveFold={isAboveFold}
-                            browseStoreKey={collectionKey}
-                            collectionAnchorKey={item.variantKey}
-                          />
-                        </div>
-                      );
-                    })
-                  : (sortedItems as Product[]).map((product, index) => {
-                      const isAboveFold = index < 6;
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      ref={measureGridRow}
+                      data-index={virtualRow.index}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.top}px)`,
+                      }}
+                      className="pb-2 sm:pb-6"
+                    >
+                      <div className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 sm:gap-x-6 items-start">
+                        {row.items.map((item, i) => {
+                          const flatIndex = row.startIndex + i;
+                          const isAboveFold = flatIndex < 6;
 
-                      return (
-                        <div
-                          key={product.id}
-                          data-collection-anchor={String(product.id ?? product.sku)}
-                        >
-                          <ProductCard 
-                            product={product} 
-                            language={lng as 'en' | 'he'}
-                            selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
-                            preselectedColorSlug={
-                              selectedColors.length === 0
-                                ? (product as { matchedColorSlug?: string }).matchedColorSlug
-                                : undefined
-                            }
-                            disableImageCarousel
-                            isAboveFold={isAboveFold}
-                            browseStoreKey={collectionKey}
-                            collectionAnchorKey={String(product.id ?? product.sku)}
-                          />
-                        </div>
-                      );
-                    })}
-                {isBrowseRefetching &&
-                  Array.from({
-                    length: Math.max(0, pinnedGridItemCount - sortedItems.length),
+                          if (useVariantItems) {
+                            const variantItem = item as VariantItem;
+                            return (
+                              <div
+                                key={variantItem.variantKey}
+                                data-collection-anchor={variantItem.variantKey}
+                              >
+                                <ProductCard
+                                  product={variantItem.product}
+                                  language={lng as 'en' | 'he'}
+                                  selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+                                  preselectedColorSlug={variantItem.variant.colorSlug}
+                                  disableImageCarousel
+                                  isAboveFold={isAboveFold}
+                                  browseStoreKey={collectionKey}
+                                  collectionAnchorKey={variantItem.variantKey}
+                                />
+                              </div>
+                            );
+                          }
+
+                          const product = item as Product;
+                          const anchorKey = String(product.id ?? product.sku);
+                          return (
+                            <div key={anchorKey} data-collection-anchor={anchorKey}>
+                              <ProductCard
+                                product={product}
+                                language={lng as 'en' | 'he'}
+                                selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+                                preselectedColorSlug={
+                                  selectedColors.length === 0
+                                    ? (product as { matchedColorSlug?: string }).matchedColorSlug
+                                    : undefined
+                                }
+                                disableImageCarousel
+                                isAboveFold={isAboveFold}
+                                browseStoreKey={collectionKey}
+                                collectionAnchorKey={anchorKey}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {isBrowseRefetching && pinnedGridItemCount > sortedItems.length && (
+                <div className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 gap-y-2 sm:gap-6 -mx-3 items-start">
+                  {Array.from({
+                    length: pinnedGridItemCount - sortedItems.length,
                   }).map((_, index) => (
                     <div key={`refetch-skeleton-${index}`} aria-hidden>
                       <CollectionProductCardSkeleton />
                     </div>
                   ))}
-              </div>
-              
+                </div>
+              )}
+
               {(hasMore || isLoadingMore) && (
                 <div
                   className="relative mt-8 h-12 shrink-0"

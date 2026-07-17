@@ -9,7 +9,6 @@ import {
   useMemo,
   useTransition,
 } from "react";
-import { flushSync } from "react-dom";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
@@ -53,8 +52,25 @@ import {
   SelectValue,
 } from "@/app/components/ui/select";
 import { Slider } from "@/app/components/ui/slider";
+import {
+  useResponsiveColumnCount,
+  type ColumnBreakpoint,
+} from "@/lib/useResponsiveColumnCount";
+import { useProductGridVirtualizer } from "@/lib/useProductGridVirtualizer";
 
 const motion = fmMotion as unknown as any;
+
+// Mirrors this grid's grid-cols-2 md:grid-cols-3 lg:grid-cols-4 breakpoints.
+const CAMPAIGN_GRID_BREAKPOINTS: ColumnBreakpoint[] = [
+  { minWidthPx: 0, columns: 2 },
+  { minWidthPx: 768, columns: 3 },
+  { minWidthPx: 1024, columns: 4 },
+];
+// This grid has no critical-CSS height reservation (unlike the collection
+// grid), so this is just a reasonable starting estimate — measureElement
+// corrects it after each row mounts.
+const CAMPAIGN_GRID_ROW_EXTRA_HEIGHT_PX = 140;
+const CAMPAIGN_GRID_ROW_GAP_PX = 16;
 
 function formatPrice(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -438,8 +454,17 @@ export default function CampaignClient({
         return;
       }
 
+      // IMPORTANT: do not wrap this in flushSync. This flag swaps the entire
+      // (potentially large, infinite-scroll-accumulated) product grid out for
+      // skeleton placeholders. flushSync would force that whole subtree teardown
+      // to happen synchronously, inline, on the current call stack — React's
+      // commit-phase deletion-effects walk recurses one JS stack frame per
+      // unmounted DOM node, and on a big grid this can exceed WebKit's (Safari/iOS)
+      // much shallower call stack, throwing "RangeError: Maximum call stack size
+      // exceeded". A plain state update lets React schedule the commit normally
+      // (on a fresh stack) instead. See CollectionClient.tsx for the same fix.
       markCollectionFilterNavPending();
-      flushSync(() => setIsFilterNavigating(true));
+      setIsFilterNavigating(true);
       startFilterTransition(() => {
         router.push(newUrl, { scroll: false });
       });
@@ -670,6 +695,25 @@ export default function CampaignClient({
     });
     return sorted;
   }, [variantItems, sortBy]);
+
+  const getGridItemKey = useCallback(
+    (item: VariantItem): string => item.variantKey,
+    []
+  );
+  const gridColumns = useResponsiveColumnCount(CAMPAIGN_GRID_BREAKPOINTS);
+  const {
+    containerRef: gridContainerRef,
+    rows: gridRows,
+    virtualItems: gridVirtualItems,
+    totalSize: gridTotalSize,
+    measureElement: measureGridRow,
+  } = useProductGridVirtualizer<VariantItem>({
+    items: sortedItems,
+    columns: gridColumns,
+    getItemKey: getGridItemKey,
+    extraRowHeightPx: CAMPAIGN_GRID_ROW_EXTRA_HEIGHT_PX,
+    rowGapPx: CAMPAIGN_GRID_ROW_GAP_PX,
+  });
 
   // Hydrate from store before paint when returning from PDP
   useLayoutEffect(() => {
@@ -1026,16 +1070,42 @@ export default function CampaignClient({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-2">
-              {sortedItems.map((item) => (
-                <ProductCard
-                  key={item.variantKey}
-                  product={item.product}
-                  language={lng}
-                  preselectedColorSlug={item.variant.colorSlug}
-                  browseStoreKey={campaignKey}
-                />
-              ))}
+            <div
+              ref={gridContainerRef}
+              style={{ position: "relative", height: gridTotalSize }}
+            >
+              {gridVirtualItems.map((virtualRow) => {
+                const row = gridRows[virtualRow.index];
+                if (!row) return null;
+
+                return (
+                  <div
+                    key={virtualRow.key}
+                    ref={measureGridRow}
+                    data-index={virtualRow.index}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      transform: `translateY(${virtualRow.top}px)`,
+                    }}
+                    className="pb-4 md:pb-2"
+                  >
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 md:gap-x-2">
+                      {row.items.map((item) => (
+                        <ProductCard
+                          key={item.variantKey}
+                          product={item.product}
+                          language={lng}
+                          preselectedColorSlug={item.variant.colorSlug}
+                          browseStoreKey={campaignKey}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             {hasMore && (
               <div className="mt-8 flex justify-center">

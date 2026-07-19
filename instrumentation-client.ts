@@ -4,6 +4,30 @@
 
 import * as Sentry from '@sentry/nextjs'
 
+// Third-party scripts we don't control (the Vee accessibility widget, translation
+// tools, browser extensions) restructure the DOM outside of React's knowledge.
+// When React's commit phase later tries to remove/insert a node in a spot it no
+// longer occupies, the browser throws NotFoundError ("removeChild"/"insertBefore"),
+// crashing the whole render tree. Guard the two mutation methods so a stale
+// reference is a no-op instead of an uncaught exception. See SAKO-OR-PROJ-12.
+if (typeof Node !== 'undefined' && Node.prototype) {
+  const originalRemoveChild = Node.prototype.removeChild
+  Node.prototype.removeChild = function <T extends Node>(this: Node, child: T): T {
+    if (child.parentNode !== this) {
+      return child
+    }
+    return originalRemoveChild.call(this, child) as T
+  } as typeof Node.prototype.removeChild
+
+  const originalInsertBefore = Node.prototype.insertBefore
+  Node.prototype.insertBefore = function <T extends Node>(this: Node, newNode: T, referenceNode: Node | null): T {
+    if (referenceNode && referenceNode.parentNode !== this) {
+      return newNode
+    }
+    return originalInsertBefore.call(this, newNode, referenceNode) as T
+  } as typeof Node.prototype.insertBefore
+}
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment: process.env.NEXT_PUBLIC_VERCEL_ENV ?? process.env.NODE_ENV,

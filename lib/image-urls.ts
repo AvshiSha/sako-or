@@ -16,7 +16,7 @@ const imageUrlMappings: Record<string, string> = {
   "/images/hero/main-hero.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
   "/images/hero/bags-hero-poster.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbags_image_hero_mobile.webp?alt=media&token=d55a6e62-028f-4793-988e-65aa54d63536",
   "home-collection-outlet.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Foutlet_collection.webp?alt=media&token=403aac3b-fd30-4412-bc84-14836f361038",
-  "home-collection-accessories.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Facc_collection_v2.webp?alt=media&token=ddd8f2a7-9027-44be-bf2b-9a9c9222612c",
+  "home-collection-accessories.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Facc_collection_v3.webp?alt=media&token=626b7742-4ed8-441c-a570-1eae9bb12c76",
   "home-collection-men.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Fmen_collection.webp?alt=media&token=4a5da825-aefe-48ce-952f-dc437c371a97",
   "home-category-sandals.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Fsandals_cate.webp?alt=media&token=fac73869-3b93-4838-a1c0-8a36635aae7d",
   "home-category-sneakers.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_categories%2Fsneakers_cate.webp?alt=media&token=65d2a30e-1d29-434c-9f81-067aa8778c45",

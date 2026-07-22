@@ -2859,48 +2859,32 @@ export const categoryService = {
     }
   },
 
-  // Delete category
-  async deleteCategory(id: string): Promise<void> {
+  // NOTE: enable/disable and delete (including cascade + product-reference
+  // checks) are handled server-side via /api/admin/categories/:id — see
+  // lib/category-mutations.ts and lib/admin/category-client.ts. They used to
+  // live here as unguarded client-SDK writes with no children/product
+  // validation; removed to avoid two competing code paths.
+
+  // Get sub-categories that are enabled — used by storefront navigation so a
+  // disabled sub-category/sub-sub-category doesn't keep showing up in menus
+  // even though its parent is enabled. Admin pickers that need to see every
+  // sub-category regardless of status should keep using getSubCategories().
+  async getEnabledSubCategories(parentId: string): Promise<Category[]> {
     try {
-      const docRef = doc(db, 'categories', id);
-      await deleteDoc(docRef);
+      const q = query(
+        collection(db, 'categories'),
+        where('parentId', '==', parentId),
+        where('isEnabled', '==', true),
+        orderBy('sortOrder', 'asc')
+      );
+      const querySnapshot = await getDocs(q);
+
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Category[];
     } catch (error) {
-      console.error('Error deleting category:', error);
-      throw error;
-    }
-  },
-
-  // Toggle category enabled status
-  async toggleCategoryStatus(id: string, isEnabled: boolean): Promise<void> {
-    try {
-      const docRef = doc(db, 'categories', id);
-      await updateDoc(docRef, {
-        isEnabled,
-        updatedAt: new Date()
-      });
-    } catch (error) {
-      console.error('Error toggling category status:', error);
-      throw error;
-    }
-  },
-
-  // Delete category and all its children
-  async deleteCategoryWithChildren(id: string): Promise<void> {
-    try {
-      // Get all sub-categories
-      const subCategories = await this.getSubCategories(id);
-
-      // Recursively delete all sub-categories
-      for (const subCategory of subCategories) {
-        if (subCategory.id) {
-          await this.deleteCategoryWithChildren(subCategory.id);
-        }
-      }
-
-      // Delete the main category
-      await this.deleteCategory(id);
-    } catch (error) {
-      console.error('Error deleting category with children:', error);
+      console.error('Error fetching enabled sub categories:', error);
       throw error;
     }
   },

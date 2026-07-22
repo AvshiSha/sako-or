@@ -155,11 +155,11 @@ export default function Navigation({
 
       // Fetch subcategories for Women and Men
       if (womenCategory?.id) {
-        const womenSubs = await categoryService.getSubCategories(womenCategory.id)
+        const womenSubs = await categoryService.getEnabledSubCategories(womenCategory.id)
 
         // Fetch sub-sub-categories for each subcategory
         const womenSubsWithChildren = await Promise.all(womenSubs.map(async (sub) => {
-          const subChildren = await categoryService.getSubCategories(sub.id!)
+          const subChildren = await categoryService.getEnabledSubCategories(sub.id!)
           return {
             id: sub.id!,
             slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
@@ -176,11 +176,11 @@ export default function Navigation({
       }
 
       if (menCategory?.id) {
-        const menSubs = await categoryService.getSubCategories(menCategory.id)
+        const menSubs = await categoryService.getEnabledSubCategories(menCategory.id)
 
         // Fetch sub-sub-categories for each subcategory
         const menSubsWithChildren = await Promise.all(menSubs.map(async (sub) => {
-          const subChildren = await categoryService.getSubCategories(sub.id!)
+          const subChildren = await categoryService.getEnabledSubCategories(sub.id!)
           return {
             id: sub.id!,
             slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',

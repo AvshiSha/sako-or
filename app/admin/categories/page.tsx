@@ -22,6 +22,9 @@ import { deleteField } from 'firebase/firestore'
 import { cleanupCmsHtml, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'
 import { uploadCmsImage } from '@/lib/upload-cms-image'
 import { revalidateCmsPaths } from '@/lib/cms-utils'
+import { useAuth } from '@/app/hooks/useAuth'
+import { setCategoryEnabled, deleteCategory, type CategoryMutationError } from '@/lib/admin/category-client'
+import { DeleteCategoryModal, type DeleteCategoryTarget } from './_components/DeleteCategoryModal'
 
 interface CategoryWithChildren extends Category {
   children?: CategoryWithChildren[]
@@ -29,6 +32,7 @@ interface CategoryWithChildren extends Category {
 }
 
 function CategoriesPage() {
+  const { user } = useAuth()
   const [categories, setCategories] = useState<CategoryWithChildren[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -39,6 +43,11 @@ function CategoriesPage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   const [seoSectionOpen, setSeoSectionOpen] = useState(false)
   const [seoActiveTab, setSeoActiveTab] = useState<'en' | 'he'>('en')
+  const [mutationError, setMutationError] = useState<string | null>(null)
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set())
+  const [deleteTarget, setDeleteTarget] = useState<DeleteCategoryTarget | null>(null)
+  const [deleteBlockInfo, setDeleteBlockInfo] = useState<CategoryMutationError | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -72,12 +81,16 @@ function CategoriesPage() {
     try {
       setLoading(true)
       console.log('Fetching categories...')
-      
-      // Ensure default navigation categories exist first
-      await ensureDefaultCategories()
-      
-      // Fetch all categories (including newly created ones)
-      const allCategories = await categoryService.getAllCategories()
+
+      // Bootstrap default navigation categories only when the collection is
+      // completely empty (fresh DB). Running this unconditionally on every
+      // refresh used to silently recreate "Home"/"Women"/"About"/"Contact"
+      // right after an admin deleted one of them, making delete look broken.
+      let allCategories = await categoryService.getAllCategories()
+      if (allCategories.length === 0) {
+        await ensureDefaultCategories()
+        allCategories = await categoryService.getAllCategories()
+      }
       console.log('Raw categories from Firebase:', allCategories.length, 'categories')
       
       // Log all categories for debugging
@@ -569,33 +582,75 @@ function CategoriesPage() {
     setShowForm(true)
   }
 
-  const handleDelete = async (categoryId: string) => {
-    if (!confirm('Are you sure you want to delete this category? This will also delete all sub-categories. This action cannot be undone.')) {
-      return
-    }
+  const categoryLabel = (category: Category): string =>
+    category.name?.en || category.name?.he || category.id || 'this category'
 
+  const withPending = (id: string, active: boolean) => {
+    setPendingIds((prev) => {
+      const next = new Set(prev)
+      if (active) next.add(id)
+      else next.delete(id)
+      return next
+    })
+  }
+
+  const requestDelete = (category: Category) => {
+    if (!category.id || pendingIds.has(category.id)) return
+    setMutationError(null)
+    setDeleteBlockInfo(null)
+    setDeleteTarget({ id: category.id, label: categoryLabel(category) })
+  }
+
+  const runDelete = async (categoryId: string, options: { cascade: boolean }) => {
+    if (!user) return
+    setIsDeleting(true)
+    setMutationError(null)
     try {
-      await categoryService.deleteCategoryWithChildren(categoryId)
-      setSuccessMessage('Category and all sub-categories deleted successfully!')
+      const result = await deleteCategory(user, categoryId, options)
+      if (!result.ok) {
+        if (result.code === 'HAS_PRODUCTS' || result.code === 'HAS_CHILDREN') {
+          // Re-show the dialog with the details the server just told us
+          // about (child list / product count) instead of a dead end.
+          setDeleteBlockInfo(result)
+          return
+        }
+        setMutationError(result.error)
+        setDeleteTarget(null)
+        return
+      }
+
+      setDeleteTarget(null)
+      setDeleteBlockInfo(null)
+      setSuccessMessage(
+        result.data.deletedDescendantIds.length > 0
+          ? 'Category and its sub-categories deleted successfully!'
+          : 'Category deleted successfully!'
+      )
       setShowSuccess(true)
-      fetchCategories()
+      await fetchCategories()
       setTimeout(() => setShowSuccess(false), 3000)
-    } catch (error) {
-      console.error('Error deleting category:', error)
-      alert('Failed to delete category. Please try again.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
-  const handleToggleStatus = async (categoryId: string, currentStatus: boolean) => {
+  const handleToggleStatus = async (category: Category) => {
+    if (!user || !category.id || pendingIds.has(category.id)) return
+    const nextEnabled = !category.isEnabled
+    setMutationError(null)
+    withPending(category.id, true)
     try {
-      await categoryService.toggleCategoryStatus(categoryId, !currentStatus)
-      setSuccessMessage(`Category ${!currentStatus ? 'enabled' : 'disabled'} successfully!`)
+      const result = await setCategoryEnabled(user, category.id, nextEnabled)
+      if (!result.ok) {
+        setMutationError(`Failed to ${nextEnabled ? 'enable' : 'disable'} "${categoryLabel(category)}": ${result.error}`)
+        return
+      }
+      setSuccessMessage(`Category ${nextEnabled ? 'enabled' : 'disabled'} successfully!`)
       setShowSuccess(true)
-      fetchCategories()
+      await fetchCategories()
       setTimeout(() => setShowSuccess(false), 3000)
-    } catch (error) {
-      console.error('Error toggling category status:', error)
-      alert('Failed to toggle category status. Please try again.')
+    } finally {
+      withPending(category.id, false)
     }
   }
 
@@ -693,15 +748,18 @@ function CategoriesPage() {
               <span className="text-xs font-medium">Order</span>
             </Link>
             <button
-              onClick={() => handleToggleStatus(category.id!, category.isEnabled)}
-              className={`p-2 rounded-md ${
-                category.isEnabled 
-                  ? 'text-green-600 hover:bg-green-50' 
+              onClick={() => handleToggleStatus(category)}
+              disabled={pendingIds.has(category.id!)}
+              className={`p-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed ${
+                category.isEnabled
+                  ? 'text-green-600 hover:bg-green-50'
                   : 'text-red-600 hover:bg-red-50'
               }`}
               title={category.isEnabled ? 'Disable' : 'Enable'}
             >
-              {category.isEnabled ? (
+              {pendingIds.has(category.id!) ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : category.isEnabled ? (
                 <EyeIcon className="h-4 w-4" />
               ) : (
                 <EyeSlashIcon className="h-4 w-4" />
@@ -727,8 +785,9 @@ function CategoriesPage() {
             </button>
 
             <button
-              onClick={() => handleDelete(category.id!)}
-              className="p-2 text-red-600 hover:bg-red-50 rounded-md"
+              onClick={() => requestDelete(category)}
+              disabled={pendingIds.has(category.id!)}
+              className="p-2 text-red-600 hover:bg-red-50 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
               title="Delete"
             >
               <TrashIcon className="h-4 w-4" />
@@ -812,10 +871,22 @@ function CategoriesPage() {
         </div>
 
         {showSuccess && (
-          <SuccessMessage 
-            message={successMessage} 
-            onClose={() => setShowSuccess(false)} 
+          <SuccessMessage
+            message={successMessage}
+            onClose={() => setShowSuccess(false)}
           />
+        )}
+
+        {mutationError && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md flex items-start justify-between gap-4">
+            <span>{mutationError}</span>
+            <button
+              onClick={() => setMutationError(null)}
+              className="text-red-700 hover:text-red-900 font-medium shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
         )}
 
         {/* Categories Tree */}
@@ -1167,6 +1238,21 @@ function CategoriesPage() {
           </div>
         )}
       </div>
+
+      <DeleteCategoryModal
+        target={deleteTarget}
+        blockInfo={deleteBlockInfo}
+        isDeleting={isDeleting}
+        onClose={() => {
+          if (isDeleting) return
+          setDeleteTarget(null)
+          setDeleteBlockInfo(null)
+        }}
+        onConfirm={(options) => {
+          if (!deleteTarget) return
+          void runDelete(deleteTarget.id, options)
+        }}
+      />
     </div>
   )
 }

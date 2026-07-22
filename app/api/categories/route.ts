@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { categoryService } from '@/lib/firebase'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/server/auth'
 import { z } from 'zod'
 
 // Validation schema for creating/updating categories
@@ -42,6 +43,9 @@ export async function GET() {
 
 // POST /api/categories - Create a new category
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await request.json()
     const validatedData = categorySchema.parse(body)

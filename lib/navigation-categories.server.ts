@@ -22,11 +22,11 @@ async function buildGenderSubcategories(
   parentId: string,
   lng: 'en' | 'he'
 ): Promise<NavSubCategory[]> {
-  const subs = await categoryService.getSubCategories(parentId)
+  const subs = await categoryService.getEnabledSubCategories(parentId)
 
   return Promise.all(
     subs.map(async (sub) => {
-      const subChildren = await categoryService.getSubCategories(sub.id!)
+      const subChildren = await categoryService.getEnabledSubCategories(sub.id!)
       return {
         id: sub.id!,
         slug: categorySlug(sub),

@@ -6,7 +6,7 @@ export const seoConfig = {
   siteName: 'SAKO-OR',
   baseUrl: process.env.NEXT_PUBLIC_SITE_URL || 
            process.env.APP_BASE_URL || 
-           'https://sako-or.com',
+           'https://www.sako-or.com',
   defaultTitle: 'SAKO-OR',
   defaultDescription: 'Quality leather products, shoes, and fashion accessories since 1977',
   defaultOGImage: getImageUrl('/images/logo/sako-logo.png'),

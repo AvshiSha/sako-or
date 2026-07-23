@@ -102,7 +102,7 @@ export class CardComAPI {
   /**
    * Get redirect URLs for the current domain
    */
-  getRedirectUrls(baseUrl: string = "https://sako-or.com") {
+  getRedirectUrls(baseUrl: string = "https://www.sako-or.com") {
     return {
       success: `${baseUrl}/Success`,
       failed: `${baseUrl}/Failed`,

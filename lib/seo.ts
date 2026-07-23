@@ -4,8 +4,13 @@ import { getImageUrl } from './image-urls'
 // Default SEO configuration
 export const seoConfig = {
   siteName: 'SAKO-OR',
+<<<<<<< HEAD
   baseUrl: process.env.NEXT_PUBLIC_SITE_URL ||
            process.env.APP_BASE_URL ||
+=======
+  baseUrl: process.env.NEXT_PUBLIC_SITE_URL || 
+           process.env.APP_BASE_URL || 
+>>>>>>> master
            'https://www.sako-or.com',
   defaultTitle: 'SAKO-OR',
   defaultDescription: 'Quality leather products, shoes, and fashion accessories since 1977',

@@ -2,15 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
 import { buildMetadata } from '@/lib/seo'
-import {
-  getHeroImageUrl,
-  getSummerSaleHeroDesktopImageUrl,
-  getSummerSaleHeroMobileImageUrl,
-} from '@/lib/image-urls'
-import {
-  getDesktopVideoPosterUrl,
-  getHomeHeroMobilePosterUrl,
-} from '@/lib/optimized-image-url'
+import { getHeroImageUrl } from '@/lib/image-urls'
 import { languages } from '@/i18n/settings'
 
 import HomeHero from '@/app/components/HomeHero'
@@ -57,25 +49,9 @@ export default async function HomePage({
 }) {
   const { lng } = await params
   const locale = (lng === 'he' ? 'he' : 'en') as 'en' | 'he'
-  const heroMobileSrc = getSummerSaleHeroMobileImageUrl()
-  const heroDesktopSrc = getSummerSaleHeroDesktopImageUrl()
 
   return (
     <>
-      <link
-        rel="preload"
-        as="image"
-        href={getHomeHeroMobilePosterUrl(heroMobileSrc)}
-        media="(max-width: 768px)"
-        fetchPriority="high"
-      />
-      <link
-        rel="preload"
-        as="image"
-        href={getDesktopVideoPosterUrl(heroDesktopSrc)}
-        media="(min-width: 769px)"
-        fetchPriority="high"
-      />
       <HomeHero lng={locale} />
       <Suspense fallback={<HomeProductsFallback />}>
         <HomeProducts lng={locale} />

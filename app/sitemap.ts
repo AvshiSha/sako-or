@@ -27,6 +27,19 @@ function toValidDate(value: unknown, fallback: Date): Date {
   return fallback
 }
 
+// Next.js's sitemap XML serializer does not escape entities in `<loc>`, so a
+// raw `&` (or `<`/`>`) in a category/product slug corrupts the entire feed's
+// XML, not just that one entry - happened with a "slides-&-sandals" category
+// path. Escape defensively rather than relying on slugs always being clean.
+function escapeXmlEntities(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;')
+}
+
 // Static marketing pages. NOTE: `/favorites` is intentionally excluded - it's
 // a per-user page (guest localStorage or signed-in account state), not
 // indexable content.
@@ -113,5 +126,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('sitemap: failed to load blog articles:', error)
   }
 
-  return entries
+  return entries.map((entry) => ({ ...entry, url: escapeXmlEntities(entry.url) }))
 }

@@ -11,11 +11,8 @@ import { prisma } from '../lib/prisma'
 
 async function createBogoGroups() {
   const groups = [
-    { name: 'Group 450', pairPriceIls: 450 },
-    { name: 'Group 500', pairPriceIls: 500 },
     { name: 'Group 600', pairPriceIls: 600 },
-    { name: 'Group 700', pairPriceIls: 700 },
-    { name: 'Group 800', pairPriceIls: 800 }
+    { name: 'Group 700', pairPriceIls: 700 }
   ]
 
   console.log('Creating BogoGroup records...')

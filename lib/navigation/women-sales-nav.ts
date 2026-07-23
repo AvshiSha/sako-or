@@ -12,11 +12,8 @@ export type WomenSalesNavLink = {
 
 /** Hardcoded BOGO campaign entry points under Women nav only; extend by appending rows. */
 export const WOMEN_BOGO_NAV_LINKS: WomenSalesNavLink[] = [
-  { slug: 'bogo450', label: { he: '2 ב-450', en: '2 for 450' } },
-  { slug: 'bogo500', label: { he: '2 ב-500', en: '2 for 500' } },
   { slug: 'bogo600', label: { he: '2 ב-600', en: '2 for 600' } },
-  { slug: 'bogo700', label: { he: '2 ב-700', en: '2 for 700' } },
-  { slug: 'bogo800', label: { he: '2 ב-800', en: '2 for 800' } }
+  { slug: 'bogo700', label: { he: '2 ב-700', en: '2 for 700' } }
 ]
 
 export function womenSalesCampaignHref(lng: string, slug: string): string {

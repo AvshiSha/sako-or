@@ -1,99 +1,15 @@
 import 'dotenv/config'
 import { prisma } from '../lib/prisma'
 import { parseSku } from '../lib/sku-parser'
+import { GROUP_SKUS, GROUP_PAIR_PRICES } from './bogo-groups-data'
 
-const GROUP_SKUS: Record<string, string[]> = {
-  'Group 450': [
-    '4925-2703',
-    '4925-2704',
-    '4725-1310',
-    '4725-2725'
-
-  ],
-  'Group 500': [
-    '4929-3123',
-    '4724-0231',
-    '4725-1201',
-    '4725-1326',
-    '4725-2521',
-    '4725-2718',
-    '4725-4007',
-    '4725-6110',
-    '4725-6119',
-    '4726-8916'
-  ],
-  'Group 600': [
-    '4925-1304',
-    '4925-1309',
-    '4925-1320',
-    '4925-1327',
-    '4925-2714',
-    '4925-2715',
-    '4925-2901',
-    '4925-2913',
-    '4925-4013',
-    '4925-4031',
-    '4925-6113',
-    '4929-9281',
-    '4929-9988',
-    '4715-0603',
-    '4715-0701',
-    '4725-1007',
-    '4725-1011',
-    '4725-1207',
-    '4725-1305',
-    '4725-2915',
-    '4725-6108',
-    '4725-6109',
-  ],
-  'Group 700': [
-    '4922-1804',
-    '4924-0001',
-    '4925-0301',
-    '4925-0310',
-    '4925-1205',
-    '4925-1210',
-    '4925-1329',
-    '4925-2512',
-    '4925-4001',
-    '4925-6107',
-    '4925-6108',
-    '4925-6170',
-    '4925-6180',
-    '4929-2318',
-    '4929-3985',
-    '4929-9521',
-    '4725-1210',
-    '4725-3315',
-    '4725-6105','4824-6873','4824-6876','4824-8761','4827-2268'
-  ],
-  'Group 800': [
-    '4922-5394',
-    '4924-0605',
-    '4924-7168',
-    '4924-7187',
-    '4924-8017',
-    '4925-1302',
-    '4929-2668',
-    '4704-0007',
-    '4704-0010',
-    '4704-0061',
-    '4712-4218',
-    '4713-0100',
-    '4713-0201','4824-0070'
-  ]
-}
-
-/** pairPriceIls per group name (number extracted from "Group 450" -> 450) */
-const GROUP_PAIR_PRICES: Record<string, number> = {
-  'Group 450': 450,
-  'Group 500': 500,
-  'Group 600': 600,
-  'Group 700': 700,
-  'Group 800': 800
-}
+const DRY_RUN = process.argv.includes('--dry-run')
 
 async function main() {
+  if (DRY_RUN) {
+    console.log('--- DRY RUN: no writes will be made ---')
+  }
+
   // 0) Ensure BogoGroups exist (e.g. for fresh production/Neon)
   const existingGroups = await prisma.bogoGroup.findMany()
   const groupByName = new Map(existingGroups.map(g => [g.name, g.id]))
@@ -101,6 +17,10 @@ async function main() {
   for (const groupName of Object.keys(GROUP_SKUS)) {
     if (groupByName.has(groupName)) continue
     const pairPriceIls = GROUP_PAIR_PRICES[groupName] ?? 0
+    if (DRY_RUN) {
+      console.log(`Would create BogoGroup: ${groupName} (pairPriceIls: ${pairPriceIls})`)
+      continue
+    }
     const created = await prisma.bogoGroup.create({
       data: { name: groupName, pairPriceIls }
     })
@@ -108,6 +28,33 @@ async function main() {
     console.log(`Created BogoGroup: ${groupName} (pairPriceIls: ${pairPriceIls})`)
   }
 
+  // 1) Disable groups that are no longer in GROUP_SKUS (e.g. Group 450/500/800):
+  // unassign every product still pointing at them, but leave the group row itself intact.
+  const activeGroupIds = new Set(
+    Object.keys(GROUP_SKUS)
+      .map(name => groupByName.get(name))
+      .filter((id): id is string => Boolean(id))
+  )
+
+  for (const group of existingGroups) {
+    if (activeGroupIds.has(group.id)) continue
+
+    const affected = await prisma.product.count({ where: { bogoGroupId: group.id } })
+    if (affected === 0) continue
+
+    if (DRY_RUN) {
+      console.log(`Would disable ${group.name}: unassign ${affected} products`)
+      continue
+    }
+
+    const cleared = await prisma.product.updateMany({
+      where: { bogoGroupId: group.id },
+      data: { bogoGroupId: null },
+    })
+    console.log(`Disabled ${group.name}: unassigned ${cleared.count} products`)
+  }
+
+  // 2) Sync each active group's membership to exactly the SKUs listed above.
   for (const [groupName, skus] of Object.entries(GROUP_SKUS)) {
     const groupId = groupByName.get(groupName)
     if (!groupId) {
@@ -124,6 +71,22 @@ async function main() {
       )
     )
 
+    // Remove products currently in this group that are no longer in the new list
+    const staleCount = await prisma.product.count({
+      where: { bogoGroupId: groupId, sku: { notIn: baseSkus } },
+    })
+    if (staleCount > 0) {
+      if (DRY_RUN) {
+        console.log(`[${groupName}] Would remove ${staleCount} products no longer in the list`)
+      } else {
+        const removed = await prisma.product.updateMany({
+          where: { bogoGroupId: groupId, sku: { notIn: baseSkus } },
+          data: { bogoGroupId: null },
+        })
+        console.log(`[${groupName}] Removed ${removed.count} products no longer in the list`)
+      }
+    }
+
     if (baseSkus.length === 0) continue
 
     // Check which of the requested SKUs actually exist in the Product table
@@ -138,6 +101,11 @@ async function main() {
       console.log(
         `[${groupName}] Requested ${baseSkus.length} SKUs. Missing in DB (${missingSkus.length}): ${missingSkus.join(', ')}`
       )
+    }
+
+    if (DRY_RUN) {
+      console.log(`[${groupName}] Would assign ${foundSkus.size} products (SKUs in list: ${baseSkus.length})`)
+      continue
     }
 
     const result = await prisma.product.updateMany({

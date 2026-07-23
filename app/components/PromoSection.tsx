@@ -15,11 +15,11 @@ export type PromoItem = {
 const DEFAULT_PROMOS: PromoItem[] = [
    {
     text: {
-      he: 'משלוח חינם לכל הארץ, בהזמנה מעל 300₪',
-      en: 'Shipping is free to all Israel, on orders over 300₪',
+      he: '2 זוגות ב־600 ₪ בלבד – לחצי כאן והתחדשי עכשיו',
+      en: '2 pairs for only ₪600 – click here and refresh your wardrobe',
     },
-    href: '/collection/women/',
-    icon: '🚚',
+    href: '/collection/campaign?slug=bogo600',
+    icon: '👠',
   },
   // {
   //    text: {

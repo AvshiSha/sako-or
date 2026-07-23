@@ -1,11 +1,12 @@
 import './globals.css'
-import { Assistant } from 'next/font/google'  
+import { Assistant } from 'next/font/google'
 import ClientAuthProvider from './components/ClientAuthProvider'
 import WhatsAppButton from './components/WhatsAppButton'
 import CookieConsent from './components/CookieConsent'
 import DeferredAnalytics from './components/DeferredAnalytics'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import Script from 'next/script'
 import type { Metadata } from 'next'
 import { buildAbsoluteUrl } from '@/lib/seo'
 
@@ -184,6 +185,10 @@ window.args = {
         
         <Analytics mode="production" />
         <SpeedInsights />
+
+        <Script id="chatbase-widget" strategy="afterInteractive">
+          {`(function(){if(!window.chatbase||window.chatbase("getState")!=="initialized"){window.chatbase=(...arguments)=>{if(!window.chatbase.q){window.chatbase.q=[]}window.chatbase.q.push(arguments)};window.chatbase=new Proxy(window.chatbase,{get(target,prop){if(prop==="q"){return target.q}return(...args)=>target(prop,...args)}})}const onLoad=function(){const script=document.createElement("script");script.src="www.chatbase.co/embed.min.js";script.id="${process.env.NEXT_PUBLIC_CHATBOT_ID}";script.domain="www.chatbase.co";document.body.appendChild(script)};if(document.readyState==="complete"){onLoad()}else{window.addEventListener("load",onLoad)}})();`}
+        </Script>
       </body>
     </html>
   )

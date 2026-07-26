@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import SeoFieldCounter from './SeoFieldCounter'
 import SeoSearchPreview from './SeoSearchPreview'
 import SeoKeywordInput from './SeoKeywordInput'
 import { SEO_TITLE_RANGE, META_DESCRIPTION_RANGE, SLUG_WARN_LENGTH, isOverWarnLength } from '@/lib/seo-length'
+import { buildSeoExportPayload, type SeoExportInput } from '@/lib/product-seo-export'
 
 export interface ProductSeoValues {
   title_en: string
@@ -22,17 +24,46 @@ interface ProductSeoSectionProps {
   onChange: <K extends keyof ProductSeoValues>(field: K, value: ProductSeoValues[K]) => void
   /** The real, live product URL — the slug below is stored for metadata only and does not currently change routing. */
   productUrl: string
+  /** Rest of the in-progress product form, used only to build the "copy for SEO" JSON snapshot. */
+  productDraft?: SeoExportInput
 }
 
 const fieldClass =
   'mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400 text-gray-700'
 
-export default function ProductSeoSection({ values, onChange, productUrl }: ProductSeoSectionProps) {
+export default function ProductSeoSection({ values, onChange, productUrl, productDraft }: ProductSeoSectionProps) {
   const slugTooLong = isOverWarnLength(values.slug, SLUG_WARN_LENGTH)
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
+
+  const handleCopyForSeo = async () => {
+    const payload = buildSeoExportPayload({ ...productDraft, seo: values })
+    const json = JSON.stringify(payload, null, 2)
+    try {
+      await navigator.clipboard.writeText(json)
+      setCopyState('copied')
+    } catch {
+      setCopyState('failed')
+    }
+    setTimeout(() => setCopyState('idle'), 2500)
+  }
 
   return (
     <div>
-      <h2 className="text-lg font-medium text-gray-900 mb-4">SEO Settings</h2>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <h2 className="text-lg font-medium text-gray-900">SEO Settings</h2>
+        <button
+          type="button"
+          onClick={handleCopyForSeo}
+          className="inline-flex items-center gap-1.5 rounded-md border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100"
+          title="Copies this product's data as JSON. Paste it into a Claude Code chat and ask it to run the seo-suggest skill."
+        >
+          {copyState === 'copied'
+            ? 'Copied — paste into Claude Code'
+            : copyState === 'failed'
+              ? 'Copy failed — check clipboard permission'
+              : 'Copy product data for SEO (/seo-suggest)'}
+        </button>
+      </div>
 
       <div className="mb-6">
         <label htmlFor="seo_slug" className="block text-sm font-medium text-gray-700">

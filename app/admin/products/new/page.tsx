@@ -243,6 +243,13 @@ export default function NewProductPage() {
     getCategoryEnglishName(subSubCategories.find((cat) => cat.id === formData.subSubCategory))
   )
 
+  /** categories_path only gets populated with names at submit time, so resolve IDs -> names here too for the SEO export snapshot. */
+  const seoCategoryPath = [
+    getCategoryEnglishName(mainCategories.find((cat) => cat.id === formData.category)),
+    getCategoryEnglishName(subCategories.find((cat) => cat.id === formData.subCategory)),
+    getCategoryEnglishName(subSubCategories.find((cat) => cat.id === formData.subSubCategory)),
+  ].filter((name): name is string => !!name)
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -1643,6 +1650,7 @@ export default function NewProductPage() {
               values={formData.seo}
               onChange={handleSeoChange}
               productUrl={`/product/${formData.sku || 'sku'}/${formData.colorVariants[0]?.colorSlug || 'color'}`}
+              productDraft={{ ...formData, categories_path: seoCategoryPath }}
             />
             {errors.seoSlug && <p className="text-sm text-red-600">{errors.seoSlug}</p>}
 

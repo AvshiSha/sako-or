@@ -1166,13 +1166,13 @@ export default function ProductColorClient({
                           </div>
                         )}
                         {(product.materialCare?.careInstructions_en || product.materialCare?.careInstructions_he) && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                          <div className="pt-2 mt-1 border-t border-gray-200">
+                            <span className="text-sm text-gray-600 block mb-1">
                               {lng === 'he' ? 'הוראות טיפוח:' : 'Care Instructions:'}
                             </span>
-                            <span className="text-sm text-gray-900 text-right">
+                            <p className="text-sm text-gray-900 leading-relaxed">
                               {lng === 'he' ? product.materialCare?.careInstructions_he : product.materialCare?.careInstructions_en}
-                            </span>
+                            </p>
                           </div>
                         )}
                       </div>
@@ -1185,7 +1185,6 @@ export default function ProductColorClient({
                     const adjustableFeatureLabels = (shoeFit.adjustableFeatures ?? [])
                       .map((feature) => getOptionLabel(ADJUSTABLE_FEATURE_OPTIONS, feature, lng as 'en' | 'he'))
                       .filter((label): label is string => Boolean(label))
-                    const recommendation = lng === 'he' ? shoeFit.recommendation_he : shoeFit.recommendation_en
                     const notes = lng === 'he' ? shoeFit.notes_he : shoeFit.notes_en
 
                     const hasAnyFitData =
@@ -1193,17 +1192,13 @@ export default function ProductColorClient({
                       !isUndefinedFitValue(shoeFit.footWidthFit) ||
                       !isUndefinedFitValue(shoeFit.archFit) ||
                       adjustableFeatureLabels.length > 0 ||
-                      Boolean(recommendation) ||
                       Boolean(notes)
 
                     if (!hasAnyFitData) return null
 
                     return (
-                      <Accordion title={lng === 'he' ? 'התאמת מידה' : 'Fit & Sizing'}>
+                      <Accordion title={lng === 'he' ? 'התאמה ומידות' : 'Fit & Sizing'}>
                         <div className="space-y-3">
-                          {recommendation && (
-                            <p className="text-sm text-gray-900 font-medium">{recommendation}</p>
-                          )}
                           {!isUndefinedFitValue(shoeFit.sizeFit) && (
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">

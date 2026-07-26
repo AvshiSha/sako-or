@@ -17,6 +17,8 @@ interface PresetTextFieldProps {
   placeholderEn?: string
   placeholderHe?: string
   rows?: number
+  /** When true, only the preset dropdown is shown — no editable EN/HE textareas underneath. */
+  hideTextareas?: boolean
 }
 
 const fieldClass =
@@ -45,6 +47,7 @@ export default function PresetTextField({
   placeholderEn,
   placeholderHe,
   rows = 3,
+  hideTextareas = false,
 }: PresetTextFieldProps) {
   const [selectedPresetId, setSelectedPresetId] = useState<string>(() => {
     const match = findMatchingPreset(presets, valueEn, valueHe)
@@ -95,36 +98,38 @@ export default function PresetTextField({
         </select>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor={`${idPrefix}_en`} className="block text-sm font-medium text-gray-700">
-            {labelEn} (English)
-          </label>
-          <textarea
-            id={`${idPrefix}_en`}
-            dir="ltr"
-            rows={rows}
-            value={valueEn}
-            onChange={(e) => onChangeEn(e.target.value)}
-            className={fieldClass}
-            placeholder={placeholderEn}
-          />
+      {!hideTextareas && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor={`${idPrefix}_en`} className="block text-sm font-medium text-gray-700">
+              {labelEn} (English)
+            </label>
+            <textarea
+              id={`${idPrefix}_en`}
+              dir="ltr"
+              rows={rows}
+              value={valueEn}
+              onChange={(e) => onChangeEn(e.target.value)}
+              className={fieldClass}
+              placeholder={placeholderEn}
+            />
+          </div>
+          <div>
+            <label htmlFor={`${idPrefix}_he`} className="block text-sm font-medium text-gray-700">
+              {labelHe} (Hebrew)
+            </label>
+            <textarea
+              id={`${idPrefix}_he`}
+              dir="rtl"
+              rows={rows}
+              value={valueHe}
+              onChange={(e) => onChangeHe(e.target.value)}
+              className={fieldClass}
+              placeholder={placeholderHe}
+            />
+          </div>
         </div>
-        <div>
-          <label htmlFor={`${idPrefix}_he`} className="block text-sm font-medium text-gray-700">
-            {labelHe} (Hebrew)
-          </label>
-          <textarea
-            id={`${idPrefix}_he`}
-            dir="rtl"
-            rows={rows}
-            value={valueHe}
-            onChange={(e) => onChangeHe(e.target.value)}
-            className={fieldClass}
-            placeholder={placeholderHe}
-          />
-        </div>
-      </div>
+      )}
     </div>
   )
 }

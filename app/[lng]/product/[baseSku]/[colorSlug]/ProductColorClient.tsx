@@ -1232,7 +1232,7 @@ export default function ProductColorClient({
                           {adjustableFeatureLabels.length > 0 && (
                             <div className="flex justify-between">
                               <span className="text-sm text-gray-600">
-                                {lng === 'he' ? 'התאמות:' : 'Adjustable Features:'}
+                                {lng === 'he' ? 'סגירה באמצעות:' : 'Adjustable Features:'}
                               </span>
                               <span className="text-sm text-gray-900">{adjustableFeatureLabels.join(', ')}</span>
                             </div>

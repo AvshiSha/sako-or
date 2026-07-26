@@ -34,8 +34,6 @@ export interface SeoExportInput {
     closureType_en?: string
     heelType_en?: string
     toeShape_en?: string
-    pattern_en?: string
-    finish_en?: string
   }
   shoeFit?: unknown
   colorVariants?: SeoExportColorVariant[]
@@ -100,8 +98,6 @@ export function buildSeoExportPayload(formData: SeoExportInput): object {
       closureType: formData.materialCare?.closureType_en,
       heelType: formData.materialCare?.heelType_en,
       toeShape: formData.materialCare?.toeShape_en,
-      pattern: formData.materialCare?.pattern_en,
-      finish: formData.materialCare?.finish_en,
     },
     shoeFit: formData.shoeFit,
     /** Whatever SEO fields the admin has already typed in — the skill should treat these as a starting draft, not overwrite blindly. */

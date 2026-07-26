@@ -2,8 +2,6 @@ import { z } from 'zod'
 import {
   SIZE_FIT_OPTIONS,
   FOOT_WIDTH_FIT_OPTIONS,
-  TOE_BOX_FIT_OPTIONS,
-  INSTEP_FIT_OPTIONS,
   ARCH_FIT_OPTIONS,
   ADJUSTABLE_FEATURE_OPTIONS,
   PRODUCT_IMAGE_TYPE_OPTIONS,
@@ -17,8 +15,6 @@ function enumFromOptions<T extends string>(options: { value: T }[]) {
 
 export const sizeFitSchema = enumFromOptions(SIZE_FIT_OPTIONS)
 export const footWidthFitSchema = enumFromOptions(FOOT_WIDTH_FIT_OPTIONS)
-export const toeBoxFitSchema = enumFromOptions(TOE_BOX_FIT_OPTIONS)
-export const instepFitSchema = enumFromOptions(INSTEP_FIT_OPTIONS)
 export const archFitSchema = enumFromOptions(ARCH_FIT_OPTIONS)
 export const adjustableFeatureSchema = enumFromOptions(ADJUSTABLE_FEATURE_OPTIONS)
 export const productImageTypeSchema = enumFromOptions(PRODUCT_IMAGE_TYPE_OPTIONS)
@@ -31,8 +27,6 @@ export const keywordListSchema = z
 export const shoeFitSchema = z.object({
   sizeFit: sizeFitSchema.optional(),
   footWidthFit: footWidthFitSchema.optional(),
-  toeBoxFit: toeBoxFitSchema.optional(),
-  instepFit: instepFitSchema.optional(),
   archFit: archFitSchema.optional(),
   adjustableFeatures: z.array(adjustableFeatureSchema).default([]),
   recommendation_en: z.string().optional(),
@@ -66,10 +60,6 @@ export type SeoInput = z.infer<typeof seoSchema>
 export const specificationsAdditionsSchema = z.object({
   toeShape_en: z.string().optional(),
   toeShape_he: z.string().optional(),
-  pattern_en: z.string().optional(),
-  pattern_he: z.string().optional(),
-  finish_en: z.string().optional(),
-  finish_he: z.string().optional(),
   closureType_en: z.string().optional(),
   closureType_he: z.string().optional(),
   heelType_en: z.string().optional(),

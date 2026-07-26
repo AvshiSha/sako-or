@@ -28,14 +28,10 @@ export interface StructuredProductData {
     closureType?: string
     heelType?: string
     toeShape?: string
-    pattern?: string
-    finish?: string
   }
   shoeFit?: {
     sizeFit?: SizeFit
     footWidthFit?: FootWidthFit
-    toeBoxFit?: string
-    instepFit?: string
     archFit?: string
     adjustableFeatures?: string[]
     recommendationHe?: string
@@ -103,15 +99,11 @@ export function getStructuredProductData(product: Product): StructuredProductDat
       closureType: firstDefined(materialCare?.closureType_en),
       heelType: firstDefined(materialCare?.heelType_en),
       toeShape: firstDefined(materialCare?.toeShape_en),
-      pattern: firstDefined(materialCare?.pattern_en),
-      finish: firstDefined(materialCare?.finish_en),
     },
     shoeFit: shoeFit
       ? {
           sizeFit: shoeFit.sizeFit,
           footWidthFit: shoeFit.footWidthFit,
-          toeBoxFit: shoeFit.toeBoxFit,
-          instepFit: shoeFit.instepFit,
           archFit: shoeFit.archFit,
           adjustableFeatures: shoeFit.adjustableFeatures,
           recommendationHe: shoeFit.recommendation_he,

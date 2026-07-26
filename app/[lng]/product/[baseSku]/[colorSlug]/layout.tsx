@@ -8,8 +8,6 @@ import { getColorName } from '@/lib/colors'
 import {
   SIZE_FIT_OPTIONS,
   FOOT_WIDTH_FIT_OPTIONS,
-  TOE_BOX_FIT_OPTIONS,
-  INSTEP_FIT_OPTIONS,
   ARCH_FIT_OPTIONS,
   getOptionLabel,
   isUndefinedFitValue,
@@ -44,12 +42,6 @@ function buildStructuredDataFacts(
     }
     if (!isUndefinedFitValue(shoeFit.footWidthFit)) {
       pushSpec(locale === 'he' ? 'רוחב מומלץ' : 'Recommended foot width', getOptionLabel(FOOT_WIDTH_FIT_OPTIONS, shoeFit.footWidthFit, locale))
-    }
-    if (!isUndefinedFitValue(shoeFit.toeBoxFit)) {
-      pushSpec(locale === 'he' ? 'התאמת קופסת בהונות' : 'Toe-box fit', getOptionLabel(TOE_BOX_FIT_OPTIONS, shoeFit.toeBoxFit, locale))
-    }
-    if (!isUndefinedFitValue(shoeFit.instepFit)) {
-      pushSpec(locale === 'he' ? 'התאמת גב כף רגל' : 'Instep fit', getOptionLabel(INSTEP_FIT_OPTIONS, shoeFit.instepFit, locale))
     }
     if (!isUndefinedFitValue(shoeFit.archFit)) {
       pushSpec(locale === 'he' ? 'התאמת קשת כף רגל' : 'Arch fit', getOptionLabel(ARCH_FIT_OPTIONS, shoeFit.archFit, locale))

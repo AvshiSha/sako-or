@@ -1,6 +1,8 @@
 'use client'
 
 import type { CategoryFieldGroup } from '@/lib/product-enums'
+import { CARE_INSTRUCTIONS_PRESETS } from '@/lib/product-text-presets'
+import PresetTextField from './PresetTextField'
 
 export interface ProductSpecificationsValues {
   upperMaterial_en: string
@@ -21,10 +23,6 @@ export interface ProductSpecificationsValues {
   width_he: string
   toeShape_en?: string
   toeShape_he?: string
-  pattern_en?: string
-  pattern_he?: string
-  finish_en?: string
-  finish_he?: string
   closureType_en?: string
   closureType_he?: string
   heelType_en?: string
@@ -97,9 +95,9 @@ function TextField({
 
 /**
  * Product Specifications — reuses the existing material/lining/sole/dimensions/heel-height
- * text fields, and adds structured toe shape, pattern, finish, closure, heel type,
- * and care instructions (each as Hebrew/English pairs). Heel-specific and lining/sole
- * fields are only shown for the category groups where they're relevant.
+ * text fields, and adds structured toe shape, closure, heel type, and care instructions
+ * (each as Hebrew/English pairs). Heel-specific and lining/sole fields are only shown
+ * for the category groups where they're relevant.
  */
 export default function ProductSpecificationsSection({
   values,
@@ -162,27 +160,6 @@ export default function ProductSpecificationsSection({
             />
           </>
         )}
-
-        <TextField
-          id="pattern"
-          labelEn="Pattern"
-          labelHe="דוגמה"
-          valueEn={values.pattern_en ?? ''}
-          valueHe={values.pattern_he ?? ''}
-          placeholderEn="e.g., Solid, Striped, Animal print"
-          placeholderHe="לדוגמה: אחיד, פסים, הדפס אנימל"
-          onChange={onTextFieldChange}
-        />
-        <TextField
-          id="finish"
-          labelEn="Finish"
-          labelHe="גימור"
-          valueEn={values.finish_en ?? ''}
-          valueHe={values.finish_he ?? ''}
-          placeholderEn="e.g., Matte, Glossy, Metallic"
-          placeholderHe="לדוגמה: מט, מבריק, מטאלי"
-          onChange={onTextFieldChange}
-        />
 
         {showClosure && (
           <TextField
@@ -263,34 +240,18 @@ export default function ProductSpecificationsSection({
           onChange={onTextFieldChange}
         />
 
-        <div>
-          <label htmlFor="careInstructions_en" className="block text-sm font-medium text-gray-700">
-            Care Instructions (English)
-          </label>
-          <textarea
-            id="careInstructions_en"
-            dir="ltr"
-            rows={2}
-            value={values.careInstructions_en ?? ''}
-            onChange={(e) => onChange('careInstructions_en', e.target.value)}
-            className={fieldClass}
-            placeholder="e.g., Wipe clean with a soft, dry cloth"
-          />
-        </div>
-        <div>
-          <label htmlFor="careInstructions_he" className="block text-sm font-medium text-gray-700">
-            Care Instructions (Hebrew)
-          </label>
-          <textarea
-            id="careInstructions_he"
-            dir="rtl"
-            rows={2}
-            value={values.careInstructions_he ?? ''}
-            onChange={(e) => onChange('careInstructions_he', e.target.value)}
-            className={fieldClass}
-            placeholder="לדוגמה: לנקות במטלית רכה ויבשה"
-          />
-        </div>
+        <PresetTextField
+          idPrefix="careInstructions"
+          labelEn="Care Instructions"
+          labelHe="הוראות טיפוח"
+          valueEn={values.careInstructions_en ?? ''}
+          valueHe={values.careInstructions_he ?? ''}
+          onChangeEn={(value) => onChange('careInstructions_en', value)}
+          onChangeHe={(value) => onChange('careInstructions_he', value)}
+          presets={CARE_INSTRUCTIONS_PRESETS}
+          placeholderEn="e.g., Wipe clean with a soft, dry cloth"
+          placeholderHe="לדוגמה: לנקות במטלית רכה ויבשה"
+        />
       </div>
     </div>
   )

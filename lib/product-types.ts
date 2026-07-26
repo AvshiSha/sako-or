@@ -2,8 +2,6 @@ import type { ProductImageDetail } from '@/lib/product-images'
 import type {
   SizeFit,
   FootWidthFit,
-  ToeBoxFit,
-  InstepFit,
   ArchFit,
   AdjustableFeature,
 } from '@/lib/product-enums'
@@ -71,10 +69,6 @@ export interface Product {
     // New structured specification fields
     toeShape_en?: string
     toeShape_he?: string
-    pattern_en?: string
-    pattern_he?: string
-    finish_en?: string
-    finish_he?: string
     closureType_en?: string
     closureType_he?: string
     heelType_en?: string
@@ -86,8 +80,6 @@ export interface Product {
   shoeFit?: {
     sizeFit?: SizeFit
     footWidthFit?: FootWidthFit
-    toeBoxFit?: ToeBoxFit
-    instepFit?: InstepFit
     archFit?: ArchFit
     adjustableFeatures?: AdjustableFeature[]
     recommendation_en?: string

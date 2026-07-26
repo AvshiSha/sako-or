@@ -1,16 +1,12 @@
 import {
   SIZE_FIT_OPTIONS,
   FOOT_WIDTH_FIT_OPTIONS,
-  TOE_BOX_FIT_OPTIONS,
-  INSTEP_FIT_OPTIONS,
   ARCH_FIT_OPTIONS,
   ADJUSTABLE_FEATURE_OPTIONS,
   getOptionLabel,
   isUndefinedFitValue,
   type SizeFit,
   type FootWidthFit,
-  type ToeBoxFit,
-  type InstepFit,
   type ArchFit,
   type AdjustableFeature,
 } from '@/lib/product-enums'
@@ -18,8 +14,6 @@ import {
 export interface ProductFitDisplayData {
   sizeFit?: SizeFit
   footWidthFit?: FootWidthFit
-  toeBoxFit?: ToeBoxFit
-  instepFit?: InstepFit
   archFit?: ArchFit
   adjustableFeatures?: AdjustableFeature[]
   recommendation_en?: string
@@ -38,8 +32,6 @@ const LABELS = {
     heading: 'Fit & Sizing',
     sizeFit: 'Size fit',
     recommendedWidth: 'Recommended width',
-    toeBoxFit: 'Toe-box fit',
-    instepFit: 'Instep fit',
     archFit: 'Arch fit',
     adjustableFeatures: 'Adjustable features',
     recommendation: 'Recommendation',
@@ -49,8 +41,6 @@ const LABELS = {
     heading: 'התאמה ומידות',
     sizeFit: 'התאמת מידה',
     recommendedWidth: 'רוחב מומלץ',
-    toeBoxFit: 'מבנה קדמי',
-    instepFit: 'התאמת גב כף הרגל',
     archFit: 'התאמת קשת כף הרגל',
     adjustableFeatures: 'אפשרויות התאמה',
     recommendation: 'המלצה',
@@ -80,16 +70,6 @@ export default function ProductFitDisplay({ fit, locale }: ProductFitDisplayProp
   const footWidthLabel = getOptionLabel(FOOT_WIDTH_FIT_OPTIONS, fit.footWidthFit, locale)
   if (footWidthLabel && !isUndefinedFitValue(fit.footWidthFit)) {
     rows.push({ label: labels.recommendedWidth, value: footWidthLabel })
-  }
-
-  const toeBoxLabel = getOptionLabel(TOE_BOX_FIT_OPTIONS, fit.toeBoxFit, locale)
-  if (toeBoxLabel && !isUndefinedFitValue(fit.toeBoxFit)) {
-    rows.push({ label: labels.toeBoxFit, value: toeBoxLabel })
-  }
-
-  const instepLabel = getOptionLabel(INSTEP_FIT_OPTIONS, fit.instepFit, locale)
-  if (instepLabel && !isUndefinedFitValue(fit.instepFit)) {
-    rows.push({ label: labels.instepFit, value: instepLabel })
   }
 
   const archLabel = getOptionLabel(ARCH_FIT_OPTIONS, fit.archFit, locale)

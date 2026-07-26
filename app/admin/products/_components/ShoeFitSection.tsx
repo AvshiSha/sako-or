@@ -100,6 +100,7 @@ export default function ShoeFitSection({ values, onChange }: ShoeFitSectionProps
           placeholderEn="This style fits true to size. We recommend selecting your usual size."
           placeholderHe="הדגם מידה במידה. מומלץ לבחור במידה הרגילה שלך."
           rows={2}
+          hideTextareas
         />
 
         <div>

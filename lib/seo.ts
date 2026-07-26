@@ -178,6 +178,12 @@ export interface ProductStructuredData {
     url: string
   }
   model?: string
+  /** Primary upper material, e.g. "Soft Nape leather". */
+  material?: string
+  /** Color name, e.g. "Gray". */
+  color?: string
+  /** Extra spec/fit facts (closure type, sole, size fit, foot width, etc.) as schema.org PropertyValue entries. */
+  additionalProperty?: Array<{ name: string; value: string }>
 }
 
 export function buildProductStructuredData(
@@ -196,6 +202,15 @@ export function buildProductStructuredData(
     },
     sku: product.sku,
     ...(product.model && { model: product.model }),
+    ...(product.material && { material: product.material }),
+    ...(product.color && { color: product.color }),
+    ...(product.additionalProperty && product.additionalProperty.length > 0 && {
+      additionalProperty: product.additionalProperty.map((prop) => ({
+        '@type': 'PropertyValue',
+        name: prop.name,
+        value: prop.value,
+      })),
+    }),
     offers: {
       '@type': 'Offer',
       price: product.offers.price,

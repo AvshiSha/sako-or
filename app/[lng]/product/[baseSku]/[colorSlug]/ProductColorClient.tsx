@@ -26,6 +26,16 @@ import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
 import { normalizeProductImages, getProductImageAlt, type ProductImageDetail } from '@/lib/product-images'
+import {
+  SIZE_FIT_OPTIONS,
+  FOOT_WIDTH_FIT_OPTIONS,
+  TOE_BOX_FIT_OPTIONS,
+  INSTEP_FIT_OPTIONS,
+  ARCH_FIT_OPTIONS,
+  ADJUSTABLE_FEATURE_OPTIONS,
+  getOptionLabel,
+  isUndefinedFitValue,
+} from '@/lib/product-enums'
 
 const SizeChart = dynamic(() => import('@/app/components/SizeChart'), { ssr: false })
 
@@ -1127,9 +1137,162 @@ export default function ProductColorClient({
                             </span>
                           </div>
                         )}
+                        {(product.materialCare?.closureType_en || product.materialCare?.closureType_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'סגירה:' : 'Closure:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialCare?.closureType_he : product.materialCare?.closureType_en}
+                            </span>
+                          </div>
+                        )}
+                        {(product.materialCare?.heelType_en || product.materialCare?.heelType_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'סוג עקב:' : 'Heel Type:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialCare?.heelType_he : product.materialCare?.heelType_en}
+                            </span>
+                          </div>
+                        )}
+                        {(product.materialCare?.toeShape_en || product.materialCare?.toeShape_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'צורת בהונות:' : 'Toe Shape:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialCare?.toeShape_he : product.materialCare?.toeShape_en}
+                            </span>
+                          </div>
+                        )}
+                        {(product.materialCare?.pattern_en || product.materialCare?.pattern_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'הדפס:' : 'Pattern:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialCare?.pattern_he : product.materialCare?.pattern_en}
+                            </span>
+                          </div>
+                        )}
+                        {(product.materialCare?.finish_en || product.materialCare?.finish_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'גימור:' : 'Finish:'}
+                            </span>
+                            <span className="text-sm text-gray-900">
+                              {lng === 'he' ? product.materialCare?.finish_he : product.materialCare?.finish_en}
+                            </span>
+                          </div>
+                        )}
+                        {(product.materialCare?.careInstructions_en || product.materialCare?.careInstructions_he) && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'הוראות טיפוח:' : 'Care Instructions:'}
+                            </span>
+                            <span className="text-sm text-gray-900 text-right">
+                              {lng === 'he' ? product.materialCare?.careInstructions_he : product.materialCare?.careInstructions_en}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </Accordion>
                   )}
+
+                  {/* Shoe Fit and Sizing Section */}
+                  {product.shoeFit && (() => {
+                    const { shoeFit } = product
+                    const adjustableFeatureLabels = (shoeFit.adjustableFeatures ?? [])
+                      .map((feature) => getOptionLabel(ADJUSTABLE_FEATURE_OPTIONS, feature, lng as 'en' | 'he'))
+                      .filter((label): label is string => Boolean(label))
+                    const recommendation = lng === 'he' ? shoeFit.recommendation_he : shoeFit.recommendation_en
+                    const notes = lng === 'he' ? shoeFit.notes_he : shoeFit.notes_en
+
+                    const hasAnyFitData =
+                      !isUndefinedFitValue(shoeFit.sizeFit) ||
+                      !isUndefinedFitValue(shoeFit.footWidthFit) ||
+                      !isUndefinedFitValue(shoeFit.toeBoxFit) ||
+                      !isUndefinedFitValue(shoeFit.instepFit) ||
+                      !isUndefinedFitValue(shoeFit.archFit) ||
+                      adjustableFeatureLabels.length > 0 ||
+                      Boolean(recommendation) ||
+                      Boolean(notes)
+
+                    if (!hasAnyFitData) return null
+
+                    return (
+                      <Accordion title={lng === 'he' ? 'התאמת מידה' : 'Fit & Sizing'}>
+                        <div className="space-y-3">
+                          {recommendation && (
+                            <p className="text-sm text-gray-900 font-medium">{recommendation}</p>
+                          )}
+                          {!isUndefinedFitValue(shoeFit.sizeFit) && (
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">
+                                {lng === 'he' ? 'התאמת מידה:' : 'Size Fit:'}
+                              </span>
+                              <span className="text-sm text-gray-900">
+                                {getOptionLabel(SIZE_FIT_OPTIONS, shoeFit.sizeFit, lng as 'en' | 'he')}
+                              </span>
+                            </div>
+                          )}
+                          {!isUndefinedFitValue(shoeFit.footWidthFit) && (
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">
+                                {lng === 'he' ? 'רוחב מומלץ:' : 'Recommended Foot Width:'}
+                              </span>
+                              <span className="text-sm text-gray-900">
+                                {getOptionLabel(FOOT_WIDTH_FIT_OPTIONS, shoeFit.footWidthFit, lng as 'en' | 'he')}
+                              </span>
+                            </div>
+                          )}
+                          {!isUndefinedFitValue(shoeFit.toeBoxFit) && (
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">
+                                {lng === 'he' ? 'קופסת בהונות:' : 'Toe-Box Fit:'}
+                              </span>
+                              <span className="text-sm text-gray-900">
+                                {getOptionLabel(TOE_BOX_FIT_OPTIONS, shoeFit.toeBoxFit, lng as 'en' | 'he')}
+                              </span>
+                            </div>
+                          )}
+                          {!isUndefinedFitValue(shoeFit.instepFit) && (
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">
+                                {lng === 'he' ? 'גב כף רגל:' : 'Instep Fit:'}
+                              </span>
+                              <span className="text-sm text-gray-900">
+                                {getOptionLabel(INSTEP_FIT_OPTIONS, shoeFit.instepFit, lng as 'en' | 'he')}
+                              </span>
+                            </div>
+                          )}
+                          {!isUndefinedFitValue(shoeFit.archFit) && (
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">
+                                {lng === 'he' ? 'קשת כף רגל:' : 'Arch Fit:'}
+                              </span>
+                              <span className="text-sm text-gray-900">
+                                {getOptionLabel(ARCH_FIT_OPTIONS, shoeFit.archFit, lng as 'en' | 'he')}
+                              </span>
+                            </div>
+                          )}
+                          {adjustableFeatureLabels.length > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-sm text-gray-600">
+                                {lng === 'he' ? 'התאמות:' : 'Adjustable Features:'}
+                              </span>
+                              <span className="text-sm text-gray-900">{adjustableFeatureLabels.join(', ')}</span>
+                            </div>
+                          )}
+                          {notes && (
+                            <p className="text-sm text-gray-600 leading-relaxed">{notes}</p>
+                          )}
+                        </div>
+                      </Accordion>
+                    )
+                  })()}
 
                   {/* Shipping & Returns Section */}
                   <Accordion title={lng === 'he' ? 'משלוחים והחזרות' : 'Shipping & Returns'}>

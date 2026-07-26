@@ -4,6 +4,60 @@ import { buildMetadata, buildProductStructuredData, buildAbsoluteUrl } from '@/l
 import type { Metadata } from 'next'
 import { languages } from '@/i18n/settings'
 import { getImageUrl } from '@/lib/image-urls'
+import { getColorName } from '@/lib/colors'
+import {
+  SIZE_FIT_OPTIONS,
+  FOOT_WIDTH_FIT_OPTIONS,
+  TOE_BOX_FIT_OPTIONS,
+  INSTEP_FIT_OPTIONS,
+  ARCH_FIT_OPTIONS,
+  getOptionLabel,
+  isUndefinedFitValue,
+} from '@/lib/product-enums'
+import type { Product } from '@/lib/product-types'
+
+/** Structured-data facts (material/color/spec+fit PropertyValue list) shared between the two product fetches below. */
+function buildStructuredDataFacts(
+  product: Product,
+  colorSlug: string,
+  locale: 'en' | 'he'
+): { material?: string; color?: string; additionalProperty: Array<{ name: string; value: string }> } {
+  const materialCare = product.materialCare
+  const material = locale === 'he' ? materialCare?.upperMaterial_he : materialCare?.upperMaterial_en
+  const color = getColorName(colorSlug, locale)
+
+  const additionalProperty: Array<{ name: string; value: string }> = []
+  const pushSpec = (name: string, value: string | undefined) => {
+    if (value) additionalProperty.push({ name, value })
+  }
+
+  pushSpec(locale === 'he' ? 'בטנה' : 'Lining', locale === 'he' ? materialCare?.lining_he : materialCare?.lining_en)
+  pushSpec(locale === 'he' ? 'סוליה' : 'Sole', locale === 'he' ? materialCare?.sole_he : materialCare?.sole_en)
+  pushSpec(locale === 'he' ? 'סגירה' : 'Closure', locale === 'he' ? materialCare?.closureType_he : materialCare?.closureType_en)
+  pushSpec(locale === 'he' ? 'סוג עקב' : 'Heel type', locale === 'he' ? materialCare?.heelType_he : materialCare?.heelType_en)
+  pushSpec(locale === 'he' ? 'גובה עקב' : 'Heel height', locale === 'he' ? materialCare?.heelHeight_he : materialCare?.heelHeight_en)
+
+  const shoeFit = product.shoeFit
+  if (shoeFit) {
+    if (!isUndefinedFitValue(shoeFit.sizeFit)) {
+      pushSpec(locale === 'he' ? 'התאמת מידה' : 'Size fit', getOptionLabel(SIZE_FIT_OPTIONS, shoeFit.sizeFit, locale))
+    }
+    if (!isUndefinedFitValue(shoeFit.footWidthFit)) {
+      pushSpec(locale === 'he' ? 'רוחב מומלץ' : 'Recommended foot width', getOptionLabel(FOOT_WIDTH_FIT_OPTIONS, shoeFit.footWidthFit, locale))
+    }
+    if (!isUndefinedFitValue(shoeFit.toeBoxFit)) {
+      pushSpec(locale === 'he' ? 'התאמת קופסת בהונות' : 'Toe-box fit', getOptionLabel(TOE_BOX_FIT_OPTIONS, shoeFit.toeBoxFit, locale))
+    }
+    if (!isUndefinedFitValue(shoeFit.instepFit)) {
+      pushSpec(locale === 'he' ? 'התאמת גב כף רגל' : 'Instep fit', getOptionLabel(INSTEP_FIT_OPTIONS, shoeFit.instepFit, locale))
+    }
+    if (!isUndefinedFitValue(shoeFit.archFit)) {
+      pushSpec(locale === 'he' ? 'התאמת קשת כף רגל' : 'Arch fit', getOptionLabel(ARCH_FIT_OPTIONS, shoeFit.archFit, locale))
+    }
+  }
+
+  return { material: material || undefined, color: color || undefined, additionalProperty }
+}
 
 function reorderImagesByPrimary(images: string[] | undefined, primaryImage: string | undefined): string[] {
   const list = Array.isArray(images) ? images : []
@@ -171,12 +225,21 @@ export default async function ProductColorLayout({ children, params }: ProductCo
         // Build model number (SKU + color)
         const model = `${baseSku}-${colorSlug.toUpperCase()}`
 
+        const { material, color, additionalProperty } = buildStructuredDataFacts(
+          product,
+          colorSlug,
+          lng as 'en' | 'he'
+        )
+
         structuredData = buildProductStructuredData({
           name: productName,
           description: productDesc,
           image: images.length > 0 ? images : [getImageUrl('/images/placeholder.svg')],
           brand: product.brand || 'SAKO-OR',
           sku: `${baseSku}-${colorSlug}`,
+          material,
+          color,
+          additionalProperty,
           offers: {
             price: currentPrice,
             currency,

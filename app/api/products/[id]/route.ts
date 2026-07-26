@@ -32,6 +32,13 @@ const productUpdateSchema = z.object({
     metaTitle: z.string().optional(),
     metaDescription: z.string().optional(),
     images: z.array(z.string()),
+    imageDetails: z.array(z.object({
+      url: z.string(),
+      altEn: z.string().optional(),
+      altHe: z.string().optional(),
+      type: z.enum(['main', 'front', 'side', 'back', 'top', 'detail', 'on_model', 'lifestyle', 'sole', 'interior']).optional(),
+      order: z.number().optional()
+    })).optional(),
     primaryImage: z.string().optional(),
     videos: z.array(z.string()).optional()
   })),

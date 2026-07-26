@@ -163,6 +163,40 @@ model Product {
   upperMaterial_en     String?
   upperMaterial_he     String?
   colorVariants        Json?                    @default("{}")
+  // Basic information additions
+  shortTitle_en        String?
+  shortTitle_he        String?
+  shortDescription_en  String?
+  shortDescription_he  String?
+  // Structured specification additions (existing material/lining/sole/dimension/heelHeight text fields above are reused as-is)
+  toeShape_en          String?
+  toeShape_he          String?
+  pattern_en           String?
+  pattern_he           String?
+  finish_en            String?
+  finish_he            String?
+  closureType_en       String?
+  closureType_he       String?
+  heelType_en          String?
+  heelType_he          String?
+  careInstructions_en  String?
+  careInstructions_he  String?
+  // Shoe fit & sizing (only meaningful for footwear categories; see lib/product-enums.ts)
+  sizeFit              String?
+  footWidthFit         String?
+  toeBoxFit            String?
+  instepFit            String?
+  archFit              String?
+  adjustableFeatures   String[]                 @default([])
+  fitRecommendation_en String?
+  fitRecommendation_he String?
+  fitNotes_en          String?
+  fitNotes_he          String?
+  // SEO focus/secondary keywords (seo_title_en/he, seo_description_en/he, seo_slug already existed above)
+  seoFocusKeyword_en   String?
+  seoFocusKeyword_he   String?
+  seoSecondaryKeywords_en String[]              @default([])
+  seoSecondaryKeywords_he String[]              @default([])
   category_he          String?
   subCategory_he       String?
   subSubCategory_he    String?

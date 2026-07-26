@@ -4,6 +4,7 @@ import { productService, categoryService } from '@/lib/firebase'
 import { buildProductSearchDerivedFields } from '@/lib/build-product-search-keywords'
 import { deleteMeilisearchProduct, upsertMeilisearchProduct } from '@/lib/meilisearch'
 import { prisma } from '@/lib/prisma'
+import { productExtensionsSchema } from '@/lib/schemas/product-schema'
 
 export async function POST(request: NextRequest) {
   try {
@@ -284,11 +285,54 @@ export async function POST(request: NextRequest) {
           continue
         }
 
+        // Validate the new optional field groups before they reach Postgres. These fields
+        // are all optional, so a legacy product with none of them always passes; only
+        // genuinely invalid values (bad enum, negative heel height, etc.) are dropped here —
+        // the rest of the product still syncs normally.
+        const materialCareSource = (firebaseProduct as any).materialCare || {}
+        const shoeFitSource = (firebaseProduct as any).shoeFit
+        const seoSource = firebaseProduct.seo || {}
+        const extensionsResult = productExtensionsSchema.safeParse({
+          shortTitle_en: (firebaseProduct as any).shortTitle_en,
+          shortTitle_he: (firebaseProduct as any).shortTitle_he,
+          shortDescription_en: (firebaseProduct as any).shortDescription_en,
+          shortDescription_he: (firebaseProduct as any).shortDescription_he,
+          toeShape_en: materialCareSource.toeShape_en,
+          toeShape_he: materialCareSource.toeShape_he,
+          pattern_en: materialCareSource.pattern_en,
+          pattern_he: materialCareSource.pattern_he,
+          finish_en: materialCareSource.finish_en,
+          finish_he: materialCareSource.finish_he,
+          closureType_en: materialCareSource.closureType_en,
+          closureType_he: materialCareSource.closureType_he,
+          heelType_en: materialCareSource.heelType_en,
+          heelType_he: materialCareSource.heelType_he,
+          careInstructions_en: materialCareSource.careInstructions_en,
+          careInstructions_he: materialCareSource.careInstructions_he,
+          shoeFit: shoeFitSource,
+          seo: {
+            slug: seoSource.slug,
+            he: { focusKeyword: seoSource.focusKeyword_he, secondaryKeywords: seoSource.secondaryKeywords_he },
+            en: { focusKeyword: seoSource.focusKeyword_en, secondaryKeywords: seoSource.secondaryKeywords_en },
+          },
+        })
+        if (!extensionsResult.success) {
+          console.warn(
+            `Product "${productTitleEn}" (${productSku}) has invalid structured field data — syncing without it:`,
+            extensionsResult.error.issues
+          )
+        }
+        const extensions = extensionsResult.success ? extensionsResult.data : null
+
         const productData = {
           title_en: productTitleEn,
           title_he: productTitleHe,
+          shortTitle_en: extensions?.shortTitle_en || null,
+          shortTitle_he: extensions?.shortTitle_he || null,
           description_en: productDescEn,
           description_he: productDescHe,
+          shortDescription_en: extensions?.shortDescription_en || null,
+          shortDescription_he: extensions?.shortDescription_he || null,
           sku: productSku,
           brand: firebaseProduct.brand || '',
           price: firebaseProduct.price || 0,
@@ -316,7 +360,11 @@ export async function POST(request: NextRequest) {
           seo_title_he: firebaseProduct.seo?.title_he || null,
           seo_description_en: firebaseProduct.seo?.description_en || null,
           seo_description_he: firebaseProduct.seo?.description_he || null,
-          seo_slug: firebaseProduct.seo?.slug || null,
+          seo_slug: extensions?.seo?.slug || firebaseProduct.seo?.slug || null,
+          seoFocusKeyword_en: extensions?.seo?.en?.focusKeyword || null,
+          seoFocusKeyword_he: extensions?.seo?.he?.focusKeyword || null,
+          seoSecondaryKeywords_en: extensions?.seo?.en?.secondaryKeywords || [],
+          seoSecondaryKeywords_he: extensions?.seo?.he?.secondaryKeywords || [],
           searchKeywords,
           // Material & Care fields (from materialCare object)
           upperMaterial_en: (firebaseProduct as any).materialCare?.upperMaterial_en || null,
@@ -331,6 +379,30 @@ export async function POST(request: NextRequest) {
           heelHeight_he: (firebaseProduct as any).materialCare?.heelHeight_he || null,
           shippingReturns_en: (firebaseProduct as any).materialCare?.shippingReturns_en || null,
           shippingReturns_he: (firebaseProduct as any).materialCare?.shippingReturns_he || null,
+          // Structured specification additions
+          toeShape_en: extensions?.toeShape_en || null,
+          toeShape_he: extensions?.toeShape_he || null,
+          pattern_en: extensions?.pattern_en || null,
+          pattern_he: extensions?.pattern_he || null,
+          finish_en: extensions?.finish_en || null,
+          finish_he: extensions?.finish_he || null,
+          closureType_en: extensions?.closureType_en || null,
+          closureType_he: extensions?.closureType_he || null,
+          heelType_en: extensions?.heelType_en || null,
+          heelType_he: extensions?.heelType_he || null,
+          careInstructions_en: extensions?.careInstructions_en || null,
+          careInstructions_he: extensions?.careInstructions_he || null,
+          // Shoe fit & sizing
+          sizeFit: extensions?.shoeFit?.sizeFit || null,
+          footWidthFit: extensions?.shoeFit?.footWidthFit || null,
+          toeBoxFit: extensions?.shoeFit?.toeBoxFit || null,
+          instepFit: extensions?.shoeFit?.instepFit || null,
+          archFit: extensions?.shoeFit?.archFit || null,
+          adjustableFeatures: extensions?.shoeFit?.adjustableFeatures || [],
+          fitRecommendation_en: extensions?.shoeFit?.recommendation_en || null,
+          fitRecommendation_he: extensions?.shoeFit?.recommendation_he || null,
+          fitNotes_en: extensions?.shoeFit?.notes_en || null,
+          fitNotes_he: extensions?.shoeFit?.notes_he || null,
           colorVariants,
           tags: (firebaseProduct as any).tags || []
         }

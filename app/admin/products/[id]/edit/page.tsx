@@ -22,6 +22,15 @@ import {
   ChevronDownIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
+import { getCategoryFieldGroup, type ProductImageType } from '@/lib/product-enums'
+import { productExtensionsSchema, zodErrorsToFieldMap } from '@/lib/schemas/product-schema'
+import { normalizeProductImages } from '@/lib/product-images'
+import ProductBasicInformationSection from '../../_components/ProductBasicInformationSection'
+import ProductClassificationSection from '../../_components/ProductClassificationSection'
+import ProductSpecificationsSection from '../../_components/ProductSpecificationsSection'
+import ShoeFitSection, { type ShoeFitValues } from '../../_components/ShoeFitSection'
+import ProductSeoSection from '../../_components/ProductSeoSection'
+import ProductImageSeoFields from '../../_components/ProductImageSeoFields'
 
 interface ColorVariantData {
   id: string;
@@ -46,8 +55,12 @@ interface ProductFormData {
   sku: string;
   title_en: string;
   title_he: string;
+  shortTitle_en: string;
+  shortTitle_he: string;
   description_en: string;
   description_he: string;
+  shortDescription_en: string;
+  shortDescription_he: string;
   category: string; // Level 1 category ID
   subCategory: string; // Level 2 category ID
   subSubCategory: string; // Level 3 category ID
@@ -62,8 +75,8 @@ interface ProductFormData {
   isDeleted: boolean;
   newProduct: boolean;
   featuredProduct: boolean;
-  
-  // Material & Care fields
+
+  // Material & Care fields (Product Specifications)
   materialCare: {
     upperMaterial_en: string;
     upperMaterial_he: string;
@@ -81,8 +94,23 @@ interface ProductFormData {
     depth_he: string;
     width_en: string;
     width_he: string;
+    toeShape_en?: string;
+    toeShape_he?: string;
+    pattern_en?: string;
+    pattern_he?: string;
+    finish_en?: string;
+    finish_he?: string;
+    closureType_en?: string;
+    closureType_he?: string;
+    heelType_en?: string;
+    heelType_he?: string;
+    careInstructions_en?: string;
+    careInstructions_he?: string;
   };
-  
+
+  // Shoe Fit and Sizing (only meaningful for footwear categories)
+  shoeFit: ShoeFitValues;
+
   // SEO fields
   seo: {
     title_en: string;
@@ -90,8 +118,12 @@ interface ProductFormData {
     description_en: string;
     description_he: string;
     slug: string;
+    focusKeyword_en?: string;
+    focusKeyword_he?: string;
+    secondaryKeywords_en: string[];
+    secondaryKeywords_he: string[];
   };
-  
+
   searchKeywords: string[];
   tags: string[];
 }
@@ -108,6 +140,8 @@ interface FormErrors {
   subCategory?: string;
   subSubCategory?: string;
   colorVariants?: string;
+  seoSlug?: string;
+  shoeFit?: string;
 }
 
 interface ImageFile {
@@ -118,6 +152,9 @@ interface ImageFile {
   url?: string;
   isPrimary?: boolean;
   order?: number;
+  altEn?: string;
+  altHe?: string;
+  imageType?: ProductImageType;
 }
 
 interface VideoFile {
@@ -150,6 +187,12 @@ function parseCommaSeparatedTags(raw: string): string[] {
     .filter((tag) => tag.length > 0)
 }
 
+/** Category.name can be either a plain string or a { en, he } object depending on data source. */
+function getCategoryEnglishName(category: Category | undefined): string | undefined {
+  if (!category) return undefined
+  return typeof category.name === 'object' ? category.name.en : category.name
+}
+
 function EditProductPage() {
   const router = useRouter()
   const params = useParams()
@@ -175,8 +218,12 @@ function EditProductPage() {
     sku: '',
     title_en: '',
     title_he: '',
+    shortTitle_en: '',
+    shortTitle_he: '',
     description_en: '',
     description_he: '',
+    shortDescription_en: '',
+    shortDescription_he: '',
     category: '',
     subCategory: '',
     subSubCategory: '',
@@ -191,7 +238,7 @@ function EditProductPage() {
     isDeleted: false,
     newProduct: false,
     featuredProduct: false,
-    
+
     // Material & Care fields
     materialCare: {
       upperMaterial_en: '',
@@ -211,19 +258,32 @@ function EditProductPage() {
       width_en: '',
       width_he: ''
     },
-    
+
+    // Shoe Fit and Sizing
+    shoeFit: {
+      adjustableFeatures: [],
+    },
+
     // SEO fields
     seo: {
       title_en: '',
       title_he: '',
       description_en: '',
       description_he: '',
-      slug: ''
+      slug: '',
+      secondaryKeywords_en: [],
+      secondaryKeywords_he: [],
     },
-    
+
     searchKeywords: [],
     tags: []
   })
+
+  const categoryFieldGroup = getCategoryFieldGroup(
+    getCategoryEnglishName(mainCategories.find((cat) => cat.id === formData.category)),
+    getCategoryEnglishName(subCategories.find((cat) => cat.id === formData.subCategory)),
+    getCategoryEnglishName(subSubCategories.find((cat) => cat.id === formData.subSubCategory))
+  )
 
   useEffect(() => {
     const fetchData = async () => {
@@ -252,14 +312,17 @@ function EditProductPage() {
             salePrice: variant.salePrice,
             stock: Object.values(variant.stockBySize || {}).reduce((sum, stock) => sum + stock, 0),
             isActive: variant.isActive !== false, // Load the isActive flag, default to true if not specified
-            images: (variant.images || []).map((img, imgIndex) => ({
+            images: normalizeProductImages(variant.images, (variant as { imageDetails?: unknown }).imageDetails).map((img) => ({
               file: new File([], 'existing-image'),
-              preview: img,
+              preview: img.url,
               uploading: false,
               uploaded: true,
-              url: img,
-              isPrimary: variant.primaryImage === img,
-              order: imgIndex
+              url: img.url,
+              isPrimary: variant.primaryImage === img.url,
+              order: img.order,
+              altEn: img.altEn,
+              altHe: img.altHe,
+              imageType: img.type,
             })),
             video: variant.videos && variant.videos.length > 0 ? {
               file: new File([], 'existing-video'),
@@ -281,8 +344,12 @@ function EditProductPage() {
             sku: product.sku || product.baseSku || '',
             title_en: product.title_en || product.name?.en || '',
             title_he: product.title_he || product.name?.he || '',
+            shortTitle_en: product.shortTitle_en || '',
+            shortTitle_he: product.shortTitle_he || '',
             description_en: product.description_en || product.description?.en || '',
             description_he: product.description_he || product.description?.he || '',
+            shortDescription_en: product.shortDescription_en || '',
+            shortDescription_he: product.shortDescription_he || '',
             category: product.categoryId || product.category || '',
             subCategory: product.subCategory || '',
             subSubCategory: product.subSubCategory || '',
@@ -315,18 +382,48 @@ function EditProductPage() {
               depth_en: loadedMaterialCare.depth_en || '',
               depth_he: loadedMaterialCare.depth_he || '',
               width_en: loadedMaterialCare.width_en || '',
-              width_he: loadedMaterialCare.width_he || ''
+              width_he: loadedMaterialCare.width_he || '',
+              toeShape_en: loadedMaterialCare.toeShape_en || '',
+              toeShape_he: loadedMaterialCare.toeShape_he || '',
+              pattern_en: loadedMaterialCare.pattern_en || '',
+              pattern_he: loadedMaterialCare.pattern_he || '',
+              finish_en: loadedMaterialCare.finish_en || '',
+              finish_he: loadedMaterialCare.finish_he || '',
+              closureType_en: loadedMaterialCare.closureType_en || '',
+              closureType_he: loadedMaterialCare.closureType_he || '',
+              heelType_en: loadedMaterialCare.heelType_en || '',
+              heelType_he: loadedMaterialCare.heelType_he || '',
+              careInstructions_en: loadedMaterialCare.careInstructions_en || '',
+              careInstructions_he: loadedMaterialCare.careInstructions_he || ''
             },
-            
+
+            // Shoe Fit and Sizing (safe defaults for existing products without this data)
+            shoeFit: {
+              sizeFit: product.shoeFit?.sizeFit,
+              footWidthFit: product.shoeFit?.footWidthFit,
+              toeBoxFit: product.shoeFit?.toeBoxFit,
+              instepFit: product.shoeFit?.instepFit,
+              archFit: product.shoeFit?.archFit,
+              adjustableFeatures: product.shoeFit?.adjustableFeatures || [],
+              recommendation_en: product.shoeFit?.recommendation_en || '',
+              recommendation_he: product.shoeFit?.recommendation_he || '',
+              notes_en: product.shoeFit?.notes_en || '',
+              notes_he: product.shoeFit?.notes_he || '',
+            },
+
             // SEO fields
             seo: {
               title_en: product.seo?.title_en || '',
               title_he: product.seo?.title_he || '',
               description_en: product.seo?.description_en || '',
               description_he: product.seo?.description_he || '',
-              slug: product.seo?.slug || ''
+              slug: product.seo?.slug || '',
+              focusKeyword_en: product.seo?.focusKeyword_en || '',
+              focusKeyword_he: product.seo?.focusKeyword_he || '',
+              secondaryKeywords_en: [...(product.seo?.secondaryKeywords_en || [])],
+              secondaryKeywords_he: [...(product.seo?.secondaryKeywords_he || [])],
             },
-            
+
             searchKeywords: [...(product.searchKeywords || [])],
             tags: [...loadedTags]
           }
@@ -457,6 +554,30 @@ function EditProductPage() {
     }))
   }
 
+  const handleBasicInfoFieldChange = (field: keyof ProductFormData, value: string) => {
+    handleInputChange(field, value)
+  }
+
+  const handleSpecificationChange = (field: string, value: string | number | undefined) => {
+    handleInputChange('materialCare', { ...formData.materialCare, [field]: value })
+  }
+
+  const handleShoeFitChange = <K extends keyof ShoeFitValues>(field: K, value: ShoeFitValues[K]) => {
+    handleInputChange('shoeFit', { ...formData.shoeFit, [field]: value })
+  }
+
+  const handleSeoChange = <K extends keyof ProductFormData['seo']>(field: K, value: ProductFormData['seo'][K]) => {
+    handleInputChange('seo', { ...formData.seo, [field]: value })
+  }
+
+  const updateVariantImageMeta = (variantId: string, index: number, updates: { altEn?: string; altHe?: string; type?: ProductImageType }) => {
+    const variant = formData.colorVariants.find(v => v.id === variantId)
+    if (!variant) return
+    const updatedImages = variant.images.map((img, i) =>
+      i === index ? { ...img, altEn: updates.altEn, altHe: updates.altHe, imageType: updates.type } : img
+    )
+    updateColorVariant(variantId, { images: updatedImages })
+  }
 
   // Generate color slug from color name
   const generateColorSlug = (colorName: string): string => {
@@ -994,8 +1115,35 @@ function EditProductPage() {
       newErrors.colorVariants = 'At least one color variant is required'
     }
 
+    // Shoe fit / SEO / specification additions are all optional, but when a value is
+    // present it must be valid (enum values, URL-safe slug, etc).
+    const extensionsResult = productExtensionsSchema.safeParse({
+      toeShape_en: formData.materialCare.toeShape_en,
+      toeShape_he: formData.materialCare.toeShape_he,
+      pattern_en: formData.materialCare.pattern_en,
+      pattern_he: formData.materialCare.pattern_he,
+      finish_en: formData.materialCare.finish_en,
+      finish_he: formData.materialCare.finish_he,
+      closureType_en: formData.materialCare.closureType_en,
+      closureType_he: formData.materialCare.closureType_he,
+      heelType_en: formData.materialCare.heelType_en,
+      heelType_he: formData.materialCare.heelType_he,
+      shoeFit: categoryFieldGroup === 'shoes' ? formData.shoeFit : undefined,
+      seo: {
+        slug: formData.seo.slug,
+        he: { focusKeyword: formData.seo.focusKeyword_he, secondaryKeywords: formData.seo.secondaryKeywords_he },
+        en: { focusKeyword: formData.seo.focusKeyword_en, secondaryKeywords: formData.seo.secondaryKeywords_en },
+      },
+    })
+    if (!extensionsResult.success) {
+      const fieldMap = zodErrorsToFieldMap(extensionsResult.error)
+      if (fieldMap['seo.slug']) newErrors.seoSlug = fieldMap['seo.slug']
+      const shoeFitIssue = Object.keys(fieldMap).find((key) => key.startsWith('shoeFit'))
+      if (shoeFitIssue) newErrors.shoeFit = fieldMap[shoeFitIssue]
+    }
+
     setErrors(newErrors)
-    
+
     // Log validation errors for debugging
     if (Object.keys(newErrors).length > 0) {
       console.log('Validation errors:', newErrors)
@@ -1103,6 +1251,16 @@ function EditProductPage() {
           variantImages: variant.images.map((img, idx) => ({ index: idx, isPrimary: img.isPrimary, url: img.url }))
         })
 
+        // Per-image alt text/type metadata, kept as a parallel array (keyed by URL) so
+        // the existing `images: string[]` contract stays unchanged for every other consumer.
+        const imageDetails = uploadedImages.map((url, index) => ({
+          url,
+          altEn: variant.images[index]?.altEn || undefined,
+          altHe: variant.images[index]?.altHe || undefined,
+          type: variant.images[index]?.imageType || undefined,
+          order: index,
+        }))
+
         colorVariants[variant.colorSlug] = {
           colorSlug: variant.colorSlug,
           isActive: variant.isActive !== false, // Default to true if not specified
@@ -1112,6 +1270,7 @@ function EditProductPage() {
           metaTitle: variant.metaTitle || '',
           metaDescription: variant.metaDescription || '',
           images: uploadedImages,
+          imageDetails,
           primaryImage: primaryImageUrl,
           videos: videoUrl ? [videoUrl] : []
         }
@@ -1138,8 +1297,12 @@ function EditProductPage() {
       addIfChanged('sku')
       addIfChanged('title_en')
       addIfChanged('title_he')
+      addIfChanged('shortTitle_en')
+      addIfChanged('shortTitle_he')
       addIfChanged('description_en')
       addIfChanged('description_he')
+      addIfChanged('shortDescription_en')
+      addIfChanged('shortDescription_he')
       addIfChanged('category')
       addIfChanged('subCategory')
       addIfChanged('subSubCategory')
@@ -1196,9 +1359,23 @@ function EditProductPage() {
         seoKeys.forEach((k) => {
           const curr = formData.seo[k]
           const orig = originalFormData.seo[k]
-          if (curr !== orig && curr !== '') {
+          if (Array.isArray(curr) ? JSON.stringify(curr) !== JSON.stringify(orig) : curr !== orig && curr !== '') {
             // Use dot-path to update nested fields without overwriting the whole object
             ;(productData as any)[`seo.${k}`] = curr
+          }
+        })
+      }
+
+      // Shoe Fit: include only changed keys (JSON comparison handles the adjustableFeatures array).
+      // Unlike materialCare/seo above, an explicit clear (back to undefined/empty) is still sent,
+      // since a reset enum/array value is meaningful here rather than "leave unchanged".
+      if (originalFormData) {
+        const shoeFitKeys = Object.keys(formData.shoeFit) as (keyof ShoeFitValues)[]
+        shoeFitKeys.forEach((k) => {
+          const curr = formData.shoeFit[k]
+          const orig = originalFormData.shoeFit[k]
+          if (JSON.stringify(curr) !== JSON.stringify(orig)) {
+            ;(productData as any)[`shoeFit.${k}`] = curr
           }
         })
       }
@@ -1274,77 +1451,27 @@ function EditProductPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Basic Information */}
+          {/* Basic Product Information */}
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Basic Information</h2>
-            
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  English Title *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title_en}
-                  onChange={(e) => handleInputChange('title_en', e.target.value)}
-                  className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.title_en ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter product title in English"
-                />
-                {errors.title_en && <p className="mt-1 text-sm text-red-600">{errors.title_en}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hebrew Title *
-                </label>
-                <input
-                  type="text"
-                  value={formData.title_he}
-                  onChange={(e) => handleInputChange('title_he', e.target.value)}
-                  className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.title_he ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter product title in Hebrew"
-                />
-                {errors.title_he && <p className="mt-1 text-sm text-red-600">{errors.title_he}</p>}
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  English Description *
-                </label>
-                <textarea
-                  value={formData.description_en}
-                  onChange={(e) => handleInputChange('description_en', e.target.value)}
-                  rows={4}
-                  className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.description_en ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter product description in English"
-                />
-                {errors.description_en && <p className="mt-1 text-sm text-red-600">{errors.description_en}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Hebrew Description *
-                </label>
-                <textarea
-                  value={formData.description_he}
-                  onChange={(e) => handleInputChange('description_he', e.target.value)}
-                  rows={4}
-                  className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.description_he ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter product description in Hebrew"
-                />
-                {errors.description_he && <p className="mt-1 text-sm text-red-600">{errors.description_he}</p>}
-              </div>
-            </div>
+            <ProductBasicInformationSection
+              values={{
+                title_en: formData.title_en,
+                title_he: formData.title_he,
+                shortTitle_en: formData.shortTitle_en,
+                shortTitle_he: formData.shortTitle_he,
+                description_en: formData.description_en,
+                description_he: formData.description_he,
+                shortDescription_en: formData.shortDescription_en,
+                shortDescription_he: formData.shortDescription_he,
+              }}
+              onChange={handleBasicInfoFieldChange}
+              errors={{
+                title_en: errors.title_en,
+                title_he: errors.title_he,
+                description_en: errors.description_en,
+                description_he: errors.description_he,
+              }}
+            />
           </div>
 
           {/* Pricing */}
@@ -1409,117 +1536,51 @@ function EditProductPage() {
                 </select>
               </div>
             </div>
-
-            <div className="mt-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  SKU *
-                </label>
-                <input
-                  type="text"
-                  value={formData.sku}
-                  onChange={(e) => handleInputChange('sku', e.target.value)}
-                  className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.sku ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Product SKU (e.g., 0000-0000)"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  This will be used to generate URLs like /product/{formData.sku || '0000-0000'}/black
-                </p>
-                {errors.sku && <p className="mt-1 text-sm text-red-600">{errors.sku}</p>}
-              </div>
-              </div>
-            </div>
-
-          {/* Categories */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Categories</h2>
-            
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Main Category *
-                  </label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.category ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                >
-                  <option value="">Select a main category</option>
-                  {mainCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {typeof category.name === 'object' ? category.name.en : category.name}
-                    </option>
-                  ))}
-                </select>
-                {errors.category && <p className="mt-1 text-sm text-red-600">{errors.category}</p>}
-                </div>
-
-              {formData.category && subCategories.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub Category
-                  </label>
-                  <select
-                    value={formData.subCategory}
-                    onChange={(e) => handleSubCategoryChange(e.target.value)}
-                    className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="">Select a sub category (optional)</option>
-                    {subCategories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {typeof category.name === 'object' ? category.name.en : category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {formData.subCategory && subSubCategories.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sub-Sub Category
-                </label>
-                <select
-                      value={formData.subSubCategory}
-                      onChange={(e) => handleSubSubCategoryChange(e.target.value)}
-                      className="w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                    <option value="">Select a sub-sub category (optional)</option>
-                    {subSubCategories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {typeof category.name === 'object' ? category.name.en : category.name}
-                    </option>
-                  ))}
-                </select>
-                </div>
-              )}
-            </div>
-              </div>
-
-          {/* Brand */}
-          <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Brand</h2>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Brand *
-                </label>
-                <input
-                  type="text"
-                  value={formData.brand}
-                  onChange={(e) => handleInputChange('brand', e.target.value)}
-                  className={`w-full px-3 py-2 border text-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-                    errors.brand ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                  placeholder="Enter brand name"
-                />
-                {errors.brand && <p className="mt-1 text-sm text-red-600">{errors.brand}</p>}
-            </div>
           </div>
+
+          {/* Categories and Product Classification */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <ProductClassificationSection
+              mainCategories={mainCategories}
+              subCategories={subCategories}
+              subSubCategories={subSubCategories}
+              category={formData.category}
+              subCategory={formData.subCategory}
+              subSubCategory={formData.subSubCategory}
+              brand={formData.brand}
+              sku={formData.sku}
+              onCategoryChange={handleCategoryChange}
+              onSubCategoryChange={handleSubCategoryChange}
+              onSubSubCategoryChange={handleSubSubCategoryChange}
+              onBrandChange={(value) => handleInputChange('brand', value)}
+              onSkuChange={(value) => handleInputChange('sku', value)}
+              errors={{
+                category: errors.category,
+                subCategory: errors.subCategory,
+                subSubCategory: errors.subSubCategory,
+                brand: errors.brand,
+                sku: errors.sku,
+              }}
+              skuHelperText={`This will be used to generate URLs like /product/${formData.sku || '0000-0000'}/black`}
+            />
+          </div>
+
+          {/* Product Specifications */}
+          <div className="bg-white shadow rounded-lg p-6">
+            <ProductSpecificationsSection
+              values={formData.materialCare}
+              onChange={handleSpecificationChange}
+              fieldGroup={categoryFieldGroup}
+            />
+          </div>
+
+          {/* Shoe Fit and Sizing — only shown for footwear categories; data is preserved even when hidden */}
+          {categoryFieldGroup === 'shoes' && (
+            <div className="bg-white shadow rounded-lg p-6">
+              <ShoeFitSection values={formData.shoeFit} onChange={handleShoeFitChange} />
+              {errors.shoeFit && <p className="mt-1 text-sm text-red-600">{errors.shoeFit}</p>}
+            </div>
+          )}
 
           {/* Colors */}
           <div className="bg-white shadow rounded-lg p-6">
@@ -1759,6 +1820,7 @@ function EditProductPage() {
                                         src={image.url || image.preview}
                                         alt={`${variant.colorName} - Image ${index + 1}`}
                                         fill
+                                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 224px"
                                         className="object-cover"
                                       />
                                     ) : (
@@ -1766,6 +1828,7 @@ function EditProductPage() {
                                         src={image.preview}
                                         alt={`${variant.colorName} - Image ${index + 1}`}
                                         fill
+                                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 224px"
                                         className="object-cover"
                                       />
                                     )}
@@ -1806,6 +1869,10 @@ function EditProductPage() {
                         </button>
                         </div>
                       )}
+                                  <ProductImageSeoFields
+                                    values={{ altEn: image.altEn, altHe: image.altHe, type: image.imageType }}
+                                    onChange={(updates) => updateVariantImageMeta(variant.id, index, updates)}
+                                  />
                     </div>
                   ))}
                 </div>
@@ -1891,225 +1958,20 @@ function EditProductPage() {
             </div>
           )}
 
-          {/* Material & Care */}
+          {/* SEO Settings */}
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-6">Material & Care</h2>
-            
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {/* Upper Material */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upper Material (English)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.upperMaterial_en}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, upperMaterial_en: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., Leather Combination"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Upper Material (Hebrew)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.upperMaterial_he}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, upperMaterial_he: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="לדוגמה: שילוב עור"
-                />
-              </div>
-
-              {/* Material Inner Sole */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Material Inner Sole (English)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.materialInnerSole_en}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, materialInnerSole_en: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., Leather"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Material Inner Sole (Hebrew)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.materialInnerSole_he}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, materialInnerSole_he: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="לדוגמה: עור"
-                />
-              </div>
-
-              {/* Lining */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lining (English)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.lining_en}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, lining_en: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., 100% Textile"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lining (Hebrew)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.lining_he}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, lining_he: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="לדוגמה: 100% טקסטיל"
-                />
-              </div>
-
-              {/* Sole */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sole (English)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.sole_en}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, sole_en: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., Rubber Sole"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sole (Hebrew)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.sole_he}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, sole_he: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="לדוגמה: סוליה מגומי"
-                />
-              </div>
-
-              {/* Heel Height */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Heel Height (English)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.heelHeight_en}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, heelHeight_en: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., 5cm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Heel Height (Hebrew)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.heelHeight_he}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, heelHeight_he: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="לדוגמה: 5 ס״מ"
-                />
-              </div>
-
-              {/* Height */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Height (English)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.height_en}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, height_en: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., 25cm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Height (Hebrew)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.height_he}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, height_he: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="לדוגמה: 25 ס״מ"
-                />
-              </div>
-
-              {/* Depth */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Depth (English)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.depth_en}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, depth_en: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., 15cm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Depth (Hebrew)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.depth_he}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, depth_he: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="לדוגמה: 15 ס״מ"
-                />
-              </div>
-
-              {/* Width */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Width (English)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.width_en}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, width_en: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="e.g., 10cm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Width (Hebrew)
-                </label>
-                <input
-                  type="text"
-                  value={formData.materialCare.width_he}
-                  onChange={(e) => handleInputChange('materialCare', { ...formData.materialCare, width_he: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="לדוגמה: 10 ס״מ"
-                />
-              </div>
-            </div>
+            <ProductSeoSection
+              values={formData.seo}
+              onChange={handleSeoChange}
+              productUrl={`/product/${formData.sku || 'sku'}/${formData.colorVariants[0]?.colorSlug || 'color'}`}
+            />
+            {errors.seoSlug && <p className="text-sm text-red-600">{errors.seoSlug}</p>}
           </div>
 
           {/* Product Status */}
           <div className="bg-white shadow rounded-lg p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-6">Product Status</h2>
-            
+
             <div className="space-y-4">
               <label className="flex items-center">
                 <input

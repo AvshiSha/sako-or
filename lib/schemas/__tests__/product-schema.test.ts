@@ -12,8 +12,6 @@ describe('shoeFitSchema', () => {
     const result = shoeFitSchema.safeParse({
       sizeFit: 'true_to_size',
       footWidthFit: 'regular_wide',
-      toeBoxFit: 'wide',
-      instepFit: 'regular',
       archFit: 'regular',
       adjustableFeatures: ['buckle', 'elastic'],
       recommendation_en: 'This style fits true to size.',
@@ -78,12 +76,10 @@ describe('productExtensionsSchema', () => {
     }
   })
 
-  it('accepts bilingual toe shape / pattern / finish / closure / heel type fields', () => {
+  it('accepts bilingual toe shape / closure / heel type fields', () => {
     const result = productExtensionsSchema.safeParse({
       toeShape_en: 'Pointed',
       toeShape_he: 'מחודדת',
-      pattern_en: 'Solid',
-      finish_he: 'מבריק',
       closureType_en: 'Buckle',
       heelType_he: 'עקב מחט',
     })

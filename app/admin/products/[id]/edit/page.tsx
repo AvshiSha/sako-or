@@ -96,10 +96,6 @@ interface ProductFormData {
     width_he: string;
     toeShape_en?: string;
     toeShape_he?: string;
-    pattern_en?: string;
-    pattern_he?: string;
-    finish_en?: string;
-    finish_he?: string;
     closureType_en?: string;
     closureType_he?: string;
     heelType_en?: string;
@@ -392,10 +388,6 @@ function EditProductPage() {
               width_he: loadedMaterialCare.width_he || '',
               toeShape_en: loadedMaterialCare.toeShape_en || '',
               toeShape_he: loadedMaterialCare.toeShape_he || '',
-              pattern_en: loadedMaterialCare.pattern_en || '',
-              pattern_he: loadedMaterialCare.pattern_he || '',
-              finish_en: loadedMaterialCare.finish_en || '',
-              finish_he: loadedMaterialCare.finish_he || '',
               closureType_en: loadedMaterialCare.closureType_en || '',
               closureType_he: loadedMaterialCare.closureType_he || '',
               heelType_en: loadedMaterialCare.heelType_en || '',
@@ -408,8 +400,6 @@ function EditProductPage() {
             shoeFit: {
               sizeFit: product.shoeFit?.sizeFit,
               footWidthFit: product.shoeFit?.footWidthFit,
-              toeBoxFit: product.shoeFit?.toeBoxFit,
-              instepFit: product.shoeFit?.instepFit,
               archFit: product.shoeFit?.archFit,
               adjustableFeatures: product.shoeFit?.adjustableFeatures || [],
               recommendation_en: product.shoeFit?.recommendation_en || '',
@@ -566,11 +556,20 @@ function EditProductPage() {
   }
 
   const handleSpecificationChange = (field: string, value: string | number | undefined) => {
-    handleInputChange('materialCare', { ...formData.materialCare, [field]: value })
+    setFormData(prev => ({
+      ...prev,
+      materialCare: { ...prev.materialCare, [field]: value }
+    }))
   }
 
   const handleShoeFitChange = <K extends keyof ShoeFitValues>(field: K, value: ShoeFitValues[K]) => {
-    handleInputChange('shoeFit', { ...formData.shoeFit, [field]: value })
+    setFormData(prev => ({
+      ...prev,
+      shoeFit: { ...prev.shoeFit, [field]: value }
+    }))
+    if (errors.shoeFit) {
+      setErrors(prev => ({ ...prev, shoeFit: undefined }))
+    }
   }
 
   const handleSeoChange = <K extends keyof ProductFormData['seo']>(field: K, value: ProductFormData['seo'][K]) => {
@@ -1127,10 +1126,6 @@ function EditProductPage() {
     const extensionsResult = productExtensionsSchema.safeParse({
       toeShape_en: formData.materialCare.toeShape_en,
       toeShape_he: formData.materialCare.toeShape_he,
-      pattern_en: formData.materialCare.pattern_en,
-      pattern_he: formData.materialCare.pattern_he,
-      finish_en: formData.materialCare.finish_en,
-      finish_he: formData.materialCare.finish_he,
       closureType_en: formData.materialCare.closureType_en,
       closureType_he: formData.materialCare.closureType_he,
       heelType_en: formData.materialCare.heelType_en,

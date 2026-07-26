@@ -2,17 +2,15 @@
 
 import EnumSelect from './EnumSelect'
 import MultiSelectChips from './MultiSelectChips'
+import PresetTextField from './PresetTextField'
+import { SIZING_RECOMMENDATION_PRESETS } from '@/lib/product-text-presets'
 import {
   SIZE_FIT_OPTIONS,
   FOOT_WIDTH_FIT_OPTIONS,
-  TOE_BOX_FIT_OPTIONS,
-  INSTEP_FIT_OPTIONS,
   ARCH_FIT_OPTIONS,
   ADJUSTABLE_FEATURE_OPTIONS,
   type SizeFit,
   type FootWidthFit,
-  type ToeBoxFit,
-  type InstepFit,
   type ArchFit,
   type AdjustableFeature,
 } from '@/lib/product-enums'
@@ -20,8 +18,6 @@ import {
 export interface ShoeFitValues {
   sizeFit?: SizeFit
   footWidthFit?: FootWidthFit
-  toeBoxFit?: ToeBoxFit
-  instepFit?: InstepFit
   archFit?: ArchFit
   adjustableFeatures: AdjustableFeature[]
   recommendation_en?: string
@@ -72,24 +68,6 @@ export default function ShoeFitSection({ values, onChange }: ShoeFitSectionProps
           helperText="Select the foot width this style fits best. This information helps customers choose a suitable size and style."
         />
         <EnumSelect
-          id="toeBoxFit"
-          label="Toe-Box Fit"
-          locale="en"
-          value={values.toeBoxFit}
-          onChange={(value) => onChange('toeBoxFit', value)}
-          options={TOE_BOX_FIT_OPTIONS}
-          placeholder="Select toe-box fit"
-        />
-        <EnumSelect
-          id="instepFit"
-          label="Instep Fit"
-          locale="en"
-          value={values.instepFit}
-          onChange={(value) => onChange('instepFit', value)}
-          options={INSTEP_FIT_OPTIONS}
-          placeholder="Select instep fit"
-        />
-        <EnumSelect
           id="archFit"
           label="Arch Fit (optional)"
           locale="en"
@@ -110,34 +88,19 @@ export default function ShoeFitSection({ values, onChange }: ShoeFitSectionProps
           />
         </div>
 
-        <div>
-          <label htmlFor="fitRecommendation_en" className="block text-sm font-medium text-gray-700">
-            Sizing Recommendation (English)
-          </label>
-          <textarea
-            id="fitRecommendation_en"
-            dir="ltr"
-            rows={2}
-            value={values.recommendation_en ?? ''}
-            onChange={(e) => onChange('recommendation_en', e.target.value)}
-            className={textFieldClass}
-            placeholder="This style fits true to size. We recommend selecting your usual size."
-          />
-        </div>
-        <div>
-          <label htmlFor="fitRecommendation_he" className="block text-sm font-medium text-gray-700">
-            Sizing Recommendation (Hebrew)
-          </label>
-          <textarea
-            id="fitRecommendation_he"
-            dir="rtl"
-            rows={2}
-            value={values.recommendation_he ?? ''}
-            onChange={(e) => onChange('recommendation_he', e.target.value)}
-            className={textFieldClass}
-            placeholder="הדגם מידה במידה. מומלץ לבחור במידה הרגילה שלך."
-          />
-        </div>
+        <PresetTextField
+          idPrefix="fitRecommendation"
+          labelEn="Sizing Recommendation"
+          labelHe="המלצת מידה"
+          valueEn={values.recommendation_en ?? ''}
+          valueHe={values.recommendation_he ?? ''}
+          onChangeEn={(value) => onChange('recommendation_en', value)}
+          onChangeHe={(value) => onChange('recommendation_he', value)}
+          presets={SIZING_RECOMMENDATION_PRESETS}
+          placeholderEn="This style fits true to size. We recommend selecting your usual size."
+          placeholderHe="הדגם מידה במידה. מומלץ לבחור במידה הרגילה שלך."
+          rows={2}
+        />
 
         <div>
           <label htmlFor="fitNotes_en" className="block text-sm font-medium text-gray-700">

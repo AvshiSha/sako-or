@@ -51,35 +51,6 @@ export const FOOT_WIDTH_FIT_OPTIONS: EnumOption<FootWidthFit>[] = [
   { value: 'undefined', label_en: 'Not yet defined', label_he: 'טרם הוגדר' },
 ]
 
-export type ToeBoxFit =
-  | 'narrow'
-  | 'regular'
-  | 'wide'
-  | 'open_toe'
-  | 'adjustable'
-  | 'not_applicable'
-  | 'undefined'
-
-export const TOE_BOX_FIT_OPTIONS: EnumOption<ToeBoxFit>[] = [
-  { value: 'narrow', label_en: 'Narrow toe box', label_he: 'קופסת בהונות צרה' },
-  { value: 'regular', label_en: 'Regular toe box', label_he: 'קופסת בהונות רגילה' },
-  { value: 'wide', label_en: 'Wide toe box', label_he: 'קופסת בהונות רחבה' },
-  { value: 'open_toe', label_en: 'Open toe', label_he: 'בהונות פתוחות' },
-  { value: 'adjustable', label_en: 'Adjustable', label_he: 'ניתן להתאמה' },
-  { value: 'not_applicable', label_en: 'Not applicable', label_he: 'לא רלוונטי' },
-  { value: 'undefined', label_en: 'Not yet defined', label_he: 'טרם הוגדר' },
-]
-
-export type InstepFit = 'low' | 'regular' | 'high' | 'adjustable' | 'undefined'
-
-export const INSTEP_FIT_OPTIONS: EnumOption<InstepFit>[] = [
-  { value: 'low', label_en: 'Suitable for low instep', label_he: 'מתאים לגב כף רגל נמוך' },
-  { value: 'regular', label_en: 'Suitable for regular instep', label_he: 'מתאים לגב כף רגל רגיל' },
-  { value: 'high', label_en: 'Suitable for high instep', label_he: 'מתאים לגב כף רגל גבוה' },
-  { value: 'adjustable', label_en: 'Adjustable', label_he: 'ניתן להתאמה' },
-  { value: 'undefined', label_en: 'Not yet defined', label_he: 'טרם הוגדר' },
-]
-
 export type ArchFit = 'low' | 'regular' | 'high' | 'most_arch_types' | 'undefined'
 
 export const ARCH_FIT_OPTIONS: EnumOption<ArchFit>[] = [

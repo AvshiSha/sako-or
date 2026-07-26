@@ -29,8 +29,6 @@ import { normalizeProductImages, getProductImageAlt, type ProductImageDetail } f
 import {
   SIZE_FIT_OPTIONS,
   FOOT_WIDTH_FIT_OPTIONS,
-  TOE_BOX_FIT_OPTIONS,
-  INSTEP_FIT_OPTIONS,
   ARCH_FIT_OPTIONS,
   ADJUSTABLE_FEATURE_OPTIONS,
   getOptionLabel,
@@ -1167,26 +1165,6 @@ export default function ProductColorClient({
                             </span>
                           </div>
                         )}
-                        {(product.materialCare?.pattern_en || product.materialCare?.pattern_he) && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
-                              {lng === 'he' ? 'הדפס:' : 'Pattern:'}
-                            </span>
-                            <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialCare?.pattern_he : product.materialCare?.pattern_en}
-                            </span>
-                          </div>
-                        )}
-                        {(product.materialCare?.finish_en || product.materialCare?.finish_he) && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
-                              {lng === 'he' ? 'גימור:' : 'Finish:'}
-                            </span>
-                            <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialCare?.finish_he : product.materialCare?.finish_en}
-                            </span>
-                          </div>
-                        )}
                         {(product.materialCare?.careInstructions_en || product.materialCare?.careInstructions_he) && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
@@ -1213,8 +1191,6 @@ export default function ProductColorClient({
                     const hasAnyFitData =
                       !isUndefinedFitValue(shoeFit.sizeFit) ||
                       !isUndefinedFitValue(shoeFit.footWidthFit) ||
-                      !isUndefinedFitValue(shoeFit.toeBoxFit) ||
-                      !isUndefinedFitValue(shoeFit.instepFit) ||
                       !isUndefinedFitValue(shoeFit.archFit) ||
                       adjustableFeatureLabels.length > 0 ||
                       Boolean(recommendation) ||
@@ -1245,26 +1221,6 @@ export default function ProductColorClient({
                               </span>
                               <span className="text-sm text-gray-900">
                                 {getOptionLabel(FOOT_WIDTH_FIT_OPTIONS, shoeFit.footWidthFit, lng as 'en' | 'he')}
-                              </span>
-                            </div>
-                          )}
-                          {!isUndefinedFitValue(shoeFit.toeBoxFit) && (
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">
-                                {lng === 'he' ? 'קופסת בהונות:' : 'Toe-Box Fit:'}
-                              </span>
-                              <span className="text-sm text-gray-900">
-                                {getOptionLabel(TOE_BOX_FIT_OPTIONS, shoeFit.toeBoxFit, lng as 'en' | 'he')}
-                              </span>
-                            </div>
-                          )}
-                          {!isUndefinedFitValue(shoeFit.instepFit) && (
-                            <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">
-                                {lng === 'he' ? 'גב כף רגל:' : 'Instep Fit:'}
-                              </span>
-                              <span className="text-sm text-gray-900">
-                                {getOptionLabel(INSTEP_FIT_OPTIONS, shoeFit.instepFit, lng as 'en' | 'he')}
                               </span>
                             </div>
                           )}

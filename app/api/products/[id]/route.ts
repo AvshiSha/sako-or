@@ -2,14 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { productService } from '@/lib/firebase'
 import { z } from 'zod'
+import { shoeFitSchema } from '@/lib/schemas/product-schema'
 
 // Validation schema for updating products
 const productUpdateSchema = z.object({
   sku: z.string().min(1, 'SKU is required'),
   title_en: z.string().min(1, 'English title is required'),
   title_he: z.string().min(1, 'Hebrew title is required'),
+  shortTitle_en: z.string().optional(),
+  shortTitle_he: z.string().optional(),
   description_en: z.string().min(1, 'English description is required'),
   description_he: z.string().min(1, 'Hebrew description is required'),
+  shortDescription_en: z.string().optional(),
+  shortDescription_he: z.string().optional(),
   category: z.string().min(1, 'Category is required'),
   subCategory: z.string().optional(),
   subSubCategory: z.string().optional(),
@@ -50,14 +55,31 @@ const productUpdateSchema = z.object({
     depth_en: z.string().optional(),
     depth_he: z.string().optional(),
     width_en: z.string().optional(),
-    width_he: z.string().optional()
+    width_he: z.string().optional(),
+    toeShape_en: z.string().optional(),
+    toeShape_he: z.string().optional(),
+    pattern_en: z.string().optional(),
+    pattern_he: z.string().optional(),
+    finish_en: z.string().optional(),
+    finish_he: z.string().optional(),
+    closureType_en: z.string().optional(),
+    closureType_he: z.string().optional(),
+    heelType_en: z.string().optional(),
+    heelType_he: z.string().optional(),
+    careInstructions_en: z.string().optional(),
+    careInstructions_he: z.string().optional()
   }).optional(),
+  shoeFit: shoeFitSchema.optional(),
   seo: z.object({
     title_en: z.string().optional(),
     title_he: z.string().optional(),
     description_en: z.string().optional(),
     description_he: z.string().optional(),
-    slug: z.string().optional()
+    slug: z.string().optional(),
+    focusKeyword_en: z.string().optional(),
+    focusKeyword_he: z.string().optional(),
+    secondaryKeywords_en: z.array(z.string().trim().min(1)).optional(),
+    secondaryKeywords_he: z.array(z.string().trim().min(1)).optional()
   }).optional(),
   searchKeywords: z.array(z.string()).optional()
 })
@@ -124,8 +146,12 @@ export async function PUT(
       sku: validatedData.sku,
       title_en: validatedData.title_en,
       title_he: validatedData.title_he,
+      shortTitle_en: validatedData.shortTitle_en,
+      shortTitle_he: validatedData.shortTitle_he,
       description_en: validatedData.description_en,
       description_he: validatedData.description_he,
+      shortDescription_en: validatedData.shortDescription_en,
+      shortDescription_he: validatedData.shortDescription_he,
       category: validatedData.category,
       subCategory: validatedData.subCategory,
       subSubCategory: validatedData.subSubCategory,
@@ -140,6 +166,7 @@ export async function PUT(
       newProduct: validatedData.newProduct,
       featuredProduct: validatedData.featuredProduct,
       materialCare: validatedData.materialCare,
+      shoeFit: validatedData.shoeFit,
       seo: validatedData.seo,
       searchKeywords: validatedData.searchKeywords || [],
       updatedAt: new Date()

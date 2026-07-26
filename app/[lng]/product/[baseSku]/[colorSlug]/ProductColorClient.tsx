@@ -25,6 +25,7 @@ import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
+import { normalizeProductImages, getProductImageAlt, type ProductImageDetail } from '@/lib/product-images'
 
 const SizeChart = dynamic(() => import('@/app/components/SizeChart'), { ssr: false })
 
@@ -37,6 +38,7 @@ interface ColorVariantData {
   metaTitle?: string;
   metaDescription?: string;
   images: string[];
+  imageDetails?: ProductImageDetail[];
   primaryImage?: string;
   videos?: string[];
 }
@@ -85,19 +87,31 @@ export default function ProductColorClient({
   // Toast hook
   const { toast, showToast, hideToast } = useToast()
 
-  function reorderImagesByPrimary(images: string[] | undefined, primaryImage: string | undefined): string[] {
-    const list = Array.isArray(images) ? images : []
-    if (!primaryImage) return list
-    const idx = list.findIndex((img) => img === primaryImage)
-    if (idx <= 0) return list
-    return [primaryImage, ...list.slice(0, idx), ...list.slice(idx + 1)]
+  function reorderByPrimary<T extends { url: string }>(items: T[], primaryImage: string | undefined): T[] {
+    if (!primaryImage) return items
+    const idx = items.findIndex((item) => item.url === primaryImage)
+    if (idx <= 0) return items
+    return [items[idx], ...items.slice(0, idx), ...items.slice(idx + 1)]
   }
 
-  // Get images only (no videos) with primary image first
-  const productImages = useMemo(() => {
+  // Combined URL + alt-text metadata (legacy string[] products get a title-based fallback alt), with primary image first
+  const galleryImages = useMemo(() => {
     if (!currentVariant) return []
-    return reorderImagesByPrimary(currentVariant.images, currentVariant.primaryImage)
-  }, [currentVariant])
+    const normalized = normalizeProductImages(currentVariant.images, currentVariant.imageDetails, {
+      titleEn: product?.title_en,
+      titleHe: product?.title_he,
+    })
+    return reorderByPrimary(normalized, currentVariant.primaryImage)
+  }, [currentVariant, product])
+
+  // Get images only (no videos) with primary image first
+  const productImages = useMemo(() => galleryImages.map((image) => image.url), [galleryImages])
+
+  // Per-image alt text in the current page language; falls back to the carousel's default alt when unset
+  const productImageAltList = useMemo(
+    () => galleryImages.map((image) => getProductImageAlt(image, lng === 'he' ? 'he' : 'en') || undefined),
+    [galleryImages, lng]
+  )
 
   // Get language from props
   const isRTL = lng === 'he'
@@ -446,6 +460,7 @@ export default function ProductColorClient({
               <ProductImageCarousel
                 key={colorSlug}
                 images={productImages}
+                altList={productImageAltList}
                 alt={`${productName} - ${currentVariant.colorSlug}`}
                 direction={isRTL ? "rtl" : "ltr"}
                 variant="pdp"

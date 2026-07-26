@@ -152,6 +152,8 @@ const CarouselDotIndicators = memo(function CarouselDotIndicators({
 export type ProductImageCarouselProps = {
   images: string[];
   alt: string;
+  /** Optional per-image alt text (same order as `images`); falls back to `${alt} - N` when missing for a given index. */
+  altList?: (string | undefined)[];
   direction?: "ltr" | "rtl";
   variant?: "card" | "pdp";
   className?: string;
@@ -168,6 +170,7 @@ export type ProductImageCarouselProps = {
 function ProductImageCarouselInner({
   images,
   alt,
+  altList,
   direction = "ltr",
   variant = "card",
   className,
@@ -219,7 +222,7 @@ function ProductImageCarouselInner({
         className={cn("relative aspect-square w-full overflow-hidden", className)}
         style={{ aspectRatio: '1 / 1', ...(pdpMaxHeightStyle ?? {}) }}
       >
-        <ProductImageSlide src={images[0]} alt={alt} eager={isAboveFold} />
+        <ProductImageSlide src={images[0]} alt={altList?.[0] || alt} eager={isAboveFold} />
         {children}
       </div>
     );
@@ -247,7 +250,7 @@ function ProductImageCarouselInner({
             <CarouselItem key={`${src}-${index}`} className="h-full basis-full">
               <ProductImageSlide
                 src={src}
-                alt={`${alt} - ${index + 1}`}
+                alt={altList?.[index] || `${alt} - ${index + 1}`}
                 eager={isPdp ? index === 0 : index < 2 || (isAboveFold && index === 0)}
               />
             </CarouselItem>

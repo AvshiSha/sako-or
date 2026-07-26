@@ -75,6 +75,33 @@ export type ProductMinAggregateOutputType = {
   title_he: string | null
   upperMaterial_en: string | null
   upperMaterial_he: string | null
+  shortTitle_en: string | null
+  shortTitle_he: string | null
+  shortDescription_en: string | null
+  shortDescription_he: string | null
+  toeShape_en: string | null
+  toeShape_he: string | null
+  pattern_en: string | null
+  pattern_he: string | null
+  finish_en: string | null
+  finish_he: string | null
+  closureType_en: string | null
+  closureType_he: string | null
+  heelType_en: string | null
+  heelType_he: string | null
+  careInstructions_en: string | null
+  careInstructions_he: string | null
+  sizeFit: string | null
+  footWidthFit: string | null
+  toeBoxFit: string | null
+  instepFit: string | null
+  archFit: string | null
+  fitRecommendation_en: string | null
+  fitRecommendation_he: string | null
+  fitNotes_en: string | null
+  fitNotes_he: string | null
+  seoFocusKeyword_en: string | null
+  seoFocusKeyword_he: string | null
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
@@ -121,6 +148,33 @@ export type ProductMaxAggregateOutputType = {
   title_he: string | null
   upperMaterial_en: string | null
   upperMaterial_he: string | null
+  shortTitle_en: string | null
+  shortTitle_he: string | null
+  shortDescription_en: string | null
+  shortDescription_he: string | null
+  toeShape_en: string | null
+  toeShape_he: string | null
+  pattern_en: string | null
+  pattern_he: string | null
+  finish_en: string | null
+  finish_he: string | null
+  closureType_en: string | null
+  closureType_he: string | null
+  heelType_en: string | null
+  heelType_he: string | null
+  careInstructions_en: string | null
+  careInstructions_he: string | null
+  sizeFit: string | null
+  footWidthFit: string | null
+  toeBoxFit: string | null
+  instepFit: string | null
+  archFit: string | null
+  fitRecommendation_en: string | null
+  fitRecommendation_he: string | null
+  fitNotes_en: string | null
+  fitNotes_he: string | null
+  seoFocusKeyword_en: string | null
+  seoFocusKeyword_he: string | null
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
@@ -171,6 +225,36 @@ export type ProductCountAggregateOutputType = {
   upperMaterial_en: number
   upperMaterial_he: number
   colorVariants: number
+  shortTitle_en: number
+  shortTitle_he: number
+  shortDescription_en: number
+  shortDescription_he: number
+  toeShape_en: number
+  toeShape_he: number
+  pattern_en: number
+  pattern_he: number
+  finish_en: number
+  finish_he: number
+  closureType_en: number
+  closureType_he: number
+  heelType_en: number
+  heelType_he: number
+  careInstructions_en: number
+  careInstructions_he: number
+  sizeFit: number
+  footWidthFit: number
+  toeBoxFit: number
+  instepFit: number
+  archFit: number
+  adjustableFeatures: number
+  fitRecommendation_en: number
+  fitRecommendation_he: number
+  fitNotes_en: number
+  fitNotes_he: number
+  seoFocusKeyword_en: number
+  seoFocusKeyword_he: number
+  seoSecondaryKeywords_en: number
+  seoSecondaryKeywords_he: number
   category_he: number
   subCategory_he: number
   subSubCategory_he: number
@@ -231,6 +315,33 @@ export type ProductMinAggregateInputType = {
   title_he?: true
   upperMaterial_en?: true
   upperMaterial_he?: true
+  shortTitle_en?: true
+  shortTitle_he?: true
+  shortDescription_en?: true
+  shortDescription_he?: true
+  toeShape_en?: true
+  toeShape_he?: true
+  pattern_en?: true
+  pattern_he?: true
+  finish_en?: true
+  finish_he?: true
+  closureType_en?: true
+  closureType_he?: true
+  heelType_en?: true
+  heelType_he?: true
+  careInstructions_en?: true
+  careInstructions_he?: true
+  sizeFit?: true
+  footWidthFit?: true
+  toeBoxFit?: true
+  instepFit?: true
+  archFit?: true
+  fitRecommendation_en?: true
+  fitRecommendation_he?: true
+  fitNotes_en?: true
+  fitNotes_he?: true
+  seoFocusKeyword_en?: true
+  seoFocusKeyword_he?: true
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
@@ -277,6 +388,33 @@ export type ProductMaxAggregateInputType = {
   title_he?: true
   upperMaterial_en?: true
   upperMaterial_he?: true
+  shortTitle_en?: true
+  shortTitle_he?: true
+  shortDescription_en?: true
+  shortDescription_he?: true
+  toeShape_en?: true
+  toeShape_he?: true
+  pattern_en?: true
+  pattern_he?: true
+  finish_en?: true
+  finish_he?: true
+  closureType_en?: true
+  closureType_he?: true
+  heelType_en?: true
+  heelType_he?: true
+  careInstructions_en?: true
+  careInstructions_he?: true
+  sizeFit?: true
+  footWidthFit?: true
+  toeBoxFit?: true
+  instepFit?: true
+  archFit?: true
+  fitRecommendation_en?: true
+  fitRecommendation_he?: true
+  fitNotes_en?: true
+  fitNotes_he?: true
+  seoFocusKeyword_en?: true
+  seoFocusKeyword_he?: true
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
@@ -327,6 +465,36 @@ export type ProductCountAggregateInputType = {
   upperMaterial_en?: true
   upperMaterial_he?: true
   colorVariants?: true
+  shortTitle_en?: true
+  shortTitle_he?: true
+  shortDescription_en?: true
+  shortDescription_he?: true
+  toeShape_en?: true
+  toeShape_he?: true
+  pattern_en?: true
+  pattern_he?: true
+  finish_en?: true
+  finish_he?: true
+  closureType_en?: true
+  closureType_he?: true
+  heelType_en?: true
+  heelType_he?: true
+  careInstructions_en?: true
+  careInstructions_he?: true
+  sizeFit?: true
+  footWidthFit?: true
+  toeBoxFit?: true
+  instepFit?: true
+  archFit?: true
+  adjustableFeatures?: true
+  fitRecommendation_en?: true
+  fitRecommendation_he?: true
+  fitNotes_en?: true
+  fitNotes_he?: true
+  seoFocusKeyword_en?: true
+  seoFocusKeyword_he?: true
+  seoSecondaryKeywords_en?: true
+  seoSecondaryKeywords_he?: true
   category_he?: true
   subCategory_he?: true
   subSubCategory_he?: true
@@ -466,6 +634,36 @@ export type ProductGroupByOutputType = {
   upperMaterial_en: string | null
   upperMaterial_he: string | null
   colorVariants: runtime.JsonValue | null
+  shortTitle_en: string | null
+  shortTitle_he: string | null
+  shortDescription_en: string | null
+  shortDescription_he: string | null
+  toeShape_en: string | null
+  toeShape_he: string | null
+  pattern_en: string | null
+  pattern_he: string | null
+  finish_en: string | null
+  finish_he: string | null
+  closureType_en: string | null
+  closureType_he: string | null
+  heelType_en: string | null
+  heelType_he: string | null
+  careInstructions_en: string | null
+  careInstructions_he: string | null
+  sizeFit: string | null
+  footWidthFit: string | null
+  toeBoxFit: string | null
+  instepFit: string | null
+  archFit: string | null
+  adjustableFeatures: string[]
+  fitRecommendation_en: string | null
+  fitRecommendation_he: string | null
+  fitNotes_en: string | null
+  fitNotes_he: string | null
+  seoFocusKeyword_en: string | null
+  seoFocusKeyword_he: string | null
+  seoSecondaryKeywords_en: string[]
+  seoSecondaryKeywords_he: string[]
   category_he: string | null
   subCategory_he: string | null
   subSubCategory_he: string | null
@@ -541,6 +739,36 @@ export type ProductWhereInput = {
   upperMaterial_en?: Prisma.StringNullableFilter<"Product"> | string | null
   upperMaterial_he?: Prisma.StringNullableFilter<"Product"> | string | null
   colorVariants?: Prisma.JsonNullableFilter<"Product">
+  shortTitle_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortTitle_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortDescription_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortDescription_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  pattern_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  pattern_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  finish_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  finish_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  careInstructions_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  careInstructions_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  instepFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  archFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  adjustableFeatures?: Prisma.StringNullableListFilter<"Product">
+  fitRecommendation_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitRecommendation_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitNotes_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitNotes_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoFocusKeyword_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoFocusKeyword_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoSecondaryKeywords_en?: Prisma.StringNullableListFilter<"Product">
+  seoSecondaryKeywords_he?: Prisma.StringNullableListFilter<"Product">
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -596,6 +824,36 @@ export type ProductOrderByWithRelationInput = {
   upperMaterial_en?: Prisma.SortOrderInput | Prisma.SortOrder
   upperMaterial_he?: Prisma.SortOrderInput | Prisma.SortOrder
   colorVariants?: Prisma.SortOrderInput | Prisma.SortOrder
+  shortTitle_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  shortTitle_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  shortDescription_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  shortDescription_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  toeShape_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  toeShape_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  pattern_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  pattern_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  finish_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  finish_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  closureType_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  closureType_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  heelType_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  heelType_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  careInstructions_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  careInstructions_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  sizeFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  footWidthFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  toeBoxFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  instepFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  archFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  adjustableFeatures?: Prisma.SortOrder
+  fitRecommendation_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitRecommendation_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitNotes_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitNotes_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoFocusKeyword_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoFocusKeyword_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoSecondaryKeywords_en?: Prisma.SortOrder
+  seoSecondaryKeywords_he?: Prisma.SortOrder
   category_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -654,6 +912,36 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   upperMaterial_en?: Prisma.StringNullableFilter<"Product"> | string | null
   upperMaterial_he?: Prisma.StringNullableFilter<"Product"> | string | null
   colorVariants?: Prisma.JsonNullableFilter<"Product">
+  shortTitle_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortTitle_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortDescription_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortDescription_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  pattern_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  pattern_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  finish_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  finish_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  careInstructions_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  careInstructions_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  instepFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  archFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  adjustableFeatures?: Prisma.StringNullableListFilter<"Product">
+  fitRecommendation_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitRecommendation_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitNotes_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitNotes_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoFocusKeyword_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoFocusKeyword_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoSecondaryKeywords_en?: Prisma.StringNullableListFilter<"Product">
+  seoSecondaryKeywords_he?: Prisma.StringNullableListFilter<"Product">
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -709,6 +997,36 @@ export type ProductOrderByWithAggregationInput = {
   upperMaterial_en?: Prisma.SortOrderInput | Prisma.SortOrder
   upperMaterial_he?: Prisma.SortOrderInput | Prisma.SortOrder
   colorVariants?: Prisma.SortOrderInput | Prisma.SortOrder
+  shortTitle_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  shortTitle_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  shortDescription_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  shortDescription_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  toeShape_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  toeShape_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  pattern_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  pattern_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  finish_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  finish_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  closureType_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  closureType_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  heelType_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  heelType_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  careInstructions_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  careInstructions_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  sizeFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  footWidthFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  toeBoxFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  instepFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  archFit?: Prisma.SortOrderInput | Prisma.SortOrder
+  adjustableFeatures?: Prisma.SortOrder
+  fitRecommendation_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitRecommendation_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitNotes_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitNotes_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoFocusKeyword_en?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoFocusKeyword_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  seoSecondaryKeywords_en?: Prisma.SortOrder
+  seoSecondaryKeywords_he?: Prisma.SortOrder
   category_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -769,6 +1087,36 @@ export type ProductScalarWhereWithAggregatesInput = {
   upperMaterial_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   upperMaterial_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   colorVariants?: Prisma.JsonNullableWithAggregatesFilter<"Product">
+  shortTitle_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  shortTitle_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  shortDescription_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  shortDescription_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  toeShape_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  toeShape_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  pattern_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  pattern_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  finish_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  finish_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  closureType_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  closureType_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  heelType_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  heelType_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  careInstructions_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  careInstructions_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  sizeFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  footWidthFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  toeBoxFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  instepFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  archFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  adjustableFeatures?: Prisma.StringNullableListFilter<"Product">
+  fitRecommendation_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  fitRecommendation_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  fitNotes_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  fitNotes_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  seoFocusKeyword_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  seoFocusKeyword_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  seoSecondaryKeywords_en?: Prisma.StringNullableListFilter<"Product">
+  seoSecondaryKeywords_he?: Prisma.StringNullableListFilter<"Product">
   category_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
@@ -820,6 +1168,36 @@ export type ProductCreateInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -874,6 +1252,36 @@ export type ProductUncheckedCreateInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -926,6 +1334,36 @@ export type ProductUpdateInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -980,6 +1418,36 @@ export type ProductUncheckedUpdateInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1033,6 +1501,36 @@ export type ProductCreateManyInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -1084,6 +1582,36 @@ export type ProductUpdateManyMutationInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1135,6 +1663,36 @@ export type ProductUncheckedUpdateManyInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1205,6 +1763,36 @@ export type ProductCountOrderByAggregateInput = {
   upperMaterial_en?: Prisma.SortOrder
   upperMaterial_he?: Prisma.SortOrder
   colorVariants?: Prisma.SortOrder
+  shortTitle_en?: Prisma.SortOrder
+  shortTitle_he?: Prisma.SortOrder
+  shortDescription_en?: Prisma.SortOrder
+  shortDescription_he?: Prisma.SortOrder
+  toeShape_en?: Prisma.SortOrder
+  toeShape_he?: Prisma.SortOrder
+  pattern_en?: Prisma.SortOrder
+  pattern_he?: Prisma.SortOrder
+  finish_en?: Prisma.SortOrder
+  finish_he?: Prisma.SortOrder
+  closureType_en?: Prisma.SortOrder
+  closureType_he?: Prisma.SortOrder
+  heelType_en?: Prisma.SortOrder
+  heelType_he?: Prisma.SortOrder
+  careInstructions_en?: Prisma.SortOrder
+  careInstructions_he?: Prisma.SortOrder
+  sizeFit?: Prisma.SortOrder
+  footWidthFit?: Prisma.SortOrder
+  toeBoxFit?: Prisma.SortOrder
+  instepFit?: Prisma.SortOrder
+  archFit?: Prisma.SortOrder
+  adjustableFeatures?: Prisma.SortOrder
+  fitRecommendation_en?: Prisma.SortOrder
+  fitRecommendation_he?: Prisma.SortOrder
+  fitNotes_en?: Prisma.SortOrder
+  fitNotes_he?: Prisma.SortOrder
+  seoFocusKeyword_en?: Prisma.SortOrder
+  seoFocusKeyword_he?: Prisma.SortOrder
+  seoSecondaryKeywords_en?: Prisma.SortOrder
+  seoSecondaryKeywords_he?: Prisma.SortOrder
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
@@ -1258,6 +1846,33 @@ export type ProductMaxOrderByAggregateInput = {
   title_he?: Prisma.SortOrder
   upperMaterial_en?: Prisma.SortOrder
   upperMaterial_he?: Prisma.SortOrder
+  shortTitle_en?: Prisma.SortOrder
+  shortTitle_he?: Prisma.SortOrder
+  shortDescription_en?: Prisma.SortOrder
+  shortDescription_he?: Prisma.SortOrder
+  toeShape_en?: Prisma.SortOrder
+  toeShape_he?: Prisma.SortOrder
+  pattern_en?: Prisma.SortOrder
+  pattern_he?: Prisma.SortOrder
+  finish_en?: Prisma.SortOrder
+  finish_he?: Prisma.SortOrder
+  closureType_en?: Prisma.SortOrder
+  closureType_he?: Prisma.SortOrder
+  heelType_en?: Prisma.SortOrder
+  heelType_he?: Prisma.SortOrder
+  careInstructions_en?: Prisma.SortOrder
+  careInstructions_he?: Prisma.SortOrder
+  sizeFit?: Prisma.SortOrder
+  footWidthFit?: Prisma.SortOrder
+  toeBoxFit?: Prisma.SortOrder
+  instepFit?: Prisma.SortOrder
+  archFit?: Prisma.SortOrder
+  fitRecommendation_en?: Prisma.SortOrder
+  fitRecommendation_he?: Prisma.SortOrder
+  fitNotes_en?: Prisma.SortOrder
+  fitNotes_he?: Prisma.SortOrder
+  seoFocusKeyword_en?: Prisma.SortOrder
+  seoFocusKeyword_he?: Prisma.SortOrder
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
@@ -1304,6 +1919,33 @@ export type ProductMinOrderByAggregateInput = {
   title_he?: Prisma.SortOrder
   upperMaterial_en?: Prisma.SortOrder
   upperMaterial_he?: Prisma.SortOrder
+  shortTitle_en?: Prisma.SortOrder
+  shortTitle_he?: Prisma.SortOrder
+  shortDescription_en?: Prisma.SortOrder
+  shortDescription_he?: Prisma.SortOrder
+  toeShape_en?: Prisma.SortOrder
+  toeShape_he?: Prisma.SortOrder
+  pattern_en?: Prisma.SortOrder
+  pattern_he?: Prisma.SortOrder
+  finish_en?: Prisma.SortOrder
+  finish_he?: Prisma.SortOrder
+  closureType_en?: Prisma.SortOrder
+  closureType_he?: Prisma.SortOrder
+  heelType_en?: Prisma.SortOrder
+  heelType_he?: Prisma.SortOrder
+  careInstructions_en?: Prisma.SortOrder
+  careInstructions_he?: Prisma.SortOrder
+  sizeFit?: Prisma.SortOrder
+  footWidthFit?: Prisma.SortOrder
+  toeBoxFit?: Prisma.SortOrder
+  instepFit?: Prisma.SortOrder
+  archFit?: Prisma.SortOrder
+  fitRecommendation_en?: Prisma.SortOrder
+  fitRecommendation_he?: Prisma.SortOrder
+  fitNotes_en?: Prisma.SortOrder
+  fitNotes_he?: Prisma.SortOrder
+  seoFocusKeyword_en?: Prisma.SortOrder
+  seoFocusKeyword_he?: Prisma.SortOrder
   category_he?: Prisma.SortOrder
   subCategory_he?: Prisma.SortOrder
   subSubCategory_he?: Prisma.SortOrder
@@ -1417,6 +2059,18 @@ export type ProductCreatesearchKeywordsInput = {
   set: string[]
 }
 
+export type ProductCreateadjustableFeaturesInput = {
+  set: string[]
+}
+
+export type ProductCreateseoSecondaryKeywords_enInput = {
+  set: string[]
+}
+
+export type ProductCreateseoSecondaryKeywords_heInput = {
+  set: string[]
+}
+
 export type ProductCreategenerated_search_keywordsInput = {
   set: string[]
 }
@@ -1444,6 +2098,21 @@ export type NullableFloatFieldUpdateOperationsInput = {
 }
 
 export type ProductUpdatesearchKeywordsInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type ProductUpdateadjustableFeaturesInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type ProductUpdateseoSecondaryKeywords_enInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type ProductUpdateseoSecondaryKeywords_heInput = {
   set?: string[]
   push?: string | string[]
 }
@@ -1514,6 +2183,36 @@ export type ProductCreateWithoutCategoryRelationInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -1566,6 +2265,36 @@ export type ProductUncheckedCreateWithoutCategoryRelationInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -1648,6 +2377,36 @@ export type ProductScalarWhereInput = {
   upperMaterial_en?: Prisma.StringNullableFilter<"Product"> | string | null
   upperMaterial_he?: Prisma.StringNullableFilter<"Product"> | string | null
   colorVariants?: Prisma.JsonNullableFilter<"Product">
+  shortTitle_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortTitle_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortDescription_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  shortDescription_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  pattern_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  pattern_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  finish_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  finish_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  careInstructions_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  careInstructions_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  instepFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  archFit?: Prisma.StringNullableFilter<"Product"> | string | null
+  adjustableFeatures?: Prisma.StringNullableListFilter<"Product">
+  fitRecommendation_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitRecommendation_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitNotes_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitNotes_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoFocusKeyword_en?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoFocusKeyword_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  seoSecondaryKeywords_en?: Prisma.StringNullableListFilter<"Product">
+  seoSecondaryKeywords_he?: Prisma.StringNullableListFilter<"Product">
   category_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
   subSubCategory_he?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -1699,6 +2458,36 @@ export type ProductCreateWithoutBogoGroupInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -1752,6 +2541,36 @@ export type ProductUncheckedCreateWithoutBogoGroupInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -1829,6 +2648,36 @@ export type ProductCreateWithoutProductTagsInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -1882,6 +2731,36 @@ export type ProductUncheckedCreateWithoutProductTagsInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -1949,6 +2828,36 @@ export type ProductUpdateWithoutProductTagsInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2002,6 +2911,36 @@ export type ProductUncheckedUpdateWithoutProductTagsInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2053,6 +2992,36 @@ export type ProductCreateManyCategoryRelationInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -2104,6 +3073,36 @@ export type ProductUpdateWithoutCategoryRelationInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2156,6 +3155,36 @@ export type ProductUncheckedUpdateWithoutCategoryRelationInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2208,6 +3237,36 @@ export type ProductUncheckedUpdateManyWithoutCategoryRelationInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2260,6 +3319,36 @@ export type ProductCreateManyBogoGroupInput = {
   upperMaterial_en?: string | null
   upperMaterial_he?: string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: string | null
+  shortTitle_he?: string | null
+  shortDescription_en?: string | null
+  shortDescription_he?: string | null
+  toeShape_en?: string | null
+  toeShape_he?: string | null
+  pattern_en?: string | null
+  pattern_he?: string | null
+  finish_en?: string | null
+  finish_he?: string | null
+  closureType_en?: string | null
+  closureType_he?: string | null
+  heelType_en?: string | null
+  heelType_he?: string | null
+  careInstructions_en?: string | null
+  careInstructions_he?: string | null
+  sizeFit?: string | null
+  footWidthFit?: string | null
+  toeBoxFit?: string | null
+  instepFit?: string | null
+  archFit?: string | null
+  adjustableFeatures?: Prisma.ProductCreateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: string | null
+  fitRecommendation_he?: string | null
+  fitNotes_en?: string | null
+  fitNotes_he?: string | null
+  seoFocusKeyword_en?: string | null
+  seoFocusKeyword_he?: string | null
+  seoSecondaryKeywords_en?: Prisma.ProductCreateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductCreateseoSecondaryKeywords_heInput | string[]
   category_he?: string | null
   subCategory_he?: string | null
   subSubCategory_he?: string | null
@@ -2310,6 +3399,36 @@ export type ProductUpdateWithoutBogoGroupInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2363,6 +3482,36 @@ export type ProductUncheckedUpdateWithoutBogoGroupInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2415,6 +3564,36 @@ export type ProductUncheckedUpdateManyWithoutBogoGroupInput = {
   upperMaterial_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   upperMaterial_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   colorVariants?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  shortTitle_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortTitle_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shortDescription_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pattern_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  finish_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  instepFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  archFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adjustableFeatures?: Prisma.ProductUpdateadjustableFeaturesInput | string[]
+  fitRecommendation_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitRecommendation_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitNotes_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoFocusKeyword_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  seoSecondaryKeywords_en?: Prisma.ProductUpdateseoSecondaryKeywords_enInput | string[]
+  seoSecondaryKeywords_he?: Prisma.ProductUpdateseoSecondaryKeywords_heInput | string[]
   category_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   subSubCategory_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2497,6 +3676,36 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   upperMaterial_en?: boolean
   upperMaterial_he?: boolean
   colorVariants?: boolean
+  shortTitle_en?: boolean
+  shortTitle_he?: boolean
+  shortDescription_en?: boolean
+  shortDescription_he?: boolean
+  toeShape_en?: boolean
+  toeShape_he?: boolean
+  pattern_en?: boolean
+  pattern_he?: boolean
+  finish_en?: boolean
+  finish_he?: boolean
+  closureType_en?: boolean
+  closureType_he?: boolean
+  heelType_en?: boolean
+  heelType_he?: boolean
+  careInstructions_en?: boolean
+  careInstructions_he?: boolean
+  sizeFit?: boolean
+  footWidthFit?: boolean
+  toeBoxFit?: boolean
+  instepFit?: boolean
+  archFit?: boolean
+  adjustableFeatures?: boolean
+  fitRecommendation_en?: boolean
+  fitRecommendation_he?: boolean
+  fitNotes_en?: boolean
+  fitNotes_he?: boolean
+  seoFocusKeyword_en?: boolean
+  seoFocusKeyword_he?: boolean
+  seoSecondaryKeywords_en?: boolean
+  seoSecondaryKeywords_he?: boolean
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
@@ -2553,6 +3762,36 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   upperMaterial_en?: boolean
   upperMaterial_he?: boolean
   colorVariants?: boolean
+  shortTitle_en?: boolean
+  shortTitle_he?: boolean
+  shortDescription_en?: boolean
+  shortDescription_he?: boolean
+  toeShape_en?: boolean
+  toeShape_he?: boolean
+  pattern_en?: boolean
+  pattern_he?: boolean
+  finish_en?: boolean
+  finish_he?: boolean
+  closureType_en?: boolean
+  closureType_he?: boolean
+  heelType_en?: boolean
+  heelType_he?: boolean
+  careInstructions_en?: boolean
+  careInstructions_he?: boolean
+  sizeFit?: boolean
+  footWidthFit?: boolean
+  toeBoxFit?: boolean
+  instepFit?: boolean
+  archFit?: boolean
+  adjustableFeatures?: boolean
+  fitRecommendation_en?: boolean
+  fitRecommendation_he?: boolean
+  fitNotes_en?: boolean
+  fitNotes_he?: boolean
+  seoFocusKeyword_en?: boolean
+  seoFocusKeyword_he?: boolean
+  seoSecondaryKeywords_en?: boolean
+  seoSecondaryKeywords_he?: boolean
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
@@ -2607,6 +3846,36 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   upperMaterial_en?: boolean
   upperMaterial_he?: boolean
   colorVariants?: boolean
+  shortTitle_en?: boolean
+  shortTitle_he?: boolean
+  shortDescription_en?: boolean
+  shortDescription_he?: boolean
+  toeShape_en?: boolean
+  toeShape_he?: boolean
+  pattern_en?: boolean
+  pattern_he?: boolean
+  finish_en?: boolean
+  finish_he?: boolean
+  closureType_en?: boolean
+  closureType_he?: boolean
+  heelType_en?: boolean
+  heelType_he?: boolean
+  careInstructions_en?: boolean
+  careInstructions_he?: boolean
+  sizeFit?: boolean
+  footWidthFit?: boolean
+  toeBoxFit?: boolean
+  instepFit?: boolean
+  archFit?: boolean
+  adjustableFeatures?: boolean
+  fitRecommendation_en?: boolean
+  fitRecommendation_he?: boolean
+  fitNotes_en?: boolean
+  fitNotes_he?: boolean
+  seoFocusKeyword_en?: boolean
+  seoFocusKeyword_he?: boolean
+  seoSecondaryKeywords_en?: boolean
+  seoSecondaryKeywords_he?: boolean
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
@@ -2661,6 +3930,36 @@ export type ProductSelectScalar = {
   upperMaterial_en?: boolean
   upperMaterial_he?: boolean
   colorVariants?: boolean
+  shortTitle_en?: boolean
+  shortTitle_he?: boolean
+  shortDescription_en?: boolean
+  shortDescription_he?: boolean
+  toeShape_en?: boolean
+  toeShape_he?: boolean
+  pattern_en?: boolean
+  pattern_he?: boolean
+  finish_en?: boolean
+  finish_he?: boolean
+  closureType_en?: boolean
+  closureType_he?: boolean
+  heelType_en?: boolean
+  heelType_he?: boolean
+  careInstructions_en?: boolean
+  careInstructions_he?: boolean
+  sizeFit?: boolean
+  footWidthFit?: boolean
+  toeBoxFit?: boolean
+  instepFit?: boolean
+  archFit?: boolean
+  adjustableFeatures?: boolean
+  fitRecommendation_en?: boolean
+  fitRecommendation_he?: boolean
+  fitNotes_en?: boolean
+  fitNotes_he?: boolean
+  seoFocusKeyword_en?: boolean
+  seoFocusKeyword_he?: boolean
+  seoSecondaryKeywords_en?: boolean
+  seoSecondaryKeywords_he?: boolean
   category_he?: boolean
   subCategory_he?: boolean
   subSubCategory_he?: boolean
@@ -2670,7 +3969,7 @@ export type ProductSelectScalar = {
   bogoGroupId?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "category_he" | "subCategory_he" | "subSubCategory_he" | "colors_search_norm" | "generated_search_keywords" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "shortTitle_en" | "shortTitle_he" | "shortDescription_en" | "shortDescription_he" | "toeShape_en" | "toeShape_he" | "pattern_en" | "pattern_he" | "finish_en" | "finish_he" | "closureType_en" | "closureType_he" | "heelType_en" | "heelType_he" | "careInstructions_en" | "careInstructions_he" | "sizeFit" | "footWidthFit" | "toeBoxFit" | "instepFit" | "archFit" | "adjustableFeatures" | "fitRecommendation_en" | "fitRecommendation_he" | "fitNotes_en" | "fitNotes_he" | "seoFocusKeyword_en" | "seoFocusKeyword_he" | "seoSecondaryKeywords_en" | "seoSecondaryKeywords_he" | "category_he" | "subCategory_he" | "subSubCategory_he" | "colors_search_norm" | "generated_search_keywords" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
   bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
@@ -2736,6 +4035,36 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     upperMaterial_en: string | null
     upperMaterial_he: string | null
     colorVariants: runtime.JsonValue | null
+    shortTitle_en: string | null
+    shortTitle_he: string | null
+    shortDescription_en: string | null
+    shortDescription_he: string | null
+    toeShape_en: string | null
+    toeShape_he: string | null
+    pattern_en: string | null
+    pattern_he: string | null
+    finish_en: string | null
+    finish_he: string | null
+    closureType_en: string | null
+    closureType_he: string | null
+    heelType_en: string | null
+    heelType_he: string | null
+    careInstructions_en: string | null
+    careInstructions_he: string | null
+    sizeFit: string | null
+    footWidthFit: string | null
+    toeBoxFit: string | null
+    instepFit: string | null
+    archFit: string | null
+    adjustableFeatures: string[]
+    fitRecommendation_en: string | null
+    fitRecommendation_he: string | null
+    fitNotes_en: string | null
+    fitNotes_he: string | null
+    seoFocusKeyword_en: string | null
+    seoFocusKeyword_he: string | null
+    seoSecondaryKeywords_en: string[]
+    seoSecondaryKeywords_he: string[]
     category_he: string | null
     subCategory_he: string | null
     subSubCategory_he: string | null
@@ -3211,6 +4540,36 @@ export interface ProductFieldRefs {
   readonly upperMaterial_en: Prisma.FieldRef<"Product", 'String'>
   readonly upperMaterial_he: Prisma.FieldRef<"Product", 'String'>
   readonly colorVariants: Prisma.FieldRef<"Product", 'Json'>
+  readonly shortTitle_en: Prisma.FieldRef<"Product", 'String'>
+  readonly shortTitle_he: Prisma.FieldRef<"Product", 'String'>
+  readonly shortDescription_en: Prisma.FieldRef<"Product", 'String'>
+  readonly shortDescription_he: Prisma.FieldRef<"Product", 'String'>
+  readonly toeShape_en: Prisma.FieldRef<"Product", 'String'>
+  readonly toeShape_he: Prisma.FieldRef<"Product", 'String'>
+  readonly pattern_en: Prisma.FieldRef<"Product", 'String'>
+  readonly pattern_he: Prisma.FieldRef<"Product", 'String'>
+  readonly finish_en: Prisma.FieldRef<"Product", 'String'>
+  readonly finish_he: Prisma.FieldRef<"Product", 'String'>
+  readonly closureType_en: Prisma.FieldRef<"Product", 'String'>
+  readonly closureType_he: Prisma.FieldRef<"Product", 'String'>
+  readonly heelType_en: Prisma.FieldRef<"Product", 'String'>
+  readonly heelType_he: Prisma.FieldRef<"Product", 'String'>
+  readonly careInstructions_en: Prisma.FieldRef<"Product", 'String'>
+  readonly careInstructions_he: Prisma.FieldRef<"Product", 'String'>
+  readonly sizeFit: Prisma.FieldRef<"Product", 'String'>
+  readonly footWidthFit: Prisma.FieldRef<"Product", 'String'>
+  readonly toeBoxFit: Prisma.FieldRef<"Product", 'String'>
+  readonly instepFit: Prisma.FieldRef<"Product", 'String'>
+  readonly archFit: Prisma.FieldRef<"Product", 'String'>
+  readonly adjustableFeatures: Prisma.FieldRef<"Product", 'String[]'>
+  readonly fitRecommendation_en: Prisma.FieldRef<"Product", 'String'>
+  readonly fitRecommendation_he: Prisma.FieldRef<"Product", 'String'>
+  readonly fitNotes_en: Prisma.FieldRef<"Product", 'String'>
+  readonly fitNotes_he: Prisma.FieldRef<"Product", 'String'>
+  readonly seoFocusKeyword_en: Prisma.FieldRef<"Product", 'String'>
+  readonly seoFocusKeyword_he: Prisma.FieldRef<"Product", 'String'>
+  readonly seoSecondaryKeywords_en: Prisma.FieldRef<"Product", 'String[]'>
+  readonly seoSecondaryKeywords_he: Prisma.FieldRef<"Product", 'String[]'>
   readonly category_he: Prisma.FieldRef<"Product", 'String'>
   readonly subCategory_he: Prisma.FieldRef<"Product", 'String'>
   readonly subSubCategory_he: Prisma.FieldRef<"Product", 'String'>

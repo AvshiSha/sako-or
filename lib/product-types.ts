@@ -1,10 +1,26 @@
+import type { ProductImageDetail } from '@/lib/product-images'
+import type {
+  SizeFit,
+  FootWidthFit,
+  ToeBoxFit,
+  InstepFit,
+  ArchFit,
+  AdjustableFeature,
+} from '@/lib/product-enums'
+
 export interface Product {
   id?: string
   sku: string
   title_en: string
   title_he: string
+  /** Short title for product cards / places the full title is too long. */
+  shortTitle_en?: string
+  shortTitle_he?: string
   description_en: string
   description_he: string
+  /** Short description, distinct from the full description above. */
+  shortDescription_en?: string
+  shortDescription_he?: string
   category: string
   subCategory?: string
   subSubCategory?: string
@@ -25,6 +41,8 @@ export interface Product {
       metaTitle?: string
       metaDescription?: string
       images: string[]
+      /** Optional per-image alt text/type/order, keyed by URL to entries in `images`. Use normalizeProductImages() to read both together. */
+      imageDetails?: ProductImageDetail[]
       primaryImage?: string
       videos?: string[]
     }
@@ -50,6 +68,32 @@ export interface Product {
     depth_he?: string
     width_en?: string
     width_he?: string
+    // New structured specification fields
+    toeShape_en?: string
+    toeShape_he?: string
+    pattern_en?: string
+    pattern_he?: string
+    finish_en?: string
+    finish_he?: string
+    closureType_en?: string
+    closureType_he?: string
+    heelType_en?: string
+    heelType_he?: string
+    careInstructions_en?: string
+    careInstructions_he?: string
+  }
+  /** Only meaningful for footwear products (see getCategoryFieldGroup in lib/product-enums.ts). */
+  shoeFit?: {
+    sizeFit?: SizeFit
+    footWidthFit?: FootWidthFit
+    toeBoxFit?: ToeBoxFit
+    instepFit?: InstepFit
+    archFit?: ArchFit
+    adjustableFeatures?: AdjustableFeature[]
+    recommendation_en?: string
+    recommendation_he?: string
+    notes_en?: string
+    notes_he?: string
   }
   seo?: {
     title_en?: string
@@ -57,6 +101,10 @@ export interface Product {
     description_en?: string
     description_he?: string
     slug?: string
+    focusKeyword_en?: string
+    focusKeyword_he?: string
+    secondaryKeywords_en?: string[]
+    secondaryKeywords_he?: string[]
   }
   searchKeywords?: string[]
   createdAt: Date

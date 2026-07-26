@@ -1834,43 +1834,43 @@ function EditProductPage() {
                                         className="object-cover"
                                       />
                                     )}
+
+                                    {/* Primary image indicator */}
+                                    {image.isPrimary && (
+                                      <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded font-medium">
+                                        Primary
+                                      </div>
+                                    )}
+
+                                    {/* Set as primary button for non-primary images */}
+                                    {!image.isPrimary && (
+                                      <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPrimaryImage(variant.id, index);
+                                          }}
+                                          className="w-full bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700 transition-colors"
+                                        >
+                                          Set as Primary
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
-                                  
-                                  {/* Remove button */}
-                        <button
-                          type="button"
+
+                                  {/* Remove button — kept outside the overflow-hidden image box so it isn't clipped */}
+                                  <button
+                                    type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       removeVariantImage(variant.id, index);
                                     }}
                                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Remove image"
-                        >
+                                    title="Remove image"
+                                  >
                                     ×
-                        </button>
-                                  
-                                  {/* Primary image indicator */}
-                                  {image.isPrimary && (
-                                    <div className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded font-medium">
-                                      Primary
-                      </div>
-                                  )}
-
-                                  {/* Set as primary button for non-primary images */}
-                                  {!image.isPrimary && (
-                                    <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setPrimaryImage(variant.id, index);
-                                        }}
-                                        className="w-full bg-indigo-600 text-white text-xs px-2 py-1 rounded hover:bg-indigo-700 transition-colors"
-                                      >
-                                        Set as Primary
-                        </button>
-                        </div>
-                      )}
+                                  </button>
                                   <ProductImageSeoFields
                                     values={{ altEn: image.altEn, altHe: image.altHe, type: image.imageType }}
                                     onChange={(updates) => updateVariantImageMeta(variant.id, index, updates)}

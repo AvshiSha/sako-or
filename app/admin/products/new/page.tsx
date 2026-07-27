@@ -2,15 +2,15 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { productService, categoryService, colorVariantService, Category, storage, Product } from '@/lib/firebase'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { productService, categoryService, colorVariantService, Category, Product } from '@/lib/firebase'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import GoogleDrivePicker from '@/app/components/GoogleDrivePicker'
 import Image from 'next/image'
 import { getColorHex } from '@/lib/colors'
-import { resizeProductImageFile } from '@/lib/resize-image-file'
 import { getCategoryFieldGroup, type ProductImageType } from '@/lib/product-enums'
-import { productExtensionsSchema, zodErrorsToFieldMap } from '@/lib/schemas/product-schema'
+import { validateProductFormBasics } from '../_lib/validate-product-form'
+import { buildProductPayload } from '../_lib/build-product-payload'
+import PreviewProductButton from '../_components/PreviewProductButton'
 import ProductBasicInformationSection from '../_components/ProductBasicInformationSection'
 import ProductClassificationSection from '../_components/ProductClassificationSection'
 import ProductSpecificationsSection from '../_components/ProductSpecificationsSection'
@@ -31,8 +31,8 @@ interface ImageFile {
 }
 
 interface VideoFile {
-  file: File;
-  preview: string;
+  file?: File;
+  preview?: string;
   uploading: boolean;
   uploaded: boolean;
   url?: string;
@@ -164,6 +164,7 @@ export default function NewProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [previewDraftId, setPreviewDraftId] = useState<string | null>(null)
   const [showGoogleDrivePicker, setShowGoogleDrivePicker] = useState(false)
   const [currentVariantForGoogleDrive, setCurrentVariantForGoogleDrive] = useState<string | null>(null)
   const [showGoogleDriveVideoPicker, setShowGoogleDriveVideoPicker] = useState(false)
@@ -783,151 +784,8 @@ export default function NewProductPage() {
     updateColorVariant(variantId, { images: updatedImages });
   };
 
-  // Upload variant images
-  const uploadVariantImages = async (variantId: string): Promise<string[]> => {
-    const variant = formData.colorVariants.find(v => v.id === variantId);
-    if (!variant) return [];
-
-    const uploadedUrls: string[] = [];
-    
-    for (let i = 0; i < variant.images.length; i++) {
-      const imageFile = variant.images[i];
-      if (imageFile.uploaded && imageFile.url) {
-        uploadedUrls.push(imageFile.url);
-        continue;
-      }
-
-      try {
-        // Mark as uploading
-        updateColorVariant(variantId, {
-          images: variant.images.map((img, idx) => 
-            idx === i ? { ...img, uploading: true } : img
-          )
-        });
-
-        // Upload to Firebase Storage
-        const processedFile = await resizeProductImageFile(imageFile.file)
-        const fileName = `products/${formData.sku}/${variant.colorSlug}/${Date.now()}-${i}-${processedFile.name}`;
-        const storageRef = ref(storage, fileName);
-        const snapshot = await uploadBytes(storageRef, processedFile);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-
-        // Mark as uploaded
-        updateColorVariant(variantId, {
-          images: variant.images.map((img, idx) => 
-            idx === i ? { ...img, uploading: false, uploaded: true, url: downloadURL } : img
-          )
-        });
-
-        uploadedUrls.push(downloadURL);
-      } catch (error) {
-        console.error('Error uploading variant image:', error);
-        // Mark as failed
-        updateColorVariant(variantId, {
-          images: variant.images.map((img, idx) => 
-            idx === i ? { ...img, uploading: false } : img
-          )
-        });
-      }
-    }
-
-    return uploadedUrls;
-  };
-
-  // Upload variant video
-  const uploadVariantVideo = async (variantId: string): Promise<string | null> => {
-    const variant = formData.colorVariants.find(v => v.id === variantId);
-    if (!variant || !variant.video) return null;
-    
-    const videoFile = variant.video;
-    if (videoFile.uploaded && videoFile.url) {
-      return videoFile.url;
-    }
-
-    try {
-      // Mark as uploading
-      updateColorVariant(variantId, {
-        video: { ...videoFile, uploading: true }
-      });
-
-      // Upload to Firebase Storage
-      const fileName = `products/${formData.sku}/${variant.colorSlug}/video/${Date.now()}-${videoFile.file.name}`;
-      const storageRef = ref(storage, fileName);
-      const snapshot = await uploadBytes(storageRef, videoFile.file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-
-      // Mark as uploaded
-      updateColorVariant(variantId, {
-        video: { ...videoFile, uploading: false, uploaded: true, url: downloadURL }
-      });
-
-      return downloadURL;
-    } catch (error) {
-      console.error('Error uploading variant video:', error);
-      // Mark as failed
-      updateColorVariant(variantId, {
-        video: { ...videoFile, uploading: false }
-      });
-      return null;
-    }
-  };
-
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {}
-
-    if (!formData.sku.trim()) {
-      newErrors.sku = 'SKU is required'
-    }
-    if (!formData.title_en.trim()) {
-      newErrors.title_en = 'English title is required'
-    }
-    if (!formData.title_he.trim()) {
-      newErrors.title_he = 'Hebrew title is required'
-    }
-    if (!formData.description_en.trim()) {
-      newErrors.description_en = 'English description is required'
-    }
-    if (!formData.description_he.trim()) {
-      newErrors.description_he = 'Hebrew description is required'
-    }
-    if (formData.price <= 0) {
-      newErrors.price = 'Price must be greater than 0'
-    }
-    if (!formData.brand.trim()) {
-      newErrors.brand = 'Brand is required'
-    }
-    if (!formData.category.trim()) {
-      newErrors.category = 'Main category is required'
-    }
-    // Note: subCategory and subSubCategory are optional
-    // Users can select just a main category, or go deeper into the hierarchy
-    if (formData.colorVariants.length === 0) {
-      newErrors.colorVariants = 'At least one color variant is required'
-    }
-
-    // Shoe fit / SEO / specification additions are all optional, but when a value is
-    // present it must be valid (enum values, URL-safe slug, etc).
-    const extensionsResult = productExtensionsSchema.safeParse({
-      toeShape_en: formData.materialCare.toeShape_en,
-      toeShape_he: formData.materialCare.toeShape_he,
-      closureType_en: formData.materialCare.closureType_en,
-      closureType_he: formData.materialCare.closureType_he,
-      heelType_en: formData.materialCare.heelType_en,
-      heelType_he: formData.materialCare.heelType_he,
-      shoeFit: categoryFieldGroup === 'shoes' ? formData.shoeFit : undefined,
-      seo: {
-        slug: formData.seo.slug,
-        he: { focusKeyword: formData.seo.focusKeyword_he, secondaryKeywords: formData.seo.secondaryKeywords_he },
-        en: { focusKeyword: formData.seo.focusKeyword_en, secondaryKeywords: formData.seo.secondaryKeywords_en },
-      },
-    })
-    if (!extensionsResult.success) {
-      const fieldMap = zodErrorsToFieldMap(extensionsResult.error)
-      if (fieldMap['seo.slug']) newErrors.seoSlug = fieldMap['seo.slug']
-      const shoeFitIssue = Object.keys(fieldMap).find((key) => key.startsWith('shoeFit'))
-      if (shoeFitIssue) newErrors.shoeFit = fieldMap[shoeFitIssue]
-    }
-
+    const newErrors: FormErrors = validateProductFormBasics(formData, categoryFieldGroup)
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -948,148 +806,14 @@ export default function NewProductPage() {
     try {
       
       console.log('Preparing product data...')
-      
-      // Build categories path and IDs, and resolve Hebrew names
-      const categoriesPath: string[] = []
-      const categoriesPathId: string[] = []
-      let categoryEn = ''
-      let categoryHe = ''
-      let subCategoryEn = ''
-      let subCategoryHe = ''
-      let subSubCategoryEn = ''
-      let subSubCategoryHe = ''
-      
-      const mainCategory = categories.find(cat => cat.id === formData.category)
-      if (mainCategory) {
-        const mainSlug = typeof mainCategory.slug === 'object' ? mainCategory.slug.en : mainCategory.slug
-        const mainNameEn = typeof mainCategory.name === 'object' ? mainCategory.name.en : mainCategory.name
-        const mainNameHe = typeof mainCategory.name === 'object' ? mainCategory.name.he : mainCategory.name
-        if (mainSlug) {
-          categoriesPath.push(mainSlug)
-          if (mainCategory.id) {
-            categoriesPathId.push(mainCategory.id)
-          }
-        }
-        categoryEn = mainNameEn
-        categoryHe = mainNameHe
-        
-        if (formData.subCategory) {
-          const subCategory = categories.find(cat => cat.id === formData.subCategory)
-          if (subCategory) {
-            const subSlug = typeof subCategory.slug === 'object' ? subCategory.slug.en : subCategory.slug
-            const subNameEn = typeof subCategory.name === 'object' ? subCategory.name.en : subCategory.name
-            const subNameHe = typeof subCategory.name === 'object' ? subCategory.name.he : subCategory.name
-            if (subSlug) {
-              categoriesPath.push(subSlug)
-              if (subCategory.id) {
-                categoriesPathId.push(subCategory.id)
-              }
-            }
-            subCategoryEn = subNameEn
-            subCategoryHe = subNameHe
-            
-            if (formData.subSubCategory) {
-              const subSubCategory = categories.find(cat => cat.id === formData.subSubCategory)
-              if (subSubCategory) {
-                const subSubSlug = typeof subSubCategory.slug === 'object' ? subSubCategory.slug.en : subSubCategory.slug
-                const subSubNameEn = typeof subSubCategory.name === 'object' ? subSubCategory.name.en : subSubCategory.name
-                const subSubNameHe = typeof subSubCategory.name === 'object' ? subSubCategory.name.he : subSubCategory.name
-                if (subSubSlug) {
-                  categoriesPath.push(subSubSlug)
-                  if (subSubCategory.id) {
-                    categoriesPathId.push(subSubCategory.id)
-                  }
-                }
-                subSubCategoryEn = subSubNameEn
-                subSubCategoryHe = subSubNameHe
-              }
-            }
-          }
-        }
-      }
-
-      // Convert color variants to the new format
-      const colorVariants: Record<string, any> = {}
-      for (const variant of formData.colorVariants) {
-        const uploadedImages = await uploadVariantImages(variant.id)
-        let videoUrl: string | null = null
-        if (variant.video) {
-          videoUrl = await uploadVariantVideo(variant.id)
-        }
-        
-        // Find the primary image index in the variant's images array
-        const primaryImageIndex = variant.images.findIndex(img => img.isPrimary)
-        // Get the corresponding URL from uploadedImages (maintains same order)
-        const primaryImageUrl = primaryImageIndex >= 0 && primaryImageIndex < uploadedImages.length
-          ? uploadedImages[primaryImageIndex]
-          : uploadedImages[0] || null
-
-        // Per-image alt text/type metadata, kept as a parallel array (keyed by URL) so
-        // the existing `images: string[]` contract stays unchanged for every other consumer.
-        const imageDetails = uploadedImages.map((url, index) => ({
-          url,
-          altEn: variant.images[index]?.altEn || undefined,
-          altHe: variant.images[index]?.altHe || undefined,
-          type: variant.images[index]?.imageType || undefined,
-          order: index,
-        }))
-
-        colorVariants[variant.colorSlug] = {
-          colorSlug: variant.colorSlug,
-          isActive: variant.isActive !== false, // Default to true if not specified
-          priceOverride: variant.price || null,
-          salePrice: variant.salePrice || null,
-          stockBySize: variant.stockBySize,
-          metaTitle: variant.metaTitle || '',
-          metaDescription: variant.metaDescription || '',
-          images: uploadedImages,
-          imageDetails,
-          primaryImage: primaryImageUrl,
-          videos: videoUrl ? [videoUrl] : []
-        }
-      }
 
       const productData: any = {
-        sku: formData.sku,
-        title_en: formData.title_en,
-        title_he: formData.title_he,
-        shortTitle_en: formData.shortTitle_en || null,
-        shortTitle_he: formData.shortTitle_he || null,
-        description_en: formData.description_en,
-        description_he: formData.description_he,
-        shortDescription_en: formData.shortDescription_en || null,
-        shortDescription_he: formData.shortDescription_he || null,
-        // Store category IDs (for Firebase compatibility)
-        category: formData.category,
-        subCategory: formData.subCategory || null,
-        subSubCategory: formData.subSubCategory || null,
-        // Store resolved English names (will be synced to Neon)
-        category_en: categoryEn,
-        subCategory_en: subCategoryEn || null,
-        subSubCategory_en: subSubCategoryEn || null,
-        // Store resolved Hebrew names (will be synced to Neon)
-        category_he: categoryHe,
-        subCategory_he: subCategoryHe || null,
-        subSubCategory_he: subSubCategoryHe || null,
-        categories_path: categoriesPath,
-        categories_path_id: categoriesPathId,
-        brand: formData.brand,
-        price: formData.price,
-        salePrice: formData.salePrice > 0 ? formData.salePrice : null,
-        currency: formData.currency,
-        colorVariants: colorVariants,
-        isEnabled: formData.isEnabled,
-        isDeleted: formData.isDeleted,
-        newProduct: formData.newProduct,
-        featuredProduct: formData.featuredProduct,
-        materialCare: formData.materialCare,
-        // Saved regardless of whether the Shoe Fit section is currently shown, so
-        // switching a product away from footwear never silently deletes fit data.
-        shoeFit: formData.shoeFit,
-        seo: formData.seo,
-        searchKeywords: formData.searchKeywords,
+        ...(await buildProductPayload(formData, categories, {
+          onImagesUpdate: (variantId, images) => updateColorVariant(variantId, { images }),
+          onVideoUpdate: (variantId, video) => updateColorVariant(variantId, { video }),
+        })),
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       }
 
       console.log('Product data prepared:', productData)
@@ -1612,10 +1336,10 @@ export default function NewProductPage() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-900 truncate">
-                                    {variant.video.file.name}
+                                    {variant.video.file?.name}
                                   </p>
                                   <p className="text-sm text-gray-500">
-                                    {(variant.video.file.size / (1024 * 1024)).toFixed(2)} MB
+                                    {variant.video.file ? (variant.video.file.size / (1024 * 1024)).toFixed(2) : '0.00'} MB
                                   </p>
                                 </div>
                               </div>
@@ -1716,7 +1440,18 @@ export default function NewProductPage() {
             </div>
 
             {/* Submit Button */}
-            <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+            <div className="flex justify-end items-start space-x-4 pt-6 border-t border-gray-200">
+              <PreviewProductButton
+                formData={formData}
+                categories={categories}
+                categoryFieldGroup={categoryFieldGroup}
+                sourceProductId={null}
+                draftId={previewDraftId}
+                onDraftIdChange={setPreviewDraftId}
+                onErrors={setErrors}
+                onImagesUpdate={(variantId, images) => updateColorVariant(variantId, { images })}
+                onVideoUpdate={(variantId, video) => updateColorVariant(variantId, { video })}
+              />
               <button
                 type="button"
                 onClick={() => router.push('/admin/products')}

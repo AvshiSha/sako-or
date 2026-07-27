@@ -26,6 +26,7 @@ import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
 import { normalizeProductImages, getProductImageAlt, type ProductImageDetail } from '@/lib/product-images'
+import PreviewModeBanner from '@/app/admin/products/_components/PreviewModeBanner'
 import {
   SIZE_FIT_OPTIONS,
   FOOT_WIDTH_FIT_OPTIONS,
@@ -62,6 +63,16 @@ interface ProductColorClientProps {
   colorSlug: string;
   initialProduct: ProductWithVariants;
   initialVariant: ColorVariantData;
+  /** True when rendering an admin draft rather than the live, published product. */
+  previewMode?: boolean;
+  /** Route prefix color-switching should navigate within, e.g. `/admin/products/preview/{draftId}`. Required when previewMode is true. */
+  previewBasePath?: string;
+  /** Signed short-lived token appended to preview navigations; carried across color switches. */
+  previewToken?: string;
+  /** The live product this draft was created from (edit flow), or null for a brand-new, never-published product. */
+  sourceProductId?: string | null;
+  /** colorSlug -> warning message (e.g. "no images assigned"), surfaced in the preview banner instead of silently rendering an empty gallery. */
+  previewWarnings?: Record<string, string>;
 }
 
 export default function ProductColorClient({
@@ -70,6 +81,11 @@ export default function ProductColorClient({
   colorSlug,
   initialProduct,
   initialVariant,
+  previewMode = false,
+  previewBasePath,
+  previewToken,
+  sourceProductId = null,
+  previewWarnings,
 }: ProductColorClientProps) {
   const router = useRouter()
   const [product, setProduct] = useState<ProductWithVariants | null>(initialProduct)
@@ -154,6 +170,10 @@ export default function ProductColorClient({
 
   // Defer real-time Firebase listener until after first paint (live stock/price updates)
   useEffect(() => {
+    // Drafts live outside the `products` collection this listens to, and previewing
+    // a live product's pending edits must never let a stale, published snapshot
+    // overwrite the draft data the admin is reviewing.
+    if (previewMode) return
     if (!baseSku || !colorSlug) return
 
     let unsubscribe: (() => void) | undefined
@@ -188,10 +208,11 @@ export default function ProductColorClient({
       }
       unsubscribe?.()
     }
-  }, [baseSku, colorSlug])
+  }, [baseSku, colorSlug, previewMode])
 
   // Defer analytics until after LCP-critical content paints
   useEffect(() => {
+    if (previewMode) return
     if (!product || !currentVariant) return
 
     const fireAnalytics = () => {
@@ -241,7 +262,7 @@ export default function ProductColorClient({
         window.cancelIdleCallback(idleId as number)
       }
     }
-  }, [product, currentVariant, baseSku, colorSlug, lng])
+  }, [product, currentVariant, baseSku, colorSlug, lng, previewMode])
 
   // Get current price (variant price takes precedence)
   const getCurrentPrice = useCallback(() => {
@@ -293,7 +314,20 @@ export default function ProductColorClient({
 
   // Handle color change - navigate to new URL
   const handleColorChange = (newColorSlug: string) => {
+    if (previewMode && previewBasePath) {
+      const query = previewToken ? `?token=${encodeURIComponent(previewToken)}` : ''
+      router.push(`${previewBasePath}/${newColorSlug}${query}`)
+      return
+    }
     router.push(`/${lng}/product/${baseSku}/${newColorSlug}`)
+  }
+
+  const handleToggleFavorite = (key: string) => {
+    if (previewMode) {
+      showToast(lng === 'he' ? 'מצב תצוגה מקדימה — פעולה מושבתת' : 'Preview mode — action disabled', 'info')
+      return
+    }
+    void toggleFavorite(key)
   }
 
   if (loading) {
@@ -340,6 +374,11 @@ export default function ProductColorClient({
 
   const handleAddToCart = async () => {
     if (isOutOfStock || isAddingToCart || !selectedSize) return
+
+    if (previewMode) {
+      showToast(lng === 'he' ? 'מצב תצוגה מקדימה — פעולה מושבתת' : 'Preview mode — action disabled', 'info')
+      return
+    }
 
     setIsAddingToCart(true)
 
@@ -438,6 +477,13 @@ export default function ProductColorClient({
 
   return (
     <>
+      {previewMode && (
+        <PreviewModeBanner
+          lng={lng}
+          editHref={sourceProductId ? `/admin/products/${sourceProductId}/edit` : '/admin/products/new'}
+          warning={previewWarnings?.[currentVariant.colorSlug]}
+        />
+      )}
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         <div>
@@ -445,7 +491,7 @@ export default function ProductColorClient({
             <div className="relative w-full lg:sticky lg:top-28 lg:self-start lg:z-10 lg:max-h-[calc(100dvh-7rem)]">
               {/* Favorite Heart Icon - Top Left */}
               <button
-                onClick={() => void toggleFavorite(buildFavoriteKey(baseSku, colorSlug))}
+                onClick={() => handleToggleFavorite(buildFavoriteKey(baseSku, colorSlug))}
                 className="absolute top-4 left-4 z-20 p-2 rounded-full bg-white/80 backdrop-blur-sm shadow-sm hover:bg-white transition-colors"
                 aria-label={isFavorite(buildFavoriteKey(baseSku, colorSlug)) ? (lng === 'he' ? 'הסר ממועדפים' : 'Remove from favorites') : (lng === 'he' ? 'הוסף למועדפים' : 'Add to favorites')}
               >
@@ -691,7 +737,7 @@ export default function ProductColorClient({
                   </button>
                   <button
                     onClick={() => {
-                      void toggleFavorite(buildFavoriteKey(baseSku, colorSlug))
+                      handleToggleFavorite(buildFavoriteKey(baseSku, colorSlug))
                     }}
                     className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
                       isFavorite(buildFavoriteKey(baseSku, colorSlug))
@@ -952,7 +998,7 @@ export default function ProductColorClient({
                   </button>
                   <button
                     onClick={() => {
-                      void toggleFavorite(buildFavoriteKey(baseSku, colorSlug))
+                      handleToggleFavorite(buildFavoriteKey(baseSku, colorSlug))
                     }}
                     className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
                       isFavorite(buildFavoriteKey(baseSku, colorSlug))

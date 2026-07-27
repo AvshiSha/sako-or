@@ -23,8 +23,9 @@ import {
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { getCategoryFieldGroup, type ProductImageType } from '@/lib/product-enums'
-import { productExtensionsSchema, zodErrorsToFieldMap } from '@/lib/schemas/product-schema'
 import { normalizeProductImages } from '@/lib/product-images'
+import { validateProductFormBasics } from '../../_lib/validate-product-form'
+import PreviewProductButton from '../../_components/PreviewProductButton'
 import ProductBasicInformationSection from '../../_components/ProductBasicInformationSection'
 import ProductClassificationSection from '../../_components/ProductClassificationSection'
 import ProductSpecificationsSection from '../../_components/ProductSpecificationsSection'
@@ -201,6 +202,7 @@ function EditProductPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [previewDraftId, setPreviewDraftId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [showGoogleDrivePicker, setShowGoogleDrivePicker] = useState(false)
   const [currentVariantForGoogleDrive, setCurrentVariantForGoogleDrive] = useState<string | null>(null)
@@ -1091,67 +1093,8 @@ function EditProductPage() {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {}
-
-    if (!formData.sku.trim()) {
-      newErrors.sku = 'SKU is required'
-    }
-    if (!formData.title_en.trim()) {
-      newErrors.title_en = 'English title is required'
-    }
-    if (!formData.title_he.trim()) {
-      newErrors.title_he = 'Hebrew title is required'
-    }
-    if (!formData.description_en.trim()) {
-      newErrors.description_en = 'English description is required'
-    }
-    if (!formData.description_he.trim()) {
-      newErrors.description_he = 'Hebrew description is required'
-    }
-    if (formData.price <= 0) {
-      newErrors.price = 'Price must be greater than 0'
-    }
-    if (!formData.brand.trim()) {
-      newErrors.brand = 'Brand is required'
-    }
-    if (!formData.category.trim()) {
-      newErrors.category = 'Main category is required'
-    }
-    if (formData.colorVariants.length === 0) {
-      newErrors.colorVariants = 'At least one color variant is required'
-    }
-
-    // Shoe fit / SEO / specification additions are all optional, but when a value is
-    // present it must be valid (enum values, URL-safe slug, etc).
-    const extensionsResult = productExtensionsSchema.safeParse({
-      toeShape_en: formData.materialCare.toeShape_en,
-      toeShape_he: formData.materialCare.toeShape_he,
-      closureType_en: formData.materialCare.closureType_en,
-      closureType_he: formData.materialCare.closureType_he,
-      heelType_en: formData.materialCare.heelType_en,
-      heelType_he: formData.materialCare.heelType_he,
-      shoeFit: categoryFieldGroup === 'shoes' ? formData.shoeFit : undefined,
-      seo: {
-        slug: formData.seo.slug,
-        he: { focusKeyword: formData.seo.focusKeyword_he, secondaryKeywords: formData.seo.secondaryKeywords_he },
-        en: { focusKeyword: formData.seo.focusKeyword_en, secondaryKeywords: formData.seo.secondaryKeywords_en },
-      },
-    })
-    if (!extensionsResult.success) {
-      const fieldMap = zodErrorsToFieldMap(extensionsResult.error)
-      if (fieldMap['seo.slug']) newErrors.seoSlug = fieldMap['seo.slug']
-      const shoeFitIssue = Object.keys(fieldMap).find((key) => key.startsWith('shoeFit'))
-      if (shoeFitIssue) newErrors.shoeFit = fieldMap[shoeFitIssue]
-    }
-
+    const newErrors: FormErrors = validateProductFormBasics(formData, categoryFieldGroup)
     setErrors(newErrors)
-
-    // Log validation errors for debugging
-    if (Object.keys(newErrors).length > 0) {
-      console.log('Validation errors:', newErrors)
-      console.log('Form data:', formData)
-    }
-    
     return Object.keys(newErrors).length === 0
   }
 
@@ -2073,7 +2016,18 @@ function EditProductPage() {
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-end space-x-4">
+          <div className="flex justify-end items-start space-x-4">
+            <PreviewProductButton
+              formData={formData}
+              categories={categories}
+              categoryFieldGroup={categoryFieldGroup}
+              sourceProductId={productId}
+              draftId={previewDraftId}
+              onDraftIdChange={setPreviewDraftId}
+              onErrors={setErrors}
+              onImagesUpdate={(variantId, images) => updateColorVariant(variantId, { images })}
+              onVideoUpdate={(variantId, video) => updateColorVariant(variantId, { video })}
+            />
             <button
               type="button"
               onClick={() => router.back()}

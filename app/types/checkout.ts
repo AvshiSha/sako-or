@@ -117,6 +117,8 @@ export interface CreateLowProfileResponse {
   amount: number;
   currency: string;
   error?: string;
+  /** Machine-readable error code, e.g. CART_EMPTY | ITEM_UNAVAILABLE | STOCK_INSUFFICIENT | CART_INVALID | AMOUNT_MISMATCH */
+  code?: string;
 }
 
 export interface PaymentStatusResponse {

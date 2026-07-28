@@ -46,6 +46,8 @@ export interface CartHook {
   getTotalWithDelivery: () => number
   loading: boolean
   hadStockAdjustments: boolean
+  /** Re-checks cart items against live inventory. Returns the freshly validated items, or null if the check could not run/complete. */
+  revalidateCart: () => Promise<CartItem[] | null>
 }
 
 export function useCart(): CartHook {
@@ -245,6 +247,69 @@ export function useCart(): CartHook {
     }
   }, [areItemArraysEqual, normalizeCartItem])
 
+  // Re-check the current cart items against live inventory. Exposed from the
+  // hook so callers (e.g. the cart page, right before opening checkout) can
+  // force a fresh check on demand, not just once per page load.
+  const revalidateCart = useCallback(async (): Promise<CartItem[] | null> => {
+    if (!items.length) return null
+
+    try {
+      const payload = {
+        items: items.map(item => ({
+          sku: item.sku,
+          color: item.color ?? null,
+          size: item.size ?? null,
+          quantity: item.quantity
+        }))
+      }
+
+      const res = await fetch('/api/cart/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok) return null
+
+      const json = await res.json().catch(() => null)
+      if (!json || !Array.isArray(json.items)) return null
+
+      const serverItems: CartItem[] = json.items
+        .filter((x: any) => x && typeof x.sku === 'string')
+        .map((x: any) => {
+          const maxStock = Math.max(0, Math.floor(x.stock ?? 0))
+          const quantity = Math.max(0, Math.floor(x.finalQuantity ?? x.quantity ?? 0))
+          const isOutOfStock = Boolean(x.outOfStock) || maxStock <= 0 || quantity <= 0
+          const stockStatus: CartItem['stockStatus'] = isOutOfStock ? 'out_of_stock' : 'in_stock'
+          return {
+            sku: x.sku,
+            name: {
+              en: x.name?.en || '',
+              he: x.name?.he || ''
+            },
+            price: Number(x.price || 0),
+            salePrice: x.salePrice != null ? Number(x.salePrice) : undefined,
+            currency: x.currency || 'ILS',
+            image: x.image || undefined,
+            size: x.size || undefined,
+            color: x.color || undefined,
+            quantity,
+            maxStock,
+            isOutOfStock,
+            stockStatus
+          }
+        })
+
+      const validated = applyStockValidationToItems(serverItems)
+      setItems(validated)
+      setHadStockAdjustments(Boolean(json.hadAdjustments))
+      return validated
+    } catch (error) {
+      console.error('[useCart] Error validating cart via server:', error)
+      return null
+    }
+  }, [applyStockValidationToItems, items])
+
   // Validate cart against current stock via server once per hook lifetime (on load)
   // We only run this on the full cart page to avoid duplicate calls from
   // components like the quick-buy drawer that also use the cart hook.
@@ -254,73 +319,9 @@ export function useCart(): CartHook {
     if (hasValidatedCartRef.current) return
     if (!pathname || !pathname.endsWith('/cart')) return
 
-    let cancelled = false
-
-    ;(async () => {
-      try {
-        hasValidatedCartRef.current = true
-
-        const payload = {
-          items: items.map(item => ({
-            sku: item.sku,
-            color: item.color ?? null,
-            size: item.size ?? null,
-            quantity: item.quantity
-          }))
-        }
-
-        const res = await fetch('/api/cart/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-
-        if (!res.ok) return
-
-        const json = await res.json().catch(() => null)
-        if (!json || !Array.isArray(json.items)) return
-        if (cancelled) return
-
-        const serverItems: CartItem[] = json.items
-          .filter((x: any) => x && typeof x.sku === 'string')
-          .map((x: any) => {
-            const maxStock = Math.max(0, Math.floor(x.stock ?? 0))
-            const quantity = Math.max(0, Math.floor(x.finalQuantity ?? x.quantity ?? 0))
-            const isOutOfStock = Boolean(x.outOfStock) || maxStock <= 0 || quantity <= 0
-            const stockStatus: CartItem['stockStatus'] = isOutOfStock ? 'out_of_stock' : 'in_stock'
-            return {
-              sku: x.sku,
-              name: {
-                en: x.name?.en || '',
-                he: x.name?.he || ''
-              },
-              price: Number(x.price || 0),
-              salePrice: x.salePrice != null ? Number(x.salePrice) : undefined,
-              currency: x.currency || 'ILS',
-              image: x.image || undefined,
-              size: x.size || undefined,
-              color: x.color || undefined,
-              quantity,
-              maxStock,
-              isOutOfStock,
-              stockStatus
-            }
-          })
-
-        const validated = applyStockValidationToItems(serverItems)
-        if (!cancelled) {
-          setItems(validated)
-          setHadStockAdjustments(Boolean(json.hadAdjustments))
-        }
-      } catch (error) {
-        console.error('[useCart] Error validating cart via server:', error)
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [applyStockValidationToItems, items, loading, pathname])
+    hasValidatedCartRef.current = true
+    revalidateCart()
+  }, [items, loading, pathname, revalidateCart])
 
   // Listen for cart reload event (triggered after purchase to reload from Neon)
   useEffect(() => {
@@ -748,7 +749,7 @@ export function useCart(): CartHook {
       return sum + (price * item.quantity)
     }, 0)
 
-    return total < FREE_DELIVERY_THRESHOLD_ILS ? DELIVERY_FEE_ILS : 0
+    return total > 0 && total < FREE_DELIVERY_THRESHOLD_ILS ? DELIVERY_FEE_ILS : 0
   }, [getPurchasableItemsInternal])
 
   const getTotalWithDelivery = useCallback(() => {
@@ -767,6 +768,7 @@ export function useCart(): CartHook {
     getDeliveryFee,
     getTotalWithDelivery,
     loading,
-    hadStockAdjustments
+    hadStockAdjustments,
+    revalidateCart
   }
 }

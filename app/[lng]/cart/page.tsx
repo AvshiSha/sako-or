@@ -90,10 +90,12 @@ function CartPageContent() {
     getDeliveryFee,
     getTotalWithDelivery,
     clearCart,
-    loading 
+    loading,
+    revalidateCart
   } = useCart()
 
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
+  const [isRevalidatingForCheckout, setIsRevalidatingForCheckout] = useState(false)
 
   const [isClient, setIsClient] = useState(false)
   const STORE_PICKUP_LOCATION = 'Rothschild 51, Rishon Lezion'
@@ -428,7 +430,8 @@ const revalidateCouponCodes = useCallback(async (
       freeDelivery: 'Free delivery on orders over ₪300',
       outOfStockLabel: 'OUT OF STOCK',
       outOfStockDescription: 'This item is no longer available and will not be included in your total.',
-      stockDisclaimer: 'Items in your cart are not reserved until you complete your order.'
+      stockDisclaimer: 'Items in your cart are not reserved until you complete your order.',
+      cartInvalidMessage: 'One or more products in your cart are no longer available. Please update your cart before continuing.'
     },
     he: {
       title: 'עגלת קניות',
@@ -447,7 +450,8 @@ const revalidateCouponCodes = useCallback(async (
       freeDelivery: 'משלוח חינם בהזמנות מעל ₪300',
       outOfStockLabel: 'אזל מהמלאי – המוצר לא ייכלל בהזמנה',
       outOfStockDescription: 'המוצר אינו זמין יותר ולא ייכלל בסכום לתשלום.',
-      stockDisclaimer: 'המוצרים בעגלה אינם שמורים עבורך עד להשלמת ההזמנה'
+      stockDisclaimer: 'המוצרים בעגלה אינם שמורים עבורך עד להשלמת ההזמנה',
+      cartInvalidMessage: 'אחד או יותר מהמוצרים בעגלה אינם זמינים יותר. נא לעדכן את העגלה לפני שממשיכים.'
     }
   }
 
@@ -1141,9 +1145,37 @@ if (!isClient || loading) {
                   </div>
                 </div>
 
+                {(purchasableItems.length === 0 || subtotal <= 0) && (
+                  <div className="mt-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                    {t.cartInvalidMessage}
+                  </div>
+                )}
+
                 <button
-                  onClick={() => setIsCheckoutModalOpen(true)}
-                  className="w-full mt-6 bg-[#856D55]/90 text-white py-3 px-6 rounded-lg hover:bg-[#856D55] transition-colors font-medium"
+                  onClick={async () => {
+                    setIsRevalidatingForCheckout(true)
+                    let freshItems: typeof items | null = null
+                    try {
+                      freshItems = await revalidateCart()
+                    } finally {
+                      setIsRevalidatingForCheckout(false)
+                    }
+
+                    const purchasableAfterRevalidate = (freshItems ?? items).filter(item => {
+                      const isOutOfStock =
+                        item.stockStatus === 'out_of_stock' ||
+                        item.isOutOfStock ||
+                        item.maxStock <= 0 ||
+                        item.quantity <= 0
+                      return !isOutOfStock
+                    })
+
+                    if (purchasableAfterRevalidate.length > 0) {
+                      setIsCheckoutModalOpen(true)
+                    }
+                  }}
+                  disabled={purchasableItems.length === 0 || subtotal <= 0 || isRevalidatingForCheckout}
+                  className="w-full mt-6 bg-[#856D55]/90 text-white py-3 px-6 rounded-lg hover:bg-[#856D55] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#856D55]/90"
                 >
                   {t.checkout}
                 </button>
@@ -1171,10 +1203,14 @@ if (!isClient || loading) {
         deliveryFee={deliveryFee}
         currency={cartCurrency}
         productName={getProductName()}
-        productSku={purchasableItems.length > 0 ? purchasableItems[0].sku : 'UNKNOWN'}
+        productSku={purchasableItems.length > 0 ? purchasableItems[0].sku : undefined}
         quantity={totalItems}
         language={lng as 'he' | 'en'}
         items={purchasableItems}
+        onCartInvalid={async () => {
+          setIsCheckoutModalOpen(false)
+          await revalidateCart()
+        }}
         appliedCoupons={
           bogoDiscountAmount > 0
             ? []

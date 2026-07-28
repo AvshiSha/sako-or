@@ -6,9 +6,8 @@ import { createOrder, generateOrderNumber } from '../../../../lib/orders';
 import { prisma } from '../../../../lib/prisma';
 import { spendPointsForOrder } from '../../../../lib/points';
 import { getBearerToken, requireUserAuth } from '@/lib/server/auth';
-import { productService } from '../../../../lib/firebase';
-import { parseSku } from '../../../../lib/sku-parser';
 import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '../../../../lib/pricing';
+import { validateCartItems } from '../../../../lib/cart-validation';
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,6 +82,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }
+      );
+    }
+
+    // Authoritative server-side revalidation against live inventory.
+    // The client's `items`/`amount`/`subtotal` are never trusted for pricing or
+    // availability - every line is re-fetched and re-priced from the product
+    // catalog right before an order/charge is created.
+    const requestedItems = (body.items && body.items.length > 0 ? body.items : []).map(item => ({
+      sku: item.productSku,
+      color: item.color ?? null,
+      size: item.size ?? null,
+      quantity: item.quantity,
+    }));
+
+    if (requestedItems.length === 0) {
+      return NextResponse.json(
+        { error: 'Your cart is empty or no longer valid. Please refresh your cart and try again.', code: 'CART_EMPTY' },
+        { status: 409 }
+      );
+    }
+
+    const validation = await validateCartItems(requestedItems);
+    const unavailableItem = validation.items.find(i => !i.available);
+    if (unavailableItem) {
+      const code = unavailableItem.reasonCode === 'STOCK_INSUFFICIENT' || unavailableItem.adjusted
+        ? 'STOCK_INSUFFICIENT'
+        : 'ITEM_UNAVAILABLE';
+      return NextResponse.json(
+        { error: `The item ${unavailableItem.sku} is no longer available. Please refresh your cart.`, code, sku: unavailableItem.sku },
+        { status: 409 }
+      );
+    }
+
+    if (validation.purchasableSubtotal <= 0) {
+      return NextResponse.json(
+        { error: 'Your cart has no purchasable items. Please refresh your cart.', code: 'CART_INVALID' },
+        { status: 409 }
       );
     }
 
@@ -174,115 +210,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Prepare order items - use items array if provided, otherwise fallback to single product
-    // Fetch product data to capture images and pricing
-    const prepareOrderItems = async () => {
-      const items = body.items && body.items.length > 0
-        ? body.items
-        : [{
-            productName: body.productName || 'Sako Order',
-            productSku: body.productSku || 'UNKNOWN',
-            quantity: body.quantity || 1,
-            price: body.amount / (body.quantity || 1),
-            color: undefined,
-            size: undefined,
-          }];
+    // Build order items solely from the server-validated data above - never
+    // from client-supplied names/prices - so a stale/tampered client payload
+    // can't change what gets charged or recorded.
+    const isHebrewLanguage = body.language === 'he';
+    const orderItems = validation.items.map(item => {
+      const colorName = item.color ? item.color.charAt(0).toUpperCase() + item.color.slice(1) : null;
+      const modelNumber = colorName ? `${item.sku}-${colorName.toUpperCase()}` : item.sku;
+      const productName = (isHebrewLanguage ? item.name.he : item.name.en) || item.name.en || item.name.he || item.sku;
+      // The unit price actually charged: the valid sale price when present, otherwise the regular price.
+      const chargedUnitPrice = item.salePrice ?? item.price;
 
-      const enrichedItems = await Promise.all(
-        items.map(async (item) => {
-          try {
-            // Parse SKU to get base SKU
-            const parsedSku = parseSku(item.productSku);
-            const baseSku = parsedSku.baseSku || item.productSku;
-            // Convert colorName to colorSlug (lowercase, for Firebase lookup)
-            const colorSlug = item.color || (parsedSku.colorName ? parsedSku.colorName.toLowerCase() : null);
-
-            // Fetch product from Firebase
-            const product = await productService.getProductByBaseSku(baseSku);
-            
-            let primaryImage: string | undefined;
-            let salePrice: number | undefined;
-            let modelNumber: string | undefined;
-
-            if (product) {
-              // Get color variant if color is specified
-              const variant = colorSlug && product.colorVariants?.[colorSlug];
-              
-              // Get primary image from variant or product
-              if (variant && typeof variant === 'object' && variant !== null && 'colorSlug' in variant) {
-                primaryImage = variant.primaryImage || variant.images?.[0];
-                // Only use variant salePrice if it's a valid discount (less than regular price)
-                const variantSalePrice = variant.salePrice;
-                if (variantSalePrice != null && variantSalePrice > 0 && variantSalePrice < item.price) {
-                  salePrice = variantSalePrice;
-                }
-              }
-              
-              // Fallback to product-level pricing if variant doesn't have valid sale price
-              if (!salePrice && product.salePrice != null && product.salePrice > 0 && product.salePrice < item.price) {
-                salePrice = product.salePrice;
-              }
-
-              // Generate model number: baseSku + colorName
-              let colorName: string | null = null;
-              if (variant && typeof variant === 'object' && variant !== null && 'colorSlug' in variant && variant.colorSlug) {
-                colorName = variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1);
-              } else {
-                colorName = item.color || parsedSku.colorName;
-              }
-              
-              modelNumber = colorName 
-                ? `${baseSku}-${colorName.toUpperCase()}` 
-                : baseSku;
-            } else {
-              // If product not found, generate model number from available data
-              const colorName = item.color || parsedSku.colorName;
-              modelNumber = colorName 
-                ? `${baseSku}-${colorName.toUpperCase()}` 
-                : baseSku;
-            }
-
-            return {
-              productName: item.productName,
-              productSku: item.productSku,
-              quantity: item.quantity,
-              price: item.price,
-              colorName: item.color,
-              size: item.size,
-              primaryImage,
-              salePrice,
-              modelNumber,
-            };
-          } catch (error) {
-            Sentry.captureException(error);
-            console.error(`[CREATE_LOW_PROFILE] Error fetching product data for ${item.productSku}:`, error);
-            // Return item without enrichment if fetch fails
-            const parsedSku = parseSku(item.productSku);
-            const baseSku = parsedSku.baseSku || item.productSku;
-            const colorName = item.color || parsedSku.colorName;
-            const modelNumber = colorName 
-              ? `${baseSku}-${colorName.toUpperCase()}` 
-              : baseSku;
-            
-            return {
-              productName: item.productName,
-              productSku: item.productSku,
-              quantity: item.quantity,
-              price: item.price,
-              colorName: item.color,
-              size: item.size,
-              primaryImage: undefined,
-              salePrice: undefined,
-              modelNumber,
-            };
-          }
-        })
-      );
-
-      return enrichedItems;
-    };
-
-    const orderItems = await prepareOrderItems();
+      return {
+        productName,
+        productSku: item.sku,
+        quantity: item.finalQuantity,
+        price: chargedUnitPrice,
+        colorName: item.color ?? undefined,
+        size: item.size ?? undefined,
+        primaryImage: item.image ?? undefined,
+        salePrice: item.salePrice ?? undefined,
+        modelNumber,
+      };
+    });
 
     const requestedCouponCodes = body.coupons?.map(coupon => coupon.code.toUpperCase()) ?? [];
     const couponRecords = requestedCouponCodes.length > 0
@@ -299,15 +249,18 @@ export async function POST(request: NextRequest) {
       couponMap.set(record.code.toUpperCase(), record.id);
     });
 
-    const computedSubtotal = body.subtotal ?? orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    // Never trust body.subtotal - always use the server-recomputed, validated total.
+    const computedSubtotal = validation.purchasableSubtotal;
     const rawDiscountTotal = body.discountTotal ?? 0;
     const pointsDiscount = pointsToSpend;
     const discountedSubtotal = Math.max(computedSubtotal - rawDiscountTotal - pointsDiscount, 0);
     const hasPromotions = rawDiscountTotal > 0 || pointsDiscount > 0;
 
-    // For pickup orders, delivery fee must always be 0
+    // For pickup orders, delivery fee must always be 0.
+    // A cart with no merchandise must never be charged shipping alone
+    // (should be unreachable given the CART_INVALID gate above, kept as a hard guard).
     let computedDeliveryFee: number;
-    if (shippingMethod === 'pickup') {
+    if (shippingMethod === 'pickup' || computedSubtotal <= 0) {
       computedDeliveryFee = 0;
     } else if (computedSubtotal >= FREE_DELIVERY_THRESHOLD_ILS) {
       if (discountedSubtotal >= FREE_DELIVERY_THRESHOLD_ILS) {
@@ -336,6 +289,64 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Coupons cannot be combined with the automatic pairs deal.' },
         { status: 400 }
+      );
+    }
+
+    // Prepare Cardcom products from the same server-validated order items that will be persisted.
+    // Built and verified BEFORE the order is written, so a mismatch rejects cleanly with no DB row created.
+    const cardcomProducts = orderItems.map(item => ({
+      ProductID: item.productSku,
+      Description: item.productName,
+      Quantity: item.quantity,
+      UnitCost: item.price, // Price per unit
+      TotalLineCost: item.price * item.quantity, // Total for this line
+      IsVatFree: false
+    }));
+
+    // Apply order-level discounts proportionally to CardCom products so document totals match charge amount
+    if (computedDiscountTotal > 0 && cardcomProducts.length > 0) {
+      const subtotalBeforeDiscount = cardcomProducts.reduce((sum, product) => {
+        return sum + (product.UnitCost * product.Quantity);
+      }, 0);
+
+      if (subtotalBeforeDiscount > 0) {
+        let remainingDiscount = parseFloat(computedDiscountTotal.toFixed(2));
+
+        cardcomProducts.forEach((product, index) => {
+          const quantity = product.Quantity && product.Quantity > 0 ? product.Quantity : 1;
+          const originalLineTotal = product.UnitCost * quantity;
+
+          let lineDiscount: number;
+          if (index === cardcomProducts.length - 1) {
+            lineDiscount = remainingDiscount;
+          } else {
+            lineDiscount = parseFloat(((originalLineTotal / subtotalBeforeDiscount) * computedDiscountTotal).toFixed(2));
+            // Guard against rounding pushing discount beyond remaining amount
+            if (lineDiscount > remainingDiscount) {
+              lineDiscount = remainingDiscount;
+            }
+            remainingDiscount = parseFloat((remainingDiscount - lineDiscount).toFixed(2));
+          }
+
+          const discountedLineTotal = parseFloat((originalLineTotal - lineDiscount).toFixed(2));
+          const discountedUnitCost = parseFloat((discountedLineTotal / quantity).toFixed(2));
+
+          product.UnitCost = discountedUnitCost;
+          product.TotalLineCost = parseFloat((discountedUnitCost * quantity).toFixed(2));
+        });
+      }
+    }
+
+    // Verify the total matches. A mismatch beyond float rounding tolerance means the client's
+    // `amount` doesn't reflect the server-validated cart - reject rather than silently
+    // rewriting a CardCom line to "make the numbers fit" (that silent rewrite is exactly the
+    // class of bug that let a shipping-only charge through in the past).
+    const calculatedTotal = cardcomProducts.reduce((sum, product) => sum + product.TotalLineCost, 0);
+    if (Math.abs(calculatedTotal - body.amount) > 0.01) {
+      console.warn(`Total mismatch: calculated ${calculatedTotal} vs amount ${body.amount}`);
+      return NextResponse.json(
+        { error: 'Cart total does not match. Please refresh your cart and try again.', code: 'AMOUNT_MISMATCH' },
+        { status: 409 }
       );
     }
 
@@ -408,74 +419,6 @@ export async function POST(request: NextRequest) {
     // Points are NOT deducted here - they are only deducted after successful payment in check-status route
     const paymentMetadata = pointsToSpend > 0 ? { pointsToSpend } : {};
 
-    // Prepare Cardcom products - use items array if provided, otherwise fallback to single product
-    const cardcomProducts = body.items && body.items.length > 0
-      ? body.items.map(item => ({
-          ProductID: item.productSku,
-          Description: item.productName,
-          Quantity: item.quantity,
-          UnitCost: item.price, // Price per unit
-          TotalLineCost: item.price * item.quantity, // Total for this line
-          IsVatFree: false
-        }))
-      : [{
-          ProductID: body.productSku || 'SAKO-PRODUCT',
-          Description: body.productName || 'Sako Order',
-          Quantity: body.quantity || 1,
-          UnitCost: body.amount / (body.quantity || 1), // Calculate unit price
-          TotalLineCost: body.amount, // Total should match the charge amount
-          IsVatFree: false
-        }];
-
-    // Apply order-level discounts proportionally to CardCom products so document totals match charge amount
-    if (computedDiscountTotal > 0 && cardcomProducts.length > 0) {
-      const subtotalBeforeDiscount = cardcomProducts.reduce((sum, product) => {
-        return sum + (product.UnitCost * product.Quantity);
-      }, 0);
-
-      if (subtotalBeforeDiscount > 0) {
-        let remainingDiscount = parseFloat(computedDiscountTotal.toFixed(2));
-
-        cardcomProducts.forEach((product, index) => {
-          const quantity = product.Quantity && product.Quantity > 0 ? product.Quantity : 1;
-          const originalLineTotal = product.UnitCost * quantity;
-
-          let lineDiscount: number;
-          if (index === cardcomProducts.length - 1) {
-            lineDiscount = remainingDiscount;
-          } else {
-            lineDiscount = parseFloat(((originalLineTotal / subtotalBeforeDiscount) * computedDiscountTotal).toFixed(2));
-            // Guard against rounding pushing discount beyond remaining amount
-            if (lineDiscount > remainingDiscount) {
-              lineDiscount = remainingDiscount;
-            }
-            remainingDiscount = parseFloat((remainingDiscount - lineDiscount).toFixed(2));
-          }
-
-          const discountedLineTotal = parseFloat((originalLineTotal - lineDiscount).toFixed(2));
-          const discountedUnitCost = parseFloat((discountedLineTotal / quantity).toFixed(2));
-
-          product.UnitCost = discountedUnitCost;
-          product.TotalLineCost = parseFloat((discountedUnitCost * quantity).toFixed(2));
-        });
-      }
-    }
-
-    // Verify the total matches
-    const calculatedTotal = cardcomProducts.reduce((sum, product) => sum + product.TotalLineCost, 0);
-    if (Math.abs(calculatedTotal - body.amount) > 0.01) {
-      console.warn(`Total mismatch: calculated ${calculatedTotal} vs amount ${body.amount}`);
-      // Adjust the last product to match the total
-      if (cardcomProducts.length > 0) {
-        const difference = body.amount - calculatedTotal;
-        const lastProduct = cardcomProducts[cardcomProducts.length - 1];
-        lastProduct.TotalLineCost = parseFloat((lastProduct.TotalLineCost + difference).toFixed(2));
-        if (lastProduct.Quantity && lastProduct.Quantity > 0) {
-          lastProduct.UnitCost = parseFloat((lastProduct.TotalLineCost / lastProduct.Quantity).toFixed(2));
-        }
-      }
-    }
-
     // Create CardCom payment session request
     const STORE_ADDRESS = 'Rothschild 51, Rishon Lezion';
     const STORE_CITY = 'Rishon Lezion';
@@ -488,9 +431,7 @@ export async function POST(request: NextRequest) {
         customerEmail: body.customer.email,
         customerName: `${body.customer.firstName} ${body.customer.lastName}`,
         customerPhone: body.customer.mobile,
-        productName: body.items && body.items.length > 0
-          ? body.items.map(item => `${item.productName} x${item.quantity}`).join(', ')
-          : body.productName,
+        productName: orderItems.map(item => `${item.productName} x${item.quantity}`).join(', '),
         createToken: false,
         createDocument: true,
         language: body.language || 'he',

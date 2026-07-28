@@ -51,7 +51,20 @@ interface CheckoutModalProps {
    * When present and > 0, coupons should not be combined with this order.
    */
   bogoDiscountAmount?: number;
+  /**
+   * Called when the server rejects checkout because the cart is no longer
+   * valid (empty, unavailable item, insufficient stock, zero subtotal).
+   * The parent should close this modal and refresh the cart.
+   */
+  onCartInvalid?: () => void;
 }
+
+const CART_INVALID_ERROR_CODES = new Set([
+  'CART_EMPTY',
+  'ITEM_UNAVAILABLE',
+  'STOCK_INSUFFICIENT',
+  'CART_INVALID'
+]);
 
 export default function CheckoutModal({
   isOpen,
@@ -72,6 +85,7 @@ export default function CheckoutModal({
   shippingMethod = 'delivery',
   pickupLocation,
   bogoDiscountAmount,
+  onCartInvalid,
 }: CheckoutModalProps) {
   const [step, setStep] = useState<CheckoutStep>('INFO');
   const STORE_PICKUP_LOCATION = 'Rothschild 51, Rishon Lezion';
@@ -356,16 +370,18 @@ export default function CheckoutModal({
 
   // Create Low Profile payment session
   const createPaymentSession = async (): Promise<CreateLowProfileResponse> => {
-    const orderItems = items && items.length > 0
-      ? items.map(item => ({
-          productName: item.name[language as 'en' | 'he'] || productName,
-          productSku: item.sku,
-          quantity: item.quantity,
-          price: item.salePrice || item.price,
-          color: item.color,
-          size: item.size,
-        }))
-      : undefined;
+    if (!items || items.length === 0) {
+      throw Object.assign(new Error('Cart is empty'), { code: 'CART_EMPTY' });
+    }
+
+    const orderItems = items.map(item => ({
+      productName: item.name[language as 'en' | 'he'] || productName,
+      productSku: item.sku,
+      quantity: item.quantity,
+      price: item.salePrice || item.price,
+      color: item.color,
+      size: item.size,
+    }));
 
     const payload: CreateLowProfileRequest = {
       orderId,
@@ -436,7 +452,7 @@ export default function CheckoutModal({
         statusText: response.statusText,
         errorData
       });
-      throw new Error(errorMessage);
+      throw Object.assign(new Error(errorMessage), { code: errorData.code });
     }
 
     try {
@@ -449,7 +465,7 @@ export default function CheckoutModal({
 
   // Handle payment submission
   const handlePaymentSubmit = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid || !hasPurchasableCart) return;
 
     setStep('CREATING_LP');
     setIsLoading(true);
@@ -501,7 +517,17 @@ export default function CheckoutModal({
       }
     } catch (err) {
       console.error('Payment creation error:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      const code = (err as { code?: string } | null)?.code;
+      if (code && CART_INVALID_ERROR_CODES.has(code)) {
+        setError(
+          isHebrew
+            ? 'אחד או יותר מהמוצרים בעגלה אינם זמינים יותר. נא לעדכן את העגלה לפני שממשיכים.'
+            : 'One or more products in your cart are no longer available. Please update your cart before continuing.'
+        );
+        onCartInvalid?.();
+      } else {
+        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+      }
       setStep('INFO');
       setIsLoading(false);
     }
@@ -584,7 +610,8 @@ export default function CheckoutModal({
     brand: 'SAKO OR',
   };
 
-  const canGoToPayment = step === 'INFO' && isFormValid;
+  const hasPurchasableCart = items.length > 0 && (subtotal ?? 0) > 0;
+  const canGoToPayment = step === 'INFO' && isFormValid && hasPurchasableCart;
 
   return (
     <div className="fixed inset-0 z-[100]">
@@ -699,11 +726,21 @@ export default function CheckoutModal({
                     </div>
                   )}
 
+                  {!hasPurchasableCart && !error && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-red-800 text-sm">
+                        {isHebrew
+                          ? 'אחד או יותר מהמוצרים בעגלה אינם זמינים יותר. נא לעדכן את העגלה לפני שממשיכים.'
+                          : 'One or more products in your cart are no longer available. Please update your cart before continuing.'}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Continue Button */}
                   <div className="flex justify-end pt-4">
                     <button
                       onClick={handlePaymentSubmit}
-                      disabled={!isFormValid || isLoading}
+                      disabled={!isFormValid || isLoading || !hasPurchasableCart}
                       className="px-6 py-2 bg-[#856D55]/90 text-white rounded-lg hover:bg-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
                     >
                       {isLoading 

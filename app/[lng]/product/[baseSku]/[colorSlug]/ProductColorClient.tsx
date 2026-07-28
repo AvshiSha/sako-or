@@ -124,6 +124,15 @@ export default function ProductColorClient({
   // Get language from props
   const isRTL = lng === 'he'
 
+  // On-page heading: the clean, human-facing name. The keyword/brand-suffixed SEO title
+  // belongs in <title>/meta (see generateMetadata), not the visible h1.
+  const displayTitle = useMemo(() => {
+    const shortTitle = lng === 'he' ? product?.shortTitle_he : product?.shortTitle_en
+    const seoTitle = lng === 'he' ? product?.seo?.title_he : product?.seo?.title_en
+    const plainTitle = lng === 'he' ? product?.title_he : product?.title_en
+    return shortTitle || seoTitle || plainTitle
+  }, [product, lng])
+
   const couponBadgeLookup = useMemo(() => {
     if (!product) {
       return { sku: null as string | null, baseSku: null as string | null }
@@ -487,7 +496,7 @@ export default function ProductColorClient({
                 {/* Product Title + Price (same row) */}
                 <div className="flex items-start justify-between gap-2">
                   <h1 className="text-2xl font-bold text-gray-900 flex-1">
-                    {lng === 'he' ? product.title_he : product.title_en}
+                    {displayTitle}
                   </h1>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
@@ -747,9 +756,10 @@ export default function ProductColorClient({
 
                 {/* Product Title + Price (same row) */}
                 <div className="flex items-start justify-between gap-2">
-                  <h1 className="text-2xl font-bold text-gray-900 flex-1">
-                    {lng === 'he' ? product.title_he : product.title_en}
-                  </h1>
+                  {/* Not an <h1> — the mobile layout above already renders the page's single h1 with this same text */}
+                  <p className="text-2xl font-bold text-gray-900 flex-1">
+                    {displayTitle}
+                  </p>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
                       <>

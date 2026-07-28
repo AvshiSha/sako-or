@@ -120,10 +120,8 @@ export async function generateMetadata({
     }
 
     // Get product title (prefer SEO title, fallback to regular title)
-    const productTitle = product.seo?.title_en || product.seo?.title_he
-      ? (locale === 'he' ? product.seo.title_he : product.seo.title_en) || 
-        (locale === 'he' ? product.title_he : product.title_en)
-      : (locale === 'he' ? product.title_he : product.title_en)
+    const seoTitle = locale === 'he' ? product.seo?.title_he : product.seo?.title_en
+    const productTitle = seoTitle || (locale === 'he' ? product.title_he : product.title_en)
 
     // Get product description (prefer SEO description, fallback to regular description)
     const productDescription = product.seo?.description_en || product.seo?.description_he
@@ -132,14 +130,14 @@ export async function generateMetadata({
       : (locale === 'he' ? product.description_he : product.description_en)
 
     // Get color name for title enhancement
-    const colorName = variant.colorSlug
-      ? variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1)
-      : ''
+    const colorName = variant.colorSlug ? getColorName(variant.colorSlug, locale) : ''
 
-    // Build title with color if available
-    const title = colorName 
-      ? `${productTitle} – ${colorName} | SAKO-OR`
-      : `${productTitle} | SAKO-OR`
+    // Build title with color if available. The SEO title is already a complete, brand-suffixed
+    // title on its own (e.g. "... | GRUNLAND Italy") — only append the SAKO-OR site suffix when
+    // falling back to the plain product title, to avoid duplicating the brand mention.
+    const title = seoTitle
+      ? (colorName ? `${productTitle} – ${colorName}` : productTitle)
+      : (colorName ? `${productTitle} – ${colorName} | SAKO-OR` : `${productTitle} | SAKO-OR`)
 
     // Get product image (prefer primary image, fallback to first image)
     const productImage = variant.primaryImage || 

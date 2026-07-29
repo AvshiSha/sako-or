@@ -297,8 +297,8 @@ function EditProductPage() {
         const cats = await categoryService.getAllCategories()
         setCategories(cats)
         
-        // Filter main categories (level 0) that are enabled
-        const mainCats = cats.filter(cat => cat.level === 0 && cat.isEnabled)
+        // Show all main categories, including disabled ones, so products can be assigned before the category goes live
+        const mainCats = cats.filter(cat => cat.level === 0)
         setMainCategories(mainCats)
         
         // Fetch product data
@@ -439,14 +439,12 @@ function EditProductPage() {
           if (product.categoryId || product.category) {
             try {
               const subCats = await categoryService.getSubCategories(product.categoryId || product.category)
-              const enabledSubCats = subCats.filter(cat => cat.isEnabled)
-              setSubCategories(enabledSubCats)
-              
+              setSubCategories(subCats)
+
               // Load sub-subcategories if subcategory is selected
               if (product.subCategory) {
                 const subSubCats = await categoryService.getSubCategories(product.subCategory)
-                const enabledSubSubCats = subSubCats.filter(cat => cat.isEnabled)
-                setSubSubCategories(enabledSubSubCats)
+                setSubSubCategories(subSubCats)
               }
             } catch (error) {
               console.error('Error loading subcategories:', error)
@@ -501,10 +499,9 @@ function EditProductPage() {
     
     if (categoryId) {
       try {
-        // Fetch subcategories for the selected main category
+        // Fetch subcategories for the selected main category (including disabled ones)
         const subCats = await categoryService.getSubCategories(categoryId)
-        const enabledSubCats = subCats.filter(cat => cat.isEnabled)
-        setSubCategories(enabledSubCats)
+        setSubCategories(subCats)
       } catch (error) {
         console.error('Error fetching subcategories:', error)
       }
@@ -530,10 +527,9 @@ function EditProductPage() {
     
     if (subCategoryId) {
       try {
-        // Fetch sub-subcategories for the selected subcategory
+        // Fetch sub-subcategories for the selected subcategory (including disabled ones)
         const subSubCats = await categoryService.getSubCategories(subCategoryId)
-        const enabledSubSubCats = subSubCats.filter(cat => cat.isEnabled)
-        setSubSubCategories(enabledSubSubCats)
+        setSubSubCategories(subSubCats)
       } catch (error) {
         console.error('Error fetching sub-subcategories:', error)
       }

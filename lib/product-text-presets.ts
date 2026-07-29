@@ -21,7 +21,7 @@ export const CARE_INSTRUCTIONS_PRESETS: TextPreset[] = [
     text_en:
       'Gently clean using a soft, clean and dry cloth. Avoid excessive water, alcohol or strong cleaning products. A leather conditioner suitable for soft leather may be used occasionally after testing it on a hidden area. Store in a cool, dry place away from direct sunlight.',
     text_he:
-      'מומלץ לנקות בעדינות באמצעות מטלית רכה, נקייה ויבשה. אין להשתמש בכמות גדולה של מים, אלכוהול או חומרי ניקוי חזקים. ניתן להשתמש מדי פעם בחומר ייעודי להזנת עור, לאחר בדיקה באזור נסתר. יש לאחסן במקום יבש ומוצל.',
+      'מומלץ לנקות בעדינות באמצעות מטלית רכה, נקייה ויבשה. אין להשתמש בכמות גדולה של מים, אלכוהול או חומרי ניקוי חזקים. ניתן להשתמש מדי פעם בחומר ייעודי להזנת עור. יש לאחסן במקום יבש ומוצל.',
   },
   {
     id: 'suede_leather',
@@ -30,7 +30,7 @@ export const CARE_INSTRUCTIONS_PRESETS: TextPreset[] = [
     text_en:
       'Gently clean using a dedicated suede brush, brushing in one consistent direction. Do not clean with water or a wet cloth. A suede protection spray is recommended before use, after testing it on a hidden area. Avoid contact with rain, oil and moisture.',
     text_he:
-      'יש לנקות בעדינות באמצעות מברשת ייעודית לזמש ובכיוון אחיד. אין להשתמש במים או במטלית רטובה. מומלץ להשתמש בספריי הגנה ייעודי לזמש לפני השימוש, לאחר בדיקה באזור נסתר. יש להימנע ממגע עם גשם, שמן ולחות.',
+      'יש לנקות בעדינות באמצעות מברשת ייעודית לזמש ובכיוון אחיד. אין להשתמש במים או במטלית רטובה. מומלץ להשתמש בספריי הגנה ייעודי לזמש לפני השימוש. יש להימנע ממגע עם גשם, שמן ולחות.',
   },
   {
     id: 'patent_leather',

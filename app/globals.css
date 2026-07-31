@@ -246,6 +246,24 @@ body.admin-panel #vplugin-interface {
   margin-block-end: 0;
 }
 
+.cms-content blockquote {
+  margin-block: 1.5rem;
+  padding-inline-start: 1rem;
+  border-inline-start: 3px solid #b2a28e;
+  color: #57534e;
+  font-style: italic;
+}
+
+.cms-content blockquote p:last-child {
+  margin-block-end: 0;
+}
+
+.cms-content hr {
+  margin-block: 2rem;
+  border: none;
+  border-top: 1px solid #e5e7eb;
+}
+
 .cms-content h2 {
   margin-block: 2rem 1rem;
   font-size: 1.5rem;

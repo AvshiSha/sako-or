@@ -11,6 +11,9 @@ const ALLOWED_TAGS = [
   'a',
   'strong',
   'em',
+  'u',
+  'blockquote',
+  'hr',
   'img',
   'iframe',
   'br',
@@ -50,12 +53,13 @@ export function sanitizeCmsHtml(html: string): string {
         'height',
       ],
       div: ['class', 'data-youtube-video'],
-      p: ['class'],
-      h2: ['class'],
-      h3: ['class'],
+      p: ['class', 'style'],
+      h2: ['class', 'style'],
+      h3: ['class', 'style'],
       ul: ['class'],
       ol: ['class'],
       li: ['class'],
+      blockquote: ['class'],
       table: ['class'],
       thead: ['class'],
       tbody: ['class'],
@@ -65,6 +69,14 @@ export function sanitizeCmsHtml(html: string): string {
       td: ['class', 'colspan', 'rowspan'],
       colgroup: ['class', 'span'],
       col: ['class', 'span', 'width'],
+    },
+    // Restricted to exactly the inline style TipTap's TextAlign extension
+    // emits (style="text-align: left|center|right"), so `style` isn't opened
+    // up as a general CSS-injection vector.
+    allowedStyles: {
+      '*': {
+        'text-align': [/^left$/, /^center$/, /^right$/],
+      },
     },
     allowedIframeHostnames: [
       'www.youtube.com',

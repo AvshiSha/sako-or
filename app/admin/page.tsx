@@ -13,7 +13,8 @@ import {
   TicketIcon,
   CurrencyDollarIcon,
   MegaphoneIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline'
 import { adminTheme } from './_components/adminTheme'
 
@@ -68,6 +69,12 @@ function AdminDashboard() {
       href: '/admin/blog',
       icon: PencilSquareIcon,
       description: 'Create and publish news articles'
+    },
+    {
+      name: 'Manage Content Pages',
+      href: '/admin/content/pages',
+      icon: DocumentTextIcon,
+      description: 'Edit Terms, Privacy, and other static pages'
     },
   ]
 

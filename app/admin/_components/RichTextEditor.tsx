@@ -11,6 +11,8 @@ import { Table } from '@tiptap/extension-table'
 import { TableRow } from '@tiptap/extension-table-row'
 import { TableHeader } from '@tiptap/extension-table-header'
 import { TableCell } from '@tiptap/extension-table-cell'
+import Underline from '@tiptap/extension-underline'
+import TextAlign from '@tiptap/extension-text-align'
 import { cleanupCmsHtml, isCmsHtmlEmpty } from '@/lib/cms-html-cleanup'
 import { toggleListFromSelection } from '@/lib/tiptap-list-commands'
 import { promptAndApplyLink } from '@/lib/tiptap-link-command'
@@ -21,10 +23,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/app/components/ui/pop
 import {
   BoldIcon,
   ItalicIcon,
+  UnderlineIcon,
   ListBulletIcon,
   LinkIcon,
   PhotoIcon,
   VideoCameraIcon,
+  Bars3BottomLeftIcon,
+  Bars3CenterLeftIcon,
+  Bars3BottomRightIcon,
 } from '@heroicons/react/24/outline'
 
 interface RichTextEditorProps {
@@ -120,10 +126,14 @@ function EditorToolbar({
           h3: false,
           bold: false,
           italic: false,
+          underline: false,
           bulletList: false,
           orderedList: false,
           link: false,
           table: false,
+          alignLeft: false,
+          alignCenter: false,
+          alignRight: false,
         }
       }
 
@@ -132,10 +142,14 @@ function EditorToolbar({
         h3: ed.isActive('heading', { level: 3 }),
         bold: ed.isActive('bold'),
         italic: ed.isActive('italic'),
+        underline: ed.isActive('underline'),
         bulletList: ed.isActive('bulletList'),
         orderedList: ed.isActive('orderedList'),
         link: ed.isActive('link'),
         table: ed.isActive('table'),
+        alignLeft: ed.isActive({ textAlign: 'left' }),
+        alignCenter: ed.isActive({ textAlign: 'center' }),
+        alignRight: ed.isActive({ textAlign: 'right' }),
       }
     },
   })
@@ -243,6 +257,13 @@ function EditorToolbar({
       >
         <ItalicIcon className={cn('h-4 w-4', active.italic && 'stroke-[2.5px] text-[#856D55]')} />
       </ToolbarButton>
+      <ToolbarButton
+        onClick={() => editor.chain().focus().toggleUnderline().run()}
+        active={active.underline}
+        title="Underline (Ctrl+U)"
+      >
+        <UnderlineIcon className={cn('h-4 w-4', active.underline && 'stroke-[2.5px] text-[#856D55]')} />
+      </ToolbarButton>
       {variant === 'default' && (
         <>
           <span className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
@@ -268,6 +289,34 @@ function EditorToolbar({
             >
               1.
             </span>
+          </ToolbarButton>
+          <span className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign('left').run()}
+            active={active.alignLeft}
+            title="Align left"
+          >
+            <Bars3BottomLeftIcon
+              className={cn('h-4 w-4', active.alignLeft && 'stroke-[2.5px] text-[#856D55]')}
+            />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign('center').run()}
+            active={active.alignCenter}
+            title="Align center"
+          >
+            <Bars3CenterLeftIcon
+              className={cn('h-4 w-4', active.alignCenter && 'stroke-[2.5px] text-[#856D55]')}
+            />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().setTextAlign('right').run()}
+            active={active.alignRight}
+            title="Align right"
+          >
+            <Bars3BottomRightIcon
+              className={cn('h-4 w-4', active.alignRight && 'stroke-[2.5px] text-[#856D55]')}
+            />
           </ToolbarButton>
         </>
       )}
@@ -480,7 +529,12 @@ export default function RichTextEditor({
                 class: 'youtube-embed w-full aspect-video rounded-md',
               },
             }),
+            TextAlign.configure({
+              types: ['heading', 'paragraph'],
+              alignments: ['left', 'center', 'right'],
+            }),
           ]),
+      Underline,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {

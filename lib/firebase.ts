@@ -268,6 +268,30 @@ export interface BlogArticle {
   updatedAt: string;
 }
 
+// Static Pages (generic CMS-managed pages like Terms & Conditions, Privacy
+// Policy, etc.). One Firestore doc per page, doc ID == `key`, matching the
+// campaignMerchandising/categoryMerchandising singleton-doc pattern rather
+// than blog's addDoc/collection-query CRUD, since the set of pages is small
+// and fixed (see lib/static-page-registry.ts).
+export type StaticPageStatus = 'draft' | 'published';
+export type StaticPageRobots = 'index, follow' | 'noindex, nofollow' | 'noindex, follow';
+
+export interface StaticPage {
+  key: string;
+  title: LocalizedString;
+  content: LocalizedString;
+  status: StaticPageStatus;
+  robots: StaticPageRobots;
+  seoTitle?: LocalizedString;
+  seoDescription?: LocalizedString;
+  ogTitle?: LocalizedString;
+  ogDescription?: LocalizedString;
+  ogImage?: string;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Campaign {
   id: string; // doc ID == slug
   slug: string;
@@ -4061,4 +4085,85 @@ export const blogService = {
       throw error;
     }
   },
-}; 
+};
+
+const STATIC_PAGES_COLLECTION = 'staticPages';
+
+function cleanStaticPageFields(data: Partial<StaticPage>): Record<string, unknown> {
+  const clean: Record<string, unknown> = {};
+
+  if (data.title) clean.title = data.title;
+  if (data.content) clean.content = data.content;
+  if (data.status) clean.status = data.status;
+  if (data.robots) clean.robots = data.robots;
+  if (hasLocalizedContent(data.seoTitle)) clean.seoTitle = data.seoTitle;
+  if (hasLocalizedContent(data.seoDescription)) clean.seoDescription = data.seoDescription;
+  if (hasLocalizedContent(data.ogTitle)) clean.ogTitle = data.ogTitle;
+  if (hasLocalizedContent(data.ogDescription)) clean.ogDescription = data.ogDescription;
+  if (data.ogImage !== undefined) clean.ogImage = data.ogImage;
+
+  return clean;
+}
+
+export const staticPageService = {
+  // Admin use: returns the doc regardless of status. Null if it hasn't been
+  // created yet (a registry entry with no Firestore doc written).
+  async getStaticPage(key: string): Promise<StaticPage | null> {
+    try {
+      const snap = await getDoc(doc(db, STATIC_PAGES_COLLECTION, key));
+      if (!snap.exists()) return null;
+      return { key, ...snap.data() } as StaticPage;
+    } catch (error) {
+      console.error('Error fetching static page:', error);
+      throw error;
+    }
+  },
+
+  // Public use (storefront, unauthenticated client SDK read). Unlike blog's
+  // collection query, this is a single getDoc by ID — a draft doc makes the
+  // Firestore security rule reject the read outright (permission-denied)
+  // rather than returning nothing, since there's no query constraint to
+  // "prove" compliance. Catch that here so callers can treat "draft" and
+  // "doesn't exist" identically.
+  async getPublishedStaticPage(key: string): Promise<StaticPage | null> {
+    try {
+      const snap = await getDoc(doc(db, STATIC_PAGES_COLLECTION, key));
+      if (!snap.exists()) return null;
+      const page = { key, ...snap.data() } as StaticPage;
+      if (page.status !== 'published') return null;
+      return page;
+    } catch (error) {
+      console.error('Error fetching published static page:', error);
+      return null;
+    }
+  },
+
+  // Create-or-update in one call — the doc ID is a fixed, known key rather
+  // than a generated one, so there's no separate create/update split.
+  async upsertStaticPage(
+    key: string,
+    data: Partial<Omit<StaticPage, 'key' | 'createdAt' | 'updatedAt'>>
+  ): Promise<void> {
+    try {
+      const docRef = doc(db, STATIC_PAGES_COLLECTION, key);
+      const existing = await getDoc(docRef);
+      const now = new Date().toISOString();
+      const wasPublished = existing.exists() && (existing.data() as StaticPage).status === 'published';
+      const becomingPublished = data.status === 'published';
+
+      await setDoc(
+        docRef,
+        {
+          ...cleanStaticPageFields(data),
+          ...(!existing.exists() ? { createdAt: now } : {}),
+          ...(becomingPublished && !wasPublished ? { publishedAt: now } : {}),
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error('Error saving static page:', error);
+      throw error;
+    }
+  },
+};

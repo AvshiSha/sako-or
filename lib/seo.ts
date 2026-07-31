@@ -29,7 +29,7 @@ export interface SEOConfig {
   type?: 'website' | 'product'
   locale?: 'en' | 'he'
   alternateLocales?: Array<{ locale: string; url: string }>
-  robots?: 'index, follow' | 'noindex, nofollow'
+  robots?: 'index, follow' | 'noindex, nofollow' | 'noindex, follow'
   structuredData?: object // For JSON-LD
   /** Overrides the canonical link (e.g. pointing a supporting blog article at its
    * money-page collection). Accepts a relative path or full URL. Falls back to `url`
@@ -128,9 +128,13 @@ export function buildMetadata(config: SEOConfig): Metadata {
       canonical: canonicalHref,
       languages: Object.keys(languages).length > 0 ? languages : undefined,
     },
+    // Note: check the "no" prefix explicitly rather than `.includes('index')` /
+    // `.includes('follow')` — "noindex" and "nofollow" both contain those
+    // substrings, which would otherwise flip index/follow to true even when
+    // the directive says not to.
     robots: {
-      index: robots.includes('index'),
-      follow: robots.includes('follow'),
+      index: !robots.includes('noindex'),
+      follow: !robots.includes('nofollow'),
     },
     openGraph: {
       type: 'website' as const, // Next.js Metadata API only supports 'website' type (product type handled via JSON-LD)

@@ -8,6 +8,7 @@ import { spendPointsForOrder } from '../../../../lib/points';
 import { getBearerToken, requireUserAuth } from '@/lib/server/auth';
 import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '../../../../lib/pricing';
 import { validateCartItems } from '../../../../lib/cart-validation';
+import { staticPageService } from '@/lib/firebase';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,6 +72,16 @@ export async function POST(request: NextRequest) {
     if (!body.customer.firstName || !body.customer.lastName || !body.customer.email || !body.customer.mobile) {
       return NextResponse.json(
         { error: 'Missing required customer information' },
+        { status: 400 }
+      );
+    }
+
+    // Server-side re-validation, never trust the disabled/checked state of the
+    // client's checkbox alone — a request replayed or crafted without going
+    // through the checkout UI must still be rejected.
+    if (body.termsAccepted !== true) {
+      return NextResponse.json(
+        { error: 'You must accept the Terms & Conditions to continue.', code: 'TERMS_NOT_ACCEPTED' },
         { status: 400 }
       );
     }
@@ -350,6 +361,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Server-authoritative acceptance record: the exact "last updated" date of
+    // the published /terms content at the moment of purchase (not trusted from
+    // the client), so a later edit to the terms doesn't retroactively change
+    // what an already-placed order is on record as having agreed to.
+    const termsPage = await staticPageService.getPublishedStaticPage('terms').catch(() => null);
+    const termsAcceptedVersion = termsPage?.updatedAt;
+    const termsAcceptedAt = new Date();
+
     // Create order in database
     let order;
     try {
@@ -367,6 +386,8 @@ export async function POST(request: NextRequest) {
         customerEmail: body.customer.email,
         customerPhone: body.customer.mobile,
         userId,
+        termsAcceptedVersion,
+        termsAcceptedAt,
         items: orderItems,
         coupons: hasBogoDiscount
           ? undefined
@@ -399,6 +420,8 @@ export async function POST(request: NextRequest) {
           customerEmail: body.customer.email,
           customerPhone: body.customer.mobile,
           userId,
+          termsAcceptedVersion,
+          termsAcceptedAt,
           items: orderItems,
           coupons: hasBogoDiscount
             ? undefined

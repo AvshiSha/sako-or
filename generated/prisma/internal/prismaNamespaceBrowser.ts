@@ -330,7 +330,9 @@ export const OrderScalarFieldEnum = {
   verifoneInvoiceResponse: 'verifoneInvoiceResponse',
   verifoneInvoiceAttemptedAt: 'verifoneInvoiceAttemptedAt',
   verifoneInvoiceSyncedAt: 'verifoneInvoiceSyncedAt',
-  verifoneInvoiceError: 'verifoneInvoiceError'
+  verifoneInvoiceError: 'verifoneInvoiceError',
+  termsAcceptedVersion: 'termsAcceptedVersion',
+  termsAcceptedAt: 'termsAcceptedAt'
 } as const
 
 export type OrderScalarFieldEnum = (typeof OrderScalarFieldEnum)[keyof typeof OrderScalarFieldEnum]

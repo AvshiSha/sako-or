@@ -106,6 +106,13 @@ export interface CreateLowProfileRequest {
    * Pickup location when shippingMethod === "pickup".
    */
   pickupLocation?: string;
+  /**
+   * Must be true — the customer explicitly checked the Terms & Conditions
+   * checkbox in the checkout modal. Re-validated server-side (never trusted
+   * from the client alone); the accepted version/timestamp are stamped by
+   * the server, not sent by the client.
+   */
+  termsAccepted: boolean;
 }
 
 export interface CreateLowProfileResponse {

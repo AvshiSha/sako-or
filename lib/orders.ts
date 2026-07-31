@@ -29,6 +29,14 @@ export interface CreateOrderData {
   customerEmail?: string;
   customerPhone?: string;
   userId?: string;
+  /**
+   * "Last updated" ISO date of the /terms page the customer accepted at
+   * checkout, captured server-side at order-creation time (see
+   * app/api/payments/create-low-profile/route.ts).
+   */
+  termsAcceptedVersion?: string;
+  /** When the customer accepted the Terms & Conditions during checkout. */
+  termsAcceptedAt?: Date;
   items: {
     productName: string;
     productSku: string;
@@ -66,6 +74,8 @@ export async function createOrder(data: CreateOrderData) {
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,
+        termsAcceptedVersion: data.termsAcceptedVersion ?? null,
+        termsAcceptedAt: data.termsAcceptedAt ?? null,
         ...(data.userId ? { userId: data.userId } : {}),
         orderItems: {
           create: data.items.map(item => {

@@ -5,6 +5,7 @@ import { CheckoutStep, CheckoutFormData, CreateLowProfileRequest, CreateLowProfi
 import PayerDetailsForm from './PayerDetailsForm';
 import PaymentIframe from './PaymentIframe';
 import OrderSummary from './OrderSummary';
+import { Checkbox } from './ui/checkbox';
 import { trackBeginCheckout } from '@/lib/dataLayer';
 import { setFacebookPixelAdvancedMatching } from '@/lib/facebookPixel';
 import { CartItem } from '../hooks/useCart';
@@ -117,10 +118,14 @@ export default function CheckoutModal({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isOrderSummaryOpen, setIsOrderSummaryOpen] = useState(false);
+  // Unchecked by default — acceptance must never be preselected or implied.
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [termsError, setTermsError] = useState(false);
   const checkoutTrackedSignatureRef = useRef<string | null>(null);
   const historyStateRef = useRef<number | null>(null);
   const shouldPopHistoryRef = useRef(false);
   const profilePrefilledRef = useRef(false);
+  const termsCheckboxRef = useRef<HTMLButtonElement>(null);
 
   const { user: firebaseUser } = useAuth();
   const isHebrew = language === 'he';
@@ -177,6 +182,8 @@ export default function CheckoutModal({
       setError(null);
       setIsLoading(false);
       setIsOrderSummaryOpen(false);
+      setTermsAccepted(false);
+      setTermsError(false);
       profilePrefilledRef.current = false; // Reset prefill flag when modal opens
       
       // Push state to history for browser back button
@@ -418,7 +425,8 @@ export default function CheckoutModal({
       pointsToSpend: pointsToSpend > 0 ? pointsToSpend : undefined,
       shippingMethod: formData.shippingMethod,
       pickupLocation: formData.pickupLocation,
-      bogoDiscountAmount: bogoDiscountAmount && bogoDiscountAmount > 0 ? bogoDiscountAmount : undefined
+      bogoDiscountAmount: bogoDiscountAmount && bogoDiscountAmount > 0 ? bogoDiscountAmount : undefined,
+      termsAccepted
     };
 
     // Get auth token if user is signed in
@@ -466,6 +474,13 @@ export default function CheckoutModal({
   // Handle payment submission
   const handlePaymentSubmit = async () => {
     if (!isFormValid || !hasPurchasableCart) return;
+
+    if (!termsAccepted) {
+      setTermsError(true);
+      termsCheckboxRef.current?.focus();
+      return;
+    }
+    setTermsError(false);
 
     setStep('CREATING_LP');
     setIsLoading(true);
@@ -611,7 +626,8 @@ export default function CheckoutModal({
   };
 
   const hasPurchasableCart = items.length > 0 && (subtotal ?? 0) > 0;
-  const canGoToPayment = step === 'INFO' && isFormValid && hasPurchasableCart;
+  const canGoToPayment = step === 'INFO' && isFormValid && hasPurchasableCart && termsAccepted;
+  const isContinueButtonBlocked = !isFormValid || isLoading || !hasPurchasableCart || !termsAccepted;
 
   return (
     <div className="fixed inset-0 z-[100]">
@@ -736,14 +752,62 @@ export default function CheckoutModal({
                     </div>
                   )}
 
+                  {/* Terms & Conditions acceptance */}
+                  <div>
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        ref={termsCheckboxRef}
+                        id="terms-accepted"
+                        checked={termsAccepted}
+                        onCheckedChange={(checked) => {
+                          const isChecked = checked === true;
+                          setTermsAccepted(isChecked);
+                          if (isChecked) setTermsError(false);
+                        }}
+                        className="mt-0.5"
+                        aria-required="true"
+                        aria-invalid={termsError}
+                        aria-describedby={termsError ? 'terms-error' : undefined}
+                      />
+                      <label
+                        htmlFor="terms-accepted"
+                        className="text-sm text-gray-700 cursor-pointer select-none"
+                      >
+                        {isHebrew ? 'קראתי ואני מסכים/ה ל' : 'I have read and agree to the Website '}
+                        <a
+                          href={`/${language}/terms`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[#856D55] underline hover:text-[#6d5844]"
+                        >
+                          {isHebrew ? 'תנאי השימוש באתר' : 'Terms & Conditions'}
+                        </a>
+                        {isHebrew ? '.' : '.'} <span className="text-red-500">*</span>
+                      </label>
+                    </div>
+                    {termsError && (
+                      <p id="terms-error" role="alert" className="mt-1 text-sm text-red-600">
+                        {isHebrew
+                          ? 'עליך לאשר את תנאי השימוש כדי להמשיך לתשלום.'
+                          : 'You must accept the Terms & Conditions to continue to payment.'}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Continue Button */}
                   <div className="flex justify-end pt-4">
                     <button
                       onClick={handlePaymentSubmit}
                       disabled={!isFormValid || isLoading || !hasPurchasableCart}
-                      className="px-6 py-2 bg-[#856D55]/90 text-white rounded-lg hover:bg-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                      aria-describedby={termsError ? 'terms-error' : undefined}
+                      className={`px-6 py-2 bg-[#856D55]/90 text-white rounded-lg transition-colors font-medium ${
+                        isContinueButtonBlocked
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-[#856D55]'
+                      }`}
                     >
-                      {isLoading 
+                      {isLoading
                         ? (isHebrew ? 'יוצר תשלום...' : 'Creating payment...')
                         : (isHebrew ? 'המשך לתשלום' : 'Continue to Payment')
                       }

@@ -348,6 +348,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Delivery fee is charged in full and isn't part of the coupon/promo discount
+    // proportioning above (shipping isn't discountable merchandise) - add it as its
+    // own line AFTER that loop so calculatedTotal below actually includes it. Without
+    // this line, any order with a non-zero delivery fee would never match `body.amount`
+    // (which does include delivery fee) and would be rejected as AMOUNT_MISMATCH.
+    if (computedDeliveryFee > 0) {
+      cardcomProducts.push({
+        ProductID: 'DELIVERY',
+        Description: isHebrewLanguage ? 'משלוח' : 'Delivery',
+        Quantity: 1,
+        UnitCost: computedDeliveryFee,
+        TotalLineCost: computedDeliveryFee,
+        IsVatFree: false
+      });
+    }
+
     // Verify the total matches. A mismatch beyond float rounding tolerance means the client's
     // `amount` doesn't reflect the server-validated cart - reject rather than silently
     // rewriting a CardCom line to "make the numbers fit" (that silent rewrite is exactly the

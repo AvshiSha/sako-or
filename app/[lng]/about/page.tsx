@@ -8,7 +8,7 @@ import { languages } from '@/i18n/settings'
 const translations = {
   en: {
     title: 'About SAKO-OR',
-    subtitle: 'A name that represents quality, style, and tradition of over 45 years in the fashion industry.',
+    subtitle: 'A name that represents quality, style, and tradition of over 50 years in the fashion industry.',
     intro: 'Our story begins in 1977, when Moshe Shacharbani from Ness Ziona founded SAKO-OR out of love for the art of leather and meticulous craftsmanship. From the beginning, we focused on creating unique leather bags and handcrafted fashion accessories that combine classic design with uncompromising quality.',
     theBeginnings: 'The Beginning',
     beginningsText: 'Success was not long in coming – and in the first year alone, we expanded our product range to include leather shoes and sandals, which quickly became symbols of comfort and elegance.',
@@ -24,7 +24,7 @@ const translations = {
   },
   he: {
     title: 'אודות סכו עור',
-    subtitle: 'שם שמייצג איכות, סטייל ומסורת של למעלה מ-45 שנה בתחום האופנה.',
+    subtitle: 'שם שמייצג איכות, סטייל ומסורת של למעלה מ-50 שנה בתחום האופנה.',
     intro: 'הסיפור שלנו מתחיל ב-1977, כאשר משה שהרבני מנס ציונה הקים את סכו עור מתוך אהבה לאמנות העור וליצירה מוקפדת. מהתחלה, התמקדנו ביצור תיקי עור ייחודיים ואביזרי אופנה בעבודת יד, שמשלבים בין עיצוב קלאסי לאיכות בלתי מתפשרת.',
     theBeginnings: 'ההתחלה',
     beginningsText: 'ההצלחה לא איחרה לבוא – ובשנה הראשונה בלבד הרחבנו את מגוון המוצרים לנעליים וסנדלים מעור, שהפכו במהרה לסמל של נוחות ואלגנטיות.',
@@ -53,8 +53,8 @@ export async function generateMetadata({
   const title = locale === 'he' ? 'אודות סכו עור | SAKO-OR' : 'About SAKO-OR | SAKO-OR'
   const description = t.subtitle || 
     (locale === 'he' 
-      ? 'שם שמייצג איכות, סטייל ומסורת של למעלה מ-45 שנה בתחום האופנה'
-      : 'A name that represents quality, style, and tradition of over 45 years in the fashion industry')
+      ? 'שם שמייצג איכות, סטייל ומסורת של למעלה מ-50 שנה בתחום האופנה'
+      : 'A name that represents quality, style, and tradition of over 50 years in the fashion industry')
 
   const url = `/${lng}/about`
 

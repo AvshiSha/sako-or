@@ -279,6 +279,11 @@ model Order {
   verifoneInvoiceAttemptedAt DateTime?     @map("verifone_invoice_attempted_at")
   verifoneInvoiceSyncedAt    DateTime?     @map("verifone_invoice_synced_at")
   verifoneInvoiceError       String?       @map("verifone_invoice_error")
+  /// "Last updated" ISO date of the /terms page (staticPages/terms) at the moment
+  /// the customer accepted it, captured server-side — not client-supplied.
+  termsAcceptedVersion       String?       @map("terms_accepted_version")
+  /// When the customer accepted the Terms & Conditions during checkout.
+  termsAcceptedAt            DateTime?     @map("terms_accepted_at")
 
   @@index([userId])
   @@map("orders")

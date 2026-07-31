@@ -1304,14 +1304,14 @@ export default function ProductColorClient({
                             <p><strong>🚚 משלוחים:</strong></p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
                               <li>משלוח חינם בקנייה מעל 300 ₪</li>
-                              <li>בהזמנה מתחת ל־300 ₪ – משלוח עם שליח עד הבית בעלות 45 ₪</li>
+                              <li>בהזמנה מתחת ל־300 ₪ – משלוח עם שליח עד הבית בעלות 30 ₪</li>
                               <li>משלוח מהיר: 3–5 ימי עסקים</li>
                             </ul>
                         
                             <p><strong>🔄 החזרות והחלפות:</strong></p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
                               <li>החזרה בחינם דרך החנות תוך 14 יום</li>
-                              <li>החזרה עם שליח – בעלות של 45 ₪</li>
+                              <li>החזרה עם שליח – בעלות של 30 ₪</li>
                               <li>החלפה ראשונה ללא עלות</li>
                               <li>המוצר המוחזר חייב להיות חדש, ללא שימוש ובאריזתו המקורית</li>
                               <li>החזר כספי מיידי עם הגעת המוצר אלינו</li>
@@ -1322,7 +1322,7 @@ export default function ProductColorClient({
                             <p><strong>🚚 Shipping:</strong></p>
                             <ul className="list-disc list-inside space-y-1 ml-4">
                               <li>Free shipping on orders over ₪300</li>
-                              <li>Orders under ₪300 – home delivery for ₪45</li>
+                              <li>Orders under ₪300 – home delivery for ₪30</li>
                               <li>Fast delivery: 3–5 business days</li>
                             </ul>
                         

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     console.error('Error in Google Drive callback:', error)
     
     const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://sako-or.vercel.app'
+      ? 'https://sako-or.com'
       : 'http://localhost:3000';
     
     const redirectUrl = new URL('/admin/products/new', baseUrl)

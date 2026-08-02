@@ -39,7 +39,7 @@ export class GoogleDriveService {
 
     // Determine the correct redirect URI based on environment
     const redirectUri = process.env.NODE_ENV === 'production' 
-      ? 'https://sako-or.vercel.app/api/google-drive/callback'
+      ? 'https://sako-or.com/api/google-drive/callback'
       : 'http://localhost:3000/api/google-drive/callback';
 
     // Check if environment variables are available

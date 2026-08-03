@@ -274,6 +274,10 @@ export function saveLastCollectionScroll(
 ): void {
   if (!isBrowser() || !browseKey || scrollY <= 0) return;
   if (!isOnCollectionPage() || collectionScrollLocked) return;
+  // A browser-Back restore is actively driving scroll — never let a stray
+  // scroll event (layout shift, the restore's own scrollTo, etc.) captured
+  // mid-restore overwrite the target we're still trying to reach.
+  if (hasPendingCollectionScrollRestore()) return;
 
   const collectionPath = resolveCollectionSavePath(path);
   if (!collectionPath) return;
@@ -406,6 +410,15 @@ export function runCollectionScrollRestore(
   let mo: MutationObserver | null = null;
   let finished = false;
   const startedAt = Date.now();
+  // Require the layout to look "at target" on two separate attempt ticks
+  // before finishing — a virtualized grid's row heights are often still
+  // estimated (images/late content not yet measured) on the very first
+  // tick, which can make an anchor or offset look reached when the page
+  // is about to grow/shift under it. Tracking the last measurement lets
+  // us detect that the layout hasn't settled yet instead of trusting a
+  // single instantaneous reading.
+  let lastAnchorTop: number | null = null;
+  let lastMaxScroll: number | null = null;
 
   const teardown = () => {
     pendingRestoreTargetY = 0;
@@ -445,33 +458,53 @@ export function runCollectionScrollRestore(
         el = queryAnchorElement(anchorKey);
       }
       if (el) {
-        if (scrollToCollectionAnchor(anchorKey) || isAnchorInView(el)) {
+        scrollToCollectionAnchor(anchorKey);
+        const top = el.getBoundingClientRect().top;
+        const topStable =
+          lastAnchorTop != null && Math.abs(top - lastAnchorTop) <= 2;
+        lastAnchorTop = top;
+        if (isAnchorInView(el) && topStable) {
           finish();
           return;
         }
+        if (Date.now() - startedAt > RESTORE_TIMEOUT_MS && isAnchorInView(el)) {
+          finish();
+        }
         return;
       }
+      lastAnchorTop = null;
     }
 
     const reachable = canScrollToTarget(targetY);
     // Never scroll to maxScrollTop as a stand-in — that lands on page-1 bottom.
-    if (!reachable) return;
+    if (!reachable) {
+      lastMaxScroll = null;
+      return;
+    }
+
+    const currentMaxScroll = maxScrollTop();
+    const heightStable =
+      lastMaxScroll != null && Math.abs(currentMaxScroll - lastMaxScroll) <= 4;
+    lastMaxScroll = currentMaxScroll;
+    const timedOut = Date.now() - startedAt > RESTORE_TIMEOUT_MS;
 
     // User is already at or past the target — restoration succeeded.
-    // Do not fight user scroll by resetting their position.
+    // Do not fight user scroll by resetting their position. Still wait for
+    // the page height to stabilize first, so a still-growing list (images,
+    // late products) can't make an in-between scrollY look like a match.
     if (window.scrollY >= targetY - SCROLL_TOLERANCE_PX) {
-      finish();
+      if (heightStable || timedOut) finish();
       return;
     }
 
     window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
 
-    if (isAtScrollTarget(targetY)) {
+    if (isAtScrollTarget(targetY) && (heightStable || timedOut)) {
       finish();
       return;
     }
 
-    if (Date.now() - startedAt > RESTORE_TIMEOUT_MS) {
+    if (timedOut) {
       finish();
     }
   };
@@ -485,9 +518,11 @@ export function runCollectionScrollRestore(
     // Short page (list not hydrated yet) — do not fight user scroll.
     if (!canScrollToTarget(targetY)) return;
     const y = window.scrollY;
-    // User reached or passed the target — restoration succeeded.
+    // User reached or passed the target — defer to attempt() so the same
+    // height-stability check gates finishing (a scroll event fired mid
+    // layout-shift shouldn't be treated as "restoration succeeded").
     if (y >= targetY - SCROLL_TOLERANCE_PX) {
-      finish();
+      attempt();
       return;
     }
     // Only fight a large upward jump (e.g. Next.js snap-to-top after navigation).

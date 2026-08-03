@@ -1,6 +1,7 @@
 import type { Product, VariantItem } from "@/lib/firebase";
 import {
   freezeCollectionScrollForBack,
+  hasPendingCollectionScrollRestore,
   isCollectionScrollLocked,
   readFrozenCollectionScroll,
   readLastCollectionScroll,
@@ -168,6 +169,7 @@ export function mergeCollectionScroll(
   scrollY: number
 ): void {
   if (!collectionPathFromWindow() || isCollectionScrollLocked()) return;
+  if (hasPendingCollectionScrollRestore()) return;
 
   const existing = getCollectionState(key);
   if (!existing) return;
@@ -185,7 +187,7 @@ export function mergeCollectionScroll(
  */
 export function persistCollectionScroll(key: CollectionKey | undefined): void {
   if (!key || !isBrowser() || !collectionPathFromWindow()) return;
-  if (isCollectionScrollLocked()) return;
+  if (isCollectionScrollLocked() || hasPendingCollectionScrollRestore()) return;
   const scrollY = window.scrollY;
   const existing = getCollectionState(key);
   if (scrollY === 0 && existing && existing.scrollY > 0) return;

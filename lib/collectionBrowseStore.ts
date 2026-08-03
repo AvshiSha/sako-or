@@ -1,20 +1,4 @@
 import type { Product, VariantItem } from "@/lib/firebase";
-import {
-  freezeCollectionScrollForBack,
-  hasPendingCollectionScrollRestore,
-  isCollectionScrollLocked,
-  readFrozenCollectionScroll,
-  readLastCollectionScroll,
-  saveLastCollectionScroll,
-} from "@/lib/collectionScrollRestore";
-
-function collectionPathFromWindow(): string | undefined {
-  if (!isBrowser()) return undefined;
-  const path = window.location.pathname + window.location.search;
-  return path.includes("/collection") && !path.includes("/product/")
-    ? path
-    : undefined;
-}
 
 export type CollectionKey = string;
 
@@ -24,10 +8,7 @@ export interface CollectionBrowseState {
   currentPage: number;
   totalProducts: number;
   hasMore: boolean;
-  scrollY: number;
   updatedAt: number;
-  /** Product card the user opened — used to scroll back to the right row. */
-  anchorVariantKey?: string;
 }
 
 // In-memory store scoped to the current browser tab.
@@ -70,7 +51,7 @@ function saveToSessionStorage(key: CollectionKey, state: CollectionBrowseState):
   }
 }
 
-/** Apply stored list/scroll for a browse key (e.g. after browser Back). */
+/** Apply stored list/page state for a browse key (e.g. after browser Back). */
 export function hydrateCollectionBrowseFromStore(
   key: CollectionKey
 ): CollectionBrowseState | undefined {
@@ -131,25 +112,9 @@ export function setCollectionState(
   key: CollectionKey,
   state: CollectionBrowseState
 ): void {
-  const existing = getCollectionState(key);
-  const frozen = readFrozenCollectionScroll();
-  let scrollY = state.scrollY;
-  if (!collectionPathFromWindow()) {
-    scrollY = Math.max(
-      scrollY,
-      existing?.scrollY ?? 0,
-      frozen?.browseKey === key ? frozen.scrollY : 0
-    );
-  }
-  const merged = mergeBrowseItems(existing, { ...state, scrollY });
-  const next = {
-    ...merged,
-    scrollY,
-    anchorVariantKey:
-      state.anchorVariantKey ?? existing?.anchorVariantKey ?? merged.anchorVariantKey,
-  };
-  collectionStore.set(key, next);
-  saveToSessionStorage(key, next);
+  const merged = mergeBrowseItems(getCollectionState(key), state);
+  collectionStore.set(key, merged);
+  saveToSessionStorage(key, merged);
 }
 
 export function clearCollectionState(key: CollectionKey): void {
@@ -163,103 +128,26 @@ export function clearCollectionState(key: CollectionKey): void {
   }
 }
 
-/** Update only scroll position on an existing browse entry. */
-export function mergeCollectionScroll(
-  key: CollectionKey,
-  scrollY: number
-): void {
-  if (!collectionPathFromWindow() || isCollectionScrollLocked()) return;
-  if (hasPendingCollectionScrollRestore()) return;
-
-  const existing = getCollectionState(key);
-  if (!existing) return;
-  const resolvedScrollY =
-    scrollY > 0 ? scrollY : existing.scrollY > 0 ? existing.scrollY : 0;
-  setCollectionState(key, {
-    ...existing,
-    scrollY: resolvedScrollY,
-    updatedAt: Date.now(),
-  });
-}
+export type CollectionBrowseSnapshot = Omit<CollectionBrowseState, "updatedAt">;
 
 /**
- * Persist current window scroll for a browse key without clobbering a saved position with 0.
- */
-export function persistCollectionScroll(key: CollectionKey | undefined): void {
-  if (!key || !isBrowser() || !collectionPathFromWindow()) return;
-  if (isCollectionScrollLocked() || hasPendingCollectionScrollRestore()) return;
-  const scrollY = window.scrollY;
-  const existing = getCollectionState(key);
-  if (scrollY === 0 && existing && existing.scrollY > 0) return;
-  if (existing) {
-    mergeCollectionScroll(key, scrollY);
-    if (scrollY > 0) {
-      saveLastCollectionScroll(key, scrollY, collectionPathFromWindow());
-    }
-  }
-}
-
-/**
- * Save list + scroll immediately before navigating to a product page.
- * Creates an entry if none exists yet (e.g. fast tap before debounced scroll save).
+ * Save list + page state immediately before navigating to a product page.
+ * Creates an entry if none exists yet (e.g. fast tap before any other save).
  */
 export function persistCollectionBrowseBeforeNavigate(
   key: CollectionKey | undefined,
-  snapshot: CollectionBrowseSnapshot | null | undefined,
-  anchorVariantKey?: string
+  snapshot: CollectionBrowseSnapshot | null | undefined
 ): void {
   if (!key || !isBrowser() || !snapshot) return;
-  const scrollY = window.scrollY;
-  const existing = getCollectionState(key);
-  const resolvedScrollY =
-    scrollY > 0 ? scrollY : existing?.scrollY ?? 0;
-  setCollectionState(key, {
-    ...snapshot,
-    scrollY: resolvedScrollY,
-    anchorVariantKey: anchorVariantKey ?? existing?.anchorVariantKey,
-    updatedAt: Date.now(),
-  } as CollectionBrowseState);
-  const collectionPath = collectionPathFromWindow();
-  if (resolvedScrollY > 0 && collectionPath) {
-    freezeCollectionScrollForBack(key, resolvedScrollY, collectionPath);
-  }
+  setCollectionState(key, { ...snapshot, updatedAt: Date.now() });
 }
 
-export type CollectionBrowseSnapshot = Omit<
-  CollectionBrowseState,
-  "scrollY" | "updatedAt"
->;
-
-/**
- * Save full browse state when leaving the page. If the document is already at scroll 0
- * (common during Next.js client navigation), keep the last known scroll position.
- */
+/** Save full browse state when leaving the page (unmount), e.g. navigating to a product. */
 export function saveCollectionStateOnLeave(
   key: CollectionKey,
-  snapshot: CollectionBrowseSnapshot,
-  lastKnownScrollY?: number,
-  collectionPath?: string
+  snapshot: CollectionBrowseSnapshot
 ): void {
-  const existing = getCollectionState(key);
-  const frozen = readFrozenCollectionScroll();
-  const onCollection = !!collectionPathFromWindow();
-  let scrollY = onCollection && isBrowser() ? window.scrollY : 0;
-  if (!onCollection || scrollY === 0) {
-    scrollY = lastKnownScrollY ?? existing?.scrollY ?? 0;
-  }
-  if (frozen?.browseKey === key) {
-    scrollY = Math.max(scrollY, frozen.scrollY);
-  }
-  const fromSession = readLastCollectionScroll();
-  if (fromSession?.browseKey === key && fromSession.scrollY > scrollY) {
-    scrollY = fromSession.scrollY;
-  }
-  setCollectionState(key, {
-    ...snapshot,
-    scrollY,
-    anchorVariantKey: existing?.anchorVariantKey,
-    updatedAt: Date.now(),
-  } as CollectionBrowseState);
+  setCollectionState(key, { ...snapshot, updatedAt: Date.now() });
 }
 
 /** True when cached list is shorter than expected for the saved page count. */
@@ -271,25 +159,3 @@ export function isStoredBrowseListIncomplete(
   const minExpected = Math.max(1, stored.currentPage - 1) * pageSize;
   return stored.items.length < minExpected;
 }
-
-/** Resolve scrollY for persistence, avoiding overwrite with 0 while a restore is pending. */
-export function resolveBrowseScrollY(
-  key: CollectionKey,
-  override?: number,
-  options?: { allowZero?: boolean }
-): number {
-  const frozenEntry = readFrozenCollectionScroll();
-  const frozen =
-    frozenEntry?.browseKey === key ? frozenEntry.scrollY : 0;
-
-  const y =
-    override ??
-    (isBrowser() && collectionPathFromWindow() ? window.scrollY : 0);
-  if (y === 0 && !options?.allowZero) {
-    const stored = getCollectionState(key);
-    if (stored && stored.scrollY > 0) return Math.max(stored.scrollY, frozen);
-    if (frozen > 0) return frozen;
-  }
-  return Math.max(y, frozen);
-}
-

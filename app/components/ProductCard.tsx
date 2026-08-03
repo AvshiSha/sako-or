@@ -16,6 +16,7 @@ import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from './ProductPromoRibbon'
 import { persistCollectionBrowseBeforeNavigate } from '@/lib/collectionBrowseStore'
+import { snapshotBeforeLeavingForProduct } from '@/lib/collectionScrollRestore'
 import { useCollectionBrowseContext } from '@/app/contexts/CollectionBrowseContext'
 import {
   PRODUCT_CARD_IMAGE_SIZES,
@@ -283,8 +284,11 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     const key = collectionBrowse.browseKey ?? browseStoreKey
     const snap = collectionBrowse.snapshotRef?.current
     const anchor = collectionAnchorKey
-    if (key && snap) {
-      persistCollectionBrowseBeforeNavigate(key, snap, anchor)
+    if (key) {
+      snapshotBeforeLeavingForProduct(key, anchor)
+      if (snap) {
+        persistCollectionBrowseBeforeNavigate(key, snap)
+      }
     }
   }, [browseStoreKey, collectionBrowse.browseKey, collectionBrowse.snapshotRef, collectionAnchorKey])
 
@@ -342,8 +346,6 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-gray-50 block`}
         style={PRODUCT_CARD_IMAGE_STYLE}
         onPointerDown={saveBrowseScroll}
-        onMouseDown={saveBrowseScroll}
-        onTouchStart={saveBrowseScroll}
         onClick={handleLinkClick}
       >
         {/* Image Carousel Container */}

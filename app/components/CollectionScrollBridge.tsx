@@ -1,55 +1,31 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { usePathname } from "next/navigation";
-import {
-  cancelCollectionScrollRestoreWatchdog,
-  freezeCollectionScrollForBack,
-  isCollectionScrollLocked,
-  isOnCollectionPage,
-  lockCollectionScrollWrites,
-  readLastCollectionScroll,
-  saveLastCollectionScroll,
-  scheduleCollectionScrollRestoreBurst,
-  unlockCollectionScrollWrites,
-} from "@/lib/collectionScrollRestore";
-import { persistCollectionScroll } from "@/lib/collectionBrowseStore";
-
-function isProductPath(pathname: string): boolean {
-  return /\/product\//.test(pathname);
-}
+import { useEffect } from "react";
+import { snapshotBeforeLeavingForProduct } from "@/lib/collectionScrollRestore";
 
 function isBrowsePath(pathname: string): boolean {
-  return /\/collection/.test(pathname) && !isProductPath(pathname);
+  return /\/collection/.test(pathname) && !/\/product\//.test(pathname);
 }
 
 /**
- * Stays mounted across collection <-> product navigation.
- * Browser Back is handled primarily via popstate + history.state.
+ * Stays mounted across collection <-> product navigation (rendered once in
+ * the locale layout). Two jobs only:
+ *
+ *  1. Disable the browser's own automatic scroll restoration so it never
+ *     fights the app's manual restore (lib/collectionScrollRestore.ts).
+ *  2. A fallback snapshot-before-leaving for any `/product/` link that isn't
+ *     rendered by ProductCard (which already snapshots more precisely, with
+ *     an anchor card, on its own pointerdown/click handlers) — e.g. a "view
+ *     full details" link inside QuickBuyDrawer. Harmless no-op if
+ *     ProductCard's own handler already ran for this click.
  */
 export default function CollectionScrollBridge() {
-  const pathname = usePathname();
-  const prevPathRef = useRef<string | null>(null);
-
   useEffect(() => {
     if ("scrollRestoration" in window.history) {
       window.history.scrollRestoration = "manual";
     }
 
-    const onPopState = (event: PopStateEvent) => {
-      requestAnimationFrame(() => {
-        scheduleCollectionScrollRestoreBurst(event);
-      });
-    };
-
-    const onPageShow = () => {
-      if (!isBrowsePath(window.location.pathname)) return;
-      requestAnimationFrame(() => {
-        scheduleCollectionScrollRestoreBurst();
-      });
-    };
-
-    const saveScrollBeforeProductNav = (event: MouseEvent) => {
+    const onClickCapture = (event: MouseEvent) => {
       if (!isBrowsePath(window.location.pathname)) return;
       if (event.button !== 0) return;
 
@@ -60,92 +36,19 @@ export default function CollectionScrollBridge() {
       if (!anchor || !(anchor instanceof HTMLAnchorElement)) return;
       if (!anchor.href.includes("/product/")) return;
 
-      const y = window.scrollY;
-      const browseKey =
-        document
-          .querySelector("[data-collection-browse-key]")
-          ?.getAttribute("data-collection-browse-key") ??
-        readLastCollectionScroll()?.browseKey;
-
-      if (!browseKey) return;
-
-      const scrollY =
-        y > 0 ? y : readLastCollectionScroll()?.scrollY ?? 0;
-      const collectionPath = window.location.pathname + window.location.search;
-      if (scrollY > 0) {
-        freezeCollectionScrollForBack(browseKey, scrollY, collectionPath);
-        persistCollectionScroll(browseKey);
-      }
-    };
-
-    window.addEventListener("popstate", onPopState);
-    window.addEventListener("pageshow", onPageShow);
-    document.addEventListener("click", saveScrollBeforeProductNav, true);
-
-    return () => {
-      window.removeEventListener("popstate", onPopState);
-      window.removeEventListener("pageshow", onPageShow);
-      document.removeEventListener("click", saveScrollBeforeProductNav, true);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!pathname || !isBrowsePath(pathname)) return;
-
-    let scrollTimeout: ReturnType<typeof setTimeout>;
-    const handleCollectionScroll = () => {
-      if (isCollectionScrollLocked()) return;
-      if (!isOnCollectionPage()) return;
-      if (!isBrowsePath(pathname)) return;
-
       const browseKey = document
         .querySelector("[data-collection-browse-key]")
         ?.getAttribute("data-collection-browse-key");
       if (!browseKey) return;
 
-      const y = window.scrollY;
-      if (y <= 0) return;
-
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        if (isCollectionScrollLocked() || !isOnCollectionPage()) return;
-        const path = window.location.pathname + window.location.search;
-        saveLastCollectionScroll(browseKey, y, path);
-      }, 100);
+      snapshotBeforeLeavingForProduct(browseKey);
     };
 
-    window.addEventListener("scroll", handleCollectionScroll, { passive: true });
+    document.addEventListener("click", onClickCapture, true);
     return () => {
-      window.removeEventListener("scroll", handleCollectionScroll);
-      clearTimeout(scrollTimeout);
+      document.removeEventListener("click", onClickCapture, true);
     };
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!pathname) return;
-
-    const prev = prevPathRef.current;
-    const cameFromProduct =
-      prev != null && isProductPath(prev) && isBrowsePath(pathname);
-
-    const leftForProduct =
-      prev != null && isBrowsePath(prev) && isProductPath(pathname);
-    if (leftForProduct) {
-      cancelCollectionScrollRestoreWatchdog();
-      lockCollectionScrollWrites();
-    }
-
-    if (cameFromProduct) {
-      unlockCollectionScrollWrites();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          scheduleCollectionScrollRestoreBurst();
-        });
-      });
-    }
-
-    prevPathRef.current = pathname;
-  }, [pathname]);
+  }, []);
 
   return null;
 }

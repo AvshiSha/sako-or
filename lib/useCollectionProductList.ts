@@ -121,8 +121,6 @@ export function useCollectionProductList({
         currentPage: searchPage || 1,
         totalProducts: searchTotal ?? stored.totalProducts,
         hasMore: initialHasMore,
-        scrollY: 0,
-        anchorVariantKey: undefined,
         updatedAt: Date.now(),
       });
     }

@@ -1,49 +1,100 @@
-import { isCollectionAppendLocked } from "@/lib/collectionAppendLock";
-
 /**
- * Collection scroll restoration for browser Back.
- * Uses both sessionStorage and history.state on the collection history entry
- * (browser back restores history.state — more reliable than React effects alone).
+ * Collection scroll restoration for browser Back/Forward.
+ *
+ * Single source of truth: one sessionStorage record, written exactly once —
+ * synchronously, right before the user navigates away to a product page —
+ * and consumed exactly once, when the collection page's item list is ready
+ * to render again. There is no continuous background scroll tracking and no
+ * dependency on popstate/pageshow timing: restoration triggers purely from
+ * "does the exact URL I just mounted have a saved position," which works
+ * identically for Back, Forward, and a plain repeat visit to the same URL.
+ *
+ * The scroll value is only ever written while genuinely on a collection page
+ * (see snapshotBeforeLeavingForProduct) — a product page's own scroll can
+ * never reach this store, by construction.
  */
 
-const LAST_SCROLL_KEY = "collection_last_scroll_v1";
-/** Locked when leaving for PDP — never updated from product-page scroll. */
-const FROZEN_SCROLL_KEY = "collection_frozen_scroll_v1";
-const HISTORY_SCROLL_KEY = "__collectionScroll";
+const STORAGE_KEY = "collection_scroll_restore_v2";
+const SCROLL_TOLERANCE_PX = 12;
+/** ~3.5s at 60fps — generous ceiling for slow image/layout settling before giving up. */
+const MAX_RESTORE_FRAMES = 220;
 
-type LastCollectionScroll = {
-  browseKey: string;
-  scrollY: number;
+export type CollectionKey = string;
+
+type ScrollRecord = {
+  browseKey: CollectionKey;
   path: string;
+  scrollY: number;
+  anchorKey?: string;
   savedAt: number;
 };
 
-type HistoryScrollPayload = {
-  y: number;
-  browseKey?: string;
-  path: string;
-};
+let anchorMounter: ((anchorKey: string) => boolean) | null = null;
+let activeRestore: { cancel: () => void } | null = null;
 
-const RESTORE_DELAYS_MS = [0, 16, 50, 100, 200, 400, 800, 1200];
-const SCROLL_TOLERANCE_PX = 16;
-const GUARD_MAX_MS = 20000;
-const RESTORE_TIMEOUT_MS = 20000;
+function isBrowser(): boolean {
+  return typeof window !== "undefined";
+}
 
-let activeWatchdogCleanup: (() => void) | null = null;
-let pendingRestoreTargetY = 0;
-/** True after leaving collection for PDP — blocks any scroll snapshot writes. */
-let collectionScrollLocked = false;
+function currentPath(): string {
+  return window.location.pathname + window.location.search;
+}
+
+export function isCollectionPath(path: string): boolean {
+  return /\/collection/.test(path) && !/\/product\//.test(path);
+}
+
+export function isOnCollectionPage(): boolean {
+  return isBrowser() && isCollectionPath(window.location.pathname);
+}
+
+function readRecord(): ScrollRecord | undefined {
+  if (!isBrowser()) return undefined;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return undefined;
+    const parsed = JSON.parse(raw) as ScrollRecord;
+    if (
+      !parsed ||
+      typeof parsed.browseKey !== "string" ||
+      typeof parsed.scrollY !== "number" ||
+      parsed.scrollY <= 0 ||
+      typeof parsed.path !== "string"
+    ) {
+      return undefined;
+    }
+    return parsed;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeRecord(record: ScrollRecord): void {
+  if (!isBrowser()) return;
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+  } catch {
+    // ignore
+  }
+}
+
+function clearRecord(): void {
+  if (!isBrowser()) return;
+  try {
+    sessionStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export const COLLECTION_RETURN_EVENT = "collection-browse-return";
 
 /**
  * When the grid is virtualized, an anchor card may be absent from the DOM
- * simply because it's scrolled outside the rendered window — not because the
- * list hasn't loaded that far. CollectionClient registers a mounter here that
- * maps an anchor key to a flat item index: if the anchor exists in the data,
- * it nudges the virtualizer to scroll to (and thus mount) it and returns
- * true; if the data hasn't loaded that anchor yet, it returns false.
+ * simply because it's scrolled outside the rendered window. CollectionClient
+ * registers a mounter here that maps an anchor key to a flat item index: if
+ * the anchor exists in the data, it nudges the virtualizer to mount it.
  */
-let anchorMounter: ((anchorKey: string) => boolean) | null = null;
-
 export function registerCollectionAnchorMounter(
   fn: ((anchorKey: string) => boolean) | null
 ): void {
@@ -64,280 +115,60 @@ function queryAnchorElement(anchorKey: string): HTMLElement | null {
   );
 }
 
+function isAnchorInView(el: HTMLElement): boolean {
+  const rect = el.getBoundingClientRect();
+  return rect.top >= 0 && rect.top <= window.innerHeight * 0.6 && rect.bottom > 0;
+}
+
+function maxScrollTop(): number {
+  return Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+}
+
+/** Raw accessor for the pending restore record, if any (used by callers to gate their own item hydration). */
+export function readLastCollectionScroll():
+  | { browseKey: string; scrollY: number; path: string; savedAt: number }
+  | undefined {
+  return readRecord();
+}
+
 /**
- * True once the anchor is either already mounted, or known to the data and
- * the virtualizer has been nudged to scroll it into the rendered window
- * (a later retry tick will find it once that scroll/mount completes).
+ * Snapshot the collection's own scroll position right before navigating to a
+ * product. Must be called synchronously, on the collection page, before the
+ * click's navigation begins (e.g. onPointerDown/onClick of a product link).
  */
-export function isAnchorAvailable(anchorKey: string | undefined): boolean {
-  if (!anchorKey) return false;
-  if (queryAnchorElement(anchorKey)) return true;
-  return anchorMounter?.(anchorKey) ?? false;
-}
-
-export const COLLECTION_RETURN_EVENT = "collection-browse-return";
-
-export function isCollectionScrollLocked(): boolean {
-  return collectionScrollLocked;
-}
-
-export function lockCollectionScrollWrites(): void {
-  collectionScrollLocked = true;
-}
-
-export function unlockCollectionScrollWrites(): void {
-  collectionScrollLocked = false;
-}
-
-function isBrowser(): boolean {
-  return typeof window !== "undefined";
-}
-
-function currentPath(): string {
-  return window.location.pathname + window.location.search;
-}
-
-function normalizePath(path: string): string {
-  try {
-    const url = new URL(path, window.location.origin);
-    return url.pathname + url.search;
-  } catch {
-    return path.replace(/\/$/, "") || path;
-  }
-}
-
-function pathsMatch(savedPath: string, current?: string): boolean {
-  const cur = current ?? currentPath();
-  const a = normalizePath(savedPath);
-  const b = normalizePath(cur);
-  return a === b || a === normalizePath(window.location.pathname);
-}
-
-export function isCollectionPath(path: string): boolean {
-  return /\/collection/.test(path) && !/\/product\//.test(path);
-}
-
-export function isOnCollectionPage(): boolean {
-  return isBrowser() && isCollectionPath(window.location.pathname);
-}
-
-function resolveCollectionSavePath(path?: string): string | undefined {
-  const candidate = path ?? currentPath();
-  if (isCollectionPath(candidate)) return candidate;
-  const previous = readLastCollectionScroll();
-  if (previous?.path && isCollectionPath(previous.path)) return previous.path;
-  return undefined;
-}
-
-/** Stamp scroll onto the current history entry (the collection page the user will return to via Back). */
-export function stampCollectionScrollInHistory(
-  scrollY: number,
-  browseKey?: string
+export function snapshotBeforeLeavingForProduct(
+  browseKey: CollectionKey,
+  anchorKey?: string
 ): void {
-  if (!isBrowser() || scrollY <= 0) return;
-  if (!isCollectionPath(window.location.pathname)) return;
-
-  const path = currentPath();
-  const payload: HistoryScrollPayload = { y: scrollY, browseKey, path };
-
-  const prevState =
-    typeof window.history.state === "object" && window.history.state
-      ? { ...window.history.state }
-      : {};
-
-  try {
-    history.replaceState(
-      { ...prevState, [HISTORY_SCROLL_KEY]: payload },
-      ""
-    );
-  } catch {
-    // ignore
-  }
-}
-
-export function readCollectionScrollFromHistoryState(
-  state: unknown
-): number {
-  if (!state || typeof state !== "object") return 0;
-  const payload = (state as Record<string, unknown>)[HISTORY_SCROLL_KEY];
-  if (!payload || typeof payload !== "object") return 0;
-  const y = (payload as HistoryScrollPayload).y;
-  return typeof y === "number" && y > 0 ? y : 0;
-}
-
-function parseScrollPayload(raw: string | null): LastCollectionScroll | undefined {
-  if (!raw) return undefined;
-  try {
-    const parsed = JSON.parse(raw) as LastCollectionScroll & { pathname?: string };
-    if (
-      !parsed ||
-      typeof parsed.browseKey !== "string" ||
-      typeof parsed.scrollY !== "number" ||
-      parsed.scrollY <= 0
-    ) {
-      return undefined;
-    }
-    if (!parsed.path && parsed.pathname) {
-      parsed.path = parsed.pathname;
-    }
-    if (typeof parsed.path !== "string" || !isCollectionPath(parsed.path)) {
-      return undefined;
-    }
-    return parsed;
-  } catch {
-    return undefined;
-  }
-}
-
-function writeScrollSnapshot(
-  browseKey: string,
-  scrollY: number,
-  collectionPath: string,
-  options?: { allowOffPage?: boolean; stampHistory?: boolean }
-): void {
-  if (!isBrowser() || !browseKey || scrollY <= 0) return;
-  if (!isCollectionPath(collectionPath)) return;
-  if (!options?.allowOffPage && !isOnCollectionPage()) return;
-
-  const previous = readLastCollectionScroll();
-  const frozen = readFrozenCollectionScroll();
-  const resolvedScrollY = Math.max(
-    scrollY,
-    previous?.browseKey === browseKey ? previous.scrollY : 0,
-    frozen?.browseKey === browseKey ? frozen.scrollY : 0
-  );
-
-  const payload: LastCollectionScroll = {
-    browseKey,
-    scrollY: resolvedScrollY,
-    path: collectionPath,
-    savedAt: Date.now(),
-  };
-
-  try {
-    sessionStorage.setItem(LAST_SCROLL_KEY, JSON.stringify(payload));
-    if (options?.allowOffPage) {
-      sessionStorage.setItem(FROZEN_SCROLL_KEY, JSON.stringify(payload));
-    }
-    if (options?.stampHistory !== false && isOnCollectionPage()) {
-      stampCollectionScrollInHistory(resolvedScrollY, browseKey);
-    }
-  } catch {
-    // ignore
-  }
-}
-
-/** Lock scroll before PDP navigation — only while still on the collection URL. */
-export function freezeCollectionScrollForBack(
-  browseKey: string,
-  scrollY: number,
-  path: string
-): void {
-  if (!isBrowser() || !browseKey || scrollY <= 0 || !isCollectionPath(path)) return;
+  if (!isBrowser() || !browseKey) return;
   if (!isOnCollectionPage()) return;
 
-  const existing = readFrozenCollectionScroll();
-  const resolvedScrollY =
-    existing?.browseKey === browseKey
-      ? Math.max(scrollY, existing.scrollY)
-      : scrollY;
+  const scrollY = window.scrollY;
+  if (scrollY <= 0) return;
 
-  try {
-    const payload: LastCollectionScroll = {
-      browseKey,
-      scrollY: resolvedScrollY,
-      path,
-      savedAt: Date.now(),
-    };
-    sessionStorage.setItem(FROZEN_SCROLL_KEY, JSON.stringify(payload));
-    sessionStorage.setItem(LAST_SCROLL_KEY, JSON.stringify(payload));
-    stampCollectionScrollInHistory(resolvedScrollY, browseKey);
-    lockCollectionScrollWrites();
-  } catch {
-    // ignore
-  }
+  writeRecord({
+    browseKey,
+    path: currentPath(),
+    scrollY,
+    anchorKey,
+    savedAt: Date.now(),
+  });
 }
 
-export function readFrozenCollectionScroll(): LastCollectionScroll | undefined {
-  if (!isBrowser()) return undefined;
-  try {
-    return parseScrollPayload(sessionStorage.getItem(FROZEN_SCROLL_KEY));
-  } catch {
-    return undefined;
-  }
+/** True while a restore is actively running — gates auto-load-more and append-preserve logic. */
+export function hasPendingCollectionScrollRestore(): boolean {
+  return activeRestore != null;
 }
 
-export function saveLastCollectionScroll(
-  browseKey: string,
-  scrollY: number,
-  path?: string
-): void {
-  if (!isBrowser() || !browseKey || scrollY <= 0) return;
-  if (!isOnCollectionPage() || collectionScrollLocked) return;
-  // A browser-Back restore is actively driving scroll — never let a stray
-  // scroll event (layout shift, the restore's own scrollTo, etc.) captured
-  // mid-restore overwrite the target we're still trying to reach.
-  if (hasPendingCollectionScrollRestore()) return;
-
-  const collectionPath = resolveCollectionSavePath(path);
-  if (!collectionPath) return;
-
-  const frozen = readFrozenCollectionScroll();
-  if (frozen?.browseKey === browseKey && scrollY < frozen.scrollY) return;
-
-  writeScrollSnapshot(browseKey, scrollY, collectionPath, { stampHistory: true });
+export function cancelCollectionScrollRestoreWatchdog(): void {
+  activeRestore?.cancel();
+  activeRestore = null;
 }
 
-export function readLastCollectionScroll(): LastCollectionScroll | undefined {
-  if (!isBrowser()) return undefined;
-  try {
-    return parseScrollPayload(sessionStorage.getItem(LAST_SCROLL_KEY));
-  } catch {
-    return undefined;
-  }
-}
-
-export function clearLastCollectionScroll(): void {
-  if (!isBrowser()) return;
-  try {
-    sessionStorage.removeItem(LAST_SCROLL_KEY);
-  } catch {
-    // ignore
-  }
-}
-
-export function clearFrozenCollectionScroll(): void {
-  if (!isBrowser()) return;
-  try {
-    sessionStorage.removeItem(FROZEN_SCROLL_KEY);
-  } catch {
-    // ignore
-  }
-}
-
-function clearCollectionScrollFromHistoryState(): void {
-  if (!isBrowser()) return;
-  const prev =
-    typeof window.history.state === "object" && window.history.state
-      ? { ...(window.history.state as Record<string, unknown>) }
-      : null;
-  if (!prev || !(HISTORY_SCROLL_KEY in prev)) return;
-  const next = { ...prev };
-  delete next[HISTORY_SCROLL_KEY];
-  try {
-    history.replaceState(next, "");
-  } catch {
-    // ignore
-  }
-}
-
-/** Clear saved scroll targets so filter/search changes are not restored to an old offset. */
+/** Clear any saved restore target — call when filters/search change so a stale offset never applies to a new result set. */
 export function resetCollectionScrollForFilterChange(): void {
-  if (!isBrowser()) return;
   cancelCollectionScrollRestoreWatchdog();
-  clearLastCollectionScroll();
-  clearFrozenCollectionScroll();
-  clearCollectionScrollFromHistoryState();
+  clearRecord();
 }
 
 /** Scroll to top after filter changes (call again on rAF if navigation runs after paint). */
@@ -349,282 +180,139 @@ export function scrollCollectionToTop(): void {
   });
 }
 
-function isAtScrollTarget(targetY: number): boolean {
-  return Math.abs(window.scrollY - targetY) <= SCROLL_TOLERANCE_PX;
-}
-
-function maxScrollTop(): number {
-  return Math.max(
-    0,
-    document.documentElement.scrollHeight - window.innerHeight
-  );
-}
-
-export function canScrollToTarget(targetY: number): boolean {
-  return maxScrollTop() >= targetY - SCROLL_TOLERANCE_PX;
-}
-
-function isAnchorInView(el: HTMLElement): boolean {
-  const rect = el.getBoundingClientRect();
-  return (
-    rect.top >= 60 &&
-    rect.top <= window.innerHeight * 0.55 &&
-    rect.bottom > 0
-  );
-}
-
-function scrollToCollectionAnchor(anchorKey: string): boolean {
-  let el = queryAnchorElement(anchorKey);
-  if (!el) {
-    // Not mounted — likely virtualized out of the rendered window. Nudge the
-    // virtualizer to it; the element mounts asynchronously, so this attempt
-    // still returns false and a later retry tick will find it in the DOM.
-    anchorMounter?.(anchorKey);
-    el = queryAnchorElement(anchorKey);
-  }
-  if (!el) return false;
-  el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
-  return isAnchorInView(el);
-}
-
-export function hasPendingCollectionScrollRestore(): boolean {
-  return pendingRestoreTargetY > 0;
-}
-
-/** Apply scroll and retry until we hit the target or time out (fights late Next scroll-to-top). */
-export function runCollectionScrollRestore(
-  targetY: number,
-  onComplete?: () => void,
-  anchorKey?: string
-): void {
-  if (!isBrowser() || targetY <= 0) {
-    onComplete?.();
-    return;
-  }
-
-  cancelCollectionScrollRestoreWatchdog();
-  pendingRestoreTargetY = targetY;
-
-  const timeouts: ReturnType<typeof setTimeout>[] = [];
-  let ro: ResizeObserver | null = null;
-  let mo: MutationObserver | null = null;
-  let finished = false;
-  const startedAt = Date.now();
-  // Require the layout to look "at target" on two separate attempt ticks
-  // before finishing — a virtualized grid's row heights are often still
-  // estimated (images/late content not yet measured) on the very first
-  // tick, which can make an anchor or offset look reached when the page
-  // is about to grow/shift under it. Tracking the last measurement lets
-  // us detect that the layout hasn't settled yet instead of trusting a
-  // single instantaneous reading.
-  let lastAnchorTop: number | null = null;
-  let lastMaxScroll: number | null = null;
-
-  const teardown = () => {
-    pendingRestoreTargetY = 0;
-    timeouts.forEach(clearTimeout);
-    ro?.disconnect();
-    mo?.disconnect();
-    window.removeEventListener("pageshow", onPageShow);
-    window.removeEventListener("scroll", onScrollGuard, { capture: true });
-    activeWatchdogCleanup = null;
-  };
-
-  const cancel = () => {
-    if (finished) return;
-    finished = true;
-    teardown();
-  };
-
-  const finish = () => {
-    if (finished) return;
-    finished = true;
-    teardown();
-    clearFrozenCollectionScroll();
-    onComplete?.();
-  };
-
-  const attempt = () => {
-    if (finished) return;
-    if (isCollectionAppendLocked()) return;
-
-    if (anchorKey) {
-      let el = queryAnchorElement(anchorKey);
-      if (!el) {
-        // Not mounted — may just be virtualized out of the rendered window.
-        // Nudge the virtualizer toward it; if it mounts, a later attempt()
-        // tick (driven by the MutationObserver below) will find it.
-        anchorMounter?.(anchorKey);
-        el = queryAnchorElement(anchorKey);
-      }
-      if (el) {
-        scrollToCollectionAnchor(anchorKey);
-        const top = el.getBoundingClientRect().top;
-        const topStable =
-          lastAnchorTop != null && Math.abs(top - lastAnchorTop) <= 2;
-        lastAnchorTop = top;
-        if (isAnchorInView(el) && topStable) {
-          finish();
-          return;
-        }
-        if (Date.now() - startedAt > RESTORE_TIMEOUT_MS && isAnchorInView(el)) {
-          finish();
-        }
-        return;
-      }
-      lastAnchorTop = null;
-    }
-
-    const reachable = canScrollToTarget(targetY);
-    // Never scroll to maxScrollTop as a stand-in — that lands on page-1 bottom.
-    if (!reachable) {
-      lastMaxScroll = null;
-      return;
-    }
-
-    const currentMaxScroll = maxScrollTop();
-    const heightStable =
-      lastMaxScroll != null && Math.abs(currentMaxScroll - lastMaxScroll) <= 4;
-    lastMaxScroll = currentMaxScroll;
-    const timedOut = Date.now() - startedAt > RESTORE_TIMEOUT_MS;
-
-    // User is already at or past the target — restoration succeeded.
-    // Do not fight user scroll by resetting their position. Still wait for
-    // the page height to stabilize first, so a still-growing list (images,
-    // late products) can't make an in-between scrollY look like a match.
-    if (window.scrollY >= targetY - SCROLL_TOLERANCE_PX) {
-      if (heightStable || timedOut) finish();
-      return;
-    }
-
-    window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
-
-    if (isAtScrollTarget(targetY) && (heightStable || timedOut)) {
-      finish();
-      return;
-    }
-
-    if (timedOut) {
-      finish();
-    }
-  };
-
-  const onPageShow = () => attempt();
-
-  const onScrollGuard = () => {
-    if (finished || targetY <= 0) return;
-    if (isCollectionAppendLocked()) return;
-    if (Date.now() - startedAt > GUARD_MAX_MS) return;
-    // Short page (list not hydrated yet) — do not fight user scroll.
-    if (!canScrollToTarget(targetY)) return;
-    const y = window.scrollY;
-    // User reached or passed the target — defer to attempt() so the same
-    // height-stability check gates finishing (a scroll event fired mid
-    // layout-shift shouldn't be treated as "restoration succeeded").
-    if (y >= targetY - SCROLL_TOLERANCE_PX) {
-      attempt();
-      return;
-    }
-    // Only fight a large upward jump (e.g. Next.js snap-to-top after navigation).
-    if (y < targetY - 80 && !isAtScrollTarget(targetY)) {
-      window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
-    }
-  };
-
-  attempt();
-
-  for (const delay of RESTORE_DELAYS_MS) {
-    timeouts.push(setTimeout(attempt, delay));
-  }
-
-  if (typeof ResizeObserver !== "undefined") {
-    ro = new ResizeObserver(attempt);
-    ro.observe(document.documentElement);
-  }
-
-  if (typeof MutationObserver !== "undefined" && document.body) {
-    mo = new MutationObserver(attempt);
-    mo.observe(document.body, { childList: true, subtree: true });
-  }
-
-  window.addEventListener("pageshow", onPageShow);
-  window.addEventListener("scroll", onScrollGuard, { passive: true, capture: true });
-
-  activeWatchdogCleanup = cancel;
-}
-
-export function cancelCollectionScrollRestoreWatchdog(): void {
-  activeWatchdogCleanup?.();
-  activeWatchdogCleanup = null;
-}
-
-/** Notify hooks that the user returned to a collection route (browser Back). */
 export function dispatchCollectionBrowseReturn(): void {
   if (!isBrowser()) return;
   window.dispatchEvent(new CustomEvent(COLLECTION_RETURN_EVENT));
 }
 
-export function resolveRestoreScrollY(
-  popStateEvent?: PopStateEvent
-): number {
-  const fromHistory = popStateEvent
-    ? readCollectionScrollFromHistoryState(popStateEvent.state)
-    : readCollectionScrollFromHistoryState(window.history.state);
-
-  const frozen = readFrozenCollectionScroll();
-  const fromFrozen =
-    frozen && pathsMatch(frozen.path) ? frozen.scrollY : 0;
-
-  const last = readLastCollectionScroll();
-  const fromStorage =
-    last && isCollectionPath(last.path) && pathsMatch(last.path)
-      ? last.scrollY
-      : 0;
-
-  return Math.max(fromHistory, fromStorage, fromFrozen);
-}
-
-/** Notify collection UI to re-hydrate list state; scroll runs after browseListReady. */
-export function restoreCollectionScrollIfPending(
-  popStateEvent?: PopStateEvent
+/**
+ * Restore scroll for `browseKey` if a saved record exists for the exact
+ * current URL — call once the caller's item list has been hydrated from
+ * cache and is ready to render. Only ever moves the scrollbar; never
+ * fetches or mutates item state.
+ *
+ * Runs a single requestAnimationFrame polling loop (no parallel timers or
+ * observers): each frame it checks whether the anchor card (or, without an
+ * anchor, the page height) is ready to receive the target scroll, applies
+ * it, and requires two consecutive stable frames before finishing — so a
+ * still-growing virtualized grid or a late image can't be mistaken for
+ * "arrived."
+ */
+export function beginCollectionScrollRestore(
+  browseKey: CollectionKey,
+  onComplete?: () => void
 ): void {
-  if (!isBrowser()) return;
-  if (!/\/collection/.test(window.location.pathname)) return;
-  if (/\/product\//.test(window.location.pathname)) return;
-
-  unlockCollectionScrollWrites();
-
-  const targetY = resolveRestoreScrollY(popStateEvent);
-  if (targetY <= 0) return;
-
-  cancelCollectionScrollRestoreWatchdog();
-
-  // Already at or past the target — restoration succeeded on a prior burst tick.
-  // Skip re-dispatching so the burst does not restart a watchdog that fights user scroll.
-  if (window.scrollY >= targetY - SCROLL_TOLERANCE_PX) return;
-
-  dispatchCollectionBrowseReturn();
-}
-
-/** Re-dispatch return while list hydrates; does not scroll until the grid is ready. */
-export function scheduleCollectionScrollRestoreBurst(
-  popStateEvent?: PopStateEvent
-): void {
-  if (!isBrowser()) return;
-  restoreCollectionScrollIfPending(popStateEvent);
-  const delays = [100, 400, 900, 1800];
-  for (const ms of delays) {
-    setTimeout(() => restoreCollectionScrollIfPending(), ms);
+  if (!isBrowser()) {
+    onComplete?.();
+    return;
   }
-}
 
-export function getRestoreScrollTarget(
-  browseKey: string | undefined
-): number {
-  if (!browseKey) return 0;
-  const frozen = readFrozenCollectionScroll();
-  if (frozen?.browseKey === browseKey) return frozen.scrollY;
-  const last = readLastCollectionScroll();
-  if (last && last.browseKey === browseKey) return last.scrollY;
-  return readCollectionScrollFromHistoryState(window.history.state);
+  const record = readRecord();
+  if (
+    !record ||
+    record.browseKey !== browseKey ||
+    record.path !== currentPath() ||
+    record.scrollY <= 0
+  ) {
+    onComplete?.();
+    return;
+  }
+
+  // A restore is already running (for this key or another) — never start a
+  // second, competing loop.
+  if (activeRestore) {
+    onComplete?.();
+    return;
+  }
+
+  const targetY = record.scrollY;
+  const anchorKey = record.anchorKey;
+
+  let frame = 0;
+  let stableTicks = 0;
+  let lastAnchorTop: number | null = null;
+  let rafId: number | null = null;
+  let finished = false;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    if (rafId != null) cancelAnimationFrame(rafId);
+    activeRestore = null;
+    clearRecord();
+    onComplete?.();
+  };
+
+  const cancel = () => {
+    if (finished) return;
+    finished = true;
+    if (rafId != null) cancelAnimationFrame(rafId);
+    activeRestore = null;
+  };
+
+  const scheduleNext = () => {
+    if (frame >= MAX_RESTORE_FRAMES) {
+      finish();
+      return;
+    }
+    rafId = requestAnimationFrame(tick);
+  };
+
+  const tick = () => {
+    if (finished) return;
+    frame += 1;
+
+    if (anchorKey) {
+      let el = queryAnchorElement(anchorKey);
+      if (!el) {
+        // Not mounted — likely virtualized out of the rendered window. Nudge
+        // the virtualizer toward it; if it mounts, a later tick finds it.
+        anchorMounter?.(anchorKey);
+        el = queryAnchorElement(anchorKey);
+      }
+      if (el) {
+        el.scrollIntoView({ block: "center", inline: "nearest", behavior: "auto" });
+        const top = el.getBoundingClientRect().top;
+        const stable = lastAnchorTop != null && Math.abs(top - lastAnchorTop) <= 2;
+        lastAnchorTop = top;
+        stableTicks = isAnchorInView(el) && stable ? stableTicks + 1 : 0;
+        if (stableTicks >= 2) {
+          finish();
+          return;
+        }
+        scheduleNext();
+        return;
+      }
+      lastAnchorTop = null;
+      stableTicks = 0;
+      scheduleNext();
+      return;
+    }
+
+    // No anchor available — fall back to a plain pixel offset, but only once
+    // the page has grown tall enough to actually reach it (never scroll to
+    // maxScrollTop as a stand-in; that lands on the wrong spot).
+    const reachable = maxScrollTop() >= targetY - SCROLL_TOLERANCE_PX;
+    if (!reachable) {
+      stableTicks = 0;
+      scheduleNext();
+      return;
+    }
+
+    if (Math.abs(window.scrollY - targetY) > SCROLL_TOLERANCE_PX) {
+      window.scrollTo({ top: targetY, left: 0, behavior: "auto" });
+      stableTicks = 0;
+    } else {
+      stableTicks += 1;
+    }
+
+    if (stableTicks >= 2) {
+      finish();
+      return;
+    }
+    scheduleNext();
+  };
+
+  activeRestore = { cancel };
+  rafId = requestAnimationFrame(tick);
 }

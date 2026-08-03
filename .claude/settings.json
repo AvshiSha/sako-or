@@ -8,7 +8,9 @@
       "Bash(git -C \"c:/Users/user/sako-or\" diff master...HEAD --stat)",
       "Bash(ck access *)",
       "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies['lucide-react'], require\\('./package.json'\\).dependencies['next']\\)\")",
-      "Bash(npx eslint *)"
+      "Bash(npx eslint *)",
+      "Bash(powershell -Command ' *)",
+      "Bash(powershell -Command \"Get-Content 'C:\\\\Users\\\\user\\\\.claude\\\\projects\\\\c--Users-user-sako-or\\\\12c1d4bc-1017-4275-ac2c-c4490a9b7539\\\\tool-results\\\\bt1a1ish6.txt' | ConvertFrom-Json | ConvertTo-Json -Depth 100\")"
     ]
   }
 }

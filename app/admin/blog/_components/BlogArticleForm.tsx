@@ -341,8 +341,9 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
       {/* Slug & date (language-independent) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Slug (URL)</label>
+          <label htmlFor="blog-article-slug" className="block text-sm font-medium text-gray-700 mb-1">Slug (URL)</label>
           <input
+            id="blog-article-slug"
             type="text"
             value={formData.slug}
             onChange={(e) => {
@@ -356,8 +357,9 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
           <p className="mt-1 text-xs text-gray-500">/news/{formData.slug || 'your-slug'}</p>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Publication Date</label>
+          <label htmlFor="blog-article-published-at" className="block text-sm font-medium text-gray-700 mb-1">Publication Date</label>
           <input
+            id="blog-article-published-at"
             type="datetime-local"
             value={formData.publishedAt}
             onChange={(e) => setFormData((prev) => ({ ...prev, publishedAt: e.target.value }))}
@@ -385,8 +387,9 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt / Summary *</label>
+        <label htmlFor="blog-article-excerpt" className="block text-sm font-medium text-gray-700 mb-1">Excerpt / Summary *</label>
         <textarea
+          id="blog-article-excerpt"
           value={formData.excerpt[activeTab]}
           onChange={(e) => updateLocalized('excerpt', activeTab, e.target.value)}
           dir={activeTab === 'he' ? 'rtl' : 'ltr'}

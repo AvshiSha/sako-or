@@ -340,7 +340,7 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
                     }
                   }}
                   placeholder={t.search}
-                  className="flex-1 outline-none text-gray-900 placeholder-gray-400"
+                  className="flex-1 outline-none focus:ring-2 focus:ring-[#856D55]/40 rounded-md text-gray-900 placeholder-gray-400"
                   dir={language === 'he' ? 'rtl' : 'ltr'}
                 />
                 {searchQuery && (
@@ -348,6 +348,7 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
                     type="button"
                     onClick={handleClearSearch}
                     className="ml-2 text-gray-400 hover:text-gray-600"
+                    aria-label="Clear search"
                   >
                     <X className="h-5 w-5" />
                   </button>

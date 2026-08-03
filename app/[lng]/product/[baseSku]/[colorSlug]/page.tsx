@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCachedProductByBaseSku } from "@/lib/server/cached-product-data";
+import { pickProductClientView } from "@/lib/product-types";
 import { serializeFirestoreValue } from "@/lib/serialize-firestore";
 import ProductColorClient from "./ProductColorClient";
 
@@ -38,7 +39,10 @@ export default async function ProductColorPage({
       lng={lng}
       baseSku={baseSku}
       colorSlug={colorSlug}
-      initialProduct={serializeFirestoreValue(product)}
+      initialProduct={serializeFirestoreValue({
+        ...pickProductClientView(product),
+        colorVariants: product.colorVariants,
+      })}
       initialVariant={serializeFirestoreValue(variant)}
     />
   );

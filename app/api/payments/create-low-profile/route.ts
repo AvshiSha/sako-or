@@ -18,49 +18,74 @@ export async function POST(request: NextRequest) {
     // Optional auth: if a Firebase bearer token is provided, link the order to that user.
     // Only link to existing confirmed users - do NOT create partial users here.
     const bearerToken = getBearerToken(request);
-    let userId: string | undefined = undefined;
 
-    if (bearerToken) {
-      try {
-        const auth = await requireUserAuth(request)
-        if (auth instanceof NextResponse) return auth
-        const firebaseUid = auth.firebaseUid;
+    // Authoritative server-side revalidation against live inventory.
+    // The client's `items`/`amount`/`subtotal` are never trusted for pricing or
+    // availability - every line is re-fetched and re-priced from the product
+    // catalog right before an order/charge is created.
+    const requestedItems = (body.items && body.items.length > 0 ? body.items : []).map(item => ({
+      sku: item.productSku,
+      color: item.color ?? null,
+      size: item.size ?? null,
+      quantity: item.quantity,
+    }));
 
-        // Read-only lookup: only link order to existing confirmed user
-        const user = await prisma.user.findUnique({
-          where: { firebaseUid },
-          select: { id: true, firstName: true, lastName: true, phone: true, language: true }
-        });
+    // Cart re-validation, user resolution, and the terms-page lookup are all
+    // independent of each other - kick them all off now and await together
+    // (below) instead of resolving each fully before starting the next.
+    const cartValidationPromise = validateCartItems(requestedItems);
 
-        // Only set userId if user exists and has completed profile (required fields present)
-        if (user && user.firstName && user.lastName && user.phone && user.language) {
-          userId = user.id;
-          console.log('[CREATE_LOW_PROFILE] Linked order to confirmed user:', userId);
-        } else {
-          const missingFields = [];
-          if (!user) {
-            missingFields.push('user not found in Neon');
-          } else {
-            if (!user.firstName) missingFields.push('firstName');
-            if (!user.lastName) missingFields.push('lastName');
-            if (!user.phone) missingFields.push('phone');
-            if (!user.language) missingFields.push('language');
+    // Server-authoritative acceptance record: the exact "last updated" date of
+    // the published /terms content at the moment of purchase (not trusted from
+    // the client), so a later edit to the terms doesn't retroactively change
+    // what an already-placed order is on record as having agreed to.
+    const termsPagePromise = staticPageService.getPublishedStaticPage('terms').catch(() => null);
+
+    const userResolutionPromise: Promise<{ userId?: string; authError?: NextResponse }> = bearerToken
+      ? (async (): Promise<{ userId?: string; authError?: NextResponse }> => {
+          try {
+            const auth = await requireUserAuth(request);
+            if (auth instanceof NextResponse) return { authError: auth };
+            const firebaseUid = auth.firebaseUid;
+
+            // Read-only lookup: only link order to existing confirmed user
+            const user = await prisma.user.findUnique({
+              where: { firebaseUid },
+              select: { id: true, firstName: true, lastName: true, phone: true, language: true }
+            });
+
+            // Only set userId if user exists and has completed profile (required fields present)
+            if (user && user.firstName && user.lastName && user.phone && user.language) {
+              console.log('[CREATE_LOW_PROFILE] Linked order to confirmed user:', user.id);
+              return { userId: user.id };
+            }
+
+            const missingFields: string[] = [];
+            if (!user) {
+              missingFields.push('user not found in Neon');
+            } else {
+              if (!user.firstName) missingFields.push('firstName');
+              if (!user.lastName) missingFields.push('lastName');
+              if (!user.phone) missingFields.push('phone');
+              if (!user.language) missingFields.push('language');
+            }
+            console.log('[CREATE_LOW_PROFILE] User not confirmed or incomplete, treating as guest. Missing fields:', missingFields);
+            return {};
+          } catch {
+            // Treat invalid/expired token as guest checkout
+            console.warn('[CREATE_LOW_PROFILE] Invalid bearer token, proceeding as guest');
+            return {};
           }
-          console.log('[CREATE_LOW_PROFILE] User not confirmed or incomplete, treating as guest. Missing fields:', missingFields);
-        }
-      } catch {
-        // Treat invalid/expired token as guest checkout
-        console.warn('[CREATE_LOW_PROFILE] Invalid bearer token, proceeding as guest');
-      }
-    }
-    
+        })()
+      : Promise.resolve({});
+
     // Debug environment variables
     console.log('Environment variables:', {
       CARDCOM_TERMINAL_NUMBER: process.env.CARDCOM_TERMINAL_NUMBER ? 'Set' : 'Not set',
       CARDCOM_API_NAME: process.env.CARDCOM_API_NAME ? 'Set' : 'Not set',
       NODE_ENV: process.env.NODE_ENV,
     });
-    
+
     // Validate required fields
     if (!body.amount || body.amount <= 0) {
       return NextResponse.json(
@@ -96,17 +121,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Authoritative server-side revalidation against live inventory.
-    // The client's `items`/`amount`/`subtotal` are never trusted for pricing or
-    // availability - every line is re-fetched and re-priced from the product
-    // catalog right before an order/charge is created.
-    const requestedItems = (body.items && body.items.length > 0 ? body.items : []).map(item => ({
-      sku: item.productSku,
-      color: item.color ?? null,
-      size: item.size ?? null,
-      quantity: item.quantity,
-    }));
-
     if (requestedItems.length === 0) {
       return NextResponse.json(
         { error: 'Your cart is empty or no longer valid. Please refresh your cart and try again.', code: 'CART_EMPTY' },
@@ -114,7 +128,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validation = await validateCartItems(requestedItems);
+    const [{ userId, authError }, validation, termsPage] = await Promise.all([
+      userResolutionPromise,
+      cartValidationPromise,
+      termsPagePromise,
+    ]);
+    if (authError) return authError;
     const unavailableItem = validation.items.find(i => !i.available);
     if (unavailableItem) {
       const code = unavailableItem.reasonCode === 'STOCK_INSUFFICIENT' || unavailableItem.adjusted
@@ -377,11 +396,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Server-authoritative acceptance record: the exact "last updated" date of
-    // the published /terms content at the moment of purchase (not trusted from
-    // the client), so a later edit to the terms doesn't retroactively change
-    // what an already-placed order is on record as having agreed to.
-    const termsPage = await staticPageService.getPublishedStaticPage('terms').catch(() => null);
     const termsAcceptedVersion = termsPage?.updatedAt;
     const termsAcceptedAt = new Date();
 

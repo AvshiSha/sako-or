@@ -204,9 +204,50 @@ export interface VariantItem {
   variantKey: string
 }
 
+/**
+ * Fields the product detail page's client component actually renders. Used to
+ * narrow the RSC → client payload instead of shipping the whole Firestore
+ * document — notably excludes `categoryObj` (a full joined category doc),
+ * `seo`/`searchKeywords`, and internal flags like `isDeleted`/`isEnabled`.
+ */
+const PRODUCT_CLIENT_VIEW_FIELDS = [
+  'sku',
+  'baseSku',
+  'currency',
+  'price',
+  'salePrice',
+  'category',
+  'categories_path',
+  'title_en',
+  'title_he',
+  'brand',
+  'description_en',
+  'description_he',
+  'name',
+  'description',
+  'materialCare',
+  'upperMaterial',
+  'materialInnerSole',
+  'lining',
+  'sole',
+  'heelHeight',
+  'shoeFit',
+  'shippingReturns',
+] as const satisfies readonly (keyof Product)[]
+
+export type ProductClientView = Pick<Product, (typeof PRODUCT_CLIENT_VIEW_FIELDS)[number]>
+
+export function pickProductClientView(product: Product): ProductClientView {
+  const picked: Record<string, unknown> = {}
+  for (const key of PRODUCT_CLIENT_VIEW_FIELDS) {
+    picked[key] = product[key]
+  }
+  return picked as ProductClientView
+}
+
 export const productHelpers = {
   getField: (
-    product: Product,
+    product: Pick<Product, 'name' | 'description' | 'slug'>,
     field: 'name' | 'description' | 'slug',
     language: 'en' | 'he'
   ): string => {

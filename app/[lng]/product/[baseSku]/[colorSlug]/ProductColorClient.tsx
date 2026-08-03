@@ -14,7 +14,8 @@ import {
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
-import { productService, productHelpers, Product, getClientAnalytics, logEvent } from '@/lib/firebase'
+import { productService, productHelpers, getClientAnalytics, logEvent } from '@/lib/firebase'
+import type { ProductClientView } from '@/lib/product-types'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
@@ -52,7 +53,7 @@ interface ColorVariantData {
   videos?: string[];
 }
 
-interface ProductWithVariants extends Product {
+interface ProductWithVariants extends ProductClientView {
   colorVariants: Record<string, ColorVariantData>
   defaultColorVariant?: ColorVariantData
 }

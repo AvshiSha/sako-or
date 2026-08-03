@@ -1,12 +1,16 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server'
 import { categoryService } from '@/lib/firebase'
+import { requireAdmin } from '@/lib/server/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     // Get all categories
     const allCategories = await categoryService.getAllCategories()
-    
+
     // Filter categories that need migration (missing new fields)
     const categoriesToMigrate = allCategories.filter(cat => 
       cat.level === undefined || 
@@ -62,9 +66,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     // Get all categories
     const allCategories = await categoryService.getAllCategories()
-    
+
     // Filter categories that need migration
     const categoriesToMigrate = allCategories.filter(cat => 
       cat.level === undefined || 

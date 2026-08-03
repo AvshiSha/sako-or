@@ -59,7 +59,7 @@ export class GoogleDriveService {
   }
 
   // Get authorization URL for OAuth flow
-  getAuthUrl(): string {
+  getAuthUrl(state: string): string {
     try {
       // Initialize auth if not already done
       this.initializeAuth();
@@ -67,7 +67,8 @@ export class GoogleDriveService {
       return this.auth.generateAuthUrl({
         access_type: 'offline',
         scope: GOOGLE_DRIVE_SCOPES,
-        prompt: 'consent'
+        prompt: 'consent',
+        state
       });
     } catch (error) {
       console.error('Error generating auth URL:', error);

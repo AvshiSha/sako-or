@@ -1,9 +1,13 @@
 import { revalidatePath } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/server/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     const body = await request.json()
     const paths: string[] = Array.isArray(body.paths) ? body.paths : []
 

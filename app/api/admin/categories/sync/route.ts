@@ -2,9 +2,13 @@ import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server'
 import { categoryService } from '@/lib/firebase'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/server/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     console.log('Starting category synchronization from Firebase to Neon DB...')
     
     // Get all categories from Firebase
@@ -153,6 +157,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     // Get categories from both Firebase and Neon DB for comparison
     const firebaseCategories = await categoryService.getAllCategories()
     const neonCategories = await prisma.category.findMany({

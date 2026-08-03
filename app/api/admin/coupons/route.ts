@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { CouponDiscountType } from '@prisma/client'
 import { z } from 'zod'
+import { requireAdmin } from '@/lib/server/auth'
 
 const discountTypeValues: [CouponDiscountType, CouponDiscountType, CouponDiscountType, CouponDiscountType] = [
   'percent_all',
@@ -117,6 +118,9 @@ function normalizeCode(code: string): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     const { searchParams } = new URL(request.url)
     const page = Math.max(parseInt(searchParams.get('page') ?? '1', 10), 1)
     const limit = Math.min(Math.max(parseInt(searchParams.get('limit') ?? '20', 10), 1), 100)
@@ -218,6 +222,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     const body = await request.json()
     const payload = createCouponSchema.parse(body)
 

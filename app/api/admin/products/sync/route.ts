@@ -5,9 +5,13 @@ import { buildProductSearchDerivedFields } from '@/lib/build-product-search-keyw
 import { deleteMeilisearchProduct, upsertMeilisearchProduct } from '@/lib/meilisearch'
 import { prisma } from '@/lib/prisma'
 import { productExtensionsSchema } from '@/lib/schemas/product-schema'
+import { requireAdmin } from '@/lib/server/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     console.log('Starting product synchronization from Firebase to Neon DB...')
     
     // Get all products and categories from Firebase
@@ -494,6 +498,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     // Get products from both Firebase and Neon DB for comparison
     const firebaseProducts = await productService.getAllProducts()
     const neonProducts = await prisma.product.findMany({

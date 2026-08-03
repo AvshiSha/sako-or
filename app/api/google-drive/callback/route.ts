@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
     const state = searchParams.get('state')
+    const expectedState = request.cookies.get('google_drive_oauth_state')?.value
 
     if (!code) {
       return NextResponse.json(
@@ -14,12 +15,20 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    if (!state || !expectedState || state !== expectedState) {
+      return NextResponse.json(
+        { error: 'Invalid or missing state parameter' },
+        { status: 400 }
+      )
+    }
+
     // Exchange code for tokens
     const tokens = await googleDriveService.getTokens(code)
-    
+
     // Store tokens in secure HTTP-only cookies
     const response = NextResponse.redirect(new URL('/admin/products/new?google_drive_auth=success', request.url))
-    
+    response.cookies.delete('google_drive_oauth_state')
+
     // Set secure cookies for the tokens
     response.cookies.set('google_drive_access_token', tokens.access_token, {
       httpOnly: true,
@@ -47,7 +56,9 @@ export async function GET(request: NextRequest) {
     
     const redirectUrl = new URL('/admin/products/new', baseUrl)
     redirectUrl.searchParams.set('google_drive_auth', 'error')
-    
-    return NextResponse.redirect(redirectUrl)
+
+    const errorResponse = NextResponse.redirect(redirectUrl)
+    errorResponse.cookies.delete('google_drive_oauth_state')
+    return errorResponse
   }
 }

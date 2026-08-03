@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs'
 import { parseCsvContent, updateInventoryFromCsv, parseInventorySku, InventoryUpdateRow } from '@/lib/inventory';
+import { requireAdmin } from '@/lib/server/auth';
 
 /**
  * POST /api/admin/inventory
@@ -13,6 +14,9 @@ import { parseCsvContent, updateInventoryFromCsv, parseInventorySku, InventoryUp
  */
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     const body = await request.json();
     const { csvContent, preview } = body;
 
@@ -93,7 +97,10 @@ export async function POST(request: NextRequest) {
  * 
  * Get inventory statistics (optional, for future use)
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
+
   return NextResponse.json({
     message: 'Inventory API is running',
     endpoints: {

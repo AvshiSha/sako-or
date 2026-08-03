@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/server/auth'
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
+
   const origin = request.nextUrl.origin
   const apiKey = process.env.ADMIN_API_KEY
   const vercelBypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET

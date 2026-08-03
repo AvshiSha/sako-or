@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { CouponDiscountType } from '@prisma/client'
 import { z } from 'zod'
+import { requireAdmin } from '@/lib/server/auth'
 
 const discountTypeValues: [CouponDiscountType, CouponDiscountType, CouponDiscountType, CouponDiscountType] = [
   'percent_all',
@@ -56,10 +57,13 @@ function parseDate(value?: string | null): Date | null | undefined {
 }
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     const { id } = await params
 
     const coupon = await prisma.coupon.findUnique({
@@ -110,6 +114,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     const { id } = await params
     const body = await request.json()
     const payload = updateSchema.parse(body)
@@ -217,10 +224,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAdmin(request)
+    if (auth instanceof NextResponse) return auth
+
     const { id } = await params
 
     await prisma.orderCoupon.deleteMany({

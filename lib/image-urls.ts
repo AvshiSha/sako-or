@@ -15,6 +15,8 @@ const imageUrlMappings: Record<string, string> = {
   "/images/hero/summer-sale-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
   "/images/hero/two-for-600-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Ftwo_600_desktop_2026.webp?alt=media&token=8a870086-76bb-453f-bae0-2ecfa84939e3",
   "/images/hero/two-for-600-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Ftwo_600_mobile_2026.webp?alt=media&token=9787b0c3-6702-4c38-a40e-ed92a127d2c7",
+  "/images/hero/bogo-700-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FBOGO_700_july_desktop.webp?alt=media&token=5d72e3bb-8725-44f3-8684-7b952cea9e41",
+  "/images/hero/bogo-700-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FBOGO_700_July_mobile.webp?alt=media&token=ca86d263-d4b8-47ca-ac6c-a0166d700f98",
   "/images/hero/main-hero.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
   "/images/hero/bags-hero-poster.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbags_image_hero_mobile.webp?alt=media&token=d55a6e62-028f-4793-988e-65aa54d63536",
   "home-collection-outlet.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Foutlet_collection.webp?alt=media&token=403aac3b-fd30-4412-bc84-14836f361038",
@@ -102,6 +104,17 @@ export function getTwoFor600HeroDesktopImageUrl(): string {
 
 export function getTwoFor600HeroMobileImageUrl(): string {
   return getImageUrl("/images/hero/two-for-600-mobile.webp");
+}
+
+/**
+ * "Two for 700" (BOGO 700) campaign hero banners (desktop / mobile).
+ */
+export function getBogo700HeroDesktopImageUrl(): string {
+  return getImageUrl("/images/hero/bogo-700-desktop.webp");
+}
+
+export function getBogo700HeroMobileImageUrl(): string {
+  return getImageUrl("/images/hero/bogo-700-mobile.webp");
 }
 
 /** Homepage mobile hero video (first fold, mobile only). */

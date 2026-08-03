@@ -72,7 +72,10 @@ const FavoritesContext = createContext<FavoritesHook | undefined>(undefined)
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const [favorites, setFavorites] = useState<string[]>(() => safeReadFavoritesFromStorage())
+  // Start empty so the first client render matches the server-rendered HTML
+  // (localStorage isn't available during SSR). The mode-determination effect
+  // below seeds guest favorites from storage right after mount.
+  const [favorites, setFavorites] = useState<string[]>([])
   const [mode, setMode] = useState<FavoritesMode>('guest')
   const [loading, setLoading] = useState(true)
 

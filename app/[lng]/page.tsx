@@ -6,6 +6,7 @@ import { getHeroImageUrl } from '@/lib/image-urls'
 import { languages } from '@/i18n/settings'
 
 import HomeHero from '@/app/components/HomeHero'
+import Bogo700Hero from '@/app/components/Bogo700Hero'
 
 import HomeProducts, { HomeProductsFallback } from './HomeProducts'
 
@@ -53,6 +54,7 @@ export default async function HomePage({
   return (
     <>
       <HomeHero lng={locale} />
+      <Bogo700Hero lng={locale} />
       <Suspense fallback={<HomeProductsFallback />}>
         <HomeProducts lng={locale} />
       </Suspense>

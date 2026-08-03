@@ -1,4 +1,5 @@
 import { getCollectionProducts, categoryService, VariantItem } from "@/lib/firebase";
+import { getCachedCategoryIdsFromPath, getCachedCategoryById } from "@/lib/server/cached-category-data";
 import { getCollectionProductsUpToPage } from "@/lib/collectionPageMerge";
 import CollectionClient from "./CollectionClient";
 import { searchProducts } from "@/lib/search-products";
@@ -133,12 +134,12 @@ export async function generateMetadata({
   if (categoryPath) {
     try {
       // Get category IDs from path
-      const categoryIdsResult = await categoryService.getCategoryIdsFromPath(categoryPath, locale);
+      const categoryIdsResult = await getCachedCategoryIdsFromPath(categoryPath, locale);
 
       if (categoryIdsResult && categoryIdsResult.categoryIds.length > 0) {
         // Get the deepest category (target level)
         const targetCategoryId = categoryIdsResult.categoryIds[categoryIdsResult.categoryIds.length - 1];
-        const category = await categoryService.getCategoryById(targetCategoryId);
+        const category = await getCachedCategoryById(targetCategoryId);
 
         if (category) {
           categoryName = category.name[locale] || category.name.en || categoryName;
@@ -148,7 +149,7 @@ export async function generateMetadata({
           // Example: women/shoes/boots -> "Shoes Boots" (localized)
           if (categoryIdsResult.targetLevel === 2 && categoryIdsResult.categoryIds.length >= 2) {
             const parentCategoryId = categoryIdsResult.categoryIds[1];
-            const parentCategory = await categoryService.getCategoryById(parentCategoryId);
+            const parentCategory = await getCachedCategoryById(parentCategoryId);
             if (parentCategory) {
               const parentName = parentCategory.name[locale] || parentCategory.name.en;
               if (parentName) {
@@ -349,10 +350,10 @@ export default async function CollectionSlugPage({
   if (!searchQuery && categoryPath) {
     try {
       const locale = lng as 'en' | 'he';
-      const categoryIdsResult = await categoryService.getCategoryIdsFromPath(categoryPath, locale);
+      const categoryIdsResult = await getCachedCategoryIdsFromPath(categoryPath, locale);
       if (categoryIdsResult?.categoryIds.length) {
         const targetId = categoryIdsResult.categoryIds[categoryIdsResult.categoryIds.length - 1];
-        const targetCategory = await categoryService.getCategoryById(targetId);
+        const targetCategory = await getCachedCategoryById(targetId);
         if (targetCategory) {
           categorySeoContentTitle =
             targetCategory.contentTitle?.[locale] ||

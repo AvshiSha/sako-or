@@ -6,7 +6,9 @@
       "Bash(git -C \"c:/Users/user/sako-or\" branch --show-current)",
       "Bash(git -C \"c:/Users/user/sako-or\" log master..HEAD --oneline)",
       "Bash(git -C \"c:/Users/user/sako-or\" diff master...HEAD --stat)",
-      "Bash(ck access *)"
+      "Bash(ck access *)",
+      "Bash(node -e \"console.log\\(require\\('./package.json'\\).dependencies['lucide-react'], require\\('./package.json'\\).dependencies['next']\\)\")",
+      "Bash(npx eslint *)"
     ]
   }
 }

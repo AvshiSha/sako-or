@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { productService } from "@/lib/firebase";
+import { getCachedProductByBaseSku } from "@/lib/server/cached-product-data";
 import { serializeFirestoreValue } from "@/lib/serialize-firestore";
 import ProductColorClient from "./ProductColorClient";
 
@@ -20,7 +20,7 @@ export default async function ProductColorPage({
     notFound();
   }
 
-  const product = await productService.getProductByBaseSku(baseSku);
+  const product = await getCachedProductByBaseSku(baseSku);
   if (!product) {
     notFound();
   }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, type MutableRefObject } from 'react';
 import { useAuth } from '@/app/contexts/AuthContext';
+import { useUserProfile } from '@/app/hooks/useUserProfile';
 import {
   buildAdvancedMatchingSyncKey,
   omitNullAdvancedMatchingFields,
@@ -48,6 +49,7 @@ function syncAuthOnlyAdvancedMatching(
  */
 export default function FacebookPixelAdvancedMatching() {
   const { user: firebaseUser, loading: authLoading } = useAuth();
+  const { profile, error: profileError } = useUserProfile();
   const lastSyncedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -59,56 +61,30 @@ export default function FacebookPixelAdvancedMatching() {
   useEffect(() => {
     if (authLoading || !firebaseUser) return;
 
-    let cancelled = false;
+    if (profileError || !profile) {
+      if (profileError) syncAuthOnlyAdvancedMatching(firebaseUser, lastSyncedKeyRef);
+      return;
+    }
 
-    void (async () => {
-      try {
-        const token = await firebaseUser.getIdToken().catch(() => null);
-        if (!token || cancelled) return;
+    try {
+      const profileMatching = omitNullAdvancedMatchingFields({
+        email: profile.email ?? firebaseUser.email,
+        phone: profile.phone ?? firebaseUser.phoneNumber,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        city: profile.addressCity,
+        country: 'israel',
+      });
+      const syncKey = buildScopedSyncKey('profile', firebaseUser.uid, profileMatching);
 
-        const res = await fetch('/api/me/profile', {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      if (lastSyncedKeyRef.current === syncKey) return;
+      lastSyncedKeyRef.current = syncKey;
 
-        if (cancelled) return;
-
-        if (!res.ok) {
-          syncAuthOnlyAdvancedMatching(firebaseUser, lastSyncedKeyRef);
-          return;
-        }
-
-        const json = await res.json().catch(() => null);
-        if (cancelled) return;
-        if (!json?.user) {
-          syncAuthOnlyAdvancedMatching(firebaseUser, lastSyncedKeyRef);
-          return;
-        }
-
-        const profile = json.user;
-        const profileMatching = omitNullAdvancedMatchingFields({
-          email: profile.email ?? firebaseUser.email,
-          phone: profile.phone ?? firebaseUser.phoneNumber,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          city: profile.addressCity,
-          country: 'israel',
-        });
-        const syncKey = buildScopedSyncKey('profile', firebaseUser.uid, profileMatching);
-
-        if (lastSyncedKeyRef.current === syncKey) return;
-        lastSyncedKeyRef.current = syncKey;
-
-        setFacebookPixelAdvancedMatching(profileMatching);
-      } catch {
-        // Non-critical analytics enrichment
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authLoading, firebaseUser]);
+      setFacebookPixelAdvancedMatching(profileMatching);
+    } catch {
+      // Non-critical analytics enrichment
+    }
+  }, [authLoading, firebaseUser, profile, profileError]);
 
   return null;
 }

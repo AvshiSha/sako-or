@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 import { useAuth } from '@/app/contexts/AuthContext'
+import { useUserProfile } from '@/app/hooks/useUserProfile'
 import { SheetClose } from '@/app/components/ui/sheet'
 import { ArrowLeft, ArrowRight, User } from 'lucide-react'
 
@@ -12,53 +12,8 @@ interface MobileAuthGreetingProps {
 
 export default function MobileAuthGreeting({ lng }: MobileAuthGreetingProps) {
   const { user } = useAuth()
-  const [firstName, setFirstName] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  // Fetch user profile to get firstName
-  useEffect(() => {
-    if (!user) {
-      setFirstName(null)
-      return
-    }
-
-    let cancelled = false
-    setLoading(true)
-
-    ;(async () => {
-      try {
-        const token = await user.getIdToken()
-        const res = await fetch('/api/me/profile', {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` }
-        })
-
-        const json = await res.json().catch(() => ({}))
-        if (!res.ok || !json || json.error) {
-          // If profile fetch fails, just use displayName or null
-          setFirstName(user.displayName || null)
-          return
-        }
-
-        if (!cancelled) {
-          setFirstName(json.user?.firstName || user.displayName || null)
-        }
-      } catch (error) {
-        if (!cancelled) {
-          // Fallback to displayName if available
-          setFirstName(user.displayName || null)
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false)
-        }
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [user])
+  const { profile, isLoading: loading } = useUserProfile()
+  const firstName = profile?.firstName || user?.displayName || null
 
   // If user is not logged in
   if (!user) {

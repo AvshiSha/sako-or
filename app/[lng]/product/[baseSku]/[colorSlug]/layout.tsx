@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { productService } from '@/lib/firebase'
+import { getCachedProductByBaseSku } from '@/lib/server/cached-product-data'
 import { buildMetadata, buildProductStructuredData, buildAbsoluteUrl } from '@/lib/seo'
 import type { Metadata } from 'next'
 import { languages } from '@/i18n/settings'
@@ -94,7 +94,7 @@ export async function generateMetadata({
 
   try {
     // Fetch product data
-    const product = await productService.getProductByBaseSku(baseSku)
+    const product = await getCachedProductByBaseSku(baseSku)
 
     if (!product) {
       return buildMetadata({
@@ -189,7 +189,7 @@ export default async function ProductColorLayout({ children, params }: ProductCo
   let structuredData: object | null = null
   let lcpImageUrl: string | null = null
   try {
-    const product = await productService.getProductByBaseSku(baseSku)
+    const product = await getCachedProductByBaseSku(baseSku)
     if (product) {
       const variant = Object.values(product.colorVariants || {}).find(
         v => v.colorSlug === colorSlug

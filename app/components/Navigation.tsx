@@ -11,6 +11,7 @@ import MobileAuthGreeting from './MobileAuthGreeting'
 import { useCart } from '@/app/hooks/useCart'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useAuth } from '@/app/hooks/useAuth'
+import { useUserProfile } from '@/app/hooks/useUserProfile'
 import { getImageUrl } from '@/lib/image-urls'
 import type { NavigationCategoriesData } from '@/lib/navigation-categories'
 import {
@@ -103,8 +104,10 @@ export default function Navigation({
   const cartAriaLabel = getIconLinkAriaLabel(lng, 'shoppingCart', items.length)
 
   // Desktop greeting state
-  const [greetingName, setGreetingName] = useState<string | null>(null)
-  const [profileLoading, setProfileLoading] = useState(false)
+  const { profile, isLoading: profileLoading } = useUserProfile()
+  const greetingName = user
+    ? profile?.firstName || user.displayName || (user.email ? user.email.split('@')[0] : null)
+    : null
 
   // Close menu on route change
   useEffect(() => {
@@ -256,59 +259,6 @@ export default function Navigation({
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [hoverTimeout, openTimeout]) // Both timeouts are needed for cleanup
-
-  // Fetch user profile to get firstName for desktop greeting
-  useEffect(() => {
-    if (!user || authLoading) {
-      setGreetingName(null)
-      return
-    }
-
-    let cancelled = false
-    setProfileLoading(true)
-
-    ;(async () => {
-      try {
-        const token = await user.getIdToken()
-        const res = await fetch('/api/me/profile', {
-          method: 'GET',
-          headers: { Authorization: `Bearer ${token}` }
-        })
-
-        const json = await res.json().catch(() => ({}))
-        if (!res.ok || !json || json.error) {
-          // If profile fetch fails, try displayName or email fallback
-          if (!cancelled) {
-            const fallbackName = user.displayName || (user.email ? user.email.split('@')[0] : null)
-            setGreetingName(fallbackName)
-          }
-          return
-        }
-
-        if (!cancelled) {
-          // Priority: firstName > displayName > email prefix
-          const firstName = json.user?.firstName
-          const displayName = user.displayName
-          const emailPrefix = user.email ? user.email.split('@')[0] : null
-          setGreetingName(firstName || displayName || emailPrefix || null)
-        }
-      } catch (error) {
-        if (!cancelled) {
-          // Fallback to displayName or email prefix
-          const fallbackName = user.displayName || (user.email ? user.email.split('@')[0] : null)
-          setGreetingName(fallbackName)
-        }
-      } finally {
-        if (!cancelled) {
-          setProfileLoading(false)
-        }
-      }
-    })()
-
-    return () => {
-      cancelled = true
-    }
-  }, [user, authLoading])
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)

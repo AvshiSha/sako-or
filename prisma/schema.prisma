@@ -284,6 +284,10 @@ model Order {
   termsAcceptedVersion       String?       @map("terms_accepted_version")
   /// When the customer accepted the Terms & Conditions during checkout.
   termsAcceptedAt            DateTime?     @map("terms_accepted_at")
+  /// Carrier shipments for this order (HFD today, other providers later).
+  shipments                  Shipment[]
+  /// The post-delivery review request, if one has been scheduled.
+  reviewRequest              ReviewRequest?
 
   @@index([userId])
   @@map("orders")
@@ -306,6 +310,114 @@ model VerifoneManualInvoiceAudit {
   @@index([orderNumber])
   @@index([createdAt(sort: Desc)])
   @@map("verifone_manual_invoice_audits")
+}
+
+/// A parcel handed to a shipping carrier. Provider-agnostic on purpose: `provider`
+/// discriminates the carrier ("hfd" today) so a second courier needs no schema change.
+model Shipment {
+  id                    String    @id @default(cuid())
+  orderId               String    @map("order_id")
+  /// Denormalized copy of Order.orderNumber — carriers reference us by this value,
+  /// so keeping it here avoids a join on every webhook lookup.
+  orderNumber           String    @map("order_number")
+  provider              String    @default("hfd")
+  /// The carrier's own shipment id (HFD `ship_no`). NOT NULL by design: Postgres
+  /// treats NULLs as distinct in a unique index, so a nullable column here would
+  /// silently permit duplicate shipments whenever the carrier omits the field.
+  /// When it is genuinely absent the normalizer substitutes `order:<orderNumber>`.
+  providerShipmentNo    String    @map("provider_shipment_no")
+  /// The reference value we actually matched the order on (HFD `ref2`).
+  providerRef           String?   @map("provider_ref")
+  providerRandomId      String?   @map("provider_random_id")
+  isDelivered           Boolean   @default(false) @map("is_delivered")
+  isCanceled            Boolean   @default(false) @map("is_canceled")
+  deliveredAt           DateTime? @map("delivered_at")
+  canceledAt            DateTime? @map("canceled_at")
+  lastStatusCode        String?   @map("last_status_code")
+  lastStatusDesc        String?   @map("last_status_desc")
+  lastStatusAt          DateTime? @map("last_status_at")
+  lastWebhookReceivedAt DateTime? @map("last_webhook_received_at")
+  /// Most recent raw carrier payload, kept for debugging an undocumented format.
+  rawLatestPayload      Json?     @map("raw_latest_payload")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  order  Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  events ShipmentEvent[]
+
+  /// Idempotency key for webhook redelivery: the same parcel always upserts one row.
+  @@unique([provider, providerShipmentNo])
+  @@index([orderId])
+  @@index([orderNumber])
+  @@index([isDelivered, deliveredAt])
+  @@map("shipments")
+}
+
+/// One carrier status transition. Append-only history behind Shipment's latest-state columns.
+model ShipmentEvent {
+  id         String   @id @default(cuid())
+  shipmentId String   @map("shipment_id")
+  statusCode String   @map("status_code")
+  statusDesc String?  @map("status_desc")
+  /// Always set — the normalizer falls back to webhook receipt time when the
+  /// carrier's date/time fields are missing or unparseable.
+  occurredAt DateTime @map("occurred_at")
+  location   String?
+  city       String?
+  raw        Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  /// Dedupes redelivered webhooks: replaying the same payload inserts nothing.
+  @@unique([shipmentId, statusCode, occurredAt])
+  @@index([shipmentId, occurredAt(sort: Desc)])
+  @@map("shipment_events")
+}
+
+/// Raw inbound webhook log. Deliberately has NO foreign key to orders: its whole
+/// purpose is to survive the cases where no order matched, or the body did not parse.
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  receivedAt  DateTime @default(now()) @map("received_at")
+  /// verified | unauthenticated | rejected
+  authOutcome String   @map("auth_outcome")
+  /// processed | ignored | invalid | unknown_order | error
+  status      String
+  orderNumber String?  @map("order_number")
+  payload     Json
+  error       String?
+
+  @@index([provider, receivedAt(sort: Desc)])
+  @@index([orderNumber])
+  @@index([status])
+  @@map("webhook_events")
+}
+
+/// A scheduled post-delivery review request. `orderId` is unique — that constraint
+/// IS the guarantee a review is never scheduled twice for the same order.
+model ReviewRequest {
+  id            String    @id @default(cuid())
+  orderId       String    @unique @map("order_id")
+  orderNumber   String    @map("order_number")
+  /// pending | processing | sent | failed | skipped
+  status        String    @default("pending")
+  scheduledFor  DateTime  @map("scheduled_for")
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime? @map("last_attempt_at")
+  nextAttemptAt DateTime? @map("next_attempt_at")
+  sentAt        DateTime? @map("sent_at")
+  /// Per-channel attempt results, e.g. { "email": { ok: true, messageId } }.
+  channels      Json?
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status, scheduledFor])
+  @@map("review_requests")
 }
 
 model OrderItem {

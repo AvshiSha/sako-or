@@ -62,6 +62,10 @@ export const ModelName = {
   ProductTag: 'ProductTag',
   Order: 'Order',
   VerifoneManualInvoiceAudit: 'VerifoneManualInvoiceAudit',
+  Shipment: 'Shipment',
+  ShipmentEvent: 'ShipmentEvent',
+  WebhookEvent: 'WebhookEvent',
+  ReviewRequest: 'ReviewRequest',
   OrderItem: 'OrderItem',
   Payment: 'Payment',
   PaymentToken: 'PaymentToken',
@@ -351,6 +355,78 @@ export const VerifoneManualInvoiceAuditScalarFieldEnum = {
 } as const
 
 export type VerifoneManualInvoiceAuditScalarFieldEnum = (typeof VerifoneManualInvoiceAuditScalarFieldEnum)[keyof typeof VerifoneManualInvoiceAuditScalarFieldEnum]
+
+
+export const ShipmentScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  orderNumber: 'orderNumber',
+  provider: 'provider',
+  providerShipmentNo: 'providerShipmentNo',
+  providerRef: 'providerRef',
+  providerRandomId: 'providerRandomId',
+  isDelivered: 'isDelivered',
+  isCanceled: 'isCanceled',
+  deliveredAt: 'deliveredAt',
+  canceledAt: 'canceledAt',
+  lastStatusCode: 'lastStatusCode',
+  lastStatusDesc: 'lastStatusDesc',
+  lastStatusAt: 'lastStatusAt',
+  lastWebhookReceivedAt: 'lastWebhookReceivedAt',
+  rawLatestPayload: 'rawLatestPayload',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ShipmentScalarFieldEnum = (typeof ShipmentScalarFieldEnum)[keyof typeof ShipmentScalarFieldEnum]
+
+
+export const ShipmentEventScalarFieldEnum = {
+  id: 'id',
+  shipmentId: 'shipmentId',
+  statusCode: 'statusCode',
+  statusDesc: 'statusDesc',
+  occurredAt: 'occurredAt',
+  location: 'location',
+  city: 'city',
+  raw: 'raw',
+  createdAt: 'createdAt'
+} as const
+
+export type ShipmentEventScalarFieldEnum = (typeof ShipmentEventScalarFieldEnum)[keyof typeof ShipmentEventScalarFieldEnum]
+
+
+export const WebhookEventScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  receivedAt: 'receivedAt',
+  authOutcome: 'authOutcome',
+  status: 'status',
+  orderNumber: 'orderNumber',
+  payload: 'payload',
+  error: 'error'
+} as const
+
+export type WebhookEventScalarFieldEnum = (typeof WebhookEventScalarFieldEnum)[keyof typeof WebhookEventScalarFieldEnum]
+
+
+export const ReviewRequestScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  orderNumber: 'orderNumber',
+  status: 'status',
+  scheduledFor: 'scheduledFor',
+  attempts: 'attempts',
+  lastAttemptAt: 'lastAttemptAt',
+  nextAttemptAt: 'nextAttemptAt',
+  sentAt: 'sentAt',
+  channels: 'channels',
+  lastError: 'lastError',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReviewRequestScalarFieldEnum = (typeof ReviewRequestScalarFieldEnum)[keyof typeof ReviewRequestScalarFieldEnum]
 
 
 export const OrderItemScalarFieldEnum = {

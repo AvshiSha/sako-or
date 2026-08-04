@@ -97,6 +97,29 @@ export type Order = Prisma.OrderModel
  */
 export type VerifoneManualInvoiceAudit = Prisma.VerifoneManualInvoiceAuditModel
 /**
+ * Model Shipment
+ * A parcel handed to a shipping carrier. Provider-agnostic on purpose: `provider`
+ * discriminates the carrier ("hfd" today) so a second courier needs no schema change.
+ */
+export type Shipment = Prisma.ShipmentModel
+/**
+ * Model ShipmentEvent
+ * One carrier status transition. Append-only history behind Shipment's latest-state columns.
+ */
+export type ShipmentEvent = Prisma.ShipmentEventModel
+/**
+ * Model WebhookEvent
+ * Raw inbound webhook log. Deliberately has NO foreign key to orders: its whole
+ * purpose is to survive the cases where no order matched, or the body did not parse.
+ */
+export type WebhookEvent = Prisma.WebhookEventModel
+/**
+ * Model ReviewRequest
+ * A scheduled post-delivery review request. `orderId` is unique — that constraint
+ * IS the guarantee a review is never scheduled twice for the same order.
+ */
+export type ReviewRequest = Prisma.ReviewRequestModel
+/**
  * Model OrderItem
  * 
  */

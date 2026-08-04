@@ -3,6 +3,9 @@
     "app/api/webhook/cardcom/route.ts": {
       "maxDuration": 30
     },
+    "app/api/webhook/hfd/route.ts": {
+      "maxDuration": 30
+    },
     "app/api/cron/inventory-sync/route.ts": {
       "maxDuration": 300
     },
@@ -43,6 +46,23 @@
       ]
     },
     {
+      "source": "/api/webhook/hfd",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "POST, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, x-webhook-secret, x-webhook-signature"
+        }
+      ]
+    },
+    {
       "source": "/.well-known/apple-developer-merchantid-domain-association",
       "headers": [
         { "key": "Content-Type", "value": "text/plain" },
@@ -54,6 +74,10 @@
     {
       "source": "/api/webhook/cardcom",
       "destination": "/api/webhook/cardcom"
+    },
+    {
+      "source": "/api/webhook/hfd",
+      "destination": "/api/webhook/hfd"
     }
   ]
 }

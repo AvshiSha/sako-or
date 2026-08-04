@@ -1,0 +1,160 @@
+import 'server-only'
+
+/**
+ * HFD reports status timestamps as two separate strings — `status_date` in
+ * DD/MM/YYYY and `status_time` in HH:mm:ss — expressed in **Israel local wall-clock
+ * time**, with no offset attached.
+ *
+ * Converting those to a correct UTC instant is not as simple as appending "+02:00":
+ * Israel observes DST (IDT, UTC+3) from late March to late October, so a hardcoded
+ * offset is wrong for roughly seven months of the year. A delivery stamped
+ * "04/08/2026 13:30:00" is 10:30 UTC, not 11:30.
+ *
+ * `date-fns` v4 core carries no timezone support, and `@date-fns/tz` is present in
+ * node_modules only as a transitive dependency of `react-day-picker` — importing it
+ * would mean relying on someone else's dependency tree. So this resolves the real
+ * offset via `Intl.DateTimeFormat`, which uses the platform's tz database and needs
+ * no new dependency.
+ */
+
+const ISRAEL_TIME_ZONE = 'Asia/Jerusalem'
+
+/**
+ * Returns the UTC offset (in ms) that `timeZone` was observing at `instant`.
+ *
+ * Works by formatting the instant into the target zone's wall-clock fields, then
+ * reinterpreting those fields as if they were UTC. The difference between that and
+ * the original instant is the offset.
+ */
+function getTimeZoneOffsetMs(instant: Date, timeZone: string): number {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+
+  const fields: Record<string, number> = {}
+  for (const part of formatter.formatToParts(instant)) {
+    if (part.type !== 'literal') {
+      fields[part.type] = Number(part.value)
+    }
+  }
+
+  const asIfUtc = Date.UTC(
+    fields.year,
+    fields.month - 1,
+    fields.day,
+    // Some engines emit hour "24" for midnight under hour12:false.
+    fields.hour % 24,
+    fields.minute,
+    fields.second
+  )
+
+  return asIfUtc - instant.getTime()
+}
+
+/**
+ * Converts wall-clock date/time components in `timeZone` to the corresponding UTC Date.
+ *
+ * The offset is resolved twice: once against a first guess, then again against the
+ * corrected instant. That second pass matters only for timestamps falling within a
+ * few hours of a DST transition, where the guess can land on the wrong side of the
+ * boundary and pick up the neighbouring offset.
+ */
+function zonedWallClockToUtc(
+  year: number,
+  month: number,
+  day: number,
+  hour: number,
+  minute: number,
+  second: number,
+  timeZone: string
+): Date {
+  const naiveUtc = Date.UTC(year, month - 1, day, hour, minute, second)
+
+  const firstOffset = getTimeZoneOffsetMs(new Date(naiveUtc), timeZone)
+  const firstPass = naiveUtc - firstOffset
+
+  const secondOffset = getTimeZoneOffsetMs(new Date(firstPass), timeZone)
+
+  return new Date(secondOffset === firstOffset ? firstPass : naiveUtc - secondOffset)
+}
+
+/**
+ * Parses HFD's `status_date`. Accepts the documented DD/MM/YYYY as well as
+ * ISO-ish YYYY-MM-DD, since the PUSH payload format is not documented and may
+ * differ from the PULL response.
+ */
+function parseDateParts(date: string): { year: number; month: number; day: number } | null {
+  const trimmed = date.trim()
+
+  const slashed = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(trimmed)
+  if (slashed) {
+    return { day: Number(slashed[1]), month: Number(slashed[2]), year: Number(slashed[3]) }
+  }
+
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(trimmed)
+  if (iso) {
+    return { year: Number(iso[1]), month: Number(iso[2]), day: Number(iso[3]) }
+  }
+
+  return null
+}
+
+/** Parses HFD's `status_time`. Seconds are optional. */
+function parseTimeParts(time: string | null | undefined): {
+  hour: number
+  minute: number
+  second: number
+} {
+  if (!time) return { hour: 0, minute: 0, second: 0 }
+
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(time.trim())
+  if (!match) return { hour: 0, minute: 0, second: 0 }
+
+  return {
+    hour: Number(match[1]),
+    minute: Number(match[2]),
+    second: match[3] ? Number(match[3]) : 0,
+  }
+}
+
+/**
+ * Converts an HFD date/time pair into a UTC Date.
+ *
+ * Returns `null` rather than throwing when the input is missing or unparseable —
+ * callers substitute the webhook receipt time, because a status we cannot timestamp
+ * is still a status worth recording.
+ */
+export function parseHfdDateTime(
+  date: string | null | undefined,
+  time?: string | null
+): Date | null {
+  if (!date) return null
+
+  const dateParts = parseDateParts(date)
+  if (!dateParts) return null
+
+  const { year, month, day } = dateParts
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+
+  const { hour, minute, second } = parseTimeParts(time)
+  if (hour > 23 || minute > 59 || second > 59) return null
+
+  const result = zonedWallClockToUtc(
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second,
+    ISRAEL_TIME_ZONE
+  )
+
+  return Number.isNaN(result.getTime()) ? null : result
+}

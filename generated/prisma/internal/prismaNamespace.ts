@@ -395,6 +395,10 @@ export const ModelName = {
   ProductTag: 'ProductTag',
   Order: 'Order',
   VerifoneManualInvoiceAudit: 'VerifoneManualInvoiceAudit',
+  Shipment: 'Shipment',
+  ShipmentEvent: 'ShipmentEvent',
+  WebhookEvent: 'WebhookEvent',
+  ReviewRequest: 'ReviewRequest',
   OrderItem: 'OrderItem',
   Payment: 'Payment',
   PaymentToken: 'PaymentToken',
@@ -419,7 +423,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "cartItem" | "favorite" | "newsletterEmails" | "category" | "bogoGroup" | "product" | "tag" | "productTag" | "order" | "verifoneManualInvoiceAudit" | "orderItem" | "payment" | "paymentToken" | "checkout" | "contactMessage" | "coupon" | "couponRedemption" | "orderCoupon" | "points"
+    modelProps: "user" | "cartItem" | "favorite" | "newsletterEmails" | "category" | "bogoGroup" | "product" | "tag" | "productTag" | "order" | "verifoneManualInvoiceAudit" | "shipment" | "shipmentEvent" | "webhookEvent" | "reviewRequest" | "orderItem" | "payment" | "paymentToken" | "checkout" | "contactMessage" | "coupon" | "couponRedemption" | "orderCoupon" | "points"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1234,6 +1238,302 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.VerifoneManualInvoiceAuditCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.VerifoneManualInvoiceAuditCountAggregateOutputType> | number
+        }
+      }
+    }
+    Shipment: {
+      payload: Prisma.$ShipmentPayload<ExtArgs>
+      fields: Prisma.ShipmentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ShipmentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ShipmentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>
+        }
+        findFirst: {
+          args: Prisma.ShipmentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ShipmentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>
+        }
+        findMany: {
+          args: Prisma.ShipmentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>[]
+        }
+        create: {
+          args: Prisma.ShipmentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>
+        }
+        createMany: {
+          args: Prisma.ShipmentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ShipmentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>[]
+        }
+        delete: {
+          args: Prisma.ShipmentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>
+        }
+        update: {
+          args: Prisma.ShipmentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>
+        }
+        deleteMany: {
+          args: Prisma.ShipmentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ShipmentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ShipmentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>[]
+        }
+        upsert: {
+          args: Prisma.ShipmentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentPayload>
+        }
+        aggregate: {
+          args: Prisma.ShipmentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateShipment>
+        }
+        groupBy: {
+          args: Prisma.ShipmentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShipmentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ShipmentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShipmentCountAggregateOutputType> | number
+        }
+      }
+    }
+    ShipmentEvent: {
+      payload: Prisma.$ShipmentEventPayload<ExtArgs>
+      fields: Prisma.ShipmentEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ShipmentEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ShipmentEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>
+        }
+        findFirst: {
+          args: Prisma.ShipmentEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ShipmentEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>
+        }
+        findMany: {
+          args: Prisma.ShipmentEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>[]
+        }
+        create: {
+          args: Prisma.ShipmentEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>
+        }
+        createMany: {
+          args: Prisma.ShipmentEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ShipmentEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>[]
+        }
+        delete: {
+          args: Prisma.ShipmentEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>
+        }
+        update: {
+          args: Prisma.ShipmentEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.ShipmentEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ShipmentEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ShipmentEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.ShipmentEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ShipmentEventPayload>
+        }
+        aggregate: {
+          args: Prisma.ShipmentEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateShipmentEvent>
+        }
+        groupBy: {
+          args: Prisma.ShipmentEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShipmentEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ShipmentEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ShipmentEventCountAggregateOutputType> | number
+        }
+      }
+    }
+    WebhookEvent: {
+      payload: Prisma.$WebhookEventPayload<ExtArgs>
+      fields: Prisma.WebhookEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.WebhookEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.WebhookEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>
+        }
+        findFirst: {
+          args: Prisma.WebhookEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.WebhookEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>
+        }
+        findMany: {
+          args: Prisma.WebhookEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>[]
+        }
+        create: {
+          args: Prisma.WebhookEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>
+        }
+        createMany: {
+          args: Prisma.WebhookEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.WebhookEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>[]
+        }
+        delete: {
+          args: Prisma.WebhookEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>
+        }
+        update: {
+          args: Prisma.WebhookEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.WebhookEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.WebhookEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.WebhookEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.WebhookEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WebhookEventPayload>
+        }
+        aggregate: {
+          args: Prisma.WebhookEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateWebhookEvent>
+        }
+        groupBy: {
+          args: Prisma.WebhookEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WebhookEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.WebhookEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WebhookEventCountAggregateOutputType> | number
+        }
+      }
+    }
+    ReviewRequest: {
+      payload: Prisma.$ReviewRequestPayload<ExtArgs>
+      fields: Prisma.ReviewRequestFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ReviewRequestFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ReviewRequestFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>
+        }
+        findFirst: {
+          args: Prisma.ReviewRequestFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ReviewRequestFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>
+        }
+        findMany: {
+          args: Prisma.ReviewRequestFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>[]
+        }
+        create: {
+          args: Prisma.ReviewRequestCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>
+        }
+        createMany: {
+          args: Prisma.ReviewRequestCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ReviewRequestCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>[]
+        }
+        delete: {
+          args: Prisma.ReviewRequestDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>
+        }
+        update: {
+          args: Prisma.ReviewRequestUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>
+        }
+        deleteMany: {
+          args: Prisma.ReviewRequestDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ReviewRequestUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ReviewRequestUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>[]
+        }
+        upsert: {
+          args: Prisma.ReviewRequestUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ReviewRequestPayload>
+        }
+        aggregate: {
+          args: Prisma.ReviewRequestAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateReviewRequest>
+        }
+        groupBy: {
+          args: Prisma.ReviewRequestGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReviewRequestGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ReviewRequestCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ReviewRequestCountAggregateOutputType> | number
         }
       }
     }
@@ -2206,6 +2506,78 @@ export const VerifoneManualInvoiceAuditScalarFieldEnum = {
 export type VerifoneManualInvoiceAuditScalarFieldEnum = (typeof VerifoneManualInvoiceAuditScalarFieldEnum)[keyof typeof VerifoneManualInvoiceAuditScalarFieldEnum]
 
 
+export const ShipmentScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  orderNumber: 'orderNumber',
+  provider: 'provider',
+  providerShipmentNo: 'providerShipmentNo',
+  providerRef: 'providerRef',
+  providerRandomId: 'providerRandomId',
+  isDelivered: 'isDelivered',
+  isCanceled: 'isCanceled',
+  deliveredAt: 'deliveredAt',
+  canceledAt: 'canceledAt',
+  lastStatusCode: 'lastStatusCode',
+  lastStatusDesc: 'lastStatusDesc',
+  lastStatusAt: 'lastStatusAt',
+  lastWebhookReceivedAt: 'lastWebhookReceivedAt',
+  rawLatestPayload: 'rawLatestPayload',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ShipmentScalarFieldEnum = (typeof ShipmentScalarFieldEnum)[keyof typeof ShipmentScalarFieldEnum]
+
+
+export const ShipmentEventScalarFieldEnum = {
+  id: 'id',
+  shipmentId: 'shipmentId',
+  statusCode: 'statusCode',
+  statusDesc: 'statusDesc',
+  occurredAt: 'occurredAt',
+  location: 'location',
+  city: 'city',
+  raw: 'raw',
+  createdAt: 'createdAt'
+} as const
+
+export type ShipmentEventScalarFieldEnum = (typeof ShipmentEventScalarFieldEnum)[keyof typeof ShipmentEventScalarFieldEnum]
+
+
+export const WebhookEventScalarFieldEnum = {
+  id: 'id',
+  provider: 'provider',
+  receivedAt: 'receivedAt',
+  authOutcome: 'authOutcome',
+  status: 'status',
+  orderNumber: 'orderNumber',
+  payload: 'payload',
+  error: 'error'
+} as const
+
+export type WebhookEventScalarFieldEnum = (typeof WebhookEventScalarFieldEnum)[keyof typeof WebhookEventScalarFieldEnum]
+
+
+export const ReviewRequestScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  orderNumber: 'orderNumber',
+  status: 'status',
+  scheduledFor: 'scheduledFor',
+  attempts: 'attempts',
+  lastAttemptAt: 'lastAttemptAt',
+  nextAttemptAt: 'nextAttemptAt',
+  sentAt: 'sentAt',
+  channels: 'channels',
+  lastError: 'lastError',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReviewRequestScalarFieldEnum = (typeof ReviewRequestScalarFieldEnum)[keyof typeof ReviewRequestScalarFieldEnum]
+
+
 export const OrderItemScalarFieldEnum = {
   id: 'id',
   quantity: 'quantity',
@@ -2681,6 +3053,10 @@ export type GlobalOmitConfig = {
   productTag?: Prisma.ProductTagOmit
   order?: Prisma.OrderOmit
   verifoneManualInvoiceAudit?: Prisma.VerifoneManualInvoiceAuditOmit
+  shipment?: Prisma.ShipmentOmit
+  shipmentEvent?: Prisma.ShipmentEventOmit
+  webhookEvent?: Prisma.WebhookEventOmit
+  reviewRequest?: Prisma.ReviewRequestOmit
   orderItem?: Prisma.OrderItemOmit
   payment?: Prisma.PaymentOmit
   paymentToken?: Prisma.PaymentTokenOmit

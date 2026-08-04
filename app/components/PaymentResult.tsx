@@ -320,8 +320,8 @@ export default function PaymentResult({
         </p>
         <p>
           {isHebrew 
-            ? 'אימייל: info@sako-or.com | טלפון: 08-9408848'
-            : 'Email: info@sako-or.com | Phone: 08-9408848'
+            ? 'אימייל: info@sako-or.com | וואטסאפ: 050-448-7979'
+            : 'Email: info@sako-or.com | WhatsApp: 050-448-7979'
           }
         </p>
       </div>

@@ -31,11 +31,11 @@ const translations = {
     contactInfo: {
       title: 'Contact Information',
       address: '51 Rothchild Street, Rishon-Lezion, Israel',
-      phone: '08-9408848',
+      phone: '050-448-7979',
       email: 'info@sako-or.com',
       hours: 'Sunday - Thursday: 9:00 AM - 20:00 PM\nFriday: 9:00 AM - 15:00 PM\nSaturday: Closed',
       Address: 'Address',
-      Phone: 'Phone',
+      Phone: 'WhatsApp',
       Email: 'Email',
       BuisnessHours: 'Buisness Hours'
     },
@@ -65,11 +65,11 @@ const translations = {
     contactInfo: {
       title: 'פרטי יצירת קשר',
       address: 'רחוב רוטשילד 51, ראשון לציון, ישראל',
-      phone: '08-9408848',
+      phone: '050-448-7979',
       email: 'info@sako-or.com',
       hours: 'יום ראשון - חמישי: 9:00 - 20:00\nשישי: 9:00 - 15:00\nשבת: סגור',
       Address: 'כתובת',
-      Phone: 'טלפון',
+      Phone: 'וואטסאפ',
       Email: 'אימייל',
       BuisnessHours: 'שעות פעילות'
     },
@@ -455,7 +455,9 @@ export default function ContactPage() {
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Phone}</h3>
                   <a
-                    href={`tel:${t.contactInfo.phone}`}
+                    href="https://wa.me/972504487979"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
                   >
                     {t.contactInfo.phone}

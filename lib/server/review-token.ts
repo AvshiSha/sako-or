@@ -18,6 +18,20 @@ import crypto from 'crypto'
 /** 30 days: long enough that a customer can act on the message at their leisure. */
 const DEFAULT_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
+/**
+ * Bytes of HMAC retained in the token.
+ *
+ * 16 bytes = 128 bits, encoded as 22 base64url characters. Forging a signature means
+ * finding a 128-bit preimage, which is not a practical attack; the full 32-byte digest
+ * would only double the length for no reachable security gain.
+ *
+ * Length is not a cosmetic concern here: this link ships inside a Hebrew SMS, which is
+ * UCS-2 encoded at 70 characters per segment, so every character saved is real money
+ * per message — and it keeps the link clear of any length cap on the provider's
+ * merge-field storage.
+ */
+const SIGNATURE_BYTES = 16
+
 function getSecret(): string {
   const secret = process.env.REVIEW_TOKEN_SECRET
   if (!secret) {
@@ -26,20 +40,32 @@ function getSecret(): string {
   return secret
 }
 
+/** Truncated HMAC-SHA256 over the order number and expiry, base64url encoded. */
 function sign(orderNumber: string, expiresAt: number): string {
   return crypto
     .createHmac('sha256', getSecret())
     .update(`${orderNumber}.${expiresAt}`)
-    .digest('hex')
+    .digest()
+    .subarray(0, SIGNATURE_BYTES)
+    .toString('base64url')
 }
 
-/** Mints a token authorizing review submission for exactly one order. */
+/**
+ * Mints a token authorizing review submission for exactly one order.
+ *
+ * Format: `<expiry-base36>.<signature-base64url>` — roughly 32 characters. The expiry
+ * travels in the clear (it is covered by the signature, so it cannot be tampered with)
+ * which keeps verification stateless.
+ */
 export function signReviewToken(
   orderNumber: string,
   ttlMs: number = DEFAULT_TTL_MS
 ): { token: string; expiresAt: number } {
   const expiresAt = Date.now() + ttlMs
-  return { token: `${expiresAt}.${sign(orderNumber, expiresAt)}`, expiresAt }
+  return {
+    token: `${expiresAt.toString(36)}.${sign(orderNumber, expiresAt)}`,
+    expiresAt,
+  }
 }
 
 /**
@@ -57,11 +83,11 @@ export function verifyReviewToken(
   const [expiresAtRaw, signature] = token.split('.')
   if (!expiresAtRaw || !signature) return false
 
-  const expiresAt = Number(expiresAtRaw)
-  if (!Number.isFinite(expiresAt) || expiresAt < Date.now()) return false
+  const expiresAt = parseInt(expiresAtRaw, 36)
+  if (!Number.isFinite(expiresAt) || expiresAt <= 0 || expiresAt < Date.now()) return false
 
-  const expected = Buffer.from(sign(orderNumber, expiresAt), 'hex')
-  const actual = Buffer.from(signature, 'hex')
+  const expected = Buffer.from(sign(orderNumber, expiresAt), 'base64url')
+  const actual = Buffer.from(signature, 'base64url')
   if (expected.length !== actual.length) return false
 
   return crypto.timingSafeEqual(expected, actual)

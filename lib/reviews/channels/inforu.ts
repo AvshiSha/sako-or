@@ -24,34 +24,58 @@ function getEventName(): string | null {
   return process.env.INFORU_REVIEW_EVENT_NAME?.trim() || null
 }
 
-/** Field mapping, overridable to match whatever the Inforu console expects. */
-function getFieldNames(): {
-  reviewUrl: InforuCustomFieldName
-  orderNumber: InforuCustomFieldName
-  signupUrl: InforuCustomFieldName
-} {
-  return {
-    reviewUrl: (process.env.INFORU_REVIEW_URL_FIELD?.trim() ||
-      'Text1') as InforuCustomFieldName,
-    orderNumber: (process.env.INFORU_REVIEW_ORDER_FIELD?.trim() ||
-      'Text2') as InforuCustomFieldName,
-    signupUrl: (process.env.INFORU_REVIEW_SIGNUP_FIELD?.trim() ||
-      'Text3') as InforuCustomFieldName,
-  }
+/**
+ * The single merge field carrying the review link.
+ *
+ * Only one dynamic value is sent. The order number is already available as
+ * `ContactRefId`, and the loyalty signup URL is a constant that belongs in the
+ * template text rather than in a per-contact field. Keeping this to one field
+ * matters because Inforu's custom fields are stored on the *contact record*, so
+ * every field we write is a field we could be overwriting for other purposes.
+ */
+function getReviewUrlField(): InforuCustomFieldName {
+  return (process.env.INFORU_REVIEW_URL_FIELD?.trim() || 'Text1') as InforuCustomFieldName
 }
 
 /**
- * Club members and non-members need different copy, and the text lives in Inforu.
- * If a separate non-member event is configured we use it; otherwise both go to the
- * one event and the template can branch on the (empty or populated) signup field.
+ * Optional second field carrying the order number.
+ *
+ * Off by default: the order number already reaches Inforu as `ContactRefId`, so this
+ * is only needed if the message text must *display* it and their template engine
+ * cannot merge ContactRefId. Opt in by naming a field slot, so we do not write to a
+ * contact field nobody reads.
+ */
+function getOrderNumberField(): InforuCustomFieldName | null {
+  const field = process.env.INFORU_REVIEW_ORDER_FIELD?.trim()
+  return field ? (field as InforuCustomFieldName) : null
+}
+
+/** Warn only once per process, so a misconfiguration is visible but not noisy. */
+let warnedMissingNonMemberEvent = false
+
+/**
+ * Club members and non-members get different copy, and that copy lives in Inforu.
+ * The two audiences are therefore routed to two separate automations rather than one
+ * template branching on a field.
  */
 function resolveEventName(isClubMember: boolean): string | null {
   const base = getEventName()
   if (!base) return null
 
-  if (!isClubMember) {
-    const nonMemberEvent = process.env.INFORU_REVIEW_EVENT_NAME_NON_MEMBER?.trim()
-    if (nonMemberEvent) return nonMemberEvent
+  if (isClubMember) return base
+
+  const nonMemberEvent = process.env.INFORU_REVIEW_EVENT_NAME_NON_MEMBER?.trim()
+  if (nonMemberEvent) return nonMemberEvent
+
+  // Falling back to the member automation still sends something useful, but the
+  // customer loses the loyalty signup prompt — and with it the points they were
+  // promised for reviewing. Worth surfacing rather than silently degrading.
+  if (!warnedMissingNonMemberEvent) {
+    warnedMissingNonMemberEvent = true
+    console.warn(
+      '[REVIEW_REQUEST] INFORU_REVIEW_EVENT_NAME_NON_MEMBER is not set — non-members ' +
+        'will receive the club-member message with no signup link.'
+    )
   }
 
   return base
@@ -88,7 +112,14 @@ export const inforuReviewChannel: ReviewChannel = {
       }
     }
 
-    const fields = getFieldNames()
+    const orderNumberField = getOrderNumberField()
+
+    const customFields: Partial<Record<InforuCustomFieldName, string>> = {
+      [getReviewUrlField()]: context.reviewUrl,
+    }
+    if (orderNumberField) {
+      customFields[orderNumberField] = context.orderNumber
+    }
 
     try {
       const result = await triggerInforuAutomation({
@@ -99,14 +130,9 @@ export const inforuReviewChannel: ReviewChannel = {
             email: context.customerEmail ?? undefined,
             // Given name only, matching the greeting in our own email template.
             firstName: context.firstName || undefined,
-            // Lets Inforu correlate the send back to our order.
+            // Carries the order number, and lets Inforu correlate the send back to it.
             contactRefId: context.orderNumber,
-            customFields: {
-              [fields.reviewUrl]: context.reviewUrl,
-              [fields.orderNumber]: context.orderNumber,
-              // Empty for members, so a single template can branch on it.
-              [fields.signupUrl]: context.isClubMember ? '' : context.signupUrl,
-            },
+            customFields,
           },
         ],
       })

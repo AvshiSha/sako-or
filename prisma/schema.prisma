@@ -38,6 +38,7 @@ model User {
   favorites           Favorite[]
   orders              Order[]
   points              Points[]
+  reviews             Review[]
 
   @@map("users")
 }
@@ -288,6 +289,8 @@ model Order {
   shipments                  Shipment[]
   /// The post-delivery review request, if one has been scheduled.
   reviewRequest              ReviewRequest?
+  /// The customer's submitted review, if they completed one.
+  review                     Review?
 
   @@index([userId])
   @@map("orders")
@@ -430,6 +433,61 @@ model ReviewRequest {
   @@map("review_requests")
 }
 
+/// A customer's review of one order. `orderId` is unique — one review per order,
+/// which is also what stops a leaked review link being used to spam submissions.
+model Review {
+  id              String   @id @default(cuid())
+  orderId         String   @unique @map("order_id")
+  orderNumber     String   @map("order_number")
+  /// Null for guest checkouts, which have no user account.
+  userId          String?  @map("user_id") @db.Uuid
+  /// Overall shopping-experience rating, 1-5.
+  overallRating   Int      @map("overall_rating")
+  serviceComment  String?  @map("service_comment")
+  deliveryComment String?  @map("delivery_comment")
+  /// Language the review was submitted in ("he" | "en").
+  language        String   @default("he")
+  submittedAt     DateTime @default(now()) @map("submitted_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user           User?           @relation(fields: [userId], references: [id])
+  productReviews ProductReview[]
+
+  @@index([orderNumber])
+  @@index([submittedAt(sort: Desc)])
+  @@map("reviews")
+}
+
+/// Per-product feedback within a review, one row per reviewed order item.
+model ProductReview {
+  id          String   @id @default(cuid())
+  reviewId    String   @map("review_id")
+  /// Ties the rating to the exact purchased line (size/colour included).
+  orderItemId String   @map("order_item_id")
+  /// Denormalized so product-level aggregates never need to join order_items.
+  productSku  String   @map("product_sku")
+  rating      Int
+  title       String?
+  body        String?
+  /// "runs_small" | "true_to_size" | "runs_large"
+  sizingFit   String?  @map("sizing_fit")
+  photoUrl    String?  @map("photo_url")
+  /// Reviews are held for moderation rather than published on submission.
+  isPublished Boolean  @default(false) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  review    Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  /// One rating per purchased line per review.
+  @@unique([reviewId, orderItemId])
+  @@index([productSku, isPublished])
+  @@map("product_reviews")
+}
+
 model OrderItem {
   id           String   @id @default(cuid())
   quantity     Int
@@ -445,6 +503,8 @@ model OrderItem {
   createdAt    DateTime @default(now())
   orderId      String
   order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// Per-product review of this purchased line, if the customer rated it.
+  productReviews ProductReview[]
 
   @@map("order_items")
 }

@@ -120,6 +120,17 @@ export type WebhookEvent = Prisma.WebhookEventModel
  */
 export type ReviewRequest = Prisma.ReviewRequestModel
 /**
+ * Model Review
+ * A customer's review of one order. `orderId` is unique — one review per order,
+ * which is also what stops a leaked review link being used to spam submissions.
+ */
+export type Review = Prisma.ReviewModel
+/**
+ * Model ProductReview
+ * Per-product feedback within a review, one row per reviewed order item.
+ */
+export type ProductReview = Prisma.ProductReviewModel
+/**
  * Model OrderItem
  * 
  */

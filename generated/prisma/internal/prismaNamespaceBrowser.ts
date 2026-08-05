@@ -66,6 +66,8 @@ export const ModelName = {
   ShipmentEvent: 'ShipmentEvent',
   WebhookEvent: 'WebhookEvent',
   ReviewRequest: 'ReviewRequest',
+  Review: 'Review',
+  ProductReview: 'ProductReview',
   OrderItem: 'OrderItem',
   Payment: 'Payment',
   PaymentToken: 'PaymentToken',
@@ -430,6 +432,41 @@ export const ReviewRequestScalarFieldEnum = {
 } as const
 
 export type ReviewRequestScalarFieldEnum = (typeof ReviewRequestScalarFieldEnum)[keyof typeof ReviewRequestScalarFieldEnum]
+
+
+export const ReviewScalarFieldEnum = {
+  id: 'id',
+  orderId: 'orderId',
+  orderNumber: 'orderNumber',
+  userId: 'userId',
+  overallRating: 'overallRating',
+  serviceComment: 'serviceComment',
+  deliveryComment: 'deliveryComment',
+  language: 'language',
+  submittedAt: 'submittedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ReviewScalarFieldEnum = (typeof ReviewScalarFieldEnum)[keyof typeof ReviewScalarFieldEnum]
+
+
+export const ProductReviewScalarFieldEnum = {
+  id: 'id',
+  reviewId: 'reviewId',
+  orderItemId: 'orderItemId',
+  productSku: 'productSku',
+  rating: 'rating',
+  title: 'title',
+  body: 'body',
+  sizingFit: 'sizingFit',
+  photoUrl: 'photoUrl',
+  isPublished: 'isPublished',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ProductReviewScalarFieldEnum = (typeof ProductReviewScalarFieldEnum)[keyof typeof ProductReviewScalarFieldEnum]
 
 
 export const OrderItemScalarFieldEnum = {

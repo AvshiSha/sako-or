@@ -2,6 +2,7 @@ import 'server-only'
 import * as Sentry from '@sentry/nextjs'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
+import { redactHeaders } from '../webhooks/auth'
 import { scheduleReviewRequest } from '../reviews/review-request-service'
 import { getShippingAdapter } from './registry'
 import { resolveReferenceCandidates } from './reference'
@@ -45,6 +46,7 @@ async function recordWebhookEvent(params: {
   authOutcome: WebhookAuthOutcome
   status: IngestStatus
   payload: unknown
+  headers?: Record<string, string> | null
   orderNumber?: string | null
   error?: string | null
 }): Promise<void> {
@@ -57,6 +59,7 @@ async function recordWebhookEvent(params: {
         orderNumber: params.orderNumber ?? null,
         // Store something JSON-valid even when the body was not JSON at all.
         payload: (params.payload ?? {}) as Prisma.InputJsonValue,
+        headers: (params.headers ?? undefined) as Prisma.InputJsonValue | undefined,
         error: params.error ?? null,
       },
     })
@@ -92,6 +95,10 @@ export async function ingestShipmentWebhook(params: {
     return { status: 'error', httpStatus: 500, error: `Unknown provider: ${provider}` }
   }
 
+  // Captured once and attached to every webhook_events row. Credential values are
+  // fingerprinted, not stored — see redactHeaders.
+  const headerSnapshot = redactHeaders(headers)
+
   // 1. Authenticate. Done against the raw body so HMAC stays available.
   const auth = adapter.verifyAuth(headers, rawBody)
 
@@ -100,6 +107,7 @@ export async function ingestShipmentWebhook(params: {
     await recordWebhookEvent({
       provider,
       authOutcome: 'rejected',
+      headers: headerSnapshot,
       status: 'rejected',
       payload: { rawBodyPreview: rawBody.slice(0, 2000) },
       error: auth.reason,
@@ -125,6 +133,7 @@ export async function ingestShipmentWebhook(params: {
     await recordWebhookEvent({
       provider,
       authOutcome: auth.outcome,
+      headers: headerSnapshot,
       status: 'invalid',
       payload: { rawBodyPreview: rawBody.slice(0, 2000) },
       error: 'Body is not valid JSON',
@@ -138,6 +147,7 @@ export async function ingestShipmentWebhook(params: {
     await recordWebhookEvent({
       provider,
       authOutcome: auth.outcome,
+      headers: headerSnapshot,
       status: 'invalid',
       payload: json,
       error: parsed.error,
@@ -153,6 +163,7 @@ export async function ingestShipmentWebhook(params: {
     await recordWebhookEvent({
       provider,
       authOutcome: auth.outcome,
+      headers: headerSnapshot,
       status: 'ignored',
       payload: json,
       error: 'No usable order reference',
@@ -169,6 +180,7 @@ export async function ingestShipmentWebhook(params: {
       await recordWebhookEvent({
         provider,
         authOutcome: auth.outcome,
+        headers: headerSnapshot,
         status: 'unknown_order',
         payload: json,
         orderNumber: candidates[0],
@@ -206,6 +218,7 @@ export async function ingestShipmentWebhook(params: {
     await recordWebhookEvent({
       provider,
       authOutcome: auth.outcome,
+      headers: headerSnapshot,
       status: 'processed',
       payload: json,
       orderNumber: order.orderNumber,
@@ -227,6 +240,7 @@ export async function ingestShipmentWebhook(params: {
     await recordWebhookEvent({
       provider,
       authOutcome: auth.outcome,
+      headers: headerSnapshot,
       status: 'error',
       payload: json,
       orderNumber: candidates[0],
@@ -239,3 +253,4 @@ export async function ingestShipmentWebhook(params: {
     return { status: 'error', httpStatus: 200, error: message }
   }
 }
+

@@ -25,8 +25,10 @@ BEGIN
     "provider_ref"             TEXT,
     "provider_random_id"       TEXT,
     "is_delivered"             BOOLEAN NOT NULL DEFAULT false,
+    "is_returned_to_sender"    BOOLEAN NOT NULL DEFAULT false,
     "is_canceled"              BOOLEAN NOT NULL DEFAULT false,
     "delivered_at"             TIMESTAMP(3),
+    "returned_at"              TIMESTAMP(3),
     "canceled_at"              TIMESTAMP(3),
     "last_status_code"         TEXT,
     "last_status_desc"         TEXT,
@@ -37,6 +39,11 @@ BEGIN
     "updated_at"               TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "shipments_pkey" PRIMARY KEY ("id")
   );
+
+  -- Added separately from CREATE TABLE so this migration is still correct when
+  -- re-run against a database where the table already exists.
+  ALTER TABLE "shipments" ADD COLUMN IF NOT EXISTS "is_returned_to_sender" BOOLEAN NOT NULL DEFAULT false;
+  ALTER TABLE "shipments" ADD COLUMN IF NOT EXISTS "returned_at" TIMESTAMP(3);
 
   -- Idempotency key for webhook redelivery. provider_shipment_no is NOT NULL on
   -- purpose: Postgres treats NULLs as distinct in a unique index, so a nullable
@@ -81,9 +88,12 @@ BEGIN
     "status"       TEXT NOT NULL,
     "order_number" TEXT,
     "payload"      JSONB NOT NULL,
+    "headers"      JSONB,
     "error"        TEXT,
     CONSTRAINT "webhook_events_pkey" PRIMARY KEY ("id")
   );
+
+  ALTER TABLE "webhook_events" ADD COLUMN IF NOT EXISTS "headers" JSONB;
 
   CREATE INDEX IF NOT EXISTS "webhook_events_provider_received_at_idx"
     ON "webhook_events" ("provider", "received_at" DESC);

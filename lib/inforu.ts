@@ -10,6 +10,20 @@ const INFORU_TOKEN = process.env.INFORU_TOKEN;
 // In-memory cache for test orders (since they don't exist in database)
 const testOrderSmsCache = new Map<string, { smsSentAt: Date; smsMessageId: string }>();
 
+/**
+ * Per-contact custom fields supported by Inforu's Automation API.
+ *
+ * These are the ONLY way to get dynamic, per-recipient content (an order number, a
+ * signed review link) into a message: the message body itself lives in the Inforu
+ * console, and the template references these fields as merge tags. The field names
+ * are configurable under "Automation API control" in the console, so a field used
+ * here must also be mapped there or it will silently render as empty.
+ */
+export type InforuCustomFieldName =
+  | `Text${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20}`
+  | `Number${1 | 2 | 3 | 4}`
+  | `Date${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8}`;
+
 export interface InforuContact {
   firstName?: string;
   lastName?: string;
@@ -19,12 +33,21 @@ export interface InforuContact {
   genderId?: number; // 1 for male (mens), 2 for female (womens)
   birthDate?: string; // YYYY-MM-DD format
   is_newsletter?: string; // "true" or "false" as string
+  /**
+   * Merge-tag values for this contact, e.g. { Text1: 'https://…/review/…' }.
+   * Empty strings are sent as-is; null/undefined entries are omitted.
+   */
+  customFields?: Partial<Record<InforuCustomFieldName, string | number>>;
 }
 
 export interface InforuTriggerData {
   apiEventName: string; // e.g., "CustomerPurchase"
   contacts: InforuContact[];
-  customFields?: Record<string, any>; // For future extensibility
+  /**
+   * Event-level data sent as `AddendumEventData`. Note this is NOT per-recipient —
+   * use `InforuContact.customFields` for anything that varies by contact.
+   */
+  customFields?: Record<string, string | number>;
 }
 
 export interface InforuTriggerResult {
@@ -136,10 +159,28 @@ export async function triggerInforuAutomation(
             contactData.is_newsletter = contact.is_newsletter;
           }
 
+          // Merge-tag values (Text1..Text20, Number1..Number4, Date1..Date8).
+          // Without this the fields never reach the wire, and any template
+          // referencing them renders empty — which is how per-order content such as
+          // a signed review link silently went missing before.
+          if (contact.customFields) {
+            for (const [fieldName, fieldValue] of Object.entries(contact.customFields)) {
+              if (fieldValue !== undefined && fieldValue !== null) {
+                contactData[fieldName] = String(fieldValue);
+              }
+            }
+          }
+
           return contactData;
         }),
       },
     };
+
+    // Event-level custom data. Previously accepted by the type, logged, and then
+    // discarded before the request was built.
+    if (data.customFields && Object.keys(data.customFields).length > 0) {
+      (payload.Data as Record<string, unknown>).AddendumEventData = data.customFields;
+    }
 
     console.log(`[INFORU] Triggering automation: ${data.apiEventName}`, {
       contactCount: validContacts.length,

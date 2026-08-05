@@ -125,26 +125,109 @@ function parseTimeParts(time: string | null | undefined): {
 }
 
 /**
+ * Parses HFD's `status_timezone`, which their real PUSH payload sends as "GMT+2".
+ *
+ * Accepts the variants worth anticipating — "GMT+2", "GMT+02:00", "UTC+3", "+0200",
+ * "+02:00", "Z" — and returns the offset in minutes east of UTC.
+ */
+export function parseGmtOffsetMinutes(timezone: string | null | undefined): number | null {
+  if (!timezone) return null
+
+  const trimmed = timezone.trim().toUpperCase()
+  if (trimmed === 'Z' || trimmed === 'UTC' || trimmed === 'GMT') return 0
+
+  const match = /^(?:GMT|UTC)?\s*([+-])(\d{1,2})(?::?(\d{2}))?$/.exec(trimmed)
+  if (!match) return null
+
+  const sign = match[1] === '-' ? -1 : 1
+  const hours = Number(match[2])
+  const minutes = match[3] ? Number(match[3]) : 0
+
+  if (hours > 14 || minutes > 59) return null
+
+  return sign * (hours * 60 + minutes)
+}
+
+/**
  * Converts an HFD date/time pair into a UTC Date.
  *
- * Returns `null` rather than throwing when the input is missing or unparseable —
- * callers substitute the webhook receipt time, because a status we cannot timestamp
- * is still a status worth recording.
+ * When the carrier states an explicit offset (`status_timezone`) that is authoritative
+ * and is used directly. Otherwise the offset is inferred from Israel's tz database
+ * entry for that date.
+ *
+ * A caveat worth knowing: HFD's sample sends "GMT+2" for a February timestamp, which
+ * is correct for winter, but we have no summer sample confirming they switch to
+ * "GMT+3" during IDT. If they hardcode +2 year-round, their stated offset will be an
+ * hour off in summer. `explicitDisagreedWithZone` reports that mismatch so it shows up
+ * in logs rather than silently skewing delivery timestamps by an hour.
+ *
+ * Returns `null` rather than throwing when input is missing or unparseable — callers
+ * substitute the webhook receipt time, because a status we cannot timestamp is still
+ * a status worth recording.
  */
 export function parseHfdDateTime(
   date: string | null | undefined,
-  time?: string | null
+  time?: string | null,
+  timezone?: string | null
 ): Date | null {
-  if (!date) return null
+  return parseHfdDateTimeDetailed(date, time, timezone).date
+}
+
+export interface HfdDateParseResult {
+  date: Date | null
+  /** True when the carrier's stated offset differs from Israel's actual offset. */
+  explicitDisagreedWithZone: boolean
+  /** The offset actually applied, in minutes east of UTC. */
+  appliedOffsetMinutes: number | null
+}
+
+export function parseHfdDateTimeDetailed(
+  date: string | null | undefined,
+  time?: string | null,
+  timezone?: string | null
+): HfdDateParseResult {
+  const empty: HfdDateParseResult = {
+    date: null,
+    explicitDisagreedWithZone: false,
+    appliedOffsetMinutes: null,
+  }
+
+  if (!date) return empty
 
   const dateParts = parseDateParts(date)
-  if (!dateParts) return null
+  if (!dateParts) return empty
 
   const { year, month, day } = dateParts
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null
+  if (month < 1 || month > 12 || day < 1 || day > 31) return empty
 
   const { hour, minute, second } = parseTimeParts(time)
-  if (hour > 23 || minute > 59 || second > 59) return null
+  if (hour > 23 || minute > 59 || second > 59) return empty
+
+  const explicitOffset = parseGmtOffsetMinutes(timezone)
+
+  if (explicitOffset !== null) {
+    // Wall-clock minus the stated offset gives the UTC instant directly.
+    const naiveUtc = Date.UTC(year, month - 1, day, hour, minute, second)
+    const result = new Date(naiveUtc - explicitOffset * 60 * 1000)
+
+    if (Number.isNaN(result.getTime())) return empty
+
+    const inferred = zonedWallClockToUtc(
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      second,
+      ISRAEL_TIME_ZONE
+    )
+
+    return {
+      date: result,
+      explicitDisagreedWithZone: inferred.getTime() !== result.getTime(),
+      appliedOffsetMinutes: explicitOffset,
+    }
+  }
 
   const result = zonedWallClockToUtc(
     year,
@@ -156,5 +239,13 @@ export function parseHfdDateTime(
     ISRAEL_TIME_ZONE
   )
 
-  return Number.isNaN(result.getTime()) ? null : result
+  if (Number.isNaN(result.getTime())) return empty
+
+  return {
+    date: result,
+    explicitDisagreedWithZone: false,
+    appliedOffsetMinutes: Math.round(
+      (Date.UTC(year, month - 1, day, hour, minute, second) - result.getTime()) / 60000
+    ),
+  }
 }

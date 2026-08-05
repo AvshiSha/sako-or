@@ -329,9 +329,15 @@ model Shipment {
   /// The reference value we actually matched the order on (HFD `ref2`).
   providerRef           String?   @map("provider_ref")
   providerRandomId      String?   @map("provider_random_id")
+  /// True only for a successful delivery to the customer. A parcel returned to
+  /// sender is NOT recorded here — see isReturnedToSender.
   isDelivered           Boolean   @default(false) @map("is_delivered")
+  /// HFD `ship_delivered_back_yn`: the parcel came back to us. It arrives together
+  /// with ship_delivered_yn="y", so it must gate the delivery transition.
+  isReturnedToSender    Boolean   @default(false) @map("is_returned_to_sender")
   isCanceled            Boolean   @default(false) @map("is_canceled")
   deliveredAt           DateTime? @map("delivered_at")
+  returnedAt            DateTime? @map("returned_at")
   canceledAt            DateTime? @map("canceled_at")
   lastStatusCode        String?   @map("last_status_code")
   lastStatusDesc        String?   @map("last_status_desc")
@@ -387,6 +393,10 @@ model WebhookEvent {
   status      String
   orderNumber String?  @map("order_number")
   payload     Json
+  /// Request headers with credential values redacted to a fingerprint. Lets us
+  /// discover which auth mechanism the carrier actually uses from real traffic,
+  /// without writing their secret into our database.
+  headers     Json?
   error       String?
 
   @@index([provider, receivedAt(sort: Desc)])

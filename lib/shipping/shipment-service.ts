@@ -109,6 +109,8 @@ export async function applyShipmentUpdate(params: {
       providerShipmentNo,
       providerRef: update.referenceCandidates[0] ?? null,
       providerRandomId: update.providerRandomId,
+      isReturnedToSender: update.isReturnedToSender,
+      returnedAt: update.isReturnedToSender ? receivedAt : null,
       isCanceled: update.isCanceled,
       canceledAt: update.isCanceled ? receivedAt : null,
       lastStatusCode: latest?.statusCode ?? null,
@@ -119,6 +121,10 @@ export async function applyShipmentUpdate(params: {
     },
     update: {
       providerRandomId: update.providerRandomId ?? undefined,
+      // `|| undefined` so a later payload omitting the flag never un-sets it:
+      // returned and canceled are terminal states, not transient ones.
+      isReturnedToSender: update.isReturnedToSender || undefined,
+      returnedAt: update.isReturnedToSender ? receivedAt : undefined,
       isCanceled: update.isCanceled || undefined,
       canceledAt: update.isCanceled ? receivedAt : undefined,
       lastStatusCode: latest?.statusCode ?? undefined,
@@ -152,10 +158,24 @@ export async function applyShipmentUpdate(params: {
   // Delivery transition, as a guarded conditional UPDATE rather than read-then-write.
   // `count === 1` can only happen once even if two identical webhooks are processed
   // concurrently, which is precisely the guarantee the review automation needs.
+  //
+  // A returned parcel is explicitly NOT a delivery. HFD sends ship_delivered_back_yn
+  // alongside ship_delivered_yn: "y", so keying only off the latter would mark a
+  // parcel that came back to the warehouse as delivered and ask the customer to
+  // review an order they never received.
+  const deliveredToCustomer = update.isDelivered && !update.isReturnedToSender
+
+  if (update.isDelivered && update.isReturnedToSender) {
+    console.warn('[SHIPMENT] Parcel returned to sender — not treating as delivered', {
+      orderNumber,
+      providerShipmentNo,
+    })
+  }
+
   let becameDelivered = false
   let finalShipment = shipment
 
-  if (update.isDelivered && !shipment.isDelivered) {
+  if (deliveredToCustomer && !shipment.isDelivered) {
     const deliveredAt = latest?.occurredAt ?? receivedAt
 
     const transitioned = await prisma.shipment.updateMany({

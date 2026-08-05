@@ -366,8 +366,10 @@ export const ShipmentScalarFieldEnum = {
   providerRef: 'providerRef',
   providerRandomId: 'providerRandomId',
   isDelivered: 'isDelivered',
+  isReturnedToSender: 'isReturnedToSender',
   isCanceled: 'isCanceled',
   deliveredAt: 'deliveredAt',
+  returnedAt: 'returnedAt',
   canceledAt: 'canceledAt',
   lastStatusCode: 'lastStatusCode',
   lastStatusDesc: 'lastStatusDesc',
@@ -404,6 +406,7 @@ export const WebhookEventScalarFieldEnum = {
   status: 'status',
   orderNumber: 'orderNumber',
   payload: 'payload',
+  headers: 'headers',
   error: 'error'
 } as const
 

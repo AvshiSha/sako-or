@@ -34,8 +34,10 @@ export type ShipmentMinAggregateOutputType = {
   providerRef: string | null
   providerRandomId: string | null
   isDelivered: boolean | null
+  isReturnedToSender: boolean | null
   isCanceled: boolean | null
   deliveredAt: Date | null
+  returnedAt: Date | null
   canceledAt: Date | null
   lastStatusCode: string | null
   lastStatusDesc: string | null
@@ -54,8 +56,10 @@ export type ShipmentMaxAggregateOutputType = {
   providerRef: string | null
   providerRandomId: string | null
   isDelivered: boolean | null
+  isReturnedToSender: boolean | null
   isCanceled: boolean | null
   deliveredAt: Date | null
+  returnedAt: Date | null
   canceledAt: Date | null
   lastStatusCode: string | null
   lastStatusDesc: string | null
@@ -74,8 +78,10 @@ export type ShipmentCountAggregateOutputType = {
   providerRef: number
   providerRandomId: number
   isDelivered: number
+  isReturnedToSender: number
   isCanceled: number
   deliveredAt: number
+  returnedAt: number
   canceledAt: number
   lastStatusCode: number
   lastStatusDesc: number
@@ -97,8 +103,10 @@ export type ShipmentMinAggregateInputType = {
   providerRef?: true
   providerRandomId?: true
   isDelivered?: true
+  isReturnedToSender?: true
   isCanceled?: true
   deliveredAt?: true
+  returnedAt?: true
   canceledAt?: true
   lastStatusCode?: true
   lastStatusDesc?: true
@@ -117,8 +125,10 @@ export type ShipmentMaxAggregateInputType = {
   providerRef?: true
   providerRandomId?: true
   isDelivered?: true
+  isReturnedToSender?: true
   isCanceled?: true
   deliveredAt?: true
+  returnedAt?: true
   canceledAt?: true
   lastStatusCode?: true
   lastStatusDesc?: true
@@ -137,8 +147,10 @@ export type ShipmentCountAggregateInputType = {
   providerRef?: true
   providerRandomId?: true
   isDelivered?: true
+  isReturnedToSender?: true
   isCanceled?: true
   deliveredAt?: true
+  returnedAt?: true
   canceledAt?: true
   lastStatusCode?: true
   lastStatusDesc?: true
@@ -231,8 +243,10 @@ export type ShipmentGroupByOutputType = {
   providerRef: string | null
   providerRandomId: string | null
   isDelivered: boolean
+  isReturnedToSender: boolean
   isCanceled: boolean
   deliveredAt: Date | null
+  returnedAt: Date | null
   canceledAt: Date | null
   lastStatusCode: string | null
   lastStatusDesc: string | null
@@ -273,8 +287,10 @@ export type ShipmentWhereInput = {
   providerRef?: Prisma.StringNullableFilter<"Shipment"> | string | null
   providerRandomId?: Prisma.StringNullableFilter<"Shipment"> | string | null
   isDelivered?: Prisma.BoolFilter<"Shipment"> | boolean
+  isReturnedToSender?: Prisma.BoolFilter<"Shipment"> | boolean
   isCanceled?: Prisma.BoolFilter<"Shipment"> | boolean
   deliveredAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
+  returnedAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
   canceledAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
   lastStatusCode?: Prisma.StringNullableFilter<"Shipment"> | string | null
   lastStatusDesc?: Prisma.StringNullableFilter<"Shipment"> | string | null
@@ -296,8 +312,10 @@ export type ShipmentOrderByWithRelationInput = {
   providerRef?: Prisma.SortOrderInput | Prisma.SortOrder
   providerRandomId?: Prisma.SortOrderInput | Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
+  isReturnedToSender?: Prisma.SortOrder
   isCanceled?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  returnedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   canceledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   lastStatusCode?: Prisma.SortOrderInput | Prisma.SortOrder
   lastStatusDesc?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -323,8 +341,10 @@ export type ShipmentWhereUniqueInput = Prisma.AtLeast<{
   providerRef?: Prisma.StringNullableFilter<"Shipment"> | string | null
   providerRandomId?: Prisma.StringNullableFilter<"Shipment"> | string | null
   isDelivered?: Prisma.BoolFilter<"Shipment"> | boolean
+  isReturnedToSender?: Prisma.BoolFilter<"Shipment"> | boolean
   isCanceled?: Prisma.BoolFilter<"Shipment"> | boolean
   deliveredAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
+  returnedAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
   canceledAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
   lastStatusCode?: Prisma.StringNullableFilter<"Shipment"> | string | null
   lastStatusDesc?: Prisma.StringNullableFilter<"Shipment"> | string | null
@@ -346,8 +366,10 @@ export type ShipmentOrderByWithAggregationInput = {
   providerRef?: Prisma.SortOrderInput | Prisma.SortOrder
   providerRandomId?: Prisma.SortOrderInput | Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
+  isReturnedToSender?: Prisma.SortOrder
   isCanceled?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  returnedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   canceledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   lastStatusCode?: Prisma.SortOrderInput | Prisma.SortOrder
   lastStatusDesc?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -373,8 +395,10 @@ export type ShipmentScalarWhereWithAggregatesInput = {
   providerRef?: Prisma.StringNullableWithAggregatesFilter<"Shipment"> | string | null
   providerRandomId?: Prisma.StringNullableWithAggregatesFilter<"Shipment"> | string | null
   isDelivered?: Prisma.BoolWithAggregatesFilter<"Shipment"> | boolean
+  isReturnedToSender?: Prisma.BoolWithAggregatesFilter<"Shipment"> | boolean
   isCanceled?: Prisma.BoolWithAggregatesFilter<"Shipment"> | boolean
   deliveredAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Shipment"> | Date | string | null
+  returnedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Shipment"> | Date | string | null
   canceledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Shipment"> | Date | string | null
   lastStatusCode?: Prisma.StringNullableWithAggregatesFilter<"Shipment"> | string | null
   lastStatusDesc?: Prisma.StringNullableWithAggregatesFilter<"Shipment"> | string | null
@@ -393,8 +417,10 @@ export type ShipmentCreateInput = {
   providerRef?: string | null
   providerRandomId?: string | null
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: Date | string | null
+  returnedAt?: Date | string | null
   canceledAt?: Date | string | null
   lastStatusCode?: string | null
   lastStatusDesc?: string | null
@@ -416,8 +442,10 @@ export type ShipmentUncheckedCreateInput = {
   providerRef?: string | null
   providerRandomId?: string | null
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: Date | string | null
+  returnedAt?: Date | string | null
   canceledAt?: Date | string | null
   lastStatusCode?: string | null
   lastStatusDesc?: string | null
@@ -437,8 +465,10 @@ export type ShipmentUpdateInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -460,8 +490,10 @@ export type ShipmentUncheckedUpdateInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -482,8 +514,10 @@ export type ShipmentCreateManyInput = {
   providerRef?: string | null
   providerRandomId?: string | null
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: Date | string | null
+  returnedAt?: Date | string | null
   canceledAt?: Date | string | null
   lastStatusCode?: string | null
   lastStatusDesc?: string | null
@@ -502,8 +536,10 @@ export type ShipmentUpdateManyMutationInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -523,8 +559,10 @@ export type ShipmentUncheckedUpdateManyInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -559,8 +597,10 @@ export type ShipmentCountOrderByAggregateInput = {
   providerRef?: Prisma.SortOrder
   providerRandomId?: Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
+  isReturnedToSender?: Prisma.SortOrder
   isCanceled?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrder
+  returnedAt?: Prisma.SortOrder
   canceledAt?: Prisma.SortOrder
   lastStatusCode?: Prisma.SortOrder
   lastStatusDesc?: Prisma.SortOrder
@@ -580,8 +620,10 @@ export type ShipmentMaxOrderByAggregateInput = {
   providerRef?: Prisma.SortOrder
   providerRandomId?: Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
+  isReturnedToSender?: Prisma.SortOrder
   isCanceled?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrder
+  returnedAt?: Prisma.SortOrder
   canceledAt?: Prisma.SortOrder
   lastStatusCode?: Prisma.SortOrder
   lastStatusDesc?: Prisma.SortOrder
@@ -600,8 +642,10 @@ export type ShipmentMinOrderByAggregateInput = {
   providerRef?: Prisma.SortOrder
   providerRandomId?: Prisma.SortOrder
   isDelivered?: Prisma.SortOrder
+  isReturnedToSender?: Prisma.SortOrder
   isCanceled?: Prisma.SortOrder
   deliveredAt?: Prisma.SortOrder
+  returnedAt?: Prisma.SortOrder
   canceledAt?: Prisma.SortOrder
   lastStatusCode?: Prisma.SortOrder
   lastStatusDesc?: Prisma.SortOrder
@@ -680,8 +724,10 @@ export type ShipmentCreateWithoutOrderInput = {
   providerRef?: string | null
   providerRandomId?: string | null
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: Date | string | null
+  returnedAt?: Date | string | null
   canceledAt?: Date | string | null
   lastStatusCode?: string | null
   lastStatusDesc?: string | null
@@ -701,8 +747,10 @@ export type ShipmentUncheckedCreateWithoutOrderInput = {
   providerRef?: string | null
   providerRandomId?: string | null
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: Date | string | null
+  returnedAt?: Date | string | null
   canceledAt?: Date | string | null
   lastStatusCode?: string | null
   lastStatusDesc?: string | null
@@ -752,8 +800,10 @@ export type ShipmentScalarWhereInput = {
   providerRef?: Prisma.StringNullableFilter<"Shipment"> | string | null
   providerRandomId?: Prisma.StringNullableFilter<"Shipment"> | string | null
   isDelivered?: Prisma.BoolFilter<"Shipment"> | boolean
+  isReturnedToSender?: Prisma.BoolFilter<"Shipment"> | boolean
   isCanceled?: Prisma.BoolFilter<"Shipment"> | boolean
   deliveredAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
+  returnedAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
   canceledAt?: Prisma.DateTimeNullableFilter<"Shipment"> | Date | string | null
   lastStatusCode?: Prisma.StringNullableFilter<"Shipment"> | string | null
   lastStatusDesc?: Prisma.StringNullableFilter<"Shipment"> | string | null
@@ -772,8 +822,10 @@ export type ShipmentCreateWithoutEventsInput = {
   providerRef?: string | null
   providerRandomId?: string | null
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: Date | string | null
+  returnedAt?: Date | string | null
   canceledAt?: Date | string | null
   lastStatusCode?: string | null
   lastStatusDesc?: string | null
@@ -794,8 +846,10 @@ export type ShipmentUncheckedCreateWithoutEventsInput = {
   providerRef?: string | null
   providerRandomId?: string | null
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: Date | string | null
+  returnedAt?: Date | string | null
   canceledAt?: Date | string | null
   lastStatusCode?: string | null
   lastStatusDesc?: string | null
@@ -830,8 +884,10 @@ export type ShipmentUpdateWithoutEventsInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -852,8 +908,10 @@ export type ShipmentUncheckedUpdateWithoutEventsInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -872,8 +930,10 @@ export type ShipmentCreateManyOrderInput = {
   providerRef?: string | null
   providerRandomId?: string | null
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: Date | string | null
+  returnedAt?: Date | string | null
   canceledAt?: Date | string | null
   lastStatusCode?: string | null
   lastStatusDesc?: string | null
@@ -892,8 +952,10 @@ export type ShipmentUpdateWithoutOrderInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -913,8 +975,10 @@ export type ShipmentUncheckedUpdateWithoutOrderInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -934,8 +998,10 @@ export type ShipmentUncheckedUpdateManyWithoutOrderInput = {
   providerRef?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   providerRandomId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isDelivered?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  isReturnedToSender?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isCanceled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   deliveredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  returnedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   canceledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastStatusCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastStatusDesc?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -986,8 +1052,10 @@ export type ShipmentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   providerRef?: boolean
   providerRandomId?: boolean
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: boolean
+  returnedAt?: boolean
   canceledAt?: boolean
   lastStatusCode?: boolean
   lastStatusDesc?: boolean
@@ -1010,8 +1078,10 @@ export type ShipmentSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   providerRef?: boolean
   providerRandomId?: boolean
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: boolean
+  returnedAt?: boolean
   canceledAt?: boolean
   lastStatusCode?: boolean
   lastStatusDesc?: boolean
@@ -1032,8 +1102,10 @@ export type ShipmentSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   providerRef?: boolean
   providerRandomId?: boolean
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: boolean
+  returnedAt?: boolean
   canceledAt?: boolean
   lastStatusCode?: boolean
   lastStatusDesc?: boolean
@@ -1054,8 +1126,10 @@ export type ShipmentSelectScalar = {
   providerRef?: boolean
   providerRandomId?: boolean
   isDelivered?: boolean
+  isReturnedToSender?: boolean
   isCanceled?: boolean
   deliveredAt?: boolean
+  returnedAt?: boolean
   canceledAt?: boolean
   lastStatusCode?: boolean
   lastStatusDesc?: boolean
@@ -1066,7 +1140,7 @@ export type ShipmentSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ShipmentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "provider" | "providerShipmentNo" | "providerRef" | "providerRandomId" | "isDelivered" | "isCanceled" | "deliveredAt" | "canceledAt" | "lastStatusCode" | "lastStatusDesc" | "lastStatusAt" | "lastWebhookReceivedAt" | "rawLatestPayload" | "createdAt" | "updatedAt", ExtArgs["result"]["shipment"]>
+export type ShipmentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "provider" | "providerShipmentNo" | "providerRef" | "providerRandomId" | "isDelivered" | "isReturnedToSender" | "isCanceled" | "deliveredAt" | "returnedAt" | "canceledAt" | "lastStatusCode" | "lastStatusDesc" | "lastStatusAt" | "lastWebhookReceivedAt" | "rawLatestPayload" | "createdAt" | "updatedAt", ExtArgs["result"]["shipment"]>
 export type ShipmentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
   events?: boolean | Prisma.Shipment$eventsArgs<ExtArgs>
@@ -1106,9 +1180,19 @@ export type $ShipmentPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
      */
     providerRef: string | null
     providerRandomId: string | null
+    /**
+     * True only for a successful delivery to the customer. A parcel returned to
+     * sender is NOT recorded here — see isReturnedToSender.
+     */
     isDelivered: boolean
+    /**
+     * HFD `ship_delivered_back_yn`: the parcel came back to us. It arrives together
+     * with ship_delivered_yn="y", so it must gate the delivery transition.
+     */
+    isReturnedToSender: boolean
     isCanceled: boolean
     deliveredAt: Date | null
+    returnedAt: Date | null
     canceledAt: Date | null
     lastStatusCode: string | null
     lastStatusDesc: string | null
@@ -1553,8 +1637,10 @@ export interface ShipmentFieldRefs {
   readonly providerRef: Prisma.FieldRef<"Shipment", 'String'>
   readonly providerRandomId: Prisma.FieldRef<"Shipment", 'String'>
   readonly isDelivered: Prisma.FieldRef<"Shipment", 'Boolean'>
+  readonly isReturnedToSender: Prisma.FieldRef<"Shipment", 'Boolean'>
   readonly isCanceled: Prisma.FieldRef<"Shipment", 'Boolean'>
   readonly deliveredAt: Prisma.FieldRef<"Shipment", 'DateTime'>
+  readonly returnedAt: Prisma.FieldRef<"Shipment", 'DateTime'>
   readonly canceledAt: Prisma.FieldRef<"Shipment", 'DateTime'>
   readonly lastStatusCode: Prisma.FieldRef<"Shipment", 'String'>
   readonly lastStatusDesc: Prisma.FieldRef<"Shipment", 'String'>

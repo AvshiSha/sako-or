@@ -33,7 +33,14 @@ export interface NormalizedShipmentUpdate {
   /** Candidate references to match an order on, in priority order. */
   referenceCandidates: string[]
   providerRandomId: string | null
+  /** The carrier's raw "delivered" flag — true even for a parcel returned to sender. */
   isDelivered: boolean
+  /**
+   * Parcel was returned to the sender. Arrives alongside `isDelivered: true`, so it
+   * must be checked before treating a shipment as successfully delivered to the
+   * customer — otherwise a returned parcel triggers a review request.
+   */
+  isReturnedToSender: boolean
   isCanceled: boolean
   events: NormalizedShipmentEvent[]
   /** The complete raw payload as received. */

@@ -17,7 +17,8 @@
     "email": "npx email dev --dir app/emails",
     "fix-email": "tsx scripts/fix-user-email.ts",
     "resend-order-email": "tsx scripts/resend-order-email.ts",
-    "review-link": "tsx --conditions=react-server scripts/review-link.ts"
+    "review-link": "tsx --conditions=react-server scripts/review-link.ts",
+    "hfd:inspect": "tsx scripts/hfd-webhook-inspect.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

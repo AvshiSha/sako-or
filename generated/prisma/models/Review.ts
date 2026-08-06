@@ -29,10 +29,16 @@ export type AggregateReview = {
 
 export type ReviewAvgAggregateOutputType = {
   overallRating: number | null
+  serviceRating: number | null
+  deliveryRating: number | null
+  packagingRating: number | null
 }
 
 export type ReviewSumAggregateOutputType = {
   overallRating: number | null
+  serviceRating: number | null
+  deliveryRating: number | null
+  packagingRating: number | null
 }
 
 export type ReviewMinAggregateOutputType = {
@@ -41,8 +47,12 @@ export type ReviewMinAggregateOutputType = {
   orderNumber: string | null
   userId: string | null
   overallRating: number | null
+  serviceRating: number | null
+  deliveryRating: number | null
+  packagingRating: number | null
   serviceComment: string | null
   deliveryComment: string | null
+  packagingComment: string | null
   language: string | null
   submittedAt: Date | null
   createdAt: Date | null
@@ -55,8 +65,12 @@ export type ReviewMaxAggregateOutputType = {
   orderNumber: string | null
   userId: string | null
   overallRating: number | null
+  serviceRating: number | null
+  deliveryRating: number | null
+  packagingRating: number | null
   serviceComment: string | null
   deliveryComment: string | null
+  packagingComment: string | null
   language: string | null
   submittedAt: Date | null
   createdAt: Date | null
@@ -69,8 +83,12 @@ export type ReviewCountAggregateOutputType = {
   orderNumber: number
   userId: number
   overallRating: number
+  serviceRating: number
+  deliveryRating: number
+  packagingRating: number
   serviceComment: number
   deliveryComment: number
+  packagingComment: number
   language: number
   submittedAt: number
   createdAt: number
@@ -81,10 +99,16 @@ export type ReviewCountAggregateOutputType = {
 
 export type ReviewAvgAggregateInputType = {
   overallRating?: true
+  serviceRating?: true
+  deliveryRating?: true
+  packagingRating?: true
 }
 
 export type ReviewSumAggregateInputType = {
   overallRating?: true
+  serviceRating?: true
+  deliveryRating?: true
+  packagingRating?: true
 }
 
 export type ReviewMinAggregateInputType = {
@@ -93,8 +117,12 @@ export type ReviewMinAggregateInputType = {
   orderNumber?: true
   userId?: true
   overallRating?: true
+  serviceRating?: true
+  deliveryRating?: true
+  packagingRating?: true
   serviceComment?: true
   deliveryComment?: true
+  packagingComment?: true
   language?: true
   submittedAt?: true
   createdAt?: true
@@ -107,8 +135,12 @@ export type ReviewMaxAggregateInputType = {
   orderNumber?: true
   userId?: true
   overallRating?: true
+  serviceRating?: true
+  deliveryRating?: true
+  packagingRating?: true
   serviceComment?: true
   deliveryComment?: true
+  packagingComment?: true
   language?: true
   submittedAt?: true
   createdAt?: true
@@ -121,8 +153,12 @@ export type ReviewCountAggregateInputType = {
   orderNumber?: true
   userId?: true
   overallRating?: true
+  serviceRating?: true
+  deliveryRating?: true
+  packagingRating?: true
   serviceComment?: true
   deliveryComment?: true
+  packagingComment?: true
   language?: true
   submittedAt?: true
   createdAt?: true
@@ -222,8 +258,12 @@ export type ReviewGroupByOutputType = {
   orderNumber: string
   userId: string | null
   overallRating: number
+  serviceRating: number | null
+  deliveryRating: number | null
+  packagingRating: number | null
   serviceComment: string | null
   deliveryComment: string | null
+  packagingComment: string | null
   language: string
   submittedAt: Date
   createdAt: Date
@@ -259,8 +299,12 @@ export type ReviewWhereInput = {
   orderNumber?: Prisma.StringFilter<"Review"> | string
   userId?: Prisma.UuidNullableFilter<"Review"> | string | null
   overallRating?: Prisma.IntFilter<"Review"> | number
+  serviceRating?: Prisma.IntNullableFilter<"Review"> | number | null
+  deliveryRating?: Prisma.IntNullableFilter<"Review"> | number | null
+  packagingRating?: Prisma.IntNullableFilter<"Review"> | number | null
   serviceComment?: Prisma.StringNullableFilter<"Review"> | string | null
   deliveryComment?: Prisma.StringNullableFilter<"Review"> | string | null
+  packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
@@ -276,8 +320,12 @@ export type ReviewOrderByWithRelationInput = {
   orderNumber?: Prisma.SortOrder
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
   overallRating?: Prisma.SortOrder
+  serviceRating?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryRating?: Prisma.SortOrderInput | Prisma.SortOrder
+  packagingRating?: Prisma.SortOrderInput | Prisma.SortOrder
   serviceComment?: Prisma.SortOrderInput | Prisma.SortOrder
   deliveryComment?: Prisma.SortOrderInput | Prisma.SortOrder
+  packagingComment?: Prisma.SortOrderInput | Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -296,8 +344,12 @@ export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   orderNumber?: Prisma.StringFilter<"Review"> | string
   userId?: Prisma.UuidNullableFilter<"Review"> | string | null
   overallRating?: Prisma.IntFilter<"Review"> | number
+  serviceRating?: Prisma.IntNullableFilter<"Review"> | number | null
+  deliveryRating?: Prisma.IntNullableFilter<"Review"> | number | null
+  packagingRating?: Prisma.IntNullableFilter<"Review"> | number | null
   serviceComment?: Prisma.StringNullableFilter<"Review"> | string | null
   deliveryComment?: Prisma.StringNullableFilter<"Review"> | string | null
+  packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
@@ -313,8 +365,12 @@ export type ReviewOrderByWithAggregationInput = {
   orderNumber?: Prisma.SortOrder
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
   overallRating?: Prisma.SortOrder
+  serviceRating?: Prisma.SortOrderInput | Prisma.SortOrder
+  deliveryRating?: Prisma.SortOrderInput | Prisma.SortOrder
+  packagingRating?: Prisma.SortOrderInput | Prisma.SortOrder
   serviceComment?: Prisma.SortOrderInput | Prisma.SortOrder
   deliveryComment?: Prisma.SortOrderInput | Prisma.SortOrder
+  packagingComment?: Prisma.SortOrderInput | Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -335,8 +391,12 @@ export type ReviewScalarWhereWithAggregatesInput = {
   orderNumber?: Prisma.StringWithAggregatesFilter<"Review"> | string
   userId?: Prisma.UuidNullableWithAggregatesFilter<"Review"> | string | null
   overallRating?: Prisma.IntWithAggregatesFilter<"Review"> | number
+  serviceRating?: Prisma.IntNullableWithAggregatesFilter<"Review"> | number | null
+  deliveryRating?: Prisma.IntNullableWithAggregatesFilter<"Review"> | number | null
+  packagingRating?: Prisma.IntNullableWithAggregatesFilter<"Review"> | number | null
   serviceComment?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   deliveryComment?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
+  packagingComment?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   language?: Prisma.StringWithAggregatesFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
@@ -347,8 +407,12 @@ export type ReviewCreateInput = {
   id?: string
   orderNumber: string
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -364,8 +428,12 @@ export type ReviewUncheckedCreateInput = {
   orderNumber: string
   userId?: string | null
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -377,8 +445,12 @@ export type ReviewUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -394,8 +466,12 @@ export type ReviewUncheckedUpdateInput = {
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -409,8 +485,12 @@ export type ReviewCreateManyInput = {
   orderNumber: string
   userId?: string | null
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -421,8 +501,12 @@ export type ReviewUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -435,8 +519,12 @@ export type ReviewUncheckedUpdateManyInput = {
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -464,8 +552,12 @@ export type ReviewCountOrderByAggregateInput = {
   orderNumber?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   overallRating?: Prisma.SortOrder
+  serviceRating?: Prisma.SortOrder
+  deliveryRating?: Prisma.SortOrder
+  packagingRating?: Prisma.SortOrder
   serviceComment?: Prisma.SortOrder
   deliveryComment?: Prisma.SortOrder
+  packagingComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -474,6 +566,9 @@ export type ReviewCountOrderByAggregateInput = {
 
 export type ReviewAvgOrderByAggregateInput = {
   overallRating?: Prisma.SortOrder
+  serviceRating?: Prisma.SortOrder
+  deliveryRating?: Prisma.SortOrder
+  packagingRating?: Prisma.SortOrder
 }
 
 export type ReviewMaxOrderByAggregateInput = {
@@ -482,8 +577,12 @@ export type ReviewMaxOrderByAggregateInput = {
   orderNumber?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   overallRating?: Prisma.SortOrder
+  serviceRating?: Prisma.SortOrder
+  deliveryRating?: Prisma.SortOrder
+  packagingRating?: Prisma.SortOrder
   serviceComment?: Prisma.SortOrder
   deliveryComment?: Prisma.SortOrder
+  packagingComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -496,8 +595,12 @@ export type ReviewMinOrderByAggregateInput = {
   orderNumber?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   overallRating?: Prisma.SortOrder
+  serviceRating?: Prisma.SortOrder
+  deliveryRating?: Prisma.SortOrder
+  packagingRating?: Prisma.SortOrder
   serviceComment?: Prisma.SortOrder
   deliveryComment?: Prisma.SortOrder
+  packagingComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -506,6 +609,9 @@ export type ReviewMinOrderByAggregateInput = {
 
 export type ReviewSumOrderByAggregateInput = {
   overallRating?: Prisma.SortOrder
+  serviceRating?: Prisma.SortOrder
+  deliveryRating?: Prisma.SortOrder
+  packagingRating?: Prisma.SortOrder
 }
 
 export type ReviewScalarRelationFilter = {
@@ -605,8 +711,12 @@ export type ReviewCreateWithoutUserInput = {
   id?: string
   orderNumber: string
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -620,8 +730,12 @@ export type ReviewUncheckedCreateWithoutUserInput = {
   orderId: string
   orderNumber: string
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -664,8 +778,12 @@ export type ReviewScalarWhereInput = {
   orderNumber?: Prisma.StringFilter<"Review"> | string
   userId?: Prisma.UuidNullableFilter<"Review"> | string | null
   overallRating?: Prisma.IntFilter<"Review"> | number
+  serviceRating?: Prisma.IntNullableFilter<"Review"> | number | null
+  deliveryRating?: Prisma.IntNullableFilter<"Review"> | number | null
+  packagingRating?: Prisma.IntNullableFilter<"Review"> | number | null
   serviceComment?: Prisma.StringNullableFilter<"Review"> | string | null
   deliveryComment?: Prisma.StringNullableFilter<"Review"> | string | null
+  packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
@@ -676,8 +794,12 @@ export type ReviewCreateWithoutOrderInput = {
   id?: string
   orderNumber: string
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -691,8 +813,12 @@ export type ReviewUncheckedCreateWithoutOrderInput = {
   orderNumber: string
   userId?: string | null
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -720,8 +846,12 @@ export type ReviewUpdateWithoutOrderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -735,8 +865,12 @@ export type ReviewUncheckedUpdateWithoutOrderInput = {
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -748,8 +882,12 @@ export type ReviewCreateWithoutProductReviewsInput = {
   id?: string
   orderNumber: string
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -764,8 +902,12 @@ export type ReviewUncheckedCreateWithoutProductReviewsInput = {
   orderNumber: string
   userId?: string | null
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -792,8 +934,12 @@ export type ReviewUpdateWithoutProductReviewsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -808,8 +954,12 @@ export type ReviewUncheckedUpdateWithoutProductReviewsInput = {
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -821,8 +971,12 @@ export type ReviewCreateManyUserInput = {
   orderId: string
   orderNumber: string
   overallRating: number
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
   createdAt?: Date | string
@@ -833,8 +987,12 @@ export type ReviewUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -848,8 +1006,12 @@ export type ReviewUncheckedUpdateWithoutUserInput = {
   orderId?: Prisma.StringFieldUpdateOperationsInput | string
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -862,8 +1024,12 @@ export type ReviewUncheckedUpdateManyWithoutUserInput = {
   orderId?: Prisma.StringFieldUpdateOperationsInput | string
   orderNumber?: Prisma.StringFieldUpdateOperationsInput | string
   overallRating?: Prisma.IntFieldUpdateOperationsInput | number
+  serviceRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  deliveryRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  packagingRating?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -907,8 +1073,12 @@ export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   orderNumber?: boolean
   userId?: boolean
   overallRating?: boolean
+  serviceRating?: boolean
+  deliveryRating?: boolean
+  packagingRating?: boolean
   serviceComment?: boolean
   deliveryComment?: boolean
+  packagingComment?: boolean
   language?: boolean
   submittedAt?: boolean
   createdAt?: boolean
@@ -925,8 +1095,12 @@ export type ReviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   orderNumber?: boolean
   userId?: boolean
   overallRating?: boolean
+  serviceRating?: boolean
+  deliveryRating?: boolean
+  packagingRating?: boolean
   serviceComment?: boolean
   deliveryComment?: boolean
+  packagingComment?: boolean
   language?: boolean
   submittedAt?: boolean
   createdAt?: boolean
@@ -941,8 +1115,12 @@ export type ReviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   orderNumber?: boolean
   userId?: boolean
   overallRating?: boolean
+  serviceRating?: boolean
+  deliveryRating?: boolean
+  packagingRating?: boolean
   serviceComment?: boolean
   deliveryComment?: boolean
+  packagingComment?: boolean
   language?: boolean
   submittedAt?: boolean
   createdAt?: boolean
@@ -957,15 +1135,19 @@ export type ReviewSelectScalar = {
   orderNumber?: boolean
   userId?: boolean
   overallRating?: boolean
+  serviceRating?: boolean
+  deliveryRating?: boolean
+  packagingRating?: boolean
   serviceComment?: boolean
   deliveryComment?: boolean
+  packagingComment?: boolean
   language?: boolean
   submittedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "userId" | "overallRating" | "serviceComment" | "deliveryComment" | "language" | "submittedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
+export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "userId" | "overallRating" | "serviceRating" | "deliveryRating" | "packagingRating" | "serviceComment" | "deliveryComment" | "packagingComment" | "language" | "submittedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
 export type ReviewInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
   user?: boolean | Prisma.Review$userArgs<ExtArgs>
@@ -997,11 +1179,27 @@ export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
      */
     userId: string | null
     /**
-     * Overall shopping-experience rating, 1-5.
+     * Overall shopping-experience rating, 1-5. The only required rating.
      */
     overallRating: number
+    /**
+     * Optional 1-5 ratings. Nullable because the customer may skip them —
+     * requiring them would cost completions for feedback that is nice to have.
+     */
+    serviceRating: number | null
+    deliveryRating: number | null
+    /**
+     * How the products themselves arrived — packaging and condition on delivery,
+     * as distinct from the courier's speed and handling (deliveryRating).
+     */
+    packagingRating: number | null
     serviceComment: string | null
     deliveryComment: string | null
+    /**
+     * Free-text notes on packaging and the condition on arrival, paired with
+     * packagingRating.
+     */
+    packagingComment: string | null
     /**
      * Language the review was submitted in ("he" | "en").
      */
@@ -1440,8 +1638,12 @@ export interface ReviewFieldRefs {
   readonly orderNumber: Prisma.FieldRef<"Review", 'String'>
   readonly userId: Prisma.FieldRef<"Review", 'String'>
   readonly overallRating: Prisma.FieldRef<"Review", 'Int'>
+  readonly serviceRating: Prisma.FieldRef<"Review", 'Int'>
+  readonly deliveryRating: Prisma.FieldRef<"Review", 'Int'>
+  readonly packagingRating: Prisma.FieldRef<"Review", 'Int'>
   readonly serviceComment: Prisma.FieldRef<"Review", 'String'>
   readonly deliveryComment: Prisma.FieldRef<"Review", 'String'>
+  readonly packagingComment: Prisma.FieldRef<"Review", 'String'>
   readonly language: Prisma.FieldRef<"Review", 'String'>
   readonly submittedAt: Prisma.FieldRef<"Review", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Review", 'DateTime'>

@@ -13,10 +13,12 @@ import { submitReview, SIZING_FIT_VALUES } from '@/lib/reviews/review-submission
 
 export const dynamic = 'force-dynamic'
 
+/** 1-5 star rating that the customer may leave unanswered. */
+const optionalRating = z.number().int().min(1).max(5).nullable().optional()
+
 const productReviewSchema = z.object({
   orderItemId: z.string().min(1),
   rating: z.number().int().min(1).max(5),
-  title: z.string().trim().max(120).nullable().optional(),
   body: z.string().trim().max(4000).nullable().optional(),
   sizingFit: z.enum(SIZING_FIT_VALUES).nullable().optional(),
   photoUrl: z.string().url().max(2048).nullable().optional(),
@@ -26,8 +28,12 @@ const requestSchema = z.object({
   orderNumber: z.string().min(1),
   token: z.string().min(1),
   overallRating: z.number().int().min(1).max(5),
+  serviceRating: optionalRating,
+  deliveryRating: optionalRating,
+  packagingRating: optionalRating,
   serviceComment: z.string().trim().max(4000).nullable().optional(),
   deliveryComment: z.string().trim().max(4000).nullable().optional(),
+  packagingComment: z.string().trim().max(4000).nullable().optional(),
   language: z.enum(['he', 'en']).default('he'),
   products: z.array(productReviewSchema).min(1).max(50),
 })

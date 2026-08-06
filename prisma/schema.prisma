@@ -441,10 +441,20 @@ model Review {
   orderNumber     String   @map("order_number")
   /// Null for guest checkouts, which have no user account.
   userId          String?  @map("user_id") @db.Uuid
-  /// Overall shopping-experience rating, 1-5.
+  /// Overall shopping-experience rating, 1-5. The only required rating.
   overallRating   Int      @map("overall_rating")
+  /// Optional 1-5 ratings. Nullable because the customer may skip them —
+  /// requiring them would cost completions for feedback that is nice to have.
+  serviceRating   Int?     @map("service_rating")
+  deliveryRating  Int?     @map("delivery_rating")
+  /// How the products themselves arrived — packaging and condition on delivery,
+  /// as distinct from the courier's speed and handling (deliveryRating).
+  packagingRating Int?     @map("packaging_rating")
   serviceComment  String?  @map("service_comment")
   deliveryComment String?  @map("delivery_comment")
+  /// Free-text notes on packaging and the condition on arrival, paired with
+  /// packagingRating.
+  packagingComment String? @map("packaging_comment")
   /// Language the review was submitted in ("he" | "en").
   language        String   @default("he")
   submittedAt     DateTime @default(now()) @map("submitted_at")
@@ -469,6 +479,9 @@ model ProductReview {
   /// Denormalized so product-level aggregates never need to join order_items.
   productSku  String   @map("product_sku")
   rating      Int
+  /// No longer collected — the form asks only for a rating, fit and free text.
+  /// Kept nullable rather than dropped so the change is reversible without a
+  /// destructive migration; nothing writes to it.
   title       String?
   body        String?
   /// "runs_small" | "true_to_size" | "runs_large"

@@ -945,6 +945,11 @@ export type $ProductReviewPayload<ExtArgs extends runtime.Types.Extensions.Inter
      */
     productSku: string
     rating: number
+    /**
+     * No longer collected — the form asks only for a rating, fit and free text.
+     * Kept nullable rather than dropped so the change is reversible without a
+     * destructive migration; nothing writes to it.
+     */
     title: string | null
     body: string | null
     /**

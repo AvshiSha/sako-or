@@ -1,4 +1,3 @@
-import type { Metadata } from 'next'
 import { loadReviewableOrder } from '@/lib/reviews/review-submission'
 import ReviewForm from './ReviewForm'
 import { reviewPageCopy } from './copy'
@@ -12,11 +11,6 @@ import { reviewPageCopy } from './copy'
  */
 
 export const dynamic = 'force-dynamic'
-
-/** Never index review pages — they are private, per-order URLs. */
-export const metadata: Metadata = {
-  robots: { index: false, follow: false },
-}
 
 interface PageProps {
   params: Promise<{ lng: string; orderNumber: string }>
@@ -38,8 +32,9 @@ export default async function ReviewOrderPage({ params, searchParams }: PageProp
     // "bad token" from "no such order" would leak which order numbers are real.
     return (
       <Shell language={language}>
-        <h1 style={styles.heading}>{copy.invalidTitle}</h1>
-        <p style={styles.paragraph}>{copy.invalidBody}</p>
+        <Brand />
+        <h1 className="text-[22px] font-bold text-neutral-900">{copy.invalidTitle}</h1>
+        <p className="mt-3 text-[15px] leading-7 text-neutral-600">{copy.invalidBody}</p>
       </Shell>
     )
   }
@@ -49,9 +44,19 @@ export default async function ReviewOrderPage({ params, searchParams }: PageProp
   if (order.alreadyReviewed) {
     return (
       <Shell language={language}>
-        <h1 style={styles.heading}>{copy.alreadyTitle}</h1>
-        <p style={styles.paragraph}>{copy.alreadyBody}</p>
-        <GoogleReviewLink language={language} />
+        <Brand />
+        <h1 className="text-[22px] font-bold text-neutral-900">{copy.alreadyTitle}</h1>
+        <p className="mt-3 text-[15px] leading-7 text-neutral-600">{copy.alreadyBody}</p>
+        {process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL ? (
+          <a
+            href={process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex min-h-[44px] items-center justify-center rounded-lg border border-neutral-900 px-6 text-[15px] font-semibold text-neutral-900 transition active:scale-[0.98] hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+          >
+            {copy.googleCta}
+          </a>
+        ) : null}
       </Shell>
     )
   }
@@ -70,60 +75,28 @@ export default async function ReviewOrderPage({ params, searchParams }: PageProp
   )
 }
 
+/**
+ * Page frame. `dir` is set here so every logical Tailwind utility below
+ * (ms-/me-/ps-/pe-/text-start) resolves correctly for Hebrew without duplicate
+ * styles — physical left/right properties are avoided throughout.
+ */
 function Shell({ language, children }: { language: 'he' | 'en'; children: React.ReactNode }) {
-  const dir = language === 'he' ? 'rtl' : 'ltr'
   return (
-    <main dir={dir} style={{ ...styles.main, textAlign: language === 'he' ? 'right' : 'left' }}>
-      <div style={styles.card}>{children}</div>
-    </main>
+    <div dir={language === 'he' ? 'rtl' : 'ltr'} className="min-h-screen bg-neutral-100">
+      <main className="mx-auto w-full max-w-[640px] px-4 py-6 sm:py-10">
+        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-neutral-900/5 sm:p-8">
+          {children}
+        </div>
+        <p className="mt-6 text-center text-[12px] text-neutral-400">SAKO OR</p>
+      </main>
+    </div>
   )
 }
 
-function GoogleReviewLink({ language }: { language: 'he' | 'en' }) {
-  const url = process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL
-  if (!url) return null
-
-  const copy = reviewPageCopy[language]
+function Brand() {
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer" style={styles.googleButton}>
-      {copy.googleCta}
-    </a>
+    <p className="mb-6 text-center text-[13px] font-semibold tracking-[0.3em] text-neutral-400">
+      SAKO OR
+    </p>
   )
 }
-
-const styles = {
-  main: {
-    background: '#f6f6f6',
-    minHeight: '100vh',
-    padding: '32px 16px',
-  },
-  card: {
-    background: '#ffffff',
-    borderRadius: '12px',
-    margin: '0 auto',
-    maxWidth: '640px',
-    padding: '32px 24px',
-  },
-  heading: {
-    fontSize: '22px',
-    fontWeight: 700,
-    margin: '0 0 12px',
-  },
-  paragraph: {
-    color: '#555555',
-    fontSize: '15px',
-    lineHeight: '24px',
-    margin: '0 0 20px',
-  },
-  googleButton: {
-    background: '#ffffff',
-    border: '1px solid #111111',
-    borderRadius: '8px',
-    color: '#111111',
-    display: 'inline-block',
-    fontSize: '15px',
-    fontWeight: 600,
-    padding: '12px 24px',
-    textDecoration: 'none',
-  },
-} as const

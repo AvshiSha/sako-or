@@ -92,7 +92,6 @@ export async function loadReviewableOrder(params: {
 export interface ProductReviewInput {
   orderItemId: string
   rating: number
-  title?: string | null
   body?: string | null
   sizingFit?: SizingFit | null
   photoUrl?: string | null
@@ -101,9 +100,16 @@ export interface ProductReviewInput {
 export interface SubmitReviewInput {
   orderNumber: string
   token: string | null | undefined
+  /** The only required rating. */
   overallRating: number
+  /** Optional aspect ratings, 1-5. */
+  serviceRating?: number | null
+  deliveryRating?: number | null
+  /** Condition the products arrived in, as opposed to the courier's handling. */
+  packagingRating?: number | null
   serviceComment?: string | null
   deliveryComment?: string | null
+  packagingComment?: string | null
   language: 'he' | 'en'
   products: ProductReviewInput[]
 }
@@ -151,15 +157,21 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
         orderNumber: input.orderNumber,
         userId: order.userId,
         overallRating: input.overallRating,
+        // `?? null` rather than `|| null`: these are optional 1-5 ratings, and a
+        // falsy-check would be fine today but silently swallow a 0 if the scale
+        // ever gained one.
+        serviceRating: input.serviceRating ?? null,
+        deliveryRating: input.deliveryRating ?? null,
+        packagingRating: input.packagingRating ?? null,
         serviceComment: input.serviceComment?.trim() || null,
         deliveryComment: input.deliveryComment?.trim() || null,
+        packagingComment: input.packagingComment?.trim() || null,
         language: input.language,
         productReviews: {
           create: input.products.map((product) => ({
             orderItemId: product.orderItemId,
             productSku: skuByItemId.get(product.orderItemId)!,
             rating: product.rating,
-            title: product.title?.trim() || null,
             body: product.body?.trim() || null,
             sizingFit: product.sizingFit ?? null,
             photoUrl: product.photoUrl?.trim() || null,

@@ -102,7 +102,15 @@ export function getSiteOrigin(): string {
   return raw.replace(/\/+$/, '')
 }
 
-/** Builds the customer-facing review URL for an order. */
+/**
+ * Builds the customer-facing review URL for an order.
+ *
+ * Note the path shape: `/review/<lng>/...`, NOT `/<lng>/review/...`. The page lives
+ * outside the `[lng]` route segment so it does not inherit that layout's header and
+ * footer — the review link is a one-off destination from an SMS, and the site chrome
+ * is a distraction with nowhere useful to go. `review` is registered in middleware's
+ * UNLOCALIZED_ROUTES so it is not redirected to a locale-prefixed path.
+ */
 export function buildReviewUrl(params: {
   orderNumber: string
   language: 'he' | 'en'
@@ -111,7 +119,7 @@ export function buildReviewUrl(params: {
   const { token } = signReviewToken(params.orderNumber, params.ttlMs)
   const encodedOrder = encodeURIComponent(params.orderNumber)
 
-  return `${getSiteOrigin()}/${params.language}/review/order/${encodedOrder}?token=${token}`
+  return `${getSiteOrigin()}/review/${params.language}/order/${encodedOrder}?token=${token}`
 }
 
 /** Loyalty-club signup URL included for customers who are not yet members. */

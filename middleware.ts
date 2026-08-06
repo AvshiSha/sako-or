@@ -15,7 +15,11 @@ const DEFAULT_LOCALE = 'he'
 // (app/admin), which also lives outside [lng] and isn't meant to be indexed
 // or localized at all. `preview` is the admin product-preview route
 // (app/preview), which takes its own `lng` query param instead of a path
-// segment and is noindexed in its own layouts. They're marked noindex in
+// segment and is noindexed in its own layouts. `review` is the post-delivery
+// customer review page (app/review), which lives outside [lng] on purpose: it
+// is reached from a signed one-off link and is deliberately chrome-free, so it
+// must not inherit the [lng] layout's header and footer. It carries its own
+// `lng` path segment (/review/he/order/...). They're marked noindex in
 // their own layouts rather than redirected.
 // Matched case-insensitively: the actual Next.js routes (app/Cancel etc.) are
 // case-sensitive and would 404 on a differently-cased request regardless,
@@ -27,6 +31,7 @@ const UNLOCALIZED_ROUTES = new Set([
   'success',
   'admin',
   'preview',
+  'review',
 ])
 
 export function middleware(request: NextRequest) {

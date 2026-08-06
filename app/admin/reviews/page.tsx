@@ -43,6 +43,7 @@ interface Review {
   customerPhone: string | null
   currentPointsBalance: string | null
   isClubMember: boolean
+  joinedAfterOrder: boolean
   overallRating: number
   serviceRating: number | null
   deliveryRating: number | null
@@ -186,10 +187,21 @@ function ReviewCard({ review, onChanged }: { review: Review; onChanged: () => vo
               {review.customerName ?? 'Guest'}
             </span>
             {review.isClubMember ? (
-              <span className={adminTheme.badgeActive}>Club member</span>
+              <span className={adminTheme.badgeActive}>
+                Club member
+                {/* The order was placed as a guest — she joined afterwards, most
+                    likely because the review request asked her to. Worth showing
+                    so the balance below is not mistaken for a stale figure. */}
+                {review.joinedAfterOrder ? ' (joined after order)' : ''}
+              </span>
             ) : (
               <span className={adminTheme.badgeInactive}>Not a member</span>
             )}
+            {review.currentPointsBalance !== null ? (
+              <span className="text-xs text-gray-500">
+                balance {review.currentPointsBalance}
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-xs text-gray-500">
             {review.orderNumber} · {new Date(review.submittedAt).toLocaleString()}

@@ -1,6 +1,7 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
+import { normalizeIsraelE164 } from '../phone'
 import { notifyPointsUpdated } from './points-notification'
 
 /**
@@ -34,6 +35,9 @@ export interface AdminReview {
   /** Current balance from our mirror of Verifone, to pre-fill the "from" box. */
   currentPointsBalance: string | null
   isClubMember: boolean
+  /** Account was matched by email/phone rather than Order.userId — i.e. the
+   *  customer registered after placing the order. */
+  joinedAfterOrder: boolean
   overallRating: number
   serviceRating: number | null
   deliveryRating: number | null
@@ -67,6 +71,64 @@ function whereFor(filter: ReviewFilter): Prisma.ReviewWhereInput {
     default:
       return {}
   }
+}
+
+/**
+ * Finds the registered account behind a review that has no linked user.
+ *
+ * `Review.userId` is copied from `Order.userId`, which is only ever set at checkout
+ * — nothing back-links a guest order when that person registers later. Since the
+ * review request explicitly asks non-members to join the club *before* reviewing,
+ * the common case is exactly this: she signs up, submits the review, and the row
+ * still says "guest".
+ *
+ * Without this lookup the admin would see "Not a member" for a customer who has
+ * just joined, with no points balance to work from — and might skip paying her.
+ *
+ * Matching is by email (lowercased) and by phone. The phone comparison must be
+ * normalised: orders store the local format (05XXXXXXXX) while users store E.164
+ * (+9725XXXXXXXX), so a raw comparison silently never matches.
+ */
+async function resolveGuestAccounts(
+  contacts: { email: string | null; phone: string | null }[]
+): Promise<Map<string, { pointsBalance: Prisma.Decimal; verifoneCustomerNo: string | null; phone: string | null }>> {
+  const emails = new Set<string>()
+  const phones = new Set<string>()
+
+  for (const contact of contacts) {
+    const email = contact.email?.trim().toLowerCase()
+    if (email) emails.add(email)
+    const e164 = normalizeIsraelE164(contact.phone)
+    if (e164) phones.add(e164)
+  }
+
+  if (emails.size === 0 && phones.size === 0) return new Map()
+
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        ...(emails.size > 0 ? [{ email: { in: [...emails] } }] : []),
+        ...(phones.size > 0 ? [{ phone: { in: [...phones] } }] : []),
+      ],
+    },
+    select: { email: true, phone: true, pointsBalance: true, verifoneCustomerNo: true },
+  })
+
+  // Keyed by both email and phone so either identifier resolves the same account.
+  const byKey = new Map<
+    string,
+    { pointsBalance: Prisma.Decimal; verifoneCustomerNo: string | null; phone: string | null }
+  >()
+  for (const user of users) {
+    const value = {
+      pointsBalance: user.pointsBalance,
+      verifoneCustomerNo: user.verifoneCustomerNo,
+      phone: user.phone,
+    }
+    if (user.email) byKey.set(`email:${user.email.toLowerCase()}`, value)
+    if (user.phone) byKey.set(`phone:${user.phone}`, value)
+  }
+  return byKey
 }
 
 export async function listReviews(params: {
@@ -114,20 +176,49 @@ export async function listReviews(params: {
     prisma.review.count({ where: whereFor('unpublished') }),
   ])
 
+  // Reviews from guest checkouts have no linked user, but the person may well have
+  // registered since — including in direct response to our own "join before you
+  // review" prompt. Resolve those by contact details.
+  const guestAccounts = await resolveGuestAccounts(
+    rows
+      .filter((review) => !review.user)
+      .map((review) => ({
+        email: review.order.customerEmail,
+        phone: review.order.customerPhone,
+      }))
+  )
+
+  function accountFor(review: (typeof rows)[number]) {
+    if (review.user) return { account: review.user, matchedLater: false }
+
+    const email = review.order.customerEmail?.trim().toLowerCase()
+    const phone = normalizeIsraelE164(review.order.customerPhone)
+    const found =
+      (email ? guestAccounts.get(`email:${email}`) : undefined) ??
+      (phone ? guestAccounts.get(`phone:${phone}`) : undefined)
+
+    return { account: found ?? null, matchedLater: Boolean(found) }
+  }
+
   return {
     total,
     counts: { all, awaitingPoints, awarded, unpublished },
-    reviews: rows.map((review) => ({
+    reviews: rows.map((review) => {
+      const { account, matchedLater } = accountFor(review)
+
+      return {
       id: review.id,
       orderNumber: review.orderNumber,
       submittedAt: review.submittedAt.toISOString(),
       language: review.language,
       customerName: review.order.customerName,
       customerEmail: review.order.customerEmail,
-      customerPhone: review.user?.phone ?? review.order.customerPhone,
-      currentPointsBalance: review.user?.pointsBalance?.toString() ?? null,
+      customerPhone: account?.phone ?? review.order.customerPhone,
+      currentPointsBalance: account?.pointsBalance?.toString() ?? null,
       // A Verifone customer number is our proxy for club membership; guests have none.
-      isClubMember: Boolean(review.user?.verifoneCustomerNo),
+      isClubMember: Boolean(account?.verifoneCustomerNo),
+      /** True when the account was found by contact details, not by Order.userId. */
+      joinedAfterOrder: matchedLater,
       overallRating: review.overallRating,
       serviceRating: review.serviceRating,
       deliveryRating: review.deliveryRating,
@@ -153,7 +244,8 @@ export async function listReviews(params: {
         sizingFit: product.sizingFit,
         isPublished: product.isPublished,
       })),
-    })),
+      }
+    }),
   }
 }
 

@@ -448,6 +448,12 @@ export const ReviewScalarFieldEnum = {
   packagingComment: 'packagingComment',
   language: 'language',
   submittedAt: 'submittedAt',
+  pointsAwardedAt: 'pointsAwardedAt',
+  pointsBefore: 'pointsBefore',
+  pointsAfter: 'pointsAfter',
+  pointsAwardedBy: 'pointsAwardedBy',
+  notifiedAt: 'notifiedAt',
+  notifyResult: 'notifyResult',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

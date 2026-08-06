@@ -14,7 +14,8 @@ import {
   CurrencyDollarIcon,
   MegaphoneIcon,
   PencilSquareIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  StarIcon
 } from '@heroicons/react/24/outline'
 import { adminTheme } from './_components/adminTheme'
 
@@ -75,6 +76,12 @@ function AdminDashboard() {
       href: '/admin/content/pages',
       icon: DocumentTextIcon,
       description: 'Edit Terms, Privacy, and other static pages'
+    },
+    {
+      name: 'Customer Reviews',
+      href: '/admin/reviews',
+      icon: StarIcon,
+      description: 'Read reviews, record loyalty points, notify customers'
     },
   ]
 

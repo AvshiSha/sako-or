@@ -32,6 +32,8 @@ export type ReviewAvgAggregateOutputType = {
   serviceRating: number | null
   deliveryRating: number | null
   packagingRating: number | null
+  pointsBefore: runtime.Decimal | null
+  pointsAfter: runtime.Decimal | null
 }
 
 export type ReviewSumAggregateOutputType = {
@@ -39,6 +41,8 @@ export type ReviewSumAggregateOutputType = {
   serviceRating: number | null
   deliveryRating: number | null
   packagingRating: number | null
+  pointsBefore: runtime.Decimal | null
+  pointsAfter: runtime.Decimal | null
 }
 
 export type ReviewMinAggregateOutputType = {
@@ -55,6 +59,11 @@ export type ReviewMinAggregateOutputType = {
   packagingComment: string | null
   language: string | null
   submittedAt: Date | null
+  pointsAwardedAt: Date | null
+  pointsBefore: runtime.Decimal | null
+  pointsAfter: runtime.Decimal | null
+  pointsAwardedBy: string | null
+  notifiedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -73,6 +82,11 @@ export type ReviewMaxAggregateOutputType = {
   packagingComment: string | null
   language: string | null
   submittedAt: Date | null
+  pointsAwardedAt: Date | null
+  pointsBefore: runtime.Decimal | null
+  pointsAfter: runtime.Decimal | null
+  pointsAwardedBy: string | null
+  notifiedAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -91,6 +105,12 @@ export type ReviewCountAggregateOutputType = {
   packagingComment: number
   language: number
   submittedAt: number
+  pointsAwardedAt: number
+  pointsBefore: number
+  pointsAfter: number
+  pointsAwardedBy: number
+  notifiedAt: number
+  notifyResult: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -102,6 +122,8 @@ export type ReviewAvgAggregateInputType = {
   serviceRating?: true
   deliveryRating?: true
   packagingRating?: true
+  pointsBefore?: true
+  pointsAfter?: true
 }
 
 export type ReviewSumAggregateInputType = {
@@ -109,6 +131,8 @@ export type ReviewSumAggregateInputType = {
   serviceRating?: true
   deliveryRating?: true
   packagingRating?: true
+  pointsBefore?: true
+  pointsAfter?: true
 }
 
 export type ReviewMinAggregateInputType = {
@@ -125,6 +149,11 @@ export type ReviewMinAggregateInputType = {
   packagingComment?: true
   language?: true
   submittedAt?: true
+  pointsAwardedAt?: true
+  pointsBefore?: true
+  pointsAfter?: true
+  pointsAwardedBy?: true
+  notifiedAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -143,6 +172,11 @@ export type ReviewMaxAggregateInputType = {
   packagingComment?: true
   language?: true
   submittedAt?: true
+  pointsAwardedAt?: true
+  pointsBefore?: true
+  pointsAfter?: true
+  pointsAwardedBy?: true
+  notifiedAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -161,6 +195,12 @@ export type ReviewCountAggregateInputType = {
   packagingComment?: true
   language?: true
   submittedAt?: true
+  pointsAwardedAt?: true
+  pointsBefore?: true
+  pointsAfter?: true
+  pointsAwardedBy?: true
+  notifiedAt?: true
+  notifyResult?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -266,6 +306,12 @@ export type ReviewGroupByOutputType = {
   packagingComment: string | null
   language: string
   submittedAt: Date
+  pointsAwardedAt: Date | null
+  pointsBefore: runtime.Decimal | null
+  pointsAfter: runtime.Decimal | null
+  pointsAwardedBy: string | null
+  notifiedAt: Date | null
+  notifyResult: runtime.JsonValue | null
   createdAt: Date
   updatedAt: Date
   _count: ReviewCountAggregateOutputType | null
@@ -307,6 +353,12 @@ export type ReviewWhereInput = {
   packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
+  pointsAwardedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  pointsBefore?: Prisma.DecimalNullableFilter<"Review"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.DecimalNullableFilter<"Review"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.StringNullableFilter<"Review"> | string | null
+  notifiedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  notifyResult?: Prisma.JsonNullableFilter<"Review">
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   order?: Prisma.XOR<Prisma.OrderScalarRelationFilter, Prisma.OrderWhereInput>
@@ -328,6 +380,12 @@ export type ReviewOrderByWithRelationInput = {
   packagingComment?: Prisma.SortOrderInput | Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
+  pointsAwardedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  pointsBefore?: Prisma.SortOrderInput | Prisma.SortOrder
+  pointsAfter?: Prisma.SortOrderInput | Prisma.SortOrder
+  pointsAwardedBy?: Prisma.SortOrderInput | Prisma.SortOrder
+  notifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  notifyResult?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   order?: Prisma.OrderOrderByWithRelationInput
@@ -352,6 +410,12 @@ export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
+  pointsAwardedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  pointsBefore?: Prisma.DecimalNullableFilter<"Review"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.DecimalNullableFilter<"Review"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.StringNullableFilter<"Review"> | string | null
+  notifiedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  notifyResult?: Prisma.JsonNullableFilter<"Review">
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   order?: Prisma.XOR<Prisma.OrderScalarRelationFilter, Prisma.OrderWhereInput>
@@ -373,6 +437,12 @@ export type ReviewOrderByWithAggregationInput = {
   packagingComment?: Prisma.SortOrderInput | Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
+  pointsAwardedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  pointsBefore?: Prisma.SortOrderInput | Prisma.SortOrder
+  pointsAfter?: Prisma.SortOrderInput | Prisma.SortOrder
+  pointsAwardedBy?: Prisma.SortOrderInput | Prisma.SortOrder
+  notifiedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  notifyResult?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ReviewCountOrderByAggregateInput
@@ -399,6 +469,12 @@ export type ReviewScalarWhereWithAggregatesInput = {
   packagingComment?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   language?: Prisma.StringWithAggregatesFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
+  pointsAwardedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
+  pointsBefore?: Prisma.DecimalNullableWithAggregatesFilter<"Review"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.DecimalNullableWithAggregatesFilter<"Review"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
+  notifiedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
+  notifyResult?: Prisma.JsonNullableWithAggregatesFilter<"Review">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
 }
@@ -415,6 +491,12 @@ export type ReviewCreateInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   order: Prisma.OrderCreateNestedOneWithoutReviewInput
@@ -436,6 +518,12 @@ export type ReviewUncheckedCreateInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   productReviews?: Prisma.ProductReviewUncheckedCreateNestedManyWithoutReviewInput
@@ -453,6 +541,12 @@ export type ReviewUpdateInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   order?: Prisma.OrderUpdateOneRequiredWithoutReviewNestedInput
@@ -474,6 +568,12 @@ export type ReviewUncheckedUpdateInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   productReviews?: Prisma.ProductReviewUncheckedUpdateManyWithoutReviewNestedInput
@@ -493,6 +593,12 @@ export type ReviewCreateManyInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -509,6 +615,12 @@ export type ReviewUpdateManyMutationInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -527,6 +639,12 @@ export type ReviewUncheckedUpdateManyInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -560,6 +678,12 @@ export type ReviewCountOrderByAggregateInput = {
   packagingComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
+  pointsAwardedAt?: Prisma.SortOrder
+  pointsBefore?: Prisma.SortOrder
+  pointsAfter?: Prisma.SortOrder
+  pointsAwardedBy?: Prisma.SortOrder
+  notifiedAt?: Prisma.SortOrder
+  notifyResult?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -569,6 +693,8 @@ export type ReviewAvgOrderByAggregateInput = {
   serviceRating?: Prisma.SortOrder
   deliveryRating?: Prisma.SortOrder
   packagingRating?: Prisma.SortOrder
+  pointsBefore?: Prisma.SortOrder
+  pointsAfter?: Prisma.SortOrder
 }
 
 export type ReviewMaxOrderByAggregateInput = {
@@ -585,6 +711,11 @@ export type ReviewMaxOrderByAggregateInput = {
   packagingComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
+  pointsAwardedAt?: Prisma.SortOrder
+  pointsBefore?: Prisma.SortOrder
+  pointsAfter?: Prisma.SortOrder
+  pointsAwardedBy?: Prisma.SortOrder
+  notifiedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -603,6 +734,11 @@ export type ReviewMinOrderByAggregateInput = {
   packagingComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
+  pointsAwardedAt?: Prisma.SortOrder
+  pointsBefore?: Prisma.SortOrder
+  pointsAfter?: Prisma.SortOrder
+  pointsAwardedBy?: Prisma.SortOrder
+  notifiedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -612,6 +748,8 @@ export type ReviewSumOrderByAggregateInput = {
   serviceRating?: Prisma.SortOrder
   deliveryRating?: Prisma.SortOrder
   packagingRating?: Prisma.SortOrder
+  pointsBefore?: Prisma.SortOrder
+  pointsAfter?: Prisma.SortOrder
 }
 
 export type ReviewScalarRelationFilter = {
@@ -719,6 +857,12 @@ export type ReviewCreateWithoutUserInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   order: Prisma.OrderCreateNestedOneWithoutReviewInput
@@ -738,6 +882,12 @@ export type ReviewUncheckedCreateWithoutUserInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   productReviews?: Prisma.ProductReviewUncheckedCreateNestedManyWithoutReviewInput
@@ -786,6 +936,12 @@ export type ReviewScalarWhereInput = {
   packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
+  pointsAwardedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  pointsBefore?: Prisma.DecimalNullableFilter<"Review"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.DecimalNullableFilter<"Review"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.StringNullableFilter<"Review"> | string | null
+  notifiedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
+  notifyResult?: Prisma.JsonNullableFilter<"Review">
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
 }
@@ -802,6 +958,12 @@ export type ReviewCreateWithoutOrderInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutReviewsInput
@@ -821,6 +983,12 @@ export type ReviewUncheckedCreateWithoutOrderInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   productReviews?: Prisma.ProductReviewUncheckedCreateNestedManyWithoutReviewInput
@@ -854,6 +1022,12 @@ export type ReviewUpdateWithoutOrderInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutReviewsNestedInput
@@ -873,6 +1047,12 @@ export type ReviewUncheckedUpdateWithoutOrderInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   productReviews?: Prisma.ProductReviewUncheckedUpdateManyWithoutReviewNestedInput
@@ -890,6 +1070,12 @@ export type ReviewCreateWithoutProductReviewsInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   order: Prisma.OrderCreateNestedOneWithoutReviewInput
@@ -910,6 +1096,12 @@ export type ReviewUncheckedCreateWithoutProductReviewsInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -942,6 +1134,12 @@ export type ReviewUpdateWithoutProductReviewsInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   order?: Prisma.OrderUpdateOneRequiredWithoutReviewNestedInput
@@ -962,6 +1160,12 @@ export type ReviewUncheckedUpdateWithoutProductReviewsInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -979,6 +1183,12 @@ export type ReviewCreateManyUserInput = {
   packagingComment?: string | null
   language?: string
   submittedAt?: Date | string
+  pointsAwardedAt?: Date | string | null
+  pointsBefore?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: string | null
+  notifiedAt?: Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -995,6 +1205,12 @@ export type ReviewUpdateWithoutUserInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   order?: Prisma.OrderUpdateOneRequiredWithoutReviewNestedInput
@@ -1014,6 +1230,12 @@ export type ReviewUncheckedUpdateWithoutUserInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   productReviews?: Prisma.ProductReviewUncheckedUpdateManyWithoutReviewNestedInput
@@ -1032,6 +1254,12 @@ export type ReviewUncheckedUpdateManyWithoutUserInput = {
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pointsBefore?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAfter?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  pointsAwardedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  notifiedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  notifyResult?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1081,6 +1309,12 @@ export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   packagingComment?: boolean
   language?: boolean
   submittedAt?: boolean
+  pointsAwardedAt?: boolean
+  pointsBefore?: boolean
+  pointsAfter?: boolean
+  pointsAwardedBy?: boolean
+  notifiedAt?: boolean
+  notifyResult?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
@@ -1103,6 +1337,12 @@ export type ReviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   packagingComment?: boolean
   language?: boolean
   submittedAt?: boolean
+  pointsAwardedAt?: boolean
+  pointsBefore?: boolean
+  pointsAfter?: boolean
+  pointsAwardedBy?: boolean
+  notifiedAt?: boolean
+  notifyResult?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
@@ -1123,6 +1363,12 @@ export type ReviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   packagingComment?: boolean
   language?: boolean
   submittedAt?: boolean
+  pointsAwardedAt?: boolean
+  pointsBefore?: boolean
+  pointsAfter?: boolean
+  pointsAwardedBy?: boolean
+  notifiedAt?: boolean
+  notifyResult?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
@@ -1143,11 +1389,17 @@ export type ReviewSelectScalar = {
   packagingComment?: boolean
   language?: boolean
   submittedAt?: boolean
+  pointsAwardedAt?: boolean
+  pointsBefore?: boolean
+  pointsAfter?: boolean
+  pointsAwardedBy?: boolean
+  notifiedAt?: boolean
+  notifyResult?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "userId" | "overallRating" | "serviceRating" | "deliveryRating" | "packagingRating" | "serviceComment" | "deliveryComment" | "packagingComment" | "language" | "submittedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
+export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "userId" | "overallRating" | "serviceRating" | "deliveryRating" | "packagingRating" | "serviceComment" | "deliveryComment" | "packagingComment" | "language" | "submittedAt" | "pointsAwardedAt" | "pointsBefore" | "pointsAfter" | "pointsAwardedBy" | "notifiedAt" | "notifyResult" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
 export type ReviewInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
   user?: boolean | Prisma.Review$userArgs<ExtArgs>
@@ -1205,6 +1457,29 @@ export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
      */
     language: string
     submittedAt: Date
+    /**
+     * --- Manual loyalty-points follow-up -------------------------------------
+     * Points for reviewing are credited by hand in Verifone, so the system cannot
+     * know it happened. These columns are the record of that manual step, which is
+     * what makes "who still needs paying?" answerable.
+     */
+    pointsAwardedAt: Date | null
+    /**
+     * Balance before and after the manual credit, as typed by the admin. Stored so
+     * the customer notification can state the actual change, and so the figures
+     * remain auditable after the fact.
+     */
+    pointsBefore: runtime.Decimal | null
+    pointsAfter: runtime.Decimal | null
+    /**
+     * Email of the admin who recorded the award.
+     */
+    pointsAwardedBy: string | null
+    /**
+     * When the customer was told their points changed, and how it went.
+     */
+    notifiedAt: Date | null
+    notifyResult: runtime.JsonValue | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["review"]>
@@ -1646,6 +1921,12 @@ export interface ReviewFieldRefs {
   readonly packagingComment: Prisma.FieldRef<"Review", 'String'>
   readonly language: Prisma.FieldRef<"Review", 'String'>
   readonly submittedAt: Prisma.FieldRef<"Review", 'DateTime'>
+  readonly pointsAwardedAt: Prisma.FieldRef<"Review", 'DateTime'>
+  readonly pointsBefore: Prisma.FieldRef<"Review", 'Decimal'>
+  readonly pointsAfter: Prisma.FieldRef<"Review", 'Decimal'>
+  readonly pointsAwardedBy: Prisma.FieldRef<"Review", 'String'>
+  readonly notifiedAt: Prisma.FieldRef<"Review", 'DateTime'>
+  readonly notifyResult: Prisma.FieldRef<"Review", 'Json'>
   readonly createdAt: Prisma.FieldRef<"Review", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Review", 'DateTime'>
 }

@@ -458,6 +458,23 @@ model Review {
   /// Language the review was submitted in ("he" | "en").
   language        String   @default("he")
   submittedAt     DateTime @default(now()) @map("submitted_at")
+
+  /// --- Manual loyalty-points follow-up -------------------------------------
+  /// Points for reviewing are credited by hand in Verifone, so the system cannot
+  /// know it happened. These columns are the record of that manual step, which is
+  /// what makes "who still needs paying?" answerable.
+  pointsAwardedAt DateTime? @map("points_awarded_at")
+  /// Balance before and after the manual credit, as typed by the admin. Stored so
+  /// the customer notification can state the actual change, and so the figures
+  /// remain auditable after the fact.
+  pointsBefore    Decimal?  @map("points_before") @db.Decimal(10, 2)
+  pointsAfter     Decimal?  @map("points_after") @db.Decimal(10, 2)
+  /// Email of the admin who recorded the award.
+  pointsAwardedBy String?   @map("points_awarded_by")
+  /// When the customer was told their points changed, and how it went.
+  notifiedAt      DateTime? @map("notified_at")
+  notifyResult    Json?     @map("notify_result")
+
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -467,6 +484,8 @@ model Review {
 
   @@index([orderNumber])
   @@index([submittedAt(sort: Desc)])
+  /// Drives the admin's "still owed points" queue.
+  @@index([pointsAwardedAt])
   @@map("reviews")
 }
 

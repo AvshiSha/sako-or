@@ -455,6 +455,9 @@ model Review {
   /// Free-text notes on packaging and the condition on arrival, paired with
   /// packagingRating.
   packagingComment String? @map("packaging_comment")
+  /// Catch-all: anything the customer wants to tell us that the specific
+  /// questions above did not cover.
+  generalComment   String? @map("general_comment")
   /// Language the review was submitted in ("he" | "en").
   language        String   @default("he")
   submittedAt     DateTime @default(now()) @map("submitted_at")

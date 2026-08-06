@@ -147,7 +147,7 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
     // Production email with proper template and recipients
     const emailPromise = resend.emails.send({
       from: 'Sako Or <info@sako-or.com>',
-      to: [data.customerEmail, 'avshi@sako-or.com'],
+      to: [data.customerEmail, 'info@sako-or.com'],
       subject: subject,
       react: EmailTemplate({
         customerName: data.customerName,

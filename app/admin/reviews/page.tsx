@@ -51,6 +51,7 @@ interface Review {
   serviceComment: string | null
   deliveryComment: string | null
   packagingComment: string | null
+  generalComment: string | null
   pointsAwardedAt: string | null
   pointsBefore: string | null
   pointsAfter: string | null
@@ -237,6 +238,13 @@ function ReviewCard({ review, onChanged }: { review: Review; onChanged: () => vo
         <Aspect label="Delivery" value={review.deliveryRating} comment={review.deliveryComment} />
         <Aspect label="Arrival" value={review.packagingRating} comment={review.packagingComment} />
       </div>
+
+      {review.generalComment ? (
+        <div className="mt-3 rounded-lg bg-gray-50 p-3">
+          <p className="text-xs font-medium text-gray-500">Anything else</p>
+          <p className="mt-1 text-sm text-gray-800">&ldquo;{review.generalComment}&rdquo;</p>
+        </div>
+      ) : null}
 
       {/* Products */}
       <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">

@@ -38,6 +38,10 @@ export const reviewPageCopy = {
     packagingRatingLabel: 'איך הגיעו המוצרים אליך?',
     packagingHint: 'האריזה ומצב המוצרים כשהגיעו',
     packagingLabel: 'הערות על איך שהמוצרים היו ארוזים והגיעו',
+
+    generalHeading: 'עוד משהו?',
+    generalLabel: 'יש עוד משהו שתרצי לספר לנו?',
+    generalPlaceholder: 'כל דבר — רעיון, מחמאה, או משהו שאפשר לשפר',
     optional: 'לא חובה',
     submit: 'שליחת הביקורת',
     submitting: 'שולח…',
@@ -95,6 +99,10 @@ export const reviewPageCopy = {
     packagingRatingLabel: 'How did the products reach you?',
     packagingHint: 'The packaging and the condition they arrived in',
     packagingLabel: 'Comments on how the products were packed and arrived',
+
+    generalHeading: 'Anything else?',
+    generalLabel: 'Is there anything else you would like to tell us?',
+    generalPlaceholder: 'Anything at all — an idea, a compliment, or something we could do better',
     optional: 'optional',
     submit: 'Submit review',
     submitting: 'Sending…',

@@ -83,6 +83,7 @@ export default function ReviewForm({
   const [serviceComment, setServiceComment] = useState('')
   const [deliveryComment, setDeliveryComment] = useState('')
   const [packagingComment, setPackagingComment] = useState('')
+  const [generalComment, setGeneralComment] = useState('')
   const [products, setProducts] = useState<Record<string, ProductState>>(() =>
     Object.fromEntries(items.map((item) => [item.id, { rating: 0, body: '', sizingFit: null }]))
   )
@@ -150,6 +151,7 @@ export default function ReviewForm({
           serviceComment: serviceComment || null,
           deliveryComment: deliveryComment || null,
           packagingComment: packagingComment || null,
+          generalComment: generalComment || null,
           language,
           products: items.map((item) => ({
             orderItemId: item.id,
@@ -454,6 +456,28 @@ export default function ReviewForm({
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Catch-all. Last on the form on purpose: an open-ended question asked first
+          invites a blank stare, whereas by this point the customer has been primed
+          by the specific ones and knows what kind of thing we are after. */}
+      <section className="mt-8">
+        <h2 className="text-[17px] font-semibold text-neutral-900">{copy.generalHeading}</h2>
+        <div className="mt-3 rounded-xl border border-neutral-200 p-4">
+          <FieldLabel htmlFor="general-comment" optional={copy.optional}>
+            {copy.generalLabel}
+          </FieldLabel>
+          <textarea
+            id="general-comment"
+            rows={3}
+            maxLength={BODY_MAX}
+            value={generalComment}
+            placeholder={copy.generalPlaceholder}
+            onChange={(event) => setGeneralComment(event.target.value)}
+            className="w-full resize-y rounded-lg border border-neutral-300 px-3 py-2.5 text-[16px] leading-6 text-neutral-900 placeholder:text-neutral-400 focus-visible:border-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-neutral-900"
+          />
+          <CharCount value={generalComment} max={BODY_MAX} copy={copy} />
         </div>
       </section>
 

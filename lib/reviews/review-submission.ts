@@ -110,6 +110,8 @@ export interface SubmitReviewInput {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  /** Catch-all "anything else" box. */
+  generalComment?: string | null
   language: 'he' | 'en'
   products: ProductReviewInput[]
 }
@@ -166,6 +168,7 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
         serviceComment: input.serviceComment?.trim() || null,
         deliveryComment: input.deliveryComment?.trim() || null,
         packagingComment: input.packagingComment?.trim() || null,
+        generalComment: input.generalComment?.trim() || null,
         language: input.language,
         productReviews: {
           create: input.products.map((product) => ({

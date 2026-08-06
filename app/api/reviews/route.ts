@@ -34,6 +34,7 @@ const requestSchema = z.object({
   serviceComment: z.string().trim().max(4000).nullable().optional(),
   deliveryComment: z.string().trim().max(4000).nullable().optional(),
   packagingComment: z.string().trim().max(4000).nullable().optional(),
+  generalComment: z.string().trim().max(4000).nullable().optional(),
   language: z.enum(['he', 'en']).default('he'),
   products: z.array(productReviewSchema).min(1).max(50),
 })

@@ -57,6 +57,7 @@ export type ReviewMinAggregateOutputType = {
   serviceComment: string | null
   deliveryComment: string | null
   packagingComment: string | null
+  generalComment: string | null
   language: string | null
   submittedAt: Date | null
   pointsAwardedAt: Date | null
@@ -80,6 +81,7 @@ export type ReviewMaxAggregateOutputType = {
   serviceComment: string | null
   deliveryComment: string | null
   packagingComment: string | null
+  generalComment: string | null
   language: string | null
   submittedAt: Date | null
   pointsAwardedAt: Date | null
@@ -103,6 +105,7 @@ export type ReviewCountAggregateOutputType = {
   serviceComment: number
   deliveryComment: number
   packagingComment: number
+  generalComment: number
   language: number
   submittedAt: number
   pointsAwardedAt: number
@@ -147,6 +150,7 @@ export type ReviewMinAggregateInputType = {
   serviceComment?: true
   deliveryComment?: true
   packagingComment?: true
+  generalComment?: true
   language?: true
   submittedAt?: true
   pointsAwardedAt?: true
@@ -170,6 +174,7 @@ export type ReviewMaxAggregateInputType = {
   serviceComment?: true
   deliveryComment?: true
   packagingComment?: true
+  generalComment?: true
   language?: true
   submittedAt?: true
   pointsAwardedAt?: true
@@ -193,6 +198,7 @@ export type ReviewCountAggregateInputType = {
   serviceComment?: true
   deliveryComment?: true
   packagingComment?: true
+  generalComment?: true
   language?: true
   submittedAt?: true
   pointsAwardedAt?: true
@@ -304,6 +310,7 @@ export type ReviewGroupByOutputType = {
   serviceComment: string | null
   deliveryComment: string | null
   packagingComment: string | null
+  generalComment: string | null
   language: string
   submittedAt: Date
   pointsAwardedAt: Date | null
@@ -351,6 +358,7 @@ export type ReviewWhereInput = {
   serviceComment?: Prisma.StringNullableFilter<"Review"> | string | null
   deliveryComment?: Prisma.StringNullableFilter<"Review"> | string | null
   packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
+  generalComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   pointsAwardedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
@@ -378,6 +386,7 @@ export type ReviewOrderByWithRelationInput = {
   serviceComment?: Prisma.SortOrderInput | Prisma.SortOrder
   deliveryComment?: Prisma.SortOrderInput | Prisma.SortOrder
   packagingComment?: Prisma.SortOrderInput | Prisma.SortOrder
+  generalComment?: Prisma.SortOrderInput | Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   pointsAwardedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -408,6 +417,7 @@ export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   serviceComment?: Prisma.StringNullableFilter<"Review"> | string | null
   deliveryComment?: Prisma.StringNullableFilter<"Review"> | string | null
   packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
+  generalComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   pointsAwardedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
@@ -435,6 +445,7 @@ export type ReviewOrderByWithAggregationInput = {
   serviceComment?: Prisma.SortOrderInput | Prisma.SortOrder
   deliveryComment?: Prisma.SortOrderInput | Prisma.SortOrder
   packagingComment?: Prisma.SortOrderInput | Prisma.SortOrder
+  generalComment?: Prisma.SortOrderInput | Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   pointsAwardedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -467,6 +478,7 @@ export type ReviewScalarWhereWithAggregatesInput = {
   serviceComment?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   deliveryComment?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   packagingComment?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
+  generalComment?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   language?: Prisma.StringWithAggregatesFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
   pointsAwardedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
@@ -489,6 +501,7 @@ export type ReviewCreateInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -516,6 +529,7 @@ export type ReviewUncheckedCreateInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -539,6 +553,7 @@ export type ReviewUpdateInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -566,6 +581,7 @@ export type ReviewUncheckedUpdateInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -591,6 +607,7 @@ export type ReviewCreateManyInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -613,6 +630,7 @@ export type ReviewUpdateManyMutationInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -637,6 +655,7 @@ export type ReviewUncheckedUpdateManyInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -676,6 +695,7 @@ export type ReviewCountOrderByAggregateInput = {
   serviceComment?: Prisma.SortOrder
   deliveryComment?: Prisma.SortOrder
   packagingComment?: Prisma.SortOrder
+  generalComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   pointsAwardedAt?: Prisma.SortOrder
@@ -709,6 +729,7 @@ export type ReviewMaxOrderByAggregateInput = {
   serviceComment?: Prisma.SortOrder
   deliveryComment?: Prisma.SortOrder
   packagingComment?: Prisma.SortOrder
+  generalComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   pointsAwardedAt?: Prisma.SortOrder
@@ -732,6 +753,7 @@ export type ReviewMinOrderByAggregateInput = {
   serviceComment?: Prisma.SortOrder
   deliveryComment?: Prisma.SortOrder
   packagingComment?: Prisma.SortOrder
+  generalComment?: Prisma.SortOrder
   language?: Prisma.SortOrder
   submittedAt?: Prisma.SortOrder
   pointsAwardedAt?: Prisma.SortOrder
@@ -855,6 +877,7 @@ export type ReviewCreateWithoutUserInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -880,6 +903,7 @@ export type ReviewUncheckedCreateWithoutUserInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -934,6 +958,7 @@ export type ReviewScalarWhereInput = {
   serviceComment?: Prisma.StringNullableFilter<"Review"> | string | null
   deliveryComment?: Prisma.StringNullableFilter<"Review"> | string | null
   packagingComment?: Prisma.StringNullableFilter<"Review"> | string | null
+  generalComment?: Prisma.StringNullableFilter<"Review"> | string | null
   language?: Prisma.StringFilter<"Review"> | string
   submittedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   pointsAwardedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
@@ -956,6 +981,7 @@ export type ReviewCreateWithoutOrderInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -981,6 +1007,7 @@ export type ReviewUncheckedCreateWithoutOrderInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -1020,6 +1047,7 @@ export type ReviewUpdateWithoutOrderInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1045,6 +1073,7 @@ export type ReviewUncheckedUpdateWithoutOrderInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1068,6 +1097,7 @@ export type ReviewCreateWithoutProductReviewsInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -1094,6 +1124,7 @@ export type ReviewUncheckedCreateWithoutProductReviewsInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -1132,6 +1163,7 @@ export type ReviewUpdateWithoutProductReviewsInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1158,6 +1190,7 @@ export type ReviewUncheckedUpdateWithoutProductReviewsInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1181,6 +1214,7 @@ export type ReviewCreateManyUserInput = {
   serviceComment?: string | null
   deliveryComment?: string | null
   packagingComment?: string | null
+  generalComment?: string | null
   language?: string
   submittedAt?: Date | string
   pointsAwardedAt?: Date | string | null
@@ -1203,6 +1237,7 @@ export type ReviewUpdateWithoutUserInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1228,6 +1263,7 @@ export type ReviewUncheckedUpdateWithoutUserInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1252,6 +1288,7 @@ export type ReviewUncheckedUpdateManyWithoutUserInput = {
   serviceComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   deliveryComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   packagingComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  generalComment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   language?: Prisma.StringFieldUpdateOperationsInput | string
   submittedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   pointsAwardedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1307,6 +1344,7 @@ export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   serviceComment?: boolean
   deliveryComment?: boolean
   packagingComment?: boolean
+  generalComment?: boolean
   language?: boolean
   submittedAt?: boolean
   pointsAwardedAt?: boolean
@@ -1335,6 +1373,7 @@ export type ReviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   serviceComment?: boolean
   deliveryComment?: boolean
   packagingComment?: boolean
+  generalComment?: boolean
   language?: boolean
   submittedAt?: boolean
   pointsAwardedAt?: boolean
@@ -1361,6 +1400,7 @@ export type ReviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   serviceComment?: boolean
   deliveryComment?: boolean
   packagingComment?: boolean
+  generalComment?: boolean
   language?: boolean
   submittedAt?: boolean
   pointsAwardedAt?: boolean
@@ -1387,6 +1427,7 @@ export type ReviewSelectScalar = {
   serviceComment?: boolean
   deliveryComment?: boolean
   packagingComment?: boolean
+  generalComment?: boolean
   language?: boolean
   submittedAt?: boolean
   pointsAwardedAt?: boolean
@@ -1399,7 +1440,7 @@ export type ReviewSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "userId" | "overallRating" | "serviceRating" | "deliveryRating" | "packagingRating" | "serviceComment" | "deliveryComment" | "packagingComment" | "language" | "submittedAt" | "pointsAwardedAt" | "pointsBefore" | "pointsAfter" | "pointsAwardedBy" | "notifiedAt" | "notifyResult" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
+export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "userId" | "overallRating" | "serviceRating" | "deliveryRating" | "packagingRating" | "serviceComment" | "deliveryComment" | "packagingComment" | "generalComment" | "language" | "submittedAt" | "pointsAwardedAt" | "pointsBefore" | "pointsAfter" | "pointsAwardedBy" | "notifiedAt" | "notifyResult" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
 export type ReviewInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
   user?: boolean | Prisma.Review$userArgs<ExtArgs>
@@ -1452,6 +1493,11 @@ export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
      * packagingRating.
      */
     packagingComment: string | null
+    /**
+     * Catch-all: anything the customer wants to tell us that the specific
+     * questions above did not cover.
+     */
+    generalComment: string | null
     /**
      * Language the review was submitted in ("he" | "en").
      */
@@ -1919,6 +1965,7 @@ export interface ReviewFieldRefs {
   readonly serviceComment: Prisma.FieldRef<"Review", 'String'>
   readonly deliveryComment: Prisma.FieldRef<"Review", 'String'>
   readonly packagingComment: Prisma.FieldRef<"Review", 'String'>
+  readonly generalComment: Prisma.FieldRef<"Review", 'String'>
   readonly language: Prisma.FieldRef<"Review", 'String'>
   readonly submittedAt: Prisma.FieldRef<"Review", 'DateTime'>
   readonly pointsAwardedAt: Prisma.FieldRef<"Review", 'DateTime'>

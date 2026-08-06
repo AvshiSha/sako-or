@@ -45,6 +45,7 @@ export interface AdminReview {
   serviceComment: string | null
   deliveryComment: string | null
   packagingComment: string | null
+  generalComment: string | null
   pointsAwardedAt: string | null
   pointsBefore: string | null
   pointsAfter: string | null
@@ -226,6 +227,7 @@ export async function listReviews(params: {
       serviceComment: review.serviceComment,
       deliveryComment: review.deliveryComment,
       packagingComment: review.packagingComment,
+      generalComment: review.generalComment,
       pointsAwardedAt: review.pointsAwardedAt?.toISOString() ?? null,
       pointsBefore: review.pointsBefore?.toString() ?? null,
       pointsAfter: review.pointsAfter?.toString() ?? null,

@@ -9,6 +9,8 @@ interface MultiSelectChipsProps<T extends string> {
   onChange: (values: T[]) => void
   options: EnumOption<T>[]
   locale: 'en' | 'he'
+  /** Render "English / Hebrew" on every chip regardless of `locale`. */
+  showBothLanguages?: boolean
 }
 
 /** Generic multi-select rendered as toggle chips, e.g. for adjustable shoe-fit features. */
@@ -19,6 +21,7 @@ export default function MultiSelectChips<T extends string>({
   onChange,
   options,
   locale,
+  showBothLanguages,
 }: MultiSelectChipsProps<T>) {
   const toggle = (value: T) => {
     if (values.includes(value)) {
@@ -46,7 +49,11 @@ export default function MultiSelectChips<T extends string>({
                   : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              {locale === 'he' ? option.label_he : option.label_en}
+              {showBothLanguages
+                ? `${option.label_en} / ${option.label_he}`
+                : locale === 'he'
+                  ? option.label_he
+                  : option.label_en}
             </button>
           )
         })}

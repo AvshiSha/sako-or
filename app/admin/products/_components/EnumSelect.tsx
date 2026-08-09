@@ -12,6 +12,10 @@ interface EnumSelectProps<T extends string> {
   locale: 'en' | 'he'
   error?: string
   placeholder?: string
+  /** Render "English / Hebrew" for every option regardless of `locale`. Useful for
+   * fields where admins need to recognize both languages at once (e.g. product
+   * attribute dropdowns that replaced separate EN/HE free-text inputs). */
+  showBothLanguages?: boolean
 }
 
 /** Generic single-select for the shoe-fit enums, styled to match the existing product form. */
@@ -25,6 +29,7 @@ export default function EnumSelect<T extends string>({
   locale,
   error,
   placeholder,
+  showBothLanguages,
 }: EnumSelectProps<T>) {
   return (
     <div>
@@ -44,7 +49,11 @@ export default function EnumSelect<T extends string>({
         </option>
         {options.map((option) => (
           <option key={option.value} value={option.value} className="text-gray-900">
-            {locale === 'he' ? option.label_he : option.label_en}
+            {showBothLanguages
+              ? `${option.label_en} / ${option.label_he}`
+              : locale === 'he'
+                ? option.label_he
+                : option.label_en}
           </option>
         ))}
       </select>

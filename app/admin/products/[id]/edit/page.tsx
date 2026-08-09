@@ -22,7 +22,19 @@ import {
   ChevronDownIcon
 } from '@heroicons/react/24/outline'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
-import { getCategoryFieldGroup, type ProductImageType } from '@/lib/product-enums'
+import {
+  getCategoryFieldGroup,
+  type ProductImageType,
+  type UpperMaterial,
+  type Lining,
+  type Insole,
+  type Outsole,
+  type ToeShape,
+  type HeelType,
+  type ClosureType,
+  type SoleType,
+  type HeelHeightCm,
+} from '@/lib/product-enums'
 import { normalizeProductImages } from '@/lib/product-images'
 import { validateProductFormBasics } from '../../_lib/validate-product-form'
 import PreviewProductButton from '../../_components/PreviewProductButton'
@@ -103,6 +115,15 @@ interface ProductFormData {
     heelType_he?: string;
     careInstructions_en?: string;
     careInstructions_he?: string;
+    upperMaterial: UpperMaterial[];
+    lining?: Lining;
+    insole?: Insole;
+    outsole?: Outsole;
+    soleType?: SoleType;
+    toeShape?: ToeShape;
+    heelType?: HeelType;
+    closureType?: ClosureType;
+    heelHeight?: HeelHeightCm;
   };
 
   // Shoe Fit and Sizing (only meaningful for footwear categories)
@@ -254,7 +275,8 @@ function EditProductPage() {
       depth_en: '',
       depth_he: '',
       width_en: '',
-      width_he: ''
+      width_he: '',
+      upperMaterial: [],
     },
 
     // Shoe Fit and Sizing
@@ -395,7 +417,19 @@ function EditProductPage() {
               heelType_en: loadedMaterialCare.heelType_en || '',
               heelType_he: loadedMaterialCare.heelType_he || '',
               careInstructions_en: loadedMaterialCare.careInstructions_en || '',
-              careInstructions_he: loadedMaterialCare.careInstructions_he || ''
+              careInstructions_he: loadedMaterialCare.careInstructions_he || '',
+              // Dropdown-backed fields: load as-is, with NO legacy _en/_he fallback —
+              // the new dropdown must never silently inherit old free text. That's
+              // exactly what PreviousValueHint (shown when unset) is for instead.
+              upperMaterial: loadedMaterialCare.upperMaterial || [],
+              lining: loadedMaterialCare.lining,
+              insole: loadedMaterialCare.insole,
+              outsole: loadedMaterialCare.outsole,
+              soleType: loadedMaterialCare.soleType,
+              toeShape: loadedMaterialCare.toeShape,
+              heelType: loadedMaterialCare.heelType,
+              closureType: loadedMaterialCare.closureType,
+              heelHeight: loadedMaterialCare.heelHeight
             },
 
             // Shoe Fit and Sizing (safe defaults for existing products without this data)
@@ -553,7 +587,7 @@ function EditProductPage() {
     handleInputChange(field, value)
   }
 
-  const handleSpecificationChange = (field: string, value: string | number | undefined) => {
+  const handleSpecificationChange = (field: string, value: string | number | string[] | undefined) => {
     setFormData(prev => ({
       ...prev,
       materialCare: { ...prev.materialCare, [field]: value }
@@ -1281,14 +1315,43 @@ function EditProductPage() {
       addIfChanged('newProduct')
       addIfChanged('featuredProduct')
 
-      // Material & Care: include only keys that changed and are not empty strings
+      // Material & Care (legacy free-text fields): include only keys that changed
+      // and are not empty strings. The dropdown-backed fields below are handled
+      // separately since this "skip empty string" rule can't represent clearing
+      // a dropdown back to unset, and can't compare array values like upperMaterial.
+      const dropdownAttributeKeys = [
+        'upperMaterial',
+        'lining',
+        'insole',
+        'outsole',
+        'soleType',
+        'toeShape',
+        'heelType',
+        'closureType',
+        'heelHeight',
+      ] as const
       if (originalFormData) {
-        const mcKeys = Object.keys(formData.materialCare) as (keyof typeof formData.materialCare)[]
+        const mcKeys = (Object.keys(formData.materialCare) as (keyof typeof formData.materialCare)[]).filter(
+          (k) => !(dropdownAttributeKeys as readonly string[]).includes(k)
+        )
         mcKeys.forEach((k) => {
           const curr = formData.materialCare[k]
           const orig = originalFormData.materialCare[k]
           if (curr !== orig && curr !== '') {
             // Use dot-path to update nested fields without overwriting the whole object
+            ;(productData as any)[`materialCare.${k}`] = curr
+          }
+        })
+      }
+
+      // Dropdown-backed attribute fields: include only changed keys (JSON comparison
+      // handles the upperMaterial array), sent even when cleared back to unset —
+      // same rationale as the Shoe Fit block below.
+      if (originalFormData) {
+        dropdownAttributeKeys.forEach((k) => {
+          const curr = formData.materialCare[k]
+          const orig = originalFormData.materialCare[k]
+          if (JSON.stringify(curr) !== JSON.stringify(orig)) {
             ;(productData as any)[`materialCare.${k}`] = curr
           }
         })

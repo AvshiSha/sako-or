@@ -33,6 +33,15 @@ import {
   FOOT_WIDTH_FIT_OPTIONS,
   ARCH_FIT_OPTIONS,
   ADJUSTABLE_FEATURE_OPTIONS,
+  UPPER_MATERIAL_OPTIONS,
+  LINING_OPTIONS,
+  INSOLE_OPTIONS,
+  OUTSOLE_OPTIONS,
+  SOLE_TYPE_OPTIONS,
+  TOE_SHAPE_OPTIONS,
+  HEEL_TYPE_OPTIONS,
+  CLOSURE_TYPE_OPTIONS,
+  HEEL_HEIGHT_CM_OPTIONS,
   getOptionLabel,
   isUndefinedFitValue,
 } from '@/lib/product-enums'
@@ -1075,81 +1084,97 @@ export default function ProductColorClient({
               <div className="border-t border-gray-200 pt-6">
                 <div className="space-y-4">
                   {/* Material & Care Section */}
-                  {(product.materialCare?.upperMaterial_en || product.materialCare?.upperMaterial_he || 
-                    product.materialCare?.materialInnerSole_en || product.materialCare?.materialInnerSole_he ||
-                    product.materialCare?.lining_en || product.materialCare?.lining_he ||
-                    product.materialCare?.sole_en || product.materialCare?.sole_he ||
-                    product.materialCare?.heelHeight_en || product.materialCare?.heelHeight_he ||
-                    product.materialCare?.height_en || product.materialCare?.height_he ||
-                    product.materialCare?.depth_en || product.materialCare?.depth_he ||
-                    product.materialCare?.width_en || product.materialCare?.width_he ||
-                    // Legacy structure support
-                    product.upperMaterial || product.materialInnerSole || product.lining || product.sole || product.heelHeight) && (
+                  {(() => {
+                    const mc = product.materialCare
+                    const locale = lng === 'he' ? 'he' : 'en'
+                    /** Dropdown value first (resolved to a label), then legacy free text, then the older flat {en,he} shape. */
+                    const resolveSpec = (
+                      dropdownValue: string | undefined,
+                      options: { value: string; label_en: string; label_he: string }[],
+                      legacyEn: string | undefined,
+                      legacyHe: string | undefined,
+                      flatEn: string | undefined,
+                      flatHe: string | undefined
+                    ): string | undefined => {
+                      if (dropdownValue) {
+                        const label = getOptionLabel(options, dropdownValue, locale)
+                        if (label) return label
+                      }
+                      if (legacyEn || legacyHe) return locale === 'he' ? legacyHe : legacyEn
+                      return locale === 'he' ? flatHe : flatEn
+                    }
+                    const upperMaterialText = mc?.upperMaterial && mc.upperMaterial.length > 0
+                      ? mc.upperMaterial
+                          .map((value) => getOptionLabel(UPPER_MATERIAL_OPTIONS, value, locale))
+                          .filter((label): label is string => !!label)
+                          .join(', ')
+                      : mc?.upperMaterial_en || mc?.upperMaterial_he
+                        ? (locale === 'he' ? mc?.upperMaterial_he : mc?.upperMaterial_en)
+                        : (locale === 'he' ? product.upperMaterial?.he : product.upperMaterial?.en)
+                    const insoleText = resolveSpec(mc?.insole, INSOLE_OPTIONS, mc?.materialInnerSole_en, mc?.materialInnerSole_he, product.materialInnerSole?.en, product.materialInnerSole?.he)
+                    const liningText = resolveSpec(mc?.lining, LINING_OPTIONS, mc?.lining_en, mc?.lining_he, product.lining?.en, product.lining?.he)
+                    const outsoleText = resolveSpec(mc?.outsole, OUTSOLE_OPTIONS, mc?.sole_en, mc?.sole_he, product.sole?.en, product.sole?.he)
+                    const soleTypeText = mc?.soleType ? getOptionLabel(SOLE_TYPE_OPTIONS, mc.soleType, locale) : undefined
+                    const heelHeightText = resolveSpec(mc?.heelHeight, HEEL_HEIGHT_CM_OPTIONS, mc?.heelHeight_en, mc?.heelHeight_he, product.heelHeight?.en, product.heelHeight?.he)
+                    const closureTypeText = resolveSpec(mc?.closureType, CLOSURE_TYPE_OPTIONS, mc?.closureType_en, mc?.closureType_he, undefined, undefined)
+                    const heelTypeText = resolveSpec(mc?.heelType, HEEL_TYPE_OPTIONS, mc?.heelType_en, mc?.heelType_he, undefined, undefined)
+                    const toeShapeText = resolveSpec(mc?.toeShape, TOE_SHAPE_OPTIONS, mc?.toeShape_en, mc?.toeShape_he, undefined, undefined)
+
+                    if (!(upperMaterialText || insoleText || liningText || outsoleText || soleTypeText || heelHeightText ||
+                      mc?.height_en || mc?.height_he || mc?.depth_en || mc?.depth_he || mc?.width_en || mc?.width_he ||
+                      closureTypeText || heelTypeText || toeShapeText || mc?.careInstructions_en || mc?.careInstructions_he)) {
+                      return null
+                    }
+
+                    return (
                     <Accordion title={lng === 'he' ? 'מפרט טכני' : 'Material & Care'}>
                       <div className="space-y-3">
-                        {((product.materialCare?.upperMaterial_en || product.materialCare?.upperMaterial_he) || product.upperMaterial) && (
+                        {upperMaterialText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'חומר עליון:' : 'Upper Material:'}
                             </span>
-                            <span className="text-sm text-gray-900">
-                              {product.materialCare?.upperMaterial_en || product.materialCare?.upperMaterial_he 
-                                ? (lng === 'he' ? product.materialCare?.upperMaterial_he : product.materialCare?.upperMaterial_en)
-                                : (lng === 'he' ? product.upperMaterial?.he : product.upperMaterial?.en)
-                              }
-                            </span>
+                            <span className="text-sm text-gray-900">{upperMaterialText}</span>
                           </div>
                         )}
-                        {((product.materialCare?.materialInnerSole_en || product.materialCare?.materialInnerSole_he) || product.materialInnerSole) && (
+                        {insoleText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
-                              {lng === 'he' ? 'חומר סוליה פנימית:' : 'Material Inner Sole:'}
+                              {lng === 'he' ? 'מדרס:' : 'Insole:'}
                             </span>
-                            <span className="text-sm text-gray-900">
-                              {product.materialCare?.materialInnerSole_en || product.materialCare?.materialInnerSole_he 
-                                ? (lng === 'he' ? product.materialCare?.materialInnerSole_he : product.materialCare?.materialInnerSole_en)
-                                : (lng === 'he' ? product.materialInnerSole?.he : product.materialInnerSole?.en)
-                              }
-                            </span>
+                            <span className="text-sm text-gray-900">{insoleText}</span>
                           </div>
                         )}
-                        {((product.materialCare?.lining_en || product.materialCare?.lining_he) || product.lining) && (
+                        {liningText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'בטנה:' : 'Lining:'}
                             </span>
-                            <span className="text-sm text-gray-900">
-                              {product.materialCare?.lining_en || product.materialCare?.lining_he 
-                                ? (lng === 'he' ? product.materialCare?.lining_he : product.materialCare?.lining_en)
-                                : (lng === 'he' ? product.lining?.he : product.lining?.en)
-                              }
-                            </span>
+                            <span className="text-sm text-gray-900">{liningText}</span>
                           </div>
                         )}
-                        {((product.materialCare?.sole_en || product.materialCare?.sole_he) || product.sole) && (
+                        {outsoleText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
-                              {lng === 'he' ? 'סוליה:' : 'Sole:'}
+                              {lng === 'he' ? 'סוליה חיצונית:' : 'Outsole:'}
                             </span>
-                            <span className="text-sm text-gray-900">
-                              {product.materialCare?.sole_en || product.materialCare?.sole_he 
-                                ? (lng === 'he' ? product.materialCare?.sole_he : product.materialCare?.sole_en)
-                                : (lng === 'he' ? product.sole?.he : product.sole?.en)
-                              }
-                            </span>
+                            <span className="text-sm text-gray-900">{outsoleText}</span>
                           </div>
                         )}
-                        {((product.materialCare?.heelHeight_en || product.materialCare?.heelHeight_he) || product.heelHeight) && (
+                        {soleTypeText && (
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              {lng === 'he' ? 'סוג סוליה:' : 'Sole Type:'}
+                            </span>
+                            <span className="text-sm text-gray-900">{soleTypeText}</span>
+                          </div>
+                        )}
+                        {heelHeightText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'גובה עקב:' : 'Heel Height:'}
                             </span>
-                            <span className="text-sm text-gray-900">
-                              {product.materialCare?.heelHeight_en || product.materialCare?.heelHeight_he 
-                                ? (lng === 'he' ? product.materialCare?.heelHeight_he : product.materialCare?.heelHeight_en)
-                                : (lng === 'he' ? product.heelHeight?.he : product.heelHeight?.en)
-                              }
-                            </span>
+                            <span className="text-sm text-gray-900">{heelHeightText}</span>
                           </div>
                         )}
                         {(product.materialCare?.height_en || product.materialCare?.height_he) && (
@@ -1182,34 +1207,28 @@ export default function ProductColorClient({
                             </span>
                           </div>
                         )}
-                        {(product.materialCare?.closureType_en || product.materialCare?.closureType_he) && (
+                        {closureTypeText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'סגירה:' : 'Closure:'}
                             </span>
-                            <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialCare?.closureType_he : product.materialCare?.closureType_en}
-                            </span>
+                            <span className="text-sm text-gray-900">{closureTypeText}</span>
                           </div>
                         )}
-                        {(product.materialCare?.heelType_en || product.materialCare?.heelType_he) && (
+                        {heelTypeText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'סוג עקב:' : 'Heel Type:'}
                             </span>
-                            <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialCare?.heelType_he : product.materialCare?.heelType_en}
-                            </span>
+                            <span className="text-sm text-gray-900">{heelTypeText}</span>
                           </div>
                         )}
-                        {(product.materialCare?.toeShape_en || product.materialCare?.toeShape_he) && (
+                        {toeShapeText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
                               {lng === 'he' ? 'צורת בהונות:' : 'Toe Shape:'}
                             </span>
-                            <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialCare?.toeShape_he : product.materialCare?.toeShape_en}
-                            </span>
+                            <span className="text-sm text-gray-900">{toeShapeText}</span>
                           </div>
                         )}
                         {(product.materialCare?.careInstructions_en || product.materialCare?.careInstructions_he) && (
@@ -1224,7 +1243,8 @@ export default function ProductColorClient({
                         )}
                       </div>
                     </Accordion>
-                  )}
+                    )
+                  })()}
 
                   {/* Shoe Fit and Sizing Section */}
                   {product.shoeFit && (() => {

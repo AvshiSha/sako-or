@@ -1,6 +1,32 @@
 import type { Product } from '@/lib/product-types'
 import { getColorName } from '@/lib/colors'
-import type { SizeFit, FootWidthFit } from '@/lib/product-enums'
+import {
+  getOptionLabel,
+  UPPER_MATERIAL_OPTIONS,
+  LINING_OPTIONS,
+  INSOLE_OPTIONS,
+  OUTSOLE_OPTIONS,
+  SOLE_TYPE_OPTIONS,
+  CLOSURE_TYPE_OPTIONS,
+  HEEL_TYPE_OPTIONS,
+  TOE_SHAPE_OPTIONS,
+  HEEL_HEIGHT_CM_OPTIONS,
+  type SizeFit,
+  type FootWidthFit,
+} from '@/lib/product-enums'
+
+/** English label from the dropdown value when present, else the legacy free text. */
+function resolveEnLabel(
+  dropdownValue: string | undefined,
+  options: { value: string; label_en: string; label_he: string }[],
+  legacyEn: string | undefined
+): string | undefined {
+  if (dropdownValue) {
+    const label = getOptionLabel(options, dropdownValue, 'en')
+    if (label) return label
+  }
+  return legacyEn
+}
 
 /**
  * Clean, structured JSON projection of a product, intended as the single entry
@@ -24,10 +50,13 @@ export interface StructuredProductData {
     additionalColors?: string[]
     material?: string
     liningMaterial?: string
+    insoleMaterial?: string
     soleMaterial?: string
+    soleType?: string
     closureType?: string
     heelType?: string
     toeShape?: string
+    heelHeight?: string
   }
   shoeFit?: {
     sizeFit?: SizeFit
@@ -93,12 +122,20 @@ export function getStructuredProductData(product: Product): StructuredProductDat
     specifications: {
       mainColor,
       additionalColors,
-      material: firstDefined(materialCare?.upperMaterial_en),
-      liningMaterial: firstDefined(materialCare?.lining_en),
-      soleMaterial: firstDefined(materialCare?.sole_en),
-      closureType: firstDefined(materialCare?.closureType_en),
-      heelType: firstDefined(materialCare?.heelType_en),
-      toeShape: firstDefined(materialCare?.toeShape_en),
+      material: materialCare?.upperMaterial && materialCare.upperMaterial.length > 0
+        ? materialCare.upperMaterial
+            .map((value) => getOptionLabel(UPPER_MATERIAL_OPTIONS, value, 'en'))
+            .filter((label): label is string => !!label)
+            .join(', ')
+        : firstDefined(materialCare?.upperMaterial_en),
+      liningMaterial: firstDefined(resolveEnLabel(materialCare?.lining, LINING_OPTIONS, materialCare?.lining_en)),
+      insoleMaterial: firstDefined(resolveEnLabel(materialCare?.insole, INSOLE_OPTIONS, undefined)),
+      soleMaterial: firstDefined(resolveEnLabel(materialCare?.outsole, OUTSOLE_OPTIONS, materialCare?.sole_en)),
+      soleType: materialCare?.soleType ? getOptionLabel(SOLE_TYPE_OPTIONS, materialCare.soleType, 'en') : undefined,
+      closureType: firstDefined(resolveEnLabel(materialCare?.closureType, CLOSURE_TYPE_OPTIONS, materialCare?.closureType_en)),
+      heelType: firstDefined(resolveEnLabel(materialCare?.heelType, HEEL_TYPE_OPTIONS, materialCare?.heelType_en)),
+      toeShape: firstDefined(resolveEnLabel(materialCare?.toeShape, TOE_SHAPE_OPTIONS, materialCare?.toeShape_en)),
+      heelHeight: materialCare?.heelHeight ? getOptionLabel(HEEL_HEIGHT_CM_OPTIONS, materialCare.heelHeight, 'en') : undefined,
     },
     shoeFit: shoeFit
       ? {

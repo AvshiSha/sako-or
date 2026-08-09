@@ -9,10 +9,32 @@ import {
   SIZE_FIT_OPTIONS,
   FOOT_WIDTH_FIT_OPTIONS,
   ARCH_FIT_OPTIONS,
+  UPPER_MATERIAL_OPTIONS,
+  LINING_OPTIONS,
+  OUTSOLE_OPTIONS,
+  SOLE_TYPE_OPTIONS,
+  CLOSURE_TYPE_OPTIONS,
+  HEEL_TYPE_OPTIONS,
+  HEEL_HEIGHT_CM_OPTIONS,
   getOptionLabel,
   isUndefinedFitValue,
 } from '@/lib/product-enums'
 import type { Product } from '@/lib/product-types'
+
+/** Dropdown value first (resolved to a label), then legacy free text. */
+function resolveSpecFact(
+  dropdownValue: string | undefined,
+  options: { value: string; label_en: string; label_he: string }[],
+  legacyEn: string | undefined,
+  legacyHe: string | undefined,
+  locale: 'en' | 'he'
+): string | undefined {
+  if (dropdownValue) {
+    const label = getOptionLabel(options, dropdownValue, locale)
+    if (label) return label
+  }
+  return locale === 'he' ? legacyHe : legacyEn
+}
 
 /** Structured-data facts (material/color/spec+fit PropertyValue list) shared between the two product fetches below. */
 function buildStructuredDataFacts(
@@ -21,7 +43,12 @@ function buildStructuredDataFacts(
   locale: 'en' | 'he'
 ): { material?: string; color?: string; additionalProperty: Array<{ name: string; value: string }> } {
   const materialCare = product.materialCare
-  const material = locale === 'he' ? materialCare?.upperMaterial_he : materialCare?.upperMaterial_en
+  const material = materialCare?.upperMaterial && materialCare.upperMaterial.length > 0
+    ? materialCare.upperMaterial
+        .map((value) => getOptionLabel(UPPER_MATERIAL_OPTIONS, value, locale))
+        .filter((label): label is string => !!label)
+        .join(', ')
+    : (locale === 'he' ? materialCare?.upperMaterial_he : materialCare?.upperMaterial_en)
   const color = getColorName(colorSlug, locale)
 
   const additionalProperty: Array<{ name: string; value: string }> = []
@@ -29,11 +56,12 @@ function buildStructuredDataFacts(
     if (value) additionalProperty.push({ name, value })
   }
 
-  pushSpec(locale === 'he' ? 'בטנה' : 'Lining', locale === 'he' ? materialCare?.lining_he : materialCare?.lining_en)
-  pushSpec(locale === 'he' ? 'סוליה' : 'Sole', locale === 'he' ? materialCare?.sole_he : materialCare?.sole_en)
-  pushSpec(locale === 'he' ? 'סגירה' : 'Closure', locale === 'he' ? materialCare?.closureType_he : materialCare?.closureType_en)
-  pushSpec(locale === 'he' ? 'סוג עקב' : 'Heel type', locale === 'he' ? materialCare?.heelType_he : materialCare?.heelType_en)
-  pushSpec(locale === 'he' ? 'גובה עקב' : 'Heel height', locale === 'he' ? materialCare?.heelHeight_he : materialCare?.heelHeight_en)
+  pushSpec(locale === 'he' ? 'בטנה' : 'Lining', resolveSpecFact(materialCare?.lining, LINING_OPTIONS, materialCare?.lining_en, materialCare?.lining_he, locale))
+  pushSpec(locale === 'he' ? 'סוליה' : 'Outsole', resolveSpecFact(materialCare?.outsole, OUTSOLE_OPTIONS, materialCare?.sole_en, materialCare?.sole_he, locale))
+  pushSpec(locale === 'he' ? 'סוג סוליה' : 'Sole type', materialCare?.soleType ? getOptionLabel(SOLE_TYPE_OPTIONS, materialCare.soleType, locale) : undefined)
+  pushSpec(locale === 'he' ? 'סגירה' : 'Closure', resolveSpecFact(materialCare?.closureType, CLOSURE_TYPE_OPTIONS, materialCare?.closureType_en, materialCare?.closureType_he, locale))
+  pushSpec(locale === 'he' ? 'סוג עקב' : 'Heel type', resolveSpecFact(materialCare?.heelType, HEEL_TYPE_OPTIONS, materialCare?.heelType_en, materialCare?.heelType_he, locale))
+  pushSpec(locale === 'he' ? 'גובה עקב' : 'Heel height', resolveSpecFact(materialCare?.heelHeight, HEEL_HEIGHT_CM_OPTIONS, materialCare?.heelHeight_en, materialCare?.heelHeight_he, locale))
 
   const shoeFit = product.shoeFit
   if (shoeFit) {

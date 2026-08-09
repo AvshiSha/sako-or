@@ -1,8 +1,33 @@
 'use client'
 
-import type { CategoryFieldGroup } from '@/lib/product-enums'
+import type {
+  CategoryFieldGroup,
+  UpperMaterial,
+  Lining,
+  Insole,
+  Outsole,
+  ToeShape,
+  HeelType,
+  ClosureType,
+  SoleType,
+  HeelHeightCm,
+} from '@/lib/product-enums'
+import {
+  UPPER_MATERIAL_OPTIONS,
+  LINING_OPTIONS,
+  INSOLE_OPTIONS,
+  OUTSOLE_OPTIONS,
+  TOE_SHAPE_OPTIONS,
+  HEEL_TYPE_OPTIONS,
+  CLOSURE_TYPE_OPTIONS,
+  SOLE_TYPE_OPTIONS,
+  HEEL_HEIGHT_CM_OPTIONS,
+} from '@/lib/product-enums'
 import { CARE_INSTRUCTIONS_PRESETS } from '@/lib/product-text-presets'
 import PresetTextField from './PresetTextField'
+import EnumSelect from './EnumSelect'
+import MultiSelectChips from './MultiSelectChips'
+import PreviousValueHint from './PreviousValueHint'
 
 export interface ProductSpecificationsValues {
   upperMaterial_en: string
@@ -29,11 +54,25 @@ export interface ProductSpecificationsValues {
   heelType_he?: string
   careInstructions_en?: string
   careInstructions_he?: string
+  // Dropdown-backed attribute fields (replace the free-text pairs above). The
+  // legacy _en/_he pairs stay in ProductSpecificationsValues purely so their
+  // old text can still be shown via PreviousValueHint for reconciliation.
+  upperMaterial: UpperMaterial[]
+  lining?: Lining
+  insole?: Insole
+  outsole?: Outsole
+  soleType?: SoleType
+  toeShape?: ToeShape
+  heelType?: HeelType
+  closureType?: ClosureType
+  heelHeight?: HeelHeightCm
 }
+
+type SpecificationFieldValue = string | number | string[] | undefined
 
 interface ProductSpecificationsSectionProps {
   values: ProductSpecificationsValues
-  onChange: (field: keyof ProductSpecificationsValues, value: string | number | undefined) => void
+  onChange: (field: keyof ProductSpecificationsValues, value: SpecificationFieldValue) => void
   fieldGroup: CategoryFieldGroup
 }
 
@@ -94,10 +133,14 @@ function TextField({
 }
 
 /**
- * Product Specifications — reuses the existing material/lining/sole/dimensions/heel-height
- * text fields, and adds structured toe shape, closure, heel type, and care instructions
- * (each as Hebrew/English pairs). Heel-specific and lining/sole fields are only shown
- * for the category groups where they're relevant.
+ * Product Specifications — dropdown-backed attribute fields (Upper Material,
+ * Lining, Insole, Outsole, Sole Type, Toe Shape, Heel Type, Closure Type, Heel
+ * Height), plus free-text dimensions and care instructions. Each dropdown
+ * stores a single stable value (or an array for Upper Material); Hebrew/English
+ * labels are resolved from lib/product-enums.ts, never persisted. A
+ * PreviousValueHint surfaces the old free-text value next to any dropdown that
+ * hasn't been reconciled yet. Heel-specific and lining/sole/insole fields are
+ * only shown for the category groups where they're relevant.
  */
 export default function ProductSpecificationsSection({
   values,
@@ -115,97 +158,137 @@ export default function ProductSpecificationsSection({
     <div>
       <h2 className="text-lg font-medium text-gray-900 mb-4">Product Specifications</h2>
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <TextField
-          id="upperMaterial"
-          labelEn="Material"
-          labelHe="חומר"
-          valueEn={values.upperMaterial_en}
-          valueHe={values.upperMaterial_he}
-          placeholderEn="e.g., Leather Combination"
-          placeholderHe="לדוגמה: שילוב עור"
-          onChange={onTextFieldChange}
-        />
+        <div>
+          <MultiSelectChips
+            label="Upper Material"
+            locale="en"
+            showBothLanguages
+            values={values.upperMaterial}
+            onChange={(value) => onChange('upperMaterial', value)}
+            options={UPPER_MATERIAL_OPTIONS}
+          />
+          {values.upperMaterial.length === 0 && (
+            <PreviousValueHint legacyEn={values.upperMaterial_en} legacyHe={values.upperMaterial_he} />
+          )}
+        </div>
 
         {showSoleAndLining && (
           <>
-            <TextField
-              id="materialInnerSole"
-              labelEn="Inner Sole Material"
-              labelHe="חומר מדרס"
-              valueEn={values.materialInnerSole_en}
-              valueHe={values.materialInnerSole_he}
-              placeholderEn="e.g., Leather"
-              placeholderHe="לדוגמה: עור"
-              onChange={onTextFieldChange}
-            />
-            <TextField
-              id="lining"
-              labelEn="Lining Material"
-              labelHe="חומר בטנה"
-              valueEn={values.lining_en}
-              valueHe={values.lining_he}
-              placeholderEn="e.g., 100% Textile"
-              placeholderHe="לדוגמה: 100% טקסטיל"
-              onChange={onTextFieldChange}
-            />
-            <TextField
-              id="sole"
-              labelEn="Sole Material"
-              labelHe="חומר סוליה"
-              valueEn={values.sole_en}
-              valueHe={values.sole_he}
-              placeholderEn="e.g., Rubber Sole"
-              placeholderHe="לדוגמה: סוליה מגומי"
-              onChange={onTextFieldChange}
+            <div>
+              <EnumSelect
+                id="insole"
+                label="Insole"
+                locale="en"
+                showBothLanguages
+                value={values.insole}
+                onChange={(value) => onChange('insole', value)}
+                options={INSOLE_OPTIONS}
+                placeholder="Select insole"
+              />
+              {!values.insole && (
+                <PreviousValueHint legacyEn={values.materialInnerSole_en} legacyHe={values.materialInnerSole_he} />
+              )}
+            </div>
+            <div>
+              <EnumSelect
+                id="lining"
+                label="Lining"
+                locale="en"
+                showBothLanguages
+                value={values.lining}
+                onChange={(value) => onChange('lining', value)}
+                options={LINING_OPTIONS}
+                placeholder="Select lining"
+              />
+              {!values.lining && <PreviousValueHint legacyEn={values.lining_en} legacyHe={values.lining_he} />}
+            </div>
+            <div>
+              <EnumSelect
+                id="outsole"
+                label="Outsole"
+                locale="en"
+                showBothLanguages
+                value={values.outsole}
+                onChange={(value) => onChange('outsole', value)}
+                options={OUTSOLE_OPTIONS}
+                placeholder="Select outsole"
+              />
+              {!values.outsole && <PreviousValueHint legacyEn={values.sole_en} legacyHe={values.sole_he} />}
+            </div>
+            <EnumSelect
+              id="soleType"
+              label="Sole Type"
+              locale="en"
+              showBothLanguages
+              value={values.soleType}
+              onChange={(value) => onChange('soleType', value)}
+              options={SOLE_TYPE_OPTIONS}
+              placeholder="Select sole type"
             />
           </>
         )}
 
         {showClosure && (
-          <TextField
-            id="closureType"
-            labelEn="Closure Type"
-            labelHe="סוג סגירה"
-            valueEn={values.closureType_en ?? ''}
-            valueHe={values.closureType_he ?? ''}
-            placeholderEn="e.g., Buckle, Zipper, Slip-on"
-            placeholderHe="לדוגמה: אבזם, רוכסן, ללא סגירה"
-            onChange={onTextFieldChange}
-          />
+          <div>
+            <EnumSelect
+              id="closureType"
+              label="Closure Type"
+              locale="en"
+              showBothLanguages
+              value={values.closureType}
+              onChange={(value) => onChange('closureType', value)}
+              options={CLOSURE_TYPE_OPTIONS}
+              placeholder="Select closure type"
+            />
+            {!values.closureType && (
+              <PreviousValueHint legacyEn={values.closureType_en} legacyHe={values.closureType_he} />
+            )}
+          </div>
         )}
 
         {showHeelFields && (
           <>
-            <TextField
-              id="heelType"
-              labelEn="Heel Type"
-              labelHe="סוג עקב"
-              valueEn={values.heelType_en ?? ''}
-              valueHe={values.heelType_he ?? ''}
-              placeholderEn="e.g., Stiletto, Block, Wedge"
-              placeholderHe="לדוגמה: עקב מחט, עקב עבה, טריז"
-              onChange={onTextFieldChange}
-            />
-            <TextField
-              id="heelHeight"
-              labelEn="Heel Height"
-              labelHe="גובה עקב"
-              valueEn={values.heelHeight_en}
-              valueHe={values.heelHeight_he}
-              placeholderEn="e.g., 5cm"
-              placeholderHe="לדוגמה: 5 ס״מ"
-              onChange={onTextFieldChange}
-            />
-            <TextField
-              id="toeShape"
-              labelEn="Toe Shape"
-              labelHe="צורת קדמת הנעל"
-              valueEn={values.toeShape_en ?? ''}
-              valueHe={values.toeShape_he ?? ''}
-              placeholderEn="e.g., Pointed, Round, Square"
-              placeholderHe="לדוגמה: מחודדת, עגולה, מרובעת"
-              onChange={onTextFieldChange}
-            />
+            <div>
+              <EnumSelect
+                id="heelType"
+                label="Heel Type"
+                locale="en"
+                showBothLanguages
+                value={values.heelType}
+                onChange={(value) => onChange('heelType', value)}
+                options={HEEL_TYPE_OPTIONS}
+                placeholder="Select heel type"
+              />
+              {!values.heelType && <PreviousValueHint legacyEn={values.heelType_en} legacyHe={values.heelType_he} />}
+            </div>
+            <div>
+              <EnumSelect
+                id="heelHeight"
+                label="Heel Height"
+                locale="en"
+                showBothLanguages
+                value={values.heelHeight}
+                onChange={(value) => onChange('heelHeight', value)}
+                options={HEEL_HEIGHT_CM_OPTIONS}
+                placeholder="Select heel height"
+              />
+              {!values.heelHeight && (
+                <PreviousValueHint legacyEn={values.heelHeight_en} legacyHe={values.heelHeight_he} />
+              )}
+            </div>
+            <div>
+              <EnumSelect
+                id="toeShape"
+                label="Toe Shape"
+                locale="en"
+                showBothLanguages
+                value={values.toeShape}
+                onChange={(value) => onChange('toeShape', value)}
+                options={TOE_SHAPE_OPTIONS}
+                placeholder="Select toe shape"
+              />
+              {!values.toeShape && <PreviousValueHint legacyEn={values.toeShape_en} legacyHe={values.toeShape_he} />}
+            </div>
           </>
         )}
 

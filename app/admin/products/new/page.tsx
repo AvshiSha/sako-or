@@ -7,7 +7,19 @@ import SuccessMessage from '@/app/components/SuccessMessage'
 import GoogleDrivePicker from '@/app/components/GoogleDrivePicker'
 import Image from 'next/image'
 import { getColorHex } from '@/lib/colors'
-import { getCategoryFieldGroup, type ProductImageType } from '@/lib/product-enums'
+import {
+  getCategoryFieldGroup,
+  type ProductImageType,
+  type UpperMaterial,
+  type Lining,
+  type Insole,
+  type Outsole,
+  type ToeShape,
+  type HeelType,
+  type ClosureType,
+  type SoleType,
+  type HeelHeightCm,
+} from '@/lib/product-enums'
 import { validateProductFormBasics } from '../_lib/validate-product-form'
 import { buildProductPayload } from '../_lib/build-product-payload'
 import PreviewProductButton from '../_components/PreviewProductButton'
@@ -108,6 +120,15 @@ interface ProductFormData {
     heelType_he?: string;
     careInstructions_en?: string;
     careInstructions_he?: string;
+    upperMaterial: UpperMaterial[];
+    lining?: Lining;
+    insole?: Insole;
+    outsole?: Outsole;
+    soleType?: SoleType;
+    toeShape?: ToeShape;
+    heelType?: HeelType;
+    closureType?: ClosureType;
+    heelHeight?: HeelHeightCm;
   };
 
   // Shoe Fit and Sizing (only meaningful for footwear categories)
@@ -212,7 +233,8 @@ export default function NewProductPage() {
       depth_en: '',
       depth_he: '',
       width_en: '',
-      width_he: ''
+      width_he: '',
+      upperMaterial: [],
     },
 
     // Shoe Fit and Sizing
@@ -355,7 +377,7 @@ export default function NewProductPage() {
     handleInputChange(field, value)
   }
 
-  const handleSpecificationChange = (field: string, value: string | number | undefined) => {
+  const handleSpecificationChange = (field: string, value: string | number | string[] | undefined) => {
     setFormData(prev => ({
       ...prev,
       materialCare: { ...prev.materialCare, [field]: value }

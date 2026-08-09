@@ -6,6 +6,47 @@ import { deleteMeilisearchProduct, upsertMeilisearchProduct } from '@/lib/meilis
 import { prisma } from '@/lib/prisma'
 import { productExtensionsSchema } from '@/lib/schemas/product-schema'
 import { requireAdmin } from '@/lib/server/auth'
+import {
+  getOptionLabel,
+  type EnumOption,
+  UPPER_MATERIAL_OPTIONS,
+  LINING_OPTIONS,
+  OUTSOLE_OPTIONS,
+} from '@/lib/product-enums'
+
+/** Resolves a single dropdown value to its label, falling back to the legacy
+ * free-text value for products that haven't been reconciled onto the new
+ * dropdown yet. Used to keep populating the legacy *_en/*_he Postgres columns
+ * that lib/inventory.ts and scripts/backfill-generated-search-keywords.ts
+ * still read directly. */
+function resolveAttributeLabel<T extends string>(
+  options: EnumOption<T>[],
+  value: T | null | undefined,
+  locale: 'en' | 'he',
+  legacyFallback: string | null
+): string | null {
+  if (value) {
+    const label = getOptionLabel(options, value, locale)
+    if (label) return label
+  }
+  return legacyFallback
+}
+
+/** Same as resolveAttributeLabel, but for multi-select fields (e.g. Upper Material) — joins matched labels. */
+function resolveMultiAttributeLabel<T extends string>(
+  options: EnumOption<T>[],
+  values: T[] | null | undefined,
+  locale: 'en' | 'he',
+  legacyFallback: string | null
+): string | null {
+  if (values && values.length > 0) {
+    const labels = values
+      .map((value) => getOptionLabel(options, value, locale))
+      .filter((label): label is string => !!label)
+    if (labels.length > 0) return labels.join(', ')
+  }
+  return legacyFallback
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -309,6 +350,15 @@ export async function POST(request: NextRequest) {
           heelType_he: materialCareSource.heelType_he,
           careInstructions_en: materialCareSource.careInstructions_en,
           careInstructions_he: materialCareSource.careInstructions_he,
+          upperMaterial: materialCareSource.upperMaterial,
+          lining: materialCareSource.lining,
+          insole: materialCareSource.insole,
+          outsole: materialCareSource.outsole,
+          soleType: materialCareSource.soleType,
+          toeShape: materialCareSource.toeShape,
+          heelType: materialCareSource.heelType,
+          closureType: materialCareSource.closureType,
+          heelHeight: materialCareSource.heelHeight,
           shoeFit: shoeFitSource,
           seo: {
             slug: seoSource.slug,
@@ -366,20 +416,54 @@ export async function POST(request: NextRequest) {
           seoSecondaryKeywords_en: extensions?.seo?.en?.secondaryKeywords || [],
           seoSecondaryKeywords_he: extensions?.seo?.he?.secondaryKeywords || [],
           searchKeywords,
-          // Material & Care fields (from materialCare object)
-          upperMaterial_en: (firebaseProduct as any).materialCare?.upperMaterial_en || null,
-          upperMaterial_he: (firebaseProduct as any).materialCare?.upperMaterial_he || null,
+          // Material & Care fields (from materialCare object). upperMaterial_en/he,
+          // lining_en/he and sole_en/he are resolved from the new dropdown value when
+          // present (falling back to the legacy free text otherwise) because
+          // lib/inventory.ts and scripts/backfill-generated-search-keywords.ts read
+          // these three legacy columns directly, independent of this sync route.
+          upperMaterial_en: resolveMultiAttributeLabel(
+            UPPER_MATERIAL_OPTIONS,
+            extensions?.upperMaterial,
+            'en',
+            (firebaseProduct as any).materialCare?.upperMaterial_en || null
+          ),
+          upperMaterial_he: resolveMultiAttributeLabel(
+            UPPER_MATERIAL_OPTIONS,
+            extensions?.upperMaterial,
+            'he',
+            (firebaseProduct as any).materialCare?.upperMaterial_he || null
+          ),
           materialInnerSole_en: (firebaseProduct as any).materialCare?.materialInnerSole_en || null,
           materialInnerSole_he: (firebaseProduct as any).materialCare?.materialInnerSole_he || null,
-          lining_en: (firebaseProduct as any).materialCare?.lining_en || null,
-          lining_he: (firebaseProduct as any).materialCare?.lining_he || null,
-          sole_en: (firebaseProduct as any).materialCare?.sole_en || null,
-          sole_he: (firebaseProduct as any).materialCare?.sole_he || null,
+          lining_en: resolveAttributeLabel(
+            LINING_OPTIONS,
+            extensions?.lining,
+            'en',
+            (firebaseProduct as any).materialCare?.lining_en || null
+          ),
+          lining_he: resolveAttributeLabel(
+            LINING_OPTIONS,
+            extensions?.lining,
+            'he',
+            (firebaseProduct as any).materialCare?.lining_he || null
+          ),
+          sole_en: resolveAttributeLabel(
+            OUTSOLE_OPTIONS,
+            extensions?.outsole,
+            'en',
+            (firebaseProduct as any).materialCare?.sole_en || null
+          ),
+          sole_he: resolveAttributeLabel(
+            OUTSOLE_OPTIONS,
+            extensions?.outsole,
+            'he',
+            (firebaseProduct as any).materialCare?.sole_he || null
+          ),
           heelHeight_en: (firebaseProduct as any).materialCare?.heelHeight_en || null,
           heelHeight_he: (firebaseProduct as any).materialCare?.heelHeight_he || null,
           shippingReturns_en: (firebaseProduct as any).materialCare?.shippingReturns_en || null,
           shippingReturns_he: (firebaseProduct as any).materialCare?.shippingReturns_he || null,
-          // Structured specification additions
+          // Structured specification additions (legacy free-text pairs)
           toeShape_en: extensions?.toeShape_en || null,
           toeShape_he: extensions?.toeShape_he || null,
           closureType_en: extensions?.closureType_en || null,
@@ -388,6 +472,17 @@ export async function POST(request: NextRequest) {
           heelType_he: extensions?.heelType_he || null,
           careInstructions_en: extensions?.careInstructions_en || null,
           careInstructions_he: extensions?.careInstructions_he || null,
+          // Dropdown-backed attribute fields (single stable value; bare column
+          // names distinct from the legacy *_en/*_he pairs above)
+          upperMaterial: extensions?.upperMaterial || [],
+          lining: extensions?.lining || null,
+          insole: extensions?.insole || null,
+          outsole: extensions?.outsole || null,
+          soleType: extensions?.soleType || null,
+          toeShape: extensions?.toeShape || null,
+          heelType: extensions?.heelType || null,
+          closureType: extensions?.closureType || null,
+          heelHeight: extensions?.heelHeight || null,
           // Shoe fit & sizing
           sizeFit: extensions?.shoeFit?.sizeFit || null,
           footWidthFit: extensions?.shoeFit?.footWidthFit || null,
@@ -412,9 +507,12 @@ export async function POST(request: NextRequest) {
           subSubCategory_he: subSubCategoryHe || null,
           brand: firebaseProduct.brand || '',
           tags: (firebaseProduct as any).tags || [],
-          upperMaterial_he: (firebaseProduct as any).materialCare?.upperMaterial_he || null,
-          lining_he: (firebaseProduct as any).materialCare?.lining_he || null,
-          sole_he: (firebaseProduct as any).materialCare?.sole_he || null,
+          // Use the already-resolved (dropdown label, falling back to legacy text)
+          // values computed above, so search keywords stay accurate once products
+          // move onto the new dropdowns instead of the free-text fields.
+          upperMaterial_he: productData.upperMaterial_he,
+          lining_he: productData.lining_he,
+          sole_he: productData.sole_he,
           colorVariants,
         })
 

@@ -5,6 +5,15 @@ import {
   ARCH_FIT_OPTIONS,
   ADJUSTABLE_FEATURE_OPTIONS,
   PRODUCT_IMAGE_TYPE_OPTIONS,
+  UPPER_MATERIAL_OPTIONS,
+  LINING_OPTIONS,
+  INSOLE_OPTIONS,
+  OUTSOLE_OPTIONS,
+  TOE_SHAPE_OPTIONS,
+  HEEL_TYPE_OPTIONS,
+  CLOSURE_TYPE_OPTIONS,
+  SOLE_TYPE_OPTIONS,
+  HEEL_HEIGHT_CM_OPTIONS,
 } from '@/lib/product-enums'
 
 /** Builds a z.enum() tuple from a central EnumOption list, so values stay in one place. */
@@ -18,6 +27,16 @@ export const footWidthFitSchema = enumFromOptions(FOOT_WIDTH_FIT_OPTIONS)
 export const archFitSchema = enumFromOptions(ARCH_FIT_OPTIONS)
 export const adjustableFeatureSchema = enumFromOptions(ADJUSTABLE_FEATURE_OPTIONS)
 export const productImageTypeSchema = enumFromOptions(PRODUCT_IMAGE_TYPE_OPTIONS)
+
+export const upperMaterialSchema = enumFromOptions(UPPER_MATERIAL_OPTIONS)
+export const liningSchema = enumFromOptions(LINING_OPTIONS)
+export const insoleSchema = enumFromOptions(INSOLE_OPTIONS)
+export const outsoleSchema = enumFromOptions(OUTSOLE_OPTIONS)
+export const toeShapeSchema = enumFromOptions(TOE_SHAPE_OPTIONS)
+export const heelTypeSchema = enumFromOptions(HEEL_TYPE_OPTIONS)
+export const closureTypeSchema = enumFromOptions(CLOSURE_TYPE_OPTIONS)
+export const soleTypeSchema = enumFromOptions(SOLE_TYPE_OPTIONS)
+export const heelHeightCmSchema = enumFromOptions(HEEL_HEIGHT_CM_OPTIONS)
 
 /** Non-empty, trimmed keyword list — used for secondary keywords in both languages. */
 export const keywordListSchema = z
@@ -66,6 +85,18 @@ export const specificationsAdditionsSchema = z.object({
   heelType_he: z.string().optional(),
   careInstructions_en: z.string().optional(),
   careInstructions_he: z.string().optional(),
+  // Dropdown-backed attribute fields (single stable value; labels resolved via
+  // getOptionLabel, never persisted). These are separate keys from the legacy
+  // _en/_he pairs above, which stay as historical/reconciliation-hint data.
+  upperMaterial: z.array(upperMaterialSchema).default([]),
+  lining: liningSchema.optional(),
+  insole: insoleSchema.optional(),
+  outsole: outsoleSchema.optional(),
+  soleType: soleTypeSchema.optional(),
+  toeShape: toeShapeSchema.optional(),
+  heelType: heelTypeSchema.optional(),
+  closureType: closureTypeSchema.optional(),
+  heelHeight: heelHeightCmSchema.optional(),
 })
 
 export type SpecificationsAdditionsInput = z.infer<typeof specificationsAdditionsSchema>

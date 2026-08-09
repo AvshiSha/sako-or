@@ -1,4 +1,15 @@
-import type { ProductImageType } from '@/lib/product-enums'
+import type {
+  ProductImageType,
+  UpperMaterial,
+  Lining,
+  Insole,
+  Outsole,
+  ToeShape,
+  HeelType,
+  ClosureType,
+  SoleType,
+  HeelHeightCm,
+} from '@/lib/product-enums'
 import type { ShoeFitValues } from '../_components/ShoeFitSection'
 
 /**
@@ -68,6 +79,15 @@ export interface MaterialCareFormInput {
   heelType_he?: string
   careInstructions_en?: string
   careInstructions_he?: string
+  upperMaterial: UpperMaterial[]
+  lining?: Lining
+  insole?: Insole
+  outsole?: Outsole
+  soleType?: SoleType
+  toeShape?: ToeShape
+  heelType?: HeelType
+  closureType?: ClosureType
+  heelHeight?: HeelHeightCm
 }
 
 export interface SeoFormInput {

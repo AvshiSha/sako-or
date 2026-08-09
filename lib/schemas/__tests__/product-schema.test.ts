@@ -85,6 +85,41 @@ describe('productExtensionsSchema', () => {
     })
     assert.equal(result.success, true)
   })
+
+  it('accepts the dropdown-backed attribute fields', () => {
+    const result = productExtensionsSchema.safeParse({
+      upperMaterial: ['smooth_leather', 'suede'],
+      lining: 'textile',
+      insole: 'eva',
+      outsole: 'rubber',
+      soleType: 'wedge',
+      toeShape: 'round',
+      heelType: 'block_heel',
+      closureType: 'zipper',
+      heelHeight: '5',
+    })
+    assert.equal(result.success, true)
+  })
+
+  it('rejects an unsupported dropdown value', () => {
+    const result = productExtensionsSchema.safeParse({ outsole: 'cardboard' })
+    assert.equal(result.success, false)
+  })
+
+  it('rejects an unsupported upperMaterial entry', () => {
+    const result = productExtensionsSchema.safeParse({ upperMaterial: ['smooth_leather', 'unobtainium'] })
+    assert.equal(result.success, false)
+  })
+
+  it('rejects an out-of-range heel height', () => {
+    const result = productExtensionsSchema.safeParse({ heelHeight: '13' })
+    assert.equal(result.success, false)
+  })
+
+  it('defaults upperMaterial to an empty array when omitted', () => {
+    const result = productExtensionsSchema.parse({})
+    assert.deepEqual(result.upperMaterial, [])
+  })
 })
 
 describe('zodErrorsToFieldMap', () => {

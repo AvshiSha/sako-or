@@ -4,6 +4,15 @@ import type {
   FootWidthFit,
   ArchFit,
   AdjustableFeature,
+  UpperMaterial,
+  Lining,
+  Insole,
+  Outsole,
+  ToeShape,
+  HeelType,
+  ClosureType,
+  SoleType,
+  HeelHeightCm,
 } from '@/lib/product-enums'
 
 export interface Product {
@@ -75,6 +84,18 @@ export interface Product {
     heelType_he?: string
     careInstructions_en?: string
     careInstructions_he?: string
+    // Dropdown-backed attribute fields (single stable value; labels resolved via
+    // getOptionLabel, never persisted). Separate from the legacy _en/_he pairs
+    // above, which remain as historical/reconciliation-hint data only.
+    upperMaterial?: UpperMaterial[]
+    lining?: Lining
+    insole?: Insole
+    outsole?: Outsole
+    soleType?: SoleType
+    toeShape?: ToeShape
+    heelType?: HeelType
+    closureType?: ClosureType
+    heelHeight?: HeelHeightCm
   }
   /** Only meaningful for footwear products (see getCategoryFieldGroup in lib/product-enums.ts). */
   shoeFit?: {

@@ -2,7 +2,20 @@ import CollectionProductCardSkeleton from "@/app/components/CollectionProductCar
 
 const LISTING_PAGE_SIZE = 24;
 
-/** Reserves the same vertical space as the loaded collection grid (prevents footer CLS during streaming). */
+/**
+ * Reserves the same vertical space as the loaded collection grid (prevents
+ * footer CLS during streaming).
+ *
+ * Safe on this route, and deliberately not on others. A loading.tsx streams
+ * its fallback immediately, which sends the response headers and locks the
+ * HTTP status at 200 for everything inside the boundary - so `notFound()`
+ * degrades to a soft 404 and `redirect()` degrades to a meta refresh, with no
+ * build error and no runtime warning. Collection pages need neither: an
+ * unknown category renders an empty grid rather than a 404.
+ *
+ * Do not add a loading.tsx at [lng]/ or anywhere under product/. Those routes
+ * depend on real 404s and 307s, and one there breaks them silently.
+ */
 export default function Loading() {
   return (
     <div className="min-h-screen bg-white" aria-busy="true" aria-label="Loading collection">

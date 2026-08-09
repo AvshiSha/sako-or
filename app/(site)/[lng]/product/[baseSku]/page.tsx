@@ -11,13 +11,18 @@ interface ProductRedirectPageProps {
 
 /**
  * The base SKU URL has no content of its own - it resolves to the product's
- * default colour variant, which is the URL we actually publish in the sitemap.
+ * primary colour, which is the URL the canonical tag and the sitemap agree on.
  *
- * This has to redirect on the server. It previously did the lookup in a
- * `useEffect` and called `router.replace()`, which meant the URL answered
- * HTTP 200 with a loading spinner as its entire body: crawlers that don't
- * execute JS (most AI crawlers do not) saw "Redirecting to product..." and
- * nothing else, and Google treats a 200-with-no-content as a soft 404.
+ * DO NOT add a loading.tsx to this route or any route above it.
+ *
+ * A loading.tsx creates an implicit Suspense boundary, and Next streams that
+ * fallback immediately - which sends the response headers and locks the status
+ * at 200. Once that happens `redirect()` cannot set a 3xx and silently
+ * degrades to `<meta http-equiv="refresh" content="1;url=...">` inside a 200,
+ * and `notFound()` renders the not-found UI inside a 200 instead of a real
+ * 404. Both are soft redirects/404s that Google discounts and that most AI
+ * crawlers ignore entirely. There used to be a loading.tsx at
+ * app/[lng]/loading.tsx and this whole route tree behaved that way.
  *
  * 307 rather than 308 on purpose: the destination is whichever colour is
  * currently first and active, so it can legitimately change. A permanent
@@ -36,11 +41,7 @@ export default async function ProductRedirectPage({ params }: ProductRedirectPag
     notFound()
   }
 
-  // Land on the same colour the canonical tag and the sitemap point at, so
-  // this redirect reinforces the product's one indexable URL instead of
-  // introducing a third opinion about which colour represents the product.
   const primaryColorSlug = getPrimaryColorSlug(product.colorVariants)
-
   if (!primaryColorSlug) {
     notFound()
   }

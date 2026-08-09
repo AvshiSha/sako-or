@@ -8,10 +8,12 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: '*',
       allow: '/',
-      // /_next/ build assets (JS/CSS chunks) are not pages; Google shouldn't
-      // spend crawl budget on them or keep retrying ones that 404 after a
-      // redeploy changes the chunk hashes.
-      disallow: ['/admin/', '/api/', '/_next/'],
+      // Do NOT add /_next/ here. Those are the JS/CSS chunks Google's renderer
+      // needs to paint the page - blocking them makes the collection grid and
+      // header render blank in the crawler's screenshot, which costs far more
+      // than the crawl budget it saves. (Crawl-budget tuning only pays off
+      // above ~500K URLs; we are nowhere near that.)
+      disallow: ['/admin/', '/api/'],
     },
     sitemap: `${baseUrl}/sitemap.xml`,
   }

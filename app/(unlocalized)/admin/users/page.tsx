@@ -6,7 +6,7 @@ import ProtectedRoute from '@/app/components/ProtectedRoute'
 import { ArrowLeftIcon, EyeIcon, EyeSlashIcon, TrashIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { getAdminAuthHeaders } from '@/lib/admin-api'
-import { adminTheme } from '@/app/admin/_components/adminTheme'
+import { adminTheme } from '@/app/(unlocalized)/admin/_components/adminTheme'
 import { DeleteAdminUserModal } from './_components/DeleteAdminUserModal'
 
 interface AdminUserRow {

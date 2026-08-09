@@ -1,36 +1,34 @@
-import './globals.css'
-import { Assistant } from 'next/font/google'  
-import ClientAuthProvider from './components/ClientAuthProvider'
-import WhatsAppButton from './components/WhatsAppButton'
-import CookieConsent from './components/CookieConsent'
-import DeferredAnalytics from './components/DeferredAnalytics'
+import '../globals.css'
+import { Assistant } from 'next/font/google'
+import ClientAuthProvider from './ClientAuthProvider'
+import WhatsAppButton from './WhatsAppButton'
+import CookieConsent from './CookieConsent'
+import DeferredAnalytics from './DeferredAnalytics'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import type { Metadata } from 'next'
 import { buildAbsoluteUrl } from '@/lib/seo'
 
 const assistant = Assistant({ subsets: ['latin'], display: 'optional' })
 
-export const metadata: Metadata = {
-  title: "SAKO OR",
-  description: "SAKO OR",
-  icons: {
-    icon: '/favicon.ico',
-    apple: '/favicon.ico',
-    shortcut: '/favicon.ico',
-  }
-}
+/**
+ * Everything that used to live inside the single root layout's <head> and
+ * <body>: fonts, analytics, auth, the cookie banner and the accessibility
+ * widget.
+ *
+ * It stops short of <html> on purpose. There are now two root layouts - one
+ * per route group - because <html lang> and <html dir> have to reflect the
+ * [lng] route param, and a layout can only read params for segments at or
+ * below itself. A single app/layout.tsx sits above [lng] and therefore cannot
+ * know the locale, which is why every page used to ship without a lang or dir
+ * attribute at all. Each root layout renders its own <html> and delegates the
+ * rest here so the two cannot drift apart.
+ */
+export default function RootShell({ children }: { children: React.ReactNode }) {
+  const accessibilityKey = process.env.NEXT_PUBLIC_ACCESSIBILITY_KEY || ''
+  const accessibilityPolicyUrl = buildAbsoluteUrl('en/accessibility')
 
-export default function RootLayout({
-  children
-}: {
-  children: React.ReactNode
-}) {
-  const accessibilityKey = process.env.NEXT_PUBLIC_ACCESSIBILITY_KEY || '';
-  const accessibilityPolicyUrl = buildAbsoluteUrl('en/accessibility');
-  
   return (
-    <html className="light" suppressHydrationWarning>
+    <>
       <head>
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
@@ -93,10 +91,10 @@ export default function RootLayout({
           }}
         />
         <noscript>
-          <iframe 
+          <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-T6QKL299"
-            height="0" 
-            width="0" 
+            height="0"
+            width="0"
             style={{display:'none',visibility:'hidden'}}
           />
         </noscript>
@@ -106,7 +104,7 @@ export default function RootLayout({
           {children}
           <WhatsAppButton />
         </ClientAuthProvider>
-        
+
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -181,10 +179,10 @@ window.args = {
             `
           }}
         />
-        
+
         <Analytics mode="production" />
         <SpeedInsights />
       </body>
-    </html>
+    </>
   )
 }

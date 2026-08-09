@@ -1,4 +1,4 @@
-import { languages } from '../../../../i18n/settings'
+import { languages } from '../../../../../i18n/settings'
 
 export async function generateStaticParams() {
   // Generate static paths for common collection routes

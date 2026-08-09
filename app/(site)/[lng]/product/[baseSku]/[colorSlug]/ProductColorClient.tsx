@@ -27,7 +27,7 @@ import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
 import { ProductPromoRibbon } from '@/app/components/ProductPromoRibbon'
 import { normalizeProductImages, getProductImageAlt, type ProductImageDetail } from '@/lib/product-images'
-import PreviewModeBanner from '@/app/admin/products/_components/PreviewModeBanner'
+import PreviewModeBanner from '@/app/(unlocalized)/admin/products/_components/PreviewModeBanner'
 import {
   SIZE_FIT_OPTIONS,
   FOOT_WIDTH_FIT_OPTIONS,
@@ -801,11 +801,17 @@ export default function ProductColorClient({
                   />
                 )}
 
-                {/* Product Title + Price (same row) */}
+                {/* Product Title + Price (same row).
+                    Deliberately NOT an <h1>: the mobile block above already
+                    emits one, and both blocks are always present in the DOM
+                    (only CSS hides one), so a second <h1> tag would give every
+                    product page two. role/aria-level keep this announced as the
+                    page heading for desktop screen readers, which skip the
+                    display:none mobile copy. */}
                 <div className="flex items-start justify-between gap-2">
-                  <h1 className="text-2xl font-bold text-gray-900 flex-1">
+                  <div role="heading" aria-level={1} className="text-2xl font-bold text-gray-900 flex-1">
                     {lng === 'he' ? product.title_he : product.title_en}
-                  </h1>
+                  </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
                       <>

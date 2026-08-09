@@ -3,7 +3,7 @@
 import { Fragment } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
-import { adminTheme } from '@/app/admin/_components/adminTheme'
+import { adminTheme } from '@/app/(unlocalized)/admin/_components/adminTheme'
 
 interface DeleteAdminUserModalProps {
   isOpen: boolean

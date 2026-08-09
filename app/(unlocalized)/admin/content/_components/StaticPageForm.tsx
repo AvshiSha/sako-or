@@ -11,7 +11,7 @@ import {
 } from '@/lib/firebase'
 import type { StaticPageDefinition } from '@/lib/static-page-registry'
 import { ArrowLeftIcon, EyeIcon } from '@heroicons/react/24/outline'
-import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
+import RichTextEditor from '@/app/(unlocalized)/admin/_components/RichTextEditorLazy'
 import { revalidateCmsPaths } from '@/lib/cms-utils'
 import { cleanupCmsHtml, cmsHtmlToPlainText, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'
 import StaticPagePreviewModal from './StaticPagePreviewModal'

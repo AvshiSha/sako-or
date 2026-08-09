@@ -1,7 +1,7 @@
 import { getProductDraft } from '@/lib/server/product-drafts'
 import { verifyPreviewToken } from '@/lib/server/preview-token'
 import { serializeFirestoreValue } from '@/lib/serialize-firestore'
-import ProductColorClient from '@/app/[lng]/product/[baseSku]/[colorSlug]/ProductColorClient'
+import ProductColorClient from '@/app/(site)/[lng]/product/[baseSku]/[colorSlug]/ProductColorClient'
 
 export const dynamic = 'force-dynamic'
 

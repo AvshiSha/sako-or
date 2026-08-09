@@ -17,7 +17,7 @@ import {
 import Link from 'next/link'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import SuccessMessage from '@/app/components/SuccessMessage'
-import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
+import RichTextEditor from '@/app/(unlocalized)/admin/_components/RichTextEditorLazy'
 import { deleteField } from 'firebase/firestore'
 import { cleanupCmsHtml, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'
 import { uploadCmsImage } from '@/lib/upload-cms-image'

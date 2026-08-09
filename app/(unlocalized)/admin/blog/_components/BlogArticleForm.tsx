@@ -5,7 +5,7 @@ import { BlogArticle, blogService, categoryService, type Category } from '@/lib/
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import RichTextEditor from '@/app/admin/_components/RichTextEditorLazy'
+import RichTextEditor from '@/app/(unlocalized)/admin/_components/RichTextEditorLazy'
 import { uploadCmsImage } from '@/lib/upload-cms-image'
 import { slugify, revalidateCmsPaths } from '@/lib/cms-utils'
 import { cleanupCmsHtml, cmsHtmlToPlainText, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'

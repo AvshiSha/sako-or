@@ -29,7 +29,7 @@ const translations = {
   }
 } as const
 
-export default function ProfileLayout({
+export default function ProfileLayoutClient({
   children
 }: {
   children: React.ReactNode

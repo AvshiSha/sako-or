@@ -2,7 +2,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { blogService } from '@/lib/firebase'
-import { buildMetadata, buildAbsoluteUrl } from '@/lib/seo'
+import { buildMetadata, buildAbsoluteUrl, seoConfig, ensureAbsoluteImageUrl } from '@/lib/seo'
 import { languages } from '@/i18n/settings'
 import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
 import InlineHeadingContent from '@/app/components/InlineHeadingContent'
@@ -86,21 +86,42 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
       })
     : ''
 
+  // Google truncates Article headlines past ~110 characters and will not
+  // show the rich result for an over-long one.
+  const headline = titlePlain.length > 110 ? `${titlePlain.slice(0, 107).trimEnd()}...` : titlePlain
+
+  // dateModified must never precede datePublished, which Google treats as a
+  // contradiction and a reason to drop the rich result.
+  const publishedAt = article.publishedAt
+  const modifiedAt =
+    article.updatedAt && new Date(article.updatedAt) >= new Date(publishedAt)
+      ? article.updatedAt
+      : publishedAt
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Article',
-    headline: titlePlain,
+    headline,
     description: excerpt,
-    image: article.featuredImage ? [article.featuredImage] : undefined,
-    datePublished: article.publishedAt,
-    dateModified: article.updatedAt,
+    image: article.featuredImage
+      ? [ensureAbsoluteImageUrl(article.featuredImage)].filter(Boolean)
+      : undefined,
+    datePublished: publishedAt,
+    dateModified: modifiedAt,
     author: {
       '@type': 'Organization',
-      name: 'SAKO-OR',
+      name: seoConfig.siteName,
+      url: buildAbsoluteUrl(`/${lng}`),
     },
     publisher: {
       '@type': 'Organization',
-      name: 'SAKO-OR',
+      name: seoConfig.siteName,
+      // Required by Google for the Article rich result - its absence alone
+      // is enough to suppress it, with no validation error to explain why.
+      logo: {
+        '@type': 'ImageObject',
+        url: ensureAbsoluteImageUrl(seoConfig.defaultOGImage),
+      },
     },
     mainEntityOfPage: buildAbsoluteUrl(`/${lng}/news/${slug}`),
   }

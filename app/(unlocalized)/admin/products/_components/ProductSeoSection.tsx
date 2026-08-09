@@ -102,7 +102,7 @@ export default function ProductSeoSection({ values, onChange, productUrl, produc
               className={fieldClass}
               placeholder="נעלי סירה כסופות מעור לנשים | שם החנות"
             />
-            <SeoFieldCounter value={values.title_he} range={SEO_TITLE_RANGE} />
+            <SeoFieldCounter value={values.title_he} range={SEO_TITLE_RANGE} countsBrandSuffix />
           </div>
 
           <div className="mb-4">
@@ -172,7 +172,7 @@ export default function ProductSeoSection({ values, onChange, productUrl, produc
               className={fieldClass}
               placeholder="Women's Silver Leather Pumps | Store Name"
             />
-            <SeoFieldCounter value={values.title_en} range={SEO_TITLE_RANGE} />
+            <SeoFieldCounter value={values.title_en} range={SEO_TITLE_RANGE} countsBrandSuffix />
           </div>
 
           <div className="mb-4">

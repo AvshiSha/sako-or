@@ -9,7 +9,7 @@ import { getStorefrontCouponBadgeIndex } from '@/lib/coupon-product-badges.serve
 import { getServerNavigationCategories } from '@/lib/navigation-categories.server'
 import LanguageLayoutShell from './LanguageLayoutShell'
 import { COLLECTION_GRID_CRITICAL_CSS } from '@/lib/collection-grid-critical-css'
-import { seoConfig } from '@/lib/seo'
+import { seoConfig, buildOrganizationStructuredData } from '@/lib/seo'
 
 export async function generateStaticParams() {
   return languages.map((lng) => ({ lng }))
@@ -72,6 +72,12 @@ export default async function LanguageLayout({
     <html lang={normalizedLng} dir={direction} className="light" suppressHydrationWarning>
       <RootShell>
         <div className={`flex flex-col ${direction}`} dir={direction}>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(buildOrganizationStructuredData(normalizedLng)),
+            }}
+          />
           <style dangerouslySetInnerHTML={{ __html: COLLECTION_GRID_CRITICAL_CSS }} />
           <PromoProvider>
             <CouponBadgeProvider initialIndex={couponBadgeIndex}>

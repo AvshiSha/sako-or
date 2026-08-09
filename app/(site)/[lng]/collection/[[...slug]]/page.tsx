@@ -86,35 +86,30 @@ export async function generateMetadata({
     : undefined;
 
   if (searchQuery) {
-    // For search results, use generic collection metadata
-    const title = locale === 'he' ? 'חיפוש מוצרים | SAKO-OR' : 'Search Products | SAKO-OR';
+    // Internal search results are noindex, follow.
+    //
+    // `?search=` is an unbounded URL space in which every page carries the
+    // same title and description and self-canonicalises - a duplicate-title
+    // generator over infinitely many thin pages. robots.txt is the wrong tool
+    // here (a blocked URL can still be indexed URL-only, and Google can never
+    // read a noindex it is not allowed to crawl); the meta directive is the
+    // right one. `follow` keeps the product links on the page passing value.
+    //
+    // No alternateLocales either: an hreflang cluster is only valid when every
+    // member is indexable, and a Hebrew query string pointed at the English
+    // page matches nothing anyway.
+    const title = locale === 'he' ? 'חיפוש מוצרים' : 'Search Products';
     const description = locale === 'he'
       ? 'חפשו מוצרים באיכות גבוהה מבית סכו עור'
       : 'Search for high-quality products from SAKO-OR';
-    const queryString = buildQueryString(true);
-    const url = `/${lng}/collection${queryString}`;
 
-    // Build prev/next URLs
-    const prevUrl = page > 1 ? `/${lng}/collection?search=${encodeURIComponent(searchQuery)}&page=${page - 1}` : undefined;
-    const nextUrl = `/${lng}/collection?search=${encodeURIComponent(searchQuery)}&page=${page + 1}`;
-
-    const metadata = buildMetadata({
+    return buildMetadata({
       title,
       description,
-      url,
+      url: `/${lng}/collection${buildQueryString(true)}`,
       locale,
-      alternateLocales: languages
-        .filter(l => l !== locale)
-        .map(altLng => ({
-          locale: altLng,
-          url: `/${altLng}/collection${queryString}`,
-        })),
+      robots: 'noindex, follow',
     });
-
-    // Add prev/next links if Next.js Metadata API supports it
-    // Note: Next.js Metadata API doesn't directly support rel="prev"/"next"
-    // We'll add these via a custom head component if needed
-    return metadata;
   }
 
   // Build category path from slug
@@ -178,7 +173,16 @@ export async function generateMetadata({
   const queryString = page > 1 ? `?page=${page}` : '';
   const url = `${baseUrl}${queryString}`;
 
-  const title = cmsHtmlToPlainText(categorySeoTitle || '') || `${categoryName} | SAKO-OR`;
+  const baseTitle = cmsHtmlToPlainText(categorySeoTitle || '') || `${categoryName} | SAKO-OR`;
+
+  // Page 2+ must say so in the title. Duplicate titles are otherwise not
+  // allowed anywhere on the site, and a paginated series is the single
+  // exception - but only when the page number is actually appended. Without
+  // it, every page of a category ships byte-identical metadata.
+  const pageSuffix = page > 1 ? (locale === 'he' ? ` – עמוד ${page}` : ` – Page ${page}`) : '';
+  const title = pageSuffix
+    ? `${cmsHtmlToPlainText(categorySeoTitle || '') || categoryName}${pageSuffix}`
+    : baseTitle;
   const description = categoryDescription;
 
   // Build alternate locales with page param
@@ -189,11 +193,8 @@ export async function generateMetadata({
       url: `/${altLng}/collection${categoryPath ? `/${categoryPath}` : ''}${queryString}`,
     }));
 
-  // Build prev/next URLs (for potential use in head component)
-  // Note: We'll need to fetch total count to determine if next exists
-  // For now, we'll build the URLs and let the client handle the logic
-  const prevUrl = page > 1 ? `${baseUrl}?page=${page - 1}` : undefined;
-  const nextUrl = `${baseUrl}?page=${page + 1}`;
+  // No rel="prev"/"next": Google stopped using them as an indexing signal in
+  // 2019. The URLs used to be built here and then thrown away.
 
   return buildMetadata({
     title,

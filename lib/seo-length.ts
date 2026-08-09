@@ -11,7 +11,29 @@ export interface LengthRange {
   max: number
 }
 
-export const SEO_TITLE_RANGE: LengthRange = { min: 50, max: 60 }
+/**
+ * buildMetadata() appends this to every title that does not already contain
+ * it, so the string an admin types is never the string that ships.
+ */
+export const TITLE_BRAND_SUFFIX = ' | SAKO-OR'
+
+/**
+ * Length of a title as it will actually render, suffix included.
+ *
+ * The counter used to measure the raw field, so a title showing green at 60
+ * characters shipped at 70 - past the ~65 mark where Google truncates it in
+ * the SERP and starts rewriting titles itself.
+ */
+export function getRenderedTitleLength(value: string | null | undefined): number {
+  const trimmed = (value ?? '').trim()
+  if (!trimmed) return 0
+  return trimmed.includes(TITLE_BRAND_SUFFIX.trim())
+    ? trimmed.length
+    : trimmed.length + TITLE_BRAND_SUFFIX.length
+}
+
+/** Target for the RENDERED title (suffix included), not the raw input. */
+export const SEO_TITLE_RANGE: LengthRange = { min: 45, max: 60 }
 export const META_DESCRIPTION_RANGE: LengthRange = { min: 140, max: 160 }
 /** Product titles have no hard SEO range, just an upper warning threshold. */
 export const PRODUCT_TITLE_WARN_LENGTH = 70

@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { getCachedProductByBaseSku } from '@/lib/server/cached-product-data'
+import { getPrimaryColorSlug } from '@/lib/product-seo'
 
 interface ProductRedirectPageProps {
   params: Promise<{
@@ -35,15 +36,14 @@ export default async function ProductRedirectPage({ params }: ProductRedirectPag
     notFound()
   }
 
-  // Match the colour page's own guard (`variant.isActive === false` fails it),
-  // otherwise we can redirect to a variant that immediately 404s.
-  const defaultVariant = Object.values(product.colorVariants || {}).find(
-    (variant) => variant.isActive !== false
-  )
+  // Land on the same colour the canonical tag and the sitemap point at, so
+  // this redirect reinforces the product's one indexable URL instead of
+  // introducing a third opinion about which colour represents the product.
+  const primaryColorSlug = getPrimaryColorSlug(product.colorVariants)
 
-  if (!defaultVariant?.colorSlug) {
+  if (!primaryColorSlug) {
     notFound()
   }
 
-  redirect(`/${lng}/product/${baseSku}/${defaultVariant.colorSlug}`)
+  redirect(`/${lng}/product/${baseSku}/${primaryColorSlug}`)
 }

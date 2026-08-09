@@ -1,168 +1,107 @@
-import type { Product } from '@/lib/product-types'
-import { getColorName } from '@/lib/colors'
-import {
-  getOptionLabel,
-  UPPER_MATERIAL_OPTIONS,
-  LINING_OPTIONS,
-  INSOLE_OPTIONS,
-  OUTSOLE_OPTIONS,
-  SOLE_TYPE_OPTIONS,
-  CLOSURE_TYPE_OPTIONS,
-  HEEL_TYPE_OPTIONS,
-  TOE_SHAPE_OPTIONS,
-  HEEL_HEIGHT_CM_OPTIONS,
-  type SizeFit,
-  type FootWidthFit,
-} from '@/lib/product-enums'
+import type { Product } from './product-types'
 
-/** English label from the dropdown value when present, else the legacy free text. */
-function resolveEnLabel(
-  dropdownValue: string | undefined,
-  options: { value: string; label_en: string; label_he: string }[],
-  legacyEn: string | undefined
-): string | undefined {
-  if (dropdownValue) {
-    const label = getOptionLabel(options, dropdownValue, 'en')
-    if (label) return label
-  }
-  return legacyEn
+/**
+ * Colour-variant URLs are near-duplicates of one another: same product, same
+ * copy, same specs, differing only by a colour word and the photography. Over
+ * half the catalogue is these siblings (530 published product URLs across 254
+ * base SKUs), and Google was clustering them and indexing none - Search
+ * Console reported "Duplicate without user-selected canonical" across the
+ * range.
+ *
+ * So one colour per product is the canonical, indexable URL and the others
+ * point at it. Every place that has an opinion about which URL represents a
+ * product - the canonical tag, the hreflang cluster, the sitemap and the base
+ * SKU redirect - has to agree, or we trade a duplicate-content problem for a
+ * contradictory-signals one. That agreement is what this module is for.
+ */
+
+/**
+ * Derived from Product rather than the exported `ColorVariant` interface:
+ * Product declares its own inline, narrower shape for `colorVariants`
+ * (no colorName/stock/sizes/timestamps), and the two are not assignable.
+ */
+type ProductColorVariants = NonNullable<Product['colorVariants']>
+type ProductColorVariant = ProductColorVariants[string]
+type ColorVariantEntry = { colorSlug: string; variant: ProductColorVariant }
+
+/** Active colour variants, ordered deterministically by slug. */
+function activeColorVariants(
+  colorVariants: Product['colorVariants'] | undefined
+): ColorVariantEntry[] {
+  return Object.entries(colorVariants || {})
+    .map(([key, variant]) => ({ colorSlug: variant?.colorSlug || key, variant }))
+    .filter((entry) => !!entry.colorSlug && entry.variant?.isActive !== false)
+    .sort((a, b) => a.colorSlug.localeCompare(b.colorSlug))
 }
 
 /**
- * Clean, structured JSON projection of a product, intended as the single entry
- * point a future AI SEO assistant (or any other SEO tooling) would read from.
- * Adapted to the current data model rather than a new/parallel schema — see
- * lib/product-types.ts for the underlying stored shape.
+ * The one colour whose URL represents this product in search.
+ *
+ * Sorted by slug rather than taking the first key: object key order comes out
+ * of Firestore and is not guaranteed stable across reads, and a canonical that
+ * changes between renders is worse than no canonical at all.
  */
-export interface StructuredProductData {
-  title: { he: string; en: string }
-  shortTitle: { he?: string; en?: string }
-  description: { shortHe?: string; shortEn?: string; fullHe: string; fullEn: string }
-  classification: {
-    category?: string
-    subcategory?: string
-    productType?: string
-    brand?: string
-    sku?: string
-  }
-  specifications: {
-    mainColor?: string
-    additionalColors?: string[]
-    material?: string
-    liningMaterial?: string
-    insoleMaterial?: string
-    soleMaterial?: string
-    soleType?: string
-    closureType?: string
-    heelType?: string
-    toeShape?: string
-    heelHeight?: string
-  }
-  shoeFit?: {
-    sizeFit?: SizeFit
-    footWidthFit?: FootWidthFit
-    archFit?: string
-    adjustableFeatures?: string[]
-    recommendationHe?: string
-    recommendationEn?: string
-    notesHe?: string
-    notesEn?: string
-  }
-  seo: {
-    he: { focusKeyword?: string; secondaryKeywords?: string[]; metaTitle?: string; metaDescription?: string }
-    en: { focusKeyword?: string; secondaryKeywords?: string[]; metaTitle?: string; metaDescription?: string }
-    slug?: string
-  }
+export function getPrimaryColorSlug(
+  colorVariants: Product['colorVariants'] | undefined
+): string | undefined {
+  return activeColorVariants(colorVariants)[0]?.colorSlug
 }
 
-function firstDefined(...values: (string | undefined)[]): string | undefined {
-  return values.find((value) => !!value && value.trim().length > 0)
+/** True when this colour is the one that represents the product in search. */
+export function isPrimaryColorSlug(
+  colorVariants: Product['colorVariants'] | undefined,
+  colorSlug: string
+): boolean {
+  const primary = getPrimaryColorSlug(colorVariants)
+  return !!primary && primary === colorSlug
 }
 
-/** Derives main/additional colors from the product's color variants rather than storing duplicate data. */
-function deriveColors(product: Product): { mainColor?: string; additionalColors?: string[] } {
-  const slugs = Object.values(product.colorVariants ?? {})
-    .filter((variant) => variant.isActive !== false)
-    .map((variant) => variant.colorSlug)
-    .filter(Boolean)
+/**
+ * Composes a product page title that leads with words people actually search.
+ *
+ * `title_he` / `title_en` in Firestore hold the *brand* ("IL BORGO FIRENZE",
+ * "STELIO MALORI Italy"), not a product name, so titles carried no searchable
+ * keyword and collided outright between different SKUs of the same brand.
+ * Leading with the category ("סנדלי עקב") puts a real keyword in the first 40
+ * characters and keeps the brand as the trailing differentiator.
+ *
+ * The ` | SAKO-OR` suffix is NOT added here - buildMetadata() appends it, and
+ * adding it in both places is how titles end up double-branded.
+ */
+export function buildProductTitle(options: {
+  /** Admin override from `product.seo.title_*`. Used verbatim when present. */
+  seoTitleOverride?: string
+  /** `product.title_he` / `title_en` - in practice the brand name. */
+  productTitle?: string
+  /** Localised deepest-category name, e.g. "סנדלי עקב". Absent is fine. */
+  categoryName?: string
+  /** Localised colour name from getColorName(), e.g. "בז'". */
+  colorName?: string
+}): string {
+  const { seoTitleOverride, productTitle, categoryName, colorName } = options
 
-  if (slugs.length === 0) return {}
+  // An admin who typed a title meant it - never recompose over the top of it.
+  const override = seoTitleOverride?.trim()
+  if (override) return override
 
-  const names = slugs.map((slug) => getColorName(slug, 'en')).filter(Boolean)
-  const [mainColor, ...rest] = names
+  const brand = productTitle?.trim()
+  const category = categoryName?.trim()
+  const color = colorName?.trim()
 
-  return {
-    mainColor,
-    additionalColors: rest.length > 0 ? rest : undefined,
-  }
-}
+  // Lead with category + colour (the searchable part), trail with brand.
+  const lead = [category, color].filter(Boolean).join(' ')
+  const composed = [lead, brand].filter(Boolean).join(' – ')
 
-export function getStructuredProductData(product: Product): StructuredProductData {
-  const { mainColor, additionalColors } = deriveColors(product)
-  const materialCare = product.materialCare
-  const shoeFit = product.shoeFit
-  const seo = product.seo
+  // Fall back to whatever we do have rather than returning an empty string.
+  const title = composed || brand || category || color || ''
 
-  return {
-    title: { he: product.title_he, en: product.title_en },
-    shortTitle: { he: product.shortTitle_he, en: product.shortTitle_en },
-    description: {
-      shortHe: product.shortDescription_he,
-      shortEn: product.shortDescription_en,
-      fullHe: product.description_he,
-      fullEn: product.description_en,
-    },
-    classification: {
-      category: firstDefined(product.category),
-      subcategory: firstDefined(product.subCategory),
-      productType: firstDefined(product.subSubCategory),
-      brand: firstDefined(product.brand),
-      sku: firstDefined(product.sku),
-    },
-    specifications: {
-      mainColor,
-      additionalColors,
-      material: materialCare?.upperMaterial && materialCare.upperMaterial.length > 0
-        ? materialCare.upperMaterial
-            .map((value) => getOptionLabel(UPPER_MATERIAL_OPTIONS, value, 'en'))
-            .filter((label): label is string => !!label)
-            .join(', ')
-        : firstDefined(materialCare?.upperMaterial_en),
-      liningMaterial: firstDefined(resolveEnLabel(materialCare?.lining, LINING_OPTIONS, materialCare?.lining_en)),
-      insoleMaterial: firstDefined(resolveEnLabel(materialCare?.insole, INSOLE_OPTIONS, undefined)),
-      soleMaterial: firstDefined(resolveEnLabel(materialCare?.outsole, OUTSOLE_OPTIONS, materialCare?.sole_en)),
-      soleType: materialCare?.soleType ? getOptionLabel(SOLE_TYPE_OPTIONS, materialCare.soleType, 'en') : undefined,
-      closureType: firstDefined(resolveEnLabel(materialCare?.closureType, CLOSURE_TYPE_OPTIONS, materialCare?.closureType_en)),
-      heelType: firstDefined(resolveEnLabel(materialCare?.heelType, HEEL_TYPE_OPTIONS, materialCare?.heelType_en)),
-      toeShape: firstDefined(resolveEnLabel(materialCare?.toeShape, TOE_SHAPE_OPTIONS, materialCare?.toeShape_en)),
-      heelHeight: materialCare?.heelHeight ? getOptionLabel(HEEL_HEIGHT_CM_OPTIONS, materialCare.heelHeight, 'en') : undefined,
-    },
-    shoeFit: shoeFit
-      ? {
-          sizeFit: shoeFit.sizeFit,
-          footWidthFit: shoeFit.footWidthFit,
-          archFit: shoeFit.archFit,
-          adjustableFeatures: shoeFit.adjustableFeatures,
-          recommendationHe: shoeFit.recommendation_he,
-          recommendationEn: shoeFit.recommendation_en,
-          notesHe: shoeFit.notes_he,
-          notesEn: shoeFit.notes_en,
-        }
-      : undefined,
-    seo: {
-      he: {
-        focusKeyword: seo?.focusKeyword_he,
-        secondaryKeywords: seo?.secondaryKeywords_he,
-        metaTitle: seo?.title_he,
-        metaDescription: seo?.description_he,
-      },
-      en: {
-        focusKeyword: seo?.focusKeyword_en,
-        secondaryKeywords: seo?.secondaryKeywords_en,
-        metaTitle: seo?.title_en,
-        metaDescription: seo?.description_en,
-      },
-      slug: seo?.slug,
-    },
-  }
+  // Anti-pattern #12: titles beyond ~65 characters get truncated in the SERP
+  // and are rewritten by Google more often. buildMetadata() still has to fit
+  // " | SAKO-OR" (10 chars) after this, so budget for it.
+  const MAX = 55
+  if (title.length <= MAX) return title
+
+  // Drop the brand before truncating mid-word - the keyword matters more.
+  if (lead && lead.length <= MAX) return lead
+  return title.slice(0, MAX).trimEnd()
 }

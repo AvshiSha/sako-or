@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { getCachedProductByBaseSku } from '@/lib/server/cached-product-data'
+import { getCachedCategoryById } from '@/lib/server/cached-category-data'
 import { buildMetadata, buildProductStructuredData, buildAbsoluteUrl } from '@/lib/seo'
+import { buildProductTitle, getPrimaryColorSlug } from '@/lib/product-seo'
 import type { Metadata } from 'next'
 import { languages } from '@/i18n/settings'
 import { getImageUrl } from '@/lib/image-urls'
@@ -79,6 +81,34 @@ function buildStructuredDataFacts(
   return { material: material || undefined, color: color || undefined, additionalProperty }
 }
 
+/**
+ * Localised name of the product's deepest category, e.g. "סנדלי עקב".
+ *
+ * This is what gives the page title a keyword worth ranking for: the stored
+ * product title is the brand ("IL BORGO FIRENZE"), which nobody searches.
+ * Best-effort - a product with no category path still gets a title, just
+ * without the leading keyword.
+ */
+async function getLocalizedCategoryName(
+  product: Product,
+  locale: 'en' | 'he'
+): Promise<string | undefined> {
+  const categoryIds = product.categories_path_id
+  const deepestId = Array.isArray(categoryIds) && categoryIds.length > 0
+    ? categoryIds[categoryIds.length - 1]
+    : undefined
+  if (!deepestId) return undefined
+
+  try {
+    const category = await getCachedCategoryById(deepestId)
+    const name = (category as { name?: Record<string, string> } | null)?.name
+    return name?.[locale] || name?.en || undefined
+  } catch (error) {
+    console.error('Error resolving category name for product title:', error)
+    return undefined
+  }
+}
+
 function reorderImagesByPrimary(images: string[] | undefined, primaryImage: string | undefined): string[] {
   const list = Array.isArray(images) ? images : []
   if (!primaryImage) return list
@@ -147,11 +177,10 @@ export async function generateMetadata({
       })
     }
 
-    // Get product title (prefer SEO title, fallback to regular title)
-    const productTitle = product.seo?.title_en || product.seo?.title_he
-      ? (locale === 'he' ? product.seo.title_he : product.seo.title_en) || 
-        (locale === 'he' ? product.title_he : product.title_en)
-      : (locale === 'he' ? product.title_he : product.title_en)
+    // An admin-authored SEO title wins outright; otherwise we compose one,
+    // because the stored title is the brand name and carries no keyword.
+    const seoTitleOverride = locale === 'he' ? product.seo?.title_he : product.seo?.title_en
+    const productTitle = locale === 'he' ? product.title_he : product.title_en
 
     // Get product description (prefer SEO description, fallback to regular description)
     const productDescription = product.seo?.description_en || product.seo?.description_he
@@ -159,36 +188,52 @@ export async function generateMetadata({
         (locale === 'he' ? product.description_he : product.description_en)
       : (locale === 'he' ? product.description_he : product.description_en)
 
-    // Get color name for title enhancement
-    const colorName = variant.colorSlug
-      ? variant.colorSlug.charAt(0).toUpperCase() + variant.colorSlug.slice(1)
-      : ''
+    // getColorName() rather than title-casing the slug: the slug is English,
+    // so Hebrew pages were shipping titles like "... – Beige" and
+    // "... – Dark-brown" while the JSON-LD on the same page said "בז'".
+    const colorName = getColorName(colorSlug, locale)
+    const categoryName = await getLocalizedCategoryName(product, locale)
 
-    // Build title with color if available
-    const title = colorName 
-      ? `${productTitle} – ${colorName} | SAKO-OR`
-      : `${productTitle} | SAKO-OR`
+    // SKU fallback so a product missing title, category and colour cannot
+    // ship a title that is nothing but the " | SAKO-OR" suffix.
+    const title = buildProductTitle({
+      seoTitleOverride,
+      productTitle,
+      categoryName,
+      colorName,
+    }) || product.sku
 
     // Get product image (prefer primary image, fallback to first image)
     const productImage = variant.primaryImage || 
                         (variant.images && variant.images.length > 0 ? variant.images[0] : null) ||
                         null
 
-    // Build URL
     const url = `/${lng}/product/${baseSku}/${colorSlug}`
 
-    // Build alternate locales
-    const alternateLocales = languages
-      .filter(l => l !== locale)
-      .map(altLng => ({
-        locale: altLng,
-        url: `/${altLng}/product/${baseSku}/${colorSlug}`,
-      }))
+    // Every colour of a product canonicalises to one of them. See
+    // lib/product-seo.ts for why - in short, the colour siblings are
+    // near-identical and Google was indexing none of them.
+    const primaryColorSlug = getPrimaryColorSlug(product.colorVariants) || colorSlug
+    const isPrimaryColor = primaryColorSlug === colorSlug
+    const canonicalUrl = `/${lng}/product/${baseSku}/${primaryColorSlug}`
+
+    // hreflang only on the canonical colour. A cluster is only valid if every
+    // URL in it self-canonicalises; pointing hreflang at a colour that
+    // canonicalises elsewhere makes Google discard the whole cluster.
+    const alternateLocales = isPrimaryColor
+      ? languages
+          .filter(l => l !== locale)
+          .map(altLng => ({
+            locale: altLng,
+            url: `/${altLng}/product/${baseSku}/${colorSlug}`,
+          }))
+      : []
 
     return buildMetadata({
       title,
       description: productDescription,
       url,
+      canonicalUrl,
       image: productImage || undefined,
       type: 'product',
       locale,
@@ -238,8 +283,19 @@ export default async function ProductColorLayout({ children, params }: ProductCo
           ? variant.images.map(img => img.startsWith('http') ? img : buildAbsoluteUrl(img))
           : []
 
-        // Get product name and description
-        const productName = (lng === 'he' ? product.title_he : product.title_en) || product.sku
+        // Same composed name as the <title>, so the structured data and the
+        // visible page agree on what this product is called. Previously this
+        // emitted the bare brand ("IL BORGO FIRENZE") as schema.org `name`,
+        // which is what an AI assistant or shopping surface reads back.
+        // getCachedCategoryById is request-cached, so this costs nothing on
+        // top of the generateMetadata lookup above.
+        const locale = lng as 'en' | 'he'
+        const productName = buildProductTitle({
+          seoTitleOverride: locale === 'he' ? product.seo?.title_he : product.seo?.title_en,
+          productTitle: locale === 'he' ? product.title_he : product.title_en,
+          categoryName: await getLocalizedCategoryName(product, locale),
+          colorName: getColorName(colorSlug, locale),
+        }) || product.sku
         const productDesc = (lng === 'he' ? product.description_he : product.description_en) || ''
 
         // Build model number (SKU + color)

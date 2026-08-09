@@ -1,8 +1,15 @@
 import { notFound } from 'next/navigation'
 import { getCachedProductByBaseSku } from '@/lib/server/cached-product-data'
 import { getCachedCategoryById } from '@/lib/server/cached-category-data'
-import { buildMetadata, buildProductStructuredData, buildAbsoluteUrl } from '@/lib/seo'
+import {
+  buildMetadata,
+  buildProductStructuredData,
+  buildBreadcrumbStructuredData,
+  buildAbsoluteUrl,
+  type BreadcrumbCrumb,
+} from '@/lib/seo'
 import { buildProductTitle, getPrimaryColorSlug } from '@/lib/product-seo'
+import Breadcrumbs from '@/app/components/Breadcrumbs'
 import type { Metadata } from 'next'
 import { languages } from '@/i18n/settings'
 import { getImageUrl } from '@/lib/image-urls'
@@ -81,31 +88,41 @@ function buildStructuredDataFacts(
   return { material: material || undefined, color: color || undefined, additionalProperty }
 }
 
+type CategoryCrumb = { name: string; path: string }
+
 /**
- * Localised name of the product's deepest category, e.g. "סנדלי עקב".
+ * The product's category trail, root-first and localised, e.g.
+ * [נשים, אאוטלט, סנדלים] with each carrying its full collection path.
  *
- * This is what gives the page title a keyword worth ranking for: the stored
- * product title is the brand ("IL BORGO FIRENZE"), which nobody searches.
- * Best-effort - a product with no category path still gets a title, just
- * without the leading keyword.
+ * Feeds two things at once. The deepest name gives the page title a keyword
+ * worth ranking for - the stored product title is the brand ("IL BORGO
+ * FIRENZE"), which nobody searches. The full trail becomes the breadcrumb,
+ * which is how a product page stops being orphaned from the collection tree
+ * it belongs to.
+ *
+ * Best-effort throughout: a product with no category path still renders, just
+ * without a leading keyword and without breadcrumbs.
  */
-async function getLocalizedCategoryName(
+async function resolveCategoryTrail(
   product: Product,
   locale: 'en' | 'he'
-): Promise<string | undefined> {
+): Promise<CategoryCrumb[]> {
   const categoryIds = product.categories_path_id
-  const deepestId = Array.isArray(categoryIds) && categoryIds.length > 0
-    ? categoryIds[categoryIds.length - 1]
-    : undefined
-  if (!deepestId) return undefined
+  if (!Array.isArray(categoryIds) || categoryIds.length === 0) return []
 
   try {
-    const category = await getCachedCategoryById(deepestId)
-    const name = (category as { name?: Record<string, string> } | null)?.name
-    return name?.[locale] || name?.en || undefined
+    const categories = await Promise.all(
+      categoryIds.map((id) => getCachedCategoryById(id).catch(() => null))
+    )
+    return categories.flatMap((category) => {
+      const resolved = category as { name?: Record<string, string>; path?: string } | null
+      const name = resolved?.name?.[locale] || resolved?.name?.en
+      const path = resolved?.path
+      return name && path ? [{ name, path }] : []
+    })
   } catch (error) {
-    console.error('Error resolving category name for product title:', error)
-    return undefined
+    console.error('Error resolving category trail for product:', error)
+    return []
   }
 }
 
@@ -192,7 +209,8 @@ export async function generateMetadata({
     // so Hebrew pages were shipping titles like "... – Beige" and
     // "... – Dark-brown" while the JSON-LD on the same page said "בז'".
     const colorName = getColorName(colorSlug, locale)
-    const categoryName = await getLocalizedCategoryName(product, locale)
+    const categoryTrail = await resolveCategoryTrail(product, locale)
+    const categoryName = categoryTrail[categoryTrail.length - 1]?.name
 
     // SKU fallback so a product missing title, category and colour cannot
     // ship a title that is nothing but the " | SAKO-OR" suffix.
@@ -260,6 +278,8 @@ export default async function ProductColorLayout({ children, params }: ProductCo
 
   // Fetch product for JSON-LD structured data and LCP image preload
   let structuredData: object | null = null
+  let breadcrumbStructuredData: object | null = null
+  let breadcrumbs: BreadcrumbCrumb[] = []
   let lcpImageUrl: string | null = null
   try {
     const product = await getCachedProductByBaseSku(baseSku)
@@ -290,13 +310,33 @@ export default async function ProductColorLayout({ children, params }: ProductCo
         // getCachedCategoryById is request-cached, so this costs nothing on
         // top of the generateMetadata lookup above.
         const locale = lng as 'en' | 'he'
+        const categoryTrail = await resolveCategoryTrail(product, locale)
+        const colorName = getColorName(colorSlug, locale)
         const productName = buildProductTitle({
           seoTitleOverride: locale === 'he' ? product.seo?.title_he : product.seo?.title_en,
           productTitle: locale === 'he' ? product.title_he : product.title_en,
-          categoryName: await getLocalizedCategoryName(product, locale),
-          colorName: getColorName(colorSlug, locale),
+          categoryName: categoryTrail[categoryTrail.length - 1]?.name,
+          colorName,
         }) || product.sku
         const productDesc = (lng === 'he' ? product.description_he : product.description_en) || ''
+
+        // Home > category trail > this product. The final crumb deliberately
+        // uses brand + colour rather than the composed page title, which
+        // already leads with the category and would read as a repeat of the
+        // crumb immediately before it.
+        breadcrumbs = [
+          { name: locale === 'he' ? 'בית' : 'Home', url: `/${lng}` },
+          ...categoryTrail.map((crumb) => ({
+            name: crumb.name,
+            url: `/${lng}/collection/${crumb.path}`,
+          })),
+          {
+            name: [locale === 'he' ? product.title_he : product.title_en, colorName]
+              .filter(Boolean)
+              .join(' – ') || product.sku,
+          },
+        ]
+        breadcrumbStructuredData = buildBreadcrumbStructuredData(breadcrumbs)
 
         // Build model number (SKU + color)
         const model = `${baseSku}-${colorSlug.toUpperCase()}`
@@ -340,6 +380,13 @@ export default async function ProductColorLayout({ children, params }: ProductCo
           fetchPriority="high"
         />
       )}
+      {breadcrumbStructuredData && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbStructuredData) }}
+        />
+      )}
+      <Breadcrumbs crumbs={breadcrumbs} />
       {structuredData && (
         <script
           type="application/ld+json"

@@ -107,18 +107,23 @@ export function buildMetadata(config: SEOConfig): Metadata {
     ? (trimmedCanonicalUrl.startsWith('http') ? trimmedCanonicalUrl : buildAbsoluteUrl(trimmedCanonicalUrl))
     : absoluteUrl
   
-  // Build hreflang alternates
+  // Build hreflang alternates.
+  //
+  // No alternates means no hreflang at all - deliberately. A cluster of one
+  // self-referencing entry says nothing, and on a page that canonicalises
+  // elsewhere (a non-primary product colour, say) it is actively harmful:
+  // every URL in an hreflang cluster has to self-canonicalise, and pointing
+  // at one that doesn't makes Google discard the cluster. The self-reference
+  // is only added once there is a real cluster for it to belong to.
   const languages: Record<string, string> = {}
   if (alternateLocales.length > 0) {
     alternateLocales.forEach(({ locale: altLocale, url: altUrl }) => {
       const absoluteAltUrl = altUrl.startsWith('http') ? altUrl : buildAbsoluteUrl(altUrl)
       languages[altLocale] = absoluteAltUrl
     })
-  }
-  
-  // Add current locale if not already in alternates
-  if (!languages[locale]) {
-    languages[locale] = absoluteUrl
+    if (!languages[locale]) {
+      languages[locale] = absoluteUrl
+    }
   }
 
   const metadata: Metadata = {
@@ -164,6 +169,48 @@ export function buildMetadata(config: SEOConfig): Metadata {
   }
 
   return metadata
+}
+
+/** One step in a breadcrumb trail. The final crumb ("you are here") has no url. */
+export interface BreadcrumbCrumb {
+  name: string
+  /** Relative path or absolute URL. Omit on the current page. */
+  url?: string
+}
+
+/**
+ * Build BreadcrumbList JSON-LD.
+ *
+ * Google's rules, all of which this enforces rather than trusting the caller:
+ * positions are 1-based and increment by 1 with no gaps, every `item` is an
+ * absolute URL, and the final crumb omits `item` to signal "you are here".
+ * The `name` values must also match the visible breadcrumb labels exactly -
+ * that part is the caller's job, which is why the visible nav and this
+ * function are fed from the same array.
+ *
+ * Returns null below two crumbs: a one-item breadcrumb is not eligible for
+ * the SERP feature and emitting it is just noise.
+ */
+export function buildBreadcrumbStructuredData(crumbs: BreadcrumbCrumb[]): object | null {
+  const usable = crumbs.filter((crumb) => !!crumb.name?.trim())
+  if (usable.length < 2) return null
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: usable.map((crumb, index) => {
+      const isLast = index === usable.length - 1
+      return {
+        '@type': 'ListItem',
+        position: index + 1,
+        name: crumb.name,
+        // The last crumb is the current page and must not carry `item`.
+        ...(!isLast && crumb.url
+          ? { item: crumb.url.startsWith('http') ? crumb.url : buildAbsoluteUrl(crumb.url) }
+          : {}),
+      }
+    }),
+  }
 }
 
 /**

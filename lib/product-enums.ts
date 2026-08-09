@@ -84,8 +84,10 @@ export const ADJUSTABLE_FEATURE_OPTIONS: EnumOption<AdjustableFeature>[] = [
 // Product attribute dropdowns (Upper Material, Lining, Insole, Outsole,
 // Toe Shape, Heel Type, Closure Type, Sole Type, Heel Height). Field ->
 // CategoryFieldGroup gating: UpperMaterial is always shown; Lining/Insole/
-// Outsole/SoleType use showSoleAndLining; ToeShape/HeelType/HeelHeightCm use
-// showHeelFields; ClosureType uses showClosure (see ProductSpecificationsSection.tsx).
+// Outsole/SoleType/ToeShape/HeelType/HeelHeightCm are shoe-only (shown when
+// fieldGroup === 'shoes'); ClosureType uses shoes/bags/belts; dimensions
+// (Height/Width/Depth) are shown for every non-shoe fieldGroup, since they
+// don't apply to footwear (see ProductSpecificationsSection.tsx).
 // ---------------------------------------------------------------------------
 
 export type UpperMaterial =

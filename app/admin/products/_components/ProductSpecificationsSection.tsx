@@ -139,16 +139,24 @@ function TextField({
  * stores a single stable value (or an array for Upper Material); Hebrew/English
  * labels are resolved from lib/product-enums.ts, never persisted. A
  * PreviousValueHint surfaces the old free-text value next to any dropdown that
- * hasn't been reconciled yet. Heel-specific and lining/sole/insole fields are
- * only shown for the category groups where they're relevant.
+ * hasn't been reconciled yet.
+ *
+ * Field visibility is dynamic based on product type (fieldGroup, derived from
+ * the selected category): shoe-only attributes (Lining, Insole, Outsole, Sole
+ * Type, Toe Shape, Heel Type, Heel Height) show only for footwear; dimensions
+ * (Height/Width/Depth) show only for non-footwear (bags/belts/wallets/other),
+ * since they don't apply to shoes; Closure Type stays category-conditional
+ * (shoes/bags/belts); Upper Material is always shown since it applies to
+ * nearly every product type. Hidden fields keep their saved value in
+ * formData — visibility is purely a rendering concern, never a data reset.
  */
 export default function ProductSpecificationsSection({
   values,
   onChange,
   fieldGroup,
 }: ProductSpecificationsSectionProps) {
-  const showSoleAndLining = fieldGroup === 'shoes' || fieldGroup === 'bags'
-  const showHeelFields = fieldGroup === 'shoes'
+  const showShoeAttributes = fieldGroup === 'shoes'
+  const showDimensions = fieldGroup !== 'shoes'
   const showClosure = fieldGroup === 'shoes' || fieldGroup === 'bags' || fieldGroup === 'belts'
 
   const onTextFieldChange = (field: string, value: string) =>
@@ -172,7 +180,7 @@ export default function ProductSpecificationsSection({
           )}
         </div>
 
-        {showSoleAndLining && (
+        {showShoeAttributes && (
           <>
             <div>
               <EnumSelect
@@ -246,7 +254,7 @@ export default function ProductSpecificationsSection({
           </div>
         )}
 
-        {showHeelFields && (
+        {showShoeAttributes && (
           <>
             <div>
               <EnumSelect
@@ -292,36 +300,40 @@ export default function ProductSpecificationsSection({
           </>
         )}
 
-        <TextField
-          id="height"
-          labelEn="Height"
-          labelHe="גובה"
-          valueEn={values.height_en}
-          valueHe={values.height_he}
-          placeholderEn="e.g., 25cm"
-          placeholderHe="לדוגמה: 25 ס״מ"
-          onChange={onTextFieldChange}
-        />
-        <TextField
-          id="width"
-          labelEn="Width"
-          labelHe="רוחב"
-          valueEn={values.width_en}
-          valueHe={values.width_he}
-          placeholderEn="e.g., 10cm"
-          placeholderHe="לדוגמה: 10 ס״מ"
-          onChange={onTextFieldChange}
-        />
-        <TextField
-          id="depth"
-          labelEn="Depth"
-          labelHe="עומק"
-          valueEn={values.depth_en}
-          valueHe={values.depth_he}
-          placeholderEn="e.g., 15cm"
-          placeholderHe="לדוגמה: 15 ס״מ"
-          onChange={onTextFieldChange}
-        />
+        {showDimensions && (
+          <>
+            <TextField
+              id="height"
+              labelEn="Height"
+              labelHe="גובה"
+              valueEn={values.height_en}
+              valueHe={values.height_he}
+              placeholderEn="e.g., 25cm"
+              placeholderHe="לדוגמה: 25 ס״מ"
+              onChange={onTextFieldChange}
+            />
+            <TextField
+              id="width"
+              labelEn="Width"
+              labelHe="רוחב"
+              valueEn={values.width_en}
+              valueHe={values.width_he}
+              placeholderEn="e.g., 10cm"
+              placeholderHe="לדוגמה: 10 ס״מ"
+              onChange={onTextFieldChange}
+            />
+            <TextField
+              id="depth"
+              labelEn="Depth"
+              labelHe="עומק"
+              valueEn={values.depth_en}
+              valueHe={values.depth_he}
+              placeholderEn="e.g., 15cm"
+              placeholderHe="לדוגמה: 15 ס״מ"
+              onChange={onTextFieldChange}
+            />
+          </>
+        )}
 
         <PresetTextField
           idPrefix="careInstructions"

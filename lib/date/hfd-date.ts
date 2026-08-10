@@ -155,11 +155,15 @@ export function parseGmtOffsetMinutes(timezone: string | null | undefined): numb
  * and is used directly. Otherwise the offset is inferred from Israel's tz database
  * entry for that date.
  *
- * A caveat worth knowing: HFD's sample sends "GMT+2" for a February timestamp, which
- * is correct for winter, but we have no summer sample confirming they switch to
- * "GMT+3" during IDT. If they hardcode +2 year-round, their stated offset will be an
- * hour off in summer. `explicitDisagreedWithZone` reports that mismatch so it shows up
- * in logs rather than silently skewing delivery timestamps by an hour.
+ * HFD have confirmed that `status_timezone` tracks Israeli daylight saving
+ * automatically — "GMT+2" in winter, "GMT+3" in summer — so trusting their stated
+ * offset is correct rather than merely convenient.
+ *
+ * `explicitDisagreedWithZone` is kept as a tripwire, not a workaround: it should now
+ * never fire, so if it ever does, either their DST handling has regressed or the
+ * timestamp is genuinely unusual. Either way it surfaces in the logs instead of
+ * silently shifting a delivery time — and therefore the 24h review request — by an
+ * hour.
  *
  * Returns `null` rather than throwing when input is missing or unparseable — callers
  * substitute the webhook receipt time, because a status we cannot timestamp is still

@@ -8,9 +8,16 @@ import 'server-only'
  * that coming back.
  *
  * Order numbers are treated as **opaque unique strings**, never parsed. Two formats
- * exist in production: `ORDER-<epoch-ms>` (generated client-side in the cart) and
- * `SAKO-<epoch-ms>-<random>` (the server fallback in `lib/orders.ts`). Matching on a
- * prefix or extracting a timestamp would break on one of them.
+ * exist in production: `ORDER-<epoch-ms>` (generated client-side in the cart, 19
+ * chars) and `SAKO-<epoch-ms>-<random>` (the server fallback in `lib/orders.ts`, 25
+ * chars). Matching on a prefix or extracting a timestamp would break on one of them.
+ *
+ * IMPORTANT — the order number must go in HFD's **ref2**, not ref1.
+ * HFD confirmed the field limits are ref1 = 24 characters, ref2 = 50. The 25-char
+ * `SAKO-…` format overflows ref1 by one character, and a truncated reference will
+ * never match (lookups are exact), so the webhook would be recorded as
+ * `unknown_order` and no review request would ever be scheduled. ref2 fits both
+ * formats with room to spare.
  */
 
 /** Prefixes used by synthetic test orders, which must never trigger automations. */

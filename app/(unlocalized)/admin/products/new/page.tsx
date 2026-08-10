@@ -145,6 +145,7 @@ interface ProductFormData {
     focusKeyword_he?: string;
     secondaryKeywords_en: string[];
     secondaryKeywords_he: string[];
+    canonicalColorSlug?: string;
   };
 
   searchKeywords: string[];
@@ -251,6 +252,7 @@ export default function NewProductPage() {
       slug: '',
       secondaryKeywords_en: [],
       secondaryKeywords_he: [],
+      canonicalColorSlug: '',
     },
 
     searchKeywords: []
@@ -1396,6 +1398,10 @@ export default function NewProductPage() {
               onChange={handleSeoChange}
               productUrl={`/product/${formData.sku || 'sku'}/${formData.colorVariants[0]?.colorSlug || 'color'}`}
               productDraft={{ ...formData, categories_path: seoCategoryPath }}
+              colorOptions={formData.colorVariants.map((v) => ({
+                colorSlug: v.colorSlug,
+                colorName: v.colorName,
+              }))}
             />
             {errors.seoSlug && <p className="text-sm text-red-600">{errors.seoSlug}</p>}
 

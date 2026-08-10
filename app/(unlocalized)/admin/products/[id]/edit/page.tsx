@@ -140,6 +140,7 @@ interface ProductFormData {
     focusKeyword_he?: string;
     secondaryKeywords_en: string[];
     secondaryKeywords_he: string[];
+    canonicalColorSlug?: string;
   };
 
   searchKeywords: string[];
@@ -293,6 +294,7 @@ function EditProductPage() {
       slug: '',
       secondaryKeywords_en: [],
       secondaryKeywords_he: [],
+      canonicalColorSlug: '',
     },
 
     searchKeywords: [],
@@ -455,6 +457,7 @@ function EditProductPage() {
               focusKeyword_he: product.seo?.focusKeyword_he || '',
               secondaryKeywords_en: [...(product.seo?.secondaryKeywords_en || [])],
               secondaryKeywords_he: [...(product.seo?.secondaryKeywords_he || [])],
+              canonicalColorSlug: product.seo?.canonicalColorSlug || '',
             },
 
             searchKeywords: [...(product.searchKeywords || [])],
@@ -1969,6 +1972,16 @@ function EditProductPage() {
               onChange={handleSeoChange}
               productUrl={`/product/${formData.sku || 'sku'}/${formData.colorVariants[0]?.colorSlug || 'color'}`}
               productDraft={{ ...formData, categories_path: seoCategoryPath }}
+              colorOptions={formData.colorVariants.map((v) => ({
+                colorSlug: v.colorSlug,
+                colorName: v.colorName,
+              }))}
+              // undefined until the saved snapshot exists, so the "this changes
+              // what Google indexes" warning cannot flash during load on a
+              // product that already has a canonical colour set.
+              initialCanonicalColorSlug={
+                originalFormData ? originalFormData.seo.canonicalColorSlug ?? '' : undefined
+              }
             />
             {errors.seoSlug && <p className="text-sm text-red-600">{errors.seoSlug}</p>}
           </div>

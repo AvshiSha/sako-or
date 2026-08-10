@@ -41,7 +41,7 @@ export default async function ProductRedirectPage({ params }: ProductRedirectPag
     notFound()
   }
 
-  const primaryColorSlug = getPrimaryColorSlug(product.colorVariants)
+  const primaryColorSlug = getPrimaryColorSlug(product)
   if (!primaryColorSlug) {
     notFound()
   }

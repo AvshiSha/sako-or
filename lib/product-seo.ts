@@ -37,22 +37,34 @@ function activeColorVariants(
 /**
  * The one colour whose URL represents this product in search.
  *
- * Sorted by slug rather than taking the first key: object key order comes out
- * of Firestore and is not guaranteed stable across reads, and a canonical that
- * changes between renders is worse than no canonical at all.
+ * Merchandising's pick (`seo.canonicalColorSlug`) wins when it is set and that
+ * colour is still active. Otherwise the first active colour alphabetically.
+ *
+ * Alphabetical rather than the first Firestore key because key order is not
+ * guaranteed stable across reads, and a canonical that changes between renders
+ * is worse than no canonical at all. It is still only a fallback: it picks
+ * beige over black purely because "be" sorts before "bl", and it moves if a
+ * colour sorting earlier is added later - which is the churn the explicit
+ * field exists to avoid.
+ *
+ * Takes the whole product, not just the variants, so no caller can read the
+ * override at one site and forget it at another. The canonical tag, hreflang
+ * cluster, sitemap and base-SKU redirect must all reach the same answer.
  */
-export function getPrimaryColorSlug(
-  colorVariants: Product['colorVariants'] | undefined
-): string | undefined {
-  return activeColorVariants(colorVariants)[0]?.colorSlug
+export function getPrimaryColorSlug(product: Product | undefined): string | undefined {
+  const active = activeColorVariants(product?.colorVariants)
+
+  const chosen = product?.seo?.canonicalColorSlug?.trim()
+  if (chosen && active.some((entry) => entry.colorSlug === chosen)) {
+    return chosen
+  }
+
+  return active[0]?.colorSlug
 }
 
 /** True when this colour is the one that represents the product in search. */
-export function isPrimaryColorSlug(
-  colorVariants: Product['colorVariants'] | undefined,
-  colorSlug: string
-): boolean {
-  const primary = getPrimaryColorSlug(colorVariants)
+export function isPrimaryColorSlug(product: Product | undefined, colorSlug: string): boolean {
+  const primary = getPrimaryColorSlug(product)
   return !!primary && primary === colorSlug
 }
 

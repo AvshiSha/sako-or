@@ -17,6 +17,7 @@ export interface ProductSeoValues {
   focusKeyword_he?: string
   secondaryKeywords_en: string[]
   secondaryKeywords_he: string[]
+  canonicalColorSlug?: string
 }
 
 interface ProductSeoSectionProps {
@@ -26,13 +27,34 @@ interface ProductSeoSectionProps {
   productUrl: string
   /** Rest of the in-progress product form, used only to build the "copy for SEO" JSON snapshot. */
   productDraft?: SeoExportInput
+  /** Colour variants on the product, for the canonical-colour picker. */
+  colorOptions?: { colorSlug: string; colorName?: string }[]
+  /**
+   * The saved canonical colour, so the picker can warn when it is being
+   * changed. Pass only when editing an existing product - a new product has
+   * nothing indexed yet, so there is no cost to warn about.
+   */
+  initialCanonicalColorSlug?: string
 }
 
 const fieldClass =
   'mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400 text-gray-700'
 
-export default function ProductSeoSection({ values, onChange, productUrl, productDraft }: ProductSeoSectionProps) {
+export default function ProductSeoSection({
+  values,
+  onChange,
+  productUrl,
+  productDraft,
+  colorOptions = [],
+  initialCanonicalColorSlug,
+}: ProductSeoSectionProps) {
   const slugTooLong = isOverWarnLength(values.slug, SLUG_WARN_LENGTH)
+
+  // Only on an existing product, and only once the value actually differs from
+  // what was saved - a permanent warning is one nobody reads.
+  const canonicalColorChanged =
+    initialCanonicalColorSlug !== undefined &&
+    (values.canonicalColorSlug || '') !== (initialCanonicalColorSlug || '')
   const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle')
 
   const handleCopyForSeo = async () => {
@@ -83,6 +105,53 @@ export default function ProductSeoSection({ values, onChange, productUrl, produc
           Stored for SEO metadata. The live product URL is currently {productUrl}.
         </p>
       </div>
+
+      {colorOptions.length > 1 && (
+        <div className="mb-6">
+          <label htmlFor="seo_canonical_color" className="block text-sm font-medium text-gray-700">
+            Canonical colour
+          </label>
+          <select
+            id="seo_canonical_color"
+            dir="ltr"
+            value={values.canonicalColorSlug || ''}
+            onChange={(e) => onChange('canonicalColorSlug', e.target.value || undefined)}
+            className={`${fieldClass} max-w-sm`}
+          >
+            <option value="">Automatic (first colour alphabetically)</option>
+            {colorOptions.map((option) => (
+              <option key={option.colorSlug} value={option.colorSlug}>
+                {option.colorName || option.colorSlug}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            Colour variants are near-identical pages, so only one of them is indexed and the
+            rest point at it. This picks which. Leave on Automatic and the choice is
+            alphabetical — which also means it moves if a colour sorting earlier is added
+            later. Set it explicitly for the hero or best-selling colour and it stays put.
+          </p>
+
+          {canonicalColorChanged && (
+            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+              <p className="font-medium">This changes which page Google indexes for this product.</p>
+              <ul className="mt-1 list-disc space-y-0.5 ps-4">
+                <li>The sitemap entry and the <code>/product/{'{sku}'}</code> redirect both move to the new colour.</li>
+                <li>
+                  Google has to re-process the product: the old colour stops being the indexed
+                  one and rankings and impressions transfer to the new URL. That usually takes
+                  a few weeks, during which the product can dip in search.
+                </li>
+                <li>Shoppers are unaffected — every colour URL keeps working exactly as before.</li>
+              </ul>
+              <p className="mt-1">
+                Worth doing once for the right colour. Not worth switching back and forth — each
+                change restarts the re-processing.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Hebrew SEO */}

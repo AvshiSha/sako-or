@@ -231,7 +231,7 @@ export async function generateMetadata({
     // Every colour of a product canonicalises to one of them. See
     // lib/product-seo.ts for why - in short, the colour siblings are
     // near-identical and Google was indexing none of them.
-    const primaryColorSlug = getPrimaryColorSlug(product.colorVariants) || colorSlug
+    const primaryColorSlug = getPrimaryColorSlug(product) || colorSlug
     const isPrimaryColor = primaryColorSlug === colorSlug
     const canonicalUrl = `/${lng}/product/${baseSku}/${primaryColorSlug}`
 

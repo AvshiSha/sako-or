@@ -118,6 +118,12 @@ export interface Product {
     focusKeyword_he?: string
     secondaryKeywords_en?: string[]
     secondaryKeywords_he?: string[]
+    /**
+     * Which colour variant represents this product in search. Optional -
+     * falls back to the first active colour alphabetically. See
+     * getPrimaryColorSlug in lib/product-seo.ts.
+     */
+    canonicalColorSlug?: string
   }
   searchKeywords?: string[]
   createdAt: Date

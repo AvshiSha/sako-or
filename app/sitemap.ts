@@ -97,7 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const products = await productService.getAllProducts({ isActive: true })
     for (const product of products) {
-      const primaryColorSlug = getPrimaryColorSlug(product.colorVariants)
+      const primaryColorSlug = getPrimaryColorSlug(product)
       if (!primaryColorSlug) continue
       const lastModified = toValidDate(product.updatedAt, now)
       for (const lng of languages) {

@@ -55,6 +55,7 @@ const statusEntrySchema = z
 
 const payloadSchema = z
   .object({
+    // --- Documented (snake_case) shape ---
     ship_no: looseString,
     ref1: looseString,
     ref2: looseString,
@@ -66,6 +67,23 @@ const payloadSchema = z
     status: z
       .union([z.array(statusEntrySchema), statusEntrySchema, z.null()])
       .optional(),
+
+    // --- Actual PUSH (camelCase, flat) shape ---
+    // HFD's live webhook does NOT send the format in their documentation. It sends
+    // one notification per status change, with the status fields flattened onto the
+    // envelope rather than nested in a `status[]` array, and different field names
+    // throughout. Both shapes are accepted so the documented format keeps working
+    // (their PULL API still uses it) and a future change back does not break us.
+    shipmentId: looseString,
+    reference1: looseString,
+    reference2: looseString,
+    randomNum: looseString,
+    IsShipDelivered: looseString,
+    IsShipCanceled: looseString,
+    statusCode: looseString,
+    statusDesc: looseString,
+    /** Combined local datetime, e.g. "2026-08-10T14:58:12" — no offset marker. */
+    statusDate: looseString,
   })
   .passthrough()
 
@@ -138,13 +156,14 @@ export function normalizeHfdPayload(json: unknown): ShipmentParseResult {
 
   const data = parsed.data
 
-  // HFD confirmed our order number arrives in ref1 or ref2. ref2 is tried first
-  // because that is where we put it; ref1 is a genuine fallback rather than a
-  // defensive guess. `ref2_with_prefix` is last — it carries an HFD-applied prefix
-  // so it will not normally match, but an exact lookup costs little.
+  // Our order number arrives in the reference fields. ref2/reference2 is tried first
+  // because that is where we ask for it (ref1 is capped at 24 chars, which the
+  // 25-char SAKO- format overflows). The rest are genuine fallbacks.
   const referenceCandidates = [
     data.ref2,
+    data.reference2,
     data.ref1,
+    data.reference1,
     data.ref2_with_prefix,
     typeof (json as Record<string, unknown>).reference === 'string'
       ? ((json as Record<string, unknown>).reference as string)
@@ -155,14 +174,32 @@ export function normalizeHfdPayload(json: unknown): ShipmentParseResult {
     .map(normalizeEvent)
     .filter((event): event is NormalizedShipmentEvent => event !== null)
 
+  // Flat shape: the status fields sit on the envelope, so synthesise the single
+  // event they describe. Only when the nested array did not already supply events.
+  if (events.length === 0 && data.statusCode) {
+    const flatEvent = normalizeEvent({
+      status_code: data.statusCode,
+      status_desc: data.statusDesc,
+      // statusDate carries date AND time in one string; parseHfdDateTime extracts
+      // both. No offset is provided, so it is read as Israel local time.
+      status_date: data.statusDate,
+      status_time: null,
+      status_timezone: null,
+    })
+    if (flatEvent) events.push(flatEvent)
+  }
+
   const update: NormalizedShipmentUpdate = {
     provider: 'hfd',
-    providerShipmentNo: data.ship_no,
+    providerShipmentNo: data.ship_no ?? data.shipmentId,
     referenceCandidates,
-    providerRandomId: data.random_id,
-    isDelivered: isAffirmative(data.ship_delivered_yn),
+    providerRandomId: data.random_id ?? data.randomNum,
+    isDelivered: isAffirmative(data.ship_delivered_yn ?? data.IsShipDelivered),
+    // The live payload has no returned-to-sender field. Absent means false, which is
+    // the safe default: worst case a returned parcel is treated as delivered and one
+    // review request goes out early, rather than every delivery being suppressed.
     isReturnedToSender: isAffirmative(data.ship_delivered_back_yn),
-    isCanceled: isAffirmative(data.ship_canceled_yn),
+    isCanceled: isAffirmative(data.ship_canceled_yn ?? data.IsShipCanceled),
     events,
     raw: json,
   }

@@ -106,7 +106,14 @@ function parseDateParts(date: string): { year: number; month: number; day: numbe
   return null
 }
 
-/** Parses HFD's `status_time`. Seconds are optional. */
+/**
+ * Parses a time. Seconds are optional.
+ *
+ * Also accepts a full datetime and takes the time from it: HFD's real PUSH payload
+ * sends one combined `statusDate` ("2026-08-10T14:58:12") rather than the separate
+ * date/time fields their documentation describes. Without this, every real
+ * notification would silently record midnight.
+ */
 function parseTimeParts(time: string | null | undefined): {
   hour: number
   minute: number
@@ -114,7 +121,12 @@ function parseTimeParts(time: string | null | undefined): {
 } {
   if (!time) return { hour: 0, minute: 0, second: 0 }
 
-  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(time.trim())
+  const trimmed = time.trim()
+  // Prefer the time after a "T" (or space) separator when given a full datetime.
+  const afterSeparator = /[T ](\d{1,2}:\d{2}(?::\d{2})?)/.exec(trimmed)
+  const candidate = afterSeparator ? afterSeparator[1] : trimmed
+
+  const match = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(candidate)
   if (!match) return { hour: 0, minute: 0, second: 0 }
 
   return {
@@ -122,6 +134,11 @@ function parseTimeParts(time: string | null | undefined): {
     minute: Number(match[2]),
     second: match[3] ? Number(match[3]) : 0,
   }
+}
+
+/** True when a string carries a time component, not just a date. */
+function hasTimeComponent(value: string): boolean {
+  return /[T ]\d{1,2}:\d{2}/.test(value.trim())
 }
 
 /**
@@ -204,7 +221,10 @@ export function parseHfdDateTimeDetailed(
   const { year, month, day } = dateParts
   if (month < 1 || month > 12 || day < 1 || day > 31) return empty
 
-  const { hour, minute, second } = parseTimeParts(time)
+  // When no separate time is supplied but the date string carries one (HFD's real
+  // format), take the time from the date string itself.
+  const timeSource = time ?? (hasTimeComponent(date) ? date : null)
+  const { hour, minute, second } = parseTimeParts(timeSource)
   if (hour > 23 || minute > 59 || second > 59) return empty
 
   const explicitOffset = parseGmtOffsetMinutes(timezone)

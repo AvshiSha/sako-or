@@ -146,11 +146,38 @@ const SENSITIVE_HEADER_PATTERNS = [
   'apikey',
   'password',
   'cookie',
+  // Vercel's `forwarded` header carries a `sig=` parameter that base64-encodes a
+  // copy of the Authorization header. Redacting `authorization` alone therefore
+  // still leaked the bearer token into storage in plain (base64) form — observed
+  // in real traffic, not theoretical.
+  'forwarded',
+  'x-vercel-proxy-signature',
+  'x-vercel-signature',
+  'x-vercel-oidc-token',
 ]
 
 function isSensitiveHeader(name: string): boolean {
   const lower = name.toLowerCase()
   return SENSITIVE_HEADER_PATTERNS.some((pattern) => lower.includes(pattern))
+}
+
+/**
+ * Detects a credential by its VALUE, regardless of the header's name.
+ *
+ * A name-based denylist alone proved insufficient: real traffic put a bearer token
+ * inside `forwarded` (base64) and a JWT inside `x-vercel-sc-headers` (JSON), neither
+ * of which matches any obvious "secret-ish" name. Since a proxy can copy credentials
+ * into arbitrary headers, the value is the more reliable signal — and a false
+ * positive here only costs us a diagnostic string we did not need.
+ */
+function valueLooksLikeCredential(value: string): boolean {
+  return (
+    /\bbearer\s/i.test(value) ||
+    /\beyJ[A-Za-z0-9_-]{10,}/.test(value) || // JWT header, plain or embedded
+    /QmVhcmVy/.test(value) || // base64("Bearer ")
+    /(^|[^a-z])sig=/i.test(value) ||
+    /"authorization"\s*:/i.test(value)
+  )
 }
 
 /**
@@ -167,7 +194,8 @@ export function redactHeaders(headers: Headers): Record<string, string> {
   const snapshot: Record<string, string> = {}
 
   headers.forEach((value, name) => {
-    if (isSensitiveHeader(name)) {
+    // Name OR value — either signal is enough to redact.
+    if (isSensitiveHeader(name) || valueLooksLikeCredential(value)) {
       const fingerprint = crypto.createHash('sha256').update(value).digest('hex').slice(0, 12)
       snapshot[name] = `<redacted len=${value.length} sha256:${fingerprint}>`
     } else {

@@ -219,10 +219,44 @@ export async function triggerInforuAutomation(
         throw new Error(`Invalid JSON response from Inforu: ${text}`);
       });
 
-      console.log(`[INFORU] Successfully triggered automation: ${data.apiEventName}`);
+      // Inforu signals failure in the BODY, not the HTTP status: an unknown
+      // ApiEventName returns HTTP 200 with StatusId -4000 "ApiEventName not found".
+      // Checking only response.ok therefore reported success for messages that were
+      // never sent — including, previously, the order-confirmation SMS.
+      const statusId = Number(result?.StatusId);
+      if (Number.isFinite(statusId) && statusId !== 1) {
+        const description =
+          result?.StatusDescription || result?.DetailedDescription || result?.DetailDescription || 'Unknown error';
+        console.error(
+          `[INFORU ERROR] Automation ${data.apiEventName} rejected: StatusId=${statusId} ${description}`
+        );
+        return {
+          success: false,
+          error: `Inforu StatusId ${statusId}: ${description}`,
+        };
+      }
+
+      // Records/Data.Records is how many contacts Inforu accepted. Zero means the
+      // call was well-formed but nothing was queued, which is a silent no-op.
+      const records = Number(result?.Data?.Records ?? result?.Records);
+      if (Number.isFinite(records) && records === 0) {
+        console.error(
+          `[INFORU ERROR] Automation ${data.apiEventName} accepted 0 contacts — nothing was sent`
+        );
+        return {
+          success: false,
+          error: 'Inforu accepted 0 contacts (Records=0)',
+        };
+      }
+
+      console.log(`[INFORU] Successfully triggered automation: ${data.apiEventName}`, {
+        statusId,
+        records: Number.isFinite(records) ? records : undefined,
+      });
 
       // Inforu may return different response formats, extract message ID if available
-      const messageId = result?.MessageId || result?.EventId || result?.Id || `inforu-${Date.now()}`;
+      const messageId =
+        result?.MessageId || result?.EventId || result?.Id || result?.RequestId || `inforu-${Date.now()}`;
 
       return {
         success: true,

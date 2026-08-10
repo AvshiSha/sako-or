@@ -181,6 +181,7 @@ async function processOne(
     for (const channel of channels) {
       const result = await channel.send({
         orderNumber: order.orderNumber,
+        attempt: attempts,
         language,
         copy,
         reviewUrl,

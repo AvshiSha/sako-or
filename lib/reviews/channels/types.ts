@@ -11,6 +11,14 @@ import type { ReviewLanguage, ReviewMessageCopy } from '../review-messages'
 
 export interface ReviewChannelContext {
   orderNumber: string
+  /**
+   * Which send attempt this is (1-based). Channels that use provider-side
+   * idempotency keys must include it: the message body legitimately changes
+   * between attempts (the signed link is re-minted with a new expiry), and a
+   * provider that sees the same key with a different body rejects the send
+   * instead of deduping it — permanently blocking retries.
+   */
+  attempt: number
   language: ReviewLanguage
   copy: ReviewMessageCopy
   reviewUrl: string

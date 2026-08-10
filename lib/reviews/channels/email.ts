@@ -64,10 +64,13 @@ export const emailReviewChannel: ReviewChannel = {
           text: context.copy.plainText,
         },
         {
-          // Stable key (no timestamp suffix): if this job is retried after an
-          // ambiguous failure, Resend itself suppresses the duplicate. That is a
-          // second line of defence behind the DB claim, not the primary guard.
-          idempotencyKey: `review-request-${context.orderNumber}`,
+          // Scoped to the attempt, not just the order. Retrying a single attempt
+          // (e.g. an ambiguous network failure) reuses the key and Resend suppresses
+          // the duplicate; a genuine later attempt gets a fresh key, because the body
+          // differs by then — the signed link is re-minted with a new expiry — and
+          // Resend rejects a reused key whose body changed. The DB claim remains the
+          // primary "never send twice" guard; this is the second line of defence.
+          idempotencyKey: `review-request-${context.orderNumber}-a${context.attempt}`,
         }
       )
 

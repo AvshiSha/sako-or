@@ -2,7 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { productService } from '@/lib/firebase'
 import { z } from 'zod'
-import { shoeFitSchema } from '@/lib/schemas/product-schema'
+import {
+  shoeFitSchema,
+  upperMaterialSchema,
+  liningSchema,
+  insoleSchema,
+  outsoleSchema,
+  toeShapeSchema,
+  heelTypeSchema,
+  closureTypeSchema,
+  soleTypeSchema,
+  heelHeightCmSchema,
+} from '@/lib/schemas/product-schema'
 
 // Validation schema for creating/updating products
 const productSchema = z.object({
@@ -71,7 +82,16 @@ const productSchema = z.object({
     heelType_en: z.string().optional(),
     heelType_he: z.string().optional(),
     careInstructions_en: z.string().optional(),
-    careInstructions_he: z.string().optional()
+    careInstructions_he: z.string().optional(),
+    upperMaterial: z.array(upperMaterialSchema).optional(),
+    lining: liningSchema.optional(),
+    insole: insoleSchema.optional(),
+    outsole: outsoleSchema.optional(),
+    soleType: soleTypeSchema.optional(),
+    toeShape: toeShapeSchema.optional(),
+    heelType: heelTypeSchema.optional(),
+    closureType: closureTypeSchema.optional(),
+    heelHeight: heelHeightCmSchema.optional()
   }).optional(),
   shoeFit: shoeFitSchema.optional(),
   seo: z.object({

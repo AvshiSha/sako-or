@@ -1,6 +1,17 @@
 import type { Metadata } from 'next'
 import { getImageUrl } from './image-urls'
 
+/**
+ * The locale unprefixed traffic actually lands on: middleware 308s `/` and
+ * every unlocalised path to `/he`.
+ *
+ * Deliberately NOT `defaultLanguage` from i18n/settings, which is `'en'` and
+ * governs translation fallback, not routing. Using it here pointed x-default
+ * at the English URL - the opposite of where Google should send an unmatched
+ * visitor to an Israeli storefront.
+ */
+const ROUTING_DEFAULT_LOCALE = 'he'
+
 // Default SEO configuration
 export const seoConfig = {
   siteName: 'SAKO-OR',
@@ -47,9 +58,13 @@ export function buildAbsoluteUrl(path: string): string {
 }
 
 /**
- * Ensure image URL is absolute
+ * Ensure image URL is absolute.
+ *
+ * Exported because structured data needs it too: schema.org image and logo
+ * properties must be absolute, crawlable URLs, and getImageUrl() returns the
+ * raw local path for any asset without a Firebase Storage mapping.
  */
-function ensureAbsoluteImageUrl(imageUrl: string | undefined): string | undefined {
+export function ensureAbsoluteImageUrl(imageUrl: string | undefined): string | undefined {
   if (!imageUrl) return seoConfig.defaultOGImage
   
   // If already absolute (starts with http:// or https://), return as is
@@ -107,18 +122,33 @@ export function buildMetadata(config: SEOConfig): Metadata {
     ? (trimmedCanonicalUrl.startsWith('http') ? trimmedCanonicalUrl : buildAbsoluteUrl(trimmedCanonicalUrl))
     : absoluteUrl
   
-  // Build hreflang alternates
+  // Build hreflang alternates.
+  //
+  // No alternates means no hreflang at all - deliberately. A cluster of one
+  // self-referencing entry says nothing, and on a page that canonicalises
+  // elsewhere (a non-primary product colour, say) it is actively harmful:
+  // every URL in an hreflang cluster has to self-canonicalise, and pointing
+  // at one that doesn't makes Google discard the cluster. The self-reference
+  // is only added once there is a real cluster for it to belong to.
   const languages: Record<string, string> = {}
   if (alternateLocales.length > 0) {
     alternateLocales.forEach(({ locale: altLocale, url: altUrl }) => {
       const absoluteAltUrl = altUrl.startsWith('http') ? altUrl : buildAbsoluteUrl(altUrl)
       languages[altLocale] = absoluteAltUrl
     })
-  }
-  
-  // Add current locale if not already in alternates
-  if (!languages[locale]) {
-    languages[locale] = absoluteUrl
+    if (!languages[locale]) {
+      languages[locale] = absoluteUrl
+    }
+
+    // x-default is not a language - it tells Google what to serve a user who
+    // matches none of the declared locales. Point it at the default locale
+    // (Hebrew), which is also where middleware sends unprefixed traffic, so
+    // the two agree. Only valid inside a real cluster, hence its position
+    // inside this branch.
+    const defaultLocaleUrl = languages[ROUTING_DEFAULT_LOCALE]
+    if (defaultLocaleUrl) {
+      languages['x-default'] = defaultLocaleUrl
+    }
   }
 
   const metadata: Metadata = {
@@ -164,6 +194,86 @@ export function buildMetadata(config: SEOConfig): Metadata {
   }
 
   return metadata
+}
+
+/**
+ * Public profiles that belong to this brand, for schema.org `sameAs`.
+ *
+ * `sameAs` is the highest-leverage property available for entity recognition:
+ * it is what ties this site to a single real-world organisation in Google's
+ * Knowledge Graph, and the same signal AI Overviews and LLM-backed assistants
+ * read when deciding whether "SAKO-OR" is an entity they know.
+ *
+ * Only add profiles the brand genuinely controls. Never list the site's own
+ * homepage here - that belongs in `url`.
+ */
+const ORGANIZATION_SAME_AS = [
+  'https://www.facebook.com/sakoorbrand',
+  'https://www.instagram.com/sako.or/',
+]
+
+/**
+ * Build Organization JSON-LD.
+ *
+ * Rendered on every storefront page rather than the homepage alone: it costs
+ * a few hundred bytes and means any page that gets cited carries the entity
+ * signal with it.
+ */
+export function buildOrganizationStructuredData(locale: 'en' | 'he' = 'he'): object {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: seoConfig.siteName,
+    alternateName: locale === 'he' ? 'סכו עור' : 'SAKO OR',
+    url: baseUrl,
+    // Must be absolute and crawlable. getImageUrl() hands back the raw path
+    // when an asset has no Firebase mapping, which would emit a relative
+    // logo URL that Google cannot fetch.
+    logo: ensureAbsoluteImageUrl(seoConfig.defaultOGImage),
+    sameAs: ORGANIZATION_SAME_AS,
+  }
+}
+
+/** One step in a breadcrumb trail. The final crumb ("you are here") has no url. */
+export interface BreadcrumbCrumb {
+  name: string
+  /** Relative path or absolute URL. Omit on the current page. */
+  url?: string
+}
+
+/**
+ * Build BreadcrumbList JSON-LD.
+ *
+ * Google's rules, all of which this enforces rather than trusting the caller:
+ * positions are 1-based and increment by 1 with no gaps, every `item` is an
+ * absolute URL, and the final crumb omits `item` to signal "you are here".
+ * The `name` values must also match the visible breadcrumb labels exactly -
+ * that part is the caller's job, which is why the visible nav and this
+ * function are fed from the same array.
+ *
+ * Returns null below two crumbs: a one-item breadcrumb is not eligible for
+ * the SERP feature and emitting it is just noise.
+ */
+export function buildBreadcrumbStructuredData(crumbs: BreadcrumbCrumb[]): object | null {
+  const usable = crumbs.filter((crumb) => !!crumb.name?.trim())
+  if (usable.length < 2) return null
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: usable.map((crumb, index) => {
+      const isLast = index === usable.length - 1
+      return {
+        '@type': 'ListItem',
+        position: index + 1,
+        name: crumb.name,
+        // The last crumb is the current page and must not carry `item`.
+        ...(!isLast && crumb.url
+          ? { item: crumb.url.startsWith('http') ? crumb.url : buildAbsoluteUrl(crumb.url) }
+          : {}),
+      }
+    }),
+  }
 }
 
 /**

@@ -182,6 +182,18 @@ model Product {
   heelType_he          String?
   careInstructions_en  String?
   careInstructions_he  String?
+  // Dropdown-backed attribute fields (single stable value; labels resolved via
+  // getOptionLabel in lib/product-enums.ts, never persisted). Bare names, distinct
+  // from the legacy *_en/*_he pairs above, which remain as historical/reconciliation data.
+  upperMaterial        String[]                 @default([])
+  lining               String?
+  insole               String?
+  outsole              String?
+  soleType             String?
+  toeShape             String?
+  heelType             String?
+  closureType          String?
+  heelHeight           String?
   // Shoe fit & sizing (only meaningful for footwear categories; see lib/product-enums.ts)
   sizeFit              String?
   footWidthFit         String?

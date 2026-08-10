@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
-import { adminTheme } from '@/app/admin/_components/adminTheme'
+import { adminTheme } from '@/app/(unlocalized)/admin/_components/adminTheme'
 
 interface ProtectedRouteProps {
   children: React.ReactNode

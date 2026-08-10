@@ -4,6 +4,15 @@ import { expandHebrewQuery, extractColorsSearchNorm, generateHebrewVariations } 
 const MAX_GENERATED_KEYWORDS = 40
 const MAX_SIZE_KEYWORDS = 12
 
+/**
+ * upperMaterial_he/lining_he/sole_he is a pre-existing, intentionally narrow scope:
+ * Hebrew-only, word-tokenized, and limited to these 3 of the (now 9) dropdown
+ * attribute fields. Callers pass the dropdown's resolved label text here (falling
+ * back to legacy free text for unmigrated products) — see the sync route's
+ * resolveAttributeLabel/resolveMultiAttributeLabel. Insole, Sole Type, Toe Shape,
+ * Heel Type, Closure Type and Heel Height remain outside search-keyword
+ * generation, unchanged by the dropdown migration.
+ */
 export interface ProductSearchKeywordInput {
   title_he?: string
   title_en?: string

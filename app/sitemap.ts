@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { seoConfig } from '@/lib/seo'
 import { languages } from '@/i18n/settings'
 import { productService, categoryService, blogService } from '@/lib/firebase'
+import { getPrimaryColorSlug } from '@/lib/product-seo'
 
 const baseUrl = seoConfig.baseUrl.replace(/\/$/, '')
 
@@ -56,12 +57,13 @@ const staticPaths = [
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date()
 
+  // No changeFrequency / priority anywhere in this file: Google ignores both,
+  // and a feed where everything claims priority 1.0 actively misleads Bing,
+  // which does read the field. Only <loc> and <lastmod> carry signal.
   const entries: MetadataRoute.Sitemap = languages.flatMap((lng) =>
     staticPaths.map((path) => ({
       url: `${baseUrl}/${lng}${path}`,
       lastModified: now,
-      changeFrequency: path === '' ? 'daily' : 'weekly',
-      priority: path === '' ? 1 : 0.7,
     }))
   )
 
@@ -77,8 +79,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         entries.push({
           url: `${baseUrl}/${lng}/collection/${category.path}`,
           lastModified: toValidDate(category.updatedAt, now),
-          changeFrequency: 'weekly',
-          priority: 0.8,
         })
       }
     }
@@ -86,22 +86,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('sitemap: failed to load categories:', error)
   }
 
-  // Product pages - one URL per enabled color variant.
+  // Product pages - one URL per product, not one per colour variant.
+  //
+  // A sitemap must only contain URLs that canonicalise to themselves. Every
+  // colour of a product now canonicalises to its primary colour (see
+  // lib/product-seo.ts), so listing all of them here would advertise ~276
+  // URLs that immediately point somewhere else - which wastes crawl budget
+  // and suppresses the "Discovered URLs" count that makes sitemap problems
+  // diagnosable in Search Console.
   try {
     const products = await productService.getAllProducts({ isActive: true })
     for (const product of products) {
-      const colorSlugs = Object.keys(product.colorVariants || {})
-      if (colorSlugs.length === 0) continue
+      const primaryColorSlug = getPrimaryColorSlug(product)
+      if (!primaryColorSlug) continue
       const lastModified = toValidDate(product.updatedAt, now)
       for (const lng of languages) {
-        for (const colorSlug of colorSlugs) {
-          entries.push({
-            url: `${baseUrl}/${lng}/product/${product.sku}/${colorSlug}`,
-            lastModified,
-            changeFrequency: 'weekly',
-            priority: 0.9,
-          })
-        }
+        entries.push({
+          url: `${baseUrl}/${lng}/product/${product.sku}/${primaryColorSlug}`,
+          lastModified,
+        })
       }
     }
   } catch (error) {
@@ -112,13 +115,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { articles } = await blogService.getPublishedArticles(1, 10000)
     for (const article of articles) {
+      // A supporting article can be pointed at its money-page collection via
+      // `canonicalUrl` (see SEOConfig in lib/seo.ts). Those URLs canonicalise
+      // elsewhere, so they do not belong in the sitemap.
+      if (article.canonicalUrl?.trim()) continue
       const lastModified = toValidDate(article.updatedAt, now)
       for (const lng of languages) {
         entries.push({
           url: `${baseUrl}/${lng}/news/${article.slug}`,
           lastModified,
-          changeFrequency: 'monthly',
-          priority: 0.6,
         })
       }
     }

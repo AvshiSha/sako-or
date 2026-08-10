@@ -91,6 +91,14 @@ export type ProductMinAggregateOutputType = {
   heelType_he: string | null
   careInstructions_en: string | null
   careInstructions_he: string | null
+  lining: string | null
+  insole: string | null
+  outsole: string | null
+  soleType: string | null
+  toeShape: string | null
+  heelType: string | null
+  closureType: string | null
+  heelHeight: string | null
   sizeFit: string | null
   footWidthFit: string | null
   toeBoxFit: string | null
@@ -164,6 +172,14 @@ export type ProductMaxAggregateOutputType = {
   heelType_he: string | null
   careInstructions_en: string | null
   careInstructions_he: string | null
+  lining: string | null
+  insole: string | null
+  outsole: string | null
+  soleType: string | null
+  toeShape: string | null
+  heelType: string | null
+  closureType: string | null
+  heelHeight: string | null
   sizeFit: string | null
   footWidthFit: string | null
   toeBoxFit: string | null
@@ -241,6 +257,15 @@ export type ProductCountAggregateOutputType = {
   heelType_he: number
   careInstructions_en: number
   careInstructions_he: number
+  upperMaterial: number
+  lining: number
+  insole: number
+  outsole: number
+  soleType: number
+  toeShape: number
+  heelType: number
+  closureType: number
+  heelHeight: number
   sizeFit: number
   footWidthFit: number
   toeBoxFit: number
@@ -331,6 +356,14 @@ export type ProductMinAggregateInputType = {
   heelType_he?: true
   careInstructions_en?: true
   careInstructions_he?: true
+  lining?: true
+  insole?: true
+  outsole?: true
+  soleType?: true
+  toeShape?: true
+  heelType?: true
+  closureType?: true
+  heelHeight?: true
   sizeFit?: true
   footWidthFit?: true
   toeBoxFit?: true
@@ -404,6 +437,14 @@ export type ProductMaxAggregateInputType = {
   heelType_he?: true
   careInstructions_en?: true
   careInstructions_he?: true
+  lining?: true
+  insole?: true
+  outsole?: true
+  soleType?: true
+  toeShape?: true
+  heelType?: true
+  closureType?: true
+  heelHeight?: true
   sizeFit?: true
   footWidthFit?: true
   toeBoxFit?: true
@@ -481,6 +522,15 @@ export type ProductCountAggregateInputType = {
   heelType_he?: true
   careInstructions_en?: true
   careInstructions_he?: true
+  upperMaterial?: true
+  lining?: true
+  insole?: true
+  outsole?: true
+  soleType?: true
+  toeShape?: true
+  heelType?: true
+  closureType?: true
+  heelHeight?: true
   sizeFit?: true
   footWidthFit?: true
   toeBoxFit?: true
@@ -650,6 +700,15 @@ export type ProductGroupByOutputType = {
   heelType_he: string | null
   careInstructions_en: string | null
   careInstructions_he: string | null
+  upperMaterial: string[]
+  lining: string | null
+  insole: string | null
+  outsole: string | null
+  soleType: string | null
+  toeShape: string | null
+  heelType: string | null
+  closureType: string | null
+  heelHeight: string | null
   sizeFit: string | null
   footWidthFit: string | null
   toeBoxFit: string | null
@@ -755,6 +814,15 @@ export type ProductWhereInput = {
   heelType_he?: Prisma.StringNullableFilter<"Product"> | string | null
   careInstructions_en?: Prisma.StringNullableFilter<"Product"> | string | null
   careInstructions_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  upperMaterial?: Prisma.StringNullableListFilter<"Product">
+  lining?: Prisma.StringNullableFilter<"Product"> | string | null
+  insole?: Prisma.StringNullableFilter<"Product"> | string | null
+  outsole?: Prisma.StringNullableFilter<"Product"> | string | null
+  soleType?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelHeight?: Prisma.StringNullableFilter<"Product"> | string | null
   sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
   footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
   toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -840,6 +908,15 @@ export type ProductOrderByWithRelationInput = {
   heelType_he?: Prisma.SortOrderInput | Prisma.SortOrder
   careInstructions_en?: Prisma.SortOrderInput | Prisma.SortOrder
   careInstructions_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  upperMaterial?: Prisma.SortOrder
+  lining?: Prisma.SortOrderInput | Prisma.SortOrder
+  insole?: Prisma.SortOrderInput | Prisma.SortOrder
+  outsole?: Prisma.SortOrderInput | Prisma.SortOrder
+  soleType?: Prisma.SortOrderInput | Prisma.SortOrder
+  toeShape?: Prisma.SortOrderInput | Prisma.SortOrder
+  heelType?: Prisma.SortOrderInput | Prisma.SortOrder
+  closureType?: Prisma.SortOrderInput | Prisma.SortOrder
+  heelHeight?: Prisma.SortOrderInput | Prisma.SortOrder
   sizeFit?: Prisma.SortOrderInput | Prisma.SortOrder
   footWidthFit?: Prisma.SortOrderInput | Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -928,6 +1005,15 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   heelType_he?: Prisma.StringNullableFilter<"Product"> | string | null
   careInstructions_en?: Prisma.StringNullableFilter<"Product"> | string | null
   careInstructions_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  upperMaterial?: Prisma.StringNullableListFilter<"Product">
+  lining?: Prisma.StringNullableFilter<"Product"> | string | null
+  insole?: Prisma.StringNullableFilter<"Product"> | string | null
+  outsole?: Prisma.StringNullableFilter<"Product"> | string | null
+  soleType?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelHeight?: Prisma.StringNullableFilter<"Product"> | string | null
   sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
   footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
   toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -1013,6 +1099,15 @@ export type ProductOrderByWithAggregationInput = {
   heelType_he?: Prisma.SortOrderInput | Prisma.SortOrder
   careInstructions_en?: Prisma.SortOrderInput | Prisma.SortOrder
   careInstructions_he?: Prisma.SortOrderInput | Prisma.SortOrder
+  upperMaterial?: Prisma.SortOrder
+  lining?: Prisma.SortOrderInput | Prisma.SortOrder
+  insole?: Prisma.SortOrderInput | Prisma.SortOrder
+  outsole?: Prisma.SortOrderInput | Prisma.SortOrder
+  soleType?: Prisma.SortOrderInput | Prisma.SortOrder
+  toeShape?: Prisma.SortOrderInput | Prisma.SortOrder
+  heelType?: Prisma.SortOrderInput | Prisma.SortOrder
+  closureType?: Prisma.SortOrderInput | Prisma.SortOrder
+  heelHeight?: Prisma.SortOrderInput | Prisma.SortOrder
   sizeFit?: Prisma.SortOrderInput | Prisma.SortOrder
   footWidthFit?: Prisma.SortOrderInput | Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -1103,6 +1198,15 @@ export type ProductScalarWhereWithAggregatesInput = {
   heelType_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   careInstructions_en?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   careInstructions_he?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  upperMaterial?: Prisma.StringNullableListFilter<"Product">
+  lining?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  insole?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  outsole?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  soleType?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  toeShape?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  heelType?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  closureType?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  heelHeight?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   sizeFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   footWidthFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   toeBoxFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
@@ -1184,6 +1288,15 @@ export type ProductCreateInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -1268,6 +1381,15 @@ export type ProductUncheckedCreateInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -1350,6 +1472,15 @@ export type ProductUpdateInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1434,6 +1565,15 @@ export type ProductUncheckedUpdateInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1517,6 +1657,15 @@ export type ProductCreateManyInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -1598,6 +1747,15 @@ export type ProductUpdateManyMutationInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1679,6 +1837,15 @@ export type ProductUncheckedUpdateManyInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1779,6 +1946,15 @@ export type ProductCountOrderByAggregateInput = {
   heelType_he?: Prisma.SortOrder
   careInstructions_en?: Prisma.SortOrder
   careInstructions_he?: Prisma.SortOrder
+  upperMaterial?: Prisma.SortOrder
+  lining?: Prisma.SortOrder
+  insole?: Prisma.SortOrder
+  outsole?: Prisma.SortOrder
+  soleType?: Prisma.SortOrder
+  toeShape?: Prisma.SortOrder
+  heelType?: Prisma.SortOrder
+  closureType?: Prisma.SortOrder
+  heelHeight?: Prisma.SortOrder
   sizeFit?: Prisma.SortOrder
   footWidthFit?: Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrder
@@ -1862,6 +2038,14 @@ export type ProductMaxOrderByAggregateInput = {
   heelType_he?: Prisma.SortOrder
   careInstructions_en?: Prisma.SortOrder
   careInstructions_he?: Prisma.SortOrder
+  lining?: Prisma.SortOrder
+  insole?: Prisma.SortOrder
+  outsole?: Prisma.SortOrder
+  soleType?: Prisma.SortOrder
+  toeShape?: Prisma.SortOrder
+  heelType?: Prisma.SortOrder
+  closureType?: Prisma.SortOrder
+  heelHeight?: Prisma.SortOrder
   sizeFit?: Prisma.SortOrder
   footWidthFit?: Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrder
@@ -1935,6 +2119,14 @@ export type ProductMinOrderByAggregateInput = {
   heelType_he?: Prisma.SortOrder
   careInstructions_en?: Prisma.SortOrder
   careInstructions_he?: Prisma.SortOrder
+  lining?: Prisma.SortOrder
+  insole?: Prisma.SortOrder
+  outsole?: Prisma.SortOrder
+  soleType?: Prisma.SortOrder
+  toeShape?: Prisma.SortOrder
+  heelType?: Prisma.SortOrder
+  closureType?: Prisma.SortOrder
+  heelHeight?: Prisma.SortOrder
   sizeFit?: Prisma.SortOrder
   footWidthFit?: Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrder
@@ -2059,6 +2251,10 @@ export type ProductCreatesearchKeywordsInput = {
   set: string[]
 }
 
+export type ProductCreateupperMaterialInput = {
+  set: string[]
+}
+
 export type ProductCreateadjustableFeaturesInput = {
   set: string[]
 }
@@ -2098,6 +2294,11 @@ export type NullableFloatFieldUpdateOperationsInput = {
 }
 
 export type ProductUpdatesearchKeywordsInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type ProductUpdateupperMaterialInput = {
   set?: string[]
   push?: string | string[]
 }
@@ -2199,6 +2400,15 @@ export type ProductCreateWithoutCategoryRelationInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2281,6 +2491,15 @@ export type ProductUncheckedCreateWithoutCategoryRelationInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2393,6 +2612,15 @@ export type ProductScalarWhereInput = {
   heelType_he?: Prisma.StringNullableFilter<"Product"> | string | null
   careInstructions_en?: Prisma.StringNullableFilter<"Product"> | string | null
   careInstructions_he?: Prisma.StringNullableFilter<"Product"> | string | null
+  upperMaterial?: Prisma.StringNullableListFilter<"Product">
+  lining?: Prisma.StringNullableFilter<"Product"> | string | null
+  insole?: Prisma.StringNullableFilter<"Product"> | string | null
+  outsole?: Prisma.StringNullableFilter<"Product"> | string | null
+  soleType?: Prisma.StringNullableFilter<"Product"> | string | null
+  toeShape?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelType?: Prisma.StringNullableFilter<"Product"> | string | null
+  closureType?: Prisma.StringNullableFilter<"Product"> | string | null
+  heelHeight?: Prisma.StringNullableFilter<"Product"> | string | null
   sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
   footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
   toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -2474,6 +2702,15 @@ export type ProductCreateWithoutBogoGroupInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2557,6 +2794,15 @@ export type ProductUncheckedCreateWithoutBogoGroupInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2664,6 +2910,15 @@ export type ProductCreateWithoutProductTagsInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2747,6 +3002,15 @@ export type ProductUncheckedCreateWithoutProductTagsInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2844,6 +3108,15 @@ export type ProductUpdateWithoutProductTagsInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -2927,6 +3200,15 @@ export type ProductUncheckedUpdateWithoutProductTagsInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3008,6 +3290,15 @@ export type ProductCreateManyCategoryRelationInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -3089,6 +3380,15 @@ export type ProductUpdateWithoutCategoryRelationInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3171,6 +3471,15 @@ export type ProductUncheckedUpdateWithoutCategoryRelationInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3253,6 +3562,15 @@ export type ProductUncheckedUpdateManyWithoutCategoryRelationInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3335,6 +3653,15 @@ export type ProductCreateManyBogoGroupInput = {
   heelType_he?: string | null
   careInstructions_en?: string | null
   careInstructions_he?: string | null
+  upperMaterial?: Prisma.ProductCreateupperMaterialInput | string[]
+  lining?: string | null
+  insole?: string | null
+  outsole?: string | null
+  soleType?: string | null
+  toeShape?: string | null
+  heelType?: string | null
+  closureType?: string | null
+  heelHeight?: string | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -3415,6 +3742,15 @@ export type ProductUpdateWithoutBogoGroupInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3498,6 +3834,15 @@ export type ProductUncheckedUpdateWithoutBogoGroupInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3580,6 +3925,15 @@ export type ProductUncheckedUpdateManyWithoutBogoGroupInput = {
   heelType_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_en?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   careInstructions_he?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  upperMaterial?: Prisma.ProductUpdateupperMaterialInput | string[]
+  lining?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  insole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  outsole?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  soleType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  toeShape?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3692,6 +4046,15 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   heelType_he?: boolean
   careInstructions_en?: boolean
   careInstructions_he?: boolean
+  upperMaterial?: boolean
+  lining?: boolean
+  insole?: boolean
+  outsole?: boolean
+  soleType?: boolean
+  toeShape?: boolean
+  heelType?: boolean
+  closureType?: boolean
+  heelHeight?: boolean
   sizeFit?: boolean
   footWidthFit?: boolean
   toeBoxFit?: boolean
@@ -3778,6 +4141,15 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   heelType_he?: boolean
   careInstructions_en?: boolean
   careInstructions_he?: boolean
+  upperMaterial?: boolean
+  lining?: boolean
+  insole?: boolean
+  outsole?: boolean
+  soleType?: boolean
+  toeShape?: boolean
+  heelType?: boolean
+  closureType?: boolean
+  heelHeight?: boolean
   sizeFit?: boolean
   footWidthFit?: boolean
   toeBoxFit?: boolean
@@ -3862,6 +4234,15 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   heelType_he?: boolean
   careInstructions_en?: boolean
   careInstructions_he?: boolean
+  upperMaterial?: boolean
+  lining?: boolean
+  insole?: boolean
+  outsole?: boolean
+  soleType?: boolean
+  toeShape?: boolean
+  heelType?: boolean
+  closureType?: boolean
+  heelHeight?: boolean
   sizeFit?: boolean
   footWidthFit?: boolean
   toeBoxFit?: boolean
@@ -3946,6 +4327,15 @@ export type ProductSelectScalar = {
   heelType_he?: boolean
   careInstructions_en?: boolean
   careInstructions_he?: boolean
+  upperMaterial?: boolean
+  lining?: boolean
+  insole?: boolean
+  outsole?: boolean
+  soleType?: boolean
+  toeShape?: boolean
+  heelType?: boolean
+  closureType?: boolean
+  heelHeight?: boolean
   sizeFit?: boolean
   footWidthFit?: boolean
   toeBoxFit?: boolean
@@ -3969,7 +4359,7 @@ export type ProductSelectScalar = {
   bogoGroupId?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "shortTitle_en" | "shortTitle_he" | "shortDescription_en" | "shortDescription_he" | "toeShape_en" | "toeShape_he" | "pattern_en" | "pattern_he" | "finish_en" | "finish_he" | "closureType_en" | "closureType_he" | "heelType_en" | "heelType_he" | "careInstructions_en" | "careInstructions_he" | "sizeFit" | "footWidthFit" | "toeBoxFit" | "instepFit" | "archFit" | "adjustableFeatures" | "fitRecommendation_en" | "fitRecommendation_he" | "fitNotes_en" | "fitNotes_he" | "seoFocusKeyword_en" | "seoFocusKeyword_he" | "seoSecondaryKeywords_en" | "seoSecondaryKeywords_he" | "category_he" | "subCategory_he" | "subSubCategory_he" | "colors_search_norm" | "generated_search_keywords" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "shortTitle_en" | "shortTitle_he" | "shortDescription_en" | "shortDescription_he" | "toeShape_en" | "toeShape_he" | "pattern_en" | "pattern_he" | "finish_en" | "finish_he" | "closureType_en" | "closureType_he" | "heelType_en" | "heelType_he" | "careInstructions_en" | "careInstructions_he" | "upperMaterial" | "lining" | "insole" | "outsole" | "soleType" | "toeShape" | "heelType" | "closureType" | "heelHeight" | "sizeFit" | "footWidthFit" | "toeBoxFit" | "instepFit" | "archFit" | "adjustableFeatures" | "fitRecommendation_en" | "fitRecommendation_he" | "fitNotes_en" | "fitNotes_he" | "seoFocusKeyword_en" | "seoFocusKeyword_he" | "seoSecondaryKeywords_en" | "seoSecondaryKeywords_he" | "category_he" | "subCategory_he" | "subSubCategory_he" | "colors_search_norm" | "generated_search_keywords" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
   bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
@@ -4051,6 +4441,15 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     heelType_he: string | null
     careInstructions_en: string | null
     careInstructions_he: string | null
+    upperMaterial: string[]
+    lining: string | null
+    insole: string | null
+    outsole: string | null
+    soleType: string | null
+    toeShape: string | null
+    heelType: string | null
+    closureType: string | null
+    heelHeight: string | null
     sizeFit: string | null
     footWidthFit: string | null
     toeBoxFit: string | null
@@ -4556,6 +4955,15 @@ export interface ProductFieldRefs {
   readonly heelType_he: Prisma.FieldRef<"Product", 'String'>
   readonly careInstructions_en: Prisma.FieldRef<"Product", 'String'>
   readonly careInstructions_he: Prisma.FieldRef<"Product", 'String'>
+  readonly upperMaterial: Prisma.FieldRef<"Product", 'String[]'>
+  readonly lining: Prisma.FieldRef<"Product", 'String'>
+  readonly insole: Prisma.FieldRef<"Product", 'String'>
+  readonly outsole: Prisma.FieldRef<"Product", 'String'>
+  readonly soleType: Prisma.FieldRef<"Product", 'String'>
+  readonly toeShape: Prisma.FieldRef<"Product", 'String'>
+  readonly heelType: Prisma.FieldRef<"Product", 'String'>
+  readonly closureType: Prisma.FieldRef<"Product", 'String'>
+  readonly heelHeight: Prisma.FieldRef<"Product", 'String'>
   readonly sizeFit: Prisma.FieldRef<"Product", 'String'>
   readonly footWidthFit: Prisma.FieldRef<"Product", 'String'>
   readonly toeBoxFit: Prisma.FieldRef<"Product", 'String'>

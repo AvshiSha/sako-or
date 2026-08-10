@@ -6,6 +6,32 @@
  * products that haven't been created yet.
  */
 
+import {
+  getOptionLabel,
+  UPPER_MATERIAL_OPTIONS,
+  LINING_OPTIONS,
+  INSOLE_OPTIONS,
+  OUTSOLE_OPTIONS,
+  SOLE_TYPE_OPTIONS,
+  CLOSURE_TYPE_OPTIONS,
+  HEEL_TYPE_OPTIONS,
+  TOE_SHAPE_OPTIONS,
+  HEEL_HEIGHT_CM_OPTIONS,
+} from '@/lib/product-enums'
+
+/** English label from the dropdown value when present, else the legacy free text. */
+function resolveEnLabel(
+  dropdownValue: string | undefined,
+  options: { value: string; label_en: string; label_he: string }[],
+  legacyEn: string | undefined
+): string | undefined {
+  if (dropdownValue) {
+    const label = getOptionLabel(options, dropdownValue, 'en')
+    if (label) return label
+  }
+  return legacyEn
+}
+
 interface SeoExportColorVariant {
   colorName?: string
   colorSlug?: string
@@ -34,6 +60,15 @@ export interface SeoExportInput {
     closureType_en?: string
     heelType_en?: string
     toeShape_en?: string
+    upperMaterial?: string[]
+    lining?: string
+    insole?: string
+    outsole?: string
+    soleType?: string
+    toeShape?: string
+    heelType?: string
+    closureType?: string
+    heelHeight?: string
   }
   shoeFit?: unknown
   colorVariants?: SeoExportColorVariant[]
@@ -92,12 +127,20 @@ export function buildSeoExportPayload(formData: SeoExportInput): object {
     },
     specifications: {
       colors: activeColors,
-      material: formData.materialCare?.upperMaterial_en,
-      liningMaterial: formData.materialCare?.lining_en,
-      soleMaterial: formData.materialCare?.sole_en,
-      closureType: formData.materialCare?.closureType_en,
-      heelType: formData.materialCare?.heelType_en,
-      toeShape: formData.materialCare?.toeShape_en,
+      material: formData.materialCare?.upperMaterial && formData.materialCare.upperMaterial.length > 0
+        ? formData.materialCare.upperMaterial
+            .map((value) => getOptionLabel(UPPER_MATERIAL_OPTIONS, value, 'en'))
+            .filter((label): label is string => !!label)
+            .join(', ')
+        : formData.materialCare?.upperMaterial_en,
+      liningMaterial: resolveEnLabel(formData.materialCare?.lining, LINING_OPTIONS, formData.materialCare?.lining_en),
+      insoleMaterial: resolveEnLabel(formData.materialCare?.insole, INSOLE_OPTIONS, undefined),
+      soleMaterial: resolveEnLabel(formData.materialCare?.outsole, OUTSOLE_OPTIONS, formData.materialCare?.sole_en),
+      soleType: formData.materialCare?.soleType ? getOptionLabel(SOLE_TYPE_OPTIONS, formData.materialCare.soleType, 'en') : undefined,
+      closureType: resolveEnLabel(formData.materialCare?.closureType, CLOSURE_TYPE_OPTIONS, formData.materialCare?.closureType_en),
+      heelType: resolveEnLabel(formData.materialCare?.heelType, HEEL_TYPE_OPTIONS, formData.materialCare?.heelType_en),
+      toeShape: resolveEnLabel(formData.materialCare?.toeShape, TOE_SHAPE_OPTIONS, formData.materialCare?.toeShape_en),
+      heelHeight: formData.materialCare?.heelHeight ? getOptionLabel(HEEL_HEIGHT_CM_OPTIONS, formData.materialCare.heelHeight, 'en') : undefined,
     },
     shoeFit: formData.shoeFit,
     /** Whatever SEO fields the admin has already typed in — the skill should treat these as a starting draft, not overwrite blindly. */

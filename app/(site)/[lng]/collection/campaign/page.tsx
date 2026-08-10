@@ -1,6 +1,8 @@
 import { campaignService, getCampaignCollectionProducts } from "@/lib/firebase";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import CampaignClient from "./CampaignClient";
+import CampaignSkeleton from "./CampaignSkeleton";
 import { Metadata } from "next";
 
 // This page is dynamic because it uses searchParams
@@ -96,16 +98,65 @@ export default async function CampaignPage({
     campaign = await campaignService.getActiveCampaign();
   }
 
-  // If no campaign found, redirect to collection page
+  // If no campaign found, redirect to collection page.
+  //
+  // This has to stay above the Suspense boundary below. Once a fallback
+  // streams, the response is committed at 200 and this redirect() would
+  // silently degrade into a meta refresh instead of a real 307 - which is also
+  // why this route must never grow a loading.tsx.
   if (!campaign) {
     redirect(`/${lng}/collection`);
   }
 
+  const hasBanner = Boolean(
+    campaign.bannerDesktopUrl ||
+      campaign.bannerMobileUrl ||
+      campaign.bannerDesktopVideoUrl ||
+      campaign.bannerMobileVideoUrl
+  );
+  // Mirrors CampaignClient's own derivation so the fallback reserves the same height.
+  const description =
+    campaign.description?.[lng as "en" | "he"] ||
+    campaign.description?.en ||
+    campaign.description?.he;
+
+  // Only the product query streams. The campaign itself is already resolved, so
+  // the fallback can reserve the real banner and description height.
+  return (
+    <Suspense
+      fallback={
+        <CampaignSkeleton
+          hasBanner={hasBanner}
+          description={description}
+          lng={lng as "en" | "he"}
+        />
+      }
+    >
+      <CampaignProducts
+        campaign={campaign}
+        resolvedSearchParams={resolvedSearchParams}
+        lng={lng as "en" | "he"}
+      />
+    </Suspense>
+  );
+}
+
+async function CampaignProducts({
+  campaign,
+  resolvedSearchParams,
+  lng,
+}: {
+  campaign: NonNullable<
+    Awaited<ReturnType<typeof campaignService.getActiveCampaign>>
+  >;
+  resolvedSearchParams: { [key: string]: string | string[] | undefined };
+  lng: "en" | "he";
+}) {
   // Fetch first page with filters (tag-based; filter params from URL)
   const result = await getCampaignCollectionProducts(
     campaign,
     resolvedSearchParams,
-    lng as "en" | "he"
+    lng
   );
   const variantItems = result.variantItems ?? [];
   const total = result.total ?? 0;

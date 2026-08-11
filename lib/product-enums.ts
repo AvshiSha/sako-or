@@ -94,6 +94,7 @@ export type UpperMaterial =
   | 'smooth_leather'
   | 'nappa_leather'
   | 'suede'
+  | 'nubuck'
   | 'patent'
   | 'metallic'
   | 'printed'
@@ -117,6 +118,7 @@ export const UPPER_MATERIAL_OPTIONS: EnumOption<UpperMaterial>[] = [
   { value: 'smooth_leather', label_en: 'Smooth Leather', label_he: 'עור חלק' },
   { value: 'nappa_leather', label_en: 'Nappa Leather', label_he: 'עור נאפה' },
   { value: 'suede', label_en: 'Suede Leather', label_he: 'עור זמש' },
+  { value: 'nubuck', label_en: 'Nubuck Leather', label_he: 'עור נובוק' },
   { value: 'patent', label_en: 'Patent Leather', label_he: 'עור פטנט' },
   { value: 'metallic', label_en: 'Metallic Leather', label_he: 'עור מטאלי' },
   { value: 'printed', label_en: 'Printed Leather', label_he: 'עור מודפס' },

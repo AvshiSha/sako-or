@@ -360,7 +360,20 @@ export function getOptionLabel<T extends string>(
 
 export type CategoryFieldGroup = 'shoes' | 'bags' | 'belts' | 'other'
 
-const SHOE_KEYWORDS = ['shoe', 'נעל', 'boot', 'מגף', 'sandal', 'סנדל', 'sneaker', 'סניקרס', 'pump', 'flat', 'heel']
+const SHOE_KEYWORDS = [
+  'shoe', 'נעל',
+  'boot', 'מגף',
+  'sandal', 'סנדל',
+  'sneaker', 'סניקרס',
+  'pump', 'flat', 'heel',
+  'flip flop', 'כפכף',
+  'moccasin', 'מוקסין',
+  'loafer', 'לואפר',
+  'oxford', 'אוקספורד',
+  'slide', 'clog', 'קלוג',
+  'espadrille', 'אספדריל',
+  'mule', 'מיול',
+]
 const BAG_KEYWORDS = ['bag', 'תיק', 'handbag', 'purse']
 const BELT_KEYWORDS = ['belt', 'חגור']
 

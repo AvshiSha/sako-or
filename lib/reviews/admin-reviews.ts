@@ -182,7 +182,7 @@ export async function listReviews(params: {
           },
         },
         order: {
-          select: { customerName: true, customerEmail: true, customerPhone: true },
+          select: { userId: true, customerName: true, customerEmail: true, customerPhone: true },
         },
         user: {
           select: { pointsBalance: true, verifoneCustomerNo: true, phone: true },
@@ -209,14 +209,20 @@ export async function listReviews(params: {
   )
 
   function accountFor(review: (typeof rows)[number]) {
-    if (review.user) return { account: review.user, matchedLater: false }
+    // "Joined after the order" means the ORDER was a guest checkout, regardless of
+    // how we found the account now. Review.userId gets filled in when a guest review
+    // is promoted, so keying off that alone would report `false` for exactly the
+    // customers this label exists to flag.
+    const wasGuestOrder = review.order.userId === null
+
+    if (review.user) return { account: review.user, matchedLater: wasGuestOrder }
 
     const found = lookupAccount(guestAccounts, {
       email: review.order.customerEmail,
       phone: review.order.customerPhone,
     })
 
-    return { account: found, matchedLater: Boolean(found) }
+    return { account: found, matchedLater: Boolean(found) && wasGuestOrder }
   }
 
   return {

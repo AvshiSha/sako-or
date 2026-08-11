@@ -5,6 +5,7 @@ import { ArrowLeftIcon, ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon 
 import Link from 'next/link'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import SuccessMessage from '@/app/components/SuccessMessage'
+import { useAuth } from '@/app/hooks/useAuth'
 
 interface SyncStats {
   total: number
@@ -32,6 +33,7 @@ interface ComparisonData {
 }
 
 export default function SyncProductsPage() {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
@@ -42,7 +44,12 @@ export default function SyncProductsPage() {
   const checkSyncStatus = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/admin/products/sync')
+      const idToken = await user?.getIdToken()
+      const response = await fetch('/api/admin/products/sync', {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      })
       const data = await response.json()
       
       if (data.success) {
@@ -62,8 +69,12 @@ export default function SyncProductsPage() {
   const syncProducts = async () => {
     try {
       setLoading(true)
+      const idToken = await user?.getIdToken()
       const response = await fetch('/api/admin/products/sync', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
       })
       const data = await response.json()
       

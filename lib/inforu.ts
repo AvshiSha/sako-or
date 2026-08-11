@@ -19,10 +19,22 @@ const testOrderSmsCache = new Map<string, { smsSentAt: Date; smsMessageId: strin
  * are configurable under "Automation API control" in the console, so a field used
  * here must also be mapped there or it will silently render as empty.
  */
+/**
+ * The parameter name is whatever the account's "Automation API control" screen
+ * defines — it is NOT a fixed vocabulary. Ours uses a numbered slot for the review
+ * link (`Text27`) and readable names for the points automation (`points_before`),
+ * so both styles are legitimate and neither can be assumed.
+ *
+ * `(string & {})` keeps editor autocomplete for the common numbered patterns while
+ * still accepting any console-defined name. An over-tight union would reject a valid
+ * name at compile time while a runtime cast slipped it through anyway — which is how
+ * the Text20 ceiling here managed to be wrong and invisible at the same time.
+ */
 export type InforuCustomFieldName =
-  | `Text${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20}`
-  | `Number${1 | 2 | 3 | 4}`
-  | `Date${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8}`;
+  | `Text${number}`
+  | `Number${number}`
+  | `Date${number}`
+  | (string & {});
 
 export interface InforuContact {
   firstName?: string;
@@ -34,7 +46,7 @@ export interface InforuContact {
   birthDate?: string; // YYYY-MM-DD format
   is_newsletter?: string; // "true" or "false" as string
   /**
-   * Merge-tag values for this contact, e.g. { Text1: 'https://…/review/…' }.
+   * Merge-tag values for this contact, e.g. { Text27: 'https://…/review/…' }.
    * Empty strings are sent as-is; null/undefined entries are omitted.
    */
   customFields?: Partial<Record<InforuCustomFieldName, string | number>>;
@@ -159,7 +171,7 @@ export async function triggerInforuAutomation(
             contactData.is_newsletter = contact.is_newsletter;
           }
 
-          // Merge-tag values (Text1..Text20, Number1..Number4, Date1..Date8).
+          // Merge-tag values (..Text20, Number1..Number4, Date1..Date8).
           // Without this the fields never reach the wire, and any template
           // referencing them renders empty — which is how per-order content such as
           // a signed review link silently went missing before.

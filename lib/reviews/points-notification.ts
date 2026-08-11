@@ -29,8 +29,20 @@ export interface PointsNotificationResult {
   pointsAfter?: string
 }
 
-function fieldName(envVar: string, fallback: string): InforuCustomFieldName {
-  return (process.env[envVar]?.trim() || fallback) as InforuCustomFieldName
+/**
+ * Merge-field slot for a points value.
+ *
+ * There is no safe default here. Inforu numbers custom fields per account, so the
+ * correct slot is whatever that account's console maps — the review link, for
+ * instance, lives in Text27, not Text1. Writing to an unmapped slot is silent:
+ * Inforu answers `StatusId: 1` and the message goes out with the figure missing.
+ *
+ * So this returns null when unset, and the caller refuses to send rather than
+ * deliver "your points went from  to ".
+ */
+function fieldName(envVar: string): InforuCustomFieldName | null {
+  const value = process.env[envVar]?.trim()
+  return value ? (value as InforuCustomFieldName) : null
 }
 
 /** Trims a Decimal-ish value to a human figure: 12.00 -> "12", 12.50 -> "12.5". */
@@ -74,6 +86,24 @@ export async function notifyPointsUpdated(params: {
     }
   }
 
+  // Refuse rather than send a message with blank figures. Both slots must be named
+  // explicitly — see fieldName() for why guessing them is unsafe.
+  const beforeField = fieldName('INFORU_POINTS_BEFORE_FIELD')
+  const afterField = fieldName('INFORU_POINTS_AFTER_FIELD')
+
+  if (!beforeField || !afterField) {
+    return {
+      ok: false,
+      skipped: true,
+      reason:
+        'INFORU_POINTS_BEFORE_FIELD / INFORU_POINTS_AFTER_FIELD are not set — ' +
+        'without the exact merge-field slots the customer would receive the message ' +
+        'with the point figures missing',
+      pointsBefore: before,
+      pointsAfter: after,
+    }
+  }
+
   try {
     const result = await triggerInforuAutomation({
       apiEventName: eventName,
@@ -84,8 +114,8 @@ export async function notifyPointsUpdated(params: {
           firstName: params.customerName?.trim().split(/\s+/)[0] || undefined,
           contactRefId: params.orderNumber,
           customFields: {
-            [fieldName('INFORU_POINTS_BEFORE_FIELD', 'Text1')]: before,
-            [fieldName('INFORU_POINTS_AFTER_FIELD', 'Text2')]: after,
+            [beforeField]: before,
+            [afterField]: after,
           },
         },
       ],

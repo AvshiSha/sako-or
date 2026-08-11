@@ -46,6 +46,14 @@ export interface ReviewChannelResult {
   skipped?: boolean
   reason?: string
   error?: string
+  /**
+   * Provider-side merge-field slots this send wrote to, e.g. "Text27".
+   *
+   * Recorded because a wrong slot is invisible in the provider's response — Inforu
+   * answers "success" either way — so when a message arrives without its link, this
+   * is the only stored evidence of where the content was actually put.
+   */
+  mergeFields?: string
 }
 
 export interface ReviewChannel {

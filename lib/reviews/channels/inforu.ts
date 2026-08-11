@@ -7,10 +7,10 @@ import type { ReviewChannel, ReviewChannelContext, ReviewChannelResult } from '.
  * Review request via an Inforu automation.
  *
  * Inforu's Automation API does not accept a message body — the text lives in the
- * console and pulls per-recipient values from the contact's merge fields
- * (Text1..Text20 etc). So this channel's job is to hand Inforu the signed review link
- * and the supporting values under the agreed field names; the console template
- * decides the wording and whether it goes out as SMS or WhatsApp.
+ * console and pulls per-recipient values from the contact's numbered merge fields
+ * (TextN). So this channel's job is to hand Inforu the signed review link under the
+ * exact slot the console maps; the template decides the wording and whether it goes
+ * out as SMS or WhatsApp.
  *
  * Everything is env-configurable because the field mapping is defined on Inforu's
  * side ("Automation API control") and must match exactly — a field we send under a
@@ -32,9 +32,16 @@ function getEventName(): string | null {
  * template text rather than in a per-contact field. Keeping this to one field
  * matters because Inforu's custom fields are stored on the *contact record*, so
  * every field we write is a field we could be overwriting for other purposes.
+ *
+ * The slot number is ACCOUNT-SPECIFIC. Inforu numbers a customer's custom fields by
+ * their position in that account's schema, so there is no universal "first" slot —
+ * ours is Text27, not Text1. Getting this wrong fails in the worst possible way:
+ * Inforu accepts the trigger and answers `StatusId: 1, Records: 1`, so the send looks
+ * completely successful, while the template renders with an empty link. Nothing in
+ * the API response distinguishes the two cases; only the absent SMS does.
  */
 function getReviewUrlField(): InforuCustomFieldName {
-  return (process.env.INFORU_REVIEW_URL_FIELD?.trim() || 'Text1') as InforuCustomFieldName
+  return (process.env.INFORU_REVIEW_URL_FIELD?.trim() || 'Text27') as InforuCustomFieldName
 }
 
 /**
@@ -146,7 +153,21 @@ export const inforuReviewChannel: ReviewChannel = {
         }
       }
 
-      return { channel: 'inforu', ok: true, messageId: result.messageId }
+      // Record WHICH slots were written. A wrong slot is indistinguishable from a
+      // correct one in Inforu's response, so the field names are the only evidence
+      // available when a message arrives without its link.
+      const fieldsUsed = Object.keys(customFields).join(', ')
+      console.log('[REVIEW_REQUEST] Inforu triggered', {
+        event: eventName,
+        mergeFields: fieldsUsed,
+      })
+
+      return {
+        channel: 'inforu',
+        ok: true,
+        messageId: result.messageId,
+        mergeFields: fieldsUsed,
+      }
     } catch (error) {
       return {
         channel: 'inforu',

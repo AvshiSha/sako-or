@@ -2,6 +2,11 @@ import 'server-only'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
 import { verifyReviewToken } from '../server/review-token'
+import {
+  refreshRewardEligibility,
+  resolveRewardEligibility,
+  type RewardStatus,
+} from './review-reward'
 
 /**
  * Loading and submitting customer reviews.
@@ -25,6 +30,22 @@ export interface ReviewableOrderItem {
   quantity: number
 }
 
+/**
+ * Loyalty-reward state for this order, resolved entirely server-side.
+ *
+ * Never derived from anything the client sends. The brief is explicit that
+ * `isRegistered`, the point count and eligibility must not be trusted from the
+ * frontend, and the review page has an additional reason to compute this on the
+ * server: for the first couple of seconds it runs under a lightweight auth stub that
+ * reports `user: null, loading: false`, which is indistinguishable from signed-out.
+ */
+export interface ReviewRewardInfo {
+  isRegistered: boolean
+  points: number
+  /** Null until a review exists. */
+  status: RewardStatus | null
+}
+
 export interface ReviewableOrder {
   orderId: string
   orderNumber: string
@@ -32,6 +53,7 @@ export interface ReviewableOrder {
   items: ReviewableOrderItem[]
   /** True when a review already exists — the page renders a thank-you instead. */
   alreadyReviewed: boolean
+  reward: ReviewRewardInfo
 }
 
 export type LoadReviewableOrderResult =
@@ -69,12 +91,20 @@ export async function loadReviewableOrder(params: {
           quantity: true,
         },
       },
-      review: { select: { id: true } },
+      review: { select: { id: true, rewardStatus: true, rewardPoints: true } },
     },
   })
 
   if (!order) {
     return { ok: false, reason: 'not_found' }
+  }
+
+  const eligibility = await resolveRewardEligibility({ orderId: order.id })
+
+  // A guest who reviewed and has since registered should not have to do anything to
+  // become eligible — re-check on load and promote if an account now exists.
+  if (order.review && order.review.rewardStatus === 'not_eligible' && eligibility.isRegistered) {
+    await refreshRewardEligibility({ reviewId: order.review.id, orderId: order.id })
   }
 
   return {
@@ -85,6 +115,15 @@ export async function loadReviewableOrder(params: {
       customerName: order.customerName,
       items: order.orderItems,
       alreadyReviewed: order.review !== null,
+      reward: {
+        isRegistered: eligibility.isRegistered,
+        points: order.review?.rewardPoints ?? eligibility.points,
+        status: order.review
+          ? eligibility.isRegistered && order.review.rewardStatus === 'not_eligible'
+            ? 'pending'
+            : (order.review.rewardStatus as RewardStatus)
+          : null,
+      },
     },
   }
 }
@@ -117,7 +156,13 @@ export interface SubmitReviewInput {
 }
 
 export type SubmitReviewResult =
-  | { ok: true; reviewId: string }
+  | {
+      ok: true
+      reviewId: string
+      /** Reward outcome, so the success screen can say the right thing. Never a
+       *  reason for the submission itself to fail. */
+      reward: { status: RewardStatus; points: number; isRegistered: boolean }
+    }
   | {
       ok: false
       reason: 'invalid_token' | 'not_found' | 'already_reviewed' | 'invalid_items'
@@ -152,12 +197,23 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
     return { ok: false, reason: 'invalid_items' }
   }
 
+  // Resolved BEFORE the insert so the reward state is written in the same statement.
+  // The brief requires that a review never fails because of the reward; folding the
+  // decision into the create means there is no second write that could fail after the
+  // review is already durable. A lookup failure here would surface as a submission
+  // error before anything is saved, which is recoverable by retrying.
+  const eligibility = await resolveRewardEligibility({ orderId: order.id })
+
   try {
     const review = await prisma.review.create({
       data: {
         orderId: order.id,
         orderNumber: input.orderNumber,
-        userId: order.userId,
+        // Prefer the resolved account over Order.userId: guest checkouts leave that
+        // null even when the reviewer does have an account.
+        userId: eligibility.userId ?? order.userId,
+        rewardStatus: eligibility.status,
+        rewardPoints: eligibility.points,
         overallRating: input.overallRating,
         // `?? null` rather than `|| null`: these are optional 1-5 ratings, and a
         // falsy-check would be fine today but silently swallow a 0 if the scale
@@ -188,9 +244,19 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       orderNumber: input.orderNumber,
       overallRating: input.overallRating,
       productCount: input.products.length,
+      rewardStatus: eligibility.status,
+      rewardPoints: eligibility.points,
     })
 
-    return { ok: true, reviewId: review.id }
+    return {
+      ok: true,
+      reviewId: review.id,
+      reward: {
+        status: eligibility.status,
+        points: eligibility.points,
+        isRegistered: eligibility.isRegistered,
+      },
+    }
   } catch (error) {
     // The reviews.order_id unique constraint is what makes double submission
     // impossible — including two requests racing from a double-tapped button.

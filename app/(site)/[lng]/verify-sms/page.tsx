@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { sanitizeRedirect } from '@/lib/safe-redirect'
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import ProfileShell from '@/app/components/profile/ProfileShell'
@@ -84,6 +85,11 @@ type PendingSignup = {
   addressFloor?: string // Legacy field name
   addressApt?: string // Legacy field name
   isNewsletter: boolean
+  /** Same-origin path to return to after signup completes. Carried here in
+   *  sessionStorage rather than as a query param because the signup page
+   *  unmounts on the way in, and the Google signInWithRedirect bounce leaves
+   *  the origin entirely — a URL param would not survive either. */
+  redirectTo?: string
 }
 
 function firebasePhoneVerifyErrorToMessage(err: any): string | null {
@@ -163,6 +169,9 @@ export default function VerifySmsPage() {
     }
   }, [resendCooldown])
 
+  // Where to send the customer once signup completes; null means the default.
+  const pendingRedirectRef = useRef<string | null>(null)
+
   // Load pending signup from sessionStorage
   useEffect(() => {
     if (authLoading) return
@@ -190,6 +199,9 @@ export default function VerifySmsPage() {
         return
       }
 
+      // Kept in a ref so the success handler can read it without re-deriving
+      // from storage that may already have been cleared.
+      pendingRedirectRef.current = parsed.redirectTo ?? null
       setPendingSignup(parsed)
     } catch {
       sessionStorage.removeItem('pendingSignup')
@@ -633,7 +645,10 @@ export default function VerifySmsPage() {
       }
 
       // Proceed with redirect - auth should now be restored or profile layout will handle it
-      router.replace(`/${lng}/profile`)
+      // Re-validated here even though it was checked before storage: sessionStorage
+      // is writable by any script on the origin, so it is not a trusted source.
+      const returnTo = sanitizeRedirect(pendingRedirectRef.current)
+      router.replace(returnTo ?? `/${lng}/profile`)
     } catch (err: any) {
       console.error('❌ [VERIFY] Error verifying code:', err)
       const msg = typeof err?.message === 'string' ? err.message : ''

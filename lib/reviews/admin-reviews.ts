@@ -1,7 +1,7 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
 import { prisma } from '../prisma'
-import { normalizeIsraelE164 } from '../phone'
+import { lookupAccount, resolveAccountsByContact } from './account-lookup'
 import { notifyPointsUpdated } from './points-notification'
 
 /**
@@ -52,6 +52,9 @@ export interface AdminReview {
   pointsAwardedBy: string | null
   notifiedAt: string | null
   notifyResult: unknown
+  /** pending | credited | not_eligible | failed */
+  rewardStatus: string
+  rewardPoints: number | null
   products: AdminReviewProduct[]
 }
 
@@ -63,10 +66,13 @@ export interface AdminReviewsPage {
 
 function whereFor(filter: ReviewFilter): Prisma.ReviewWhereInput {
   switch (filter) {
+    // Keyed on rewardStatus rather than `pointsAwardedAt: null`, so guest reviews
+    // with no account to credit stay out of the payout queue instead of sitting
+    // there permanently unactionable.
     case 'awaiting_points':
-      return { pointsAwardedAt: null }
+      return { rewardStatus: 'pending' }
     case 'awarded':
-      return { pointsAwardedAt: { not: null } }
+      return { rewardStatus: 'credited' }
     case 'unpublished':
       return { productReviews: { some: { isPublished: false } } }
     default:
@@ -74,62 +80,59 @@ function whereFor(filter: ReviewFilter): Prisma.ReviewWhereInput {
   }
 }
 
+/** How many recent guest reviews to re-check per admin page load. */
+const PROMOTION_SCAN_LIMIT = 200
+
 /**
- * Finds the registered account behind a review that has no linked user.
+ * Promotes guest reviews whose customer has registered since submitting.
  *
- * `Review.userId` is copied from `Order.userId`, which is only ever set at checkout
- * — nothing back-links a guest order when that person registers later. Since the
- * review request explicitly asks non-members to join the club *before* reviewing,
- * the common case is exactly this: she signs up, submits the review, and the row
- * still says "guest".
- *
- * Without this lookup the admin would see "Not a member" for a customer who has
- * just joined, with no points balance to work from — and might skip paying her.
- *
- * Matching is by email (lowercased) and by phone. The phone comparison must be
- * normalised: orders store the local format (05XXXXXXXX) while users store E.164
- * (+9725XXXXXXXX), so a raw comparison silently never matches.
+ * Only ever moves `not_eligible` -> `pending`; the guarded `updateMany` means a
+ * credited reward can never be walked backwards into the queue, and two concurrent
+ * admin page loads cannot double-promote.
  */
-async function resolveGuestAccounts(
-  contacts: { email: string | null; phone: string | null }[]
-): Promise<Map<string, { pointsBalance: Prisma.Decimal; verifoneCustomerNo: string | null; phone: string | null }>> {
-  const emails = new Set<string>()
-  const phones = new Set<string>()
-
-  for (const contact of contacts) {
-    const email = contact.email?.trim().toLowerCase()
-    if (email) emails.add(email)
-    const e164 = normalizeIsraelE164(contact.phone)
-    if (e164) phones.add(e164)
-  }
-
-  if (emails.size === 0 && phones.size === 0) return new Map()
-
-  const users = await prisma.user.findMany({
-    where: {
-      OR: [
-        ...(emails.size > 0 ? [{ email: { in: [...emails] } }] : []),
-        ...(phones.size > 0 ? [{ phone: { in: [...phones] } }] : []),
-      ],
+async function promoteNewlyEligibleReviews(): Promise<number> {
+  const candidates = await prisma.review.findMany({
+    where: { rewardStatus: 'not_eligible' },
+    orderBy: { submittedAt: 'desc' },
+    take: PROMOTION_SCAN_LIMIT,
+    select: {
+      id: true,
+      order: { select: { customerEmail: true, customerPhone: true } },
     },
-    select: { email: true, phone: true, pointsBalance: true, verifoneCustomerNo: true },
   })
 
-  // Keyed by both email and phone so either identifier resolves the same account.
-  const byKey = new Map<
-    string,
-    { pointsBalance: Prisma.Decimal; verifoneCustomerNo: string | null; phone: string | null }
-  >()
-  for (const user of users) {
-    const value = {
-      pointsBalance: user.pointsBalance,
-      verifoneCustomerNo: user.verifoneCustomerNo,
-      phone: user.phone,
-    }
-    if (user.email) byKey.set(`email:${user.email.toLowerCase()}`, value)
-    if (user.phone) byKey.set(`phone:${user.phone}`, value)
+  if (candidates.length === 0) return 0
+
+  const accounts = await resolveAccountsByContact(
+    candidates.map((review) => ({
+      email: review.order.customerEmail,
+      phone: review.order.customerPhone,
+    }))
+  )
+
+  const eligibleIds = candidates
+    .filter(
+      (review) =>
+        lookupAccount(accounts, {
+          email: review.order.customerEmail,
+          phone: review.order.customerPhone,
+        }) !== null
+    )
+    .map((review) => review.id)
+
+  if (eligibleIds.length === 0) return 0
+
+  const promoted = await prisma.review.updateMany({
+    where: { id: { in: eligibleIds }, rewardStatus: 'not_eligible' },
+    data: { rewardStatus: 'pending' },
+  })
+
+  if (promoted.count > 0) {
+    console.log('[ADMIN_REVIEW] Promoted reviews to pending after registration', {
+      count: promoted.count,
+    })
   }
-  return byKey
+  return promoted.count
 }
 
 export async function listReviews(params: {
@@ -140,6 +143,22 @@ export async function listReviews(params: {
   const filter = params.filter ?? 'all'
   const page = Math.max(params.page ?? 1, 1)
   const limit = Math.min(Math.max(params.limit ?? 25, 1), 100)
+
+  // Self-healing eligibility, run before the page query.
+  //
+  // A guest review is stored `not_eligible` because there was no account to credit
+  // at submission time. If that customer has since registered — exactly what the
+  // review message asks them to do — nothing else would move the row into the payout
+  // queue unless they happened to re-open their review link.
+  //
+  // This has to be a separate pass rather than folded into the page query: when the
+  // admin is looking at the "awaiting points" tab the query filters on
+  // `rewardStatus: 'pending'`, so a `not_eligible` row is never fetched and could
+  // never promote itself.
+  //
+  // Bounded to the most recent rows so this stays a cheap fixed cost rather than a
+  // full-table scan that grows with the review count.
+  await promoteNewlyEligibleReviews()
 
   const where = whereFor(filter)
 
@@ -180,7 +199,7 @@ export async function listReviews(params: {
   // Reviews from guest checkouts have no linked user, but the person may well have
   // registered since — including in direct response to our own "join before you
   // review" prompt. Resolve those by contact details.
-  const guestAccounts = await resolveGuestAccounts(
+  const guestAccounts = await resolveAccountsByContact(
     rows
       .filter((review) => !review.user)
       .map((review) => ({
@@ -192,13 +211,12 @@ export async function listReviews(params: {
   function accountFor(review: (typeof rows)[number]) {
     if (review.user) return { account: review.user, matchedLater: false }
 
-    const email = review.order.customerEmail?.trim().toLowerCase()
-    const phone = normalizeIsraelE164(review.order.customerPhone)
-    const found =
-      (email ? guestAccounts.get(`email:${email}`) : undefined) ??
-      (phone ? guestAccounts.get(`phone:${phone}`) : undefined)
+    const found = lookupAccount(guestAccounts, {
+      email: review.order.customerEmail,
+      phone: review.order.customerPhone,
+    })
 
-    return { account: found ?? null, matchedLater: Boolean(found) }
+    return { account: found, matchedLater: Boolean(found) }
   }
 
   return {
@@ -234,6 +252,8 @@ export async function listReviews(params: {
       pointsAwardedBy: review.pointsAwardedBy,
       notifiedAt: review.notifiedAt?.toISOString() ?? null,
       notifyResult: review.notifyResult,
+      rewardStatus: review.rewardStatus,
+      rewardPoints: review.rewardPoints,
       products: review.productReviews.map((product) => ({
         id: product.id,
         productSku: product.productSku,
@@ -293,6 +313,12 @@ export async function awardPoints(params: {
       pointsBefore: new Prisma.Decimal(params.pointsBefore),
       pointsAfter: new Prisma.Decimal(params.pointsAfter),
       pointsAwardedBy: params.adminEmail,
+      // Discharge the reward obligation in the same guarded write, so the state
+      // machine can never disagree with the manual record beside it.
+      rewardStatus: 'credited',
+      rewardCreditedAt: new Date(),
+      rewardTransactionId: params.adminEmail,
+      rewardError: null,
     },
   })
 

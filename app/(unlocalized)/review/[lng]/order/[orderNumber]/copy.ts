@@ -59,6 +59,24 @@ export const reviewPageCopy = {
     charsLeft: (n: number) => `נותרו ${n} תווים`,
 
     // Success
+    // --- Loyalty reward -----------------------------------------------
+    rewardRegisteredNote: (pts: number) =>
+      `לאחר שליחת הביקורת יתווספו לחשבונך ${pts} נקודות, ללא קשר לדירוג שתבחרי.`,
+    rewardGuestTitle: (pts: number) => `רוצה לקבל ${pts} נקודות על הביקורת?`,
+    rewardGuestBody: (pts: number) =>
+      `ניתן לשלוח את הביקורת גם בלי חשבון. כדי לקבל ${pts} נקודות עבור הביקורת, יש צורך בחשבון SAKO OR שאליו נזכה את הנקודות.`,
+    rewardGuestCta: (pts: number) => `צור חשבון וקבל ${pts} נקודות`,
+    rewardGuestSkip: 'המשך בלי ליצור חשבון',
+    rewardGuestNoPoints: (pts: number) =>
+      `ללא חשבון לא נוכל לזכות אותך ב-${pts} הנקודות.`,
+    rewardSuccessRegistered: (pts: number) =>
+      `${pts} הנקודות שלך יתווספו לחשבון בקרוב.`,
+    rewardSuccessGuestTitle: (pts: number) => `רוצה לקבל את ${pts} הנקודות?`,
+    rewardSuccessGuestBody: (pts: number) =>
+      `הביקורת נשלחה בהצלחה! צור חשבון כדי שנוכל לזכות אותך ב-${pts} נקודות.`,
+    rewardEligibleNow: (pts: number) =>
+      `החשבון שלך מוכן — ${pts} הנקודות יתווספו בקרוב.`,
+
     successTitle: 'תודה רבה!',
     successBody: 'הביקורת שלך נשמרה, והיא עוזרת לנו וללקוחות אחרות לבחור נכון.',
     googleCta: 'לכתוב ביקורת גם בגוגל',
@@ -116,6 +134,24 @@ export const reviewPageCopy = {
     errorProduct: (name: string) => `Please rate ${name}`,
     errorGeneric: 'We could not save your review. Please try again.',
     charsLeft: (n: number) => `${n} characters left`,
+
+    // --- Loyalty reward -----------------------------------------------
+    rewardRegisteredNote: (pts: number) =>
+      `After you submit, ${pts} points will be added to your account — whatever rating you give.`,
+    rewardGuestTitle: (pts: number) => `Want ${pts} points for your review?`,
+    rewardGuestBody: (pts: number) =>
+      `Your review can be submitted without an account. To receive ${pts} points for it, you need a SAKO OR account for us to credit them to.`,
+    rewardGuestCta: (pts: number) => `Create an account and get ${pts} points`,
+    rewardGuestSkip: 'Continue without creating an account',
+    rewardGuestNoPoints: (pts: number) =>
+      `Without an account we cannot credit you the ${pts} points.`,
+    rewardSuccessRegistered: (pts: number) =>
+      `Your ${pts} points will be added to your account shortly.`,
+    rewardSuccessGuestTitle: (pts: number) => `Want your ${pts} points?`,
+    rewardSuccessGuestBody: (pts: number) =>
+      `Your review was submitted successfully! Create an account so we can credit you ${pts} points.`,
+    rewardEligibleNow: (pts: number) =>
+      `Your account is ready — ${pts} points will be added shortly.`,
 
     successTitle: 'Thank you!',
     successBody: 'Your review has been saved, and it helps us and other shoppers choose well.',

@@ -122,7 +122,35 @@ export function buildReviewUrl(params: {
   return `${getSiteOrigin()}/review/${params.language}/order/${encodedOrder}?token=${token}`
 }
 
-/** Loyalty-club signup URL included for customers who are not yet members. */
-export function buildSignupUrl(language: 'he' | 'en'): string {
-  return `${getSiteOrigin()}/${language}/signup`
+/**
+ * Loyalty-club signup URL for customers who are not yet members.
+ *
+ * `returnTo` is a same-origin path the signup flow sends the customer back to once
+ * registration completes — used to return them to the exact review they came from,
+ * with their draft intact, rather than dumping them on /profile.
+ *
+ * The value is encoded, and the signup page validates it again with
+ * `sanitizeRedirect` before acting on it. It is not validated here because callers
+ * pass paths we construct ourselves; the guard lives at the point of use, where an
+ * untrusted value could actually arrive.
+ */
+export function buildSignupUrl(language: 'he' | 'en', returnTo?: string): string {
+  const base = `${getSiteOrigin()}/${language}/signup`
+  if (!returnTo) return base
+  return `${base}?redirect=${encodeURIComponent(returnTo)}`
+}
+
+/**
+ * The review page's path (no origin), suitable for use as a `redirect` target.
+ *
+ * Mints a fresh token, so a customer returning from signup gets a link with a full
+ * 30-day window rather than whatever remained of the original.
+ */
+export function buildReviewPath(params: {
+  orderNumber: string
+  language: 'he' | 'en'
+  token?: string
+}): string {
+  const token = params.token ?? signReviewToken(params.orderNumber).token
+  return `/review/${params.language}/order/${encodeURIComponent(params.orderNumber)}?token=${token}`
 }

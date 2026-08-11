@@ -490,6 +490,25 @@ model Review {
   notifiedAt      DateTime? @map("notified_at")
   notifyResult    Json?     @map("notify_result")
 
+  /// --- Review reward state machine -----------------------------------------
+  /// pending | credited | not_eligible | failed
+  ///
+  /// Defaults to not_eligible: most orders are guest checkouts, so "no account to
+  /// credit" is the common case rather than an error. It becomes `pending` only
+  /// when the reviewer resolves to a registered account at submission time.
+  rewardStatus        String    @default("not_eligible") @map("reward_status")
+  /// Points owed for this review, snapshotted at submission. Stored rather than
+  /// read from config at payout time so that changing the reward amount later
+  /// cannot retroactively alter what a customer was already promised.
+  rewardPoints        Int?      @map("reward_points")
+  /// Set once the credit is confirmed. Combined with the unique orderId below,
+  /// this is what makes a review rewardable at most once, ever.
+  rewardCreditedAt    DateTime? @map("reward_credited_at")
+  /// Reference for the credit (admin email today; a Verifone transaction id if
+  /// they ever expose a points-write API), for audit.
+  rewardTransactionId String?   @map("reward_transaction_id")
+  rewardError         String?   @map("reward_error")
+
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -501,6 +520,7 @@ model Review {
   @@index([submittedAt(sort: Desc)])
   /// Drives the admin's "still owed points" queue.
   @@index([pointsAwardedAt])
+  @@index([rewardStatus])
   @@map("reviews")
 }
 

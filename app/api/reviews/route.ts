@@ -75,7 +75,12 @@ export async function POST(request: NextRequest) {
     const result = await submitReview(payload)
 
     if (result.ok) {
-      return NextResponse.json({ success: true, reviewId: result.reviewId }, { status: 201 })
+      // The reward block is informational — it tells the success screen whether to
+      // offer signup. It is resolved server-side and never echoed back from input.
+      return NextResponse.json(
+        { success: true, reviewId: result.reviewId, reward: result.reward },
+        { status: 201 }
+      )
     }
 
     // 200 for already_reviewed: from the customer's point of view the goal is met,

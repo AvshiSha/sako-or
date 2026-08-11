@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { getColorHex, getColorName, hasColorTranslation } from '@/lib/colors'
 import { reviewPageCopy } from './copy'
+import { useReviewDraft, useSignupOfferDismissal } from './useReviewDraft'
 
 /**
  * Review capture form.
@@ -58,12 +59,29 @@ interface ReviewFormProps {
   customerName: string | null
   items: Item[]
   googleReviewUrl: string | null
+  /** Server-resolved. Never from useAuth() — see the page component. */
+  isRegistered: boolean
+  rewardPoints: number
+  signupUrl: string
 }
 
 interface ProductState {
   rating: number
   body: string
   sizingFit: SizingFit | null
+}
+
+/** Everything the customer has typed, as preserved across a signup detour. */
+interface DraftShape {
+  overallRating: number
+  serviceRating: number
+  deliveryRating: number
+  packagingRating: number
+  serviceComment: string
+  deliveryComment: string
+  packagingComment: string
+  generalComment: string
+  products: Record<string, ProductState>
 }
 
 export default function ReviewForm({
@@ -73,6 +91,9 @@ export default function ReviewForm({
   customerName,
   items,
   googleReviewUrl,
+  isRegistered,
+  rewardPoints,
+  signupUrl,
 }: ReviewFormProps) {
   const copy = reviewPageCopy[language]
 
@@ -94,6 +115,65 @@ export default function ReviewForm({
 
   const errorSummaryRef = useRef<HTMLDivElement>(null)
   const successRef = useRef<HTMLDivElement>(null)
+
+  const { restored, isRestored, save, clear } = useReviewDraft<DraftShape>(orderNumber)
+  // `dismissed` starts false so the offer is present in the server-rendered HTML.
+  // Gating it on a useEffect flag meant it never appeared until hydration, which is
+  // the wrong trade: almost nobody has dismissed it. Someone who did sees it for one
+  // frame before it collapses to the short note.
+  const { dismissed, dismiss } = useSignupOfferDismissal(orderNumber)
+
+  // Restore a draft left behind by a detour through signup.
+  useEffect(() => {
+    if (!restored) return
+    setOverallRating(restored.overallRating ?? 0)
+    setServiceRating(restored.serviceRating ?? 0)
+    setDeliveryRating(restored.deliveryRating ?? 0)
+    setPackagingRating(restored.packagingRating ?? 0)
+    setServiceComment(restored.serviceComment ?? '')
+    setDeliveryComment(restored.deliveryComment ?? '')
+    setPackagingComment(restored.packagingComment ?? '')
+    setGeneralComment(restored.generalComment ?? '')
+    if (restored.products) {
+      // Merge rather than replace: the order's items are the source of truth, so a
+      // draft naming an item that no longer exists must not resurrect it.
+      setProducts((current) =>
+        Object.fromEntries(
+          Object.entries(current).map(([id, state]) => [id, restored.products?.[id] ?? state])
+        )
+      )
+    }
+  }, [restored])
+
+  // Autosave. Gated on isRestored so the initial empty state cannot overwrite a
+  // stored draft during the first render pass, and skipped once submitted.
+  useEffect(() => {
+    if (!isRestored || succeeded) return
+    save({
+      overallRating,
+      serviceRating,
+      deliveryRating,
+      packagingRating,
+      serviceComment,
+      deliveryComment,
+      packagingComment,
+      generalComment,
+      products,
+    })
+  }, [
+    isRestored,
+    succeeded,
+    save,
+    overallRating,
+    serviceRating,
+    deliveryRating,
+    packagingRating,
+    serviceComment,
+    deliveryComment,
+    packagingComment,
+    generalComment,
+    products,
+  ])
 
   const updateProduct = useCallback((itemId: string, patch: Partial<ProductState>) => {
     setProducts((previous) => ({ ...previous, [itemId]: { ...previous[itemId], ...patch } }))
@@ -166,6 +246,8 @@ export default function ReviewForm({
 
       // A repeat submission is a success from the customer's point of view.
       if (data.success || data.alreadyReviewed) {
+        // Only after the server confirmed: a failed submit must keep the draft.
+        clear()
         setSucceeded(true)
         return
       }
@@ -200,6 +282,32 @@ export default function ReviewForm({
           {copy.successBody}
         </p>
 
+        {isRegistered ? (
+          <p className="mx-auto mt-4 max-w-[42ch] rounded-lg bg-emerald-50 px-4 py-3 text-[14px] leading-6 text-emerald-800">
+            {copy.rewardSuccessRegistered(rewardPoints)}
+          </p>
+        ) : (
+          /* The review is already saved. The offer stays open so a guest can still
+             claim the points by registering — see the "guest reviews, then signs up"
+             case: eligibility is re-evaluated on the next page load, with no
+             resubmission. */
+          <div className="mx-auto mt-6 max-w-[46ch] rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-[15px] font-semibold text-amber-900">
+              {copy.rewardSuccessGuestTitle(rewardPoints)}
+            </p>
+            <p className="mt-1 text-[14px] leading-6 text-amber-800">
+              {copy.rewardSuccessGuestBody(rewardPoints)}
+            </p>
+            <a
+              href={signupUrl}
+              data-auth-trigger
+              className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-neutral-900 px-5 text-[15px] font-semibold text-white transition active:scale-[0.98] hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+            >
+              {copy.rewardGuestCta(rewardPoints)}
+            </a>
+          </div>
+        )}
+
         {googleReviewUrl ? (
           <div className="mt-8 border-t border-neutral-200 pt-6">
             <p className="mx-auto max-w-[42ch] text-[14px] leading-6 text-neutral-500">
@@ -233,6 +341,48 @@ export default function ReviewForm({
       <p className="mt-1 text-[13px] text-neutral-400">
         {copy.orderLabel} {orderNumber}
       </p>
+
+      {/* Reward. The form is always rendered below this — the offer never gates
+          submission, which is the whole point: leaving a review must stay the easy
+          path, and the account is an optional enhancement on top of it. */}
+      {isRegistered ? (
+        <p className="mt-5 rounded-lg bg-emerald-50 px-4 py-3 text-[14px] leading-6 text-emerald-800">
+          {copy.rewardRegisteredNote(rewardPoints)}
+        </p>
+      ) : !dismissed ? (
+        <section className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <h2 className="text-[15px] font-semibold text-amber-900">
+            {copy.rewardGuestTitle(rewardPoints)}
+          </h2>
+          <p className="mt-1 text-[14px] leading-6 text-amber-800">
+            {copy.rewardGuestBody(rewardPoints)}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <a
+              href={signupUrl}
+              // Eagerly loads Firebase on intent, so the account state is settled by
+              // the time the customer returns here.
+              data-auth-trigger
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-neutral-900 px-5 text-[15px] font-semibold text-white transition active:scale-[0.98] hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+            >
+              {copy.rewardGuestCta(rewardPoints)}
+            </a>
+            {/* Deliberately quieter than the primary action, but a real button with
+                a full-size hit area — not a link buried in body text. */}
+            <button
+              type="button"
+              onClick={dismiss}
+              className="inline-flex min-h-[44px] items-center text-[14px] font-medium text-amber-900 underline decoration-amber-300 underline-offset-4 transition hover:decoration-amber-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+            >
+              {copy.rewardGuestSkip}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <p className="mt-5 text-[13px] text-neutral-500">
+          {copy.rewardGuestNoPoints(rewardPoints)}
+        </p>
+      )}
 
       {/* Overall rating — first and visually heaviest: it is the one question
           every customer can answer without thinking. */}

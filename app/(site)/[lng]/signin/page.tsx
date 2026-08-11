@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { Suspense, useEffect, useRef, useState } from 'react'
+import { sanitizeRedirect } from '@/lib/safe-redirect'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   GoogleAuthProvider,
@@ -450,7 +451,14 @@ function SignInClient() {
     }
 
     setGate('redirecting')
-    router.replace(syncJson.needsProfileCompletion ? `/${lng}/signup` : `/${lng}/profile`)
+    // A validated return path wins over the default destination, so a customer sent
+    // here from e.g. a review link lands back where they were instead of /profile.
+    const returnTo = sanitizeRedirect(searchParams?.get('redirect'))
+    if (returnTo && !syncJson.needsProfileCompletion) {
+      router.replace(returnTo)
+      return
+    }
+    router.replace(syncJson.needsProfileCompletion ? `/${lng}/signup${returnTo ? `?redirect=${encodeURIComponent(returnTo)}` : ''}` : `/${lng}/profile`)
   }
 
   // Complete Google redirect sign-in (fallback when popups are blocked)

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { sanitizeRedirect } from '@/lib/safe-redirect'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   GoogleAuthProvider,
   getRedirectResult,
@@ -172,8 +173,22 @@ const translations = {
 let redirectChecked = false
 
 export default function SignUpPage() {
+  // useSearchParams needs a Suspense boundary or Next bails out of static rendering
+  // for the whole route. Mirrors the wrapper already used by the signin page.
+  return (
+    <Suspense fallback={null}>
+      <SignUpClient />
+    </Suspense>
+  )
+}
+
+function SignUpClient() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
+  // Where to return the customer after signup. Validated on read, and again in
+  // verify-sms before it is acted on — it arrives from a URL we put in an SMS.
+  const returnTo = sanitizeRedirect(searchParams?.get('redirect'))
   const lng = (params?.lng as string) || 'en'
   const t = translations[lng as keyof typeof translations] || translations.en
   const isRTL = lng === 'he'
@@ -347,7 +362,7 @@ export default function SignUpPage() {
     if (syncJson.needsProfileCompletion === false) {
       // Existing user with complete profile - redirect to profile
       setProfileGate('redirecting')
-      router.replace(`/${lng}/profile`)
+      router.replace(returnTo ?? `/${lng}/profile`)
       return 'redirecting'
     }
 
@@ -393,7 +408,8 @@ export default function SignUpPage() {
       streetNumber: streetNumber || undefined,
       floor: floor || undefined,
       apt: apt || undefined,
-      isNewsletter
+      isNewsletter,
+      redirectTo: returnTo ?? undefined
     }
 
     sessionStorage.setItem('pendingSignup', JSON.stringify(pendingSignup))
@@ -602,7 +618,8 @@ export default function SignUpPage() {
           streetNumber: streetNumber || undefined,
           floor: floor || undefined,
           apt: apt || undefined,
-          isNewsletter
+          isNewsletter,
+          redirectTo: returnTo ?? undefined
         }
 
         sessionStorage.setItem('pendingSignup', JSON.stringify(pendingSignup))

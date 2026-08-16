@@ -27,6 +27,10 @@ import ProductBasicInformationSection from '../_components/ProductBasicInformati
 import ProductClassificationSection from '../_components/ProductClassificationSection'
 import ProductSpecificationsSection from '../_components/ProductSpecificationsSection'
 import ShoeFitSection, { type ShoeFitValues } from '../_components/ShoeFitSection'
+import BagSpecificationsSection, {
+  createEmptyBagSpecs,
+  type BagSpecsValues,
+} from '../_components/BagSpecificationsSection'
 import ProductSeoSection from '../_components/ProductSeoSection'
 import ProductImageSeoFields from '../_components/ProductImageSeoFields'
 
@@ -129,10 +133,18 @@ interface ProductFormData {
     heelType?: HeelType;
     closureType?: ClosureType;
     heelHeight?: HeelHeightCm;
+    // Structured measurements replacing the height/width/depth text pairs above
+    heightCm?: number | null;
+    widthCm?: number | null;
+    depthCm?: number | null;
+    weightGrams?: number | null;
   };
 
   // Shoe Fit and Sizing (only meaningful for footwear categories)
   shoeFit: ShoeFitValues;
+
+  // Bag attributes (only meaningful for bag categories)
+  bagSpecs: BagSpecsValues;
 
   // SEO fields
   seo: {
@@ -165,6 +177,9 @@ interface FormErrors {
   colorVariants?: string;
   seoSlug?: string;
   shoeFit?: string;
+  bagSpecs?: string;
+  bagType?: string;
+  intendedUse?: string;
 }
 
 
@@ -242,6 +257,9 @@ export default function NewProductPage() {
     shoeFit: {
       adjustableFeatures: [],
     },
+
+    // Bag attributes
+    bagSpecs: createEmptyBagSpecs(),
 
     // SEO fields
     seo: {
@@ -379,7 +397,7 @@ export default function NewProductPage() {
     handleInputChange(field, value)
   }
 
-  const handleSpecificationChange = (field: string, value: string | number | string[] | undefined) => {
+  const handleSpecificationChange = (field: string, value: string | number | string[] | null | undefined) => {
     setFormData(prev => ({
       ...prev,
       materialCare: { ...prev.materialCare, [field]: value }
@@ -393,6 +411,22 @@ export default function NewProductPage() {
     }))
     if (errors.shoeFit) {
       setErrors(prev => ({ ...prev, shoeFit: undefined }))
+    }
+  }
+
+  const handleBagSpecsChange = <K extends keyof BagSpecsValues>(field: K, value: BagSpecsValues[K]) => {
+    setFormData(prev => ({
+      ...prev,
+      bagSpecs: { ...prev.bagSpecs, [field]: value }
+    }))
+    if (field === 'bagType' && errors.bagType) {
+      setErrors(prev => ({ ...prev, bagType: undefined }))
+    }
+    if (field === 'intendedUse' && errors.intendedUse) {
+      setErrors(prev => ({ ...prev, intendedUse: undefined }))
+    }
+    if (errors.bagSpecs) {
+      setErrors(prev => ({ ...prev, bagSpecs: undefined }))
     }
   }
 
@@ -807,7 +841,7 @@ export default function NewProductPage() {
   };
 
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = validateProductFormBasics(formData, categoryFieldGroup)
+    const newErrors: FormErrors = validateProductFormBasics(formData, categoryFieldGroup, true)
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -1004,6 +1038,24 @@ export default function NewProductPage() {
               <div>
                 <ShoeFitSection values={formData.shoeFit} onChange={handleShoeFitChange} />
                 {errors.shoeFit && <p className="mt-1 text-sm text-red-600">{errors.shoeFit}</p>}
+              </div>
+            )}
+
+            {/* Bag Specifications — only shown for bag categories; data is preserved even when hidden */}
+            {categoryFieldGroup === 'bags' && (
+              <div>
+                <BagSpecificationsSection
+                  values={formData.bagSpecs}
+                  onChange={handleBagSpecsChange}
+                  dimensions={{
+                    heightCm: formData.materialCare.heightCm,
+                    widthCm: formData.materialCare.widthCm,
+                    depthCm: formData.materialCare.depthCm,
+                  }}
+                  isCreate
+                  errors={{ bagType: errors.bagType, intendedUse: errors.intendedUse }}
+                />
+                {errors.bagSpecs && <p className="mt-1 text-sm text-red-600">{errors.bagSpecs}</p>}
               </div>
             )}
 
@@ -1471,6 +1523,7 @@ export default function NewProductPage() {
                 formData={formData}
                 categories={categories}
                 categoryFieldGroup={categoryFieldGroup}
+                isCreate
                 sourceProductId={null}
                 draftId={previewDraftId}
                 onDraftIdChange={setPreviewDraftId}

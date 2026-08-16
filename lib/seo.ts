@@ -298,12 +298,34 @@ export interface ProductStructuredData {
   color?: string
   /** Extra spec/fit facts (closure type, sole, size fit, foot width, etc.) as schema.org PropertyValue entries. */
   additionalProperty?: Array<{ name: string; value: string }>
+  /**
+   * Physical measurements, emitted as schema.org QuantitativeValue rather than
+   * folded into additionalProperty, so they're machine-comparable. Bags need
+   * this; shoes leave it undefined.
+   */
+  dimensions?: {
+    heightCm?: number | null
+    widthCm?: number | null
+    depthCm?: number | null
+    weightGrams?: number | null
+  }
+}
+
+function quantitativeValue(value: number | null | undefined, unitCode: string) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined
+  return { '@type': 'QuantitativeValue', value, unitCode }
 }
 
 export function buildProductStructuredData(
   product: ProductStructuredData,
   locale: 'en' | 'he' = 'en'
 ): object {
+  // CMT is schema.org's unit code for centimetres, GRM for grams.
+  const height = quantitativeValue(product.dimensions?.heightCm, 'CMT')
+  const width = quantitativeValue(product.dimensions?.widthCm, 'CMT')
+  const depth = quantitativeValue(product.dimensions?.depthCm, 'CMT')
+  const weight = quantitativeValue(product.dimensions?.weightGrams, 'GRM')
+
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -318,6 +340,10 @@ export function buildProductStructuredData(
     ...(product.model && { model: product.model }),
     ...(product.material && { material: product.material }),
     ...(product.color && { color: product.color }),
+    ...(height && { height }),
+    ...(width && { width }),
+    ...(depth && { depth }),
+    ...(weight && { weight }),
     ...(product.additionalProperty && product.additionalProperty.length > 0 && {
       additionalProperty: product.additionalProperty.map((prop) => ({
         '@type': 'PropertyValue',

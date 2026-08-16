@@ -16,6 +16,8 @@ import {
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import { productService, productHelpers, getClientAnalytics, logEvent } from '@/lib/firebase'
 import type { ProductClientView } from '@/lib/product-types'
+import { resolveVariantHardwareColor } from '@/lib/product-types'
+import { buildBagFactRows, buildMeasurementRows } from '@/lib/bag-facts'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
@@ -42,6 +44,7 @@ import {
   HEEL_TYPE_OPTIONS,
   CLOSURE_TYPE_OPTIONS,
   HEEL_HEIGHT_CM_OPTIONS,
+  type HardwareColor,
   getOptionLabel,
   isUndefinedFitValue,
 } from '@/lib/product-enums'
@@ -60,6 +63,8 @@ interface ColorVariantData {
   imageDetails?: ProductImageDetail[];
   primaryImage?: string;
   videos?: string[];
+  /** Overrides bagSpecs.hardwareColor for this colour; unset inherits the product value. */
+  hardwareColor?: HardwareColor;
 }
 
 interface ProductWithVariants extends ProductClientView {
@@ -73,6 +78,14 @@ interface ProductColorClientProps {
   colorSlug: string;
   initialProduct: ProductWithVariants;
   initialVariant: ColorVariantData;
+  /**
+   * Composed display name (category + colour – brand). The stored title is the
+   * brand alone, so without this every bag renders the same `<h1>`. Falls back
+   * to the stored title when the server couldn't compose one.
+   */
+  displayName?: string;
+  /** Localised category trail, root-first, e.g. ["נשים", "אקססוריז", "תיקים"]. */
+  categoryTrail?: string[];
   /** True when rendering an admin draft rather than the live, published product. */
   previewMode?: boolean;
   /** Route prefix color-switching should navigate within, e.g. `/admin/products/preview/{draftId}`. Required when previewMode is true. */
@@ -91,6 +104,8 @@ export default function ProductColorClient({
   colorSlug,
   initialProduct,
   initialVariant,
+  displayName,
+  categoryTrail,
   previewMode = false,
   previewBasePath,
   previewToken,
@@ -100,6 +115,10 @@ export default function ProductColorClient({
   const router = useRouter()
   const [product, setProduct] = useState<ProductWithVariants | null>(initialProduct)
   const [currentVariant, setCurrentVariant] = useState<ColorVariantData | null>(initialVariant)
+  /** Server-composed name; falls back to the stored title (the brand) when the
+   * server had no category to compose one from, or in the preview flow. */
+  const productDisplayName =
+    displayName || (lng === 'he' ? product?.title_he : product?.title_en) || ''
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>(() => {
@@ -543,7 +562,7 @@ export default function ProductColorClient({
                 {/* Product Title + Price (same row) */}
                 <div className="flex items-start justify-between gap-2">
                   <h1 className="text-2xl font-bold text-gray-900 flex-1">
-                    {lng === 'he' ? product.title_he : product.title_en}
+                    {productDisplayName}
                   </h1>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
@@ -597,7 +616,7 @@ export default function ProductColorClient({
                               }`}>
                                 <Image
                                   src={variantImage}
-                                  alt={variant.colorSlug}
+                                  alt={getColorName(variant.colorSlug, lng as 'en' | 'he')}
                                   width={48}
                                   height={48}
                                   className="w-full h-full object-cover"
@@ -810,7 +829,7 @@ export default function ProductColorClient({
                     display:none mobile copy. */}
                 <div className="flex items-start justify-between gap-2">
                   <div role="heading" aria-level={1} className="text-2xl font-bold text-gray-900 flex-1">
-                    {lng === 'he' ? product.title_he : product.title_en}
+                    {productDisplayName}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
@@ -864,7 +883,7 @@ export default function ProductColorClient({
                               }`}>
                                 <Image
                                   src={variantImage}
-                                  alt={variant.colorSlug}
+                                  alt={getColorName(variant.colorSlug, lng as 'en' | 'he')}
                                   width={48}
                                   height={48}
                                   className="w-full h-full object-cover"
@@ -1065,6 +1084,28 @@ export default function ProductColorClient({
                       {lng === 'he' ? 'מידע נוסף' : 'Additional Information'}
                     </h4>
                     <div className="mt-2 space-y-2 text-sm text-gray-600">
+                      {/* Availability and effective price as plain text. Both existed
+                          only inside the JSON-LD before, so anything reading the page
+                          as prose — a shopper skimming, or the sales assistant — had
+                          no way to tell whether this colour was actually buyable. */}
+                      <div className="flex justify-between">
+                        <span>{lng === 'he' ? 'זמינות' : 'Availability'}:</span>
+                        <span className={isOutOfStock ? 'text-gray-500' : 'text-green-700'}>
+                          {isOutOfStock
+                            ? (lng === 'he' ? 'אזל מהמלאי' : 'Out of stock')
+                            : (lng === 'he' ? 'במלאי' : 'In stock')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{lng === 'he' ? 'מחיר' : 'Price'}:</span>
+                        <span>
+                          {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice()
+                            ? (lng === 'he'
+                                ? `₪${getSalePrice()!.toFixed(2)} (במקום ₪${getOriginalPrice().toFixed(2)})`
+                                : `₪${getSalePrice()!.toFixed(2)} (was ₪${getOriginalPrice().toFixed(2)})`)
+                            : `₪${getOriginalPrice().toFixed(2)}`}
+                        </span>
+                      </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'מספר דגם' : 'SKU'}:</span>
                         <span>{baseSku}</span>
@@ -1075,7 +1116,14 @@ export default function ProductColorClient({
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'קטגוריה' : 'Category'}:</span>
-                        <span>{product.categories_path?.[0] || product.category || (lng === 'he' ? 'לא ידוע' : 'Unknown')}</span>
+                        {/* The full localised trail ("נשים › אקססוריז › תיקים"), not
+                            categories_path[0] — that printed the untranslated root
+                            slug ("women"), which says nothing about the product. */}
+                        <span>
+                          {categoryTrail && categoryTrail.length > 0
+                            ? categoryTrail.join(' › ')
+                            : product.categories_path?.[0] || product.category || (lng === 'he' ? 'לא ידוע' : 'Unknown')}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'מותג' : 'Brand'}:</span>
@@ -1125,9 +1173,13 @@ export default function ProductColorClient({
                     const closureTypeText = resolveSpec(mc?.closureType, CLOSURE_TYPE_OPTIONS, mc?.closureType_en, mc?.closureType_he, undefined, undefined)
                     const heelTypeText = resolveSpec(mc?.heelType, HEEL_TYPE_OPTIONS, mc?.heelType_en, mc?.heelType_he, undefined, undefined)
                     const toeShapeText = resolveSpec(mc?.toeShape, TOE_SHAPE_OPTIONS, mc?.toeShape_en, mc?.toeShape_he, undefined, undefined)
+                    const measurementRows = buildMeasurementRows(product, locale)
+                    const bagRows = buildBagFactRows(product, locale, {
+                      hardwareColor: resolveVariantHardwareColor(product, currentVariant),
+                    })
 
                     if (!(upperMaterialText || insoleText || liningText || outsoleText || soleTypeText || heelHeightText ||
-                      mc?.height_en || mc?.height_he || mc?.depth_en || mc?.depth_he || mc?.width_en || mc?.width_he ||
+                      measurementRows.length > 0 || bagRows.length > 0 ||
                       closureTypeText || heelTypeText || toeShapeText || mc?.careInstructions_en || mc?.careInstructions_he)) {
                       return null
                     }
@@ -1183,36 +1235,14 @@ export default function ProductColorClient({
                             <span className="text-sm text-gray-900">{heelHeightText}</span>
                           </div>
                         )}
-                        {(product.materialCare?.height_en || product.materialCare?.height_he) && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
-                              {lng === 'he' ? 'גובה:' : 'Height:'}
-                            </span>
-                            <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialCare?.height_he : product.materialCare?.height_en}
-                            </span>
+                        {/* Dimensions and weight: structured numbers when they exist,
+                            otherwise the legacy free text, via buildMeasurementRows. */}
+                        {measurementRows.map((row) => (
+                          <div key={row.key} className="flex justify-between">
+                            <span className="text-sm text-gray-600">{row.label}:</span>
+                            <span className="text-sm text-gray-900">{row.value}</span>
                           </div>
-                        )}
-                        {(product.materialCare?.depth_en || product.materialCare?.depth_he) && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
-                              {lng === 'he' ? 'עומק:' : 'Depth:'}
-                            </span>
-                            <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialCare?.depth_he : product.materialCare?.depth_en}
-                            </span>
-                          </div>
-                        )}
-                        {(product.materialCare?.width_en || product.materialCare?.width_he) && (
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
-                              {lng === 'he' ? 'רוחב:' : 'Width:'}
-                            </span>
-                            <span className="text-sm text-gray-900">
-                              {lng === 'he' ? product.materialCare?.width_he : product.materialCare?.width_en}
-                            </span>
-                          </div>
-                        )}
+                        ))}
                         {closureTypeText && (
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
@@ -1237,6 +1267,13 @@ export default function ProductColorClient({
                             <span className="text-sm text-gray-900">{toeShapeText}</span>
                           </div>
                         )}
+                        {/* Bag attributes — empty for every non-bag product */}
+                        {bagRows.map((row) => (
+                          <div key={row.key} className="flex justify-between">
+                            <span className="text-sm text-gray-600">{row.label}:</span>
+                            <span className="text-sm text-gray-900">{row.value}</span>
+                          </div>
+                        ))}
                         {(product.materialCare?.careInstructions_en || product.materialCare?.careInstructions_he) && (
                           <div className="pt-2 mt-1 border-t border-gray-200">
                             <span className="text-sm text-gray-600 block mb-1">

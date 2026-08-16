@@ -29,11 +29,31 @@ export type AggregateProduct = {
 export type ProductAvgAggregateOutputType = {
   price: number | null
   salePrice: number | null
+  heightCm: number | null
+  widthCm: number | null
+  depthCm: number | null
+  weightGrams: number | null
+  strapDropCm: number | null
+  mainCompartments: number | null
+  internalPockets: number | null
+  externalPockets: number | null
+  bagCapacityLiters: number | null
+  fitsLaptopInches: number | null
 }
 
 export type ProductSumAggregateOutputType = {
   price: number | null
   salePrice: number | null
+  heightCm: number | null
+  widthCm: number | null
+  depthCm: number | null
+  weightGrams: number | null
+  strapDropCm: number | null
+  mainCompartments: number | null
+  internalPockets: number | null
+  externalPockets: number | null
+  bagCapacityLiters: number | null
+  fitsLaptopInches: number | null
 }
 
 export type ProductMinAggregateOutputType = {
@@ -99,6 +119,26 @@ export type ProductMinAggregateOutputType = {
   heelType: string | null
   closureType: string | null
   heelHeight: string | null
+  heightCm: number | null
+  widthCm: number | null
+  depthCm: number | null
+  weightGrams: number | null
+  bagType: string | null
+  bagStructure: string | null
+  strapType: string | null
+  strapDropCm: number | null
+  adjustableStrap: boolean | null
+  removableStrap: boolean | null
+  mainCompartments: number | null
+  internalPockets: number | null
+  externalPockets: number | null
+  hardwareColor: string | null
+  baseFeet: boolean | null
+  bagCapacityLiters: number | null
+  bagSizeCategory: string | null
+  fitsA4: boolean | null
+  fitsTablet: boolean | null
+  fitsLaptopInches: number | null
   sizeFit: string | null
   footWidthFit: string | null
   toeBoxFit: string | null
@@ -180,6 +220,26 @@ export type ProductMaxAggregateOutputType = {
   heelType: string | null
   closureType: string | null
   heelHeight: string | null
+  heightCm: number | null
+  widthCm: number | null
+  depthCm: number | null
+  weightGrams: number | null
+  bagType: string | null
+  bagStructure: string | null
+  strapType: string | null
+  strapDropCm: number | null
+  adjustableStrap: boolean | null
+  removableStrap: boolean | null
+  mainCompartments: number | null
+  internalPockets: number | null
+  externalPockets: number | null
+  hardwareColor: string | null
+  baseFeet: boolean | null
+  bagCapacityLiters: number | null
+  bagSizeCategory: string | null
+  fitsA4: boolean | null
+  fitsTablet: boolean | null
+  fitsLaptopInches: number | null
   sizeFit: string | null
   footWidthFit: string | null
   toeBoxFit: string | null
@@ -266,6 +326,29 @@ export type ProductCountAggregateOutputType = {
   heelType: number
   closureType: number
   heelHeight: number
+  heightCm: number
+  widthCm: number
+  depthCm: number
+  weightGrams: number
+  bagType: number
+  intendedUse: number
+  carryingOptions: number
+  bagStyle: number
+  bagStructure: number
+  strapType: number
+  strapDropCm: number
+  adjustableStrap: number
+  removableStrap: number
+  mainCompartments: number
+  internalPockets: number
+  externalPockets: number
+  hardwareColor: number
+  baseFeet: number
+  bagCapacityLiters: number
+  bagSizeCategory: number
+  fitsA4: number
+  fitsTablet: number
+  fitsLaptopInches: number
   sizeFit: number
   footWidthFit: number
   toeBoxFit: number
@@ -294,11 +377,31 @@ export type ProductCountAggregateOutputType = {
 export type ProductAvgAggregateInputType = {
   price?: true
   salePrice?: true
+  heightCm?: true
+  widthCm?: true
+  depthCm?: true
+  weightGrams?: true
+  strapDropCm?: true
+  mainCompartments?: true
+  internalPockets?: true
+  externalPockets?: true
+  bagCapacityLiters?: true
+  fitsLaptopInches?: true
 }
 
 export type ProductSumAggregateInputType = {
   price?: true
   salePrice?: true
+  heightCm?: true
+  widthCm?: true
+  depthCm?: true
+  weightGrams?: true
+  strapDropCm?: true
+  mainCompartments?: true
+  internalPockets?: true
+  externalPockets?: true
+  bagCapacityLiters?: true
+  fitsLaptopInches?: true
 }
 
 export type ProductMinAggregateInputType = {
@@ -364,6 +467,26 @@ export type ProductMinAggregateInputType = {
   heelType?: true
   closureType?: true
   heelHeight?: true
+  heightCm?: true
+  widthCm?: true
+  depthCm?: true
+  weightGrams?: true
+  bagType?: true
+  bagStructure?: true
+  strapType?: true
+  strapDropCm?: true
+  adjustableStrap?: true
+  removableStrap?: true
+  mainCompartments?: true
+  internalPockets?: true
+  externalPockets?: true
+  hardwareColor?: true
+  baseFeet?: true
+  bagCapacityLiters?: true
+  bagSizeCategory?: true
+  fitsA4?: true
+  fitsTablet?: true
+  fitsLaptopInches?: true
   sizeFit?: true
   footWidthFit?: true
   toeBoxFit?: true
@@ -445,6 +568,26 @@ export type ProductMaxAggregateInputType = {
   heelType?: true
   closureType?: true
   heelHeight?: true
+  heightCm?: true
+  widthCm?: true
+  depthCm?: true
+  weightGrams?: true
+  bagType?: true
+  bagStructure?: true
+  strapType?: true
+  strapDropCm?: true
+  adjustableStrap?: true
+  removableStrap?: true
+  mainCompartments?: true
+  internalPockets?: true
+  externalPockets?: true
+  hardwareColor?: true
+  baseFeet?: true
+  bagCapacityLiters?: true
+  bagSizeCategory?: true
+  fitsA4?: true
+  fitsTablet?: true
+  fitsLaptopInches?: true
   sizeFit?: true
   footWidthFit?: true
   toeBoxFit?: true
@@ -531,6 +674,29 @@ export type ProductCountAggregateInputType = {
   heelType?: true
   closureType?: true
   heelHeight?: true
+  heightCm?: true
+  widthCm?: true
+  depthCm?: true
+  weightGrams?: true
+  bagType?: true
+  intendedUse?: true
+  carryingOptions?: true
+  bagStyle?: true
+  bagStructure?: true
+  strapType?: true
+  strapDropCm?: true
+  adjustableStrap?: true
+  removableStrap?: true
+  mainCompartments?: true
+  internalPockets?: true
+  externalPockets?: true
+  hardwareColor?: true
+  baseFeet?: true
+  bagCapacityLiters?: true
+  bagSizeCategory?: true
+  fitsA4?: true
+  fitsTablet?: true
+  fitsLaptopInches?: true
   sizeFit?: true
   footWidthFit?: true
   toeBoxFit?: true
@@ -709,6 +875,29 @@ export type ProductGroupByOutputType = {
   heelType: string | null
   closureType: string | null
   heelHeight: string | null
+  heightCm: number | null
+  widthCm: number | null
+  depthCm: number | null
+  weightGrams: number | null
+  bagType: string | null
+  intendedUse: string[]
+  carryingOptions: string[]
+  bagStyle: string[]
+  bagStructure: string | null
+  strapType: string | null
+  strapDropCm: number | null
+  adjustableStrap: boolean | null
+  removableStrap: boolean | null
+  mainCompartments: number | null
+  internalPockets: number | null
+  externalPockets: number | null
+  hardwareColor: string | null
+  baseFeet: boolean | null
+  bagCapacityLiters: number | null
+  bagSizeCategory: string | null
+  fitsA4: boolean | null
+  fitsTablet: boolean | null
+  fitsLaptopInches: number | null
   sizeFit: string | null
   footWidthFit: string | null
   toeBoxFit: string | null
@@ -823,6 +1012,29 @@ export type ProductWhereInput = {
   heelType?: Prisma.StringNullableFilter<"Product"> | string | null
   closureType?: Prisma.StringNullableFilter<"Product"> | string | null
   heelHeight?: Prisma.StringNullableFilter<"Product"> | string | null
+  heightCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  widthCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  depthCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  weightGrams?: Prisma.IntNullableFilter<"Product"> | number | null
+  bagType?: Prisma.StringNullableFilter<"Product"> | string | null
+  intendedUse?: Prisma.StringNullableListFilter<"Product">
+  carryingOptions?: Prisma.StringNullableListFilter<"Product">
+  bagStyle?: Prisma.StringNullableListFilter<"Product">
+  bagStructure?: Prisma.StringNullableFilter<"Product"> | string | null
+  strapType?: Prisma.StringNullableFilter<"Product"> | string | null
+  strapDropCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  adjustableStrap?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  removableStrap?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  mainCompartments?: Prisma.IntNullableFilter<"Product"> | number | null
+  internalPockets?: Prisma.IntNullableFilter<"Product"> | number | null
+  externalPockets?: Prisma.IntNullableFilter<"Product"> | number | null
+  hardwareColor?: Prisma.StringNullableFilter<"Product"> | string | null
+  baseFeet?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  bagCapacityLiters?: Prisma.FloatNullableFilter<"Product"> | number | null
+  bagSizeCategory?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitsA4?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  fitsTablet?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  fitsLaptopInches?: Prisma.IntNullableFilter<"Product"> | number | null
   sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
   footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
   toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -917,6 +1129,29 @@ export type ProductOrderByWithRelationInput = {
   heelType?: Prisma.SortOrderInput | Prisma.SortOrder
   closureType?: Prisma.SortOrderInput | Prisma.SortOrder
   heelHeight?: Prisma.SortOrderInput | Prisma.SortOrder
+  heightCm?: Prisma.SortOrderInput | Prisma.SortOrder
+  widthCm?: Prisma.SortOrderInput | Prisma.SortOrder
+  depthCm?: Prisma.SortOrderInput | Prisma.SortOrder
+  weightGrams?: Prisma.SortOrderInput | Prisma.SortOrder
+  bagType?: Prisma.SortOrderInput | Prisma.SortOrder
+  intendedUse?: Prisma.SortOrder
+  carryingOptions?: Prisma.SortOrder
+  bagStyle?: Prisma.SortOrder
+  bagStructure?: Prisma.SortOrderInput | Prisma.SortOrder
+  strapType?: Prisma.SortOrderInput | Prisma.SortOrder
+  strapDropCm?: Prisma.SortOrderInput | Prisma.SortOrder
+  adjustableStrap?: Prisma.SortOrderInput | Prisma.SortOrder
+  removableStrap?: Prisma.SortOrderInput | Prisma.SortOrder
+  mainCompartments?: Prisma.SortOrderInput | Prisma.SortOrder
+  internalPockets?: Prisma.SortOrderInput | Prisma.SortOrder
+  externalPockets?: Prisma.SortOrderInput | Prisma.SortOrder
+  hardwareColor?: Prisma.SortOrderInput | Prisma.SortOrder
+  baseFeet?: Prisma.SortOrderInput | Prisma.SortOrder
+  bagCapacityLiters?: Prisma.SortOrderInput | Prisma.SortOrder
+  bagSizeCategory?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitsA4?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitsTablet?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitsLaptopInches?: Prisma.SortOrderInput | Prisma.SortOrder
   sizeFit?: Prisma.SortOrderInput | Prisma.SortOrder
   footWidthFit?: Prisma.SortOrderInput | Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -1014,6 +1249,29 @@ export type ProductWhereUniqueInput = Prisma.AtLeast<{
   heelType?: Prisma.StringNullableFilter<"Product"> | string | null
   closureType?: Prisma.StringNullableFilter<"Product"> | string | null
   heelHeight?: Prisma.StringNullableFilter<"Product"> | string | null
+  heightCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  widthCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  depthCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  weightGrams?: Prisma.IntNullableFilter<"Product"> | number | null
+  bagType?: Prisma.StringNullableFilter<"Product"> | string | null
+  intendedUse?: Prisma.StringNullableListFilter<"Product">
+  carryingOptions?: Prisma.StringNullableListFilter<"Product">
+  bagStyle?: Prisma.StringNullableListFilter<"Product">
+  bagStructure?: Prisma.StringNullableFilter<"Product"> | string | null
+  strapType?: Prisma.StringNullableFilter<"Product"> | string | null
+  strapDropCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  adjustableStrap?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  removableStrap?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  mainCompartments?: Prisma.IntNullableFilter<"Product"> | number | null
+  internalPockets?: Prisma.IntNullableFilter<"Product"> | number | null
+  externalPockets?: Prisma.IntNullableFilter<"Product"> | number | null
+  hardwareColor?: Prisma.StringNullableFilter<"Product"> | string | null
+  baseFeet?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  bagCapacityLiters?: Prisma.FloatNullableFilter<"Product"> | number | null
+  bagSizeCategory?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitsA4?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  fitsTablet?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  fitsLaptopInches?: Prisma.IntNullableFilter<"Product"> | number | null
   sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
   footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
   toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -1108,6 +1366,29 @@ export type ProductOrderByWithAggregationInput = {
   heelType?: Prisma.SortOrderInput | Prisma.SortOrder
   closureType?: Prisma.SortOrderInput | Prisma.SortOrder
   heelHeight?: Prisma.SortOrderInput | Prisma.SortOrder
+  heightCm?: Prisma.SortOrderInput | Prisma.SortOrder
+  widthCm?: Prisma.SortOrderInput | Prisma.SortOrder
+  depthCm?: Prisma.SortOrderInput | Prisma.SortOrder
+  weightGrams?: Prisma.SortOrderInput | Prisma.SortOrder
+  bagType?: Prisma.SortOrderInput | Prisma.SortOrder
+  intendedUse?: Prisma.SortOrder
+  carryingOptions?: Prisma.SortOrder
+  bagStyle?: Prisma.SortOrder
+  bagStructure?: Prisma.SortOrderInput | Prisma.SortOrder
+  strapType?: Prisma.SortOrderInput | Prisma.SortOrder
+  strapDropCm?: Prisma.SortOrderInput | Prisma.SortOrder
+  adjustableStrap?: Prisma.SortOrderInput | Prisma.SortOrder
+  removableStrap?: Prisma.SortOrderInput | Prisma.SortOrder
+  mainCompartments?: Prisma.SortOrderInput | Prisma.SortOrder
+  internalPockets?: Prisma.SortOrderInput | Prisma.SortOrder
+  externalPockets?: Prisma.SortOrderInput | Prisma.SortOrder
+  hardwareColor?: Prisma.SortOrderInput | Prisma.SortOrder
+  baseFeet?: Prisma.SortOrderInput | Prisma.SortOrder
+  bagCapacityLiters?: Prisma.SortOrderInput | Prisma.SortOrder
+  bagSizeCategory?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitsA4?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitsTablet?: Prisma.SortOrderInput | Prisma.SortOrder
+  fitsLaptopInches?: Prisma.SortOrderInput | Prisma.SortOrder
   sizeFit?: Prisma.SortOrderInput | Prisma.SortOrder
   footWidthFit?: Prisma.SortOrderInput | Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -1207,6 +1488,29 @@ export type ProductScalarWhereWithAggregatesInput = {
   heelType?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   closureType?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   heelHeight?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  heightCm?: Prisma.FloatNullableWithAggregatesFilter<"Product"> | number | null
+  widthCm?: Prisma.FloatNullableWithAggregatesFilter<"Product"> | number | null
+  depthCm?: Prisma.FloatNullableWithAggregatesFilter<"Product"> | number | null
+  weightGrams?: Prisma.IntNullableWithAggregatesFilter<"Product"> | number | null
+  bagType?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  intendedUse?: Prisma.StringNullableListFilter<"Product">
+  carryingOptions?: Prisma.StringNullableListFilter<"Product">
+  bagStyle?: Prisma.StringNullableListFilter<"Product">
+  bagStructure?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  strapType?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  strapDropCm?: Prisma.FloatNullableWithAggregatesFilter<"Product"> | number | null
+  adjustableStrap?: Prisma.BoolNullableWithAggregatesFilter<"Product"> | boolean | null
+  removableStrap?: Prisma.BoolNullableWithAggregatesFilter<"Product"> | boolean | null
+  mainCompartments?: Prisma.IntNullableWithAggregatesFilter<"Product"> | number | null
+  internalPockets?: Prisma.IntNullableWithAggregatesFilter<"Product"> | number | null
+  externalPockets?: Prisma.IntNullableWithAggregatesFilter<"Product"> | number | null
+  hardwareColor?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  baseFeet?: Prisma.BoolNullableWithAggregatesFilter<"Product"> | boolean | null
+  bagCapacityLiters?: Prisma.FloatNullableWithAggregatesFilter<"Product"> | number | null
+  bagSizeCategory?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
+  fitsA4?: Prisma.BoolNullableWithAggregatesFilter<"Product"> | boolean | null
+  fitsTablet?: Prisma.BoolNullableWithAggregatesFilter<"Product"> | boolean | null
+  fitsLaptopInches?: Prisma.IntNullableWithAggregatesFilter<"Product"> | number | null
   sizeFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   footWidthFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
   toeBoxFit?: Prisma.StringNullableWithAggregatesFilter<"Product"> | string | null
@@ -1297,6 +1601,29 @@ export type ProductCreateInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -1390,6 +1717,29 @@ export type ProductUncheckedCreateInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -1481,6 +1831,29 @@ export type ProductUpdateInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1574,6 +1947,29 @@ export type ProductUncheckedUpdateInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1666,6 +2062,29 @@ export type ProductCreateManyInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -1756,6 +2175,29 @@ export type ProductUpdateManyMutationInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1846,6 +2288,29 @@ export type ProductUncheckedUpdateManyInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -1955,6 +2420,29 @@ export type ProductCountOrderByAggregateInput = {
   heelType?: Prisma.SortOrder
   closureType?: Prisma.SortOrder
   heelHeight?: Prisma.SortOrder
+  heightCm?: Prisma.SortOrder
+  widthCm?: Prisma.SortOrder
+  depthCm?: Prisma.SortOrder
+  weightGrams?: Prisma.SortOrder
+  bagType?: Prisma.SortOrder
+  intendedUse?: Prisma.SortOrder
+  carryingOptions?: Prisma.SortOrder
+  bagStyle?: Prisma.SortOrder
+  bagStructure?: Prisma.SortOrder
+  strapType?: Prisma.SortOrder
+  strapDropCm?: Prisma.SortOrder
+  adjustableStrap?: Prisma.SortOrder
+  removableStrap?: Prisma.SortOrder
+  mainCompartments?: Prisma.SortOrder
+  internalPockets?: Prisma.SortOrder
+  externalPockets?: Prisma.SortOrder
+  hardwareColor?: Prisma.SortOrder
+  baseFeet?: Prisma.SortOrder
+  bagCapacityLiters?: Prisma.SortOrder
+  bagSizeCategory?: Prisma.SortOrder
+  fitsA4?: Prisma.SortOrder
+  fitsTablet?: Prisma.SortOrder
+  fitsLaptopInches?: Prisma.SortOrder
   sizeFit?: Prisma.SortOrder
   footWidthFit?: Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrder
@@ -1981,6 +2469,16 @@ export type ProductCountOrderByAggregateInput = {
 export type ProductAvgOrderByAggregateInput = {
   price?: Prisma.SortOrder
   salePrice?: Prisma.SortOrder
+  heightCm?: Prisma.SortOrder
+  widthCm?: Prisma.SortOrder
+  depthCm?: Prisma.SortOrder
+  weightGrams?: Prisma.SortOrder
+  strapDropCm?: Prisma.SortOrder
+  mainCompartments?: Prisma.SortOrder
+  internalPockets?: Prisma.SortOrder
+  externalPockets?: Prisma.SortOrder
+  bagCapacityLiters?: Prisma.SortOrder
+  fitsLaptopInches?: Prisma.SortOrder
 }
 
 export type ProductMaxOrderByAggregateInput = {
@@ -2046,6 +2544,26 @@ export type ProductMaxOrderByAggregateInput = {
   heelType?: Prisma.SortOrder
   closureType?: Prisma.SortOrder
   heelHeight?: Prisma.SortOrder
+  heightCm?: Prisma.SortOrder
+  widthCm?: Prisma.SortOrder
+  depthCm?: Prisma.SortOrder
+  weightGrams?: Prisma.SortOrder
+  bagType?: Prisma.SortOrder
+  bagStructure?: Prisma.SortOrder
+  strapType?: Prisma.SortOrder
+  strapDropCm?: Prisma.SortOrder
+  adjustableStrap?: Prisma.SortOrder
+  removableStrap?: Prisma.SortOrder
+  mainCompartments?: Prisma.SortOrder
+  internalPockets?: Prisma.SortOrder
+  externalPockets?: Prisma.SortOrder
+  hardwareColor?: Prisma.SortOrder
+  baseFeet?: Prisma.SortOrder
+  bagCapacityLiters?: Prisma.SortOrder
+  bagSizeCategory?: Prisma.SortOrder
+  fitsA4?: Prisma.SortOrder
+  fitsTablet?: Prisma.SortOrder
+  fitsLaptopInches?: Prisma.SortOrder
   sizeFit?: Prisma.SortOrder
   footWidthFit?: Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrder
@@ -2127,6 +2645,26 @@ export type ProductMinOrderByAggregateInput = {
   heelType?: Prisma.SortOrder
   closureType?: Prisma.SortOrder
   heelHeight?: Prisma.SortOrder
+  heightCm?: Prisma.SortOrder
+  widthCm?: Prisma.SortOrder
+  depthCm?: Prisma.SortOrder
+  weightGrams?: Prisma.SortOrder
+  bagType?: Prisma.SortOrder
+  bagStructure?: Prisma.SortOrder
+  strapType?: Prisma.SortOrder
+  strapDropCm?: Prisma.SortOrder
+  adjustableStrap?: Prisma.SortOrder
+  removableStrap?: Prisma.SortOrder
+  mainCompartments?: Prisma.SortOrder
+  internalPockets?: Prisma.SortOrder
+  externalPockets?: Prisma.SortOrder
+  hardwareColor?: Prisma.SortOrder
+  baseFeet?: Prisma.SortOrder
+  bagCapacityLiters?: Prisma.SortOrder
+  bagSizeCategory?: Prisma.SortOrder
+  fitsA4?: Prisma.SortOrder
+  fitsTablet?: Prisma.SortOrder
+  fitsLaptopInches?: Prisma.SortOrder
   sizeFit?: Prisma.SortOrder
   footWidthFit?: Prisma.SortOrder
   toeBoxFit?: Prisma.SortOrder
@@ -2148,6 +2686,16 @@ export type ProductMinOrderByAggregateInput = {
 export type ProductSumOrderByAggregateInput = {
   price?: Prisma.SortOrder
   salePrice?: Prisma.SortOrder
+  heightCm?: Prisma.SortOrder
+  widthCm?: Prisma.SortOrder
+  depthCm?: Prisma.SortOrder
+  weightGrams?: Prisma.SortOrder
+  strapDropCm?: Prisma.SortOrder
+  mainCompartments?: Prisma.SortOrder
+  internalPockets?: Prisma.SortOrder
+  externalPockets?: Prisma.SortOrder
+  bagCapacityLiters?: Prisma.SortOrder
+  fitsLaptopInches?: Prisma.SortOrder
 }
 
 export type ProductScalarRelationFilter = {
@@ -2255,6 +2803,18 @@ export type ProductCreateupperMaterialInput = {
   set: string[]
 }
 
+export type ProductCreateintendedUseInput = {
+  set: string[]
+}
+
+export type ProductCreatecarryingOptionsInput = {
+  set: string[]
+}
+
+export type ProductCreatebagStyleInput = {
+  set: string[]
+}
+
 export type ProductCreateadjustableFeaturesInput = {
   set: string[]
 }
@@ -2301,6 +2861,33 @@ export type ProductUpdatesearchKeywordsInput = {
 export type ProductUpdateupperMaterialInput = {
   set?: string[]
   push?: string | string[]
+}
+
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
+export type ProductUpdateintendedUseInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type ProductUpdatecarryingOptionsInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type ProductUpdatebagStyleInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
+export type NullableBoolFieldUpdateOperationsInput = {
+  set?: boolean | null
 }
 
 export type ProductUpdateadjustableFeaturesInput = {
@@ -2409,6 +2996,29 @@ export type ProductCreateWithoutCategoryRelationInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2500,6 +3110,29 @@ export type ProductUncheckedCreateWithoutCategoryRelationInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2621,6 +3254,29 @@ export type ProductScalarWhereInput = {
   heelType?: Prisma.StringNullableFilter<"Product"> | string | null
   closureType?: Prisma.StringNullableFilter<"Product"> | string | null
   heelHeight?: Prisma.StringNullableFilter<"Product"> | string | null
+  heightCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  widthCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  depthCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  weightGrams?: Prisma.IntNullableFilter<"Product"> | number | null
+  bagType?: Prisma.StringNullableFilter<"Product"> | string | null
+  intendedUse?: Prisma.StringNullableListFilter<"Product">
+  carryingOptions?: Prisma.StringNullableListFilter<"Product">
+  bagStyle?: Prisma.StringNullableListFilter<"Product">
+  bagStructure?: Prisma.StringNullableFilter<"Product"> | string | null
+  strapType?: Prisma.StringNullableFilter<"Product"> | string | null
+  strapDropCm?: Prisma.FloatNullableFilter<"Product"> | number | null
+  adjustableStrap?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  removableStrap?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  mainCompartments?: Prisma.IntNullableFilter<"Product"> | number | null
+  internalPockets?: Prisma.IntNullableFilter<"Product"> | number | null
+  externalPockets?: Prisma.IntNullableFilter<"Product"> | number | null
+  hardwareColor?: Prisma.StringNullableFilter<"Product"> | string | null
+  baseFeet?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  bagCapacityLiters?: Prisma.FloatNullableFilter<"Product"> | number | null
+  bagSizeCategory?: Prisma.StringNullableFilter<"Product"> | string | null
+  fitsA4?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  fitsTablet?: Prisma.BoolNullableFilter<"Product"> | boolean | null
+  fitsLaptopInches?: Prisma.IntNullableFilter<"Product"> | number | null
   sizeFit?: Prisma.StringNullableFilter<"Product"> | string | null
   footWidthFit?: Prisma.StringNullableFilter<"Product"> | string | null
   toeBoxFit?: Prisma.StringNullableFilter<"Product"> | string | null
@@ -2711,6 +3367,29 @@ export type ProductCreateWithoutBogoGroupInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2803,6 +3482,29 @@ export type ProductUncheckedCreateWithoutBogoGroupInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -2919,6 +3621,29 @@ export type ProductCreateWithoutProductTagsInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -3011,6 +3736,29 @@ export type ProductUncheckedCreateWithoutProductTagsInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -3117,6 +3865,29 @@ export type ProductUpdateWithoutProductTagsInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3209,6 +3980,29 @@ export type ProductUncheckedUpdateWithoutProductTagsInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3299,6 +4093,29 @@ export type ProductCreateManyCategoryRelationInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -3389,6 +4206,29 @@ export type ProductUpdateWithoutCategoryRelationInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3480,6 +4320,29 @@ export type ProductUncheckedUpdateWithoutCategoryRelationInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3571,6 +4434,29 @@ export type ProductUncheckedUpdateManyWithoutCategoryRelationInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3662,6 +4548,29 @@ export type ProductCreateManyBogoGroupInput = {
   heelType?: string | null
   closureType?: string | null
   heelHeight?: string | null
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
+  bagType?: string | null
+  intendedUse?: Prisma.ProductCreateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductCreatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductCreatebagStyleInput | string[]
+  bagStructure?: string | null
+  strapType?: string | null
+  strapDropCm?: number | null
+  adjustableStrap?: boolean | null
+  removableStrap?: boolean | null
+  mainCompartments?: number | null
+  internalPockets?: number | null
+  externalPockets?: number | null
+  hardwareColor?: string | null
+  baseFeet?: boolean | null
+  bagCapacityLiters?: number | null
+  bagSizeCategory?: string | null
+  fitsA4?: boolean | null
+  fitsTablet?: boolean | null
+  fitsLaptopInches?: number | null
   sizeFit?: string | null
   footWidthFit?: string | null
   toeBoxFit?: string | null
@@ -3751,6 +4660,29 @@ export type ProductUpdateWithoutBogoGroupInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3843,6 +4775,29 @@ export type ProductUncheckedUpdateWithoutBogoGroupInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -3934,6 +4889,29 @@ export type ProductUncheckedUpdateManyWithoutBogoGroupInput = {
   heelType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   closureType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   heelHeight?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  heightCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  widthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  depthCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  weightGrams?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  bagType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  intendedUse?: Prisma.ProductUpdateintendedUseInput | string[]
+  carryingOptions?: Prisma.ProductUpdatecarryingOptionsInput | string[]
+  bagStyle?: Prisma.ProductUpdatebagStyleInput | string[]
+  bagStructure?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  strapDropCm?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  adjustableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  removableStrap?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  mainCompartments?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  internalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  externalPockets?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  hardwareColor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  baseFeet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  bagCapacityLiters?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  bagSizeCategory?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fitsA4?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsTablet?: Prisma.NullableBoolFieldUpdateOperationsInput | boolean | null
+  fitsLaptopInches?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   sizeFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   footWidthFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   toeBoxFit?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -4055,6 +5033,29 @@ export type ProductSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   heelType?: boolean
   closureType?: boolean
   heelHeight?: boolean
+  heightCm?: boolean
+  widthCm?: boolean
+  depthCm?: boolean
+  weightGrams?: boolean
+  bagType?: boolean
+  intendedUse?: boolean
+  carryingOptions?: boolean
+  bagStyle?: boolean
+  bagStructure?: boolean
+  strapType?: boolean
+  strapDropCm?: boolean
+  adjustableStrap?: boolean
+  removableStrap?: boolean
+  mainCompartments?: boolean
+  internalPockets?: boolean
+  externalPockets?: boolean
+  hardwareColor?: boolean
+  baseFeet?: boolean
+  bagCapacityLiters?: boolean
+  bagSizeCategory?: boolean
+  fitsA4?: boolean
+  fitsTablet?: boolean
+  fitsLaptopInches?: boolean
   sizeFit?: boolean
   footWidthFit?: boolean
   toeBoxFit?: boolean
@@ -4150,6 +5151,29 @@ export type ProductSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   heelType?: boolean
   closureType?: boolean
   heelHeight?: boolean
+  heightCm?: boolean
+  widthCm?: boolean
+  depthCm?: boolean
+  weightGrams?: boolean
+  bagType?: boolean
+  intendedUse?: boolean
+  carryingOptions?: boolean
+  bagStyle?: boolean
+  bagStructure?: boolean
+  strapType?: boolean
+  strapDropCm?: boolean
+  adjustableStrap?: boolean
+  removableStrap?: boolean
+  mainCompartments?: boolean
+  internalPockets?: boolean
+  externalPockets?: boolean
+  hardwareColor?: boolean
+  baseFeet?: boolean
+  bagCapacityLiters?: boolean
+  bagSizeCategory?: boolean
+  fitsA4?: boolean
+  fitsTablet?: boolean
+  fitsLaptopInches?: boolean
   sizeFit?: boolean
   footWidthFit?: boolean
   toeBoxFit?: boolean
@@ -4243,6 +5267,29 @@ export type ProductSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   heelType?: boolean
   closureType?: boolean
   heelHeight?: boolean
+  heightCm?: boolean
+  widthCm?: boolean
+  depthCm?: boolean
+  weightGrams?: boolean
+  bagType?: boolean
+  intendedUse?: boolean
+  carryingOptions?: boolean
+  bagStyle?: boolean
+  bagStructure?: boolean
+  strapType?: boolean
+  strapDropCm?: boolean
+  adjustableStrap?: boolean
+  removableStrap?: boolean
+  mainCompartments?: boolean
+  internalPockets?: boolean
+  externalPockets?: boolean
+  hardwareColor?: boolean
+  baseFeet?: boolean
+  bagCapacityLiters?: boolean
+  bagSizeCategory?: boolean
+  fitsA4?: boolean
+  fitsTablet?: boolean
+  fitsLaptopInches?: boolean
   sizeFit?: boolean
   footWidthFit?: boolean
   toeBoxFit?: boolean
@@ -4336,6 +5383,29 @@ export type ProductSelectScalar = {
   heelType?: boolean
   closureType?: boolean
   heelHeight?: boolean
+  heightCm?: boolean
+  widthCm?: boolean
+  depthCm?: boolean
+  weightGrams?: boolean
+  bagType?: boolean
+  intendedUse?: boolean
+  carryingOptions?: boolean
+  bagStyle?: boolean
+  bagStructure?: boolean
+  strapType?: boolean
+  strapDropCm?: boolean
+  adjustableStrap?: boolean
+  removableStrap?: boolean
+  mainCompartments?: boolean
+  internalPockets?: boolean
+  externalPockets?: boolean
+  hardwareColor?: boolean
+  baseFeet?: boolean
+  bagCapacityLiters?: boolean
+  bagSizeCategory?: boolean
+  fitsA4?: boolean
+  fitsTablet?: boolean
+  fitsLaptopInches?: boolean
   sizeFit?: boolean
   footWidthFit?: boolean
   toeBoxFit?: boolean
@@ -4359,7 +5429,7 @@ export type ProductSelectScalar = {
   bogoGroupId?: boolean
 }
 
-export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "shortTitle_en" | "shortTitle_he" | "shortDescription_en" | "shortDescription_he" | "toeShape_en" | "toeShape_he" | "pattern_en" | "pattern_he" | "finish_en" | "finish_he" | "closureType_en" | "closureType_he" | "heelType_en" | "heelType_he" | "careInstructions_en" | "careInstructions_he" | "upperMaterial" | "lining" | "insole" | "outsole" | "soleType" | "toeShape" | "heelType" | "closureType" | "heelHeight" | "sizeFit" | "footWidthFit" | "toeBoxFit" | "instepFit" | "archFit" | "adjustableFeatures" | "fitRecommendation_en" | "fitRecommendation_he" | "fitNotes_en" | "fitNotes_he" | "seoFocusKeyword_en" | "seoFocusKeyword_he" | "seoSecondaryKeywords_en" | "seoSecondaryKeywords_he" | "category_he" | "subCategory_he" | "subSubCategory_he" | "colors_search_norm" | "generated_search_keywords" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
+export type ProductOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "featured" | "isNew" | "isActive" | "createdAt" | "updatedAt" | "categoryId" | "brand" | "categories_path" | "categories_path_id" | "category" | "currency" | "description_en" | "description_he" | "heelHeight_en" | "heelHeight_he" | "isDeleted" | "isEnabled" | "lining_en" | "lining_he" | "materialInnerSole_en" | "materialInnerSole_he" | "price" | "salePrice" | "searchKeywords" | "seo_description_en" | "seo_description_he" | "seo_slug" | "seo_title_en" | "seo_title_he" | "shippingReturns_en" | "shippingReturns_he" | "sku" | "sole_en" | "sole_he" | "subCategory" | "subSubCategory" | "title_en" | "title_he" | "upperMaterial_en" | "upperMaterial_he" | "colorVariants" | "shortTitle_en" | "shortTitle_he" | "shortDescription_en" | "shortDescription_he" | "toeShape_en" | "toeShape_he" | "pattern_en" | "pattern_he" | "finish_en" | "finish_he" | "closureType_en" | "closureType_he" | "heelType_en" | "heelType_he" | "careInstructions_en" | "careInstructions_he" | "upperMaterial" | "lining" | "insole" | "outsole" | "soleType" | "toeShape" | "heelType" | "closureType" | "heelHeight" | "heightCm" | "widthCm" | "depthCm" | "weightGrams" | "bagType" | "intendedUse" | "carryingOptions" | "bagStyle" | "bagStructure" | "strapType" | "strapDropCm" | "adjustableStrap" | "removableStrap" | "mainCompartments" | "internalPockets" | "externalPockets" | "hardwareColor" | "baseFeet" | "bagCapacityLiters" | "bagSizeCategory" | "fitsA4" | "fitsTablet" | "fitsLaptopInches" | "sizeFit" | "footWidthFit" | "toeBoxFit" | "instepFit" | "archFit" | "adjustableFeatures" | "fitRecommendation_en" | "fitRecommendation_he" | "fitNotes_en" | "fitNotes_he" | "seoFocusKeyword_en" | "seoFocusKeyword_he" | "seoSecondaryKeywords_en" | "seoSecondaryKeywords_he" | "category_he" | "subCategory_he" | "subSubCategory_he" | "colors_search_norm" | "generated_search_keywords" | "tags" | "bogoGroupId", ExtArgs["result"]["product"]>
 export type ProductInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   categoryRelation?: boolean | Prisma.CategoryDefaultArgs<ExtArgs>
   bogoGroup?: boolean | Prisma.Product$bogoGroupArgs<ExtArgs>
@@ -4450,6 +5520,29 @@ export type $ProductPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     heelType: string | null
     closureType: string | null
     heelHeight: string | null
+    heightCm: number | null
+    widthCm: number | null
+    depthCm: number | null
+    weightGrams: number | null
+    bagType: string | null
+    intendedUse: string[]
+    carryingOptions: string[]
+    bagStyle: string[]
+    bagStructure: string | null
+    strapType: string | null
+    strapDropCm: number | null
+    adjustableStrap: boolean | null
+    removableStrap: boolean | null
+    mainCompartments: number | null
+    internalPockets: number | null
+    externalPockets: number | null
+    hardwareColor: string | null
+    baseFeet: boolean | null
+    bagCapacityLiters: number | null
+    bagSizeCategory: string | null
+    fitsA4: boolean | null
+    fitsTablet: boolean | null
+    fitsLaptopInches: number | null
     sizeFit: string | null
     footWidthFit: string | null
     toeBoxFit: string | null
@@ -4964,6 +6057,29 @@ export interface ProductFieldRefs {
   readonly heelType: Prisma.FieldRef<"Product", 'String'>
   readonly closureType: Prisma.FieldRef<"Product", 'String'>
   readonly heelHeight: Prisma.FieldRef<"Product", 'String'>
+  readonly heightCm: Prisma.FieldRef<"Product", 'Float'>
+  readonly widthCm: Prisma.FieldRef<"Product", 'Float'>
+  readonly depthCm: Prisma.FieldRef<"Product", 'Float'>
+  readonly weightGrams: Prisma.FieldRef<"Product", 'Int'>
+  readonly bagType: Prisma.FieldRef<"Product", 'String'>
+  readonly intendedUse: Prisma.FieldRef<"Product", 'String[]'>
+  readonly carryingOptions: Prisma.FieldRef<"Product", 'String[]'>
+  readonly bagStyle: Prisma.FieldRef<"Product", 'String[]'>
+  readonly bagStructure: Prisma.FieldRef<"Product", 'String'>
+  readonly strapType: Prisma.FieldRef<"Product", 'String'>
+  readonly strapDropCm: Prisma.FieldRef<"Product", 'Float'>
+  readonly adjustableStrap: Prisma.FieldRef<"Product", 'Boolean'>
+  readonly removableStrap: Prisma.FieldRef<"Product", 'Boolean'>
+  readonly mainCompartments: Prisma.FieldRef<"Product", 'Int'>
+  readonly internalPockets: Prisma.FieldRef<"Product", 'Int'>
+  readonly externalPockets: Prisma.FieldRef<"Product", 'Int'>
+  readonly hardwareColor: Prisma.FieldRef<"Product", 'String'>
+  readonly baseFeet: Prisma.FieldRef<"Product", 'Boolean'>
+  readonly bagCapacityLiters: Prisma.FieldRef<"Product", 'Float'>
+  readonly bagSizeCategory: Prisma.FieldRef<"Product", 'String'>
+  readonly fitsA4: Prisma.FieldRef<"Product", 'Boolean'>
+  readonly fitsTablet: Prisma.FieldRef<"Product", 'Boolean'>
+  readonly fitsLaptopInches: Prisma.FieldRef<"Product", 'Int'>
   readonly sizeFit: Prisma.FieldRef<"Product", 'String'>
   readonly footWidthFit: Prisma.FieldRef<"Product", 'String'>
   readonly toeBoxFit: Prisma.FieldRef<"Product", 'String'>

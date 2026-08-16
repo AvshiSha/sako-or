@@ -36,12 +36,16 @@ import {
   type HeelHeightCm,
 } from '@/lib/product-enums'
 import { normalizeProductImages } from '@/lib/product-images'
-import { validateProductFormBasics } from '../../_lib/validate-product-form'
+import { validateProductFormBasics, getBagSpecsWarning } from '../../_lib/validate-product-form'
 import PreviewProductButton from '../../_components/PreviewProductButton'
 import ProductBasicInformationSection from '../../_components/ProductBasicInformationSection'
 import ProductClassificationSection from '../../_components/ProductClassificationSection'
 import ProductSpecificationsSection from '../../_components/ProductSpecificationsSection'
 import ShoeFitSection, { type ShoeFitValues } from '../../_components/ShoeFitSection'
+import BagSpecificationsSection, {
+  createEmptyBagSpecs,
+  type BagSpecsValues,
+} from '../../_components/BagSpecificationsSection'
 import ProductSeoSection from '../../_components/ProductSeoSection'
 import ProductImageSeoFields from '../../_components/ProductImageSeoFields'
 
@@ -124,10 +128,18 @@ interface ProductFormData {
     heelType?: HeelType;
     closureType?: ClosureType;
     heelHeight?: HeelHeightCm;
+    // Structured measurements replacing the height/width/depth text pairs above
+    heightCm?: number | null;
+    widthCm?: number | null;
+    depthCm?: number | null;
+    weightGrams?: number | null;
   };
 
   // Shoe Fit and Sizing (only meaningful for footwear categories)
   shoeFit: ShoeFitValues;
+
+  // Bag attributes (only meaningful for bag categories)
+  bagSpecs: BagSpecsValues;
 
   // SEO fields
   seo: {
@@ -161,6 +173,9 @@ interface FormErrors {
   colorVariants?: string;
   seoSlug?: string;
   shoeFit?: string;
+  bagSpecs?: string;
+  bagType?: string;
+  intendedUse?: string;
 }
 
 interface ImageFile {
@@ -285,6 +300,9 @@ function EditProductPage() {
       adjustableFeatures: [],
     },
 
+    // Bag attributes
+    bagSpecs: createEmptyBagSpecs(),
+
     // SEO fields
     seo: {
       title_en: '',
@@ -306,6 +324,9 @@ function EditProductPage() {
     getCategoryEnglishName(subCategories.find((cat) => cat.id === formData.subCategory)),
     getCategoryEnglishName(subSubCategories.find((cat) => cat.id === formData.subSubCategory))
   )
+
+  /** Non-blocking nudge for bags still missing the two fields the sales assistant filters on. */
+  const bagSpecsWarning = getBagSpecsWarning(formData, categoryFieldGroup)
 
   /** categories_path only gets populated with names at submit time, so resolve IDs -> names here too for the SEO export snapshot. */
   const seoCategoryPath = [
@@ -431,7 +452,38 @@ function EditProductPage() {
               toeShape: loadedMaterialCare.toeShape,
               heelType: loadedMaterialCare.heelType,
               closureType: loadedMaterialCare.closureType,
-              heelHeight: loadedMaterialCare.heelHeight
+              heelHeight: loadedMaterialCare.heelHeight,
+              // Structured measurements. `?? null` rather than `|| null` so a
+              // legitimate 0 would survive, and so an unmeasured field stays
+              // null instead of becoming an empty string.
+              heightCm: loadedMaterialCare.heightCm ?? null,
+              widthCm: loadedMaterialCare.widthCm ?? null,
+              depthCm: loadedMaterialCare.depthCm ?? null,
+              weightGrams: loadedMaterialCare.weightGrams ?? null
+            },
+
+            // Bag attributes (safe defaults for existing products without this data)
+            bagSpecs: {
+              bagType: product.bagSpecs?.bagType,
+              intendedUse: product.bagSpecs?.intendedUse || [],
+              carryingOptions: product.bagSpecs?.carryingOptions || [],
+              bagStyle: product.bagSpecs?.bagStyle || [],
+              bagStructure: product.bagSpecs?.bagStructure,
+              strapType: product.bagSpecs?.strapType,
+              strapDropCm: product.bagSpecs?.strapDropCm ?? null,
+              adjustableStrap: product.bagSpecs?.adjustableStrap ?? null,
+              removableStrap: product.bagSpecs?.removableStrap ?? null,
+              mainCompartments: product.bagSpecs?.mainCompartments ?? null,
+              internalPockets: product.bagSpecs?.internalPockets ?? null,
+              externalPockets: product.bagSpecs?.externalPockets ?? null,
+              hardwareColor: product.bagSpecs?.hardwareColor,
+              baseFeet: product.bagSpecs?.baseFeet ?? null,
+              // Derived overrides: left undefined when absent so the form shows
+              // the computed value rather than an empty override.
+              bagSizeCategory: product.bagSpecs?.bagSizeCategory,
+              fitsA4: product.bagSpecs?.fitsA4,
+              fitsTablet: product.bagSpecs?.fitsTablet,
+              fitsLaptopInches: product.bagSpecs?.fitsLaptopInches,
             },
 
             // Shoe Fit and Sizing (safe defaults for existing products without this data)
@@ -590,11 +642,21 @@ function EditProductPage() {
     handleInputChange(field, value)
   }
 
-  const handleSpecificationChange = (field: string, value: string | number | string[] | undefined) => {
+  const handleSpecificationChange = (field: string, value: string | number | string[] | null | undefined) => {
     setFormData(prev => ({
       ...prev,
       materialCare: { ...prev.materialCare, [field]: value }
     }))
+  }
+
+  const handleBagSpecsChange = <K extends keyof BagSpecsValues>(field: K, value: BagSpecsValues[K]) => {
+    setFormData(prev => ({
+      ...prev,
+      bagSpecs: { ...prev.bagSpecs, [field]: value }
+    }))
+    if (errors.bagSpecs) {
+      setErrors(prev => ({ ...prev, bagSpecs: undefined }))
+    }
   }
 
   const handleShoeFitChange = <K extends keyof ShoeFitValues>(field: K, value: ShoeFitValues[K]) => {
@@ -1322,6 +1384,9 @@ function EditProductPage() {
       // and are not empty strings. The dropdown-backed fields below are handled
       // separately since this "skip empty string" rule can't represent clearing
       // a dropdown back to unset, and can't compare array values like upperMaterial.
+      // The numeric measurements join this list for the same reason: clearing a
+      // wrong measurement back to "not measured" has to persist, and the
+      // "skip empty" rule above would silently discard that edit.
       const dropdownAttributeKeys = [
         'upperMaterial',
         'lining',
@@ -1332,6 +1397,10 @@ function EditProductPage() {
         'heelType',
         'closureType',
         'heelHeight',
+        'heightCm',
+        'widthCm',
+        'depthCm',
+        'weightGrams',
       ] as const
       if (originalFormData) {
         const mcKeys = (Object.keys(formData.materialCare) as (keyof typeof formData.materialCare)[]).filter(
@@ -1383,6 +1452,20 @@ function EditProductPage() {
           const orig = originalFormData.shoeFit[k]
           if (JSON.stringify(curr) !== JSON.stringify(orig)) {
             ;(productData as any)[`shoeFit.${k}`] = curr
+          }
+        })
+      }
+
+      // Bag Specifications: same rule as Shoe Fit — an explicit clear is a real
+      // edit ("we checked; it has no removable strap" vs "we never checked"),
+      // so it is sent rather than skipped.
+      if (originalFormData) {
+        const bagSpecKeys = Object.keys(formData.bagSpecs) as (keyof BagSpecsValues)[]
+        bagSpecKeys.forEach((k) => {
+          const curr = formData.bagSpecs[k]
+          const orig = originalFormData.bagSpecs[k]
+          if (JSON.stringify(curr) !== JSON.stringify(orig)) {
+            ;(productData as any)[`bagSpecs.${k}`] = curr
           }
         })
       }
@@ -1586,6 +1669,29 @@ function EditProductPage() {
             <div className="bg-white shadow rounded-lg p-6">
               <ShoeFitSection values={formData.shoeFit} onChange={handleShoeFitChange} />
               {errors.shoeFit && <p className="mt-1 text-sm text-red-600">{errors.shoeFit}</p>}
+            </div>
+          )}
+
+          {/* Bag Specifications — only shown for bag categories; data is preserved even when hidden.
+              Unlike the Add page, missing bag type / intended use warns rather than blocks, so an
+              incomplete legacy bag can still have its price, stock or images corrected today. */}
+          {categoryFieldGroup === 'bags' && (
+            <div className="bg-white shadow rounded-lg p-6">
+              {bagSpecsWarning && (
+                <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-sm text-amber-800">{bagSpecsWarning}</p>
+                </div>
+              )}
+              <BagSpecificationsSection
+                values={formData.bagSpecs}
+                onChange={handleBagSpecsChange}
+                dimensions={{
+                  heightCm: formData.materialCare.heightCm,
+                  widthCm: formData.materialCare.widthCm,
+                  depthCm: formData.materialCare.depthCm,
+                }}
+              />
+              {errors.bagSpecs && <p className="mt-1 text-sm text-red-600">{errors.bagSpecs}</p>}
             </div>
           )}
 

@@ -4,6 +4,7 @@ import { productService } from '@/lib/firebase'
 import { z } from 'zod'
 import {
   shoeFitSchema,
+  bagSpecsSchema,
   upperMaterialSchema,
   liningSchema,
   insoleSchema,
@@ -40,6 +41,8 @@ const productSchema = z.object({
     isActive: z.boolean().optional().default(true),
     priceOverride: z.coerce.number().positive().optional(),
     salePrice: z.coerce.number().positive().optional(),
+    /** Overrides bagSpecs.hardwareColor for this colour. */
+    hardwareColor: z.string().optional(),
     stockBySize: z.record(z.string(), z.coerce.number().int().min(0)),
     metaTitle: z.string().optional(),
     metaDescription: z.string().optional(),
@@ -91,9 +94,15 @@ const productSchema = z.object({
     toeShape: toeShapeSchema.optional(),
     heelType: heelTypeSchema.optional(),
     closureType: closureTypeSchema.optional(),
-    heelHeight: heelHeightCmSchema.optional()
+    heelHeight: heelHeightCmSchema.optional(),
+    // Structured measurements, superseding the height/width/depth text above.
+    heightCm: z.number().positive().max(200).nullable().optional(),
+    widthCm: z.number().positive().max(200).nullable().optional(),
+    depthCm: z.number().positive().max(200).nullable().optional(),
+    weightGrams: z.number().int().positive().max(20000).nullable().optional()
   }).optional(),
   shoeFit: shoeFitSchema.optional(),
+  bagSpecs: bagSpecsSchema.optional(),
   seo: z.object({
     title_en: z.string().optional(),
     title_he: z.string().optional(),
@@ -188,6 +197,7 @@ export async function POST(request: NextRequest) {
       featuredProduct: validatedData.featuredProduct,
       materialCare: validatedData.materialCare,
       shoeFit: validatedData.shoeFit,
+      bagSpecs: validatedData.bagSpecs,
       seo: validatedData.seo,
       searchKeywords: validatedData.searchKeywords || [],
       createdAt: new Date(),

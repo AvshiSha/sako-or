@@ -47,6 +47,10 @@ function escapeXmlEntities(value: string): string {
 const staticPaths = [
   '',
   '/about',
+  // The whole bag range with full specs on one page. Listed here because that
+  // is how everything reaches a crawler on this site - including Chatbase,
+  // which builds the sales assistant's knowledge from the sitemap.
+  '/bags/guide',
   '/contact',
   '/privacy',
   '/terms',

@@ -9,8 +9,10 @@ import type {
   ClosureType,
   SoleType,
   HeelHeightCm,
+  HardwareColor,
 } from '@/lib/product-enums'
 import type { ShoeFitValues } from '../_components/ShoeFitSection'
+import type { BagSpecsValues } from '../_components/BagSpecificationsSection'
 
 /**
  * Narrow, structural shapes describing only the fields the shared form
@@ -52,6 +54,8 @@ export interface ColorVariantFormInput {
   metaDescription?: string
   images: ProductImageFileInput[]
   video: ProductVideoFileInput | null
+  /** Overrides bagSpecs.hardwareColor for this colour; unset uses the product value. */
+  hardwareColor?: HardwareColor
 }
 
 export interface MaterialCareFormInput {
@@ -88,6 +92,12 @@ export interface MaterialCareFormInput {
   heelType?: HeelType
   closureType?: ClosureType
   heelHeight?: HeelHeightCm
+  // Structured measurements replacing the height_*/width_*/depth_* text pairs
+  // above. null means "not measured" — see NumberField for why not 0.
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
 }
 
 export interface SeoFormInput {
@@ -126,6 +136,7 @@ export interface ProductFormInput {
   featuredProduct: boolean
   materialCare: MaterialCareFormInput
   shoeFit: ShoeFitValues
+  bagSpecs: BagSpecsValues
   seo: SeoFormInput
   searchKeywords: string[]
   tags?: string[]

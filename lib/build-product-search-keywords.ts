@@ -1,5 +1,13 @@
 import { getColorName, normalizeColorSlug } from '@/lib/colors'
 import { expandHebrewQuery, extractColorsSearchNorm, generateHebrewVariations } from '@/lib/hebrew-normalize'
+import {
+  BAG_TYPE_OPTIONS,
+  BAG_INTENDED_USE_OPTIONS,
+  CARRYING_OPTION_OPTIONS,
+  BAG_STYLE_OPTIONS,
+  getOptionLabel,
+  type EnumOption,
+} from '@/lib/product-enums'
 
 const MAX_GENERATED_KEYWORDS = 40
 const MAX_SIZE_KEYWORDS = 12
@@ -28,6 +36,16 @@ export interface ProductSearchKeywordInput {
   lining_he?: string | null
   sole_he?: string | null
   colorVariants?: unknown
+  /**
+   * Bag attributes as stored enum values (bagType, intendedUse[], carryingOptions[],
+   * bagStyle[]). Resolved to their Hebrew *and* English labels here, so a search for
+   * "תיק צד" or "crossbody" reaches the product structurally rather than depending on
+   * whoever wrote the description having used those words.
+   */
+  bagType?: string | null
+  intendedUse?: string[] | null
+  carryingOptions?: string[] | null
+  bagStyle?: string[] | null
 }
 
 type ColorVariantRecord = {
@@ -112,6 +130,26 @@ export function buildGeneratedSearchKeywords(input: ProductSearchKeywordInput): 
         })
     }
   })
+
+  // Bag attributes, in both languages plus Hebrew morphology — "תיק צד" should
+  // find a crossbody whether or not the copywriter used that phrase.
+  const addEnumLabels = <T extends string>(
+    options: EnumOption<T>[],
+    values: (string | null | undefined)[] | null | undefined
+  ) => {
+    if (!values) return
+    for (const value of values) {
+      if (!value) continue
+      const labelHe = getOptionLabel(options, value, 'he')
+      if (labelHe) addHebrewExpansions(keywords, labelHe)
+      addKeyword(keywords, getOptionLabel(options, value, 'en'))
+    }
+  }
+
+  addEnumLabels(BAG_TYPE_OPTIONS, input.bagType ? [input.bagType] : null)
+  addEnumLabels(BAG_INTENDED_USE_OPTIONS, input.intendedUse)
+  addEnumLabels(CARRYING_OPTION_OPTIONS, input.carryingOptions)
+  addEnumLabels(BAG_STYLE_OPTIONS, input.bagStyle)
 
   if (input.colorVariants && typeof input.colorVariants === 'object') {
     const sizeKeywords = new Set<string>()

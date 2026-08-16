@@ -4,7 +4,7 @@ import { productService, categoryService } from '@/lib/firebase'
 import { buildProductSearchDerivedFields } from '@/lib/build-product-search-keywords'
 import { deleteMeilisearchProduct, upsertMeilisearchProduct } from '@/lib/meilisearch'
 import { prisma } from '@/lib/prisma'
-import { productExtensionsSchema } from '@/lib/schemas/product-schema'
+import { productExtensionsSchema, type ProductExtensionsInput } from '@/lib/schemas/product-schema'
 import { requireAdmin } from '@/lib/server/auth'
 import {
   getOptionLabel,
@@ -13,6 +13,7 @@ import {
   LINING_OPTIONS,
   OUTSOLE_OPTIONS,
 } from '@/lib/product-enums'
+import { deriveBagFacts } from '@/lib/bag-derived'
 
 /** Resolves a single dropdown value to its label, falling back to the legacy
  * free-text value for products that haven't been reconciled onto the new
@@ -30,6 +31,33 @@ function resolveAttributeLabel<T extends string>(
     if (label) return label
   }
   return legacyFallback
+}
+
+/**
+ * The five derived bag columns: computed from the product's dimensions, unless
+ * an admin stored an override in Firestore, in which case the override wins.
+ *
+ * Derivation happens here rather than at read time so filtering stays plain SQL
+ * — the same reason `generated_search_keywords` and `colors_search_norm` are
+ * precomputed. It re-runs on every sync, so correcting a bag's dimensions
+ * automatically corrects everything downstream of them.
+ */
+function resolveBagDerivedColumns(extensions: ProductExtensionsInput | null) {
+  const bagSpecs = extensions?.bagSpecs
+  const derived = deriveBagFacts({
+    heightCm: extensions?.heightCm,
+    widthCm: extensions?.widthCm,
+    depthCm: extensions?.depthCm,
+    bagStructure: bagSpecs?.bagStructure ?? null,
+  })
+
+  return {
+    bagCapacityLiters: derived.bagCapacityLiters,
+    bagSizeCategory: bagSpecs?.bagSizeCategory ?? derived.bagSizeCategory,
+    fitsA4: bagSpecs?.fitsA4 ?? derived.fitsA4,
+    fitsTablet: bagSpecs?.fitsTablet ?? derived.fitsTablet,
+    fitsLaptopInches: bagSpecs?.fitsLaptopInches ?? derived.fitsLaptopInches,
+  }
 }
 
 /** Same as resolveAttributeLabel, but for multi-select fields (e.g. Upper Material) — joins matched labels. */
@@ -336,6 +364,7 @@ export async function POST(request: NextRequest) {
         // the rest of the product still syncs normally.
         const materialCareSource = (firebaseProduct as any).materialCare || {}
         const shoeFitSource = (firebaseProduct as any).shoeFit
+        const bagSpecsSource = (firebaseProduct as any).bagSpecs
         const seoSource = firebaseProduct.seo || {}
         const extensionsResult = productExtensionsSchema.safeParse({
           shortTitle_en: (firebaseProduct as any).shortTitle_en,
@@ -359,7 +388,12 @@ export async function POST(request: NextRequest) {
           heelType: materialCareSource.heelType,
           closureType: materialCareSource.closureType,
           heelHeight: materialCareSource.heelHeight,
+          heightCm: materialCareSource.heightCm,
+          widthCm: materialCareSource.widthCm,
+          depthCm: materialCareSource.depthCm,
+          weightGrams: materialCareSource.weightGrams,
           shoeFit: shoeFitSource,
+          bagSpecs: bagSpecsSource,
           seo: {
             slug: seoSource.slug,
             he: { focusKeyword: seoSource.focusKeyword_he, secondaryKeywords: seoSource.secondaryKeywords_he },
@@ -492,6 +526,30 @@ export async function POST(request: NextRequest) {
           fitRecommendation_he: extensions?.shoeFit?.recommendation_he || null,
           fitNotes_en: extensions?.shoeFit?.notes_en || null,
           fitNotes_he: extensions?.shoeFit?.notes_he || null,
+          // Structured measurements. `?? null` rather than `|| null` throughout
+          // this block: `||` would turn a genuine 0 (zero external pockets) into
+          // null, i.e. lose a real answer and call it unknown.
+          heightCm: extensions?.heightCm ?? null,
+          widthCm: extensions?.widthCm ?? null,
+          depthCm: extensions?.depthCm ?? null,
+          weightGrams: extensions?.weightGrams ?? null,
+          // Bag attributes
+          bagType: extensions?.bagSpecs?.bagType || null,
+          intendedUse: extensions?.bagSpecs?.intendedUse || [],
+          carryingOptions: extensions?.bagSpecs?.carryingOptions || [],
+          bagStyle: extensions?.bagSpecs?.bagStyle || [],
+          bagStructure: extensions?.bagSpecs?.bagStructure || null,
+          strapType: extensions?.bagSpecs?.strapType || null,
+          strapDropCm: extensions?.bagSpecs?.strapDropCm ?? null,
+          adjustableStrap: extensions?.bagSpecs?.adjustableStrap ?? null,
+          removableStrap: extensions?.bagSpecs?.removableStrap ?? null,
+          mainCompartments: extensions?.bagSpecs?.mainCompartments ?? null,
+          internalPockets: extensions?.bagSpecs?.internalPockets ?? null,
+          externalPockets: extensions?.bagSpecs?.externalPockets ?? null,
+          hardwareColor: extensions?.bagSpecs?.hardwareColor || null,
+          baseFeet: extensions?.bagSpecs?.baseFeet ?? null,
+          // Derived from the dimensions, with any admin override taking precedence.
+          ...resolveBagDerivedColumns(extensions),
           colorVariants,
           tags: (firebaseProduct as any).tags || []
         }
@@ -513,6 +571,13 @@ export async function POST(request: NextRequest) {
           upperMaterial_he: productData.upperMaterial_he,
           lining_he: productData.lining_he,
           sole_he: productData.sole_he,
+          // Bag attributes get resolved to HE+EN labels inside the builder, so a
+          // search for "תיק צד" matches a crossbody structurally rather than
+          // depending on the description happening to contain that phrase.
+          bagType: productData.bagType,
+          intendedUse: productData.intendedUse,
+          carryingOptions: productData.carryingOptions,
+          bagStyle: productData.bagStyle,
           colorVariants,
         })
 

@@ -16,16 +16,33 @@ export interface ProductFormErrors {
   colorVariants?: string
   seoSlug?: string
   shoeFit?: string
+  bagSpecs?: string
+  bagType?: string
+  intendedUse?: string
+}
+
+/**
+ * Non-blocking prompts, shown as a banner rather than stopping a save. Used for
+ * bag data on products that already exist: the fields matter, but a half-filled
+ * bag still needs its price and stock editable today.
+ */
+export interface ProductFormWarnings {
+  bagSpecs?: string
 }
 
 /**
  * The required-field checks shared by both the Add Product and Edit Product
  * pages' real submit buttons. Extracted so the Preview flow validates
  * against the exact same rules as a real save.
+ *
+ * `isCreate` gates the bag-data requirements: a new bag can't be saved without
+ * a type and at least one intended use, but an existing one can — see
+ * getBagSpecsWarning for the softer treatment on edit.
  */
 export function validateProductFormBasics(
   formData: ProductFormInput,
-  categoryFieldGroup: CategoryFieldGroup
+  categoryFieldGroup: CategoryFieldGroup,
+  isCreate = false
 ): ProductFormErrors {
   const errors: ProductFormErrors = {}
 
@@ -38,6 +55,17 @@ export function validateProductFormBasics(
   if (!formData.brand.trim()) errors.brand = 'Brand is required'
   if (!formData.category.trim()) errors.category = 'Main category is required'
   if (formData.colorVariants.length === 0) errors.colorVariants = 'At least one color variant is required'
+
+  // Bag type and intended use are what the sales assistant filters on first, so
+  // a bag without them can't be recommended at all. Enforced on create only —
+  // blocking every edit would hold price and stock fixes hostage to a field
+  // nobody may know the answer to yet.
+  if (isCreate && categoryFieldGroup === 'bags') {
+    if (!formData.bagSpecs?.bagType) errors.bagType = 'Bag type is required'
+    if (!formData.bagSpecs?.intendedUse?.length) {
+      errors.intendedUse = 'Select at least one intended use'
+    }
+  }
 
   const extensionsResult = productExtensionsSchema.safeParse({
     toeShape_en: formData.materialCare.toeShape_en,
@@ -55,7 +83,12 @@ export function validateProductFormBasics(
     heelType: formData.materialCare.heelType,
     closureType: formData.materialCare.closureType,
     heelHeight: formData.materialCare.heelHeight,
+    heightCm: formData.materialCare.heightCm,
+    widthCm: formData.materialCare.widthCm,
+    depthCm: formData.materialCare.depthCm,
+    weightGrams: formData.materialCare.weightGrams,
     shoeFit: categoryFieldGroup === 'shoes' ? formData.shoeFit : undefined,
+    bagSpecs: categoryFieldGroup === 'bags' ? formData.bagSpecs : undefined,
     seo: {
       slug: formData.seo.slug,
       he: { focusKeyword: formData.seo.focusKeyword_he, secondaryKeywords: formData.seo.secondaryKeywords_he },
@@ -67,9 +100,30 @@ export function validateProductFormBasics(
     if (fieldMap['seo.slug']) errors.seoSlug = fieldMap['seo.slug']
     const shoeFitIssue = Object.keys(fieldMap).find((key) => key.startsWith('shoeFit'))
     if (shoeFitIssue) errors.shoeFit = fieldMap[shoeFitIssue]
+    const bagSpecsIssue = Object.keys(fieldMap).find((key) => key.startsWith('bagSpecs'))
+    if (bagSpecsIssue) errors.bagSpecs = fieldMap[bagSpecsIssue]
   }
 
   return errors
+}
+
+/**
+ * The nudge shown when editing a bag that's missing the two fields the
+ * assistant needs. Returns undefined for anything that isn't an incomplete bag,
+ * so callers can render it unconditionally.
+ */
+export function getBagSpecsWarning(
+  formData: ProductFormInput,
+  categoryFieldGroup: CategoryFieldGroup
+): string | undefined {
+  if (categoryFieldGroup !== 'bags') return undefined
+
+  const missing: string[] = []
+  if (!formData.bagSpecs?.bagType) missing.push('bag type')
+  if (!formData.bagSpecs?.intendedUse?.length) missing.push('intended use')
+  if (missing.length === 0) return undefined
+
+  return `This bag is missing its ${missing.join(' and ')}. You can still save, but it won't be recommended by the sales assistant until they're set.`
 }
 
 export interface PreviewValidationResult {
@@ -88,9 +142,10 @@ export interface PreviewValidationResult {
  */
 export function validateForPreview(
   formData: ProductFormInput,
-  categoryFieldGroup: CategoryFieldGroup
+  categoryFieldGroup: CategoryFieldGroup,
+  isCreate = false
 ): PreviewValidationResult {
-  const errors = validateProductFormBasics(formData, categoryFieldGroup)
+  const errors = validateProductFormBasics(formData, categoryFieldGroup, isCreate)
   const warnings: Record<string, string> = {}
 
   for (const variant of formData.colorVariants) {

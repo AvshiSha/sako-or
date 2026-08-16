@@ -13,6 +13,15 @@ import type {
   ClosureType,
   SoleType,
   HeelHeightCm,
+  BagType,
+  BagIntendedUse,
+  CarryingOption,
+  BagStyle,
+  BagStructure,
+  BagSizeCategory,
+  StrapType,
+  HardwareColor,
+  FitsLaptopInches,
 } from '@/lib/product-enums'
 
 export interface Product {
@@ -52,6 +61,13 @@ export interface Product {
       imageDetails?: ProductImageDetail[]
       primaryImage?: string
       videos?: string[]
+      /**
+       * Overrides `bagSpecs.hardwareColor` for this colour — a bag is often sold
+       * with gold hardware on black and silver on beige. Same override
+       * relationship as `priceOverride`/`salePrice` above; unset means "use the
+       * product-level value". Read via resolveVariantHardwareColor().
+       */
+      hardwareColor?: HardwareColor
     }
   >
   isEnabled: boolean
@@ -69,6 +85,9 @@ export interface Product {
     sole_he?: string
     heelHeight_en?: string
     heelHeight_he?: string
+    /** Legacy free-text dimensions, superseded by heightCm/widthCm/depthCm
+     * below. Never written to again — kept so the admin form can surface the
+     * old text via PreviousValueHint while reconciliation is incomplete. */
     height_en?: string
     height_he?: string
     depth_en?: string
@@ -96,6 +115,47 @@ export interface Product {
     heelType?: HeelType
     closureType?: ClosureType
     heelHeight?: HeelHeightCm
+    /**
+     * Structured measurements, in centimetres and grams. Shown for every
+     * non-shoe field group (bags, belts, wallets, …), so they live here in the
+     * shared group rather than in bagSpecs. `null` means "not measured" and
+     * must never be coerced to 0.
+     */
+    heightCm?: number | null
+    widthCm?: number | null
+    depthCm?: number | null
+    weightGrams?: number | null
+  }
+  /**
+   * Only meaningful for bags (see getCategoryFieldGroup in lib/product-enums.ts).
+   * Material, lining, closure type, care instructions and the dimension/weight
+   * fields are deliberately absent — bags reuse the shared `materialCare` ones.
+   */
+  bagSpecs?: {
+    bagType?: BagType
+    intendedUse?: BagIntendedUse[]
+    carryingOptions?: CarryingOption[]
+    bagStyle?: BagStyle[]
+    bagStructure?: BagStructure
+    strapType?: StrapType
+    strapDropCm?: number | null
+    adjustableStrap?: boolean | null
+    removableStrap?: boolean | null
+    mainCompartments?: number | null
+    internalPockets?: number | null
+    externalPockets?: number | null
+    /** Product-level default; a colour variant may override it. */
+    hardwareColor?: HardwareColor
+    baseFeet?: boolean | null
+    /**
+     * Derived by lib/bag-derived.ts from the dimensions above. Present here
+     * only when an admin has overridden the computed value; otherwise unset and
+     * recomputed at sync time.
+     */
+    bagSizeCategory?: BagSizeCategory
+    fitsA4?: boolean | null
+    fitsTablet?: boolean | null
+    fitsLaptopInches?: FitsLaptopInches | null
   }
   /** Only meaningful for footwear products (see getCategoryFieldGroup in lib/product-enums.ts). */
   shoeFit?: {
@@ -259,6 +319,7 @@ const PRODUCT_CLIENT_VIEW_FIELDS = [
   'sole',
   'heelHeight',
   'shoeFit',
+  'bagSpecs',
   'shippingReturns',
 ] as const satisfies readonly (keyof Product)[]
 
@@ -270,6 +331,18 @@ export function pickProductClientView(product: Product): ProductClientView {
     picked[key] = product[key]
   }
   return picked as ProductClientView
+}
+
+/**
+ * The hardware finish to show for one colour: the variant's own value when it
+ * has one, otherwise the product-level default, otherwise unknown. Mirrors how
+ * `priceOverride` resolves against the product price.
+ */
+export function resolveVariantHardwareColor(
+  product: Pick<Product, 'bagSpecs'>,
+  variant: { hardwareColor?: HardwareColor } | undefined
+): HardwareColor | undefined {
+  return variant?.hardwareColor ?? product.bagSpecs?.hardwareColor
 }
 
 export const productHelpers = {

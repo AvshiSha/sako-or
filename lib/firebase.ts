@@ -824,40 +824,12 @@ export const productService = {
         return cleaned;
       };
 
-      // Clean dimensions data - remove undefined values from nested objects
-      const cleanDimensions = (dimensions: any) => {
-        if (!dimensions) return null;
-
-        const cleaned = {
-          heightCm: dimensions.heightCm ?? null,
-          widthCm: dimensions.widthCm ?? null,
-          depthCm: dimensions.depthCm ?? null,
-          quantity: dimensions.quantity ?? undefined
-        };
-
-        // If all dimension values are null/undefined, return null
-        if (cleaned.heightCm === null && cleaned.widthCm === null && cleaned.depthCm === null) {
-          return null;
-        }
-
-        return cleaned;
-      };
-
-      // Clean colorVariants data if present
-      const cleanedProductData = { ...productData };
-      if (cleanedProductData.colorVariants) {
-        const cleanedColorVariants: any = {};
-        for (const [colorKey, variant] of Object.entries(cleanedProductData.colorVariants)) {
-          cleanedColorVariants[colorKey] = {
-            ...variant,
-            dimensions: cleanDimensions((variant as any).dimensions)
-          };
-        }
-        cleanedProductData.colorVariants = cleanedColorVariants;
-      }
-
-      // Apply deep cleaning to the entire product data
-      const finalCleanedData = deepClean(cleanedProductData);
+      // Apply deep cleaning to the entire product data. Dimensions used to be
+      // normalized per colour variant here, but that `variant.dimensions` key
+      // was never on the Product type, never written by the admin form and
+      // never read by anything — dimensions are product-level, stored in
+      // materialCare.heightCm/widthCm/depthCm.
+      const finalCleanedData = deepClean(productData);
 
       const product = {
         ...finalCleanedData,
@@ -892,40 +864,12 @@ export const productService = {
         return cleaned;
       };
 
-      // Clean dimensions data - remove undefined values from nested objects
-      const cleanDimensions = (dimensions: any) => {
-        if (!dimensions) return null;
-
-        const cleaned = {
-          heightCm: dimensions.heightCm ?? null,
-          widthCm: dimensions.widthCm ?? null,
-          depthCm: dimensions.depthCm ?? null,
-          quantity: dimensions.quantity ?? undefined
-        };
-
-        // If all dimension values are null/undefined, return null
-        if (cleaned.heightCm === null && cleaned.widthCm === null && cleaned.depthCm === null) {
-          return null;
-        }
-
-        return cleaned;
-      };
-
-      // Clean colorVariants data if present
-      const cleanedProductData = { ...productData };
-      if (cleanedProductData.colorVariants) {
-        const cleanedColorVariants: any = {};
-        for (const [colorKey, variant] of Object.entries(cleanedProductData.colorVariants)) {
-          cleanedColorVariants[colorKey] = {
-            ...variant,
-            dimensions: cleanDimensions((variant as any).dimensions)
-          };
-        }
-        cleanedProductData.colorVariants = cleanedColorVariants;
-      }
-
-      // Apply deep cleaning to the entire product data
-      const finalCleanedData = deepClean(cleanedProductData);
+      // Apply deep cleaning to the entire product data. Dimensions used to be
+      // normalized per colour variant here, but that `variant.dimensions` key
+      // was never on the Product type, never written by the admin form and
+      // never read by anything — dimensions are product-level, stored in
+      // materialCare.heightCm/widthCm/depthCm.
+      const finalCleanedData = deepClean(productData);
 
       const docRef = doc(db, 'products', id);
       await updateDoc(docRef, {
@@ -1078,6 +1022,16 @@ export type ProductFilters = {
   excludeSkus?: string[];
   includeSkus?: string[];
   tag?: string; // Campaign: products with this tag (array-contains)
+  // Bag facets. Only surfaced on bag collections; matched in memory by
+  // productMatchesListingFilters, like colour and size.
+  bagType?: string[];
+  intendedUse?: string[];
+  carryingOptions?: string[];
+  bagSizeCategory?: string[];
+  strapType?: string[];
+  closureType?: string[];
+  /** Only bags known to fit A4. An unmeasured bag is excluded rather than assumed. */
+  fitsA4?: boolean;
 };
 
 export type ProductSortOption = 'relevance' | 'newest' | 'priceAsc' | 'priceDesc';

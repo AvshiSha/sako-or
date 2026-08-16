@@ -1,5 +1,56 @@
 import type { Product, ProductFilters, ProductSortOption } from "@/lib/firebase";
 import { variantHasSizeInStock } from "@/lib/product-size";
+import { deriveFitsA4 } from "@/lib/bag-derived";
+
+/**
+ * Bag facet matching.
+ *
+ * Unknown never matches. A bag whose `bagType` nobody has filled in is excluded
+ * from a bagType filter rather than shown on the chance it might qualify —
+ * the filters exist so a customer can trust the result, and a maybe-match is
+ * worse than a shorter list. The same rule makes an unmeasured bag fail
+ * `fitsA4`.
+ */
+function matchesBagFilters(product: Product, filters: ProductFilters): boolean {
+  const bagSpecs = product.bagSpecs;
+
+  const matchesSingle = (selected: string[] | undefined, value: string | undefined): boolean => {
+    if (!selected || selected.length === 0) return true;
+    return !!value && selected.includes(value);
+  };
+
+  const matchesAny = (selected: string[] | undefined, values: string[] | undefined): boolean => {
+    if (!selected || selected.length === 0) return true;
+    if (!values || values.length === 0) return false;
+    return values.some((value) => selected.includes(value));
+  };
+
+  if (!matchesSingle(filters.bagType, bagSpecs?.bagType)) return false;
+  if (!matchesSingle(filters.strapType, bagSpecs?.strapType)) return false;
+  if (!matchesAny(filters.intendedUse, bagSpecs?.intendedUse)) return false;
+  if (!matchesAny(filters.carryingOptions, bagSpecs?.carryingOptions)) return false;
+  if (!matchesSingle(filters.closureType, product.materialCare?.closureType)) return false;
+
+  if (filters.bagSizeCategory && filters.bagSizeCategory.length > 0) {
+    // Size category may be stored (an override) or implied by the dimensions;
+    // the stored Postgres column already reconciles the two, but this in-memory
+    // path reads Firestore, so fall back to the override only.
+    if (!matchesSingle(filters.bagSizeCategory, bagSpecs?.bagSizeCategory)) return false;
+  }
+
+  if (filters.fitsA4) {
+    const fitsA4 =
+      bagSpecs?.fitsA4 ??
+      deriveFitsA4(
+        product.materialCare?.heightCm,
+        product.materialCare?.widthCm,
+        bagSpecs?.bagStructure ?? null
+      );
+    if (fitsA4 !== true) return false;
+  }
+
+  return true;
+}
 
 /** Whether a product matches listing filters (category, facets, price; not variant expansion). */
 export function productMatchesListingFilters(
@@ -104,6 +155,10 @@ export function productMatchesListingFilters(
     }
   }
 
+  if (!matchesBagFilters(product, filters)) {
+    return false;
+  }
+
   if (filters.minPrice !== undefined && filters.minPrice > 0) {
     if (!product.colorVariants || Object.keys(product.colorVariants).length === 0) {
       const productPrice =
@@ -198,14 +253,50 @@ export function parseSortFromSearchParams(
   return "relevance";
 }
 
-/** Parse color, size, price, sub-subcategory filters from collection URL searchParams. */
+/** URL param -> ProductFilters key, for the bag facets that are plain comma lists. */
+const BAG_FACET_PARAMS = [
+  "bagType",
+  "intendedUse",
+  "carryingOptions",
+  "bagSizeCategory",
+  "strapType",
+  "closureType",
+] as const
+
+/** Parse color, size, price, sub-subcategory and bag facet filters from collection URL searchParams. */
 export function parseFacetFiltersFromSearchParams(
   searchParams: { [key: string]: string | string[] | undefined }
-): Pick<ProductFilters, "color" | "size" | "subSubCategoryIds" | "minPrice" | "maxPrice"> {
+): Pick<
+  ProductFilters,
+  | "color"
+  | "size"
+  | "subSubCategoryIds"
+  | "minPrice"
+  | "maxPrice"
+  | (typeof BAG_FACET_PARAMS)[number]
+  | "fitsA4"
+> {
   const filters: Pick<
     ProductFilters,
-    "color" | "size" | "subSubCategoryIds" | "minPrice" | "maxPrice"
+    | "color"
+    | "size"
+    | "subSubCategoryIds"
+    | "minPrice"
+    | "maxPrice"
+    | (typeof BAG_FACET_PARAMS)[number]
+    | "fitsA4"
   > = {};
+
+  for (const param of BAG_FACET_PARAMS) {
+    const values = parseCommaParam(searchParams[param]);
+    if (values.length > 0) {
+      filters[param] = values;
+    }
+  }
+
+  if (searchParams.fitsA4 === "1" || searchParams.fitsA4 === "true") {
+    filters.fitsA4 = true;
+  }
 
   const colors = parseCommaParam(searchParams.colors);
   if (colors.length > 0) {

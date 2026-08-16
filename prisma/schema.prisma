@@ -194,6 +194,39 @@ model Product {
   heelType             String?
   closureType          String?
   heelHeight           String?
+  // Structured measurements (cm / grams), replacing the free-text height/width/
+  // depth pairs that only ever existed in Firestore. Shared by every non-shoe
+  // field group. Null means "not measured" - never defaulted to 0.
+  heightCm             Float?
+  widthCm              Float?
+  depthCm              Float?
+  weightGrams          Int?
+  // Bag attributes (only meaningful for bag categories; see lib/product-enums.ts).
+  // Flattened from the Firestore `bagSpecs` group by the products sync route,
+  // same as shoeFit.* above. Booleans are nullable on purpose: a default of
+  // false would assert "this bag has no base feet" for every un-audited bag.
+  bagType              String?
+  intendedUse          String[]                 @default([])
+  carryingOptions      String[]                 @default([])
+  bagStyle             String[]                 @default([])
+  bagStructure         String?
+  strapType            String?
+  strapDropCm          Float?
+  adjustableStrap      Boolean?
+  removableStrap       Boolean?
+  mainCompartments     Int?
+  internalPockets      Int?
+  externalPockets      Int?
+  hardwareColor        String?
+  baseFeet             Boolean?
+  // Derived from the dimensions above by lib/bag-derived.ts at sync time, or
+  // taken from an admin override when one is set. Persisted so filtering stays
+  // plain SQL, like generated_search_keywords and colors_search_norm.
+  bagCapacityLiters    Float?
+  bagSizeCategory      String?
+  fitsA4               Boolean?
+  fitsTablet           Boolean?
+  fitsLaptopInches     Int?
   // Shoe fit & sizing (only meaningful for footwear categories; see lib/product-enums.ts)
   sizeFit              String?
   footWidthFit         String?
@@ -227,6 +260,10 @@ model Product {
   bogoGroup            BogoGroup?               @relation(fields: [bogoGroupId], references: [id])
   productTags          ProductTag[]
 
+  // Facets the bag assistant filters on. The array columns get GIN indexes in
+  // the migration SQL - Prisma has no schema-level syntax for index type.
+  @@index([bagType])
+  @@index([bagSizeCategory])
   @@map("products")
 }
 

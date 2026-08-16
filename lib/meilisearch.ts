@@ -26,6 +26,15 @@ interface MeiliProductDocument {
   colors: string
   isActive: boolean
   isDeleted: boolean
+  // Bag facets. Stable enum values, so they are indexed raw rather than
+  // Hebrew-normalized — they are matched exactly, never typed by a customer.
+  bagType: string | null
+  intendedUse: string[]
+  carryingOptions: string[]
+  bagSizeCategory: string | null
+  strapType: string | null
+  closureType: string | null
+  fitsA4: boolean | null
 }
 
 function getMeiliConfig(): { host: string; apiKey: string } | null {
@@ -76,6 +85,13 @@ export function buildMeiliProductDocument(product: {
   colorVariants?: unknown
   isActive?: boolean
   isDeleted?: boolean
+  bagType?: string | null
+  intendedUse?: string[] | null
+  carryingOptions?: string[] | null
+  bagSizeCategory?: string | null
+  strapType?: string | null
+  closureType?: string | null
+  fitsA4?: boolean | null
 }): MeiliProductDocument {
   return {
     id: product.id,
@@ -106,6 +122,13 @@ export function buildMeiliProductDocument(product: {
     colors: extractColorsSearchNorm(product.colorVariants),
     isActive: product.isActive ?? true,
     isDeleted: product.isDeleted ?? false,
+    bagType: product.bagType ?? null,
+    intendedUse: product.intendedUse ?? [],
+    carryingOptions: product.carryingOptions ?? [],
+    bagSizeCategory: product.bagSizeCategory ?? null,
+    strapType: product.strapType ?? null,
+    closureType: product.closureType ?? null,
+    fitsA4: product.fitsA4 ?? null,
   }
 }
 
@@ -132,7 +155,21 @@ export async function ensureMeilisearchIndex(): Promise<void> {
         'searchKeywords',
         'brand',
       ],
-      filterableAttributes: ['isActive', 'isDeleted'],
+      // Bag facets are filterable so the same narrowing the collection page does
+      // in memory is available on the search path too, where there were no
+      // facet filters at all. Stored raw (not Hebrew-normalized) because they
+      // are stable enum values, never user-typed text.
+      filterableAttributes: [
+        'isActive',
+        'isDeleted',
+        'bagType',
+        'intendedUse',
+        'carryingOptions',
+        'bagSizeCategory',
+        'strapType',
+        'closureType',
+        'fitsA4',
+      ],
       rankingRules: [
         'words',
         'typo',

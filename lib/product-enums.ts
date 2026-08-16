@@ -9,6 +9,13 @@ export interface EnumOption<T extends string> {
   value: T
   label_en: string
   label_he: string
+  /**
+   * Field groups this option applies to. Absent means "applies to every group",
+   * which is the case for all but a handful of options. Used by shared enums
+   * whose vocabulary differs per product type — ClosureType is the only one
+   * today (a shoe never has a turn-lock; a bag never has laces).
+   */
+  groups?: CategoryFieldGroup[]
 }
 
 // ---------------------------------------------------------------------------
@@ -83,11 +90,13 @@ export const ADJUSTABLE_FEATURE_OPTIONS: EnumOption<AdjustableFeature>[] = [
 // ---------------------------------------------------------------------------
 // Product attribute dropdowns (Upper Material, Lining, Insole, Outsole,
 // Toe Shape, Heel Type, Closure Type, Sole Type, Heel Height). Field ->
-// CategoryFieldGroup gating: UpperMaterial is always shown; Lining/Insole/
-// Outsole/SoleType/ToeShape/HeelType/HeelHeightCm are shoe-only (shown when
-// fieldGroup === 'shoes'); ClosureType uses shoes/bags/belts; dimensions
-// (Height/Width/Depth) are shown for every non-shoe fieldGroup, since they
-// don't apply to footwear (see ProductSpecificationsSection.tsx).
+// CategoryFieldGroup gating: UpperMaterial is always shown; Insole/Outsole/
+// SoleType/ToeShape/HeelType/HeelHeightCm are shoe-only (shown when
+// fieldGroup === 'shoes'); Lining is shown for shoes and bags; ClosureType
+// uses shoes/bags/belts and filters its own options via optionsForGroup();
+// dimensions (heightCm/widthCm/depthCm) and weightGrams are shown for every
+// non-shoe fieldGroup, since they don't apply to footwear. Bag-only attributes
+// live in their own section (see BagSpecificationsSection.tsx).
 // ---------------------------------------------------------------------------
 
 export type UpperMaterial =
@@ -256,6 +265,8 @@ export const HEEL_TYPE_OPTIONS: EnumOption<HeelType>[] = [
   { value: 'transparent_heel', label_en: 'Transparent Heel', label_he: 'עקב שקוף' },
 ]
 
+/** Shared across shoes, bags and belts. Options carry `groups` where the value
+ * only makes sense for one product type — filter with optionsForGroup(). */
 export type ClosureType =
   | 'no_closure'
   | 'laces'
@@ -266,17 +277,34 @@ export type ClosureType =
   | 'button'
   | 'ankle_strap'
   | 'slip_on'
+  // Bag closures
+  | 'magnetic_snap'
+  | 'drawstring'
+  | 'flap'
+  | 'turnlock'
+  | 'kiss_lock'
+  | 'toggle'
+  | 'open_top'
+  | 'zipper_and_flap'
 
 export const CLOSURE_TYPE_OPTIONS: EnumOption<ClosureType>[] = [
   { value: 'no_closure', label_en: 'No Closure', label_he: 'ללא סגירה' },
-  { value: 'laces', label_en: 'Laces', label_he: 'שרוכים' },
+  { value: 'laces', label_en: 'Laces', label_he: 'שרוכים', groups: ['shoes'] },
   { value: 'zipper', label_en: 'Zipper', label_he: 'רוכסן' },
   { value: 'buckle', label_en: 'Buckle', label_he: 'אבזם' },
   { value: 'velcro', label_en: "Velcro", label_he: 'סקוץ\'' },
   { value: 'elastic', label_en: 'Elastic', label_he: 'גומי אלסטי' },
   { value: 'button', label_en: 'Button', label_he: 'כפתור' },
-  { value: 'ankle_strap', label_en: 'Ankle Strap', label_he: 'רצועת קרסול' },
-  { value: 'slip_on', label_en: 'Slip-On', label_he: 'סליפ-און' },
+  { value: 'ankle_strap', label_en: 'Ankle Strap', label_he: 'רצועת קרסול', groups: ['shoes'] },
+  { value: 'slip_on', label_en: 'Slip-On', label_he: 'סליפ-און', groups: ['shoes'] },
+  { value: 'magnetic_snap', label_en: 'Magnetic Snap', label_he: 'תפס מגנטי', groups: ['bags'] },
+  { value: 'drawstring', label_en: 'Drawstring', label_he: 'שרוך משיכה', groups: ['bags'] },
+  { value: 'flap', label_en: 'Flap', label_he: 'דש', groups: ['bags'] },
+  { value: 'turnlock', label_en: 'Turn-Lock', label_he: 'סגר סיבובי', groups: ['bags'] },
+  { value: 'kiss_lock', label_en: 'Kiss Lock', label_he: 'סגר נשיקה', groups: ['bags'] },
+  { value: 'toggle', label_en: 'Toggle', label_he: 'תפס טוגל', groups: ['bags'] },
+  { value: 'open_top', label_en: 'Open Top', label_he: 'פתוח למעלה', groups: ['bags'] },
+  { value: 'zipper_and_flap', label_en: 'Zipper and Flap', label_he: 'רוכסן ודש', groups: ['bags'] },
 ]
 
 export type SoleType =
@@ -309,6 +337,210 @@ export const HEEL_HEIGHT_CM_OPTIONS: EnumOption<HeelHeightCm>[] = Array.from({ l
   label_en: `${cm} cm`,
   label_he: `${cm} ס"מ`,
 }))
+
+// ---------------------------------------------------------------------------
+// Bag attributes. Shown only when fieldGroup === 'bags' (see
+// BagSpecificationsSection.tsx). Material, lining, closure type, care
+// instructions and the shared dimension/weight fields are deliberately NOT
+// repeated here — bags reuse the existing shared fields for those.
+// ---------------------------------------------------------------------------
+
+export type BagType =
+  | 'tote'
+  | 'shoulder_bag'
+  | 'crossbody'
+  | 'handbag'
+  | 'backpack'
+  | 'clutch'
+  | 'evening_bag'
+  | 'bucket_bag'
+  | 'hobo_bag'
+  | 'satchel'
+  | 'belt_bag'
+  | 'mini_bag'
+  | 'laptop_bag'
+  | 'travel_bag'
+  | 'weekender'
+  | 'duffel'
+  | 'beach_bag'
+  | 'shopper'
+  | 'wallet'
+  | 'pouch'
+  | 'cosmetic_bag'
+  | 'briefcase'
+
+export const BAG_TYPE_OPTIONS: EnumOption<BagType>[] = [
+  { value: 'tote', label_en: 'Tote', label_he: 'תיק טוט' },
+  { value: 'shoulder_bag', label_en: 'Shoulder Bag', label_he: 'תיק כתף' },
+  { value: 'crossbody', label_en: 'Crossbody', label_he: 'תיק צד / קרוסבודי' },
+  { value: 'handbag', label_en: 'Handbag', label_he: 'תיק יד' },
+  { value: 'backpack', label_en: 'Backpack', label_he: 'תיק גב' },
+  { value: 'clutch', label_en: 'Clutch', label_he: 'קלאץ\'' },
+  { value: 'evening_bag', label_en: 'Evening Bag', label_he: 'תיק ערב' },
+  { value: 'bucket_bag', label_en: 'Bucket Bag', label_he: 'תיק דלי' },
+  { value: 'hobo_bag', label_en: 'Hobo Bag', label_he: 'תיק הובו' },
+  { value: 'satchel', label_en: 'Satchel', label_he: 'תיק סאצ\'ל' },
+  { value: 'belt_bag', label_en: 'Belt Bag / Pouch', label_he: 'תיק חגורה / פאוץ\'' },
+  { value: 'mini_bag', label_en: 'Mini Bag', label_he: 'תיק מיני' },
+  { value: 'laptop_bag', label_en: 'Laptop Bag', label_he: 'תיק מחשב' },
+  { value: 'travel_bag', label_en: 'Travel Bag', label_he: 'תיק נסיעות' },
+  { value: 'weekender', label_en: 'Weekender', label_he: 'תיק סוף שבוע' },
+  { value: 'duffel', label_en: 'Duffel', label_he: 'תיק דאפל' },
+  { value: 'beach_bag', label_en: 'Beach Bag', label_he: 'תיק חוף' },
+  { value: 'shopper', label_en: 'Shopper', label_he: 'תיק קניות' },
+  { value: 'wallet', label_en: 'Wallet', label_he: 'ארנק' },
+  { value: 'pouch', label_en: 'Pouch', label_he: 'נרתיק' },
+  { value: 'cosmetic_bag', label_en: 'Cosmetic Bag', label_he: 'תיק איפור' },
+  { value: 'briefcase', label_en: 'Briefcase', label_he: 'תיק עסקים' },
+]
+
+export type BagIntendedUse =
+  | 'everyday'
+  | 'work'
+  | 'evening'
+  | 'event'
+  | 'travel'
+  | 'beach_leisure'
+  | 'sport_active'
+  | 'formal'
+  | 'shopping'
+  | 'laptop_carry'
+
+export const BAG_INTENDED_USE_OPTIONS: EnumOption<BagIntendedUse>[] = [
+  { value: 'everyday', label_en: 'Everyday', label_he: 'יומיומי' },
+  { value: 'work', label_en: 'Work', label_he: 'עבודה' },
+  { value: 'evening', label_en: 'Evening', label_he: 'ערב' },
+  { value: 'event', label_en: 'Event', label_he: 'אירוע' },
+  { value: 'travel', label_en: 'Travel', label_he: 'נסיעות' },
+  { value: 'beach_leisure', label_en: 'Beach & Leisure', label_he: 'חוף ופנאי' },
+  { value: 'sport_active', label_en: 'Sport & Active', label_he: 'ספורט ופעילות' },
+  { value: 'formal', label_en: 'Formal Occasions', label_he: 'אירועים רשמיים' },
+  { value: 'shopping', label_en: 'Shopping', label_he: 'קניות' },
+  { value: 'laptop_carry', label_en: 'Carrying a Laptop', label_he: 'נשיאת מחשב' },
+]
+
+export type CarryingOption =
+  | 'hand_held'
+  | 'top_handle'
+  | 'shoulder'
+  | 'crossbody'
+  | 'backpack'
+  | 'clutch_under_arm'
+  | 'wristlet'
+  | 'trolley_sleeve'
+
+export const CARRYING_OPTION_OPTIONS: EnumOption<CarryingOption>[] = [
+  { value: 'hand_held', label_en: 'Hand Held', label_he: 'נשיאה ביד' },
+  { value: 'top_handle', label_en: 'Top Handle', label_he: 'ידית עליונה' },
+  { value: 'shoulder', label_en: 'Shoulder', label_he: 'על הכתף' },
+  { value: 'crossbody', label_en: 'Crossbody', label_he: 'לרוחב הגוף' },
+  { value: 'backpack', label_en: 'Backpack', label_he: 'על הגב' },
+  { value: 'clutch_under_arm', label_en: 'Under the Arm', label_he: 'מתחת לזרוע' },
+  { value: 'wristlet', label_en: 'Wristlet', label_he: 'רצועת יד' },
+  { value: 'trolley_sleeve', label_en: 'Trolley Sleeve', label_he: 'שרוול למזוודה' },
+]
+
+export type StrapType =
+  | 'no_strap'
+  | 'short_handles'
+  | 'long_shoulder_strap'
+  | 'chain_strap'
+  | 'leather_strap'
+  | 'fabric_webbing_strap'
+  | 'braided_strap'
+  | 'double_handles'
+  | 'convertible_backpack_straps'
+  | 'wrist_strap'
+
+export const STRAP_TYPE_OPTIONS: EnumOption<StrapType>[] = [
+  { value: 'no_strap', label_en: 'No Strap', label_he: 'ללא רצועה' },
+  { value: 'short_handles', label_en: 'Short Handles', label_he: 'ידיות קצרות' },
+  { value: 'long_shoulder_strap', label_en: 'Long Shoulder Strap', label_he: 'רצועת כתף ארוכה' },
+  { value: 'chain_strap', label_en: 'Chain Strap', label_he: 'רצועת שרשרת' },
+  { value: 'leather_strap', label_en: 'Leather Strap', label_he: 'רצועת עור' },
+  { value: 'fabric_webbing_strap', label_en: 'Fabric / Webbing Strap', label_he: 'רצועת בד' },
+  { value: 'braided_strap', label_en: 'Braided Strap', label_he: 'רצועה קלועה' },
+  { value: 'double_handles', label_en: 'Double Handles', label_he: 'ידיות כפולות' },
+  { value: 'convertible_backpack_straps', label_en: 'Convertible Backpack Straps', label_he: 'רצועות גב מתכווננות' },
+  { value: 'wrist_strap', label_en: 'Wrist Strap', label_he: 'רצועת יד' },
+]
+
+export type BagStructure = 'structured' | 'semi_structured' | 'soft' | 'slouchy' | 'rigid_frame'
+
+export const BAG_STRUCTURE_OPTIONS: EnumOption<BagStructure>[] = [
+  { value: 'structured', label_en: 'Structured', label_he: 'מובנה' },
+  { value: 'semi_structured', label_en: 'Semi-Structured', label_he: 'מובנה למחצה' },
+  { value: 'soft', label_en: 'Soft', label_he: 'רך' },
+  { value: 'slouchy', label_en: 'Slouchy', label_he: 'נופל' },
+  { value: 'rigid_frame', label_en: 'Rigid Frame', label_he: 'מסגרת קשיחה' },
+]
+
+/** Derived from capacity by deriveBagSizeCategory() in lib/bag-derived.ts; the
+ * dropdown exists so an admin can override an implausible computed value. */
+export type BagSizeCategory = 'mini' | 'small' | 'medium' | 'large' | 'oversized'
+
+export const BAG_SIZE_CATEGORY_OPTIONS: EnumOption<BagSizeCategory>[] = [
+  { value: 'mini', label_en: 'Mini', label_he: 'מיני' },
+  { value: 'small', label_en: 'Small', label_he: 'קטן' },
+  { value: 'medium', label_en: 'Medium', label_he: 'בינוני' },
+  { value: 'large', label_en: 'Large', label_he: 'גדול' },
+  { value: 'oversized', label_en: 'Oversized', label_he: 'גדול במיוחד' },
+]
+
+export type HardwareColor =
+  | 'gold'
+  | 'silver'
+  | 'rose_gold'
+  | 'gunmetal'
+  | 'black'
+  | 'bronze'
+  | 'tonal'
+  | 'mixed'
+  | 'no_hardware'
+
+export const HARDWARE_COLOR_OPTIONS: EnumOption<HardwareColor>[] = [
+  { value: 'gold', label_en: 'Gold', label_he: 'זהב' },
+  { value: 'silver', label_en: 'Silver', label_he: 'כסף' },
+  { value: 'rose_gold', label_en: 'Rose Gold', label_he: 'זהב ורוד' },
+  { value: 'gunmetal', label_en: 'Gunmetal', label_he: 'גאנמטאל' },
+  { value: 'black', label_en: 'Black', label_he: 'שחור' },
+  { value: 'bronze', label_en: 'Bronze', label_he: 'ברונזה' },
+  { value: 'tonal', label_en: 'Tonal', label_he: 'בגוון התיק' },
+  { value: 'mixed', label_en: 'Mixed', label_he: 'משולב' },
+  { value: 'no_hardware', label_en: 'No Hardware', label_he: 'ללא אביזרי מתכת' },
+]
+
+export type BagStyle =
+  | 'classic'
+  | 'elegant'
+  | 'casual'
+  | 'sporty'
+  | 'bohemian'
+  | 'minimalist'
+  | 'vintage'
+  | 'trendy'
+  | 'quilted'
+  | 'woven'
+  | 'structured_formal'
+
+export const BAG_STYLE_OPTIONS: EnumOption<BagStyle>[] = [
+  { value: 'classic', label_en: 'Classic', label_he: 'קלאסי' },
+  { value: 'elegant', label_en: 'Elegant', label_he: 'אלגנטי' },
+  { value: 'casual', label_en: 'Casual', label_he: 'יומיומי' },
+  { value: 'sporty', label_en: 'Sporty', label_he: 'ספורטיבי' },
+  { value: 'bohemian', label_en: 'Bohemian', label_he: 'בוהו' },
+  { value: 'minimalist', label_en: 'Minimalist', label_he: 'מינימליסטי' },
+  { value: 'vintage', label_en: 'Vintage', label_he: 'וינטג\'' },
+  { value: 'trendy', label_en: 'Trendy', label_he: 'טרנדי' },
+  { value: 'quilted', label_en: 'Quilted', label_he: 'קווילט' },
+  { value: 'woven', label_en: 'Woven', label_he: 'קלוע' },
+  { value: 'structured_formal', label_en: 'Tailored', label_he: 'מחויט' },
+]
+
+/** Laptop sizes a bag can be declared to fit, in inches. Derived from
+ * dimensions by deriveFitsLaptopInches(); null means "does not fit / unknown". */
+export const FITS_LAPTOP_INCHES_VALUES = [13, 14, 15, 16] as const
+export type FitsLaptopInches = (typeof FITS_LAPTOP_INCHES_VALUES)[number]
 
 // ---------------------------------------------------------------------------
 // Product image type/view
@@ -358,6 +590,33 @@ export function getOptionLabel<T extends string>(
   const match = options.find((option) => option.value === value)
   if (!match) return undefined
   return locale === 'he' ? match.label_he : match.label_en
+}
+
+/** Comma-joined labels for a multi-select value. Unknown values are skipped;
+ * returns undefined rather than an empty string when nothing resolves, so
+ * callers can use the usual `if (value)` omission pattern. */
+export function getOptionLabels<T extends string>(
+  options: EnumOption<T>[],
+  values: readonly (T | string)[] | null | undefined,
+  locale: 'en' | 'he'
+): string | undefined {
+  if (!values || values.length === 0) return undefined
+  const labels = values
+    .map((value) => getOptionLabel(options, value, locale))
+    .filter((label): label is string => !!label)
+  return labels.length > 0 ? labels.join(', ') : undefined
+}
+
+/**
+ * Narrows a shared enum to the options valid for one product type. Options with
+ * no `groups` apply everywhere, so enums that aren't type-specific pass through
+ * unchanged and callers can use this unconditionally.
+ */
+export function optionsForGroup<T extends string>(
+  options: EnumOption<T>[],
+  group: CategoryFieldGroup
+): EnumOption<T>[] {
+  return options.filter((option) => !option.groups || option.groups.includes(group))
 }
 
 export type CategoryFieldGroup = 'shoes' | 'bags' | 'belts' | 'other'

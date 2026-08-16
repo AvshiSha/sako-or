@@ -200,6 +200,9 @@ export async function buildProductPayload(
       imageDetails,
       primaryImage: primaryImageUrl,
       videos: videoUrl ? [videoUrl] : [],
+      // Only written when this colour actually differs from the product-level
+      // hardware finish; unset means "inherit", not "no hardware".
+      hardwareColor: variant.hardwareColor || null,
     }
   }
 
@@ -237,6 +240,7 @@ export async function buildProductPayload(
     featuredProduct: formData.featuredProduct,
     materialCare: formData.materialCare,
     shoeFit: formData.shoeFit,
+    bagSpecs: formData.bagSpecs,
     seo: formData.seo,
     searchKeywords: formData.searchKeywords,
     tags: formData.tags || [],

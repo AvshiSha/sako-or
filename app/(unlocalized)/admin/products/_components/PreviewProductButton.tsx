@@ -12,6 +12,9 @@ interface PreviewProductButtonProps {
   formData: ProductFormInput
   categories: CategoryLike[]
   categoryFieldGroup: CategoryFieldGroup
+  /** True on the Add Product page, where create-only rules (bag type, intended
+   * use) apply — so preview blocks on exactly what a save would block on. */
+  isCreate?: boolean
   sourceProductId: string | null
   draftId: string | null
   onDraftIdChange: (draftId: string) => void
@@ -24,6 +27,7 @@ export default function PreviewProductButton({
   formData,
   categories,
   categoryFieldGroup,
+  isCreate = false,
   sourceProductId,
   draftId,
   onDraftIdChange,
@@ -36,7 +40,7 @@ export default function PreviewProductButton({
   const [warnings, setWarnings] = useState<string[]>([])
 
   const handlePreview = async () => {
-    const { errors, warnings: colorWarnings } = validateForPreview(formData, categoryFieldGroup)
+    const { errors, warnings: colorWarnings } = validateForPreview(formData, categoryFieldGroup, isCreate)
 
     if (Object.keys(errors).length > 0) {
       onErrors(errors)

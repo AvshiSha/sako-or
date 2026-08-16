@@ -22,11 +22,13 @@ import {
   CLOSURE_TYPE_OPTIONS,
   SOLE_TYPE_OPTIONS,
   HEEL_HEIGHT_CM_OPTIONS,
+  optionsForGroup,
 } from '@/lib/product-enums'
 import { CARE_INSTRUCTIONS_PRESETS } from '@/lib/product-text-presets'
 import PresetTextField from './PresetTextField'
 import EnumSelect from './EnumSelect'
 import MultiSelectChips from './MultiSelectChips'
+import NumberField from './NumberField'
 import PreviousValueHint from './PreviousValueHint'
 
 export interface ProductSpecificationsValues {
@@ -40,6 +42,9 @@ export interface ProductSpecificationsValues {
   sole_he: string
   heelHeight_en: string
   heelHeight_he: string
+  /** Legacy free-text dimensions. No longer editable — kept so their old values
+   * can still be shown via PreviousValueHint next to the numeric fields that
+   * replaced them, until every product has been reconciled. */
   height_en: string
   height_he: string
   depth_en: string
@@ -66,70 +71,20 @@ export interface ProductSpecificationsValues {
   heelType?: HeelType
   closureType?: ClosureType
   heelHeight?: HeelHeightCm
+  // Structured measurements, replacing the free-text pairs above. Shown for
+  // every non-shoe field group. null means "not measured", never 0.
+  heightCm?: number | null
+  widthCm?: number | null
+  depthCm?: number | null
+  weightGrams?: number | null
 }
 
-type SpecificationFieldValue = string | number | string[] | undefined
+type SpecificationFieldValue = string | number | string[] | null | undefined
 
 interface ProductSpecificationsSectionProps {
   values: ProductSpecificationsValues
   onChange: (field: keyof ProductSpecificationsValues, value: SpecificationFieldValue) => void
   fieldGroup: CategoryFieldGroup
-}
-
-const fieldClass =
-  'mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400 text-gray-700'
-
-function TextField({
-  id,
-  labelEn,
-  labelHe,
-  valueEn,
-  valueHe,
-  placeholderEn,
-  placeholderHe,
-  onChange,
-}: {
-  id: string
-  labelEn: string
-  labelHe: string
-  valueEn: string
-  valueHe: string
-  placeholderEn: string
-  placeholderHe: string
-  onChange: (field: string, value: string) => void
-}) {
-  return (
-    <>
-      <div>
-        <label htmlFor={`${id}_en`} className="block text-sm font-medium text-gray-700">
-          {labelEn} (English)
-        </label>
-        <input
-          type="text"
-          id={`${id}_en`}
-          dir="ltr"
-          value={valueEn}
-          onChange={(e) => onChange(`${id}_en`, e.target.value)}
-          className={fieldClass}
-          placeholder={placeholderEn}
-        />
-      </div>
-      <div>
-        <label htmlFor={`${id}_he`} className="block text-sm font-medium text-gray-700">
-          {labelHe} (Hebrew)
-        </label>
-        <input
-          type="text"
-          id={`${id}_he`}
-          dir="rtl"
-          value={valueHe}
-          onChange={(e) => onChange(`${id}_he`, e.target.value)}
-          className={fieldClass}
-          placeholder={placeholderHe}
-        />
-      </div>
-    </>
-  )
 }
 
 /**
@@ -142,11 +97,12 @@ function TextField({
  * hasn't been reconciled yet.
  *
  * Field visibility is dynamic based on product type (fieldGroup, derived from
- * the selected category): shoe-only attributes (Lining, Insole, Outsole, Sole
- * Type, Toe Shape, Heel Type, Heel Height) show only for footwear; dimensions
- * (Height/Width/Depth) show only for non-footwear (bags/belts/wallets/other),
- * since they don't apply to shoes; Closure Type stays category-conditional
- * (shoes/bags/belts); Upper Material is always shown since it applies to
+ * the selected category): shoe-only attributes (Insole, Outsole, Sole Type, Toe
+ * Shape, Heel Type, Heel Height) show only for footwear; Lining shows for shoes
+ * and bags; dimensions (Height/Width/Depth) and Weight show only for
+ * non-footwear (bags/belts/wallets/other), since they don't apply to shoes;
+ * Closure Type stays category-conditional (shoes/bags/belts) and narrows its own
+ * options to that group; Upper Material is always shown since it applies to
  * nearly every product type. Hidden fields keep their saved value in
  * formData — visibility is purely a rendering concern, never a data reset.
  */
@@ -156,11 +112,12 @@ export default function ProductSpecificationsSection({
   fieldGroup,
 }: ProductSpecificationsSectionProps) {
   const showShoeAttributes = fieldGroup === 'shoes'
+  const showLining = fieldGroup === 'shoes' || fieldGroup === 'bags'
   const showDimensions = fieldGroup !== 'shoes'
   const showClosure = fieldGroup === 'shoes' || fieldGroup === 'bags' || fieldGroup === 'belts'
-
-  const onTextFieldChange = (field: string, value: string) =>
-    onChange(field as keyof ProductSpecificationsValues, value)
+  // A shoe never has a turn-lock; a bag never has laces. Same stored field,
+  // different vocabulary per product type.
+  const closureOptions = optionsForGroup(CLOSURE_TYPE_OPTIONS, fieldGroup)
 
   return (
     <div>
@@ -197,19 +154,27 @@ export default function ProductSpecificationsSection({
                 <PreviousValueHint legacyEn={values.materialInnerSole_en} legacyHe={values.materialInnerSole_he} />
               )}
             </div>
-            <div>
-              <EnumSelect
-                id="lining"
-                label="Lining"
-                locale="en"
-                showBothLanguages
-                value={values.lining}
-                onChange={(value) => onChange('lining', value)}
-                options={LINING_OPTIONS}
-                placeholder="Select lining"
-              />
-              {!values.lining && <PreviousValueHint legacyEn={values.lining_en} legacyHe={values.lining_he} />}
-            </div>
+          </>
+        )}
+
+        {showLining && (
+          <div>
+            <EnumSelect
+              id="lining"
+              label="Lining"
+              locale="en"
+              showBothLanguages
+              value={values.lining}
+              onChange={(value) => onChange('lining', value)}
+              options={LINING_OPTIONS}
+              placeholder="Select lining"
+            />
+            {!values.lining && <PreviousValueHint legacyEn={values.lining_en} legacyHe={values.lining_he} />}
+          </div>
+        )}
+
+        {showShoeAttributes && (
+          <>
             <div>
               <EnumSelect
                 id="outsole"
@@ -245,7 +210,7 @@ export default function ProductSpecificationsSection({
               showBothLanguages
               value={values.closureType}
               onChange={(value) => onChange('closureType', value)}
-              options={CLOSURE_TYPE_OPTIONS}
+              options={closureOptions}
               placeholder="Select closure type"
             />
             {!values.closureType && (
@@ -302,35 +267,69 @@ export default function ProductSpecificationsSection({
 
         {showDimensions && (
           <>
-            <TextField
-              id="height"
-              labelEn="Height"
-              labelHe="גובה"
-              valueEn={values.height_en}
-              valueHe={values.height_he}
-              placeholderEn="e.g., 25cm"
-              placeholderHe="לדוגמה: 25 ס״מ"
-              onChange={onTextFieldChange}
-            />
-            <TextField
-              id="width"
-              labelEn="Width"
-              labelHe="רוחב"
-              valueEn={values.width_en}
-              valueHe={values.width_he}
-              placeholderEn="e.g., 10cm"
-              placeholderHe="לדוגמה: 10 ס״מ"
-              onChange={onTextFieldChange}
-            />
-            <TextField
-              id="depth"
-              labelEn="Depth"
-              labelHe="עומק"
-              valueEn={values.depth_en}
-              valueHe={values.depth_he}
-              placeholderEn="e.g., 15cm"
-              placeholderHe="לדוגמה: 15 ס״מ"
-              onChange={onTextFieldChange}
+            <div className="sm:col-span-2">
+              <h3 className="text-sm font-medium text-gray-900">Dimensions</h3>
+              <p className="text-xs text-gray-500">
+                Measured on the outside, in centimetres. Height is top to bottom, width is side to
+                side, depth is front to back — mixing width and depth up is the most common mistake
+                and changes what the site tells customers a bag can hold.
+              </p>
+            </div>
+            <div>
+              <NumberField
+                id="heightCm"
+                label="Height (גובה)"
+                unit="cm"
+                min={0}
+                max={200}
+                value={values.heightCm}
+                onChange={(value) => onChange('heightCm', value)}
+                placeholder="e.g. 18"
+              />
+              {values.heightCm === null || values.heightCm === undefined ? (
+                <PreviousValueHint legacyEn={values.height_en} legacyHe={values.height_he} />
+              ) : null}
+            </div>
+            <div>
+              <NumberField
+                id="widthCm"
+                label="Width (רוחב)"
+                unit="cm"
+                min={0}
+                max={200}
+                value={values.widthCm}
+                onChange={(value) => onChange('widthCm', value)}
+                placeholder="e.g. 25"
+              />
+              {values.widthCm === null || values.widthCm === undefined ? (
+                <PreviousValueHint legacyEn={values.width_en} legacyHe={values.width_he} />
+              ) : null}
+            </div>
+            <div>
+              <NumberField
+                id="depthCm"
+                label="Depth (עומק)"
+                unit="cm"
+                min={0}
+                max={200}
+                value={values.depthCm}
+                onChange={(value) => onChange('depthCm', value)}
+                placeholder="e.g. 13"
+              />
+              {values.depthCm === null || values.depthCm === undefined ? (
+                <PreviousValueHint legacyEn={values.depth_en} legacyHe={values.depth_he} />
+              ) : null}
+            </div>
+            <NumberField
+              id="weightGrams"
+              label="Weight"
+              unit="g"
+              min={0}
+              max={20000}
+              step={10}
+              value={values.weightGrams}
+              onChange={(value) => onChange('weightGrams', value)}
+              placeholder="e.g. 620"
             />
           </>
         )}

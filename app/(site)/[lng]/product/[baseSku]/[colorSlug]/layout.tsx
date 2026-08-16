@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { getCachedProductByBaseSku } from '@/lib/server/cached-product-data'
-import { getCachedCategoryById } from '@/lib/server/cached-category-data'
+import { resolveCategoryTrail, type CategoryCrumb } from '@/lib/server/product-category-trail'
 import {
   buildMetadata,
   buildProductStructuredData,
@@ -28,7 +28,9 @@ import {
   getOptionLabel,
   isUndefinedFitValue,
 } from '@/lib/product-enums'
+import { buildBagFactRows } from '@/lib/bag-facts'
 import type { Product } from '@/lib/product-types'
+import { resolveVariantHardwareColor } from '@/lib/product-types'
 
 /** Dropdown value first (resolved to a label), then legacy free text. */
 function resolveSpecFact(
@@ -45,13 +47,25 @@ function resolveSpecFact(
   return locale === 'he' ? legacyHe : legacyEn
 }
 
-/** Structured-data facts (material/color/spec+fit PropertyValue list) shared between the two product fetches below. */
+/** Structured-data facts (material/color/spec+fit PropertyValue list, plus
+ * measurements) shared between the two product fetches below. */
 function buildStructuredDataFacts(
   product: Product,
   colorSlug: string,
   locale: 'en' | 'he'
-): { material?: string; color?: string; additionalProperty: Array<{ name: string; value: string }> } {
+): {
+  material?: string
+  color?: string
+  additionalProperty: Array<{ name: string; value: string }>
+  dimensions: {
+    heightCm: number | null
+    widthCm: number | null
+    depthCm: number | null
+    weightGrams: number | null
+  }
+} {
   const materialCare = product.materialCare
+  const variant = product.colorVariants?.[colorSlug]
   const material = materialCare?.upperMaterial && materialCare.upperMaterial.length > 0
     ? materialCare.upperMaterial
         .map((value) => getOptionLabel(UPPER_MATERIAL_OPTIONS, value, locale))
@@ -85,44 +99,24 @@ function buildStructuredDataFacts(
     }
   }
 
-  return { material: material || undefined, color: color || undefined, additionalProperty }
-}
+  // Bag facts, from the same builder the visible spec table uses — the rendered
+  // text and the markup must agree, since Chatbase reads both off this page.
+  for (const row of buildBagFactRows(product, locale, {
+    hardwareColor: resolveVariantHardwareColor(product, variant),
+  })) {
+    pushSpec(row.label, row.value)
+  }
 
-type CategoryCrumb = { name: string; path: string }
-
-/**
- * The product's category trail, root-first and localised, e.g.
- * [נשים, אאוטלט, סנדלים] with each carrying its full collection path.
- *
- * Feeds two things at once. The deepest name gives the page title a keyword
- * worth ranking for - the stored product title is the brand ("IL BORGO
- * FIRENZE"), which nobody searches. The full trail becomes the breadcrumb,
- * which is how a product page stops being orphaned from the collection tree
- * it belongs to.
- *
- * Best-effort throughout: a product with no category path still renders, just
- * without a leading keyword and without breadcrumbs.
- */
-async function resolveCategoryTrail(
-  product: Product,
-  locale: 'en' | 'he'
-): Promise<CategoryCrumb[]> {
-  const categoryIds = product.categories_path_id
-  if (!Array.isArray(categoryIds) || categoryIds.length === 0) return []
-
-  try {
-    const categories = await Promise.all(
-      categoryIds.map((id) => getCachedCategoryById(id).catch(() => null))
-    )
-    return categories.flatMap((category) => {
-      const resolved = category as { name?: Record<string, string>; path?: string } | null
-      const name = resolved?.name?.[locale] || resolved?.name?.en
-      const path = resolved?.path
-      return name && path ? [{ name, path }] : []
-    })
-  } catch (error) {
-    console.error('Error resolving category trail for product:', error)
-    return []
+  return {
+    material: material || undefined,
+    color: color || undefined,
+    additionalProperty,
+    dimensions: {
+      heightCm: materialCare?.heightCm ?? null,
+      widthCm: materialCare?.widthCm ?? null,
+      depthCm: materialCare?.depthCm ?? null,
+      weightGrams: materialCare?.weightGrams ?? null,
+    },
   }
 }
 
@@ -341,7 +335,7 @@ export default async function ProductColorLayout({ children, params }: ProductCo
         // Build model number (SKU + color)
         const model = `${baseSku}-${colorSlug.toUpperCase()}`
 
-        const { material, color, additionalProperty } = buildStructuredDataFacts(
+        const { material, color, additionalProperty, dimensions } = buildStructuredDataFacts(
           product,
           colorSlug,
           lng as 'en' | 'he'
@@ -356,6 +350,7 @@ export default async function ProductColorLayout({ children, params }: ProductCo
           material,
           color,
           additionalProperty,
+          dimensions,
           offers: {
             price: currentPrice,
             currency,

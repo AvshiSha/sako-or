@@ -17,6 +17,8 @@ const imageUrlMappings: Record<string, string> = {
   "/images/hero/two-for-600-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Ftwo_600_mobile_2026.webp?alt=media&token=9787b0c3-6702-4c38-a40e-ed92a127d2c7",
   "/images/hero/bogo-700-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FBOGO_700_july_desktop.webp?alt=media&token=5d72e3bb-8725-44f3-8684-7b952cea9e41",
   "/images/hero/bogo-700-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FBOGO_700_July_mobile.webp?alt=media&token=ca86d263-d4b8-47ca-ac6c-a0166d700f98",
+  "/images/hero/new-drop-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fnew_drop_26_aug_desktop.webp?alt=media&token=7bb97f09-3c45-4c0d-a332-e1e64b96ae1c",
+  "/images/hero/new-drop-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fnew_drop_aug_26_mobile.webp?alt=media&token=981ce80f-e29e-4c58-8285-31ff41ff9951",
   "/images/hero/main-hero.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
   "/images/hero/bags-hero-poster.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbags_image_hero_mobile.webp?alt=media&token=d55a6e62-028f-4793-988e-65aa54d63536",
   "home-collection-outlet.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Foutlet_collection.webp?alt=media&token=403aac3b-fd30-4412-bc84-14836f361038",
@@ -65,7 +67,7 @@ export function getVideoUrl(localPath: string): string {
  * Get Firebase Storage URL for hero image
  */
 export function getHeroImageUrl(): string {
-  return getTwoFor600HeroDesktopImageUrl();
+  return getNewDropHeroDesktopImageUrl();
 }
 
 export function getBagsHeroPosterUrl(): string {
@@ -115,6 +117,18 @@ export function getBogo700HeroDesktopImageUrl(): string {
 
 export function getBogo700HeroMobileImageUrl(): string {
   return getImageUrl("/images/hero/bogo-700-mobile.webp");
+}
+
+/**
+ * "New Drop" (August 2026) campaign hero banners (desktop / mobile). Locale-
+ * agnostic - the on-image copy is baked in.
+ */
+export function getNewDropHeroDesktopImageUrl(): string {
+  return getImageUrl("/images/hero/new-drop-desktop.webp");
+}
+
+export function getNewDropHeroMobileImageUrl(): string {
+  return getImageUrl("/images/hero/new-drop-mobile.webp");
 }
 
 /** Homepage mobile hero video (first fold, mobile only). */

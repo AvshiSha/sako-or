@@ -265,7 +265,19 @@ export default function PromoSection({
                       transition={{ duration: TRANSITION_MS / 1000, ease: 'easeInOut' }}
                       style={{ willChange: 'opacity' }}
                     >
-                      <span className="opacity-95">{activeItem.icon ?? ''}</span>
+                      {/* Fixed-width slot. The icon is normally an emoji, and
+                          emoji advance widths differ between platforms (Apple
+                          Color Emoji vs Segoe UI Emoji), so an intrinsically
+                          sized span makes this centred row land differently on
+                          macOS and Windows. Reserving the width keeps the
+                          ribbon identical across platforms. Note this was not
+                          the cause of the measured CLS - that was the font
+                          subset in RootShell - it is hardening, not a fix. */}
+                      {activeItem.icon ? (
+                        <span className="inline-flex w-5 shrink-0 items-center justify-center opacity-95">
+                          {activeItem.icon}
+                        </span>
+                      ) : null}
                       <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-black">{activeItem.text[lng]}</span>
                     </motion.div>
                   )}

@@ -8,7 +8,15 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { buildAbsoluteUrl } from '@/lib/seo'
 
-const assistant = Assistant({ subsets: ['latin'], display: 'optional' })
+// 'hebrew' has to be listed even though `he` is the default locale: next/font
+// only emits a <link rel="preload"> for the subsets named here. With 'latin'
+// alone the Hebrew face was still defined but never preloaded, so under
+// display:'optional' it routinely lost the ~100ms block period and the whole
+// Hebrew storefront rendered in the Arial-based fallback instead of Assistant.
+// Which of the two won was a per-machine race, so text metrics - and therefore
+// the width of the centred nav items - differed between visitors and between
+// loads. Preloading both subsets makes the outcome deterministic.
+const assistant = Assistant({ subsets: ['hebrew', 'latin'], display: 'optional' })
 
 /**
  * Everything that used to live inside the single root layout's <head> and

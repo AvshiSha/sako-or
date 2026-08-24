@@ -342,7 +342,11 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       {/* Main Product Image Section - Clickable to go to selected variant */}
       <Link
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
-        scroll={false}
+        // A new product page must open at the top. Back-to-collection is
+        // restored from the snapshot the handlers below write before leaving
+        // (lib/collectionScrollRestore.ts), not by suppressing scroll here -
+        // `scroll` only governs this forward navigation, never popstate.
+        scroll={true}
         className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-gray-50 block`}
         style={PRODUCT_CARD_IMAGE_STYLE}
         onPointerDown={saveBrowseScroll}

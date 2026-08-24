@@ -10,6 +10,7 @@ import {
 } from '@/lib/seo'
 import { buildProductTitle, getPrimaryColorSlug } from '@/lib/product-seo'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
+import ProductScrollReset from '@/app/components/ProductScrollReset'
 import type { Metadata } from 'next'
 import { languages } from '@/i18n/settings'
 import { getImageUrl } from '@/lib/image-urls'
@@ -367,6 +368,7 @@ export default async function ProductColorLayout({ children, params }: ProductCo
   
   return (
     <div className={`${lng === 'he' ? 'rtl' : 'ltr'}`}>
+      <ProductScrollReset />
       {lcpImageUrl && (
         <link
           rel="preload"

@@ -845,6 +845,12 @@ export default function CampaignClient({
     if (isLoadingMore || !hasMore) return;
     const scrollYBefore = typeof window !== "undefined" ? window.scrollY : 0;
     const scrollXBefore = typeof window !== "undefined" ? window.scrollX : 0;
+    // These restores land a frame or more later. If the user clicked a product
+    // card in the meantime, the frames run on the product page - re-applying
+    // this offset there is exactly the mid-page landing we're fixing.
+    const pathBefore = typeof window !== "undefined" ? window.location.pathname : "";
+    const stillOnSamePage = () =>
+      typeof window !== "undefined" && window.location.pathname === pathBefore;
     const nextPage = currentPage + 1;
     setIsLoadingMore(true);
     try {
@@ -880,7 +886,7 @@ export default function CampaignClient({
 
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          if (typeof window !== "undefined") {
+          if (stillOnSamePage()) {
             window.scrollTo({ top: scrollYBefore, left: scrollXBefore, behavior: "auto" });
           }
         });
@@ -888,7 +894,7 @@ export default function CampaignClient({
     } catch (e) {
       console.error("Campaign load more error:", e);
       requestAnimationFrame(() => {
-        if (typeof window !== "undefined") {
+        if (stillOnSamePage()) {
           window.scrollTo({ top: scrollYBefore, left: scrollXBefore, behavior: "auto" });
         }
       });

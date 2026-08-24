@@ -2567,7 +2567,9 @@ export const categoryService = {
   },
 
   // Helper method to generate category path
-  async generateCategoryPath(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path'>): Promise<string> {
+  // Builds the slug path from slug/parentId only - sortOrder is irrelevant here
+  // and is excluded so createCategory can call this before one is assigned.
+  async generateCategoryPath(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path' | 'sortOrder'>): Promise<string> {
     if (categoryData.level === 0) {
       // Main category - path is just the slug
       return categoryData.slug.en;
@@ -2747,7 +2749,13 @@ export const categoryService = {
   },
 
   // Create category
-  async createCategory(categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path'>): Promise<string> {
+  //
+  // `sortOrder` is deliberately not accepted: it is always computed here so a
+  // new category lands at the end of its sibling group. Callers that pass one
+  // would have it silently discarded, so the type rejects it outright.
+  async createCategory(
+    categoryData: Omit<Category, 'id' | 'createdAt' | 'updatedAt' | 'path' | 'sortOrder'>
+  ): Promise<string> {
     try {
       const now = new Date();
 
@@ -2824,11 +2832,32 @@ export const categoryService = {
   },
 
   // Update category
-  async updateCategory(id: string, categoryData: Partial<Category>): Promise<void> {
+  //
+  // `sortOrder` is stripped unless the caller explicitly opts in. The admin
+  // edit form sends a whole category object, and it used to carry a literal
+  // `sortOrder: 0`, so every edit silently reset that category to the front of
+  // the navigation and collided with every other edited sibling. Ordering is
+  // owned by createCategory (via getNextSortOrder) and by the reorder and
+  // normalize-order endpoints; nothing else may write it.
+  async updateCategory(
+    id: string,
+    categoryData: Partial<Category>,
+    options?: { allowSortOrder?: boolean }
+  ): Promise<void> {
     try {
       const docRef = doc(db, 'categories', id);
+
+      let payload = categoryData;
+      if (!options?.allowSortOrder && 'sortOrder' in categoryData) {
+        const { sortOrder: _ignored, ...rest } = categoryData;
+        payload = rest;
+        console.warn(
+          `updateCategory(${id}): ignoring sortOrder - pass { allowSortOrder: true } to reorder.`
+        );
+      }
+
       await updateDoc(docRef, {
-        ...categoryData,
+        ...payload,
         updatedAt: new Date()
       });
     } catch (error) {

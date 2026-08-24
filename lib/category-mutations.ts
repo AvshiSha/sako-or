@@ -158,3 +158,71 @@ export async function mirrorCategoryDeletionToNeon(
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Sibling ordering
+//
+// Order is per sibling group, never global: a category's sortOrder is only
+// meaningful relative to the other children of the same parent. These helpers
+// are shared by the normalize-order backfill and the reorder endpoint so both
+// bucket and write identically.
+// ---------------------------------------------------------------------------
+
+/** Firestore caps a batched write at 500 operations. */
+const SORT_ORDER_BATCH_SIZE = 400;
+
+export const ROOT_SIBLING_GROUP = '__root__';
+export const ORPHAN_SIBLING_GROUP = '__orphan__';
+
+export interface OrderableCategoryRecord extends CategoryRecord {
+  sortOrder?: number;
+}
+
+/**
+ * The sibling bucket a category belongs to. Level-0 categories share one root
+ * group; everything else groups by parent. A non-root category with no parent
+ * is genuinely broken data, so it gets its own bucket and is reported rather
+ * than silently folded in with the roots.
+ */
+export function siblingGroupKey(cat: Pick<OrderableCategoryRecord, 'level' | 'parentId'>): string {
+  if (cat.level === 0) return ROOT_SIBLING_GROUP;
+  return cat.parentId ?? ORPHAN_SIBLING_GROUP;
+}
+
+/**
+ * Reads every category WITHOUT an orderBy.
+ *
+ * This is deliberate: a Firestore orderBy silently excludes documents that lack
+ * the field, so ordering by sortOrder here would hide exactly the documents the
+ * backfill exists to repair.
+ */
+export async function getAllCategoriesUnordered(): Promise<OrderableCategoryRecord[]> {
+  const snap = await adminDb.collection(CATEGORIES_COLLECTION).get();
+  return snap.docs.map((doc) => {
+    const data = doc.data() as FirebaseFirestore.DocumentData;
+    return {
+      ...toCategoryRecord(doc.id, data),
+      sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : undefined,
+    };
+  });
+}
+
+/** Writes sortOrder for many categories, chunked to stay under the batch limit. */
+export async function writeSortOrders(
+  updates: Array<{ id: string; sortOrder: number }>
+): Promise<number> {
+  const now = new Date();
+
+  for (let i = 0; i < updates.length; i += SORT_ORDER_BATCH_SIZE) {
+    const batch = adminDb.batch();
+    for (const { id, sortOrder } of updates.slice(i, i + SORT_ORDER_BATCH_SIZE)) {
+      batch.update(adminDb.collection(CATEGORIES_COLLECTION).doc(id), {
+        sortOrder,
+        updatedAt: now,
+      });
+    }
+    await batch.commit();
+  }
+
+  return updates.length;
+}

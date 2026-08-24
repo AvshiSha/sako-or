@@ -6,13 +6,83 @@ import { ArrowLeftIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outl
 import Link from 'next/link'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import SuccessMessage from '@/app/components/SuccessMessage'
+import { useAuth } from '@/app/hooks/useAuth'
+import { getAdminAuthHeaders } from '@/lib/admin-api'
+
+interface NormalizeChange {
+  id: string
+  name: string
+  from: number | null
+  to: number
+  changed: boolean
+}
+
+interface NormalizePlan {
+  dryRun: boolean
+  totalCategories: number
+  missingSortOrder: number
+  pendingUpdates?: number
+  updated?: number
+  orphans: { id: string; name: string; level: number }[]
+  groups: { group: string; categories: NormalizeChange[] }[]
+}
 
 export default function MigrateCategoriesPage() {
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [existingCategories, setExistingCategories] = useState<Category[]>([])
   const [migrationStatus, setMigrationStatus] = useState<string>('')
+  const [normalizePlan, setNormalizePlan] = useState<NormalizePlan | null>(null)
+  const [normalizeStatus, setNormalizeStatus] = useState<string>('')
+  const [normalizing, setNormalizing] = useState(false)
+
+  /**
+   * Rewrites every sibling group to a dense 0..n-1 sortOrder sequence, so the
+   * storefront navigation order is explicit rather than falling back to
+   * Firestore's document-id tiebreak. Run the dry run and review the
+   * before/after first - `apply` writes.
+   */
+  const runNormalize = async (apply: boolean) => {
+    if (!user) return
+    try {
+      setNormalizing(true)
+      setNormalizeStatus(apply ? 'Applying new sort order...' : 'Building plan...')
+
+      const headers = await getAdminAuthHeaders(user)
+      const res = await fetch('/api/admin/categories/normalize-order', {
+        method: apply ? 'POST' : 'GET',
+        headers,
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setNormalizeStatus(data.error || `Request failed (HTTP ${res.status})`)
+        return
+      }
+
+      setNormalizePlan(data as NormalizePlan)
+      if (apply) {
+        setNormalizeStatus(`Applied. Updated ${data.updated} categories.`)
+        setSuccessMessage('Category sort order normalized!')
+        setShowSuccess(true)
+        setTimeout(() => setShowSuccess(false), 5000)
+      } else {
+        setNormalizeStatus(
+          `Dry run: ${data.pendingUpdates} of ${data.totalCategories} categories would change` +
+            (data.missingSortOrder > 0
+              ? `. ${data.missingSortOrder} have no sortOrder at all and are currently hidden from the storefront navigation.`
+              : '.')
+        )
+      }
+    } catch (error) {
+      console.error('Error normalizing category order:', error)
+      setNormalizeStatus('Error normalizing category order. Please try again.')
+    } finally {
+      setNormalizing(false)
+    }
+  }
 
   const checkExistingCategories = async () => {
     try {
@@ -60,7 +130,8 @@ export default function MigrateCategoriesPage() {
         }
         
         if (category.id) {
-          await categoryService.updateCategory(category.id, updateData)
+          // Backfilling sortOrder is the whole point of this migration.
+          await categoryService.updateCategory(category.id, updateData, { allowSortOrder: true })
           migratedCount++
           setMigrationStatus(`Migrated ${migratedCount}/${existingCategories.length} categories...`)
         }
@@ -183,6 +254,83 @@ export default function MigrateCategoriesPage() {
                   <p className="text-sm text-gray-700">{migrationStatus}</p>
                 </div>
               )}
+
+              {/* Step 3: Normalize Sort Order */}
+              <div className="p-4 border border-gray-200 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900">Step 3: Normalize Sort Order</h3>
+                    <p className="text-sm text-gray-600">
+                      Give every category a dense, explicit position within its parent, so the
+                      storefront navigation order is deterministic. Review the dry run first.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => runNormalize(false)}
+                      disabled={normalizing}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {normalizing ? 'Working...' : 'Dry Run'}
+                    </button>
+                    <button
+                      onClick={() => runNormalize(true)}
+                      disabled={normalizing || !normalizePlan}
+                      title={normalizePlan ? undefined : 'Run the dry run first'}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
+
+                {normalizeStatus && (
+                  <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-md p-3">
+                    {normalizeStatus}
+                  </p>
+                )}
+
+                {normalizePlan && normalizePlan.orphans.length > 0 && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <p className="text-sm text-amber-900 font-medium">
+                      {normalizePlan.orphans.length} categories are below the top level but have no
+                      parent. Fix these by hand - they cannot be placed automatically.
+                    </p>
+                    <ul className="list-disc list-inside text-sm text-amber-800 mt-1">
+                      {normalizePlan.orphans.map((o) => (
+                        <li key={o.id}>{o.name} (level {o.level})</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {normalizePlan && (
+                  <div className="space-y-3">
+                    {normalizePlan.groups.map((group) => (
+                      <div key={group.group} className="border border-gray-200 rounded-md">
+                        <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-900">
+                          {group.group === '__root__' ? 'Top level' : `Children of ${group.group}`}
+                        </div>
+                        <ul className="divide-y divide-gray-100">
+                          {group.categories.map((cat) => (
+                            <li
+                              key={cat.id}
+                              className={`px-3 py-2 text-sm flex items-center justify-between ${
+                                cat.changed ? 'bg-yellow-50' : ''
+                              }`}
+                            >
+                              <span className="text-gray-900">{cat.name}</span>
+                              <span className="text-gray-500 font-mono text-xs">
+                                {cat.from === null ? '(none)' : cat.from} &rarr; {cat.to}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Categories List */}
               {existingCategories.length > 0 && (

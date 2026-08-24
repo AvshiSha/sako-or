@@ -65,3 +65,22 @@ export async function deleteCategory(
   });
   return parseResult(res);
 }
+
+/**
+ * Rewrites one sibling group's order. `orderedIds` must be the complete, current
+ * membership of that group — the server rejects a partial list with 409 rather
+ * than leaving gaps. `parentId` is null for the top-level categories.
+ */
+export async function reorderCategories(
+  user: User,
+  parentId: string | null,
+  orderedIds: string[]
+): Promise<CategoryMutationResult<{ parentId: string | null; updated: number; orderedIds: string[] }>> {
+  const headers = await getAdminAuthHeaders(user);
+  const res = await fetch('/api/admin/categories/reorder', {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ parentId, orderedIds }),
+  });
+  return parseResult(res);
+}

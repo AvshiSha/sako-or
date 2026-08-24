@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/server/auth'
+import { revalidateNavigationCategories } from '@/lib/navigation-revalidate'
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ revalidated: true, paths })
+    // Category writes still go through the client SDK form, so the admin page
+    // asks for the navigation flush over this route rather than doing it in a
+    // route handler of its own.
+    const navigation = body.navigation === true
+    if (navigation) {
+      revalidateNavigationCategories()
+    }
+
+    return NextResponse.json({ revalidated: true, paths, navigation })
   } catch (error) {
     Sentry.captureException(error);
     console.error('Revalidation error:', error)

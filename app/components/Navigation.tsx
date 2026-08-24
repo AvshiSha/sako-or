@@ -86,11 +86,18 @@ export default function Navigation({
   initialNavData: NavigationCategoriesData
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [womenSubcategories, setWomenSubcategories] = useState(initialNavData.womenSubcategories)
-  const [menSubcategories, setMenSubcategories] = useState(initialNavData.menSubcategories)
   const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
   const [isMenDropdownOpen, setIsMenDropdownOpen] = useState(false)
-  const [availableCategories, setAvailableCategories] = useState(initialNavData.availableCategories)
+
+  // Read straight from the server prop rather than mirroring it into state.
+  // The nav used to hold these in useState and re-fetch them from Firestore in
+  // the browser on every tab focus, so the server HTML and the client could
+  // show different category orders, and the order visibly changed mid-session.
+  // Freshness after an admin edit is handled server-side by revalidating
+  // NAVIGATION_CATEGORIES_TAG (see lib/navigation-categories.server.ts), which
+  // updates every visitor rather than only whoever happened to switch tabs.
+  const { availableCategories, womenSubcategories, menSubcategories } = initialNavData
+
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const [openTimeout, setOpenTimeout] = useState<NodeJS.Timeout | null>(null)
   const [selectedGender, setSelectedGender] = useState<'women' | 'men'>('women')
@@ -129,102 +136,6 @@ export default function Navigation({
       cat.level === 0 && cat.slug.toLowerCase() === 'men'
     )
   }
-
-  // Function to refresh navigation categories
-  const refreshNavigation = async () => {
-    try {
-      const { categoryService } = await import('@/lib/firebase')
-      const navCategories = await categoryService.getNavigationCategories()
-
-      // Store available categories for dynamic rendering (only enabled, level 0)
-      setAvailableCategories(navCategories.map(cat => ({
-        id: cat.id!,
-        slug: typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '',
-        name: typeof cat.name === 'string' ? cat.name : cat.name?.en || '',
-        level: cat.level
-      })))
-
-
-      // Find Women and Men categories and fetch their subcategories
-      const womenCategory = navCategories.find(cat =>
-        cat.level === 0 &&
-        (typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '').toLowerCase() === 'women'
-      )
-
-      const menCategory = navCategories.find(cat =>
-        cat.level === 0 &&
-        (typeof cat.slug === 'string' ? cat.slug : cat.slug?.en || '').toLowerCase() === 'men'
-      )
-
-      // Fetch subcategories for Women and Men
-      if (womenCategory?.id) {
-        const womenSubs = await categoryService.getEnabledSubCategories(womenCategory.id)
-
-        // Fetch sub-sub-categories for each subcategory
-        const womenSubsWithChildren = await Promise.all(womenSubs.map(async (sub) => {
-          const subChildren = await categoryService.getEnabledSubCategories(sub.id!)
-          return {
-            id: sub.id!,
-            slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
-            name: typeof sub.name === 'string' ? sub.name : (lng === 'he' ? sub.name?.he : sub.name?.en) || '',
-            subChildren: subChildren.map(child => ({
-              id: child.id!,
-              slug: typeof child.slug === 'string' ? child.slug : child.slug?.en || '',
-              name: typeof child.name === 'string' ? child.name : (lng === 'he' ? child.name?.he : child.name?.en) || ''
-            }))
-          }
-        }))
-
-        setWomenSubcategories(womenSubsWithChildren)
-      }
-
-      if (menCategory?.id) {
-        const menSubs = await categoryService.getEnabledSubCategories(menCategory.id)
-
-        // Fetch sub-sub-categories for each subcategory
-        const menSubsWithChildren = await Promise.all(menSubs.map(async (sub) => {
-          const subChildren = await categoryService.getEnabledSubCategories(sub.id!)
-          return {
-            id: sub.id!,
-            slug: typeof sub.slug === 'string' ? sub.slug : sub.slug?.en || '',
-            name: typeof sub.name === 'string' ? sub.name : (lng === 'he' ? sub.name?.he : sub.name?.en) || '',
-            subChildren: subChildren.map(child => ({
-              id: child.id!,
-              slug: typeof child.slug === 'string' ? child.slug : child.slug?.en || '',
-              name: typeof child.name === 'string' ? child.name : (lng === 'he' ? child.name?.he : child.name?.en) || ''
-            }))
-          }
-        }))
-
-        setMenSubcategories(menSubsWithChildren)
-      }
-    } catch (error) {
-      console.error('Error refreshing navigation categories:', error)
-      // Clear nav so we don't show stale data (e.g. disabled categories)
-      setAvailableCategories([])
-      setWomenSubcategories([])
-      setMenSubcategories([])
-    }
-  }
-
-  useEffect(() => {
-    setAvailableCategories(initialNavData.availableCategories)
-    setWomenSubcategories(initialNavData.womenSubcategories)
-    setMenSubcategories(initialNavData.menSubcategories)
-  }, [initialNavData])
-
-  // Refresh navigation when user returns to the tab (e.g. after admin changes)
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Page became visible, refresh navigation
-        refreshNavigation()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [])
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -438,7 +349,11 @@ export default function Navigation({
                 onMouseLeave={() => handleMouseLeave('women')}
               >
                 <div className="w-full px-20">
-                  <div className="grid grid-flow-col auto-cols-[minmax(150px,auto)] gap-x-20 justify-start">
+                  {/* Every enabled subcategory gets a column, so the row scrolls
+                      rather than overflowing once there are more than a screen's
+                      worth. Works in both directions - the browser flips the
+                      scroll origin under dir="rtl". */}
+                  <div className="grid grid-flow-col auto-cols-[minmax(150px,auto)] gap-x-20 justify-start overflow-x-auto pb-2">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">
                       {translations[lng as keyof typeof translations].categories}
@@ -453,8 +368,8 @@ export default function Navigation({
                     </Link>
                   </div>
 
-                  {womenSubcategories.slice(0, 3).map((subcategory) => (
-                    <div key={subcategory.id}>
+                  {womenSubcategories.map((subcategory) => (
+                    <div key={subcategory.id} data-nav-subcategory={subcategory.slug}>
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">
                         {subcategory.name}
                       </h3>
@@ -536,8 +451,7 @@ export default function Navigation({
                 onMouseLeave={() => handleMouseLeave('men')}
               >
                 <div
-                  className="w-full px-20 grid grid-flow-col auto-cols-[minmax(150px,auto)] gap-x-20 justify-start"
-
+                  className="w-full px-20 grid grid-flow-col auto-cols-[minmax(150px,auto)] gap-x-20 justify-start overflow-x-auto pb-2"
                 >
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">
@@ -553,8 +467,8 @@ export default function Navigation({
                     </Link>
                   </div>
 
-                  {menSubcategories.slice(0, 3).map((subcategory) => (
-                    <div key={subcategory.id}>
+                  {menSubcategories.map((subcategory) => (
+                    <div key={subcategory.id} data-nav-subcategory={subcategory.slug}>
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">
                         {subcategory.name}
                       </h3>
@@ -784,7 +698,7 @@ export default function Navigation({
 
                   if (!hasChildren) {
                     return (
-                      <div key={subcategory.id} className="border-b border-gray-300">
+                      <div key={subcategory.id} data-nav-subcategory={subcategory.slug} className="border-b border-gray-300">
                         <SheetClose asChild>
                           <Link
                             href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
@@ -800,7 +714,7 @@ export default function Navigation({
                   }
 
                   return (
-                    <AccordionItem key={subcategory.id} value={subcategory.id} className="border-b border-gray-300">
+                    <AccordionItem key={subcategory.id} data-nav-subcategory={subcategory.slug} value={subcategory.id} className="border-b border-gray-300">
                       <AccordionTrigger className="min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 hover:no-underline" dir={lng === 'he' ? 'rtl' : 'ltr'}>
                         <span className="text-sm uppercase tracking-wide">{categoryName}</span>
                       </AccordionTrigger>

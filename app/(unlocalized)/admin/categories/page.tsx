@@ -21,9 +21,10 @@ import RichTextEditor from '@/app/(unlocalized)/admin/_components/RichTextEditor
 import { deleteField } from 'firebase/firestore'
 import { cleanupCmsHtml, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'
 import { uploadCmsImage } from '@/lib/upload-cms-image'
-import { revalidateCmsPaths } from '@/lib/cms-utils'
+import { revalidateCmsPaths, revalidateNavigationCategories } from '@/lib/cms-utils'
 import { useAuth } from '@/app/hooks/useAuth'
-import { setCategoryEnabled, deleteCategory, type CategoryMutationError } from '@/lib/admin/category-client'
+import { setCategoryEnabled, deleteCategory, reorderCategories, type CategoryMutationError } from '@/lib/admin/category-client'
+import { sortCategories } from '@/lib/category-order'
 import { DeleteCategoryModal, type DeleteCategoryTarget } from './_components/DeleteCategoryModal'
 
 interface CategoryWithChildren extends Category {
@@ -140,7 +141,6 @@ function CategoriesPage() {
         },
         level: 0,
         isEnabled: true,
-        sortOrder: 0
       },
       {
         name: {
@@ -157,7 +157,6 @@ function CategoriesPage() {
         },
         level: 0,
         isEnabled: true,
-        sortOrder: 1
       },
       // Men category removed - will not be auto-created
       // {
@@ -192,7 +191,6 @@ function CategoriesPage() {
         },
         level: 0,
         isEnabled: true,
-        sortOrder: 2
       },
       {
         name: {
@@ -209,7 +207,6 @@ function CategoriesPage() {
         },
         level: 0,
         isEnabled: true,
-        sortOrder: 3
       }
     ]
 
@@ -341,15 +338,26 @@ function CategoriesPage() {
       }
     })
 
-    console.log('Final hierarchy built:', rootCategories.map(c => ({ 
-      id: c.id, 
-      name: c.name?.en, 
+    console.log('Final hierarchy built:', rootCategories.map(c => ({
+      id: c.id,
+      name: c.name?.en,
       childrenCount: c.children?.length || 0,
       subChildrenCount: c.subChildren?.length || 0
     })))
 
-    return rootCategories
+    // The level sort above is a processing-order requirement (parents must be
+    // in the map before children attach), not a display rule. Display order
+    // comes from the shared comparator, the same one the storefront navigation
+    // uses - so what an admin sees here is what visitors see.
+    return sortTree(rootCategories)
   }
+
+  const sortTree = (nodes: CategoryWithChildren[]): CategoryWithChildren[] =>
+    sortCategories(nodes).map(node => ({
+      ...node,
+      children: node.children ? sortTree(node.children) : node.children,
+      subChildren: node.subChildren ? sortTree(node.subChildren) : node.subChildren,
+    }))
 
   const handleInputChange = (field: string, value: string | number | boolean) => {
     setFormData(prev => ({
@@ -405,7 +413,9 @@ function CategoriesPage() {
         },
         level: formData.level,
         isEnabled: formData.isEnabled,
-        sortOrder: 0 // Will be set by the service
+        // No sortOrder here on purpose. createCategory computes it, and an edit
+        // must leave the existing one alone - sending a literal 0 used to reset
+        // every edited category to the front of the storefront navigation.
       }
 
       const isEdit = Boolean(editingCategory?.id)
@@ -470,8 +480,25 @@ function CategoriesPage() {
       }
 
       if (editingCategory && editingCategory.id) {
-        // Update existing category
-        await categoryService.updateCategory(editingCategory.id, categoryData)
+        // Moving a category to a different parent or level puts it in a new
+        // sibling group, where its old sortOrder means nothing and would drop
+        // it into an arbitrary slot. Send it to the end of its new group
+        // instead - the one case where an edit may write sortOrder.
+        const nextParentId = formData.parentId?.trim() || undefined
+        const movedGroup =
+          nextParentId !== (editingCategory.parentId || undefined) ||
+          formData.level !== editingCategory.level
+
+        if (movedGroup) {
+          categoryData.sortOrder = await categoryService.getNextSortOrder(
+            formData.level,
+            nextParentId
+          )
+        }
+
+        await categoryService.updateCategory(editingCategory.id, categoryData, {
+          allowSortOrder: movedGroup,
+        })
         setSuccessMessage('Category updated successfully!')
       } else {
         // Create new category
@@ -492,6 +519,10 @@ function CategoriesPage() {
           `/he/collection/${editingCategory.path}`,
         ])
       }
+
+      // Unconditional: a create has no previous path to revalidate, but it
+      // still changes the navigation.
+      await revalidateNavigationCategories()
       
       setTimeout(() => setShowSuccess(false), 3000)
     } catch (error) {
@@ -654,6 +685,43 @@ function CategoriesPage() {
     }
   }
 
+  /**
+   * Moves a category one slot within its own sibling group. The whole group's
+   * new order is sent, because sortOrder is only meaningful relative to
+   * siblings and the server rewrites the group to a dense 0..n-1 sequence.
+   */
+  const handleMove = async (
+    category: CategoryWithChildren,
+    siblings: CategoryWithChildren[],
+    direction: -1 | 1
+  ) => {
+    if (!user || !category.id || pendingIds.has(category.id)) return
+
+    const index = siblings.findIndex(c => c.id === category.id)
+    const target = index + direction
+    if (index === -1 || target < 0 || target >= siblings.length) return
+
+    const orderedIds = siblings.map(c => c.id!)
+    ;[orderedIds[index], orderedIds[target]] = [orderedIds[target], orderedIds[index]]
+
+    setMutationError(null)
+    withPending(category.id, true)
+    try {
+      // Mirrors siblingGroupKey() on the server: level 0 is the root group
+      // regardless of any stale parentId left on the document.
+      const groupParentId = category.level === 0 ? null : category.parentId ?? null
+      const result = await reorderCategories(user, groupParentId, orderedIds)
+      if (!result.ok) {
+        setMutationError(`Failed to reorder "${categoryLabel(category)}": ${result.error}`)
+      }
+      // Refetch either way: on success to pick up the new order, on failure to
+      // resync a view that the 409 says was already stale.
+      await fetchCategories()
+    } finally {
+      withPending(category.id, false)
+    }
+  }
+
   const handleCancel = () => {
     setShowForm(false)
     setEditingCategory(null)
@@ -689,10 +757,19 @@ function CategoriesPage() {
     }
   }
 
-  const renderCategoryTree = (category: CategoryWithChildren, depth: number = 0) => {
+  // `siblings` is the category's own group, in display order - the move
+  // buttons need it to know the bounds and to send the whole new sequence.
+  const renderCategoryTree = (
+    category: CategoryWithChildren,
+    depth: number = 0,
+    siblings: CategoryWithChildren[] = []
+  ) => {
     const isExpanded = expandedCategories.has(category.id!)
-    const hasChildren = (category.children && category.children.length > 0) || 
+    const hasChildren = (category.children && category.children.length > 0) ||
                        (category.subChildren && category.subChildren.length > 0)
+    const siblingIndex = siblings.findIndex(c => c.id === category.id)
+    const canMoveUp = siblingIndex > 0
+    const canMoveDown = siblingIndex > -1 && siblingIndex < siblings.length - 1
 
     return (
       <div key={category.id} className="border-l-2 border-gray-200 ml-4">
@@ -740,6 +817,29 @@ function CategoriesPage() {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Category order. This is the sequence the storefront navigation
+                renders, in both Hebrew and English. */}
+            <div className="flex flex-col">
+              <button
+                onClick={() => handleMove(category, siblings, -1)}
+                disabled={!canMoveUp || pendingIds.has(category.id!)}
+                className="px-1 text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Move up"
+                aria-label={`Move ${categoryLabel(category)} up`}
+              >
+                <ChevronUpIcon className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleMove(category, siblings, 1)}
+                disabled={!canMoveDown || pendingIds.has(category.id!)}
+                className="px-1 text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Move down"
+                aria-label={`Move ${categoryLabel(category)} down`}
+              >
+                <ChevronDownIcon className="h-4 w-4" />
+              </button>
+            </div>
+
              <Link
               href={`/admin/categories/${category.id!}/merchandising`}
               className="p-2 text-gray-700 hover:bg-gray-100 rounded-md"
@@ -797,14 +897,12 @@ function CategoriesPage() {
 
         {isExpanded && (
           <div className="ml-4">
-            {category.children?.map((child, index) => {
-              console.log(`Rendering child ${child.id} at index ${index}`)
-              return renderCategoryTree(child, depth + 1)
-            })}
-            {category.subChildren?.map((subChild, index) => {
-              console.log(`Rendering subChild ${subChild.id} at index ${index}`)
-              return renderCategoryTree(subChild, depth + 2)
-            })}
+            {category.children?.map((child) =>
+              renderCategoryTree(child, depth + 1, category.children!)
+            )}
+            {category.subChildren?.map((subChild) =>
+              renderCategoryTree(subChild, depth + 2, category.subChildren!)
+            )}
           </div>
         )}
       </div>
@@ -932,10 +1030,7 @@ function CategoriesPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {categories.map((category, index) => {
-                    console.log(`Rendering main category ${category.id} at index ${index}`)
-                    return renderCategoryTree(category, 0)
-                  })}
+                  {categories.map((category) => renderCategoryTree(category, 0, categories))}
                 </div>
               )}
             </div>

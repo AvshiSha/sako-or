@@ -38,7 +38,8 @@ export async function POST(request: NextRequest) {
       }
       
       if (category.id) {
-        await categoryService.updateCategory(category.id, updateData)
+        // Backfilling sortOrder is the whole point of this migration.
+        await categoryService.updateCategory(category.id, updateData, { allowSortOrder: true })
         migratedCount++
       }
     }

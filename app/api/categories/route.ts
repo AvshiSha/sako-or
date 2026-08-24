@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/nextjs'
 import { categoryService } from '@/lib/firebase'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/server/auth'
+import { revalidateNavigationCategories } from '@/lib/navigation-revalidate'
 import { z } from 'zod'
 
 // Validation schema for creating/updating categories
@@ -23,7 +24,10 @@ const categorySchema = z.object({
   parentId: z.string().optional(),
   level: z.number().min(0).max(2),
   isEnabled: z.boolean().default(true),
-  sortOrder: z.number().min(0)
+  // Accepted for backwards compatibility but ignored: position within a
+  // sibling group is assigned on create and changed via
+  // PATCH /api/admin/categories/reorder.
+  sortOrder: z.number().min(0).optional()
 })
 
 // GET /api/categories - Get all categories
@@ -58,7 +62,8 @@ export async function POST(request: NextRequest) {
       parentId: validatedData.parentId,
       level: validatedData.level,
       isEnabled: validatedData.isEnabled,
-      sortOrder: validatedData.sortOrder
+      // No sortOrder: createCategory assigns it so a new category lands at the
+      // end of its sibling group.
     }
 
     // Only include description if it's provided and has both en and he properties
@@ -68,7 +73,16 @@ export async function POST(request: NextRequest) {
 
     const categoryId = await categoryService.createCategory(categoryData)
 
-    // Also create the category in Neon DB for synchronization
+    // Get the created category
+    const categories = await categoryService.getAllCategories()
+    const category = categories.find(c => c.id === categoryId)
+
+    // Also create the category in Neon DB for synchronization.
+    //
+    // Mirrors the sortOrder Firestore actually assigned, not the one the
+    // caller sent: createCategory computes its own via getNextSortOrder, so
+    // echoing the request value here used to leave the mirror wrong from the
+    // moment of creation.
     try {
       await prisma.category.create({
         data: {
@@ -79,7 +93,7 @@ export async function POST(request: NextRequest) {
           description: validatedData.description?.en || null,
           image: validatedData.image || null,
           isEnabled: validatedData.isEnabled,
-          sortOrder: validatedData.sortOrder,
+          sortOrder: category?.sortOrder ?? 0,
           level: validatedData.level,
           parentId: validatedData.parentId || null,
         }
@@ -91,9 +105,7 @@ export async function POST(request: NextRequest) {
       // Don't fail the request if Neon DB creation fails, just log it
     }
 
-    // Get the created category
-    const categories = await categoryService.getAllCategories()
-    const category = categories.find(c => c.id === categoryId)
+    revalidateNavigationCategories()
 
     return NextResponse.json(category, { status: 201 })
   } catch (error) {

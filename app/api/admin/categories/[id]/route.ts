@@ -13,6 +13,7 @@ import {
   mirrorCategoryDeletionToNeon,
   mirrorCategoryEnabledToNeon,
 } from '@/lib/category-mutations';
+import { revalidateNavigationCategories } from '@/lib/navigation-revalidate';
 
 const patchSchema = z.object({
   isEnabled: z.boolean(),
@@ -54,6 +55,9 @@ export async function PATCH(
     // Best-effort — Firestore is already the source of truth and the write
     // above already succeeded; a Neon hiccup here must not fail the request.
     await mirrorCategoryEnabledToNeon(category.name, parsed.data.isEnabled);
+
+    // Enabling or disabling changes which categories the nav renders.
+    revalidateNavigationCategories();
 
     return NextResponse.json({
       id,
@@ -133,6 +137,8 @@ export async function DELETE(
     const namesDeepestFirst = [...descendants].reverse().map((d) => d.name);
     namesDeepestFirst.push(category.name);
     await mirrorCategoryDeletionToNeon(namesDeepestFirst);
+
+    revalidateNavigationCategories();
 
     return NextResponse.json({
       deletedId: id,

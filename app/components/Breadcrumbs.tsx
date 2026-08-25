@@ -27,13 +27,23 @@ export default function Breadcrumbs({
   return (
     <nav
       aria-label="Breadcrumb"
-      className={`px-4 sm:px-6 py-3 text-sm text-gray-500 ${className}`}
+      className={`px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-500 ${className}`}
     >
-      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      {/*
+        One line, always. The trail used to wrap onto a second line on phones -
+        the last crumb is brand + colour and overflows a 375px viewport by a
+        few characters - which cost ~50px of above-the-fold height on every
+        product page. Scrolling rather than wrapping is deliberately the only
+        concession made: every crumb stays in the DOM, rendered, and its label
+        still matches buildBreadcrumbStructuredData() exactly. Nothing is
+        hidden, truncated or dropped, so the crawlable link trail and the
+        JSON-LD are untouched - this is purely how many pixels tall it is.
+      */}
+      <ol className="flex flex-nowrap items-center gap-x-2 overflow-x-auto whitespace-nowrap no-scrollbar">
         {usable.map((crumb, index) => {
           const isLast = index === usable.length - 1
           return (
-            <li key={`${crumb.name}-${index}`} className="flex items-center gap-x-2">
+            <li key={`${crumb.name}-${index}`} className="flex items-center gap-x-2 shrink-0">
               {index > 0 && (
                 // Plain slash rather than a chevron: a "›" points the wrong
                 // way once the page flips to RTL for Hebrew.

@@ -79,11 +79,19 @@ interface ProductColorClientProps {
   initialProduct: ProductWithVariants;
   initialVariant: ColorVariantData;
   /**
-   * Composed display name (category + colour – brand). The stored title is the
-   * brand alone, so without this every bag renders the same `<h1>`. Falls back
-   * to the stored title when the server couldn't compose one.
+   * The heading text: the merchandiser-authored short title when there is one,
+   * otherwise the composed name (category + colour – brand). The stored title
+   * is the brand alone, so without this every bag renders the same `<h1>`.
+   * Falls back to the stored title when the server couldn't compose one.
    */
   displayName?: string;
+  /**
+   * The keyword-led composed name that also backs the `<title>` tag and the
+   * JSON-LD. Rendered as a sub-line under the heading so that shortening the
+   * `<h1>` doesn't strip those keywords out of the page's body copy. Omitted,
+   * or equal to `displayName`, means there is nothing extra to show.
+   */
+  seoName?: string;
   /** Localised category trail, root-first, e.g. ["נשים", "אקססוריז", "תיקים"]. */
   categoryTrail?: string[];
   /** True when rendering an admin draft rather than the live, published product. */
@@ -105,6 +113,7 @@ export default function ProductColorClient({
   initialProduct,
   initialVariant,
   displayName,
+  seoName,
   categoryTrail,
   previewMode = false,
   previewBasePath,
@@ -116,9 +125,20 @@ export default function ProductColorClient({
   const [product, setProduct] = useState<ProductWithVariants | null>(initialProduct)
   const [currentVariant, setCurrentVariant] = useState<ColorVariantData | null>(initialVariant)
   /** Server-composed name; falls back to the stored title (the brand) when the
-   * server had no category to compose one from, or in the preview flow. */
+   * server had no category to compose one from, or in the preview flow. The
+   * preview flow passes neither prop, so it resolves the short title itself -
+   * an admin previewing a draft should see the same heading the live page will
+   * render. */
   const productDisplayName =
-    displayName || (lng === 'he' ? product?.title_he : product?.title_en) || ''
+    displayName ||
+    (lng === 'he' ? product?.shortTitle_he : product?.shortTitle_en)?.trim() ||
+    (lng === 'he' ? product?.title_he : product?.title_en) ||
+    ''
+  /** Only worth its own line when it says something the heading doesn't. */
+  const productSeoName =
+    seoName?.trim() && seoName.trim() !== productDisplayName.trim()
+      ? seoName.trim()
+      : ''
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>(() => {
@@ -561,9 +581,14 @@ export default function ProductColorClient({
               <div className="lg:hidden space-y-2">
                 {/* Product Title + Price (same row) */}
                 <div className="flex items-start justify-between gap-2">
-                  <h1 className="text-2xl font-bold text-gray-900 flex-1">
-                    {productDisplayName}
-                  </h1>
+                  <div className="flex-1 min-w-0">
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {productDisplayName}
+                    </h1>
+                    {productSeoName && (
+                      <p className="mt-1 text-sm text-gray-500">{productSeoName}</p>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
                       <>
@@ -828,8 +853,13 @@ export default function ProductColorClient({
                     page heading for desktop screen readers, which skip the
                     display:none mobile copy. */}
                 <div className="flex items-start justify-between gap-2">
-                  <div role="heading" aria-level={1} className="text-2xl font-bold text-gray-900 flex-1">
-                    {productDisplayName}
+                  <div className="flex-1 min-w-0">
+                    <div role="heading" aria-level={1} className="text-2xl font-bold text-gray-900">
+                      {productDisplayName}
+                    </div>
+                    {productSeoName && (
+                      <p className="mt-1 text-sm text-gray-500">{productSeoName}</p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (

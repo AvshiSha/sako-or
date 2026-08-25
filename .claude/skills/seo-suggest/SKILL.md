@@ -76,7 +76,7 @@ Fit the house length rules in `lib/seo-length.ts`: meta title 50–60 characters
 
 These are copywriting, not Semrush lookups, but should read naturally with the focus keyword and 1–2 secondary keywords worked in where they fit — never keyword-stuffed.
 
-- **Short name (1, 2)**: a few words, used on product cards where the full title is too long (see `ProductBasicInformationSection.tsx`). No hard length limit in code, but keep it noticeably shorter than the full title — aim ~15–30 characters, e.g. "Gray Leather Sneakers" / "סניקרס עור אפור".
+- **Short name (1, 2)**: a few words, used on product cards **and as the product page `<h1>`** (see `ProductBasicInformationSection.tsx`, and `page.tsx` in the `[colorSlug]` route). No hard length limit in code, but keep it noticeably shorter than the full title — aim ~15–30 characters, e.g. "Gray Leather Sneakers" / "סניקרס עור אפור". It must **lead with the product type**, never the brand alone: it replaces a keyword-led `<h1>`, so "STELIO MALORI" as a short name silently strips the page's heading keyword, while "Gray Leather Sneakers" keeps it. The full composed title still ships as the `<title>` tag and as a sub-line under the heading, so this is a shortening, not a substitution.
 - **Short description (3, 4)**: one or two sentences for listing/preview cards. Lead with the focus keyword's concept and the single most distinctive fact (material or color).
 - **Full description (5, 6)**: a few sentences (3–5), covering material, lining, sole, closure, fit — pull every fact from the product's own specs/shoeFit data so nothing is invented. Work in the focus keyword once near the start and 1–2 secondary keywords naturally later. No formal character range, but don't pad — stop once the real facts are covered.
 

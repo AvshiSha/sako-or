@@ -82,10 +82,13 @@ export default function ProductBasicInformationSection({
             value={values.shortTitle_en ?? ''}
             onChange={(e) => onChange('shortTitle_en', e.target.value)}
             className={inputClass()}
-            placeholder="e.g. Silver Pumps"
+            placeholder="e.g. Silver Leather Pumps"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Used on product cards and other places the full name is too long.
+            Used on product cards and as the product page heading. Lead with the
+            product type (&quot;Silver Leather Pumps&quot;), not the brand
+            (&quot;STELIO MALORI&quot;) — a brand-only heading carries no keyword.
+            Leave empty to keep the full SEO title as the heading.
           </p>
         </div>
 
@@ -103,7 +106,10 @@ export default function ProductBasicInformationSection({
             placeholder="לדוגמה: נעלי סירה כסופות"
           />
           <p className="mt-1 text-xs text-gray-500">
-            משמש בכרטיסי מוצר ובמקומות שבהם השם המלא ארוך מדי.
+            משמש בכרטיסי מוצר וככותרת עמוד המוצר. יש לפתוח בסוג המוצר
+            (&quot;מגפי זמש חום כהה&quot;) ולא בשם המותג (&quot;FEDE BOOTS PAW ITALY&quot;) —
+            כותרת שהיא שם מותג בלבד אינה נושאת מילת מפתח. שדה ריק משאיר את כותרת
+            ה-SEO המלאה ככותרת העמוד.
           </p>
         </div>
 

@@ -281,6 +281,13 @@ export function buildBreadcrumbStructuredData(crumbs: BreadcrumbCrumb[]): object
  */
 export interface ProductStructuredData {
   name: string
+  /**
+   * The shorter merchandising name shown as the page's `<h1>`, when it differs
+   * from `name`. `name` stays the keyword-led composed title that matches the
+   * `<title>` tag; this records the other name the same product goes by, so a
+   * shopping surface or assistant reading the markup sees both.
+   */
+  alternateName?: string
   description: string
   image: string[]
   brand: string
@@ -330,6 +337,8 @@ export function buildProductStructuredData(
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
+    ...(product.alternateName &&
+      product.alternateName !== product.name && { alternateName: product.alternateName }),
     description: product.description,
     image: product.image,
     brand: {

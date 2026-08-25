@@ -307,6 +307,8 @@ const PRODUCT_CLIENT_VIEW_FIELDS = [
   'categories_path',
   'title_en',
   'title_he',
+  'shortTitle_en',
+  'shortTitle_he',
   'brand',
   'description_en',
   'description_he',

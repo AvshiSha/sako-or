@@ -313,6 +313,12 @@ export default async function ProductColorLayout({ children, params }: ProductCo
           categoryName: categoryTrail[categoryTrail.length - 1]?.name,
           colorName,
         }) || product.sku
+        // The page renders this as its <h1> when set (see page.tsx); `name`
+        // above stays the composed title so the markup keeps matching the
+        // <title> tag and the SERP.
+        const productShortName = (
+          locale === 'he' ? product.shortTitle_he : product.shortTitle_en
+        )?.trim()
         const productDesc = (lng === 'he' ? product.description_he : product.description_en) || ''
 
         // Home > category trail > this product. The final crumb deliberately
@@ -344,6 +350,7 @@ export default async function ProductColorLayout({ children, params }: ProductCo
 
         structuredData = buildProductStructuredData({
           name: productName,
+          alternateName: productShortName,
           description: productDesc,
           image: images.length > 0 ? images : [getImageUrl('/images/placeholder.svg')],
           brand: product.brand || 'SAKO-OR',

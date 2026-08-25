@@ -434,3 +434,14 @@ body.admin-panel #vplugin-interface {
   outline: 2px solid #856d55;
   outline-offset: 2px;
 }
+
+/* Scrollable without a visible scrollbar. For strips that overflow by a few
+   pixels on narrow screens (the breadcrumb trail) where a permanent gutter
+   costs more room than it earns. Content stays scrollable, never clipped. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

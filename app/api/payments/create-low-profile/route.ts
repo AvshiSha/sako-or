@@ -308,9 +308,12 @@ export async function POST(request: NextRequest) {
       computedDeliveryFee = DELIVERY_FEE_ILS;
     }
 
-    // Honor discountTotal from the client (coupons or automatic BOGO),
-    // but keep a safety fallback if it's missing.
-    const computedDiscountTotal = body.discountTotal ?? Math.max(computedSubtotal + computedDeliveryFee - body.amount, 0);
+    // Honor discountTotal from the client (coupons or automatic BOGO), but keep a safety
+    // fallback if it's missing. The fallback backs out the points discount too, since
+    // `body.amount` already has it deducted and this value must stay coupon/BOGO-only
+    // (points are recorded separately in paymentData).
+    const computedDiscountTotal = body.discountTotal
+      ?? Math.max(computedSubtotal + computedDeliveryFee - body.amount - pointsDiscount, 0);
 
     // Enforce no double-discount stacking between automatic BOGO and coupons.
     const hasBogoDiscount = !!body.bogoDiscountAmount && body.bogoDiscountAmount > 0;
@@ -333,14 +336,23 @@ export async function POST(request: NextRequest) {
       IsVatFree: false
     }));
 
+    // Points are a straight ILS reduction of the merchandise total (1 point = 1 ILS) and are
+    // already subtracted from `body.amount` by the client, so they must be proportioned onto
+    // the CardCom lines alongside coupon/BOGO discounts - otherwise every points-paying order
+    // fails the AMOUNT_MISMATCH check below by exactly the points value. Kept separate from
+    // `computedDiscountTotal` because that value is persisted as the order's coupon/BOGO
+    // discount, while points are recorded on their own in paymentData.
+    // Clamped to the merchandise subtotal so lines can never go negative.
+    const cardcomLineDiscount = Math.min(computedDiscountTotal + pointsDiscount, computedSubtotal);
+
     // Apply order-level discounts proportionally to CardCom products so document totals match charge amount
-    if (computedDiscountTotal > 0 && cardcomProducts.length > 0) {
+    if (cardcomLineDiscount > 0 && cardcomProducts.length > 0) {
       const subtotalBeforeDiscount = cardcomProducts.reduce((sum, product) => {
         return sum + (product.UnitCost * product.Quantity);
       }, 0);
 
       if (subtotalBeforeDiscount > 0) {
-        let remainingDiscount = parseFloat(computedDiscountTotal.toFixed(2));
+        let remainingDiscount = parseFloat(cardcomLineDiscount.toFixed(2));
 
         cardcomProducts.forEach((product, index) => {
           const quantity = product.Quantity && product.Quantity > 0 ? product.Quantity : 1;
@@ -350,7 +362,7 @@ export async function POST(request: NextRequest) {
           if (index === cardcomProducts.length - 1) {
             lineDiscount = remainingDiscount;
           } else {
-            lineDiscount = parseFloat(((originalLineTotal / subtotalBeforeDiscount) * computedDiscountTotal).toFixed(2));
+            lineDiscount = parseFloat(((originalLineTotal / subtotalBeforeDiscount) * cardcomLineDiscount).toFixed(2));
             // Guard against rounding pushing discount beyond remaining amount
             if (lineDiscount > remainingDiscount) {
               lineDiscount = remainingDiscount;

@@ -4150,3 +4150,114 @@ export const staticPageService = {
     }
   },
 };
+
+// ── FAQ ──────────────────────────────────────────────────────────────────────
+// Read-only, deliberately. Unlike blogService and staticPageService — which
+// write from the browser through the client SDK — every FAQ mutation goes
+// through app/api/admin/faq/** using the Admin SDK. That is not stylistic:
+// answers are rich text and must be sanitized on INPUT, and sanitize-html is
+// Node-only, so a client-SDK write could only ever sanitize on output.
+
+export type {
+  FaqAudience,
+  FaqCta,
+  FaqItem,
+  FaqPageSettings,
+  FaqRelatedLink,
+  FaqRobots,
+  FaqStatus,
+  FaqTopic,
+} from '@/lib/faq-types';
+
+export {
+  FAQ_AUDIENCES,
+  FAQ_AUDIENCE_LABELS,
+  FAQ_COLLECTION,
+  FAQ_SETTINGS_COLLECTION,
+  FAQ_SETTINGS_DOC_ID,
+  FAQ_SETTINGS_FALLBACK,
+  FAQ_STATUSES,
+  FAQ_STATUS_LABELS,
+  FAQ_TOPICS,
+  FAQ_TOPIC_LABELS,
+} from '@/lib/faq-types';
+
+import type { FaqItem, FaqPageSettings } from '@/lib/faq-types';
+import {
+  FAQ_COLLECTION as FAQ_COLLECTION_NAME,
+  FAQ_SETTINGS_COLLECTION as FAQ_SETTINGS_COLLECTION_NAME,
+  FAQ_SETTINGS_DOC_ID as FAQ_SETTINGS_DEFAULT_DOC,
+} from '@/lib/faq-types';
+import { sortFaqs } from '@/lib/faq-order';
+
+export const faqService = {
+  // Admin use: every status. The admin custom claim satisfies the read rule.
+  async getAllFaqs(): Promise<FaqItem[]> {
+    try {
+      const snapshot = await getDocs(collection(db, FAQ_COLLECTION_NAME));
+      const items = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as FaqItem[];
+      return sortFaqs(items);
+    } catch (error) {
+      console.error('Error fetching FAQs:', error);
+      throw error;
+    }
+  },
+
+  // Public use (storefront, unauthenticated client SDK read).
+  //
+  // The where() clause is load-bearing twice over. It is the gate that keeps
+  // drafts and hidden questions off the public page — and it is also what makes
+  // the read legal at all: Firestore rejects an unconstrained query against a
+  // status-gated collection outright, because it cannot prove the results
+  // satisfy the rule.
+  //
+  // No orderBy(): a where + orderBy pair needs a composite index, and
+  // firestore.indexes.json does not declare one. Sorting ~30 documents in
+  // memory costs nothing and cannot fail on first deploy.
+  async getPublishedFaqs(): Promise<FaqItem[]> {
+    try {
+      const q = query(collection(db, FAQ_COLLECTION_NAME), where('status', '==', 'published'));
+      const snapshot = await getDocs(q);
+      const items = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data(),
+      })) as FaqItem[];
+      return sortFaqs(items);
+    } catch (error) {
+      // The public page must degrade to an empty state, never a 500.
+      console.error('Error fetching published FAQs:', error);
+      return [];
+    }
+  },
+
+  async getFaqById(id: string): Promise<FaqItem | null> {
+    try {
+      const snap = await getDoc(doc(db, FAQ_COLLECTION_NAME, id));
+      if (!snap.exists()) return null;
+      return { id: snap.id, ...snap.data() } as FaqItem;
+    } catch (error) {
+      console.error('Error fetching FAQ:', error);
+      throw error;
+    }
+  },
+
+  // Page settings carry no status field: they are read on every public render
+  // as a single getDoc, and a status-gated rule would hard-fail with
+  // permission-denied rather than returning nothing. The doc therefore holds
+  // public page copy and SEO metadata only.
+  async getFaqPageSettings(): Promise<FaqPageSettings | null> {
+    try {
+      const snap = await getDoc(
+        doc(db, FAQ_SETTINGS_COLLECTION_NAME, FAQ_SETTINGS_DEFAULT_DOC)
+      );
+      if (!snap.exists()) return null;
+      return { key: FAQ_SETTINGS_DEFAULT_DOC, ...snap.data() } as FaqPageSettings;
+    } catch (error) {
+      console.error('Error fetching FAQ page settings:', error);
+      return null;
+    }
+  },
+};

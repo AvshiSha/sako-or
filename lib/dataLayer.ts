@@ -170,6 +170,21 @@ function pushEvent(eventData: any): void {
   }
 }
 
+export type AnalyticsParams = Record<string, string | number | boolean>;
+
+/**
+ * Push a non-ecommerce event to the dataLayer.
+ *
+ * Ecommerce events keep their bespoke helpers below: those own the `ecommerce`
+ * payload shape and the clearEcommerce() discipline that stops one event's
+ * items leaking into the next. This generic is for everything else (FAQ
+ * interactions, and any future content event), and lives here so it inherits
+ * pushEvent's dev logging and window guards.
+ */
+export function trackEvent(eventName: string, params: AnalyticsParams = {}): void {
+  pushEvent({ event: eventName, ...params });
+}
+
 // ============================================================================
 // TRACKING FUNCTIONS
 // ============================================================================

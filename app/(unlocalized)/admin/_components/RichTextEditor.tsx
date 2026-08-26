@@ -43,7 +43,29 @@ interface RichTextEditorProps {
   editorKey?: string
   /** Inline mode: bold, italic, and links only (for titles). */
   variant?: 'default' | 'inline'
+  /**
+   * Heading levels the toolbar offers and StarterKit enables. Defaults to
+   * [2, 3] — today's behaviour, so no existing call site changes.
+   *
+   * The FAQ answer editor passes [3]: each accordion question is already
+   * rendered as an <h2> and the page owns the <h1>, so an h2 inside an answer
+   * would break the document outline. (sanitizeFaqAnswerHtml demotes one that
+   * arrives by paste anyway — this just keeps it out of the toolbar.)
+   */
+  headingLevels?: (2 | 3)[]
+  /**
+   * Optional toolbar features, all on by default in variant='default'.
+   * `callout` adds a highlighted-summary block (blockquote.faq-callout).
+   */
+  features?: {
+    table?: boolean
+    image?: boolean
+    youtube?: boolean
+    callout?: boolean
+  }
 }
+
+const DEFAULT_HEADING_LEVELS: (2 | 3)[] = [2, 3]
 
 function normalizeEditorHtml(html: string): string {
   const cleaned = cleanupCmsHtml(html)
@@ -100,6 +122,8 @@ function EditorToolbar({
   onAddYoutube,
   onSetLink,
   variant = 'default',
+  headingLevels = DEFAULT_HEADING_LEVELS,
+  features,
 }: {
   editor: Editor
   onUploadImage?: (file: File) => Promise<string>
@@ -107,7 +131,13 @@ function EditorToolbar({
   onAddYoutube: () => void
   onSetLink: () => void
   variant?: 'default' | 'inline'
+  headingLevels?: (2 | 3)[]
+  features?: { table?: boolean; image?: boolean; youtube?: boolean; callout?: boolean }
 }) {
+  const showTable = features?.table !== false
+  const showImage = features?.image !== false
+  const showYoutube = features?.youtube !== false
+  const showCallout = features?.callout === true
   const [tablePopoverOpen, setTablePopoverOpen] = useState(false)
   const [tableGridHover, setTableGridHover] = useState<{ rows: number; cols: number } | null>(
     null
@@ -131,6 +161,7 @@ function EditorToolbar({
           orderedList: false,
           link: false,
           table: false,
+          blockquote: false,
           alignLeft: false,
           alignCenter: false,
           alignRight: false,
@@ -147,6 +178,7 @@ function EditorToolbar({
         orderedList: ed.isActive('orderedList'),
         link: ed.isActive('link'),
         table: ed.isActive('table'),
+        blockquote: ed.isActive('blockquote'),
         alignLeft: ed.isActive({ textAlign: 'left' }),
         alignCenter: ed.isActive({ textAlign: 'center' }),
         alignRight: ed.isActive({ textAlign: 'right' }),
@@ -224,22 +256,23 @@ function EditorToolbar({
 
   return (
     <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5">
-      {variant === 'default' && (
+      {variant === 'default' && headingLevels.length > 0 && (
         <>
-          <ToolbarButton
-            onClick={() => toggleHeading(2)}
-            active={active.h2}
-            title="Heading 2"
-          >
-            <span className={cn('text-xs font-bold px-0.5', active.h2 && 'text-[#856D55]')}>H2</span>
-          </ToolbarButton>
-          <ToolbarButton
-            onClick={() => toggleHeading(3)}
-            active={active.h3}
-            title="Heading 3"
-          >
-            <span className={cn('text-xs font-bold px-0.5', active.h3 && 'text-[#856D55]')}>H3</span>
-          </ToolbarButton>
+          {headingLevels.map((level) => {
+            const isActive = level === 2 ? active.h2 : active.h3
+            return (
+              <ToolbarButton
+                key={level}
+                onClick={() => toggleHeading(level)}
+                active={isActive}
+                title={`Heading ${level}`}
+              >
+                <span className={cn('text-xs font-bold px-0.5', isActive && 'text-[#856D55]')}>
+                  H{level}
+                </span>
+              </ToolbarButton>
+            )
+          })}
           <span className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
         </>
       )}
@@ -290,6 +323,19 @@ function EditorToolbar({
               1.
             </span>
           </ToolbarButton>
+          {showCallout && (
+            <ToolbarButton
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+              active={active.blockquote}
+              title="Highlighted summary"
+            >
+              <span
+                className={cn('text-xs font-semibold px-0.5', active.blockquote && 'text-[#856D55]')}
+              >
+                Note
+              </span>
+            </ToolbarButton>
+          )}
           <span className="mx-1 h-5 w-px bg-gray-300" aria-hidden />
           <ToolbarButton
             onClick={() => editor.chain().focus().setTextAlign('left').run()}
@@ -324,7 +370,7 @@ function EditorToolbar({
       <ToolbarButton onMouseDown={onSetLink} active={active.link} title="Link">
         <LinkIcon className={cn('h-4 w-4', active.link && 'stroke-[2.5px] text-[#856D55]')} />
       </ToolbarButton>
-      {variant === 'default' && (
+      {variant === 'default' && showTable && (
         <Popover open={tablePopoverOpen} onOpenChange={handleTablePopoverOpenChange}>
           <PopoverTrigger asChild>
             <ToolbarButton
@@ -453,12 +499,12 @@ function EditorToolbar({
           </PopoverContent>
         </Popover>
       )}
-      {variant === 'default' && onUploadImage && (
+      {variant === 'default' && showImage && onUploadImage && (
         <ToolbarButton onMouseDown={onAddImage} title="Insert image at cursor">
           <PhotoIcon className="h-4 w-4" />
         </ToolbarButton>
       )}
-      {variant === 'default' && (
+      {variant === 'default' && showYoutube && (
         <ToolbarButton onClick={onAddYoutube} title="Insert YouTube video">
           <VideoCameraIcon className="h-4 w-4" />
         </ToolbarButton>
@@ -480,10 +526,16 @@ export default function RichTextEditor({
   dir = 'ltr',
   editorKey,
   variant = 'default',
+  headingLevels = DEFAULT_HEADING_LEVELS,
+  features,
 }: RichTextEditorProps) {
   const isInternalUpdate = useRef(false)
   const onChangeRef = useRef(onChange)
   const isInline = variant === 'inline'
+  const enableTable = variant === 'default' && features?.table !== false
+  const enableImage = variant === 'default' && features?.image !== false
+  const enableYoutube = variant === 'default' && features?.youtube !== false
+  const extensionConfigKey = `${headingLevels.join('')}|${enableTable}|${enableImage}|${enableYoutube}|${features?.callout === true}`
 
   useEffect(() => {
     onChangeRef.current = onChange
@@ -492,17 +544,22 @@ export default function RichTextEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: isInline ? false : { levels: [2, 3] },
+        heading: isInline ? false : { levels: headingLevels },
         bulletList: isInline ? false : undefined,
         orderedList: isInline ? false : undefined,
         listItem: isInline ? false : undefined,
-        blockquote: isInline ? false : undefined,
+        // The FAQ callout is a blockquote carrying a whitelisted class, which
+        // is the only class sanitizeFaqAnswerHtml lets through.
+        blockquote: isInline
+          ? false
+          : features?.callout
+            ? { HTMLAttributes: { class: 'faq-callout' } }
+            : undefined,
         codeBlock: isInline ? false : undefined,
         horizontalRule: isInline ? false : undefined,
       }),
-      ...(isInline
-        ? []
-        : [
+      ...(enableTable
+        ? [
             Table.configure({
               HTMLAttributes: {
                 class: 'cms-table',
@@ -511,10 +568,10 @@ export default function RichTextEditor({
             TableRow,
             TableHeader,
             TableCell,
-          ]),
-      ...(isInline
-        ? []
-        : [
+          ]
+        : []),
+      ...(enableImage
+        ? [
             Image.configure({
               inline: false,
               allowBase64: false,
@@ -522,6 +579,10 @@ export default function RichTextEditor({
                 class: 'max-w-full h-auto rounded-md',
               },
             }),
+          ]
+        : []),
+      ...(enableYoutube
+        ? [
             Youtube.configure({
               width: 640,
               height: 360,
@@ -529,6 +590,11 @@ export default function RichTextEditor({
                 class: 'youtube-embed w-full aspect-video rounded-md',
               },
             }),
+          ]
+        : []),
+      ...(isInline
+        ? []
+        : [
             TextAlign.configure({
               types: ['heading', 'paragraph'],
               alignments: ['left', 'center', 'right'],
@@ -561,7 +627,10 @@ export default function RichTextEditor({
       isInternalUpdate.current = true
       onChangeRef.current(ed.getHTML())
     },
-  }, [editorKey, variant])
+    // Serialized rather than passing the array/object directly: both get a new
+    // identity on every render, which would remount the editor continuously and
+    // lose the caret. The string only changes when the configuration really does.
+  }, [editorKey, variant, extensionConfigKey])
 
   useEffect(() => {
     if (!editor) return
@@ -643,6 +712,8 @@ export default function RichTextEditor({
         onAddYoutube={addYoutube}
         onSetLink={setLink}
         variant={variant}
+        headingLevels={headingLevels}
+        features={features}
       />
       <div
         dir={dir}

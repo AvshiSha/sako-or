@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next'
 import { seoConfig } from '@/lib/seo'
 import { languages } from '@/i18n/settings'
-import { productService, categoryService, blogService } from '@/lib/firebase'
+import { productService, categoryService, blogService, faqService } from '@/lib/firebase'
 import { getPrimaryColorSlug } from '@/lib/product-seo'
+import { getFaqLastModified } from '@/lib/faq-selectors'
 
 const baseUrl = seoConfig.baseUrl.replace(/\/$/, '')
 
@@ -133,6 +134,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch (error) {
     console.error('sitemap: failed to load blog articles:', error)
+  }
+
+  // FAQ. Deliberately NOT in staticPaths above: every entry there gets `now` as
+  // its lastmod, which is a lie for a page that may not have changed in months.
+  // The FAQ's content lives in the database, so a truthful value is available -
+  // the newest updatedAt across the published questions and the settings doc.
+  // Publishing untruthful lastmods is how a sitemap teaches Google to ignore
+  // the field entirely.
+  //
+  // With nothing published the URL is omitted rather than advertising a page
+  // that renders an empty state.
+  try {
+    const [faqs, faqSettings] = await Promise.all([
+      faqService.getPublishedFaqs(),
+      faqService.getFaqPageSettings(),
+    ])
+    if (faqs.length > 0) {
+      const lastModified = getFaqLastModified(faqs, faqSettings, now)
+      for (const lng of languages) {
+        entries.push({ url: `${baseUrl}/${lng}/faq`, lastModified })
+      }
+    }
+  } catch (error) {
+    console.error('sitemap: failed to load FAQs:', error)
   }
 
   return entries.map((entry) => ({ ...entry, url: escapeXmlEntities(entry.url) }))

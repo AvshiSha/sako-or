@@ -15,7 +15,8 @@ import {
   MegaphoneIcon,
   PencilSquareIcon,
   DocumentTextIcon,
-  StarIcon
+  StarIcon,
+  QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline'
 import { adminTheme } from './_components/adminTheme'
 
@@ -76,6 +77,12 @@ function AdminDashboard() {
       href: '/admin/content/pages',
       icon: DocumentTextIcon,
       description: 'Edit Terms, Privacy, and other static pages'
+    },
+    {
+      name: 'Manage FAQ',
+      href: '/admin/faq',
+      icon: QuestionMarkCircleIcon,
+      description: 'Edit the questions, answers and settings on the FAQ page'
     },
     {
       name: 'Customer Reviews',

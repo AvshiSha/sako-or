@@ -14,6 +14,7 @@ const translations = {
     company: 'COMPANY',
     customerSupport: 'CUSTOMER SUPPORT',
     language: 'LANGUAGE',
+    faq: 'FAQ & shoe buying guide',
     terms: 'Terms',
     privacy: 'Privacy',
     accessibility: 'Accessibility',
@@ -28,6 +29,7 @@ const translations = {
     company: 'פרטי החברה',
     customerSupport: 'תמיכה ללקוחות',
     language: 'שפה',
+    faq: 'שאלות נפוצות ומדריך לבחירת נעליים',
     terms: 'תנאים',
     privacy: 'פרטיות',
     accessibility: 'נגישות',
@@ -81,6 +83,7 @@ function FooterLinks({ lng, t }: { lng: string; t: (typeof translations)['en'] }
         </summary>
         <div className="px-4 pb-4">
           <ul className="space-y-3">
+            <li><Link href={`/${lng}/faq`} className="block text-sm hover:opacity-70 transition-opacity">{t.faq}</Link></li>
             <li><Link href={`/${lng}/terms`} className="block text-sm hover:opacity-70 transition-opacity">{t.terms}</Link></li>
             <li><Link href={`/${lng}/contact`} className="block text-sm hover:opacity-70 transition-opacity">{t.contact}</Link></li>
             <li><Link href={`/${lng}/privacy`} className="block text-sm hover:opacity-70 transition-opacity">{t.privacy}</Link></li>

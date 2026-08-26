@@ -56,6 +56,7 @@ Our footwear is crafted according to European sizing. Use the Size Guide to find
     contactMessage: "Still not sure? We're here to help.",
     contactWhatsApp: 'Contact us on WhatsApp',
     contactPage: 'Contact us',
+    faqLink: 'Read the full sizing and fit guide',
   },
   he: {
     title: 'מדריך מידות',
@@ -78,6 +79,7 @@ Our footwear is crafted according to European sizing. Use the Size Guide to find
     contactMessage: 'עדיין לא בטוחים? אנחנו כאן לעזור.',
     contactWhatsApp: 'צרו קשר ב-WhatsApp',
     contactPage: 'צרו קשר במייל',
+    faqLink: 'למדריך המלא למידות והתאמת נעליים',
   },
 }
 
@@ -278,6 +280,14 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
                 {t.contactPage}
               </a>
             </div>
+            <p className="mt-4">
+              <a
+                href={`/${lng}/faq#faq-section-women`}
+                className="text-sm text-[#856D55] underline hover:text-[#95816C]"
+              >
+                {t.faqLink}
+              </a>
+            </p>
           </div>
         </div>
       </SheetContent>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { XMarkIcon } from '@heroicons/react/24/outline'
+import { getAdminAuthHeadersFromSession } from '@/lib/admin-api'
 
 interface StaticPagePreviewModalProps {
   title: string
@@ -28,11 +29,17 @@ export default function StaticPagePreviewModal({
     setLoading(true)
     setError(false)
 
-    fetch('/api/admin/preview-static-page', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, content }),
-    })
+    // The Authorization header is required: the preview route calls
+    // requireAdmin, so without it this request 401s and the modal only ever
+    // shows its error state.
+    getAdminAuthHeadersFromSession()
+      .then((headers) =>
+        fetch('/api/admin/preview-static-page', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ title, content }),
+        })
+      )
       .then((res) => {
         if (!res.ok) throw new Error('Preview request failed')
         return res.json()

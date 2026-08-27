@@ -24,6 +24,10 @@ import {
 } from '@/lib/firebase'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import { adminTheme } from '../_components/adminTheme'
+import {
+  DeleteProductModal,
+  type DeleteProductTarget,
+} from './_components/DeleteProductModal'
 
 const PAGE_SIZE = ADMIN_PRODUCTS_PAGE_SIZE
 const SEARCH_DEBOUNCE_MS = 300
@@ -47,6 +51,10 @@ function ProductsPageContent() {
   const [filter, setFilter] = useState<AdminProductFilter>('all')
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+
+  const [deleteTarget, setDeleteTarget] = useState<DeleteProductTarget | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const [page, setPage] = useState(1)
   const [cursorStack, setCursorStack] = useState<string[]>([])
@@ -147,17 +155,42 @@ function ProductsPageContent() {
     return categoryNames.length > 0 ? categoryNames.join(' → ') : 'No category'
   }
 
-  const handleDelete = async (productId: string) => {
-    if (!confirm('Are you sure you want to delete this product?')) return
+  const requestDelete = (product: Product) => {
+    setDeleteError(null)
+    setDeleteTarget({
+      id: product.id!,
+      title: product.title_en || productHelpers.getField(product, 'name', 'en') || 'Unnamed product',
+      titleHe: product.title_he || productHelpers.getField(product, 'name', 'he') || '',
+      sku: product.sku || '',
+      stock: getTotalStock(product),
+      // Same expression the table row uses, so the badge in the dialog can
+      // never contradict the badge in the row it was opened from.
+      isActive: Boolean(product.isEnabled ?? product.isActive),
+      colorVariantCount: product.colorVariants ? Object.keys(product.colorVariants).length : 0,
+    })
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+
+    setIsDeleting(true)
+    setDeleteError(null)
 
     try {
-      await productService.deleteProduct(productId)
-      setProducts(products.filter((p) => p.id !== productId))
-      setSuccessMessage('Product deleted successfully!')
+      await productService.deleteProduct(deleteTarget.id)
+      setProducts((prev) => prev.filter((p) => p.id !== deleteTarget.id))
+      setSuccessMessage(
+        `Deleted "${deleteTarget.title}". Run Sync Products to clear it from search and reporting.`
+      )
       setShowSuccess(true)
+      setDeleteTarget(null)
     } catch (error) {
       console.error('Error deleting product:', error)
-      alert('Failed to delete product')
+      // Kept in the dialog rather than an alert(), so the admin can read the
+      // reason next to the product it applies to and retry or cancel.
+      setDeleteError('Could not delete this product. Please try again.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -411,9 +444,10 @@ function ProductsPageContent() {
                                   <PencilIcon className="h-4 w-4" />
                                 </Link>
                                 <button
-                                  onClick={() => handleDelete(product.id!)}
+                                  onClick={() => requestDelete(product)}
                                   className="text-red-600 hover:text-red-800"
                                   title="Delete"
+                                  aria-label={`Delete ${product.sku}`}
                                 >
                                   <TrashIcon className="h-4 w-4" />
                                 </button>
@@ -458,6 +492,17 @@ function ProductsPageContent() {
           </div>
         </div>
       </div>
+
+      <DeleteProductModal
+        target={deleteTarget}
+        isDeleting={isDeleting}
+        error={deleteError}
+        onClose={() => {
+          setDeleteTarget(null)
+          setDeleteError(null)
+        }}
+        onConfirm={handleDelete}
+      />
     </>
   )
 }

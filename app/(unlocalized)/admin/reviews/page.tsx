@@ -15,10 +15,29 @@ import { adminTheme } from '../_components/adminTheme'
  * The primary job here is not moderation — it is the manual loyalty-points
  * follow-up. Points for reviewing are credited by hand in Verifone, so without a
  * record of who has been paid there is no way to avoid missing someone or paying
- * them twice. "Awaiting points" is therefore the default view.
+ * them twice.
+ *
+ * "Not credited" is therefore the default view: every review that still owes the
+ * customer something, whatever the reason. It is the superset of "Awaiting points"
+ * and "Not registered", and it is the default because the failure mode this console
+ * keeps hitting is a review nobody noticed — landing on a narrower queue is what hid
+ * guest reviews for as long as it did. The two narrower tabs remain for working one
+ * kind at a time: "Awaiting points" is the payout list, and everyone on it can
+ * actually be credited in Verifone.
+ *
+ * "Not registered" is the same queue for reviewers with no club account: nothing can
+ * be credited to them from here, so the follow-up is a human one — contact her and
+ * ask her to join. She then promotes herself into "Awaiting points" on the next page
+ * load (see `promoteNewlyEligibleReviews` in lib/reviews/admin-reviews.ts).
  */
 
-type Filter = 'awaiting_points' | 'all' | 'awarded' | 'unpublished'
+type Filter =
+  | 'not_credited'
+  | 'awaiting_points'
+  | 'not_registered'
+  | 'all'
+  | 'awarded'
+  | 'unpublished'
 
 interface Product {
   id: string
@@ -63,7 +82,9 @@ interface Review {
 
 interface Counts {
   all: number
+  notCredited: number
   awaitingPoints: number
+  notRegistered: number
   awarded: number
   unpublished: number
 }
@@ -76,11 +97,13 @@ const SIZING_LABEL: Record<string, string> = {
 
 export default function AdminReviewsPage() {
   const { user } = useAuth()
-  const [filter, setFilter] = useState<Filter>('awaiting_points')
+  const [filter, setFilter] = useState<Filter>('not_credited')
   const [reviews, setReviews] = useState<Review[]>([])
   const [counts, setCounts] = useState<Counts>({
     all: 0,
+    notCredited: 0,
     awaitingPoints: 0,
+    notRegistered: 0,
     awarded: 0,
     unpublished: 0,
   })
@@ -110,7 +133,9 @@ export default function AdminReviewsPage() {
   }, [load])
 
   const tabs: { key: Filter; label: string; count: number }[] = [
+    { key: 'not_credited', label: 'Not credited', count: counts.notCredited },
     { key: 'awaiting_points', label: 'Awaiting points', count: counts.awaitingPoints },
+    { key: 'not_registered', label: 'Not registered', count: counts.notRegistered },
     { key: 'awarded', label: 'Points given', count: counts.awarded },
     { key: 'unpublished', label: 'Unpublished', count: counts.unpublished },
     { key: 'all', label: 'All', count: counts.all },
@@ -156,9 +181,13 @@ export default function AdminReviewsPage() {
         ) : reviews.length === 0 ? (
           <div className={`${adminTheme.card} p-10 text-center`}>
             <p className="text-gray-500">
-              {filter === 'awaiting_points'
-                ? 'Nobody is waiting for points. 🎉'
-                : 'No reviews here yet.'}
+              {filter === 'not_credited'
+                ? 'Everyone has been credited. 🎉'
+                : filter === 'awaiting_points'
+                  ? 'Nobody is waiting for points. 🎉'
+                  : filter === 'not_registered'
+                    ? 'Every reviewer has a club account. 🎉'
+                    : 'No reviews here yet.'}
             </p>
           </div>
         ) : (
@@ -196,7 +225,12 @@ function ReviewCard({ review, onChanged }: { review: Review; onChanged: () => vo
                 {review.joinedAfterOrder ? ' (joined after order)' : ''}
               </span>
             ) : (
-              <span className={adminTheme.badgeInactive}>Not a member</span>
+              // No club account to credit, so the points cannot be paid out from
+              // here. Says what to do about it rather than only stating the fact —
+              // once she joins, the row promotes itself into "Awaiting points".
+              <span className={adminTheme.badgeInactive}>
+                Not registered — handle manually
+              </span>
             )}
             {review.currentPointsBalance !== null ? (
               <span className="text-xs text-gray-500">

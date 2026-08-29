@@ -13,7 +13,14 @@ import { listReviews, type ReviewFilter } from '@/lib/reviews/admin-reviews'
 
 export const dynamic = 'force-dynamic'
 
-const FILTERS: ReviewFilter[] = ['all', 'awaiting_points', 'awarded', 'unpublished']
+const FILTERS: ReviewFilter[] = [
+  'all',
+  'not_credited',
+  'awaiting_points',
+  'not_registered',
+  'awarded',
+  'unpublished',
+]
 
 export async function GET(request: NextRequest) {
   try {

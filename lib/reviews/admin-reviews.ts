@@ -9,7 +9,13 @@ import { notifyPointsUpdated } from './points-notification'
  * loyalty-points follow-up.
  */
 
-export type ReviewFilter = 'all' | 'awaiting_points' | 'awarded' | 'unpublished'
+export type ReviewFilter =
+  | 'all'
+  | 'not_credited'
+  | 'awaiting_points'
+  | 'not_registered'
+  | 'awarded'
+  | 'unpublished'
 
 export interface AdminReviewProduct {
   id: string
@@ -61,16 +67,43 @@ export interface AdminReview {
 export interface AdminReviewsPage {
   reviews: AdminReview[]
   total: number
-  counts: { all: number; awaitingPoints: number; awarded: number; unpublished: number }
+  counts: {
+    all: number
+    notCredited: number
+    awaitingPoints: number
+    notRegistered: number
+    awarded: number
+    unpublished: number
+  }
 }
 
 function whereFor(filter: ReviewFilter): Prisma.ReviewWhereInput {
   switch (filter) {
+    // Everything still owed something: the union of "awaiting points" and "not
+    // registered", plus any status that is neither.
+    //
+    // Written as `not: 'credited'` rather than an `in` list of the other statuses on
+    // purpose. `RewardStatus` includes 'failed', which nothing currently writes — an
+    // `in` list would silently drop those rows the day something starts to, which is
+    // the same way guest reviews went missing in the first place. Negating the one
+    // terminal status is the formulation that cannot rot.
+    case 'not_credited':
+      return { rewardStatus: { not: 'credited' } }
     // Keyed on rewardStatus rather than `pointsAwardedAt: null`, so guest reviews
     // with no account to credit stay out of the payout queue instead of sitting
     // there permanently unactionable.
     case 'awaiting_points':
       return { rewardStatus: 'pending' }
+    // The other half of that split: reviews from customers with no club account.
+    // They used to be visible only under "All", buried among already-handled
+    // reviews, so in practice nobody noticed a new one. Their own tab makes them a
+    // queue the admin can work — by contacting the customer and asking them to join.
+    //
+    // Note `promoteNewlyEligibleReviews` runs before this query, so anyone who has
+    // registered since submitting has already moved to "awaiting points" and will
+    // not appear here.
+    case 'not_registered':
+      return { rewardStatus: 'not_eligible' }
     case 'awarded':
       return { rewardStatus: 'credited' }
     case 'unpublished':
@@ -162,7 +195,16 @@ export async function listReviews(params: {
 
   const where = whereFor(filter)
 
-  const [rows, total, all, awaitingPoints, awarded, unpublished] = await Promise.all([
+  const [
+    rows,
+    total,
+    all,
+    notCredited,
+    awaitingPoints,
+    notRegistered,
+    awarded,
+    unpublished,
+  ] = await Promise.all([
     prisma.review.findMany({
       where,
       orderBy: { submittedAt: 'desc' },
@@ -191,7 +233,9 @@ export async function listReviews(params: {
     }),
     prisma.review.count({ where }),
     prisma.review.count(),
+    prisma.review.count({ where: whereFor('not_credited') }),
     prisma.review.count({ where: whereFor('awaiting_points') }),
+    prisma.review.count({ where: whereFor('not_registered') }),
     prisma.review.count({ where: whereFor('awarded') }),
     prisma.review.count({ where: whereFor('unpublished') }),
   ])
@@ -227,7 +271,7 @@ export async function listReviews(params: {
 
   return {
     total,
-    counts: { all, awaitingPoints, awarded, unpublished },
+    counts: { all, notCredited, awaitingPoints, notRegistered, awarded, unpublished },
     reviews: rows.map((review) => {
       const { account, matchedLater } = accountFor(review)
 

@@ -15,7 +15,7 @@ export type PromoItem = {
 const DEFAULT_PROMOS: PromoItem[] = [
    {
     text: {
-      he: 'ימים אחרונים למבצע! שני זוגות ב-600 ₪ בלבד',
+      he: '2 זוגות ב־600 ₪ על דגמים נבחרים – לחצו לצפייה',
       en: '2 pairs for only ₪600 – click here and refresh your wardrobe',
     },
     href: '/collection/campaign?slug=bogo600',

@@ -1,7 +1,8 @@
 // Single source of truth for CMS-managed static pages (Terms & Conditions,
-// and future pages like Privacy Policy, Shipping, Returns, etc.). Adding a
-// new page requires one entry here plus one thin public route file — see
-// app/[lng]/terms/page.tsx for the template.
+// Policies, Shipping & Returns, and future pages). Adding a new page requires
+// one entry here, one thin public route file delegating to
+// app/components/StaticCmsPage.tsx (see app/(site)/[lng]/terms/page.tsx for the
+// template), plus the path in app/sitemap.ts and, if it belongs there, the footer.
 
 export interface StaticPageDefinition {
   /** Firestore doc ID in the `staticPages` collection. */
@@ -14,6 +15,12 @@ export interface StaticPageDefinition {
 
 export const STATIC_PAGE_DEFINITIONS: StaticPageDefinition[] = [
   { key: 'terms', publicPath: '/terms', adminLabel: 'Terms of Service' },
+  { key: 'policies', publicPath: '/policies', adminLabel: 'Policies' },
+  {
+    key: 'shipping-and-returns',
+    publicPath: '/shipping-and-returns',
+    adminLabel: 'Shipping & Returns',
+  },
 ];
 
 export function getStaticPageDefinition(key: string): StaticPageDefinition | undefined {

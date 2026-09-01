@@ -16,6 +16,8 @@ const translations = {
     language: 'LANGUAGE',
     faq: 'FAQ & shoe buying guide',
     terms: 'Terms',
+    policies: 'Policies',
+    shippingAndReturns: 'Shipping & Returns',
     privacy: 'Privacy',
     accessibility: 'Accessibility',
     hebrew: 'Hebrew',
@@ -31,6 +33,8 @@ const translations = {
     language: 'שפה',
     faq: 'שאלות נפוצות ומדריך לבחירת נעליים',
     terms: 'תנאים',
+    policies: 'מדיניות',
+    shippingAndReturns: 'משלוחים והחזרות',
     privacy: 'פרטיות',
     accessibility: 'נגישות',
     hebrew: 'עברית',
@@ -84,7 +88,9 @@ function FooterLinks({ lng, t }: { lng: string; t: (typeof translations)['en'] }
         <div className="px-4 pb-4">
           <ul className="space-y-3">
             <li><Link href={`/${lng}/faq`} className="block text-sm hover:opacity-70 transition-opacity">{t.faq}</Link></li>
+            <li><Link href={`/${lng}/shipping-and-returns`} className="block text-sm hover:opacity-70 transition-opacity">{t.shippingAndReturns}</Link></li>
             <li><Link href={`/${lng}/terms`} className="block text-sm hover:opacity-70 transition-opacity">{t.terms}</Link></li>
+            <li><Link href={`/${lng}/policies`} className="block text-sm hover:opacity-70 transition-opacity">{t.policies}</Link></li>
             <li><Link href={`/${lng}/contact`} className="block text-sm hover:opacity-70 transition-opacity">{t.contact}</Link></li>
             <li><Link href={`/${lng}/privacy`} className="block text-sm hover:opacity-70 transition-opacity">{t.privacy}</Link></li>
             <li><Link href={`/${lng}/accessibility`} className="block text-sm hover:opacity-70 transition-opacity">{t.accessibility}</Link></li>

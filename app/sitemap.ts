@@ -55,6 +55,8 @@ const staticPaths = [
   '/contact',
   '/privacy',
   '/terms',
+  '/policies',
+  '/shipping-and-returns',
   '/collection',
   '/news',
 ]

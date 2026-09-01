@@ -126,6 +126,14 @@ export function buildLlmsTxt(input: LlmsTxtInput): string {
   lines.push('## Policies and Contact');
   lines.push('');
   lines.push(link('Terms of service', `${base}/${primary}/terms`, 'Purchase terms and site conditions.'));
+  lines.push(link('Policies', `${base}/${primary}/policies`, 'Store policies in one place.'));
+  lines.push(
+    link(
+      'Shipping and returns',
+      `${base}/${primary}/shipping-and-returns`,
+      'Delivery areas and times, and how to return or exchange an order.'
+    )
+  );
   lines.push(link('Privacy policy', `${base}/${primary}/privacy`, 'How customer data is handled.'));
   lines.push(link('Accessibility statement', `${base}/${primary}/accessibility`, 'Accessibility commitments and contact.'));
   lines.push(link('Contact', `${base}/${primary}/contact`, 'Customer service contact form and details.'));

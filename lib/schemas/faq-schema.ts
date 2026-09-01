@@ -45,6 +45,8 @@ export const INTERNAL_PATH_ALLOWLIST = [
   '/news',
   '/bags/guide',
   '/terms',
+  '/policies',
+  '/shipping-and-returns',
   '/privacy',
   '/accessibility',
   '/faq',

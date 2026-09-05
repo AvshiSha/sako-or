@@ -13,13 +13,13 @@ export type PromoItem = {
 }
 
 const DEFAULT_PROMOS: PromoItem[] = [
-   {
+      {
     text: {
-      he: '2 זוגות ב־600 ₪ על דגמים נבחרים – לחצו לצפייה',
-      en: '2 pairs for only ₪600 – click here and refresh your wardrobe',
+      he: 'פותחות שנה בסטייל: 10% נוספים על כל האאוטלט | קוד: SEP10',
+      en: 'New Year Sale: 10% extra discount on all outlet | Coupon: SEP10',
     },
-    href: '/collection/campaign?slug=bogo600',
-    icon: '👠',
+    href: '/collection/women/outlet',
+    icon: '🍎'
   },
   // {
   //    text: {

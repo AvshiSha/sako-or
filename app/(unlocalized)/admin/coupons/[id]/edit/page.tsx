@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
+import { useAuth } from '@/app/hooks/useAuth'
 import { CouponForm, CouponFormValues } from '../../_components/CouponForm'
 import { CouponTestModal } from '../../_components/CouponTestModal'
 import { CouponCartItemInput } from '@/lib/coupons'
@@ -104,6 +105,7 @@ function EditCouponPageContent() {
   const params = useParams<{ id: string }>()
   const id = params?.id
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -119,7 +121,10 @@ function EditCouponPageContent() {
       try {
         setLoading(true)
         setError(null)
-        const response = await fetch(`/api/admin/coupons/${id}`)
+        const idToken = await user?.getIdToken()
+        const response = await fetch(`/api/admin/coupons/${id}`, {
+          headers: idToken ? { Authorization: `Bearer ${idToken}` } : {}
+        })
         if (!response.ok) {
           throw new Error('Failed to load coupon.')
         }
@@ -135,10 +140,12 @@ function EditCouponPageContent() {
       }
     }
 
-    if (id) {
+    // Same reason as the coupons list: wait for the session before fetching,
+    // or the request goes out without a token and comes back 401.
+    if (id && !authLoading && user) {
       loadCoupon()
     }
-  }, [id])
+  }, [id, authLoading, user])
 
   const handleSubmit = async (values: CouponFormValues) => {
     if (!id) {
@@ -146,9 +153,13 @@ function EditCouponPageContent() {
     }
 
     const payload = createPayload(values)
+    const idToken = await user?.getIdToken()
     const response = await fetch(`/api/admin/coupons/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+      },
       body: JSON.stringify(payload)
     })
 

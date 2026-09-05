@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
+import { useAuth } from '@/app/hooks/useAuth'
 import { CouponForm, CouponFormValues } from '../_components/CouponForm'
 import { CouponTestModal } from '../_components/CouponTestModal'
 import { CouponCartItemInput } from '@/lib/coupons'
@@ -80,15 +81,20 @@ function createPayload(values: CouponFormValues) {
 
 function NewCouponPageContent() {
   const router = useRouter()
+  const { user } = useAuth()
   const [testModalOpen, setTestModalOpen] = useState(false)
   const [testModalCode, setTestModalCode] = useState<string>('')
   const [testSampleCart, setTestSampleCart] = useState<CouponCartItemInput[]>([])
 
   const handleSubmit = async (values: CouponFormValues) => {
     const payload = createPayload(values)
+    const idToken = await user?.getIdToken()
     const response = await fetch('/api/admin/coupons', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {})
+      },
       body: JSON.stringify(payload)
     })
 

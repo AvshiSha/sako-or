@@ -13,8 +13,8 @@ const imageUrlMappings: Record<string, string> = {
   "/images/hero/shavout-2026-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fshavout-2026-mobile.webp?alt=media&token=b33dcc64-7b6d-4186-828e-feadf2f5eb13",
   "/images/hero/summer-sale-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_sale_2026_fix_desktop.webp?alt=media&token=05788250-422d-423e-aac9-64cbc4242c20",
   "/images/hero/summer-sale-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
-  "/images/hero/two-for-600-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Ftwo_600_desktop_2026.webp?alt=media&token=8a870086-76bb-453f-bae0-2ecfa84939e3",
-  "/images/hero/two-for-600-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Ftwo_600_mobile_2026.webp?alt=media&token=9787b0c3-6702-4c38-a40e-ed92a127d2c7",
+  "/images/hero/rosh-hashana-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FRosh_hashana_sale_dasktop_26.webp?alt=media&token=1efaaaac-25e1-44c3-9b5b-14d9d0bad2e7",
+  "/images/hero/rosh-hashana-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FRosh_hashana_sale_mobile_26.webp?alt=media&token=c41dd395-600f-43ac-b9f2-542f6120f5e7",
   "/images/hero/bogo-700-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FBOGO_700_july_desktop.webp?alt=media&token=5d72e3bb-8725-44f3-8684-7b952cea9e41",
   "/images/hero/bogo-700-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FBOGO_700_July_mobile.webp?alt=media&token=ca86d263-d4b8-47ca-ac6c-a0166d700f98",
   "/images/hero/new-drop-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fnew_drop_26_aug_desktop.webp?alt=media&token=7bb97f09-3c45-4c0d-a332-e1e64b96ae1c",
@@ -97,15 +97,15 @@ export function getSummerSaleHeroMobileImageUrl(): string {
 }
 
 /**
- * "Two for 600" campaign hero banners (desktop / mobile). Locale-agnostic -
+ * Rosh Hashana 2026 sale hero banners (desktop / mobile). Locale-agnostic -
  * both EN and HE text is baked into the image itself.
  */
-export function getTwoFor600HeroDesktopImageUrl(): string {
-  return getImageUrl("/images/hero/two-for-600-desktop.webp");
+export function getRoshHashanaHeroDesktopImageUrl(): string {
+  return getImageUrl("/images/hero/rosh-hashana-desktop.webp");
 }
 
-export function getTwoFor600HeroMobileImageUrl(): string {
-  return getImageUrl("/images/hero/two-for-600-mobile.webp");
+export function getRoshHashanaHeroMobileImageUrl(): string {
+  return getImageUrl("/images/hero/rosh-hashana-mobile.webp");
 }
 
 /**

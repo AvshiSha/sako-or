@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { CouponDiscountType } from '@prisma/client'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
+import { useAuth } from '@/app/hooks/useAuth'
 import SuccessMessage from '@/app/components/SuccessMessage'
 import { CouponTestModal } from './_components/CouponTestModal'
 import { CouponCartItemInput } from '@/lib/coupons'
@@ -115,6 +116,7 @@ function formatCurrency(amount?: number | null, currency: string = 'ILS'): strin
 function CouponsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, loading: authLoading } = useAuth()
 
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const [coupons, setCoupons] = useState<AdminCoupon[]>([])
@@ -139,6 +141,14 @@ function CouponsPageContent() {
     }
   }, [searchParams, router])
 
+  /** Every /api/admin/coupons route goes through requireAdmin, which reads the
+   *  Firebase ID token from the Authorization header only — no cookie fallback.
+   *  Without this the request comes back 401 before any query runs. */
+  const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    const idToken = await user?.getIdToken()
+    return idToken ? { Authorization: `Bearer ${idToken}` } : {}
+  }, [user])
+
   const fetchCoupons = useCallback(async (overrideFilters?: Partial<FilterState>) => {
     try {
       setLoading(true)
@@ -153,7 +163,9 @@ function CouponsPageContent() {
       params.set('page', String(activeFilters.page))
       params.set('limit', '20')
 
-      const response = await fetch(`/api/admin/coupons?${params.toString()}`)
+      const response = await fetch(`/api/admin/coupons?${params.toString()}`, {
+        headers: await authHeaders()
+      })
 
       if (!response.ok) {
         throw new Error('Failed to fetch coupons')
@@ -169,11 +181,15 @@ function CouponsPageContent() {
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  }, [filters, authHeaders])
 
+  // Wait for Firebase to restore the session before the first fetch — firing
+  // while `user` is still null would send no token and 401 straight away.
   useEffect(() => {
+    if (authLoading || !user) return
     fetchCoupons()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user])
 
   const handleFilterChange = (key: keyof FilterState, value: string) => {
     const updated: FilterState = {
@@ -194,7 +210,7 @@ function CouponsPageContent() {
     try {
       const response = await fetch(`/api/admin/coupons/${coupon.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
         body: JSON.stringify({ isActive: !coupon.isActive })
       })
       if (!response.ok) {
@@ -212,7 +228,8 @@ function CouponsPageContent() {
     if (!confirmDelete) return
     try {
       const response = await fetch(`/api/admin/coupons/${coupon.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: await authHeaders()
       })
       if (!response.ok) {
         throw new Error('Failed to delete coupon')

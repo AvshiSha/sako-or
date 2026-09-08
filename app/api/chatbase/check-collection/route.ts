@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { timingSafeEqual } from 'node:crypto'
 import * as Sentry from '@sentry/nextjs'
 import { languages } from '@/i18n/settings'
+import { verifyChatbaseRequest } from '@/lib/chatbase/auth'
 import {
   categoryKeysForGender,
   otherGenderWithCategory,
@@ -43,13 +43,6 @@ const MAX_FILTER_VALUES = 10
 /** The storefront's default locale (see DEFAULT_LOCALE in middleware.ts). */
 const DEFAULT_LOCALE = 'he'
 
-function secretMatches(provided: string, expected: string): boolean {
-  const providedBytes = Buffer.from(provided, 'utf8')
-  const expectedBytes = Buffer.from(expected, 'utf8')
-  if (providedBytes.length !== expectedBytes.length) return false
-  return timingSafeEqual(providedBytes, expectedBytes)
-}
-
 /**
  * Chatbase substitutes `{{color}}` in the action body with whatever the agent
  * collected. When it collected nothing, some versions send the placeholder
@@ -85,20 +78,15 @@ function resolveLocale(value: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
-  const expectedSecret = process.env.CHATBASE_API_SECRET
-
-  if (!expectedSecret) {
-    // Fail closed: an unset secret must never mean "open to everyone".
-    console.error('[CHATBASE_CHECK_COLLECTION] CHATBASE_API_SECRET is not set')
-    return NextResponse.json({ error: 'endpoint_not_configured' }, { status: 500 })
-  }
-
-  const providedSecret =
-    request.headers.get('x-chatbase-secret') ||
-    request.headers.get('authorization')?.replace(/^Bearer /i, '') ||
-    ''
-
-  if (!providedSecret || !secretMatches(providedSecret, expectedSecret)) {
+  // Shared with the other Chatbase routes; this route keeps its own flat
+  // response shape because Chatbase is already configured against it.
+  const auth = verifyChatbaseRequest(request)
+  if (!auth.ok) {
+    if (auth.reason === 'not_configured') {
+      // Fail closed: an unset secret must never mean "open to everyone".
+      console.error('[CHATBASE_CHECK_COLLECTION] CHATBASE_API_SECRET is not set')
+      return NextResponse.json({ error: 'endpoint_not_configured' }, { status: 500 })
+    }
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 

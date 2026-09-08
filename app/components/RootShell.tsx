@@ -1,7 +1,7 @@
 import '../globals.css'
 import { Assistant } from 'next/font/google'
 import ClientAuthProvider from './ClientAuthProvider'
-import WhatsAppButton from './WhatsAppButton'
+import ChatbaseWidget from './ChatbaseWidget'
 import CookieConsent from './CookieConsent'
 import DeferredAnalytics from './DeferredAnalytics'
 import { Analytics } from '@vercel/analytics/next'
@@ -110,7 +110,6 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
           <DeferredAnalytics />
           <CookieConsent />
           {children}
-          <WhatsAppButton />
         </ClientAuthProvider>
 
         <script
@@ -190,6 +189,9 @@ window.args = {
 
         <Analytics mode="production" />
         <SpeedInsights />
+
+        {/* Last thing in <body>, as Chatbase's install instructions require. */}
+        <ChatbaseWidget />
       </body>
     </>
   )

@@ -50,6 +50,18 @@ function secretMatches(provided: string, expected: string): boolean {
   return timingSafeEqual(providedBytes, expectedBytes)
 }
 
+/**
+ * Chatbase substitutes `{{color}}` in the action body with whatever the agent
+ * collected. When it collected nothing, some versions send the placeholder
+ * through verbatim instead of an empty string. Left alone, `{{color}}` would
+ * resolve to a colour slug that matches no product, and the customer would be
+ * told we have nothing - a false "unavailable" is the one answer this endpoint
+ * exists to prevent, so an unsubstituted placeholder means "not provided".
+ */
+function isUnresolvedTemplate(value: string): boolean {
+  return /^\{\{.*\}\}$/.test(value.trim())
+}
+
 /** Accepts a string, a comma-separated string, or an array of either. */
 function toStringArray(value: unknown): string[] {
   if (value === undefined || value === null) return []
@@ -58,6 +70,7 @@ function toStringArray(value: unknown): string[] {
     .flatMap((entry) => {
       if (typeof entry === 'number') return [String(entry)]
       if (typeof entry !== 'string') return []
+      if (isUnresolvedTemplate(entry)) return []
       return entry.split(',')
     })
     .map((entry) => entry.trim())
@@ -66,7 +79,7 @@ function toStringArray(value: unknown): string[] {
 }
 
 function resolveLocale(value: unknown): string {
-  if (typeof value !== 'string') return DEFAULT_LOCALE
+  if (typeof value !== 'string' || isUnresolvedTemplate(value)) return DEFAULT_LOCALE
   const normalized = value.trim().toLowerCase()
   return (languages as readonly string[]).includes(normalized) ? normalized : DEFAULT_LOCALE
 }
@@ -102,7 +115,10 @@ export async function POST(request: NextRequest) {
 
   const payload = body as Record<string, unknown>
 
-  const rawCategory = typeof payload.category === 'string' ? payload.category.trim() : ''
+  const rawCategory =
+    typeof payload.category === 'string' && !isUnresolvedTemplate(payload.category)
+      ? payload.category.trim()
+      : ''
   if (!rawCategory) {
     const gender = resolveGender(payload.gender)
     return NextResponse.json(

@@ -174,6 +174,9 @@ const LIST_FIELDS = new Set<string>([
   'categories',
   'colors',
   'sizes',
+  // find_similar_shoes takes its colours under a different name, and it is fed
+  // by the same single-text-box action UI.
+  'requestedColors',
   ...SPEC_FILTER_KEYS,
 ])
 

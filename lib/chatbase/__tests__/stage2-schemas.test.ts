@@ -133,6 +133,40 @@ describe('find_similar_shoes validation', () => {
     invalid(validateFindSimilarRequest, { sourceSku: 'x', requestedColors: ['puce'] })
   })
 
+  it('accepts requestedColors as a plain string from a single text box', () => {
+    // The Chatbase action UI has one text box per input, so this arrives as a
+    // string, not an array.
+    const single = valid<{ requestedColors: string[] }>(validateFindSimilarRequest, {
+      sourceSku: 'x',
+      requestedColors: 'black',
+    })
+    assert.deepEqual(single.requestedColors, ['black'])
+
+    const several = valid<{ requestedColors: string[] }>(validateFindSimilarRequest, {
+      sourceSku: 'x',
+      requestedColors: 'black,beige',
+    })
+    assert.deepEqual(several.requestedColors, ['black', 'beige'])
+  })
+
+  it('accepts heelTypes and categories as plain strings too', () => {
+    const request = valid<{ specs: Record<string, string[]>; categories: string[] }>(
+      validateFindSimilarRequest,
+      { sourceSku: 'x', heelTypes: 'flat,block_heel', categories: 'sandals' }
+    )
+    assert.deepEqual(request.specs.heelTypes, ['flat', 'block_heel'])
+    assert.deepEqual(request.categories, ['sandals'])
+  })
+
+  it('treats an unsubstituted placeholder as not provided', () => {
+    const request = valid<{ requestedColors: string[]; requestedSize?: string }>(
+      validateFindSimilarRequest,
+      { sourceSku: 'x', requestedColors: '{{requestedColors}}', requestedSize: '' }
+    )
+    assert.deepEqual(request.requestedColors, [])
+    assert.equal(request.requestedSize, undefined)
+  })
+
   it('rejects an inverted price range', () => {
     invalid(validateFindSimilarRequest, { sourceSku: 'x', minPrice: 900, maxPrice: 100 })
   })

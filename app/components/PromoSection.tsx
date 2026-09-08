@@ -19,7 +19,9 @@ const DEFAULT_PROMOS: PromoItem[] = [
       en: 'New Year Sale: 10% extra discount on all outlet | Coupon: SEP10',
     },
     href: '/collection/women/outlet',
-    icon: '🍎'
+    icon: '🍎',
+    // Countdown untill September 10, 2026 midnight (local time).
+    countdownEnd: '2026-09-10T00:00:00',
   },
   // {
   //    text: {

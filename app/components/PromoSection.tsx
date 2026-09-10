@@ -21,7 +21,7 @@ const DEFAULT_PROMOS: PromoItem[] = [
     href: '/collection/women/outlet',
     icon: '🍎',
     // Countdown untill September 11, 2026 midnight (local time).
-    countdownEnd: '2026-09-11T00:00:00',
+    //countdownEnd: '2026-09-11T00:00:00',
   },
   // {
   //    text: {

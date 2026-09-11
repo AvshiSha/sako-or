@@ -1,32 +1,31 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  getRoshHashanaHeroDesktopImageUrl,
-  getRoshHashanaHeroMobileImageUrl,
+  getNewDropHeroDesktopImageUrl,
+  getNewDropHeroMobileImageUrl,
 } from '@/lib/image-urls'
 
 interface HomeHeroProps {
   lng: 'en' | 'he'
 }
 
-/** Native dimensions of the Rosh Hashana banners - used for intrinsic sizing
+/** Native dimensions of the "New Drop" banners - used for intrinsic sizing
  * so the full graphic (logo, headline, copy) always renders uncropped instead
- * of being cut by a forced aspect-ratio container. These must match the real
- * files: the ratios differ per breakpoint (2.33 desktop, 0.75 mobile), and a
- * wrong ratio here reserves the wrong height and shifts the page on load. */
-const DESKTOP_HERO_WIDTH = 1916
-const DESKTOP_HERO_HEIGHT = 821
+ * of being cut by a forced aspect-ratio container. The desktop banner ships at
+ * 2x (2732x1536) so it stays sharp on retina displays at full-bleed width. */
+const DESKTOP_HERO_WIDTH = 2732
+const DESKTOP_HERO_HEIGHT = 1536
 const MOBILE_HERO_WIDTH = 1080
-const MOBILE_HERO_HEIGHT = 1440
+const MOBILE_HERO_HEIGHT = 1920
 
 export default function HomeHero({ lng }: HomeHeroProps) {
-  const desktopSrc = getRoshHashanaHeroDesktopImageUrl()
-  const mobileSrc = getRoshHashanaHeroMobileImageUrl()
-  const ariaLabel = lng === 'he' ? 'מבצע ראש השנה' : 'Rosh Hashana sale'
+  const desktopSrc = getNewDropHeroDesktopImageUrl()
+  const mobileSrc = getNewDropHeroMobileImageUrl()
+  const ariaLabel = lng === 'he' ? 'הדרופ החדש' : 'New drop'
 
   return (
     <Link
-      href={`/${lng}/collection/women/outlet`}
+      href={`/${lng}/collection/campaign?slug=new-collection`}
       className="relative block group overflow-hidden"
       aria-label={ariaLabel}
     >

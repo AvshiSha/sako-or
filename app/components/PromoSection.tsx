@@ -13,26 +13,15 @@ export type PromoItem = {
 }
 
 const DEFAULT_PROMOS: PromoItem[] = [
-      {
+  {
     text: {
-      he: 'פותחות שנה בסטייל: 10% נוספים על כל האאוטלט | קוד: SEP10',
-      en: 'New Year Sale: 10% extra discount on all outlet | Coupon: SEP10',
+      he: 'הדרופ החדש כבר כאן | NEW IN SAKO OR',
+      en: 'The New Drop Is Here | Shop NEW IN SAKO OR',
     },
-    href: '/collection/women/outlet',
-    icon: '🍎',
-    // Countdown untill September 11, 2026 midnight (local time).
-    //countdownEnd: '2026-09-11T00:00:00',
+    href: '/collection/campaign?slug=new-collection',
+    icon: '✨',
   },
   // {
-  //    text: {
-  //      he: 'כפל מבצעים | 10% הנחה נוספים על כל האתר | קוד: WEEK10',
-  //      en: 'Women\'s Outlet – 10% extra discount on all site | Coupon: WEEK10',
-  //    },
-  //    href: '/collection/women/',
-  //    icon: '',
-  //    // Countdown until July 12, 2026 midnight (local time).
-  //    countdownEnd: '2026-07-12T00:00:00',
-  //  },
   //  {
   //   text: {
   //     he: 'זוג שני ב־40% הנחה על מגוון מוצרי סניקרס | קוד: SNK40',

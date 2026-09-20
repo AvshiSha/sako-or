@@ -58,7 +58,10 @@ export const colorTranslations: Record<string, ColorTranslation> = {
   'bronze': { hex: '#CD7F32', en: 'Bronze', he: 'ארד' },
   'black-red': { hex: '#420000', en: 'Black & Red', he: 'שחור ואדום' },
   'nude': { hex: '#F7D9BC', en: 'Nude', he: 'ניוד' },
-  'lyla': { hex: '#FFB6C1', en: 'Lyla', he: 'לילה' }
+  'lyla': { hex: '#FFB6C1', en: 'Lyla', he: 'לילה' },
+  // Color code 17 in COLOR_CODE_MAP (lib/inventory.ts) uses the 'tabbacco' spelling
+  'tabbacco': { hex: '#8B5A2B', en: 'Tobacco', he: 'טבק' },
+  'tobacco': { hex: '#8B5A2B', en: 'Tobacco', he: 'טבק' }
 };
 
 /**

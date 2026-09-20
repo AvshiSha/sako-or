@@ -30,6 +30,7 @@ export const HEBREW_TO_ENGLISH_COLORS: Record<string, string> = {
   כסף: 'silver',
   'אוף וויט': 'off-white',
   תכלת: 'light-blue',
+  טבק: 'tabbacco',
 }
 
 export const BASE_COLOR_KEYWORDS = [

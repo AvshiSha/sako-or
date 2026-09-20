@@ -41,8 +41,8 @@ const videoUrlMappings: Record<string, string> = {
   "/videos/sako-or-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION.mp4?alt=media&token=84b2745c-0008-4c91-9c88-ea251489954c",
   "/videos/hero3-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_SALES_DESKTOP.mp4?alt=media&token=7b109db9-67f6-47c8-b8cd-99c072f68a02",
   "/videos/hero3-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fthird_section_new.mp4?alt=media&token=a049aaf7-08de-43be-ba86-1e4251ae6e53",
-  "/videos/home-hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_1_fix.mp4?alt=media&token=fa0c6485-eb87-4548-8be3-4f4e377fc686",
-  "/videos/home-hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_desktop_fix.mp4?alt=media&token=3f52cdac-dead-49cb-90d9-ff64deec95f0",
+  "/videos/home-hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_mobile_v2.mp4?alt=media&token=30a18efe-6cb2-4e70-869d-ecb4bfea36d9",
+  "/videos/home-hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_desktop_v2.mp4?alt=media&token=546a7259-a994-47f0-a9e8-b81c48b3d78d",
 };
 
 /**

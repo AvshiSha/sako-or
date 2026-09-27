@@ -137,7 +137,9 @@ export default function HomeHero({ lng }: HomeHeroProps) {
   return (
     <Link
       href={`/${lng}/collection/campaign?slug=new-collection`}
-      className="relative block aspect-[9/16] md:aspect-[21/9] group overflow-hidden"
+      // Mobile keeps 9/16. Desktop moves from 21/9 to 2/1 - roughly 17% taller - so
+      // the hero reads as a fuller banner behind the transparent header.
+      className="relative block aspect-[9/16] md:aspect-[2/1] group overflow-hidden"
       aria-label={ariaLabel}
     >
       {/* Both cuts open on a near-black frame, so bg-black doubles as the poster

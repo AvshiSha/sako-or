@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, Heart, ShoppingBag, ChevronDown, TextSearch, User } from 'lucide-react'
+import { Menu, Heart, ShoppingBag, ChevronDown, User } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
@@ -14,6 +14,7 @@ import { useAuth } from '@/app/hooks/useAuth'
 import { useUserProfile } from '@/app/hooks/useUserProfile'
 import { getImageUrl } from '@/lib/image-urls'
 import type { NavigationCategoriesData } from '@/lib/navigation-categories'
+import { NAV_BAR_H } from '@/lib/header-layout'
 import {
   Accordion,
   AccordionContent,
@@ -86,6 +87,10 @@ export default function Navigation({
   initialNavData: NavigationCategoriesData
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  // Transparent over the full-bleed hero at rest, solid once the page moves - the
+  // design's two header variants (438:4393 Transparent / 438:4419 Solid). Starts
+  // false so the server render matches the top-of-page state and does not flash.
+  const [isScrolled, setIsScrolled] = useState(false)
   const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
   const [isMenDropdownOpen, setIsMenDropdownOpen] = useState(false)
 
@@ -101,6 +106,16 @@ export default function Navigation({
   const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const [openTimeout, setOpenTimeout] = useState<NodeJS.Timeout | null>(null)
   const [selectedGender, setSelectedGender] = useState<'women' | 'men'>('women')
+
+  // Drives the Transparent -> Solid header swap. Read once on mount as well as on
+  // scroll, because a restored scroll position or a deep link does not fire an
+  // initial scroll event and the bar would otherwise stay transparent mid-page.
+  useEffect(() => {
+    const onScroll = () => setIsScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const { items } = useCart()
   const { favorites } = useFavorites()
@@ -254,38 +269,54 @@ export default function Navigation({
 
 
   return (
-    <nav className="relative w-full shadow-lg" style={{ backgroundColor: '#FFFFFF' }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    // Header, design system 438:4392 (desktop) / 438:4292 (mobile). No shadow and no
+    // white ground: the design sits on surface-secondary under a hairline rule.
+    // The icons stay ink-900 in both variants, per the design - so a hero that is
+    // dark behind the bar would swallow them. Worth checking against real heroes.
+    <nav
+      className={`relative w-full border-b transition-colors duration-200 ${
+        isScrolled
+          ? 'border-text-primary/20 bg-surface-secondary/95 lg:border-sako-black lg:bg-surface-secondary'
+          : 'border-transparent bg-transparent'
+      }`}
+    >
+      <div className="mx-auto w-full px-[16px] lg:px-[36px]">
+        {/* dir="ltr" is deliberate. This bar carries no directional text - icons, the
+            Latin wordmark and MENU - and the Hebrew frames themselves put the icons
+            left and MENU right. Fixing the direction makes both locales match the
+            design rather than mirroring into an arrangement nobody drew. */}
         <div
-          className="relative flex justify-between items-center h-16"
+          dir="ltr"
+          className={`relative flex ${NAV_BAR_H} items-center justify-between`}
           onMouseLeave={handleNavigationMouseLeave}
         >
-          {/* Desktop: Logo on left */}
-          <div className="hidden md:flex items-center">
-            <Link href={`/${lng}`} className="whitespace-nowrap text-1xl font-bold text-gray-900" suppressHydrationWarning>
-              SAKO OR
-            </Link>
-          </div>
-
-          {/* Mobile Layout: Three-column layout */}
-          {/* Left: Menu + Search */}
-          <div className="flex flex-1 min-w-0 items-center justify-start md:hidden">
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="text-gray-700 hover:text-gray-900 p-2"
-              aria-label="Menu"
-              suppressHydrationWarning
-            >
-              {/* <Menu className="h-6 w-6" /> */}
-              <TextSearch strokeWidth={1.5} className="h-6.5 w-6.5" aria-hidden="true" />
-            </button>
-
-            {/* Search Bar */}
-            <div className={lng === 'he' ? 'mr-2' : 'ml-2'}>
+          {/* Left cluster — favourites, account, cart. Favourites occupies the slot the
+              design gave to search; search has moved beside the menu control. Counts
+              render as the design's 9px Ploni numeral inside the glyph rather than the
+              old red badge. */}
+          <div className="flex items-center gap-[13px] lg:gap-[20px]">
             <Link
+              href={`/${lng}/favorites`}
+              className="relative flex h-[36px] w-[32px] items-center justify-center"
+              suppressHydrationWarning
+              aria-label={favoritesAriaLabel}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/sako/favorites.svg" width={22} height={22} alt="" aria-hidden="true" />
+              {favorites.length > 0 && (
+                <span
+                  className="absolute inset-0 flex items-center justify-center pt-[3px] font-ploni text-[9px] text-text-primary"
+                  aria-hidden="true"
+                >
+                  {favorites.length}
+                </span>
+              )}
+            </Link>
+
+            <div className="relative flex items-center justify-center">
+              <Link
                 href={user ? `/${lng}/profile` : `/${lng}/signin`}
-                className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2 rounded-md hover:bg-gray-50"
+                className="flex h-[36px] w-[32px] items-center justify-center"
                 suppressHydrationWarning
                 aria-label={
                   user
@@ -298,25 +329,60 @@ export default function Navigation({
                     : translations[lng as keyof typeof translations].signIn
                 }
               >
-                <User strokeWidth={1.5} className="h-6 w-6 text-gray-700 hover:text-gray-900" aria-hidden="true" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/sako/account.svg" width={22} height={22} alt="" aria-hidden="true" />
               </Link>
-              {/* <SearchBar language={lng} /> */}
+              {/* The signed-in greeting has no home in the design; kept, restyled. */}
+              <span
+                className={`absolute top-full left-1/2 min-h-[14px] -translate-x-1/2 whitespace-nowrap pt-0.5 font-ploni text-[9px] leading-none text-text-secondary ${
+                  user && !authLoading && !profileLoading && greetingName ? 'opacity-100' : 'opacity-0'
+                }`}
+                aria-hidden={!(user && greetingName)}
+              >
+                {greetingName
+                  ? lng === 'he'
+                    ? `היי, ${greetingName}`
+                    : `Hi, ${greetingName}`
+                  : ' '}
+              </span>
             </div>
+
+            <Link
+              href={`/${lng}/cart`}
+              className="relative flex h-[36px] w-[32px] items-center justify-center"
+              suppressHydrationWarning
+              aria-label={cartAriaLabel}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/sako/cart.svg" width={22} height={22} alt="" aria-hidden="true" />
+              <span
+                className="absolute inset-0 flex items-center justify-center pt-[4px] font-ploni text-[9px] text-text-primary"
+                aria-hidden="true"
+              >
+                {items.length}
+              </span>
+            </Link>
           </div>
 
-          {/* Center: Logo (Mobile only) — absolutely centered; nowrap prevents wrapping */}
-          <div className="absolute left-1/2 top-1/2 z-10 flex shrink-0 -translate-x-1/2 -translate-y-1/2 items-center md:hidden px-1">
+          {/* Centred wordmark — Ploni Black 25/-1.4px on mobile (438:4307) stepping to
+              28/-1.8px on desktop (438:4414). Absolutely centred so the two icon
+              clusters, which are not equal widths, cannot push it off axis. */}
+          <div className="absolute left-1/2 top-1/2 z-10 flex shrink-0 -translate-x-1/2 -translate-y-1/2 items-center px-1">
             <Link
               href={`/${lng}`}
-              className="whitespace-nowrap text-lg font-bold text-gray-900 sm:text-xl"
+              className="whitespace-nowrap font-ploni text-[25px] font-black leading-[25px] tracking-[-1.4px] text-text-primary lg:text-[28px] lg:leading-[38px] lg:tracking-[-1.8px]"
               suppressHydrationWarning
             >
               SAKO OR
             </Link>
           </div>
 
-          {/* Desktop Navigation - Center */}
-          <div className="hidden md:flex items-center space-x-8 flex-1 justify-center ml-8">
+          {/* Desktop category navigation. The redesign moves all of this behind the
+              MENU control (438:4522), so it no longer renders in the bar. The markup
+              and its data wiring are parked rather than deleted: the drawer rebuild
+              reuses the same NavigationCategoriesData, and deleting ~200 lines before
+              that exists would throw away the only working consumer of it. */}
+          <div className="hidden items-center space-x-8 flex-1 justify-center ml-8">
             <Link
               href={`/${lng}`}
               className="text-gray-700 hover:text-gray-900 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-gray-50"
@@ -520,11 +586,49 @@ export default function Navigation({
           </div>
 
 
-          {/* Right side icons - Desktop and Mobile */}
-          <div className="flex flex-1 items-center justify-end md:flex-none md:justify-start">
-            {/* Desktop: Search Bar, User, Cart, Favorites, Language Switcher */}
-            <div className="hidden md:flex items-center space-x-4">
+          {/* Right cluster — search, then the menu control at the outer edge. Desktop
+              shows the design's "MENU" wordmark with its two 18x1 rules (438:4415);
+              mobile shows the ☰ glyph (438:4308), which the design sets as Ploni Bold
+              text rather than an asset. */}
+          <div className="flex items-center gap-[13px] lg:gap-[20px]">
+            {/* No language switcher here by decision: the design has no slot for one
+                and it was dropped from the bar deliberately, not by oversight. */}
+            <div className="flex items-center">
               <LazySearchBar language={lng} />
+            </div>
+
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="flex items-center justify-center lg:hidden"
+              aria-label="Menu"
+              aria-expanded={isMobileMenuOpen}
+              suppressHydrationWarning
+            >
+              <span aria-hidden="true" className="font-ploni text-[19px] font-bold leading-none text-text-primary">
+                ☰
+              </span>
+            </button>
+
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="hidden h-[22px] w-[70px] items-center justify-end gap-[6px] lg:flex"
+              aria-label="Menu"
+              aria-expanded={isMobileMenuOpen}
+              suppressHydrationWarning
+            >
+              <span className="font-ploni text-[10px] tracking-[0.9px] text-text-primary">MENU</span>
+              <span aria-hidden="true" className="flex w-[18px] shrink-0 flex-col gap-[1px]">
+                <span className="h-px w-full bg-text-primary" />
+                <span className="h-px w-full bg-text-primary" />
+              </span>
+            </button>
+          </div>
+
+          {/* Parked with the desktop category navigation above: the old right-hand
+              cluster. Its favourites, cart and account controls now live in the left
+              cluster, built from the design's own icon assets. */}
+          <div className="hidden flex-1 items-center justify-end">
+            <div className="hidden items-center space-x-4">
               <div className="relative flex items-center justify-center">
                 <Link
                   href={user ? `/${lng}/profile` : `/${lng}/signin`}
@@ -587,8 +691,8 @@ export default function Navigation({
               <DropdownLanguageSwitcher currentLanguage={lng} />
             </div>
 
-            {/* Mobile: Favorites and Cart (right side) */}
-            <div className="flex items-center md:hidden">
+            {/* Parked: superseded by the left cluster. */}
+            <div className="hidden items-center">
               <Link
                 href={`/${lng}/favorites`}
                 className="relative text-gray-700 hover:text-gray-900 transition-colors duration-200 p-2"
@@ -625,7 +729,9 @@ export default function Navigation({
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
         <SheetContent
           side={lng === 'he' ? 'right' : 'left'}
-          className="p-0 flex flex-col md:hidden"
+          // No longer md:hidden: the redesign routes desktop category navigation
+          // through this same panel, since MENU is now the only way in.
+          className="p-0 flex flex-col"
           dir={lng === 'he' ? 'rtl' : 'ltr'}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >

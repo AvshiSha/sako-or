@@ -8,16 +8,14 @@ export const COLLECTION_GRID_CRITICAL_CSS = `
   overflow-anchor: none;
 }
 .collection-product-grid > * {
-  min-height: calc(50vw + 8.75rem);
+  /* 60.25vw is 50vw x 235/195: the mobile card's image is 4:5, not square. */
+  min-height: calc(60.25vw + 4.75rem);
 }
 .product-card-info-block {
-  min-height: 5.5rem;
+  min-height: 4.75rem;
 }
 .product-card-price-block {
-  min-height: 2.5rem;
-}
-.product-card-swatch-block {
-  min-height: 3.25rem;
+  min-height: 1.5rem;
 }
 @media (min-width: 1024px) {
   .collection-product-grid {
@@ -26,7 +24,10 @@ export const COLLECTION_GRID_CRITICAL_CSS = `
     row-gap: 1.5rem;
   }
   .collection-product-grid > * {
-    min-height: calc((min(100vw, 80rem) - 3rem) / 3 + 8.75rem);
+    min-height: calc((min(100vw, 80rem) - 3rem) / 3 + 6.25rem);
+  }
+  .product-card-info-block {
+    min-height: 6.25rem;
   }
 }
 `;

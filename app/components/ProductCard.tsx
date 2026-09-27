@@ -4,7 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useMemo, type MouseEvent } from 'react'
 import { Product, ColorVariant, productHelpers } from '@/lib/product-types'
-import { HeartIcon, ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import dynamic from 'next/dynamic'
 import { useFavorites } from '@/app/hooks/useFavorites'
@@ -24,16 +24,20 @@ import {
 } from '@/lib/product-image-sizes'
 import {
   PRODUCT_CARD_IMAGE_ASPECT,
-  PRODUCT_CARD_IMAGE_STYLE,
+  PRODUCT_CARD_IMAGE_FIT,
   PRODUCT_CARD_INFO_MIN_H,
   PRODUCT_CARD_PRICE_MIN_H,
-  PRODUCT_CARD_SWATCH_MIN_H,
 } from '@/lib/product-card-layout'
 
 const QuickBuyDrawer = dynamic(() => import('./QuickBuyDrawer'), { ssr: false })
 
-const BADGE_FONT_STYLE = { fontFamily: 'Assistant, sans-serif' } as const
-const STATUS_BADGE_CLASS = 'text-xs font-medium px-2 py-1 rounded pointer-events-none'
+/**
+ * Design system badge, Figma node 438:3941: Ploni DemiBold 14/18 with 3px tracking
+ * on a square, fully opaque swatch. The old pill (rounded, 12px, 80% opacity) is
+ * gone - this design system has no rounded corners outside pill badges.
+ */
+const STATUS_BADGE_CLASS =
+  'font-ploni text-[12px] font-semibold leading-[18px] tracking-[3px] px-[14px] py-[5px] pointer-events-none lg:text-[14px] lg:py-[8px]'
 
 interface ProductCardProps {
   product: Product
@@ -121,13 +125,13 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
   if (!activeVariant) {
     return (
-      <div className="group relative bg-gray-100" aria-hidden>
+      <div className="group relative border-l border-sako-black bg-surface-secondary" aria-hidden>
         <div
-          className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-gray-200 block`}
-          style={PRODUCT_CARD_IMAGE_STYLE}
+          className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-surface-secondary block`}
         />
-        <div className={`mt-0 bg-[#E1DBD7] p-3 pb-1 ${PRODUCT_CARD_INFO_MIN_H}`} />
-        <div className={`mt-0 bg-[#E1DBD7] p-3 pt-1 ${PRODUCT_CARD_SWATCH_MIN_H}`} />
+        <div
+          className={`mt-0 border-t border-sako-black bg-surface-secondary px-[16px] pt-[15px] pb-[14px] ${PRODUCT_CARD_INFO_MIN_H}`}
+        />
       </div>
     )
   }
@@ -209,29 +213,32 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const promoBadge = useProductCouponBadge(product.sku, product.baseSku)
 
   const statusBadge = useMemo(() => {
+    // Only the sale badge is designed (438:3941, accent-sale). The other three
+    // states predate the redesign and are mapped onto design system primitives so
+    // the card is not half old-brand, half new - they need design sign-off.
     if (isOutOfStock) {
       return {
         text: language === 'he' ? 'אזל מהמלאי' : 'Out of Stock',
-        className: 'bg-[#7B1B38]/80',
+        className: 'bg-surface-dark',
       }
     }
     if (isLastCall) {
       return {
         text: language === 'he' ? 'Last Call' : 'Last Call',
-        className: 'bg-[#B2A28E]/80',
+        className: 'bg-sako-brown-500',
       }
     }
     if (hasSalePrice() && salePercent != null && salePercent > 0) {
       return {
         text: `${salePercent}% OFF`,
-        className: 'bg-[#7B1B38]/70',
+        className: 'bg-accent-sale',
         dir: 'ltr' as const,
       }
     }
     if (product.newProduct && !hasSalePrice()) {
       return {
         text: language === 'he' ? 'NEW' : 'NEW',
-        className: 'bg-[#856D55]/80',
+        className: 'bg-surface-dark',
       }
     }
     return null
@@ -242,8 +249,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     return (
       <div
         dir={statusBadge.dir}
-        className={`${STATUS_BADGE_CLASS} ${statusBadge.className} text-white`}
-        style={BADGE_FONT_STYLE}
+        className={`${STATUS_BADGE_CLASS} ${statusBadge.className} text-text-inverse`}
       >
         {statusBadge.text}
       </div>
@@ -338,7 +344,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   }, [api, totalImages])
 
   return (
-    <div className="group relative bg-gray-100">
+    <div className="group relative border-l border-sako-black bg-surface-secondary">
       {/* Main Product Image Section - Clickable to go to selected variant */}
       <Link
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
@@ -347,8 +353,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         // (lib/collectionScrollRestore.ts), not by suppressing scroll here -
         // `scroll` only governs this forward navigation, never popstate.
         scroll={true}
-        className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-gray-50 block`}
-        style={PRODUCT_CARD_IMAGE_STYLE}
+        className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-surface-secondary block`}
         onPointerDown={saveBrowseScroll}
         onClick={handleLinkClick}
       >
@@ -374,58 +379,72 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                   {/* Left Arrow (Previous) */}
                   <button
                     onClick={(e) => handleArrowClick('prev', e)}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 hidden md:flex items-center justify-center"
+                    className="absolute left-0 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center bg-surface-secondary/90 p-2 opacity-0 transition-opacity duration-200 hover:bg-surface-secondary group-hover:opacity-100 md:flex"
                     aria-label={language === 'he' ? 'תמונה קודמת' : 'Previous image'}
                   >
-                    <ChevronLeftIcon className="h-5 w-5 text-gray-800" aria-hidden="true" />
+                    <ChevronLeftIcon className="h-5 w-5 text-text-primary" aria-hidden="true" />
                   </button>
 
                   {/* Right Arrow (Next) */}
                   <button
                     onClick={(e) => handleArrowClick('next', e)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-2 shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20 hidden md:flex items-center justify-center"
+                    className="absolute right-0 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center bg-surface-secondary/90 p-2 opacity-0 transition-opacity duration-200 hover:bg-surface-secondary group-hover:opacity-100 md:flex"
                     aria-label={language === 'he' ? 'תמונה הבאה' : 'Next image'}
                   >
-                    <ChevronRightIcon className="h-5 w-5 text-gray-800" aria-hidden="true" />
+                    <ChevronRightIcon className="h-5 w-5 text-text-primary" aria-hidden="true" />
                   </button>
                 </>
               )}
             </>
           ) : primaryImage ? (
-            <div className="w-full h-full relative aspect-square" style={{ aspectRatio: '1 / 1' }}>
+            <div className="relative h-full w-full">
               <Image
                 src={typeof primaryImage === 'string' ? primaryImage : primaryImage?.url || ''}
                 alt={`${productName} - ${activeVariant.colorSlug}`}
                 width={500}
                 height={500}
-                className={`h-full w-full object-cover object-center${disableImageCarousel ? '' : ' transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100'}`}
+                className={`h-full w-full ${PRODUCT_CARD_IMAGE_FIT} object-center${disableImageCarousel ? '' : ' transition-transform duration-300 group-hover:scale-105 md:group-hover:scale-100'}`}
                 sizes={PRODUCT_CARD_IMAGE_SIZES}
                 priority={isAboveFold}
                 loading={isAboveFold ? undefined : 'lazy'}
                 draggable={false}
-                style={{ aspectRatio: '1 / 1' }}
               />
             </div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gray-200">
-              <span className="text-gray-400 text-sm">No Image</span>
+            <div className="flex h-full w-full items-center justify-center bg-sako-gray-300">
+              <span className="font-ploni text-[12px] text-text-secondary">No Image</span>
             </div>
           )}
         </div>
 
         {/* Mobile Icons - Heart and Quick Buy */}
-        <div className="absolute top-2 right-2 flex flex-col gap-1 md:hidden">
+        {/* Mobile controls. The heart now uses the same design asset as desktop
+            (438:3980) instead of a heroicon in a white pill, so the favourite control
+            no longer changes shape at the breakpoint. The cart is kept - the design's
+            mobile card does not show it, but removing it would drop a function, not
+            just a style - and restyled onto the system. */}
+        <div className="absolute top-2 right-2 z-20 flex flex-col gap-3 md:hidden">
           {/* Wishlist Button */}
           <button
             type="button"
             onClick={handleWishlistToggle}
             aria-label={wishlistAriaLabel}
-            className="bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm transition-colors"
+            className="flex items-center justify-center"
           >
             {isWishlisted ? (
-              <HeartSolidIcon className="h-4 w-4 text-red-500" aria-hidden="true" />
+              <HeartSolidIcon
+                className="h-[15.4808px] w-[17.3943px] text-accent-sale"
+                aria-hidden="true"
+              />
             ) : (
-              <HeartIcon className="h-4 w-4 text-gray-600" aria-hidden="true" />
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src="/icons/sako/heart-card.svg"
+                width={17.3943}
+                height={15.4808}
+                alt=""
+                aria-hidden="true"
+              />
             )}
           </button>
 
@@ -435,36 +454,56 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
             onClick={handleQuickBuy}
             disabled={isOutOfStock}
             aria-label={quickBuyAriaLabel}
-            className={`bg-white/80 rounded-full p-1.5 shadow-sm transition-colors ${
-              isOutOfStock 
-                ? 'opacity-50 cursor-not-allowed' 
-                : 'hover:bg-white'
+            className={`flex items-center justify-center ${
+              isOutOfStock ? 'cursor-not-allowed opacity-50' : ''
             }`}
           >
-            <ShoppingCartIcon className={`h-4 w-4 ${isOutOfStock ? 'text-gray-400' : 'text-gray-600'}`} aria-hidden="true" />
+            <ShoppingCartIcon
+              className={`h-[17px] w-[17px] ${isOutOfStock ? 'text-text-secondary' : 'text-text-primary'}`}
+              aria-hidden="true"
+            />
           </button>
         </div>
 
-        {/* Desktop Wishlist Button */}
+        {/* Desktop Wishlist Button — design system 438:3935. The heart is present at
+            all times now: Default and Hover ship the same outline asset, so the old
+            hover-revealed white pill is gone. */}
         <button
           type="button"
           onClick={handleWishlistToggle}
           aria-label={wishlistAriaLabel}
-          className="absolute top-2 right-2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hidden md:block"
+          className="absolute top-[12px] right-[13px] z-20 hidden md:block"
         >
           {isWishlisted ? (
-            <HeartSolidIcon className="h-4 w-4 text-red-500" aria-hidden="true" />
+            // GAP: the design has no selected/filled heart - both card states export
+            // the identical outline. Falling back to the solid icon at the design's
+            // dimensions so the favourite state stays legible. Needs a real asset.
+            <HeartSolidIcon
+              className="h-[15.4808px] w-[17.3943px] text-accent-sale"
+              aria-hidden="true"
+            />
           ) : (
-            <HeartIcon className="h-4 w-4 text-gray-600" aria-hidden="true" />
+            // A 578-byte static SVG icon: next/image would add an optimizer round
+            // trip for no gain, and the design asset's intrinsic 17.3943x15.4808
+            // dimensions must be preserved rather than overridden.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/icons/sako/heart-card.svg"
+              width={17.3943}
+              height={15.4808}
+              alt=""
+              aria-hidden="true"
+            />
           )}
         </button>
 
-        {/* Status badge — bottom-left mobile (above promo ribbon when both), top-left desktop */}
+        {/* Status badge — flush to the top-left corner on mobile (438:3978 is
+            top-0/left--1) and inset by the desktop frame's 9/10px at lg (438:3941).
+            The old mobile placement was bottom-left, which needed a conditional to
+            dodge the promo ribbon; moving it to the top removes that collision. */}
         {statusBadge && (
           <div
-            className={`absolute left-2 z-10 pointer-events-none md:top-2 md:bottom-auto ${
-              promoBadge ? 'bottom-11 md:bottom-auto' : 'bottom-2'
-            }`}
+            className="pointer-events-none absolute left-[-1px] top-0 z-10 lg:left-[9px] lg:top-[10px]"
           >
             {renderStatusBadge()}
           </div>
@@ -481,51 +520,69 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         )}
 
         {/* Desktop Quick Buy Button - Overlay at bottom of image (z-20 so it sits above badges on hover) */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-2 hidden md:block">
+        {/* Design system 438:3916 — a full-bleed dark bar flush to the bottom of the
+            image, not an inset outlined button. The label changes from "קניה מהירה"
+            to the design's "בחרי מידה"; it opens the same size-picking drawer. */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 hidden opacity-0 transition-opacity duration-200 group-hover:opacity-100 md:block">
           <button
             onClick={handleQuickBuy}
             disabled={isOutOfStock}
-            className={`w-full border font-medium py-2 px-4 transition-colors duration-200 ${
+            className={`w-full border py-[14px] font-ploni text-[16px] transition-colors duration-200 ${
               isOutOfStock
-                ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'border-[#856D55]/90 bg-white text-black hover:bg-[#856D55]/90 hover:text-white'
+                ? 'cursor-not-allowed border-sako-gray-500 bg-sako-gray-500 text-surface-secondary'
+                : 'border-btn-primary-bg bg-btn-primary-bg text-surface-secondary hover:bg-sako-ink-800'
             }`}
           >
-            {isOutOfStock 
+            {isOutOfStock
               ? (language === 'he' ? 'אזל מהמלאי' : 'Out of Stock')
-              : (language === 'he' ? 'קניה מהירה' : 'Quick buy')
+              : (language === 'he' ? 'בחרי מידה' : 'Select size')
             }
           </button>
         </div>
       </Link>
 
-      {/* Product Information Section */}
-      <div className={`mt-0 bg-[#E1DBD7] p-3 pb-1 product-card-info-block ${PRODUCT_CARD_INFO_MIN_H}`}>
-        <div className={`flex items-center justify-between mb-1 ${language === 'he' ? 'flex-row' : 'flex-row-reverse'}`}>
-          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide line-clamp-1">{productName}</h3>
+      {/* Product information — design system 438:3943 (desktop) / 438:3981 (mobile).
+          The two stacked blocks are now one bar: product text on the RTL start edge,
+          colour swatches inline on the end edge. text-start rather than text-right so
+          the English storefront mirrors correctly instead of hardcoding RTL. */}
+      <div
+        className={`mt-0 flex items-start justify-between gap-[8px] border-t border-sako-black bg-surface-secondary px-[10px] pt-[15px] pb-[14px] product-card-info-block lg:px-[16px] ${PRODUCT_CARD_INFO_MIN_H}`}
+      >
+        {/* flex-1 + min-w-0 so the name, SKU and price always get at least half the
+            bar and truncate gracefully. Previously this was min-w-0 against a
+            shrink-0 swatch row, which let the swatches take the whole width and
+            squeeze the text down to a couple of characters. */}
+        <div className="min-w-0 flex-1 text-start">
+          <h3 className="truncate font-ploni text-[12px] font-black uppercase leading-[12px] text-text-primary lg:text-[18px] lg:leading-[18px]">
+            {productName}
+          </h3>
+
+          <div className="truncate font-ploni text-[9px] text-text-primary lg:text-[12px]">{product.sku}</div>
+
+          {/* tabular-nums is required: Ploni's default figures are proportional, so
+              prices in a grid column would not align without it. */}
+          <div
+            className={`font-ploni text-[14px] tabular-nums text-text-primary product-card-price-block lg:text-[17px] ${PRODUCT_CARD_PRICE_MIN_H}`}
+          >
+            {hasSalePrice() && salePrice && salePrice < originalPrice ? (
+              <div className="flex items-center gap-2">
+                <span className="text-text-secondary line-through">
+                  ₪{originalPrice.toFixed(2)}
+                </span>
+                <span className="text-accent-error">
+                  ₪{salePrice.toFixed(2)}
+                </span>
+              </div>
+            ) : (
+              <span>₪{currentPrice.toFixed(2)}</span>
+            )}
+          </div>
         </div>
 
-        <div className="text-sm font-medium text-gray-900 line-clamp-1">{language === 'he' ? 'מספר דגם: ' : 'SKU: '}{product.sku}</div>
-
-        <div className={`text-sm font-medium text-gray-900 product-card-price-block ${PRODUCT_CARD_PRICE_MIN_H}`}>
-          {hasSalePrice() && salePrice && salePrice < originalPrice ? (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-700 line-through">
-                ₪{originalPrice.toFixed(2)}
-              </span>
-              <span className="text-red-800 font-bold">
-                ₪{salePrice.toFixed(2)}
-              </span>
-            </div>
-          ) : (
-            <span>₪{currentPrice.toFixed(2)}</span>
-          )}
-        </div>
-      </div>
-
-      {/* Color Variants Section — always reserve swatch row height */}
-      <div className={`mt-0 bg-[#E1DBD7] p-3 pt-1 product-card-swatch-block ${PRODUCT_CARD_SWATCH_MIN_H}`}>
-        <div className="flex h-8 gap-2 overflow-x-auto pb-2">
+        {/* Colour swatches — rectangular in the redesign. Capped at half the bar and
+            horizontally scrollable, so a product with six variants swipes instead of
+            crowding out the product text. */}
+        <div className="flex max-w-[50%] shrink-0 gap-[6px] overflow-x-auto lg:gap-[8px]">
           {product.colorVariants &&
             Object.values(product.colorVariants)
               .filter(variant => variant.isActive !== false)
@@ -542,31 +599,30 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                     type="button"
                     key={variant.colorSlug}
                     onClick={(e) => handleVariantSelect(variant, e)}
-                    className="flex-shrink-0 relative group"
+                    // Circular swatches: the design system draws these as rectangles,
+                    // but a round thumbnail is what this storefront used before and
+                    // what was asked for. 32px below lg, 45px above - the design's own
+                    // 22px is the diameter for a 195px-wide card, and this card also
+                    // renders much wider than that below lg (single column, carousels,
+                    // search), where 22px reads as a speck and is an unusable tap
+                    // target. 42px is close to the 47px of usable height the 76px bar
+                    // leaves after its 15/14 padding, and is a real tap target.
+                    className={`group relative flex h-[36px] w-[36px] shrink-0 items-center justify-center overflow-hidden rounded-full border bg-surface-secondary transition-colors lg:h-[45px] lg:w-[45px] ${
+                      isSelected ? 'border-border-default' : 'border-border-subtle hover:border-text-secondary'
+                    }`}
                     aria-label={getColorName(variant.colorSlug, language)}
                     aria-pressed={isSelected}
                   >
-                    {/* Product image */}
                     {variantImageSrc && (
-                      <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-transparent">
-                        <Image
-                          src={variantImageSrc}
-                          alt={variant.colorSlug}
-                          width={32}
-                          height={32}
-                          sizes={PRODUCT_SWATCH_IMAGE_SIZES}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+                      <Image
+                        src={variantImageSrc}
+                        alt={variant.colorSlug}
+                        width={45}
+                        height={45}
+                        sizes={PRODUCT_SWATCH_IMAGE_SIZES}
+                        className="h-full w-full object-cover"
+                      />
                     )}
-
-                    {/* Selection line indicator */}
-                    <div
-                      className={`absolute -bottom-1 left-0 w-8 h-0.5 transition-all duration-200 ${isSelected
-                        ? 'bg-[#856D55]/90'
-                        : 'bg-transparent group-hover:bg-gray-400'
-                        }`}
-                    />
                   </button>
                 )
               })}

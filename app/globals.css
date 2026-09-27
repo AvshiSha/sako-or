@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 :root {
+  /* The design system has no dark mode, by decision. Declaring it here stops
+     browsers from auto-darkening form controls, scrollbars and date pickers on
+     machines that prefer dark. A @media (prefers-color-scheme: dark) block used
+     to sit here attempting the same thing, but it set --background and
+     --foreground to the same #ededed, so any text inheriting its colour rendered
+     invisible for those visitors. It has been deleted. */
+  color-scheme: light;
+
   --background: #ffffff;
   --foreground: #171717;
 }
@@ -8,17 +16,138 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  /* Ploni DL 1.1 AAA is the design system's primary face; it carries Hebrew,
+     Latin and the shekel sign, so it needs no companion for coverage. Assistant
+     stays because the design system specifies it for the mobile hero and mobile
+     H1, and because it is still the face the storefront body renders in until
+     the rebuilt screens are done.
+
+     The design system names four families; we ship two. Helvetica Neue (Latin
+     body, brand name, footer links, breadcrumbs) and Arial Black (prices) are
+     both dropped in favour of Ploni, which already carries 325 Latin glyphs and
+     the shekel sign in every weight. Neither was licensed, and neither was even
+     installed in the Figma file - those frames render in an Inter fallback, so
+     the mockups were never showing the specified face either. Two fewer
+     families is also two fewer network requests.
+
+     One consequence of dropping Arial Black: its digits are tabular, Ploni's
+     default digits are NOT (advances range 480-704 in Black). Any price in a
+     column - cart lines, order summary rows, checkout totals, product grids -
+     must carry `tabular-nums`, or the decimal points will not line up. Ploni
+     ships the tnum feature, so the utility is all that is needed.
+     The --ploni and --assistant custom properties are set on <body> by next/font
+     in RootShell.tsx. They are deliberately NOT named --font-ploni /
+     --font-assistant: a theme key may not reference a custom property of its own
+     name, or the var() below resolves to itself and the utility emits nothing.
+     That is exactly how --font-sans: var(--font-geist-sans) silently broke every
+     font-mono and font-sans utility in this project - --font-geist-* was never
+     defined anywhere. */
+  --font-sans: var(--ploni), var(--assistant), Arial, sans-serif;
+  --font-ploni: var(--ploni), Arial, sans-serif;
+  --font-assistant: var(--assistant), Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
-/* Force light mode - remove dark mode support */
- @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #ededed;
-    --foreground: #ededed;
-  }
-} 
+/* ─── SAKO OR — Update design system tokens ──────────────────────────────────
+   Source: the DESIGN SYSTEM page of Figma file Q7WqJRF5rqxc4V7zqdpQUM
+   (node 438:7176), sections Colors and Spacing & Radius.
+
+   A plain @theme, not @theme inline, on purpose: these are static values, so we
+   want Tailwind to emit them as :root custom properties. That is what lets CSS
+   generated from Figma resolve var(--color-text-primary), var(--spacing-md) and
+   friends with no translation step.
+
+   Primitives are namespaced sako-*, and radius likewise, because both would
+   otherwise collide with Tailwind's own theme: the design system's "gray" ramp is
+   warm (gray-200 is #e1dbd6, a beige) while this project has ~2,640 gray-*
+   utility usages against Tailwind's neutral ramp, and --radius-sm is already 4px
+   behind 26 rounded-sm usages. Spacing needs no prefix - Tailwind ships a numeric
+   scale, not named keys, so p-md and px-6 coexist.
+
+   `static` is required, not cosmetic. Tailwind v4 tree-shakes theme variables it
+   sees no utility for, and a first build of this block silently dropped
+   --color-surface-dark, --color-border-default, --color-btn-primary-bg and
+   --radius-sako-full from :root. Since the whole point is that CSS pasted out of
+   Figma resolves var(--color-border-default) directly - before any utility happens
+   to reference it - every token has to be emitted unconditionally. */
+@theme static {
+  /* Primitives — 16 */
+  --color-sako-ink-900: #11110f;
+  --color-sako-ink-800: #050505;
+  --color-sako-black: #000000;
+  --color-sako-white: #ffffff;
+  --color-sako-gray-100: #f2f2f2;
+  --color-sako-gray-200: #e1dbd6;
+  --color-sako-gray-300: #ecebe8;
+  --color-sako-gray-400: #e7e3d7;
+  --color-sako-gray-500: #999999;
+  --color-sako-gray-600: #889198;
+  --color-sako-gray-700: #777777;
+  --color-sako-gray-800: #666666;
+  --color-sako-red-500: #ff3232;
+  --color-sako-red-700: #b64444;
+  --color-sako-blue-700: #04318c;
+  --color-sako-brown-500: #795f44;
+
+  /* Semantic aliases — 15. Names are the design system's, verbatim, which is why
+     two of them read oddly as utilities: text-text-primary and
+     border-border-default. That is deliberate. One vocabulary shared by Figma,
+     the DS page and the code beats a prettier name that has to be translated on
+     every frame we implement. The DS audit claims 34 colour variables; only these
+     31 are on the documented frames, so the remaining 3 are unaccounted for. */
+  --color-surface-primary: var(--color-sako-white);
+  --color-surface-secondary: var(--color-sako-gray-100);
+  --color-surface-dark: var(--color-sako-ink-900);
+  --color-text-primary: var(--color-sako-ink-900);
+  --color-text-secondary: var(--color-sako-gray-700);
+  --color-text-inverse: var(--color-sako-white);
+  --color-border-default: var(--color-sako-ink-900);
+  --color-border-subtle: var(--color-sako-gray-200);
+  --color-accent-sale: var(--color-sako-red-500);
+  --color-accent-error: var(--color-sako-red-700);
+  --color-accent-link: var(--color-sako-blue-700);
+  --color-btn-primary-bg: var(--color-sako-ink-900);
+  --color-btn-primary-text: var(--color-sako-white);
+  --color-btn-secondary-bg: var(--color-sako-white);
+  --color-btn-secondary-text: var(--color-sako-ink-900);
+
+  /* Spacing — 8 */
+  --spacing-2xs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  /* UNRESOLVED: the DESIGN SYSTEM page documents xl as 32px, but the variable
+     actually bound in the approved Home / Desktop frame returns 36. 32 is used
+     here because it keeps the ramp on the documented 4/8/12/16/24/32/48/72
+     progression, and 36 looks like a one-off measured off a single frame. If the
+     designer confirms 36, this is a one-character change. */
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 72px;
+
+  /* Radius — the design system is predominantly sharp-cornered; rounded corners
+     appear only on pill badges (sale tag, chat indicator). rounded-none already
+     exists as a static Tailwind utility, so only these two are needed. */
+  --radius-sako-sm: 2px;
+  --radius-sako-full: 999px;
+}
+
+/* Bridge for Figma-generated CSS. The approved screens are bound to an older
+   generation of variable names than the DESIGN SYSTEM page documents, so
+   get_design_context emits names that the tokens above do not define. Same
+   values, different labels - note that the screens call #050505 "black-1000"
+   while the DS calls it "ink-800". Declared outside @theme so they resolve in
+   var() without generating a second set of near-duplicate utilities. */
+:root {
+  --sako-ink-900: var(--color-sako-ink-900);
+  --sako-black-1000: var(--color-sako-ink-800);
+  --sako-white-1000: var(--color-sako-white);
+  --sako-paper-100: var(--color-sako-gray-100);
+  --color-bg-page: var(--color-surface-secondary);
+  --radius-none: 0;
+}
 
 body {
   background: var(--background);

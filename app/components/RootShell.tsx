@@ -1,5 +1,6 @@
 import '../globals.css'
 import { Assistant } from 'next/font/google'
+import localFont from 'next/font/local'
 import ClientAuthProvider from './ClientAuthProvider'
 import ChatbaseWidget from './ChatbaseWidget'
 import CookieConsent from './CookieConsent'
@@ -16,7 +17,35 @@ import { buildAbsoluteUrl } from '@/lib/seo'
 // Which of the two won was a per-machine race, so text metrics - and therefore
 // the width of the centred nav items - differed between visitors and between
 // loads. Preloading both subsets makes the outcome deterministic.
-const assistant = Assistant({ subsets: ['hebrew', 'latin'], display: 'optional' })
+const assistant = Assistant({ subsets: ['hebrew', 'latin'], display: 'optional', variable: '--assistant' })
+
+// Ploni DL 1.1 AAA - the primary face of the SAKO OR - Update design system.
+// Only the four weights the design system actually calls for are declared here;
+// ultralight/light/medium/ultrabold are converted and sitting in app/fonts so a
+// fifth weight is a one-line change, but an unused weight is ~58KB we would be
+// asking every visitor to pay for.
+//
+// preload is off and display is 'swap' on purpose, and the two go together. The
+// rebuilt screens are landing section by section, so for now most pages use no
+// Ploni at all - preloading 232KB of it on every route would be a straight
+// regression on a storefront this careful about CLS. 'swap' then guarantees the
+// brand face does appear on the sections that do opt in, rather than losing a
+// block-period race the way Assistant did under 'optional'. adjustFontFallback
+// matches Arial's metrics to Ploni's so that swap costs little layout shift.
+// When the redesign is complete and <body> moves to font-sans, flip preload to
+// true and drop the fallback of the body className below.
+const ploni = localFont({
+  src: [
+    { path: '../fonts/ploni-regular-aaa.woff2', weight: '400', style: 'normal' },
+    { path: '../fonts/ploni-demibold-aaa.woff2', weight: '600', style: 'normal' },
+    { path: '../fonts/ploni-bold-aaa.woff2', weight: '700', style: 'normal' },
+    { path: '../fonts/ploni-black-aaa.woff2', weight: '900', style: 'normal' },
+  ],
+  variable: '--ploni',
+  display: 'swap',
+  preload: false,
+  adjustFontFallback: 'Arial',
+})
 
 /**
  * Everything that used to live inside the single root layout's <head> and
@@ -41,7 +70,14 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
         <link rel="preconnect" href="https://firebasestorage.googleapis.com" />
         <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
       </head>
-      <body className={assistant.className} suppressHydrationWarning>
+      {/* Both font custom properties are exposed on <body> so any subtree can opt
+          into Ploni with font-ploni. The rendered default stays Assistant via
+          font-assistant until the redesigned screens are in; swapping that one
+          utility to font-sans flips the whole storefront to Ploni. */}
+      <body
+        className={`${ploni.variable} ${assistant.variable} font-assistant`}
+        suppressHydrationWarning
+      >
         <script
           dangerouslySetInnerHTML={{
             __html: `

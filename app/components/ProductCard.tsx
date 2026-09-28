@@ -523,7 +523,9 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         {/* Design system 438:3916 — a full-bleed dark bar flush to the bottom of the
             image, not an inset outlined button. The label changes from "קניה מהירה"
             to the design's "בחרי מידה"; it opens the same size-picking drawer. */}
-        <div className="absolute bottom-0 left-0 right-0 z-20 hidden opacity-0 transition-opacity duration-200 group-hover:opacity-100 md:block">
+        {/* group-focus-within as well as group-hover: the bar is only faded out, not
+            removed, so without this a keyboard user can tab to an invisible control. */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 hidden opacity-0 transition-opacity duration-200 group-focus-within:opacity-100 group-hover:opacity-100 md:block">
           <button
             onClick={handleQuickBuy}
             disabled={isOutOfStock}

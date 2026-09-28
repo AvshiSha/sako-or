@@ -6,6 +6,7 @@ import { getHeroImageUrl } from '@/lib/image-urls'
 import { languages } from '@/i18n/settings'
 
 import HomeHero from '@/app/components/HomeHero'
+import { NAV_BAR_PULL_UP } from '@/lib/header-layout'
 
 import HomeProducts, { HomeProductsFallback } from './HomeProducts'
 
@@ -52,7 +53,12 @@ export default async function HomePage({
 
   return (
     <>
-      <HomeHero lng={locale} />
+      {/* Pulled up behind the nav bar so the header's Transparent variant reveals the
+          hero rather than the page ground. Without this the bar reads as plain white
+          at rest and only flashes transparent as the hero scrolls past it. */}
+      <div className={NAV_BAR_PULL_UP}>
+        <HomeHero lng={locale} />
+      </div>
       <Suspense fallback={<HomeProductsFallback />}>
         <HomeProducts lng={locale} />
       </Suspense>

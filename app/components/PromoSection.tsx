@@ -225,11 +225,18 @@ export default function PromoSection({
   }
 
   return (
-    <div className="relative w-full bg-[#B2A28E] text-black">
+    // Announcement Banner, design system 438:2625: sako-black-1000 ground with
+    // text-inverse copy. The generated CSS for that node references those exact
+    // custom property names, so the tokens resolve without translation.
+    <div className="relative w-full bg-sako-ink-800 text-text-inverse">
       <div className="mx-auto max-w-7xl px-4">
         <Link
           href={href}
-          className="mx-auto block w-full max-w-3xl min-h-[44px] py-2.5 text-center"
+          // The design's banner is 26px tall. Keeping min-h-[44px] on touch on
+          // purpose: this whole banner is a link, and 26px is well under the
+          // minimum tap target. Above sm the pointer is precise, so it takes the
+          // designed height.
+          className="mx-auto block w-full max-w-3xl min-h-[44px] py-2.5 text-center sm:min-h-[26px] sm:py-0"
           suppressHydrationWarning
           onClick={() =>
             track('promo_ribbon_click', {
@@ -244,12 +251,12 @@ export default function PromoSection({
         >
           <div className="mx-auto flex w-full flex-col items-center justify-center">
             <div className="relative w-full max-w-[720px] overflow-hidden">
-              <div className="relative flex h-[24px] items-center justify-center px-2 text-center">
+              <div className="relative flex h-[24px] items-center justify-center px-2 text-center sm:h-[26px]">
                 <AnimatePresence mode="wait" initial={false}>
                   {activeItem && (
                     <motion.div
                       key={promoMotionKey}
-                      className="absolute inset-0 flex items-center justify-center gap-2 text-sm font-medium text-black md:text-base"
+                      className="absolute inset-0 flex items-center justify-center gap-2 font-ploni text-[12px] font-bold text-text-inverse"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
@@ -269,7 +276,7 @@ export default function PromoSection({
                           {activeItem.icon}
                         </span>
                       ) : null}
-                      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-black">{activeItem.text[lng]}</span>
+                      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-inverse">{activeItem.text[lng]}</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -278,7 +285,7 @@ export default function PromoSection({
 
             {hasAnyCountdown && (
               <div
-                className="mt-0.5 flex min-h-6 items-center justify-center text-base font-semibold tabular-nums leading-none text-black md:min-h-7 md:text-lg"
+                className="mt-0.5 flex min-h-6 items-center justify-center font-ploni text-base font-bold tabular-nums leading-none text-text-inverse md:min-h-7 md:text-lg"
                 aria-live={countdownVisible ? 'polite' : 'off'}
                 role={countdownVisible ? 'timer' : undefined}
               >

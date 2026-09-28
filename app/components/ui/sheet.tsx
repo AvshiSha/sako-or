@@ -51,12 +51,19 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+    VariantProps<typeof sheetVariants> {
+  /**
+   * Suppress the built-in floating close button so the sheet can render its own in
+   * a laid-out position. The default sits `absolute top-4` in the inline-start
+   * corner, which collides with any content placed there.
+   */
+  hideClose?: boolean
+}
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => {
+>(({ side = "right", className, children, hideClose = false, ...props }, ref) => {
   const dir = props.dir || 'ltr'
   const isRTL = dir === 'rtl'
   
@@ -72,13 +79,13 @@ const SheetContent = React.forwardRef<
         {...props}
       >
         {children}
-        <SheetPrimitive.Close className={cn(
+        {!hideClose && <SheetPrimitive.Close className={cn(
           "absolute top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary",
           isRTL ? "left-4" : "right-4"
         )}>
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
-        </SheetPrimitive.Close>
+        </SheetPrimitive.Close>}
       </SheetPrimitive.Content>
     </SheetPortal>
   )

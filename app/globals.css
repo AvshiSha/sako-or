@@ -115,6 +115,12 @@
   --color-btn-primary-text: var(--color-sako-white);
   --color-btn-secondary-bg: var(--color-sako-white);
   --color-btn-secondary-text: var(--color-sako-ink-900);
+  /* Active department tab in the navigation drawer (2014:2516). #d5d2cc is not on
+     the DESIGN SYSTEM page's documented swatches - it may be one of the three the
+     audit counts but does not show. Named semantically rather than slotted into the
+     sako-gray ramp, where it would sit between gray-200 and gray-300 and invite
+     someone to renumber the ramp. */
+  --color-surface-tab-active: #d5d2cc;
 
   /* Spacing — 8 */
   --spacing-2xs: 4px;

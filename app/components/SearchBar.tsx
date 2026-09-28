@@ -212,10 +212,12 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.searchInline}
-            className={`w-full bg-gray-100 border border-gray-300 rounded-md py-2.5 text-gray-700 placeholder-gray-500 outline-none focus:border-gray-400 focus:bg-gray-50 transition-colors ${
-              isRTL 
-                ? searchQuery ? 'pr-20 pl-4' : 'pr-10 pl-4'
-                : searchQuery ? 'pl-20 pr-4' : 'pl-10 pr-4'
+            // Design system 2014:2509 — a 35px white field with a 1px black rule and
+            // square corners, placeholder in Ploni DemiBold 16 at 30% opacity. The
+            // magnifier sits on the left in both directions (the design keeps it there
+            // in an RTL frame), so the icon padding is on the left regardless of dir.
+            className={`h-[35px] w-full rounded-none border border-sako-black bg-surface-primary font-ploni text-[16px] font-semibold leading-[23px] text-text-primary outline-none transition-colors placeholder:text-text-primary placeholder:opacity-30 focus:border-text-primary ${
+              searchQuery ? 'pl-[68px] pr-[16px]' : 'pl-[40px] pr-[16px]'
             }`}
             dir={isRTL ? 'rtl' : 'ltr'}
           />
@@ -223,9 +225,8 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
             <button
               type="button"
               onClick={handleClearSearch}
-              className={`absolute top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors ${
-                isRTL ? 'right-10' : 'left-10'
-              }`}
+              // Sits beside the magnifier, which the design fixes to the left edge.
+              className="absolute left-[36px] top-1/2 -translate-y-1/2 text-text-secondary transition-opacity hover:opacity-70"
               aria-label="Clear search"
             >
               <X className="h-4 w-4" />
@@ -233,12 +234,10 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
           )}
           <button
             type="submit"
-            className={`absolute top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors ${
-              isRTL ? 'right-3' : 'left-3'
-            }`}
+            className="absolute left-[5px] top-1/2 -translate-y-1/2 text-text-primary transition-opacity hover:opacity-70"
             aria-label="Search"
           >
-            <Search className="h-5 w-5" />
+            <Search className="h-[22px] w-[22px]" strokeWidth={1} />
           </button>
         </form>
 
@@ -247,7 +246,7 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
           <button
             type="button"
             onClick={handleSearchButtonClick}
-            className="w-full mt-2 py-2.5 px-4 bg-[#856D55] text-white font-semibold rounded-md hover:bg-[#6d5a47] transition-colors"
+            className="mt-2 w-full rounded-none bg-btn-primary-bg px-4 py-2.5 font-ploni font-semibold text-btn-primary-text transition-colors hover:bg-sako-ink-800"
             dir={isRTL ? 'rtl' : 'ltr'}
           >
             {t.searchButton}

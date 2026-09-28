@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, Heart, ShoppingBag, ChevronDown, User } from 'lucide-react'
+import { Menu, Heart, ShoppingBag, ChevronDown, User, X } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import DropdownLanguageSwitcher from './DropdownLanguageSwitcher'
@@ -15,12 +15,7 @@ import { useUserProfile } from '@/app/hooks/useUserProfile'
 import { getImageUrl } from '@/lib/image-urls'
 import type { NavigationCategoriesData } from '@/lib/navigation-categories'
 import { NAV_BAR_H } from '@/lib/header-layout'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/app/components/ui/accordion'
+import NavigationCategories from '@/app/components/NavigationCategories'
 import {
   Sheet,
   SheetContent,
@@ -91,6 +86,9 @@ export default function Navigation({
   // design's two header variants (438:4393 Transparent / 438:4419 Solid). Starts
   // false so the server render matches the top-of-page state and does not flash.
   const [isScrolled, setIsScrolled] = useState(false)
+  // Desktop navigation is a full-width dropdown under the bar (2016:2578), not the
+  // drawer mobile uses, so it needs its own open state.
+  const [isDesktopNavOpen, setIsDesktopNavOpen] = useState(false)
   const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
   const [isMenDropdownOpen, setIsMenDropdownOpen] = useState(false)
 
@@ -294,7 +292,12 @@ export default function Navigation({
               design gave to search; search has moved beside the menu control. Counts
               render as the design's 9px Ploni numeral inside the glyph rather than the
               old red badge. */}
-          <div className="flex items-center gap-[13px] lg:gap-[20px]">
+          {/* Mobile gap is 3px, not the design's 13px, and that is the point: the
+              design spaces bare 22px icons 13px apart, while these sit in 32px hit
+              areas so touch targets stay usable. 3px + 2x5px of box padding lands the
+              icons exactly 13px apart on screen. Desktop uses 20px verbatim because
+              the desktop frame already boxes its icons at 32x36. */}
+          <div className="flex items-center gap-[3px] lg:gap-[20px]">
             <Link
               href={`/${lng}/favorites`}
               className="relative flex h-[36px] w-[32px] items-center justify-center"
@@ -312,40 +315,6 @@ export default function Navigation({
                 </span>
               )}
             </Link>
-
-            <div className="relative flex items-center justify-center">
-              <Link
-                href={user ? `/${lng}/profile` : `/${lng}/signin`}
-                className="flex h-[36px] w-[32px] items-center justify-center"
-                suppressHydrationWarning
-                aria-label={
-                  user
-                    ? translations[lng as keyof typeof translations].myProfile
-                    : translations[lng as keyof typeof translations].signIn
-                }
-                title={
-                  user
-                    ? translations[lng as keyof typeof translations].myProfile
-                    : translations[lng as keyof typeof translations].signIn
-                }
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/icons/sako/account.svg" width={22} height={22} alt="" aria-hidden="true" />
-              </Link>
-              {/* The signed-in greeting has no home in the design; kept, restyled. */}
-              <span
-                className={`absolute top-full left-1/2 min-h-[14px] -translate-x-1/2 whitespace-nowrap pt-0.5 font-ploni text-[9px] leading-none text-text-secondary ${
-                  user && !authLoading && !profileLoading && greetingName ? 'opacity-100' : 'opacity-0'
-                }`}
-                aria-hidden={!(user && greetingName)}
-              >
-                {greetingName
-                  ? lng === 'he'
-                    ? `היי, ${greetingName}`
-                    : `Hi, ${greetingName}`
-                  : ' '}
-              </span>
-            </div>
 
             <Link
               href={`/${lng}/cart`}
@@ -592,9 +561,49 @@ export default function Navigation({
               text rather than an asset. */}
           <div className="flex items-center gap-[13px] lg:gap-[20px]">
             {/* No language switcher here by decision: the design has no slot for one
-                and it was dropped from the bar deliberately, not by oversight. */}
-            <div className="flex items-center">
+                and it was dropped from the bar deliberately, not by oversight.
+
+                Search is desktop-only for now. On mobile it moves inside the
+                navigation panel, so the bar there is just the ☰ control. */}
+            <div className="hidden items-center lg:flex">
               <LazySearchBar language={lng} />
+            </div>
+
+            <div className="relative flex items-center justify-center">
+              <Link
+                href={user ? `/${lng}/profile` : `/${lng}/signin`}
+                className="flex h-[36px] w-[32px] items-center justify-center"
+                suppressHydrationWarning
+                aria-label={
+                  user
+                    ? translations[lng as keyof typeof translations].myProfile
+                    : translations[lng as keyof typeof translations].signIn
+                }
+                title={
+                  user
+                    ? translations[lng as keyof typeof translations].myProfile
+                    : translations[lng as keyof typeof translations].signIn
+                }
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/sako/account.svg" width={22} height={22} alt="" aria-hidden="true" />
+              </Link>
+              {/* The signed-in greeting has no home in the design; kept, restyled. */}
+              <span
+                // Anchored to the right edge rather than centred: the account icon now
+                // sits next to the menu control at the end of the bar, so a centred
+                // greeting would hang off the viewport.
+                className={`absolute top-full right-0 min-h-[14px] whitespace-nowrap pt-0.5 font-ploni text-[9px] leading-none text-text-secondary ${
+                  user && !authLoading && !profileLoading && greetingName ? 'opacity-100' : 'opacity-0'
+                }`}
+                aria-hidden={!(user && greetingName)}
+              >
+                {greetingName
+                  ? lng === 'he'
+                    ? `היי, ${greetingName}`
+                    : `Hi, ${greetingName}`
+                  : ' '}
+              </span>
             </div>
 
             <button
@@ -610,10 +619,10 @@ export default function Navigation({
             </button>
 
             <button
-              onClick={() => setIsMobileMenuOpen(true)}
+              onClick={() => setIsDesktopNavOpen((open) => !open)}
               className="hidden h-[22px] w-[70px] items-center justify-end gap-[6px] lg:flex"
               aria-label="Menu"
-              aria-expanded={isMobileMenuOpen}
+              aria-expanded={isDesktopNavOpen}
               suppressHydrationWarning
             >
               <span className="font-ploni text-[10px] tracking-[0.9px] text-text-primary">MENU</span>
@@ -725,6 +734,47 @@ export default function Navigation({
         </div>
       </div>
 
+      {/* Desktop navigation panel (2016:2578) — a full-width dropdown under the bar
+          rather than a drawer. Below lg the ☰ opens the Sheet instead. */}
+      {isDesktopNavOpen && (
+        <div
+          dir={lng === 'he' ? 'rtl' : 'ltr'}
+          // Height follows content. The frame's 595px is the artboard's figure, not a
+          // rule — pinning it left the panel tall and empty once the rows shrank. The
+          // viewport cap is only a guard so a long category list scrolls instead of
+          // running off-screen; it is not what sizes the panel.
+          className="absolute inset-x-0 top-full z-[70] hidden max-h-[calc(100vh-var(--nav-bar-h,73px))] overflow-auto border-t border-sako-black bg-surface-secondary lg:block"
+        >
+          <NavigationCategories
+            lng={lng === 'he' ? 'he' : 'en'}
+            variant="panel"
+            selectedGender={selectedGender}
+            onSelectGender={setSelectedGender}
+            womenSubcategories={womenSubcategories}
+            menSubcategories={menSubcategories}
+            hasMen={hasMenCategory()}
+            labels={{
+              allWomen: translations[lng as keyof typeof translations].allWomen,
+              allMen: translations[lng as keyof typeof translations].allMen,
+              allProducts: translations[lng as keyof typeof translations].allProducts,
+              women: translations[lng as keyof typeof translations].women,
+              men: translations[lng as keyof typeof translations].men,
+            }}
+            onNavigate={() => setIsDesktopNavOpen(false)}
+            aside={
+              // The frame fills this half with two campaign photographs, but those are
+              // content rather than design assets and have no source yet. It sits on
+              // the panel's own ground rather than the frame's near-black: an empty
+              // black slab across half the viewport reads as a heavy blind, which is
+              // most of what made the open panel feel like it was burying the hero.
+              // The column still holds its half so the rows keep the design's measure
+              // instead of stretching the full width of a wide desktop.
+              <div className="bg-surface-secondary" aria-hidden="true" />
+            }
+          />
+        </div>
+      )}
+
       {/* Mobile Menu - Sheet Component */}
       <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
         <SheetContent
@@ -733,6 +783,10 @@ export default function Navigation({
           // through this same panel, since MENU is now the only way in.
           className="p-0 flex flex-col"
           dir={lng === 'he' ? 'rtl' : 'ltr'}
+          // The floating default close sits absolute top-4 in the inline-start
+          // corner, right on top of the search field's magnifier. This panel lays
+          // out its own on a dedicated row instead.
+          hideClose
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           {/* Visually hidden title for accessibility */}
@@ -740,154 +794,86 @@ export default function Navigation({
             {lng === 'he' ? 'תפריט נייד' : 'Mobile Menu'}
           </SheetTitle>
           
-          {/* Header with Search Bar */}
-          <div className="border-b border-gray-300 px-4 py-4">
-            <div className="mb-3">
-              <LazySearchBar language={lng} variant="inline" />
-            </div>
-            
-            {/* MEN/WOMEN Toggle */}
-            <div className="flex rounded-lg bg-gray-300 p-1" dir={lng === 'he' ? 'rtl' : 'ltr'}>
-              <button
-                onClick={() => {
-                  setSelectedGender('women')
-                }}
-                className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
-                  selectedGender === 'women'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-                suppressHydrationWarning
-              >
-                {translations[lng as keyof typeof translations].women.toUpperCase()}
-              </button>
-              {hasMenCategory() && (
-                <button
-                  onClick={() => {
-                    setSelectedGender('men')
-                  }}
-                  className={`flex-1 py-2.5 px-4 text-sm font-medium rounded-md transition-all duration-200 ${
-                    selectedGender === 'men'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                  suppressHydrationWarning
-                >
-                  {translations[lng as keyof typeof translations].men.toUpperCase()}
-                </button>
-              )}
-            </div>
+          {/* Close sits on its own row at the inline-start edge — the same corner the
+              ☰ occupies in the header, so the control returns to where it was tapped,
+              and clear of the search field's magnifier. */}
+          <div className="flex shrink-0 items-center justify-start px-[16px] pt-[12px]">
+            <SheetClose
+              className="flex h-[32px] w-[32px] items-center justify-center text-text-primary transition-opacity hover:opacity-70"
+              aria-label={lng === 'he' ? 'סגירת התפריט' : 'Close menu'}
+            >
+              <X className="h-[22px] w-[22px]" strokeWidth={1.25} aria-hidden="true" />
+            </SheetClose>
           </div>
 
-          {/* Scrollable Categories List */}
-          <ScrollArea className="flex-1">
-            <div className="px-4 py-2">
-              {/* All Products Link */}
-              <SheetClose asChild>
-                <Link
-                  href={`/${lng}/collection/${selectedGender}`}
-                  className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-900 font-bold border-b border-gray-300 uppercase text-sm tracking-wide"
-                  dir={lng === 'he' ? 'rtl' : 'ltr'}
-                  suppressHydrationWarning
+          {/* Search, in its own bordered band (2014:2506/2507) */}
+          <div className="border-b border-sako-black px-[16px] pb-[16px] pt-[8px]">
+            <LazySearchBar language={lng} variant="inline" />
+          </div>
+
+          {/* Department tabs (2014:2515). The active tab carries the d5d2cc ground;
+              the inactive one sits on the panel ground with its label at 20% and a
+              dividing rule. No pill, no radius — this design system has neither. */}
+          <div className="grid h-[44px] shrink-0 grid-cols-2 border-b border-sako-black">
+            <button
+              onClick={() => setSelectedGender('women')}
+              className={`flex items-center justify-center transition-colors ${
+                selectedGender === 'women' ? 'bg-surface-tab-active' : 'bg-surface-secondary'
+              }`}
+              aria-pressed={selectedGender === 'women'}
+              suppressHydrationWarning
+            >
+              {/* The 20% dim is on the label, not the tab: the design fades the text
+                  while the inactive tab keeps a full-strength ground. */}
+              <span
+                className={`font-ploni text-[19px] font-bold leading-[19px] text-text-primary ${
+                  selectedGender === 'women' ? '' : 'opacity-20'
+                }`}
+              >
+                {translations[lng as keyof typeof translations].women}
+              </span>
+            </button>
+            {hasMenCategory() && (
+              <button
+                onClick={() => setSelectedGender('men')}
+                className={`flex items-center justify-center border-e border-sako-black transition-colors ${
+                  selectedGender === 'men' ? 'bg-surface-tab-active' : 'bg-surface-secondary'
+                }`}
+                aria-pressed={selectedGender === 'men'}
+                suppressHydrationWarning
+              >
+                <span
+                  className={`font-ploni text-[19px] font-bold leading-[19px] text-text-primary ${
+                    selectedGender === 'men' ? '' : 'opacity-20'
+                  }`}
                 >
-                  <span>{selectedGender === 'women' ? translations[lng as keyof typeof translations].allWomen : translations[lng as keyof typeof translations].allMen}</span>
-                </Link>
-              </SheetClose>
+                  {translations[lng as keyof typeof translations].men}
+                </span>
+              </button>
+            )}
+          </div>
 
-              {/* Categories List with Accordion */}
-              <Accordion type="single" collapsible className="w-full">
-                {(selectedGender === 'women' ? womenSubcategories : menSubcategories).map((subcategory) => {
-                  const hasChildren = subcategory.subChildren && subcategory.subChildren.length > 0
-                  const categoryName = typeof subcategory.name === 'object' 
-                    ? (lng === 'he' ? (subcategory.name as any).he : (subcategory.name as any).en) || (subcategory.name as any).en
-                    : subcategory.name
-
-                  if (!hasChildren) {
-                    return (
-                      <div key={subcategory.id} data-nav-subcategory={subcategory.slug} className="border-b border-gray-300">
-                        <SheetClose asChild>
-                          <Link
-                            href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-                            className="flex items-center justify-between min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 transition-colors"
-                            dir={lng === 'he' ? 'rtl' : 'ltr'}
-                            suppressHydrationWarning
-                          >
-                            <span className="text-sm uppercase tracking-wide">{categoryName}</span>
-                          </Link>
-                        </SheetClose>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <AccordionItem key={subcategory.id} data-nav-subcategory={subcategory.slug} value={subcategory.id} className="border-b border-gray-300">
-                      <AccordionTrigger className="min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 hover:no-underline" dir={lng === 'he' ? 'rtl' : 'ltr'}>
-                        <span className="text-sm uppercase tracking-wide">{categoryName}</span>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-0">
-                        <div className="bg-gray-50 border-t border-gray-100">
-                          <SheetClose asChild>
-                            <Link
-                              href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-                              className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm font-medium border-b border-gray-200"
-                              dir={lng === 'he' ? 'rtl' : 'ltr'}
-                              suppressHydrationWarning
-                            >
-                              {translations[lng as keyof typeof translations].allProducts}
-                            </Link>
-                          </SheetClose>
-                          {subcategory.subChildren?.map((subSubCategory) => {
-                            const subSubName = typeof subSubCategory.name === 'object'
-                              ? (lng === 'he' ? (subSubCategory.name as any).he : (subSubCategory.name as any).en) || (subSubCategory.name as any).en
-                              : subSubCategory.name
-                            return (
-                              <SheetClose key={subSubCategory.id} asChild>
-                                <Link
-                                  href={`/${lng}/collection/${selectedGender}/${subcategory.slug}/${subSubCategory.slug}`}
-                                  className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
-                                  dir={lng === 'he' ? 'rtl' : 'ltr'}
-                                  suppressHydrationWarning
-                                >
-                                  {subSubName}
-                                </Link>
-                              </SheetClose>
-                            )
-                          })}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )
-                })}
-                {selectedGender === 'women' && (
-                  <AccordionItem value="women-nav-sales" className="border-b border-gray-300">
-                    <AccordionTrigger
-                      className="min-h-[44px] py-3 px-2 text-gray-700 hover:text-gray-900 hover:no-underline"
-                      dir={lng === 'he' ? 'rtl' : 'ltr'}
-                    >
-                      <span className="text-sm uppercase tracking-wide">
-                        {womenSalesSectionTitle(lng)}
-                      </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-0">
-                      <div className="bg-gray-50 border-t border-gray-100">
-                        {WOMEN_BOGO_NAV_LINKS.map((link) => (
-                          <SheetClose key={link.slug} asChild>
-                            <Link
-                              href={womenSalesCampaignHref(lng, link.slug)}
-                              className="block min-h-[44px] py-3 px-6 text-gray-600 hover:text-gray-900 text-sm border-b border-gray-200 last:border-b-0"
-                              dir={lng === 'he' ? 'rtl' : 'ltr'}
-                              suppressHydrationWarning
-                            >
-                              {womenSalesLinkLabel(lng, link)}
-                            </Link>
-                          </SheetClose>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                )}
-              </Accordion>
-              
+          {/* Scrollable Categories List — the same component the desktop panel
+              renders, at drawer scale, so the two surfaces cannot drift. */}
+          <ScrollArea className="flex-1">
+            <div>
+              <NavigationCategories
+                lng={lng === 'he' ? 'he' : 'en'}
+                variant="drawer"
+                selectedGender={selectedGender}
+                onSelectGender={setSelectedGender}
+                womenSubcategories={womenSubcategories}
+                menSubcategories={menSubcategories}
+                hasMen={hasMenCategory()}
+                labels={{
+                  allWomen: translations[lng as keyof typeof translations].allWomen,
+                  allMen: translations[lng as keyof typeof translations].allMen,
+                  allProducts: translations[lng as keyof typeof translations].allProducts,
+                  women: translations[lng as keyof typeof translations].women,
+                  men: translations[lng as keyof typeof translations].men,
+                }}
+                onNavigate={() => setIsMobileMenuOpen(false)}
+              />
               {/* Mobile Auth Greeting Component */}
               <div className="pt-2">
                 <MobileAuthGreeting lng={lng} />

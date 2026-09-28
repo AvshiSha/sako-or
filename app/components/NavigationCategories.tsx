@@ -134,6 +134,11 @@ export default function NavigationCategories({
       {/* Department tabs. The active tab takes the surface-tab-active ground; the
           inactive one keeps a full-strength ground with its label dimmed. */}
       <div
+        // dir is explicit for the same reason the category list below sets it: in
+        // the drawer this renders inside a Radix ScrollArea, which stamps dir="ltr"
+        // on its root when no DirectionProvider is present. Inherited, that put
+        // נשים on the left of the pair instead of the inline start.
+        dir={dir}
         // 44px on both. The frame gives the panel a 68px tab row, which at real
         // desktop width reads as a banner rather than a control strip.
         className="grid h-[44px] shrink-0 grid-cols-2 border-b border-sako-black"

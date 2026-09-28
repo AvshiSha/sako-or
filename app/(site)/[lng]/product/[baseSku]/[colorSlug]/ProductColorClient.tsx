@@ -21,6 +21,18 @@ import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import QuantityStepper from '@/app/components/QuantityStepper'
 import { Button } from '@/app/components/ui/button'
+import { getProductSizeOptions, getSizeGridColumns } from '@/lib/product-size-options'
+
+/**
+ * Written out as whole class names on purpose. Tailwind scans source text, so a
+ * composed `grid-cols-${n}` would never be generated.
+ */
+const SIZE_GRID_COLUMN_CLASS = {
+  1: 'grid-cols-1',
+  3: 'grid-cols-3',
+  4: 'grid-cols-4',
+  5: 'grid-cols-5',
+} as const
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
@@ -420,6 +432,13 @@ export default function ProductColorClient({
   const currentStock = getSizeStock(selectedSize)
   const isOutOfStock = currentStock <= 0
 
+  // Offered sizes come from the category (women's 35-42, men's 39-46, one OS cell
+  // for everything that is not footwear), with each cell's availability read off
+  // the current colour's stock. Plain const, not useMemo: this sits after the
+  // component's early returns, so a hook here would be a conditional one.
+  const sizeOptions = getProductSizeOptions(product, currentVariant?.stockBySize)
+  const sizeGridColumns = getSizeGridColumns(sizeOptions.length)
+
   const handleAddToCart = async () => {
     if (isOutOfStock || isAddingToCart || !selectedSize) return
 
@@ -630,47 +649,43 @@ export default function ProductColorClient({
                       const variantImage = variant.primaryImage || variant.images?.[0]
 
                       return (
+                        // Circular, matching ProductCard rather than the frame. 438:4227
+                        // draws a square swatch with the selected one underlined, but the
+                        // card renders these as round thumbnails with a border ring, and a
+                        // shopper moving from the grid to the product should not meet two
+                        // different controls for the same thing. The frame's 47px diameter
+                        // is kept - only the shape and the selected state come from the card.
                         <button
                           key={variant.colorSlug}
+                          type="button"
                           onClick={() => {
                             if (!isVariantOutOfStock) {
                               handleColorChange(variant.colorSlug)
                             }
                           }}
                           disabled={isVariantOutOfStock}
-                          className="group relative size-[47px] shrink-0"
+                          aria-label={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                          aria-pressed={isCurrentVariant}
                           title={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                          className={`relative flex size-[47px] shrink-0 items-center justify-center overflow-hidden rounded-full border bg-surface-secondary transition-colors ${
+                            isCurrentVariant
+                              ? 'border-border-default'
+                              : 'border-border-subtle hover:border-text-secondary'
+                          } ${isVariantOutOfStock ? 'opacity-50' : ''}`}
                         >
-                          {/* gray-200 (#e1dbd6) is the frame's product/light ground,
-                              and object-contain, not cover: the swatch art is a shoe
-                              on a tinted field, so cropping it defeats the point. */}
-                          <span
-                            className={`flex size-full items-center justify-center bg-sako-gray-200 ${
-                              isVariantOutOfStock ? 'opacity-50' : ''
-                            }`}
-                          >
-                            {variantImage ? (
-                              <Image
-                                src={variantImage}
-                                alt={getColorName(variant.colorSlug, lng as 'en' | 'he')}
-                                width={47}
-                                height={47}
-                                className="size-full object-contain"
-                              />
-                            ) : (
-                              <span className="px-1 font-ploni text-[9px] leading-none text-text-secondary">
-                                {getColorName(variant.colorSlug, lng as 'en' | 'he')}
-                              </span>
-                            )}
-                          </span>
-                          {/* Selection is a hairline under the swatch (438:4228), not
-                              a ring around it as on the product card. */}
-                          <span
-                            aria-hidden="true"
-                            className={`absolute inset-x-0 bottom-0 h-px transition-colors duration-200 ${
-                              isCurrentVariant ? 'bg-sako-black' : 'bg-transparent group-hover:bg-sako-gray-500'
-                            }`}
-                          />
+                          {variantImage ? (
+                            <Image
+                              src={variantImage}
+                              alt={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                              width={47}
+                              height={47}
+                              className="size-full object-cover"
+                            />
+                          ) : (
+                            <span className="px-1 font-ploni text-[9px] leading-none text-text-secondary">
+                              {getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                            </span>
+                          )}
                         </button>
                       )
                     })}
@@ -687,8 +702,10 @@ export default function ProductColorClient({
                   </p>
                 )}
 
-                {/* Size selection, 438:4234 + 438:4240 */}
-                {Object.keys(currentVariant.stockBySize).length > 0 && (
+                {/* Size selection, 438:4234 + 438:4240. Rendered unconditionally now:
+                    the options come from the category, so an accessory with no stock
+                    rows still offers its one OS cell. */}
+                {(
                   <div>
                     {/* 10px labels, the section name bold. justify-between puts the
                         name on the inline start and the guide on the end, which
@@ -710,27 +727,61 @@ export default function ProductColorClient({
                         through 1px gaps between paper cells, framed by a 1px border.
                         That is how the frame draws it, and it keeps the hairlines
                         even when the sizes wrap onto a second row. */}
-                    <div className="mt-[12px] grid grid-cols-5 gap-px border border-border-default bg-sako-ink-900 p-px">
-                      {Object.entries(currentVariant.stockBySize)
-                        .filter(([, stock]) => stock > 0)
-                        .map(([size]) => {
-                          const isSelected = selectedSize === size
-                          return (
-                            <button
-                              key={size}
-                              type="button"
-                              onClick={() => setSelectedSize(size)}
-                              aria-pressed={isSelected}
-                              className={`flex h-[46px] items-center justify-center font-ploni text-[11px] tabular-nums transition-colors ${
-                                isSelected
+                    {/* Column count is chosen to divide the run evenly - see
+                        getSizeGridColumns. An eight-size range lands on 4+4; a
+                        five-size product keeps the frame's single row of five. */}
+                    <div
+                      className={`mt-[12px] grid gap-px border border-border-default bg-sako-ink-900 p-px ${SIZE_GRID_COLUMN_CLASS[sizeGridColumns]}`}
+                    >
+                      {sizeOptions.map((option) => {
+                        const isSelected = selectedSize === option.key
+                        return (
+                          <button
+                            key={option.key}
+                            type="button"
+                            onClick={() => setSelectedSize(option.key)}
+                            disabled={!option.inStock}
+                            aria-pressed={isSelected}
+                            aria-label={
+                              option.inStock
+                                ? option.label
+                                : `${option.label} — ${lng === 'he' ? 'אזל מהמלאי' : 'out of stock'}`
+                            }
+                            // Sold out, 438:2692: grey label with a hairline ruled
+                            // corner to corner. The frame hard-codes the angle at
+                            // 35.6deg, which is the diagonal of its own cell; `to top
+                            // right` is the same line expressed so it stays corner to
+                            // corner whatever width the grid resolves to. The band sits
+                            // perpendicular to the gradient axis, so this rules the cell
+                            // from its top left down to its bottom right.
+                            style={
+                              option.inStock
+                                ? undefined
+                                : {
+                                    backgroundImage:
+                                      'linear-gradient(to top right, rgba(170,170,170,0) 49%, rgb(170,170,170) 50%, rgba(170,170,170,0) 51%)',
+                                  }
+                            }
+                            className={`flex h-[46px] items-center justify-center font-ploni text-[11px] tabular-nums transition-colors ${
+                              !option.inStock
+                                ? 'cursor-not-allowed bg-surface-secondary text-sako-gray-500'
+                                : isSelected
                                   ? 'bg-sako-ink-900 text-text-inverse'
                                   : 'bg-surface-secondary text-text-primary hover:bg-sako-gray-200'
-                              }`}
-                            >
-                              {size}
-                            </button>
-                          )
-                        })}
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        )
+                      })}
+
+                      {/* Only reachable for counts that divide by nothing (7, 11), since
+                          the column count is picked to come out even otherwise. */}
+                      {Array.from({
+                        length: (sizeGridColumns - (sizeOptions.length % sizeGridColumns)) % sizeGridColumns,
+                      }).map((_, index) => (
+                        <div key={`size-spacer-${index}`} aria-hidden="true" className="h-[46px] bg-surface-secondary" />
+                      ))}
                     </div>
                   </div>
                 )}

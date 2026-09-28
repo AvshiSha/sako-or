@@ -781,7 +781,11 @@ export default function Navigation({
           side={lng === 'he' ? 'right' : 'left'}
           // No longer md:hidden: the redesign routes desktop category navigation
           // through this same panel, since MENU is now the only way in.
-          className="p-0 flex flex-col"
+          // gap-0 is load-bearing: sheetVariants sets gap-4 on every sheet, and this
+          // one is a flex column, so without it a 16px band of panel ground opens
+          // between the close row, the search band and the category list. The frame
+          // butts those three together, divided by their own rules.
+          className="p-0 flex flex-col gap-0"
           dir={lng === 'he' ? 'rtl' : 'ltr'}
           // The floating default close sits absolute top-4 in the inline-start
           // corner, right on top of the search field's magnifier. This panel lays
@@ -811,47 +815,10 @@ export default function Navigation({
             <LazySearchBar language={lng} variant="inline" />
           </div>
 
-          {/* Department tabs (2014:2515). The active tab carries the d5d2cc ground;
-              the inactive one sits on the panel ground with its label at 20% and a
-              dividing rule. No pill, no radius — this design system has neither. */}
-          <div className="grid h-[44px] shrink-0 grid-cols-2 border-b border-sako-black">
-            <button
-              onClick={() => setSelectedGender('women')}
-              className={`flex items-center justify-center transition-colors ${
-                selectedGender === 'women' ? 'bg-surface-tab-active' : 'bg-surface-secondary'
-              }`}
-              aria-pressed={selectedGender === 'women'}
-              suppressHydrationWarning
-            >
-              {/* The 20% dim is on the label, not the tab: the design fades the text
-                  while the inactive tab keeps a full-strength ground. */}
-              <span
-                className={`font-ploni text-[19px] font-bold leading-[19px] text-text-primary ${
-                  selectedGender === 'women' ? '' : 'opacity-20'
-                }`}
-              >
-                {translations[lng as keyof typeof translations].women}
-              </span>
-            </button>
-            {hasMenCategory() && (
-              <button
-                onClick={() => setSelectedGender('men')}
-                className={`flex items-center justify-center border-e border-sako-black transition-colors ${
-                  selectedGender === 'men' ? 'bg-surface-tab-active' : 'bg-surface-secondary'
-                }`}
-                aria-pressed={selectedGender === 'men'}
-                suppressHydrationWarning
-              >
-                <span
-                  className={`font-ploni text-[19px] font-bold leading-[19px] text-text-primary ${
-                    selectedGender === 'men' ? '' : 'opacity-20'
-                  }`}
-                >
-                  {translations[lng as keyof typeof translations].men}
-                </span>
-              </button>
-            )}
-          </div>
+          {/* The department tabs used to be repeated here as well as inside
+              NavigationCategories, so the drawer drew the toggle twice. They belong
+              to the shared component - that was the point of extracting it - so this
+              copy is gone rather than the shared one. */}
 
           {/* Scrollable Categories List — the same component the desktop panel
               renders, at drawer scale, so the two surfaces cannot drift. */}

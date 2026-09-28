@@ -122,20 +122,7 @@
      someone to renumber the ramp. */
   --color-surface-tab-active: #d5d2cc;
 
-  /* Spacing — 8 */
-  --spacing-2xs: 4px;
-  --spacing-xs: 8px;
-  --spacing-sm: 12px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  /* UNRESOLVED: the DESIGN SYSTEM page documents xl as 32px, but the variable
-     actually bound in the approved Home / Desktop frame returns 36. 32 is used
-     here because it keeps the ramp on the documented 4/8/12/16/24/32/48/72
-     progression, and 36 looks like a one-off measured off a single frame. If the
-     designer confirms 36, this is a one-character change. */
-  --spacing-xl: 32px;
-  --spacing-2xl: 48px;
-  --spacing-3xl: 72px;
+  /* Spacing lives outside @theme - see the block below the closing brace. */
 
   /* Radius — the design system is predominantly sharp-cornered; rounded corners
      appear only on pill badges (sale tag, chat indicator). rounded-none already
@@ -157,6 +144,31 @@
   --sako-paper-100: var(--color-sako-gray-100);
   --color-bg-page: var(--color-surface-secondary);
   --radius-none: 0;
+
+  /* Spacing — 8. Deliberately NOT in @theme. Tailwind v4 resolves the width family
+     (w-*, max-w-*, min-w-*) against the `--spacing-*` namespace before falling back
+     to `--container-*`, so declaring --spacing-md/lg/xl/2xl/3xl as theme values
+     silently redefined max-w-md, max-w-lg, max-w-xl, max-w-2xl and max-w-3xl from
+     the container scale (28rem…48rem) down to these pixel values. max-w-3xl became
+     72px, which collapsed the promo ribbon to one word per line; 49 files use those
+     utilities. Same class of collision as the sako-* colour prefix and the reason
+     it exists. Declared here as plain custom properties, Figma-generated CSS that
+     emits var(--spacing-md) still resolves, and Tailwind's own scale is untouched.
+     Nothing in the codebase uses p-md / gap-lg style utilities, so no utility
+     surface is lost - checked before moving them. */
+  --spacing-2xs: 4px;
+  --spacing-xs: 8px;
+  --spacing-sm: 12px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  /* UNRESOLVED: the DESIGN SYSTEM page documents xl as 32px, but the variable
+     actually bound in the approved Home / Desktop frame returns 36. 32 is used
+     here because it keeps the ramp on the documented 4/8/12/16/24/32/48/72
+     progression, and 36 looks like a one-off measured off a single frame. If the
+     designer confirms 36, this is a one-character change. */
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 72px;
 }
 
 body {

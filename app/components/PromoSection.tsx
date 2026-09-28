@@ -250,13 +250,21 @@ export default function PromoSection({
           onBlurCapture={onBlurCapture}
         >
           <div className="mx-auto flex w-full flex-col items-center justify-center">
-            <div className="relative w-full max-w-[720px] overflow-hidden">
-              <div className="relative flex h-[24px] items-center justify-center px-2 text-center sm:h-[26px]">
+            {/* min-h, not h: the band reserves the designed 24/26px so it does not
+                collapse during the crossfade's empty frame, but a long promo on a
+                narrow phone is allowed to push it taller rather than be hidden. */}
+            <div className="w-full max-w-[720px]">
+              <div className="flex min-h-[24px] items-center justify-center px-2 text-center sm:min-h-[26px]">
                 <AnimatePresence mode="wait" initial={false}>
                   {activeItem && (
                     <motion.div
                       key={promoMotionKey}
-                      className="absolute inset-0 flex items-center justify-center gap-2 font-ploni text-[12px] font-bold text-text-inverse"
+                      // In flow, not `absolute inset-0`. mode="wait" means only one
+                      // promo is ever mounted, so there is nothing to stack, and an
+                      // out-of-flow row cannot size the band it sits in - which is
+                      // what forced the nowrap/ellipsis clamp below and swallowed
+                      // the message.
+                      className="flex items-center justify-center gap-2 font-ploni text-[12px] font-bold text-text-inverse"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
@@ -276,7 +284,11 @@ export default function PromoSection({
                           {activeItem.icon}
                         </span>
                       ) : null}
-                      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-text-inverse">{activeItem.text[lng]}</span>
+                      {/* No ellipsis clamp. This is a fixed marketing line whose
+                          whole job is to be read; hiding the back half of the offer
+                          is never the better outcome. If it ever outgrows a narrow
+                          viewport it wraps, and the band above grows with it. */}
+                      <span className="text-text-inverse">{activeItem.text[lng]}</span>
                     </motion.div>
                   )}
                 </AnimatePresence>

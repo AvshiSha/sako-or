@@ -112,7 +112,12 @@
   --color-accent-error: var(--color-sako-red-700);
   --color-accent-link: var(--color-sako-blue-700);
   --color-btn-primary-bg: var(--color-sako-ink-900);
-  --color-btn-primary-text: var(--color-sako-white);
+  /* gray-100 (#f2f2f2), not white. The DESIGN SYSTEM page documents this as white,
+     but every approved screen that draws a filled button binds paper-100/#f2f2f2 -
+     the CTA on Product/Desktop (438:2703) and the standalone Button/Product Selector
+     (438:3915) both do. Following the screens, since those are what shipped for
+     approval. Same documented-vs-bound split as the xl spacing step. */
+  --color-btn-primary-text: var(--color-sako-gray-100);
   --color-btn-secondary-bg: var(--color-sako-white);
   --color-btn-secondary-text: var(--color-sako-ink-900);
   /* Active department tab in the navigation drawer (2014:2516). #d5d2cc is not on

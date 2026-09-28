@@ -8,7 +8,6 @@ import Link from 'next/link'
 import { 
   HeartIcon, 
   ShareIcon,
-  ShoppingBagIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
@@ -21,6 +20,7 @@ import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import QuantityStepper from '@/app/components/QuantityStepper'
+import { Button } from '@/app/components/ui/button'
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
@@ -746,28 +746,31 @@ export default function ProductColorClient({
                 })()}
 
                 {/* Add to Bag Button */}
-                <button
+                {/* Design system 438:2703 — the CTA is a flat dark bar carrying the
+                    label alone. The bag icon goes: the frame has none, and it was the
+                    only thing forcing this button off the shared style. */}
+                <Button
+                  type="button"
+                  variant="sako"
+                  size="sako"
                   onClick={handleAddToCart}
                   disabled={isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart}
-                  className={`w-full py-3 px-6 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2 ${
-                    isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-[#B2A28E] text-[#000000] hover:bg-[#856D55]'
-                  }`}
+                  className="duration-200"
                 >
-                  <ShoppingBagIcon className="h-5 w-5" />
                   {(() => {
                     if (isAddingToCart) {
                       return lng === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
                     } else if (isOutOfStock) {
                       return lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
                     } else if (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) {
-                      return lng === 'he' ? 'בחר מידה' : 'Select Size'
+                      // "בחרי", not "בחר": the frame addresses the shopper in the
+                      // feminine, as the product card already does.
+                      return lng === 'he' ? 'בחרי מידה' : 'Select Size'
                     } else {
                       return lng === 'he' ? 'הוסף לעגלה' : 'Add to Cart'
                     }
                   })()}
-                </button>
+                </Button>
 
                 {/* Actions Row: Share & Favorites */}
                 <div className="flex space-x-4">
@@ -1008,28 +1011,31 @@ export default function ProductColorClient({
                 })()}
 
                 {/* Add to Bag Button */}
-                <button
+                {/* Design system 438:2703 — the CTA is a flat dark bar carrying the
+                    label alone. The bag icon goes: the frame has none, and it was the
+                    only thing forcing this button off the shared style. */}
+                <Button
+                  type="button"
+                  variant="sako"
+                  size="sako"
                   onClick={handleAddToCart}
                   disabled={isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart}
-                  className={`w-full py-3 px-6 rounded-md font-medium transition-colors duration-200 flex items-center justify-center gap-2 ${
-                    isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-[#B2A28E] text-[#000000] hover:bg-[#856D55]'
-                  }`}
+                  className="duration-200"
                 >
-                  <ShoppingBagIcon className="h-5 w-5" />
                   {(() => {
                     if (isAddingToCart) {
                       return lng === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
                     } else if (isOutOfStock) {
                       return lng === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
                     } else if (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) {
-                      return lng === 'he' ? 'בחר מידה' : 'Select Size'
+                      // "בחרי", not "בחר": the frame addresses the shopper in the
+                      // feminine, as the product card already does.
+                      return lng === 'he' ? 'בחרי מידה' : 'Select Size'
                     } else {
                       return lng === 'he' ? 'הוסף לעגלה' : 'Add to Cart'
                     }
                   })()}
-                </button>
+                </Button>
 
                 {/* Actions Row: Share & Favorites */}
                 <div className="flex space-x-4">

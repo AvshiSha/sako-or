@@ -11,6 +11,7 @@ import { useFavorites } from '@/app/hooks/useFavorites'
 import { trackSelectItem } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import type { CarouselApi } from '@/app/components/ui/carousel'
+import { Button } from '@/app/components/ui/button'
 import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
 import { buildFavoriteKey } from '@/lib/favorites'
 import { useProductCouponBadge } from '@/app/contexts/CouponBadgeContext'
@@ -527,20 +528,21 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         {/* group-focus-within as well as group-hover: the bar is only faded out, not
             removed, so without this a keyboard user can tab to an invisible control. */}
         <div className="absolute bottom-0 left-0 right-0 z-20 hidden opacity-0 transition-opacity duration-200 group-focus-within:opacity-100 group-hover:opacity-100 md:block">
-          <button
+          {/* The shared CTA, so the card and the PDP cannot drift apart again - this
+              copy had been missing the design's Bold weight since it was written. */}
+          <Button
+            type="button"
+            variant="sako"
+            size="sako"
             onClick={handleQuickBuy}
             disabled={isOutOfStock}
-            className={`w-full border py-[14px] font-ploni text-[16px] transition-colors duration-200 ${
-              isOutOfStock
-                ? 'cursor-not-allowed border-sako-gray-500 bg-sako-gray-500 text-surface-secondary'
-                : 'border-btn-primary-bg bg-btn-primary-bg text-surface-secondary hover:bg-sako-ink-800'
-            }`}
+            className="duration-200"
           >
             {isOutOfStock
               ? (language === 'he' ? 'אזל מהמלאי' : 'Out of Stock')
               : (language === 'he' ? 'בחרי מידה' : 'Select size')
             }
-          </button>
+          </Button>
         </div>
       </Link>
 

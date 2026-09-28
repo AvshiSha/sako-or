@@ -18,12 +18,22 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Design system CTA, 438:2703 / 438:3915. Sharp-cornered filled bar on
+        // ink-900 with a paper-100 label. Pair with size="sako", which carries the
+        // designed type and padding. disabled:opacity-100 cancels the base's 50%
+        // fade: the design expresses unavailable as a flat grey fill, not a ghost.
+        sako:
+          "rounded-none border border-btn-primary-bg bg-btn-primary-bg text-btn-primary-text hover:bg-sako-ink-800 disabled:border-sako-gray-500 disabled:bg-sako-gray-500 disabled:opacity-100",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
+        // Typography/Button/Label: Ploni Bold 16 / 100% line-height, over the
+        // frame's 14px vertical padding. That comes to a 44px content box, which is
+        // also the touch-target minimum, so no mobile-specific override is needed.
+        sako: "h-auto w-full px-6 py-[14px] font-ploni text-[16px] font-bold leading-none",
       },
     },
     defaultVariants: {

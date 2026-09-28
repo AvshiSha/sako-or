@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Plus, Minus, ShoppingBag } from 'lucide-react'
+import { X, ShoppingBag } from 'lucide-react'
+import QuantityStepper from '@/app/components/QuantityStepper'
 import Image from 'next/image'
 import { useCart } from '../hooks/useCart'
 import { useToast } from './Toast'
@@ -290,25 +291,14 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
               {t.quantity}
             </label>
             <div className="flex items-center space-x-3">
-              <div className="flex items-center border border-gray-300 rounded-md border-gray-600">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="p-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={quantity <= 1}
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="px-3 py-2 text-gray-700 text-sm font-medium min-w-[3rem] text-center">
-                  {quantity}
-                </span>
-                <button
-                  onClick={() => setQuantity(Math.min(10, quantity + 1))}
-                  className="p-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={quantity >= Math.min(10, currentStock)}
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
+              {/* The 10-unit ceiling is this modal's own rule, not the stepper's - it
+                  caps an impulse add from the grid, where the PDP lets stock decide. */}
+              <QuantityStepper
+                value={quantity}
+                max={Math.min(10, currentStock)}
+                onChange={setQuantity}
+                language={lng === 'he' ? 'he' : 'en'}
+              />
               <span className="text-sm text-gray-500">
                 {currentStock > 0 ? `${currentStock} ${lng === 'he' ? 'זמין' : 'available'}` : t.outOfStock}
               </span>

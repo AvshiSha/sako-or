@@ -9,8 +9,6 @@ import {
   HeartIcon, 
   ShareIcon,
   ShoppingBagIcon,
-  MinusIcon,
-  PlusIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
@@ -22,6 +20,7 @@ import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
+import QuantityStepper from '@/app/components/QuantityStepper'
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'
@@ -727,23 +726,13 @@ export default function ProductColorClient({
                       <h3 className="text-lg font-medium text-gray-900 mb-2">
                         {lng === 'he' ? 'כמות' : 'Quantity'}
                       </h3>
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          disabled={quantity <= 1 || isOutOfStock}
-                          className="p-2 border border-gray-600 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <MinusIcon className="h-4 w-4 text-gray-600" />
-                        </button>
-                        <span className="text-lg font-medium min-w-[2rem] text-center text-gray-600">{quantity}</span>
-                        <button
-                          onClick={() => setQuantity(Math.min(quantity + 1, currentStock))}
-                          disabled={quantity >= currentStock || isOutOfStock}
-                          className="p-2 border border-gray-600 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <PlusIcon className="h-4 w-4 text-gray-600" />
-                        </button>
-                      </div>
+                      <QuantityStepper
+                        value={quantity}
+                        max={currentStock}
+                        onChange={setQuantity}
+                        language={lng === 'he' ? 'he' : 'en'}
+                        disabled={isOutOfStock}
+                      />
                       {!selectedSize && Object.keys(currentVariant.stockBySize).length > 0 && (
                         <div className="mt-2 text-sm text-gray-500">
                           {lng === 'he' 
@@ -999,23 +988,13 @@ export default function ProductColorClient({
                       <h3 className="text-lg font-medium text-gray-900 mb-2">
                         {lng === 'he' ? 'כמות' : 'Quantity'}
                       </h3>
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          disabled={quantity <= 1 || isOutOfStock}
-                          className="p-2 border border-gray-600 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <MinusIcon className="h-4 w-4 text-gray-600" />
-                        </button>
-                        <span className="text-lg font-medium min-w-[2rem] text-center text-gray-600">{quantity}</span>
-                        <button
-                          onClick={() => setQuantity(Math.min(quantity + 1, currentStock))}
-                          disabled={quantity >= currentStock || isOutOfStock}
-                          className="p-2 border border-gray-600 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <PlusIcon className="h-4 w-4 text-gray-600" />
-                        </button>
-                      </div>
+                      <QuantityStepper
+                        value={quantity}
+                        max={currentStock}
+                        onChange={setQuantity}
+                        language={lng === 'he' ? 'he' : 'en'}
+                        disabled={isOutOfStock}
+                      />
                       {!selectedSize && Object.keys(currentVariant.stockBySize).length > 0 && (
                         <div className="mt-2 text-sm text-gray-500">
                           {lng === 'he' 

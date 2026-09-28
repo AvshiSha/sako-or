@@ -4,12 +4,11 @@ import React, { useState, useEffect, useMemo, useCallback, useRef, Suspense } fr
 import { useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { 
+import {
   ShoppingBagIcon,
-  TrashIcon,
-  MinusIcon,
-  PlusIcon
+  TrashIcon
 } from '@heroicons/react/24/outline'
+import QuantityStepper from '@/app/components/QuantityStepper'
 import { useCart } from '@/app/hooks/useCart'
 import CheckoutModal from '@/app/components/CheckoutModal'
 import Accordion from '@/app/components/Accordion'
@@ -869,27 +868,13 @@ if (!isClient || loading) {
                     </div>
 
                     <div className={`mt-4 flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className="flex items-center rounded-lg border border-gray-300 overflow-hidden">
-                        <button
-                          onClick={() => updateQuantity(item.sku, item.quantity - 1, item.size, item.color)}
-                          className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={isOutOfStock || isChecking || item.quantity <= 1}
-                          aria-label={lng === 'he' ? 'הפחת כמות' : 'Decrease quantity'}
-                        >
-                          <MinusIcon className="h-4 w-4" />
-                        </button>
-                        <span className="px-4 text-sm font-medium text-gray-800 min-w-[3rem] text-center">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQuantity(item.sku, item.quantity + 1, item.size, item.color)}
-                          className="flex h-10 w-10 items-center justify-center text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          disabled={isOutOfStock || isChecking || item.quantity >= item.maxStock}
-                          aria-label={lng === 'he' ? 'הגדל כמות' : 'Increase quantity'}
-                        >
-                          <PlusIcon className="h-4 w-4" />
-                        </button>
-                      </div>
+                      <QuantityStepper
+                        value={item.quantity}
+                        max={item.maxStock}
+                        onChange={(next) => updateQuantity(item.sku, next, item.size, item.color)}
+                        language={lng === 'he' ? 'he' : 'en'}
+                        disabled={isOutOfStock || isChecking}
+                      />
 
                       <button
                         onClick={() => removeFromCart(item.sku, item.size, item.color)}

@@ -27,6 +27,14 @@ import { getProductSizeOptions, getSizeGridColumns } from '@/lib/product-size-op
  * Written out as whole class names on purpose. Tailwind scans source text, so a
  * composed `grid-cols-${n}` would never be generated.
  */
+/**
+ * Share and favourites. Neither is in 438:2664, so they borrow the design system's
+ * own button vocabulary rather than inventing one: sharp corners, a border-default
+ * hairline, Ploni at the sidebar's label size, and the size grid's hover tint.
+ */
+const SECONDARY_ACTION_BUTTON =
+  'flex h-[44px] flex-1 items-center justify-center gap-2 border border-border-default font-ploni text-[12px] text-text-primary transition-colors hover:bg-sako-gray-200'
+
 const SIZE_GRID_COLUMN_CLASS = {
   1: 'grid-cols-1',
   3: 'grid-cols-3',
@@ -394,8 +402,8 @@ export default function ProductColorClient({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading product...</p>
+          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-border-default"></div>
+          <p className="mt-4 font-ploni text-text-secondary">Loading product...</p>
         </div>
       </div>
     )
@@ -405,11 +413,11 @@ export default function ProductColorClient({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <ExclamationTriangleIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          <ExclamationTriangleIcon className="mx-auto mb-4 h-16 w-16 text-text-secondary" />
+          <h1 className="mb-4 font-ploni text-[32px] font-black leading-[32px] text-text-primary">
             {lng === 'he' ? 'מוצר לא נמצא' : 'Product Not Found'}
           </h1>
-          <p className="text-gray-600 mb-6">
+          <p className="mb-6 font-ploni text-[13px] leading-[16px] text-text-secondary">
             {lng === 'he' 
               ? 'המוצר או הצבע שחיפשת לא קיים או הוסר מהקטלוג.' 
               : 'The product or color you\'re looking for doesn\'t exist or has been removed from the catalog.'
@@ -417,7 +425,7 @@ export default function ProductColorClient({
           </p>
           <Link 
             href={`/${lng}/collection`}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+            className="inline-flex h-[54px] items-center justify-center border border-btn-primary-bg bg-btn-primary-bg px-6 font-ploni text-[16px] font-bold text-btn-primary-text transition-colors hover:bg-sako-ink-800"
           >
             {lng === 'he' ? 'חזור לאוסף' : 'Back to Collection'}
           </Link>
@@ -570,7 +578,7 @@ export default function ProductColorClient({
                 {isFavorite(buildFavoriteKey(baseSku, colorSlug)) ? (
                   <HeartSolidIcon className="h-4 w-4 text-red-500" />
                 ) : (
-                  <HeartIcon className="h-4 w-4 text-gray-700" />
+                  <HeartIcon className="h-4 w-4 text-text-primary" />
                 )}
               </button>
 
@@ -608,7 +616,7 @@ export default function ProductColorClient({
                 {productImages.map((src, index) => (
                   <div
                     key={`${src}-${index}`}
-                    className={`relative aspect-square overflow-hidden bg-gray-50 ${
+                    className={`relative aspect-square overflow-hidden bg-surface-secondary ${
                       index === 2 ? 'col-span-2' : ''
                     }`}
                   >
@@ -832,36 +840,39 @@ export default function ProductColorClient({
                   
                   if (allSizesOutOfStock) {
                     return (
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      <div className="mt-[20px] flex items-center justify-between border-b border-border-default pb-[13px] lg:mt-[35px]">
+                        <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
-                        <div className="text-red-600 font-semibold text-lg">
+                        <p className="font-ploni text-[12px] font-bold text-accent-error">
                           {lng === 'he' ? 'אזל מהמלאי' : 'OUT OF STOCK'}
-                        </div>
+                        </p>
                       </div>
                     )
                   }
                   
                   return (
                     <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {lng === 'he' ? 'כמות' : 'Quantity'}
-                      </h3>
-                      <QuantityStepper
-                        value={quantity}
-                        max={currentStock}
-                        onChange={setQuantity}
-                        language={lng === 'he' ? 'he' : 'en'}
-                        disabled={isOutOfStock}
-                      />
+                      {/* Quantity is absent from 438:2664, but kept as functionality the
+                          frame omits. Given the same ruled-row vocabulary as the swatch
+                          and size headers - label on the inline start, control on the
+                          end - so it reads as part of the sidebar, not a leftover. */}
+                      <div className="mt-[20px] flex items-center justify-between border-b border-border-default pb-[13px] lg:mt-[35px]">
+                        <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
+                          {lng === 'he' ? 'כמות' : 'Quantity'}
+                        </h3>
+                        <QuantityStepper
+                          value={quantity}
+                          max={currentStock}
+                          onChange={setQuantity}
+                          language={lng === 'he' ? 'he' : 'en'}
+                          disabled={isOutOfStock}
+                        />
+                      </div>
                       {!selectedSize && Object.keys(currentVariant.stockBySize).length > 0 && (
-                        <div className="mt-2 text-sm text-gray-500">
-                          {lng === 'he' 
-                            ? 'אנא בחר מידה' 
-                            : 'Please select a size'
-                          }
-                        </div>
+                        <p className="mt-[8px] font-ploni text-[10px] text-text-secondary lg:text-[12px]">
+                          {lng === 'he' ? 'אנא בחרי מידה' : 'Please select a size'}
+                        </p>
                       )}
                     </div>
                   )
@@ -898,32 +909,37 @@ export default function ProductColorClient({
                 </Button>
 
                 {/* Actions Row: Share & Favorites */}
-                <div className="flex space-x-4">
+                {/* gap, not space-x-4: space-x sets a physical margin that has to be
+                    flipped by hand in RTL, and this row already reversed once. */}
+                <div className="mt-[12px] flex gap-[8px]">
                   <button
+                    type="button"
                     onClick={handleShare}
-                    className="flex-1 py-2 px-2 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center gap-1"
+                    className={SECONDARY_ACTION_BUTTON}
                   >
-                    <ShareIcon className="h-3 w-3" />
-                    {lng === 'he' ? 'שתף' : 'Share'}
+                    <ShareIcon className="h-[14px] w-[14px]" aria-hidden="true" />
+                    {lng === 'he' ? 'שיתוף' : 'Share'}
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       handleToggleFavorite(buildFavoriteKey(baseSku, colorSlug))
                     }}
-                    className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
-                      isFavorite(buildFavoriteKey(baseSku, colorSlug))
-                        ? 'border-red-300 bg-red-50 text-red-600'
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
+                    aria-pressed={isFavorite(buildFavoriteKey(baseSku, colorSlug))}
+                    className={SECONDARY_ACTION_BUTTON}
                   >
+                    {/* The filled heart carries the state on its own. The design system
+                        has no styling for a "saved" secondary button, and giving it the
+                        dark fill it uses elsewhere for selection would have this
+                        competing with the CTA directly above it. */}
                     {isFavorite(buildFavoriteKey(baseSku, colorSlug)) ? (
-                      <HeartSolidIcon className="h-3 w-3" />
+                      <HeartSolidIcon className="h-[14px] w-[14px]" aria-hidden="true" />
                     ) : (
-                      <HeartIcon className="h-3 w-3" />
+                      <HeartIcon className="h-[14px] w-[14px]" aria-hidden="true" />
                     )}
                     {isFavorite(buildFavoriteKey(baseSku, colorSlug))
-                      ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
-                      : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')
+                      ? (lng === 'he' ? 'הסרה ממועדפים' : 'Remove from Favorites')
+                      : (lng === 'he' ? 'הוספה למועדפים' : 'Add to Favorites')
                     }
                   </button>
                 </div>
@@ -1113,36 +1129,39 @@ export default function ProductColorClient({
                   
                   if (allSizesOutOfStock) {
                     return (
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      <div className="mt-[20px] flex items-center justify-between border-b border-border-default pb-[13px] lg:mt-[35px]">
+                        <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
-                        <div className="text-red-600 font-semibold text-lg">
+                        <p className="font-ploni text-[12px] font-bold text-accent-error">
                           {lng === 'he' ? 'אזל מהמלאי' : 'OUT OF STOCK'}
-                        </div>
+                        </p>
                       </div>
                     )
                   }
                   
                   return (
                     <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {lng === 'he' ? 'כמות' : 'Quantity'}
-                      </h3>
-                      <QuantityStepper
-                        value={quantity}
-                        max={currentStock}
-                        onChange={setQuantity}
-                        language={lng === 'he' ? 'he' : 'en'}
-                        disabled={isOutOfStock}
-                      />
+                      {/* Quantity is absent from 438:2664, but kept as functionality the
+                          frame omits. Given the same ruled-row vocabulary as the swatch
+                          and size headers - label on the inline start, control on the
+                          end - so it reads as part of the sidebar, not a leftover. */}
+                      <div className="mt-[20px] flex items-center justify-between border-b border-border-default pb-[13px] lg:mt-[35px]">
+                        <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
+                          {lng === 'he' ? 'כמות' : 'Quantity'}
+                        </h3>
+                        <QuantityStepper
+                          value={quantity}
+                          max={currentStock}
+                          onChange={setQuantity}
+                          language={lng === 'he' ? 'he' : 'en'}
+                          disabled={isOutOfStock}
+                        />
+                      </div>
                       {!selectedSize && Object.keys(currentVariant.stockBySize).length > 0 && (
-                        <div className="mt-2 text-sm text-gray-500">
-                          {lng === 'he' 
-                            ? 'אנא בחר מידה' 
-                            : 'Please select a size'
-                          }
-                        </div>
+                        <p className="mt-[8px] font-ploni text-[10px] text-text-secondary lg:text-[12px]">
+                          {lng === 'he' ? 'אנא בחרי מידה' : 'Please select a size'}
+                        </p>
                       )}
                     </div>
                   )
@@ -1179,58 +1198,67 @@ export default function ProductColorClient({
                 </Button>
 
                 {/* Actions Row: Share & Favorites */}
-                <div className="flex space-x-4">
+                {/* gap, not space-x-4: space-x sets a physical margin that has to be
+                    flipped by hand in RTL, and this row already reversed once. */}
+                <div className="mt-[12px] flex gap-[8px]">
                   <button
+                    type="button"
                     onClick={handleShare}
-                    className="flex-1 py-2 px-2 rounded-md text-xs font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center gap-1"
+                    className={SECONDARY_ACTION_BUTTON}
                   >
-                    <ShareIcon className="h-3 w-3" />
-                    {lng === 'he' ? 'שתף' : 'Share'}
+                    <ShareIcon className="h-[14px] w-[14px]" aria-hidden="true" />
+                    {lng === 'he' ? 'שיתוף' : 'Share'}
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       handleToggleFavorite(buildFavoriteKey(baseSku, colorSlug))
                     }}
-                    className={`flex-1 py-2 px-2 rounded-md text-xs font-medium border transition-colors duration-200 flex items-center justify-center gap-1 ${
-                      isFavorite(buildFavoriteKey(baseSku, colorSlug))
-                        ? 'border-red-300 bg-red-50 text-red-600'
-                        : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                    }`}
+                    aria-pressed={isFavorite(buildFavoriteKey(baseSku, colorSlug))}
+                    className={SECONDARY_ACTION_BUTTON}
                   >
+                    {/* The filled heart carries the state on its own. The design system
+                        has no styling for a "saved" secondary button, and giving it the
+                        dark fill it uses elsewhere for selection would have this
+                        competing with the CTA directly above it. */}
                     {isFavorite(buildFavoriteKey(baseSku, colorSlug)) ? (
-                      <HeartSolidIcon className="h-3 w-3" />
+                      <HeartSolidIcon className="h-[14px] w-[14px]" aria-hidden="true" />
                     ) : (
-                      <HeartIcon className="h-3 w-3" />
+                      <HeartIcon className="h-[14px] w-[14px]" aria-hidden="true" />
                     )}
                     {isFavorite(buildFavoriteKey(baseSku, colorSlug))
-                      ? (lng === 'he' ? 'הוסר מהמועדפים' : 'Remove from Favorites')
-                      : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')
+                      ? (lng === 'he' ? 'הסרה ממועדפים' : 'Remove from Favorites')
+                      : (lng === 'he' ? 'הוספה למועדפים' : 'Add to Favorites')
                     }
                   </button>
                 </div>
 
-                {/* Product Description */}
-                <div className="text-lg font-medium text-gray-900 mb-2">{lng === 'he' ? 'תיאור' : 'Description'}</div>
-                <div>
-                  <p className="text-gray-600 leading-relaxed">{lng === 'he' ? product.description_he : product.description_en}</p>
-                </div>
+                {/* 438:2706 puts the description in the first accordion, open by
+                    default, rather than as a loose heading above the others. */}
+                {(lng === 'he' ? product.description_he : product.description_en) && (
+                  <Accordion title={lng === 'he' ? 'תיאור' : 'Description'} defaultOpen>
+                    <p>{lng === 'he' ? product.description_he : product.description_en}</p>
+                  </Accordion>
+                )}
               </div>
 
               {/* Product Info */}
-              <div className="border-t border-gray-200 pt-6">
+              <div className="border-t border-border-subtle pt-6">
                 <div className="space-y-4">
                   <div>
-                    <h4 className="font-medium text-gray-900">
+                    <h4 className="font-ploni text-[16px] font-bold text-text-primary">
                       {lng === 'he' ? 'מידע נוסף' : 'Additional Information'}
                     </h4>
-                    <div className="mt-2 space-y-2 text-sm text-gray-600">
+                    <div className="mt-2 space-y-2 font-ploni text-[13px] text-text-secondary">
                       {/* Availability and effective price as plain text. Both existed
                           only inside the JSON-LD before, so anything reading the page
                           as prose — a shopper skimming, or the sales assistant — had
                           no way to tell whether this colour was actually buyable. */}
                       <div className="flex justify-between">
                         <span>{lng === 'he' ? 'זמינות' : 'Availability'}:</span>
-                        <span className={isOutOfStock ? 'text-gray-500' : 'text-green-700'}>
+                        {/* The design system has no green; availability reads as the
+                            error accent when it is out, plain ink when it is in. */}
+                        <span className={isOutOfStock ? 'text-accent-error' : 'text-text-primary'}>
                           {isOutOfStock
                             ? (lng === 'he' ? 'אזל מהמלאי' : 'Out of stock')
                             : (lng === 'he' ? 'במלאי' : 'In stock')}
@@ -1275,7 +1303,7 @@ export default function ProductColorClient({
               </div>
 
               {/* Material & Care and Shipping & Returns Sections */}
-              <div className="border-t border-gray-200 pt-6">
+              <div className="border-t border-border-subtle pt-6">
                 <div className="space-y-4">
                   {/* Material & Care Section */}
                   {(() => {
@@ -1329,97 +1357,97 @@ export default function ProductColorClient({
                       <div className="space-y-3">
                         {upperMaterialText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'חומר עליון:' : 'Upper Material:'}
                             </span>
-                            <span className="text-sm text-gray-900">{upperMaterialText}</span>
+                            <span className="text-text-primary">{upperMaterialText}</span>
                           </div>
                         )}
                         {insoleText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'מדרס:' : 'Insole:'}
                             </span>
-                            <span className="text-sm text-gray-900">{insoleText}</span>
+                            <span className="text-text-primary">{insoleText}</span>
                           </div>
                         )}
                         {liningText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'בטנה:' : 'Lining:'}
                             </span>
-                            <span className="text-sm text-gray-900">{liningText}</span>
+                            <span className="text-text-primary">{liningText}</span>
                           </div>
                         )}
                         {outsoleText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'סוליה חיצונית:' : 'Outsole:'}
                             </span>
-                            <span className="text-sm text-gray-900">{outsoleText}</span>
+                            <span className="text-text-primary">{outsoleText}</span>
                           </div>
                         )}
                         {soleTypeText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'סוג סוליה:' : 'Sole Type:'}
                             </span>
-                            <span className="text-sm text-gray-900">{soleTypeText}</span>
+                            <span className="text-text-primary">{soleTypeText}</span>
                           </div>
                         )}
                         {heelHeightText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'גובה עקב:' : 'Heel Height:'}
                             </span>
-                            <span className="text-sm text-gray-900">{heelHeightText}</span>
+                            <span className="text-text-primary">{heelHeightText}</span>
                           </div>
                         )}
                         {/* Dimensions and weight: structured numbers when they exist,
                             otherwise the legacy free text, via buildMeasurementRows. */}
                         {measurementRows.map((row) => (
                           <div key={row.key} className="flex justify-between">
-                            <span className="text-sm text-gray-600">{row.label}:</span>
-                            <span className="text-sm text-gray-900">{row.value}</span>
+                            <span className="text-text-secondary">{row.label}:</span>
+                            <span className="text-text-primary">{row.value}</span>
                           </div>
                         ))}
                         {closureTypeText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'סגירה:' : 'Closure:'}
                             </span>
-                            <span className="text-sm text-gray-900">{closureTypeText}</span>
+                            <span className="text-text-primary">{closureTypeText}</span>
                           </div>
                         )}
                         {heelTypeText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'סוג עקב:' : 'Heel Type:'}
                             </span>
-                            <span className="text-sm text-gray-900">{heelTypeText}</span>
+                            <span className="text-text-primary">{heelTypeText}</span>
                           </div>
                         )}
                         {toeShapeText && (
                           <div className="flex justify-between">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-text-secondary">
                               {lng === 'he' ? 'צורת בהונות:' : 'Toe Shape:'}
                             </span>
-                            <span className="text-sm text-gray-900">{toeShapeText}</span>
+                            <span className="text-text-primary">{toeShapeText}</span>
                           </div>
                         )}
                         {/* Bag attributes — empty for every non-bag product */}
                         {bagRows.map((row) => (
                           <div key={row.key} className="flex justify-between">
-                            <span className="text-sm text-gray-600">{row.label}:</span>
-                            <span className="text-sm text-gray-900">{row.value}</span>
+                            <span className="text-text-secondary">{row.label}:</span>
+                            <span className="text-text-primary">{row.value}</span>
                           </div>
                         ))}
                         {(product.materialCare?.careInstructions_en || product.materialCare?.careInstructions_he) && (
-                          <div className="pt-2 mt-1 border-t border-gray-200">
-                            <span className="text-sm text-gray-600 block mb-1">
+                          <div className="mt-1 border-t border-border-subtle pt-2">
+                            <span className="mb-1 block text-text-secondary">
                               {lng === 'he' ? 'הוראות טיפוח:' : 'Care Instructions:'}
                             </span>
-                            <p className="text-sm text-gray-900 leading-relaxed">
+                            <p className="leading-relaxed text-text-primary">
                               {lng === 'he' ? product.materialCare?.careInstructions_he : product.materialCare?.careInstructions_en}
                             </p>
                           </div>
@@ -1451,44 +1479,44 @@ export default function ProductColorClient({
                         <div className="space-y-3">
                           {!isUndefinedFitValue(shoeFit.sizeFit) && (
                             <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-text-secondary">
                                 {lng === 'he' ? 'התאמת מידה:' : 'Size Fit:'}
                               </span>
-                              <span className="text-sm text-gray-900">
+                              <span className="text-text-primary">
                                 {getOptionLabel(SIZE_FIT_OPTIONS, shoeFit.sizeFit, lng as 'en' | 'he')}
                               </span>
                             </div>
                           )}
                           {!isUndefinedFitValue(shoeFit.footWidthFit) && (
                             <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-text-secondary">
                                 {lng === 'he' ? 'רוחב מומלץ:' : 'Recommended Foot Width:'}
                               </span>
-                              <span className="text-sm text-gray-900">
+                              <span className="text-text-primary">
                                 {getOptionLabel(FOOT_WIDTH_FIT_OPTIONS, shoeFit.footWidthFit, lng as 'en' | 'he')}
                               </span>
                             </div>
                           )}
                           {!isUndefinedFitValue(shoeFit.archFit) && (
                             <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-text-secondary">
                                 {lng === 'he' ? 'קשת כף רגל:' : 'Arch Fit:'}
                               </span>
-                              <span className="text-sm text-gray-900">
+                              <span className="text-text-primary">
                                 {getOptionLabel(ARCH_FIT_OPTIONS, shoeFit.archFit, lng as 'en' | 'he')}
                               </span>
                             </div>
                           )}
                           {adjustableFeatureLabels.length > 0 && (
                             <div className="flex justify-between">
-                              <span className="text-sm text-gray-600">
+                              <span className="text-text-secondary">
                                 {lng === 'he' ? 'סגירה באמצעות:' : 'Adjustable Features:'}
                               </span>
-                              <span className="text-sm text-gray-900">{adjustableFeatureLabels.join(', ')}</span>
+                              <span className="text-text-primary">{adjustableFeatureLabels.join(', ')}</span>
                             </div>
                           )}
                           {notes && (
-                            <p className="text-sm text-gray-600 leading-relaxed">{notes}</p>
+                            <p className="leading-relaxed text-text-secondary">{notes}</p>
                           )}
                         </div>
                       </Accordion>
@@ -1497,7 +1525,7 @@ export default function ProductColorClient({
 
                   {/* Shipping & Returns Section */}
                   <Accordion title={lng === 'he' ? 'משלוחים והחזרות' : 'Shipping & Returns'}>
-                    <div className="text-sm text-gray-600 leading-relaxed">
+                    <div className="leading-relaxed text-text-secondary">
                       {product.shippingReturns ? (
                         // Custom shipping returns content if provided by admin
                         lng === 'he' ? product.shippingReturns.he : product.shippingReturns.en

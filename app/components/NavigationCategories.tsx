@@ -227,17 +227,36 @@ export default function NavigationCategories({
                 value={subcategory.id}
                 className="border-b border-sako-black"
               >
-                {/* Radix ships its own chevron; [&>svg]:hidden drops it so the design's
-                    ＋ can rotate 45deg into the − instead. */}
-                <AccordionTrigger
-                  className={`${rowH} py-0 font-ploni ${rowText} font-semibold leading-[23px] text-text-primary hover:no-underline hover:opacity-70 [&>svg]:hidden [&[data-state=open]_.nav-plus]:rotate-45`}
-                  dir={dir}
-                >
-                  <span className="flex w-full items-center justify-between">
-                    <span>{categoryName}</span>
+                {/* The row is two controls, not one: the name navigates to the category
+                    and the ＋ opens its children. It used to be a single full-row
+                    AccordionTrigger, so tapping a parent category only expanded it - the
+                    menu stayed open and the category page was unreachable from its own
+                    row. The ＋ is the design's affordance for expanding, so it is what
+                    expands; the label behaves like every other row in the list. */}
+                <div className={`flex ${rowH}`} dir={dir}>
+                  <Link
+                    href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
+                    onClick={onNavigate}
+                    className={`flex flex-1 items-center font-ploni ${rowText} font-semibold leading-[23px] text-text-primary transition-opacity hover:opacity-70`}
+                    suppressHydrationWarning
+                  >
+                    {categoryName}
+                  </Link>
+                  {/* Radix ships its own chevron; [&>svg]:hidden drops it so the design's
+                      ＋ can rotate 45deg into the − instead. */}
+                  <AccordionTrigger
+                    // 44px wide for the tap target, but justify-end so the glyph still
+                    // sits flush on the row's inline edge where the frame puts it.
+                    className="w-[44px] shrink-0 justify-end px-0 py-0 hover:no-underline hover:opacity-70 [&>svg]:hidden [&[data-state=open]_.nav-plus]:rotate-45"
+                    aria-label={
+                      lng === 'he'
+                        ? `הצגת תתי הקטגוריות של ${categoryName}`
+                        : `Show ${categoryName} subcategories`
+                    }
+                  >
                     {plus}
-                  </span>
-                </AccordionTrigger>
+                  </AccordionTrigger>
+                </div>
                 <AccordionContent className="px-0">
                   {childGrid(
                     <>

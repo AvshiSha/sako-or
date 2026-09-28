@@ -554,8 +554,13 @@ export default function ProductColorClient({
 
       <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
         <div>
-        <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_2fr] gap-0 lg:items-start">            {/* Product Images - Full Width */}
-            <div className="relative w-full lg:sticky lg:top-28 lg:self-start lg:z-10 lg:max-h-[calc(100dvh-7rem)]">
+        {/* 438:2644 — a 1224/502 split, so the sidebar is a fixed 502px track and the
+            mosaic takes the rest. It was 1.5fr/2fr, which gave the images 43% and the
+            copy 57%, the reverse of the frame. In RTL the first track is the rightmost,
+            which is where the frame puts the sidebar; order swaps the two at lg only,
+            so mobile keeps images-then-details. */}
+        <div className="grid grid-cols-1 gap-0 lg:grid-cols-[502px_minmax(0,1fr)] lg:items-start">            {/* Product Images - Full Width */}
+            <div className="relative w-full lg:order-2">
               {/* Favorite Heart Icon - Top Left */}
               <button
                 onClick={() => handleToggleFavorite(buildFavoriteKey(baseSku, colorSlug))}
@@ -578,23 +583,53 @@ export default function ProductColorClient({
                 />
               )}
 
-              <ProductImageCarousel
-                key={colorSlug}
-                images={productImages}
-                altList={productImageAltList}
-                alt={`${productName} - ${currentVariant.colorSlug}`}
-                direction={isRTL ? "rtl" : "ltr"}
-                variant="pdp"
-                isAboveFold
-                className="w-full"
-                dotSelectLabelPrefix={
-                  lng === "he" ? "עבור לתמונה" : "Go to image"
-                }
-              />
+              {/* Mobile keeps the swipeable gallery. */}
+              <div className="lg:hidden">
+                <ProductImageCarousel
+                  key={colorSlug}
+                  images={productImages}
+                  altList={productImageAltList}
+                  alt={`${productName} - ${currentVariant.colorSlug}`}
+                  direction={isRTL ? "rtl" : "ltr"}
+                  variant="pdp"
+                  isAboveFold
+                  className="w-full"
+                  dotSelectLabelPrefix={
+                    lng === "he" ? "עבור לתמונה" : "Go to image"
+                  }
+                />
+              </div>
+
+              {/* Desktop mosaic, 438:2645. The frame does not carousel on desktop - it
+                  tiles the shots two across in squares, with the third spanning the
+                  full width, and lets the whole column scroll past the sticky sidebar.
+                  1px gaps, exactly as the frame spaces its figures. */}
+              <div className="hidden grid-cols-2 gap-px lg:grid">
+                {productImages.map((src, index) => (
+                  <div
+                    key={`${src}-${index}`}
+                    className={`relative aspect-square overflow-hidden bg-gray-50 ${
+                      index === 2 ? 'col-span-2' : ''
+                    }`}
+                  >
+                    <Image
+                      src={src}
+                      alt={productImageAltList?.[index] || `${productName} - ${index + 1}`}
+                      fill
+                      sizes="(min-width: 1024px) 71vw, 100vw"
+                      className="object-cover"
+                      priority={index === 0}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Product Details */}
-            <div className={`space-y-6 px-4 sm:px-6 py-4 lg:pb-8 ${isRTL ? 'lg:pl-48 lg:pr-4' : 'lg:pl-4 lg:pr-48'}`}>
+            {/* Product Details — the sidebar. 36px inset either side is what leaves
+                the frame's 430px content column inside a 502px track. This is the
+                sticky one now: the frame scrolls the mosaic past it, where the build
+                had it the other way round. */}
+            <div className="space-y-6 px-4 py-4 sm:px-6 lg:sticky lg:top-28 lg:order-1 lg:self-start lg:px-[36px] lg:pb-8">
               {/* Mobile Layout — promo labels on image carousel */}
               {/* Mobile buy box — design system 438:4218. The frame drives its own
                   vertical rhythm with padding (pt-12/13/32/12), so the blanket
@@ -842,7 +877,10 @@ export default function ProductColorClient({
                   size="sako"
                   onClick={handleAddToCart}
                   disabled={isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart}
-                  className="duration-200"
+                  // 438:2703 gives the desktop bar an explicit 54px, taller than the
+                  // shared 14px padding produces. Scoped with lg: rather than changing
+                  // the sako size variant, which the product card also uses.
+                  className="duration-200 lg:h-[54px] lg:py-0"
                 >
                   {(() => {
                     if (isAddingToCart) {
@@ -911,129 +949,162 @@ export default function ProductColorClient({
                     product page two. role/aria-level keep this announced as the
                     page heading for desktop screen readers, which skip the
                     display:none mobile copy. */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div role="heading" aria-level={1} className="text-2xl font-bold text-gray-900">
-                      {productDisplayName}
-                    </div>
-                    {productSeoName && (
-                      <p className="mt-1 text-sm text-gray-500">{productSeoName}</p>
-                    )}
+                {/* Heading block, 438:2665. SKU, title and price stack to the inline
+                    start on a 10px rhythm. No items-end: the frame's "end" is an
+                    LTR artboard's, which in RTL would throw all three to the left. */}
+                <div className="flex flex-col gap-[10px]">
+                  {/* 438:2666 — the SKU sits above the title, DemiBold 9 with a
+                      1.08px track. The build had no SKU on the page at all. */}
+                  <p className="font-ploni text-[9px] font-semibold tracking-[1.08px] text-text-primary">
+                    {product.sku || baseSku}
+                  </p>
+
+                  {/* Typography/Heading/H5: Ploni Black 60/50. */}
+                  <div
+                    role="heading"
+                    aria-level={1}
+                    className="font-ploni text-[60px] font-black leading-[50px] text-text-primary"
+                  >
+                    {productDisplayName}
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  {productSeoName && (
+                    <p className="font-ploni text-[13px] leading-[16px] text-text-secondary">{productSeoName}</p>
+                  )}
+
+                  {/* Price, 438:2669 — 12px Regular, struck original then current,
+                      the order ProductCard and the mobile buy box both use. The
+                      frame drops the shekel sign; kept here, since a storefront
+                      showing a bare number is a worse trade than matching the mock. */}
+                  <div className="flex items-center gap-[10px] font-ploni text-[12px] tabular-nums">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
                       <>
-                        <div className="flex flex-col items-end">
-                          <span className="text-2xl font-bold text-red-600">
-                            ₪{getSalePrice()!.toFixed(2)}
-                          </span>
-                          <span className="text-sm text-gray-500 line-through">
-                            ₪{getOriginalPrice().toFixed(2)}
-                          </span>
-                        </div>
+                        <span className="text-text-secondary line-through">
+                          ₪{getOriginalPrice().toFixed(2)}
+                        </span>
+                        <span className="text-text-primary">
+                          ₪{getSalePrice()!.toFixed(2)}
+                        </span>
                       </>
                     ) : (
-                      <span className="text-2xl font-bold text-gray-900">
+                      <span className="text-text-primary">
                         ₪{currentPrice.toFixed(2)}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Color Selection */}
+                {/* Colour swatches, 438:2672. A ruled row 35px below the heading, the
+                    swatches pushed to the inline end of it. The frame carries no
+                    "צבע" label - the empty 438:2674 spacer is where one would go. */}
                 {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      {lng === 'he' ? 'צבע' : 'Color'}
-                    </h3>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {Object.values(product.colorVariants)
-                        .filter(variant => variant.isActive !== false)
-                        .map((variant) => {
-                        const isCurrentVariant = variant.colorSlug === colorSlug
-                        const isVariantOutOfStock = Object.values(variant.stockBySize).every(stock => stock <= 0)
-                        const variantImage = variant.primaryImage || variant.images?.[0]
-                        
-                        return (
-                          <button
-                            key={variant.colorSlug}
-                            onClick={() => {
-                              if (!isVariantOutOfStock) {
-                                handleColorChange(variant.colorSlug)
-                              }
-                            }}
-                            disabled={isVariantOutOfStock}
-                            className="flex-shrink-0 relative group"
-                            title={getColorName(variant.colorSlug, lng as 'en' | 'he')}
-                          >
-                            {variantImage ? (
-                              <div className={`w-12 h-12 rounded-full overflow-hidden border-2 border-transparent ${
-                                isVariantOutOfStock ? 'opacity-50' : ''
-                              }`}>
-                                <Image
-                                  src={variantImage}
-                                  alt={getColorName(variant.colorSlug, lng as 'en' | 'he')}
-                                  width={48}
-                                  height={48}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            ) : (
-                              <div className={`w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center ${
-                                isVariantOutOfStock ? 'opacity-50' : ''
-                              }`}>
-                                <span className="text-xs text-gray-500">{getColorName(variant.colorSlug, lng as 'en' | 'he')}</span>
-                              </div>
-                            )}
-                            <div 
-                              className={`absolute -bottom-1 left-0 w-12 h-0.5 transition-all duration-200 ${
-                                isCurrentVariant 
-                                  ? 'bg-black' 
-                                  : 'bg-transparent group-hover:bg-gray-400'
-                              }`}
+                  <div className="mt-[35px] flex items-center justify-end gap-[8px] border-b border-border-default pb-[13px]">
+                    {Object.values(product.colorVariants)
+                      .filter(variant => variant.isActive !== false)
+                      .map((variant) => {
+                      const isCurrentVariant = variant.colorSlug === colorSlug
+                      const isVariantOutOfStock = Object.values(variant.stockBySize).every(stock => stock <= 0)
+                      const variantImage = variant.primaryImage || variant.images?.[0]
+
+                      return (
+                        // Circular, as on the card and the mobile buy box. 438:2676
+                        // draws a 47x28 landscape tile here, but three different
+                        // swatch shapes across one storefront helps nobody.
+                        <button
+                          key={variant.colorSlug}
+                          type="button"
+                          onClick={() => {
+                            if (!isVariantOutOfStock) {
+                              handleColorChange(variant.colorSlug)
+                            }
+                          }}
+                          disabled={isVariantOutOfStock}
+                          aria-label={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                          aria-pressed={isCurrentVariant}
+                          title={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                          className={`relative flex size-[47px] shrink-0 items-center justify-center overflow-hidden rounded-full border bg-surface-secondary transition-colors ${
+                            isCurrentVariant
+                              ? 'border-border-default'
+                              : 'border-border-subtle hover:border-text-secondary'
+                          } ${isVariantOutOfStock ? 'opacity-50' : ''}`}
+                        >
+                          {variantImage ? (
+                            <Image
+                              src={variantImage}
+                              alt={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                              width={47}
+                              height={47}
+                              className="size-full object-cover"
                             />
-                          </button>
-                        )
-                      })}
-                    </div>
+                          ) : (
+                            <span className="px-1 font-ploni text-[9px] leading-none text-text-secondary">
+                              {getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
 
-                {/* Size Selection */}
-                {Object.keys(currentVariant.stockBySize).length > 0 && (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {lng === 'he' ? 'מידה' : 'Size'}
-                      </h3>
-                      <button 
-                        onClick={() => setIsSizeChartOpen(true)}
-                        className="text-sm text-gray-600 underline hover:text-gray-900 transition-colors"
-                      >
-                        {lng === 'he' ? 'טבלת מידות' : 'Size Chart'}
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(currentVariant.stockBySize)
-                        .filter(([size, stock]) => stock > 0)
-                        .map(([size, stock]) => {
-                          return (
-                            <button
-                              key={size}
-                              onClick={() => setSelectedSize(size)}
-                              className={`px-4 py-2 border rounded-md text-sm font-medium ${
-                                selectedSize === size
-                                  ? 'border-[#856D55] bg-[#B2A28E] text-[#000000]'
-                                  : 'border-gray-300 text-gray-700 hover:border-gray-400'
-                              }`}
-                            >
-                              {size}
-                            </button>
-                          )
-                        })}
-                    </div>
+                {/* Size selection, 438:2680 + 438:2687 */}
+                <div>
+                  {/* Ruled header 35px down, 12px labels. Section name first so it
+                      lands on the inline start - right in Hebrew - with the size
+                      chart opposite, which is how the frame reads once mirrored. */}
+                  <div className="mt-[35px] flex items-center justify-between border-b border-border-default pb-[13px] font-ploni text-[12px] text-text-primary">
+                    <h3 className="font-bold">
+                      {lng === 'he' ? 'בחירת מידה' : 'Select size'}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setIsSizeChartOpen(true)}
+                      className="transition-opacity hover:opacity-70"
+                    >
+                      {lng === 'he' ? 'טבלת מידות' : 'Size chart'}
+                    </button>
                   </div>
-                )}
+
+                  {/* One row of equal cells. The frame fixes seven 61.41px cells to
+                      fill its 430px sidebar; flex-1 is the same row expressed so an
+                      eight-size range still fits on one line instead of wrapping.
+                      Dividers are border-e - the inline end, so they mirror. */}
+                  <div className="mt-[12px] flex border border-border-default">
+                    {sizeOptions.map((option) => {
+                      const isSelected = selectedSize === option.key
+                      return (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => setSelectedSize(option.key)}
+                          disabled={!option.inStock}
+                          aria-pressed={isSelected}
+                          aria-label={
+                            option.inStock
+                              ? option.label
+                              : `${option.label} — ${lng === 'he' ? 'אזל מהמלאי' : 'out of stock'}`
+                          }
+                          style={
+                            option.inStock
+                              ? undefined
+                              : {
+                                  backgroundImage:
+                                    'linear-gradient(to top right, rgba(170,170,170,0) 49%, rgb(170,170,170) 50%, rgba(170,170,170,0) 51%)',
+                                }
+                          }
+                          className={`flex h-[44px] flex-1 items-center justify-center border-e border-border-default font-ploni text-[16px] tabular-nums transition-colors last:border-e-0 ${
+                            !option.inStock
+                              ? 'cursor-not-allowed text-sako-gray-500'
+                              : isSelected
+                                ? 'bg-sako-ink-900 text-text-inverse'
+                                : 'text-text-primary hover:bg-sako-gray-200'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
 
                 {/* Quantity or Out of Stock */}
                 {(() => {
@@ -1087,7 +1158,10 @@ export default function ProductColorClient({
                   size="sako"
                   onClick={handleAddToCart}
                   disabled={isOutOfStock || (Object.keys(currentVariant.stockBySize).length > 0 && !selectedSize) || isAddingToCart}
-                  className="duration-200"
+                  // 438:2703 gives the desktop bar an explicit 54px, taller than the
+                  // shared 14px padding produces. Scoped with lg: rather than changing
+                  // the sako size variant, which the product card also uses.
+                  className="duration-200 lg:h-[54px] lg:py-0"
                 >
                   {(() => {
                     if (isAddingToCart) {

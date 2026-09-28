@@ -25,9 +25,13 @@ export default function Breadcrumbs({
   if (usable.length < 2) return null
 
   return (
+    // 438:2629 — a 50px rule under the header, inset 36px on desktop. No justify
+    // class: the frame pushes the trail to the right, which in RTL is simply the
+    // inline start, so the default start alignment mirrors correctly in both
+    // languages. Reading justify-end off the LTR artboard would pin it left in Hebrew.
     <nav
       aria-label="Breadcrumb"
-      className={`px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm text-gray-500 ${className}`}
+      className={`flex h-[50px] items-center border-b border-border-default px-4 sm:px-6 lg:px-[36px] ${className}`}
     >
       {/*
         One line, always. The trail used to wrap onto a second line on phones -
@@ -39,7 +43,8 @@ export default function Breadcrumbs({
         hidden, truncated or dropped, so the crawlable link trail and the
         JSON-LD are untouched - this is purely how many pixels tall it is.
       */}
-      <ol className="flex flex-nowrap items-center gap-x-2 overflow-x-auto whitespace-nowrap no-scrollbar">
+      {/* Typography/Caption: Ploni Regular 9 with a 0.72px track. */}
+      <ol className="flex flex-nowrap items-center gap-x-2 overflow-x-auto whitespace-nowrap no-scrollbar font-ploni text-[9px] tracking-[0.72px] text-text-primary">
         {usable.map((crumb, index) => {
           const isLast = index === usable.length - 1
           return (
@@ -47,14 +52,15 @@ export default function Breadcrumbs({
               {index > 0 && (
                 // Plain slash rather than a chevron: a "›" points the wrong
                 // way once the page flips to RTL for Hebrew.
-                <span aria-hidden="true" className="text-gray-300 select-none">/</span>
+                // The slash is a size up from the labels and untracked (438:2633).
+                <span aria-hidden="true" className="select-none text-[10px] tracking-normal">/</span>
               )}
               {isLast || !crumb.url ? (
-                <span className="text-gray-900" aria-current="page">
+                <span aria-current="page">
                   {crumb.name}
                 </span>
               ) : (
-                <Link href={crumb.url} className="hover:text-gray-900 hover:underline">
+                <Link href={crumb.url} className="transition-opacity hover:opacity-70">
                   {crumb.name}
                 </Link>
               )}

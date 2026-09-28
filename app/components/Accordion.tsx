@@ -33,7 +33,10 @@ export default function Accordion({ title, children, defaultOpen = false }: Acco
         onClick={() => setIsOpen((open) => !open)}
         aria-expanded={isOpen}
         aria-controls={panelId}
-        className="flex h-[55px] w-full items-center justify-between"
+        // 62 on mobile (438:4252), 100 on desktop (438:2706). The standalone
+        // component frame 438:3918 documents 55, but both places it actually ships
+        // are taller, so the in-situ sizes win.
+        className="flex h-[62px] w-full items-center justify-between lg:h-[100px]"
       >
         {/* Title first, sign second. `justify-between` then puts the title on the
             inline start and the sign on the inline end, which mirrors correctly:

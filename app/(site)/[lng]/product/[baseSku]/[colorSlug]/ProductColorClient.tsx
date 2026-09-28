@@ -577,122 +577,154 @@ export default function ProductColorClient({
             {/* Product Details */}
             <div className={`space-y-6 px-4 sm:px-6 py-4 lg:pb-8 ${isRTL ? 'lg:pl-48 lg:pr-4' : 'lg:pl-4 lg:pr-48'}`}>
               {/* Mobile Layout — promo labels on image carousel */}
-              <div className="lg:hidden space-y-2">
-                {/* Product Title + Price (same row) */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-2xl font-bold text-gray-900">
-                      {productDisplayName}
-                    </h1>
-                    {productSeoName && (
-                      <p className="mt-1 text-sm text-gray-500">{productSeoName}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Mobile buy box — design system 438:4218. The frame drives its own
+                  vertical rhythm with padding (pt-12/13/32/12), so the blanket
+                  space-y-2 is gone rather than stacking on top of it. */}
+              <div className="lg:hidden">
+                {/* Heading block, 438:4219. Title, price and swatches stack to the
+                    inline start; no items-end, which in RTL would throw all three to
+                    the left - the frame's "end" is a left-to-right artboard's end. */}
+                <div className="flex flex-col gap-[10px] pt-[12px]">
+                  {/* Typography/Heading/Section: Ploni Black 40/30. The frame sets
+                      whitespace-nowrap around a two-word Latin placeholder; real
+                      Hebrew names are longer, so this is allowed to wrap. */}
+                  <h1 className="font-ploni text-[40px] font-black leading-[30px] text-text-primary">
+                    {productDisplayName}
+                  </h1>
+                  {productSeoName && (
+                    <p className="font-ploni text-[13px] leading-[16px] text-text-secondary">{productSeoName}</p>
+                  )}
+
+                  {/* Price, 438:4221. Struck original first, current second - the same
+                      order ProductCard uses, so a card and the PDP it opens agree.
+                      In RTL that puts the current price on the left of the pair. */}
+                  <div className="flex items-center gap-[10px] font-ploni text-[14px] tabular-nums">
                     {hasSalePrice() && getSalePrice() && getSalePrice()! < getOriginalPrice() ? (
                       <>
-                        <div className="flex flex-col items-end">
-                          <span className="text-2xl font-bold text-red-600">
-                            ₪{getSalePrice()!.toFixed(2)}
-                          </span>
-                          <span className="text-sm text-gray-500 line-through">
-                            ₪{getOriginalPrice().toFixed(2)}
-                          </span>
-                        </div>
+                        <span className="font-medium leading-[18px] text-text-secondary line-through">
+                          ₪{getOriginalPrice().toFixed(2)}
+                        </span>
+                        <span className="font-bold leading-[20.8px] text-text-primary">
+                          ₪{getSalePrice()!.toFixed(2)}
+                        </span>
                       </>
                     ) : (
-                      <span className="text-2xl font-bold text-gray-900">
+                      <span className="font-bold leading-[20.8px] text-text-primary">
                         ₪{currentPrice.toFixed(2)}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Product Variants (Colors) */}
+                {/* Colour swatches, 438:4224. The frame carries no "צבע" heading -
+                    the swatches sit directly under the price inside the heading
+                    block, which is what the mt-[10px] reproduces here. They stay a
+                    sibling because the whole group is conditional. */}
                 {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      {lng === 'he' ? 'צבע' : 'Color'}
-                    </h3>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {Object.values(product.colorVariants)
-                        .filter(variant => variant.isActive !== false)
-                        .map((variant) => {
-                        const isCurrentVariant = variant.colorSlug === colorSlug
-                        const isVariantOutOfStock = Object.values(variant.stockBySize).every(stock => stock <= 0)
-                        const variantImage = variant.primaryImage || variant.images?.[0]
-                        
-                        return (
-                          <button
-                            key={variant.colorSlug}
-                            onClick={() => {
-                              if (!isVariantOutOfStock) {
-                                handleColorChange(variant.colorSlug)
-                              }
-                            }}
-                            disabled={isVariantOutOfStock}
-                            className="flex-shrink-0 relative group"
-                            title={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                  <div className="mt-[10px] flex gap-[6px] overflow-x-auto">
+                    {Object.values(product.colorVariants)
+                      .filter(variant => variant.isActive !== false)
+                      .map((variant) => {
+                      const isCurrentVariant = variant.colorSlug === colorSlug
+                      const isVariantOutOfStock = Object.values(variant.stockBySize).every(stock => stock <= 0)
+                      const variantImage = variant.primaryImage || variant.images?.[0]
+
+                      return (
+                        <button
+                          key={variant.colorSlug}
+                          onClick={() => {
+                            if (!isVariantOutOfStock) {
+                              handleColorChange(variant.colorSlug)
+                            }
+                          }}
+                          disabled={isVariantOutOfStock}
+                          className="group relative size-[47px] shrink-0"
+                          title={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                        >
+                          {/* gray-200 (#e1dbd6) is the frame's product/light ground,
+                              and object-contain, not cover: the swatch art is a shoe
+                              on a tinted field, so cropping it defeats the point. */}
+                          <span
+                            className={`flex size-full items-center justify-center bg-sako-gray-200 ${
+                              isVariantOutOfStock ? 'opacity-50' : ''
+                            }`}
                           >
                             {variantImage ? (
-                              <div className={`w-12 h-12 rounded-full overflow-hidden border-2 border-transparent ${
-                                isVariantOutOfStock ? 'opacity-50' : ''
-                              }`}>
-                                <Image
-                                  src={variantImage}
-                                  alt={getColorName(variant.colorSlug, lng as 'en' | 'he')}
-                                  width={48}
-                                  height={48}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
+                              <Image
+                                src={variantImage}
+                                alt={getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                                width={47}
+                                height={47}
+                                className="size-full object-contain"
+                              />
                             ) : (
-                              <div className={`w-12 h-12 rounded-full border-2 border-gray-200 flex items-center justify-center ${
-                                isVariantOutOfStock ? 'opacity-50' : ''
-                              }`}>
-                                <span className="text-xs text-gray-500">{getColorName(variant.colorSlug, lng as 'en' | 'he')}</span>
-                              </div>
+                              <span className="px-1 font-ploni text-[9px] leading-none text-text-secondary">
+                                {getColorName(variant.colorSlug, lng as 'en' | 'he')}
+                              </span>
                             )}
-                            <div 
-                              className={`absolute -bottom-1 left-0 w-12 h-0.5 transition-all duration-200 ${
-                                isCurrentVariant 
-                                  ? 'bg-black' 
-                                  : 'bg-transparent group-hover:bg-gray-400'
-                              }`}
-                            />
-                          </button>
-                        )
-                      })}
-                    </div>
+                          </span>
+                          {/* Selection is a hairline under the swatch (438:4228), not
+                              a ring around it as on the product card. */}
+                          <span
+                            aria-hidden="true"
+                            className={`absolute inset-x-0 bottom-0 h-px transition-colors duration-200 ${
+                              isCurrentVariant ? 'bg-sako-black' : 'bg-transparent group-hover:bg-sako-gray-500'
+                            }`}
+                          />
+                        </button>
+                      )
+                    })}
                   </div>
                 )}
 
-                {/* Size Selection */}
+                {/* Description, 438:4232. Typography/Paragraph/Regular at 13/16, and
+                    no "תיאור" heading - the frame runs the copy straight under the
+                    swatches. It used to sit at the very bottom of the column, below
+                    shipping and returns, where it read as an afterthought. */}
+                {(lng === 'he' ? product.description_he : product.description_en) && (
+                  <p className="pt-[13px] font-ploni text-[13px] leading-[16px] text-text-primary">
+                    {lng === 'he' ? product.description_he : product.description_en}
+                  </p>
+                )}
+
+                {/* Size selection, 438:4234 + 438:4240 */}
                 {Object.keys(currentVariant.stockBySize).length > 0 && (
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {lng === 'he' ? 'מידה' : 'Size'}
+                    {/* 10px labels, the section name bold. justify-between puts the
+                        name on the inline start and the guide on the end, which
+                        mirrors: name right / guide left in Hebrew. */}
+                    <div className="flex items-start justify-between pt-[32px] font-ploni text-[10px] text-text-primary">
+                      <h3 className="font-bold">
+                        {lng === 'he' ? 'בחירת מידה' : 'Select size'}
                       </h3>
-                      <button 
+                      <button
+                        type="button"
                         onClick={() => setIsSizeChartOpen(true)}
-                        className="text-sm text-gray-600 underline hover:text-gray-900 transition-colors"
+                        className="transition-opacity hover:opacity-70"
                       >
-                        {lng === 'he' ? 'טבלת מידות' : 'Size Chart'}
+                        {lng === 'he' ? 'מדריך מידות' : 'Size guide'}
                       </button>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+
+                    {/* The dividers are the grid itself: an ink-900 ground showing
+                        through 1px gaps between paper cells, framed by a 1px border.
+                        That is how the frame draws it, and it keeps the hairlines
+                        even when the sizes wrap onto a second row. */}
+                    <div className="mt-[12px] grid grid-cols-5 gap-px border border-border-default bg-sako-ink-900 p-px">
                       {Object.entries(currentVariant.stockBySize)
-                        .filter(([size, stock]) => stock > 0)
-                        .map(([size, stock]) => {
+                        .filter(([, stock]) => stock > 0)
+                        .map(([size]) => {
+                          const isSelected = selectedSize === size
                           return (
                             <button
                               key={size}
+                              type="button"
                               onClick={() => setSelectedSize(size)}
-                              className={`px-4 py-2 border rounded-md text-sm font-medium ${
-                                selectedSize === size
-                                  ? 'border-[#856D55] bg-[#B2A28E] text-[#000000]'
-                                  : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                              aria-pressed={isSelected}
+                              className={`flex h-[46px] items-center justify-center font-ploni text-[11px] tabular-nums transition-colors ${
+                                isSelected
+                                  ? 'bg-sako-ink-900 text-text-inverse'
+                                  : 'bg-surface-secondary text-text-primary hover:bg-sako-gray-200'
                               }`}
                             >
                               {size}
@@ -703,6 +735,10 @@ export default function ProductColorClient({
                   </div>
                 )}
 
+                {/* Everything below the size grid is not yet redesigned, so it keeps
+                    the old space-y-2 rhythm here rather than losing its spacing when
+                    that class came off the column above. */}
+                <div className="mt-[20px] space-y-2">
                 {/* Quantity Selector */}
                 {(() => {
                   const allSizesOutOfStock = Object.keys(currentVariant.stockBySize).length > 0 && 
@@ -803,26 +839,6 @@ export default function ProductColorClient({
                   </button>
                 </div>
 
-                {/* Benefits / Info Lines */}
-                <div className="space-y-4 text-sm text-gray-600 bg-[#E1DBD7] p-2 rounded-md gap">
-                  <div>
-                    {lng === 'he' 
-                      ? 'משלוח חינם בקנייה מעל 300 ₪' 
-                      : 'Free delivery above 300 ILS'
-                    }
-                  </div>
-                  <div>
-                    {lng === 'he' 
-                      ? 'החלפה ראשונה ללא עלות – ללא עלות משלוח' 
-                      : 'First exchange is free – no shipping cost'
-                    }
-                  </div>
-                </div>
-
-                {/* Product Description */}
-                <div className="text-lg font-medium text-gray-900 mb-2">{lng === 'he' ? 'תיאור' : 'Description'}</div>
-                <div>
-                  <p className="text-gray-600 leading-relaxed">{lng === 'he' ? product.description_he : product.description_en}</p>
                 </div>
               </div>
 
@@ -1066,22 +1082,6 @@ export default function ProductColorClient({
                       : (lng === 'he' ? 'הוסף למועדפים' : 'Add to Favorites')
                     }
                   </button>
-                </div>
-
-                {/* Benefits / Info Lines */}
-                <div className="space-y-4 text-sm text-gray-600 bg-[#E1DBD7] p-2 rounded-md gap">
-                  <div>
-                    {lng === 'he' 
-                      ? 'משלוח חינם בקנייה מעל 300 ₪' 
-                      : 'Free delivery above 300 ILS'
-                    }
-                  </div>
-                  <div>
-                    {lng === 'he' 
-                      ? 'החלפה ראשונה ללא עלות – ללא עלות משלוח' 
-                      : 'First exchange is free – no shipping cost'
-                    }
-                  </div>
                 </div>
 
                 {/* Product Description */}

@@ -46,8 +46,15 @@ const ProductImageSlide = memo(function ProductImageSlide({
   alt: string;
   eager: boolean;
 }) {
+  // The slide pins its own square ratio rather than filling the gallery with
+  // h-full. Embla's track has no definite height, so h-full there resolves to
+  // auto and the slide collapses to the image's natural height, leaving a gap
+  // under it inside a taller gallery box.
   return (
-    <div className="relative aspect-square h-full w-full overflow-hidden bg-gray-50" style={{ aspectRatio: '1 / 1' }}>
+    <div
+      className="relative aspect-square h-full w-full overflow-hidden bg-gray-50"
+      style={{ aspectRatio: '1 / 1' }}
+    >
       {/* Native img: lighter than Next/Image during Embla drag (especially in grids). */}
       <img
         src={src}
@@ -99,36 +106,49 @@ const CarouselDotIndicators = memo(function CarouselDotIndicators({
   count: number;
   activeIndex: number;
   position?: "top" | "bottom";
-  size?: "sm" | "md";
+  /** "pdp" is the design-system gallery indicator, 438:4210. */
+  size?: "sm" | "md" | "pdp";
   interactive?: boolean;
   onSelect?: (index: number) => void;
   selectLabelPrefix?: string;
 }) {
   if (count <= 1) return null;
 
+  const isPdpDots = size === "pdp";
   const isMd = size === "md";
 
   return (
     <div
       className={cn(
-        "absolute left-1/2 z-10 flex -translate-x-1/2 gap-1.5",
-        position === "top" ? "top-2" : "bottom-4",
-        interactive ? "space-x-2" : "pointer-events-none"
+        "absolute left-1/2 z-10 flex -translate-x-1/2",
+        // 438:4210 sits the dots 10px tall on an 18px pitch - 8px of gap - and
+        // 27px up from the foot of the gallery.
+        isPdpDots ? "gap-2 bottom-[27px]" : "gap-1.5",
+        !isPdpDots && (position === "top" ? "top-2" : "bottom-4"),
+        interactive ? (isPdpDots ? "" : "space-x-2") : "pointer-events-none"
       )}
       aria-hidden={!interactive}
     >
       {Array.from({ length: count }).map((_, index) => {
         const active = activeIndex === index;
         const className = cn(
-          "rounded-full bg-[#E1DBD7]",
-          isMd ? "h-2" : "h-1 w-1",
-          active
-            ? isMd
-              ? "w-6 opacity-100"
-              : "w-1 opacity-100"
-            : isMd
-              ? "w-2 opacity-50 hover:bg-[#E1DBD7]/75"
-              : "w-1 opacity-50"
+          "rounded-full",
+          // The frame draws every dot the same 10px circle and distinguishes the
+          // current one by colour alone - not by stretching it into a pill, which
+          // is what the previous md indicator did.
+          isPdpDots
+            ? cn("size-[10px]", active ? "bg-sako-ink-900" : "bg-sako-gray-500")
+            : cn(
+                "bg-[#E1DBD7]",
+                isMd ? "h-2" : "h-1 w-1",
+                active
+                  ? isMd
+                    ? "w-6 opacity-100"
+                    : "w-1 opacity-100"
+                  : isMd
+                    ? "w-2 opacity-50 hover:bg-[#E1DBD7]/75"
+                    : "w-1 opacity-50"
+              )
         );
 
         if (interactive) {
@@ -283,7 +303,7 @@ function ProductImageCarouselInner({
               count={images.length}
               activeIndex={settledIndex}
               position="bottom"
-              size="md"
+              size="pdp"
               interactive
               onSelect={(index) => api?.scrollTo(index)}
               selectLabelPrefix={dotSelectLabelPrefix}

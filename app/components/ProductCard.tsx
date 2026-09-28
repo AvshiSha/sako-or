@@ -497,13 +497,14 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
           )}
         </button>
 
-        {/* Status badge — flush to the top-left corner on mobile (438:3978 is
-            top-0/left--1) and inset by the desktop frame's 9/10px at lg (438:3941).
+        {/* Status badge — flush to the top-left corner at every width (438:3978).
+            The desktop frame insets it by 9/10px, but matching mobile was the call:
+            one position, and the badge sits hard into the card's corner.
             The old mobile placement was bottom-left, which needed a conditional to
             dodge the promo ribbon; moving it to the top removes that collision. */}
         {statusBadge && (
           <div
-            className="pointer-events-none absolute left-[-1px] top-0 z-10 lg:left-[9px] lg:top-[10px]"
+            className="pointer-events-none absolute left-[-1px] top-0 z-10"
           >
             {renderStatusBadge()}
           </div>

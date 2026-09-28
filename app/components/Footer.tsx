@@ -174,7 +174,10 @@ export default function Footer({ lng }: { lng: string }) {
               330px content box. */}
           {/* Centred by decision. Both frames set the wordmark flush to the inline
               start (the right, in RTL); centring is a deliberate departure. */}
-          <p className="text-center font-ploni text-[60px] font-black leading-[60px] text-text-inverse">
+          {/* Centred on mobile, pushed to the far edge on desktop. The monogram sits
+              in the grid's first track, which RTL puts on the right, so text-end lands
+              the wordmark on the opposite side of the footer from it. */}
+          <p className="text-center font-ploni text-[60px] font-black leading-[60px] text-text-inverse lg:text-end">
             {t.brand}
           </p>
 

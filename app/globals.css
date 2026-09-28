@@ -89,6 +89,10 @@
   --color-sako-red-700: #b64444;
   --color-sako-blue-700: #04318c;
   --color-sako-brown-500: #795f44;
+  /* The footer ground (438:4327 / 438:4354). Carries the Figma style name
+     "olive/900" but is absent from the DESIGN SYSTEM page's documented swatches -
+     another of the colours the audit counts and does not show. */
+  --color-sako-olive-900: #1c1b12;
 
   /* Semantic aliases — 15. Names are the design system's, verbatim, which is why
      two of them read oddly as utilities: text-text-primary and

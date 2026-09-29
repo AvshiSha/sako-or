@@ -1,5 +1,4 @@
 import { fetchHomeBestSellers } from '@/lib/home-products'
-import { fetchHomeShoeCategories } from '@/lib/home-categories'
 import { HOME_COLLECTION_BANNERS } from '@/lib/home-collections'
 
 import HomeClient from './HomeClient'
@@ -13,20 +12,17 @@ export function HomeProductsFallback() {
   )
 }
 
-export default async function HomeProducts({
-  lng,
-}: {
-  lng: 'en' | 'he'
-}) {
-  const [bestSellers, categories] = await Promise.all([
-    fetchHomeBestSellers(),
-    fetchHomeShoeCategories(lng),
-  ])
+// No lng parameter: it only ever fed fetchHomeShoeCategories, and HomeClient
+// derives the locale from the pathname itself.
+export default async function HomeProducts() {
+  // Only best sellers now: the SHOP BY CATEGORY section was the sole consumer
+  // of fetchHomeShoeCategories, so dropping it takes a second Firestore round trip
+  // off the home page's critical path.
+  const bestSellers = await fetchHomeBestSellers()
 
   return (
     <HomeClient
       initialBestSellers={bestSellers}
-      initialCategories={categories}
       collectionBanners={HOME_COLLECTION_BANNERS}
     />
   )

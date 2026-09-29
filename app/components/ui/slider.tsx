@@ -24,13 +24,17 @@ const Slider = React.forwardRef<
       defaultValue={defaultValue} // Only used if value is undefined (uncontrolled mode)
       {...props}
     >
-      <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-gray-200">
-        <SliderPrimitive.Range className="absolute h-full bg-[#856D55]/90" />
+      {/* 438:3105 draws a heavy black rule with two ringed handles. The unselected
+          track stays light so the chosen range is still legible; at the default
+          full range the two read as the single black line the frame shows. The old
+          #856D55 was the pre-redesign brand colour and is not in the token set. */}
+      <SliderPrimitive.Track className="relative h-[5px] w-full grow overflow-hidden rounded-full bg-sako-gray-200">
+        <SliderPrimitive.Range className="absolute h-full bg-sako-ink-900" />
       </SliderPrimitive.Track>
       {Array.from({ length: thumbCount }).map((_, index) => (
-        <SliderPrimitive.Thumb 
+        <SliderPrimitive.Thumb
           key={index}
-          className="block h-5 w-5 rounded-full border-2 border-[#856D55]/90 bg-white ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50" 
+          className="block h-[18px] w-[18px] rounded-full border-2 border-sako-ink-900 bg-surface-primary ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sako-ink-900 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
         />
       ))}
     </SliderPrimitive.Root>

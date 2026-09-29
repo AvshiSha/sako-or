@@ -214,13 +214,14 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const promoBadge = useProductCouponBadge(product.sku, product.baseSku)
 
   const statusBadge = useMemo(() => {
-    // Only the sale badge is designed (438:3941, accent-sale). The other three
-    // states predate the redesign and are mapped onto design system primitives so
-    // the card is not half old-brand, half new - they need design sign-off.
+    // Only the sale badge is designed (438:3941, accent-sale). Out of stock is
+    // accent-error by decision - it read as just another dark chip next to NEW,
+    // which is the one state that must not look like an ordinary label. Last Call
+    // still predates the redesign and needs design sign-off.
     if (isOutOfStock) {
       return {
         text: language === 'he' ? 'אזל מהמלאי' : 'Out of Stock',
-        className: 'bg-surface-dark',
+        className: 'bg-accent-error',
       }
     }
     if (isLastCall) {

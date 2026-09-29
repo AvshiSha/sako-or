@@ -13,10 +13,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
-import {
-  XMarkIcon,
-  CubeIcon,
-} from "@heroicons/react/24/outline";
+import { CubeIcon } from "@heroicons/react/24/outline";
 import { Product, Category, productHelpers, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
 import CollectionProductCardSkeleton from "@/app/components/CollectionProductCardSkeleton";
@@ -33,19 +30,13 @@ import {
   takeCollectionFilterNavPending,
 } from "@/lib/collectionFilterNav";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/app/components/ui/accordion';
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { Slider } from '@/app/components/ui/slider';
+import CollectionFilterPanel from '@/app/components/collection/CollectionFilterPanel';
 import {
   clearCollectionState,
   getCollectionState,
@@ -1086,8 +1077,8 @@ export default function CollectionClient({
 
   // Controlled state for accordion sections (desktop and mobile)
   // Using array to allow multiple sections open simultaneously
-  const [desktopAccordionValue, setDesktopAccordionValue] = useState<string[]>([]);
-  const [mobileAccordionValue, setMobileAccordionValue] = useState<string[]>([]);
+  // The redesigned filter panel (438:3094) has no accordions - its sections are
+  // flat - so the two open-section states that tracked them are gone.
 
   // Auto-open accordion sections that have active filters when filter panel opens
 
@@ -2192,217 +2183,47 @@ export default function CollectionClient({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-[70]"
+              className="fixed left-0 top-0 z-[70] h-full w-full max-w-[501px] bg-surface-primary shadow-2xl"
             >
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-6 border-b border-gray-100">
-            <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
-            <button
-              onClick={handleCloseFiltersPanel}
-              className="text-black hover:text-gray-600"
-            >
-              <XMarkIcon className="h-5 w-5" />
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-6">
-            <Accordion 
-              type="multiple" 
-              value={desktopAccordionValue}
-              onValueChange={setDesktopAccordionValue}
-              className="space-y-6"
-            >
-              {/* Price Filter */}
-              <AccordionItem value="price" className="border border-gray-200 rounded-lg">
-                <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                  <h3 className="text-sm font-medium text-black">{t.price}</h3>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
-                  <div className="space-y-4 pt-3 border-t border-gray-100">
-                    {/* Price Range Label */}
-                    <div className="text-sm font-medium text-gray-900">
-                      ₪{formatPrice(panelUiRange[0])} - ₪{formatPrice(panelUiRange[1])}
-                    </div>
-                    
-                    {/* Price Range Slider */}
-                    <div className="px-2">
-                      <Slider
-                        value={panelUiRange}
-                        onValueChange={handleSliderChange}
-                        onValueCommit={handleSliderCommit}
-                        min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)}
-                        max={Math.ceil((collectionPriceBounds.max + 200) / 10) * 10}
-                        step={10}
-                        className="w-full"
-                        dir={lng === 'he' ? 'rtl' : 'ltr'}
-                      />
-                    </div>
-
-                    {/* Reset Button */}
-                    {(panelUiRange[0] !== collectionPriceBounds.min || panelUiRange[1] !== collectionPriceBounds.max) && (
-                      <button
-                        onClick={handlePriceReset}
-                        className="text-xs text-gray-600 hover:text-gray-800 underline"
-                      >
-                        {lng === 'he' ? 'איפוס' : 'Reset'}
-                      </button>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Colors */}
-              <AccordionItem value="colors" className="border border-gray-200 rounded-lg">
-                <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                  <h3 className="text-sm font-medium text-black">{t.colors}</h3>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
-                  <div className="space-y-2 pt-3 border-t border-gray-100">
-                    {allColors.map((color) => (
-                      <button
-                        key={color}
-                        onClick={() => handleColorToggle(color)}
-                        className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
-                          panelColors.includes(color)
-                            ? 'bg-gray-100 border border-gray-300'
-                            : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                        }`}
-                      >
-                        <div
-                          className="w-6 h-6 rounded-full border border-gray-200"
-                          style={{ backgroundColor: colorSlugToHex[color] || getColorHex(color) }}
-                        />
-                        <span className="text-sm font-light text-black">{getColorName(color, lng as 'en' | 'he')}</span>
-                      </button>
-                    ))}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Sizes */}
-              <AccordionItem value="sizes" className="border border-gray-200 rounded-lg">
-                <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                  <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
-                </AccordionTrigger>
-                <AccordionContent className="px-4 pb-4">
-                  <div className="space-y-4 pt-3 border-t border-gray-100">
-                    {numericSizes.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-medium text-gray-600 mb-2">Shoes</h4>
-                        <div className="grid grid-cols-4 gap-2">
-                          {numericSizes.map((size) => (
-                            <button
-                              key={size}
-                              onClick={() => handleSizeToggle(size)}
-                              className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                                panelSizes.includes(size)
-                                  ? 'bg-gray-100 border border-gray-300'
-                                  : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                              }`}
-                            >
-                              <span className="text-sm font-light text-black">{size}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {alphaSizes.length > 0 && (
-                      <div>
-                        <h4 className="text-xs font-medium text-gray-600 mb-2">Clothing</h4>
-                        <div className="grid grid-cols-3 gap-2">
-                          {alphaSizes.map((size) => (
-                            <button
-                              key={size}
-                              onClick={() => handleSizeToggle(size)}
-                              className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                                panelSizes.includes(size)
-                                  ? 'bg-gray-100 border border-gray-300'
-                                  : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                              }`}
-                            >
-                              <span className="text-sm font-light text-black">{size}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-
-              {/* Sub-Sub Categories */}
-              {showSubSubCategoryFilter && Object.keys(subSubCategoriesByParent).length > 0 && (
-                <AccordionItem value="subSubCategories" className="border border-gray-200 rounded-lg">
-                  <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                    <h3 className="text-sm font-medium text-black">
-                      {lng === 'he' ? 'תת-קטגוריות' : 'Sub-Categories'}
-                    </h3>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    <div className="space-y-4 pt-3 border-t border-gray-100">
-                      {Object.entries(subSubCategoriesByParent).map(([parentId, subSubCats]) => (
-                        <div key={parentId} className="space-y-2">
-                          <h4 className="text-xs font-medium text-gray-600 mb-2">
-                            {getParentCategoryName(parentId)}
-                          </h4>
-                          <div className="space-y-2">
-                            {subSubCats.map((category) => (
-                              <button
-                                key={category.id}
-                                onClick={() => handleSubSubCategoryToggle(category.id!)}
-                                className={`w-full flex items-center p-2 rounded-sm transition-all duration-200 ${
-                                  panelSubSubCategories.includes(category.id!)
-                                    ? 'bg-gray-100 border border-gray-300'
-                                    : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                                }`}
-                              >
-                                <span className="text-sm font-light text-black">
-                                  {getSubSubCategoryName(category)}
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              )}
-            </Accordion>
-
-            {/* Clear Filters Button */}
-            {(() => {
-              const [currentMin, currentMax] = panelUiRange;
-              const boundsMin = collectionPriceBounds?.min ?? 0;
-              const boundsMax = collectionPriceBounds?.max ?? 1000;
-              const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-              if (panelColors.length > 0 || panelSizes.length > 0 || panelSubSubCategories.length > 0 || hasPriceFilter) {
-                return (
-                  <div className="mb-6">
-                    <button
-                      onClick={handleClearFilters}
-                      className="w-full py-2 px-4 text-sm font-light text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 border border-gray-200 rounded-sm"
-                    >
-                      {t.clearAllFilters}
-                    </button>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-          </div>
-
-          <div className="p-6 border-t border-gray-100">
-            <button
-              onClick={handleApplyFilters}
-              disabled={isFilterLoading}
-              className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {t.applyFilters}
-            </button>
-          </div>
-        </div>
+        <CollectionFilterPanel
+          lng={lng}
+          labels={{
+            title: t.filters,
+            price: t.price,
+            colors: t.colors,
+            sizes: t.sizes,
+            subCategories: lng === 'he' ? 'תת-קטגוריות' : 'Sub-Categories',
+            apply: t.applyFilters,
+            clearAll: t.clearAllFilters,
+            reset: lng === 'he' ? 'איפוס' : 'Reset',
+            close: lng === 'he' ? 'סגירת הסינון' : 'Close filters',
+          }}
+          uiRange={panelUiRange}
+          priceBounds={{ min: collectionPriceBounds?.min ?? 0, max: collectionPriceBounds?.max ?? 1000 }}
+          onSliderChange={handleSliderChange}
+          onSliderCommit={handleSliderCommit}
+          onPriceReset={handlePriceReset}
+          formatPrice={formatPrice}
+          allColors={allColors}
+          selectedColors={panelColors}
+          onColorToggle={handleColorToggle}
+          getColorHex={(color) => colorSlugToHex[color] || getColorHex(color)}
+          getColorLabel={(color) => getColorName(color, lng as 'en' | 'he')}
+          numericSizes={numericSizes}
+          alphaSizes={alphaSizes}
+          selectedSizes={panelSizes}
+          onSizeToggle={handleSizeToggle}
+          showSubSubCategoryFilter={showSubSubCategoryFilter}
+          subSubCategoriesByParent={subSubCategoriesByParent}
+          selectedSubSubCategories={panelSubSubCategories}
+          onSubSubCategoryToggle={handleSubSubCategoryToggle}
+          getParentCategoryName={getParentCategoryName}
+          getSubSubCategoryName={getSubSubCategoryName}
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+          onClose={handleCloseFiltersPanel}
+          isBusy={isFilterLoading}
+        />
       </motion.div>
           </>
         )}
@@ -2426,215 +2247,47 @@ export default function CollectionClient({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute left-0 top-0 h-full w-80 bg-white shadow-xl z-[71]"
+              className="absolute left-0 top-0 z-[71] h-full w-full max-w-[501px] bg-surface-primary shadow-xl"
             >
-            <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
-                <button
-                  onClick={handleCloseFiltersPanel}
-                  className="text-black hover:text-gray-600"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6">
-                {/* Same filter content as desktop */}
-                <Accordion 
-                  type="multiple" 
-                  value={mobileAccordionValue}
-                  onValueChange={setMobileAccordionValue}
-                  className="space-y-6"
-                >
-                  <AccordionItem value="price" className="border border-gray-200 rounded-lg">
-                    <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                      <h3 className="text-sm font-medium text-black">{t.price}</h3>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-4 pt-3 border-t border-gray-100">
-                        {/* Price Range Label */}
-                        <div className="text-sm font-medium text-gray-900">
-                          ₪{formatPrice(panelUiRange[0])} - ₪{formatPrice(panelUiRange[1])}
-                        </div>
-                        
-                         {/* Price Range Slider */}
-                         <div className="px-2">
-                           <Slider
-                             value={panelUiRange}
-                             onValueChange={handleSliderChange}
-                             onValueCommit={handleSliderCommit}
-                             min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)}
-                             max={Math.ceil((collectionPriceBounds.max + 200) / 10) * 10}
-                             step={10}
-                             className="w-full"
-                             dir={lng === 'he' ? 'rtl' : 'ltr'}
-                           />
-                         </div>
-
-                        {/* Reset Button */}
-                        {(panelUiRange[0] !== collectionPriceBounds.min || panelUiRange[1] !== collectionPriceBounds.max) && (
-                          <button
-                            onClick={handlePriceReset}
-                            className="text-xs text-gray-600 hover:text-gray-800 underline"
-                          >
-                            {lng === 'he' ? 'איפוס' : 'Reset'}
-                          </button>
-                        )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="colors" className="border border-gray-200 rounded-lg">
-                    <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                      <h3 className="text-sm font-medium text-black">{t.colors}</h3>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-2 pt-3 border-t border-gray-100">
-                        {allColors.map((color) => (
-                          <button
-                            key={color}
-                            onClick={() => handleColorToggle(color)}
-                            className={`w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200 ${
-                              panelColors.includes(color)
-                                ? 'bg-gray-100 border border-gray-300'
-                                : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                            }`}
-                          >
-                            <div
-                              className="w-6 h-6 rounded-full border border-gray-200"
-                              style={{ backgroundColor: colorSlugToHex[color] || getColorHex(color) }}
-                            />
-                            <span className="text-sm font-light text-black">{getColorName(color, lng as 'en' | 'he')}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  <AccordionItem value="sizes" className="border border-gray-200 rounded-lg">
-                    <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                      <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                      <div className="space-y-4 pt-3 border-t border-gray-100">
-                        {numericSizes.length > 0 && (
-                          <div>
-                            <h4 className="text-xs font-medium text-gray-600 mb-2">Shoes</h4>
-                            <div className="grid grid-cols-4 gap-2">
-                              {numericSizes.map((size) => (
-                                <button
-                                  key={size}
-                                  onClick={() => handleSizeToggle(size)}
-                                  className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                                    panelSizes.includes(size)
-                                      ? 'bg-gray-100 border border-gray-300'
-                                      : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                                  }`}
-                                >
-                                  <span className="text-sm font-light text-black">{size}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {alphaSizes.length > 0 && (
-                          <div>
-                            <h4 className="text-xs font-medium text-gray-600 mb-2">Clothing</h4>
-                            <div className="grid grid-cols-3 gap-2">
-                              {alphaSizes.map((size) => (
-                                <button
-                                  key={size}
-                                  onClick={() => handleSizeToggle(size)}
-                                  className={`p-2 rounded-sm transition-all duration-200 text-center ${
-                                    panelSizes.includes(size)
-                                      ? 'bg-gray-100 border border-gray-300'
-                                      : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                                  }`}
-                                >
-                                  <span className="text-sm font-light text-black">{size}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-
-                  {/* Sub-Sub Categories - Mobile */}
-                  {showSubSubCategoryFilter && Object.keys(subSubCategoriesByParent).length > 0 && (
-                    <AccordionItem value="subSubCategories" className="border border-gray-200 rounded-lg">
-                      <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                        <h3 className="text-sm font-medium text-black">
-                          {lng === 'he' ? 'תת-קטגוריות' : 'Sub-Categories'}
-                        </h3>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-4 pt-3 border-t border-gray-100">
-                          {Object.entries(subSubCategoriesByParent).map(([parentId, subSubCats]) => (
-                            <div key={parentId} className="space-y-2">
-                              <h4 className="text-xs font-medium text-gray-600 mb-2">
-                                {getParentCategoryName(parentId)}
-                              </h4>
-                              <div className="space-y-2">
-                                {subSubCats.map((category) => (
-                                  <button
-                                    key={category.id}
-                                    onClick={() => handleSubSubCategoryToggle(category.id!)}
-                                    className={`w-full flex items-center p-2 rounded-sm transition-all duration-200 ${
-                                      panelSubSubCategories.includes(category.id!)
-                                        ? 'bg-gray-100 border border-gray-300'
-                                        : 'hover:bg-gray-100 hover:border-gray-200 border border-transparent'
-                                    }`}
-                                  >
-                                    <span className="text-sm font-light text-black">
-                                      {getSubSubCategoryName(category)}
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  )}
-                </Accordion>
-
-                {/* Clear Filters Button */}
-                {(() => {
-                  const [currentMin, currentMax] = panelUiRange;
-                  const boundsMin = collectionPriceBounds?.min ?? 0;
-                  const boundsMax = collectionPriceBounds?.max ?? 1000;
-                  const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-                  if (panelColors.length > 0 || panelSizes.length > 0 || panelSubSubCategories.length > 0 || hasPriceFilter) {
-                    return (
-                      <div className="mb-6">
-                        <button
-                          onClick={handleClearFilters}
-                          className="w-full py-2 px-4 text-sm font-light text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 border border-gray-200 rounded-sm"
-                        >
-                          {t.clearAllFilters}
-                        </button>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-
-              <div className="p-6 border-t border-gray-100">
-                <button
-                  onClick={handleApplyFilters}
-                  disabled={isFilterLoading}
-                  className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {t.applyFilters}
-                </button>
-              </div>
-            </div>
+        <CollectionFilterPanel
+          lng={lng}
+          labels={{
+            title: t.filters,
+            price: t.price,
+            colors: t.colors,
+            sizes: t.sizes,
+            subCategories: lng === 'he' ? 'תת-קטגוריות' : 'Sub-Categories',
+            apply: t.applyFilters,
+            clearAll: t.clearAllFilters,
+            reset: lng === 'he' ? 'איפוס' : 'Reset',
+            close: lng === 'he' ? 'סגירת הסינון' : 'Close filters',
+          }}
+          uiRange={panelUiRange}
+          priceBounds={{ min: collectionPriceBounds?.min ?? 0, max: collectionPriceBounds?.max ?? 1000 }}
+          onSliderChange={handleSliderChange}
+          onSliderCommit={handleSliderCommit}
+          onPriceReset={handlePriceReset}
+          formatPrice={formatPrice}
+          allColors={allColors}
+          selectedColors={panelColors}
+          onColorToggle={handleColorToggle}
+          getColorHex={(color) => colorSlugToHex[color] || getColorHex(color)}
+          getColorLabel={(color) => getColorName(color, lng as 'en' | 'he')}
+          numericSizes={numericSizes}
+          alphaSizes={alphaSizes}
+          selectedSizes={panelSizes}
+          onSizeToggle={handleSizeToggle}
+          showSubSubCategoryFilter={showSubSubCategoryFilter}
+          subSubCategoriesByParent={subSubCategoriesByParent}
+          selectedSubSubCategories={panelSubSubCategories}
+          onSubSubCategoryToggle={handleSubSubCategoryToggle}
+          getParentCategoryName={getParentCategoryName}
+          getSubSubCategoryName={getSubSubCategoryName}
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+          onClose={handleCloseFiltersPanel}
+          isBusy={isFilterLoading}
+        />
           </motion.div>
         </div>
         )}

@@ -19,9 +19,13 @@ const LISTING_PAGE_SIZE = 24;
 export default function Loading() {
   return (
     <div className="min-h-screen bg-white" aria-busy="true" aria-label="Loading collection">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pb-16">
-        <div className="mb-4 min-h-[20px]" aria-hidden />
-        <div className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 gap-y-2 sm:gap-6 -mx-3 items-start">
+      {/* Mirrors CollectionClient's shell exactly - full-bleed, with the inset
+          carried by the blocks that are not the grid. If this container keeps a
+          max-width the grid paints narrow and then jumps wide when the page
+          streams in, which is the shift this file exists to prevent. */}
+      <div className="w-full pt-8 pb-6 md:pb-16">
+        <div className="mb-4 min-h-[20px] px-4 sm:px-6 lg:px-[36px]" aria-hidden />
+        <div className="collection-product-grid grid grid-cols-2 items-start gap-x-2 gap-y-2 lg:grid-cols-4 lg:gap-px">
           {Array.from({ length: LISTING_PAGE_SIZE }).map((_, index) => (
             <div key={`route-skeleton-${index}`}>
               <CollectionProductCardSkeleton />

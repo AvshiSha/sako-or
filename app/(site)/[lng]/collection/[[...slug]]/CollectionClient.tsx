@@ -14,7 +14,6 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
 import {
-  FunnelIcon,
   XMarkIcon,
   CubeIcon,
 } from "@heroicons/react/24/outline";
@@ -95,17 +94,64 @@ import { poppins } from "@/lib/fonts";
 
 const LISTING_PAGE_SIZE = 24;
 
-// Mirrors the "collection-product-grid" grid-cols-2 lg:grid-cols-3 breakpoint
-// (lib/collection-grid-critical-css.ts uses the same 1024px cutoff).
+/**
+ * Horizontal inset for the collection blocks that are not full-bleed. 36px at
+ * desktop is the frame's own gutter (438:2975 sets px-36.288); the filter bar and
+ * the product grid deliberately do not use it, because 438:2962 runs both to the
+ * viewport edge.
+ */
+const COLLECTION_INSET = "px-4 sm:px-6 lg:px-[36px]";
+
+/**
+ * Shared chrome for the two controls in the 438:2977 filter/sort bar.
+ *
+ * The caret trails the label, so in Hebrew it sits to the label's left exactly as
+ * 438:2978 draws it. This is one place where the frame's coordinates are meant
+ * literally rather than mirrored - see the bar itself, which keeps the frame's
+ * sides too.
+ *
+ * 10px gap: the frame positions caret and label absolutely, 9.6px apart on the
+ * sort control and ~12px on the filter one.
+ */
+const COLLECTION_BAR_CONTROL =
+  "inline-flex items-center gap-[10px] font-ploni text-[12px] text-text-primary transition-opacity hover:opacity-70";
+
+/**
+ * The bar's caret (438:2979) is a small square rotated 45 degrees with two of its
+ * edges drawn - a chevron built from a rectangle, which is exactly how the frame
+ * vectors it. Borders are physical rather than logical on purpose: a caret points
+ * down in both directions, and border-inline-end would swing it in RTL.
+ */
+function CollectionBarCaret() {
+  // Deliberately an <i>, not a <span>. SelectTrigger styles every direct child
+  // span with [&>span]:flex-1 / text-ellipsis to make the value fill the row; a
+  // span caret got caught by that, stretched across the trigger - rendering as a
+  // long diagonal stroke once rotated - and squeezed the label into an ellipsis.
+  return (
+    <i
+      aria-hidden="true"
+      className="mb-[3px] block size-[6.6px] shrink-0 rotate-45 border-b border-r border-text-primary"
+    />
+  );
+}
+
+// Mirrors the "collection-product-grid" grid-cols-2 lg:grid-cols-4 breakpoint
+// (lib/collection-grid-critical-css.ts uses the same 1024px cutoff). 438:2984
+// lays the desktop grid four across; this drives row-height estimation, so it has
+// to move with the CSS or the virtualiser reserves the wrong height.
 const COLLECTION_GRID_BREAKPOINTS: ColumnBreakpoint[] = [
   { minWidthPx: 0, columns: 2 },
-  { minWidthPx: 1024, columns: 3 },
+  { minWidthPx: 1024, columns: 4 },
 ];
 // Same 8.75rem (140px) reserved below the aspect-square image as the critical
 // CSS in lib/collection-grid-critical-css.ts, so the initial size estimate
 // lines up with what's already reserved before Tailwind/measureElement settle.
 const COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX = 140;
-const COLLECTION_GRID_ROW_GAP_PX = 16;
+// Pre-measure estimate for the space between virtualised rows, which the row's own
+// bottom padding provides (pb-2, lg:pb-px). 8 is the mobile value; desktop's 1px is
+// close enough that the estimate settles as soon as measureElement runs. This was
+// 16, a split of the old 8/24, and it no longer matches either end.
+const COLLECTION_GRID_ROW_GAP_PX = 8;
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -1811,91 +1857,95 @@ export default function CollectionClient({
       {isFilterLoading && (
         <Loader label={t.loadingProducts} />
       )}
+      {/* Full-bleed shell. 438:2962 runs the filter bar and the product grid edge to
+          edge - the grid's cards are 431.25px precisely because four of them plus
+          three 1px gutters fill 1728. The max-w-7xl container that used to wrap the
+          whole page is gone, and the blocks that are NOT meant to bleed carry
+          COLLECTION_INSET themselves instead. */}
       <div
         className={cn(
-          "max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-8 pb-6 md:pb-16 relative",
+          "relative w-full pt-8 pb-6 md:pb-16",
           isFilterLoading && "pointer-events-none"
         )}
         aria-busy={isFilterLoading}
       >
         {/* Header with Filters Button */}
         <div className="mb-4 md:mb-4">
-          <div className="mb-4">
+          {/* The title is inset; the bar below it is not. */}
+          <div className={cn("mb-4", COLLECTION_INSET)}>
             <h1 className={cn("text-2xl md:text-4xl font-bold leading-tight text-black text-center", poppins.className)}>
               Sako's {getTranslatedName(selectedCategory, selectedSubcategory)} Collection
             </h1>
           </div>
 
-          <div className={cn("flex items-center gap-3", lng === 'he' ? 'flex-row-reverse' : 'flex-row')}>
-            {/* Desktop Filters Button */}
-            <button
-              onClick={() => {
-                if (desktopFiltersOpen) handleCloseFiltersPanel();
-                else openFilterPanel("desktop");
-              }}
-              className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
-            >
-              <FunnelIcon className={cn("h-4 w-4", lng === 'he' ? 'ml-2' : 'mr-2')} />
-              {t.filters}
-              {countActivePanelFilters() > 0 && (
-                <span
-                  className={cn(
-                    "bg-black text-white text-xs rounded-full px-2 py-1",
-                    lng === "he" ? "mr-2" : "ml-2"
-                  )}
-                >
-                  {countActivePanelFilters()}
-                </span>
-              )}
-            </button>
-
-            {/* Mobile Filters Button */}
-            <button
-              onClick={() => openFilterPanel("mobile")}
-              className="md:hidden inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
-            >
-              <FunnelIcon className={cn("h-4 w-4", lng === 'he' ? 'ml-1' : 'mr-1')} />
-              {t.filters}
-              {countActivePanelFilters() > 0 && (
-                <span
-                  className={cn(
-                    "bg-black text-white text-xs rounded-full px-2 py-1",
-                    lng === "he" ? "mr-2" : "ml-2"
-                  )}
-                >
-                  {countActivePanelFilters()}
-                </span>
-              )}
-            </button>
-
+          {/* Filter / sort bar, 438:2975 + 438:2977. A ruled band on paper, with the
+              sort control on the right and filters on the left in Hebrew - the sides
+              the frame draws them on, kept literally rather than mirrored.
+              justify-between puts the FIRST child on the right under RTL, so the sort
+              Select leads the markup here and the filter buttons follow. The chips,
+              pills and grey rounded boxes are gone - this design system has no radius
+              and no button fills outside the CTA. */}
+          <div className="flex h-[74px] items-center justify-between border-y border-border-default bg-surface-secondary px-[16px] lg:px-[36px]">
             <Select
               value={sortBy}
               onValueChange={handleSortChange}
               disabled={isFilterLoading}
             >
-              <SelectTrigger 
+              {/* [&>svg]:hidden drops the Select's own lucide chevron so the frame's
+                  rotated-square caret is the only one. */}
+              <SelectTrigger
                 className={cn(
-                  "w-full sm:w-auto text-black md:py-3 md:px-4 md:text-base md:text-right",
-                  lng === 'he' && "md:ml-auto",
+                  COLLECTION_BAR_CONTROL,
+                  "h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0 focus:ring-offset-0 [&>svg]:hidden",
                   isFilterLoading && "opacity-60 pointer-events-none"
-                )} 
+                )}
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
               >
                 <SelectValue placeholder={t.relevance} />
+                <CollectionBarCaret />
               </SelectTrigger>
-              <SelectContent dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:text-base">
-                <SelectItem value="relevance" dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:py-2">{t.relevance}</SelectItem>
-                <SelectItem value="price-low" dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:py-2">{t.priceLow}</SelectItem>
-                <SelectItem value="price-high" dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:py-2">{t.priceHigh}</SelectItem>
-                <SelectItem value="newest" dir={lng === 'he' ? 'rtl' : 'ltr'} className="md:py-2">{t.newest}</SelectItem>
+              <SelectContent dir={lng === 'he' ? 'rtl' : 'ltr'} className="font-ploni text-[12px]">
+                <SelectItem value="relevance" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.relevance}</SelectItem>
+                <SelectItem value="price-low" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.priceLow}</SelectItem>
+                <SelectItem value="price-high" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.priceHigh}</SelectItem>
+                <SelectItem value="newest" dir={lng === 'he' ? 'rtl' : 'ltr'}>{t.newest}</SelectItem>
               </SelectContent>
             </Select>
+
+            {/* Desktop Filters Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (desktopFiltersOpen) handleCloseFiltersPanel();
+                else openFilterPanel("desktop");
+              }}
+              className={cn(COLLECTION_BAR_CONTROL, "hidden md:inline-flex")}
+            >
+              {t.filters}
+              {countActivePanelFilters() > 0 && (
+                <span className="tabular-nums">({countActivePanelFilters()})</span>
+              )}
+              <CollectionBarCaret />
+            </button>
+
+            {/* Mobile Filters Button */}
+            <button
+              type="button"
+              onClick={() => openFilterPanel("mobile")}
+              className={cn(COLLECTION_BAR_CONTROL, "md:hidden")}
+            >
+              {t.filters}
+              {countActivePanelFilters() > 0 && (
+                <span className="tabular-nums">({countActivePanelFilters()})</span>
+              )}
+              <CollectionBarCaret />
+            </button>
           </div>
         </div>
 
         {/* Search Results Label */}
         {searchQuery && (
-          <div className="w-full mb-6">
+          <div className={cn("mb-6 w-full", COLLECTION_INSET)}>
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">
@@ -1920,7 +1970,8 @@ export default function CollectionClient({
         {/* Showing X of Y counter — always reserve row height */}
         <div
           className={cn(
-            "mb-4 min-h-[20px] text-sm text-gray-600",
+            "mb-4 min-h-[20px] font-ploni text-[12px] text-text-secondary",
+            COLLECTION_INSET,
             sortedItems.length === 0 && "invisible"
           )}
           aria-hidden={sortedItems.length === 0}
@@ -1935,7 +1986,7 @@ export default function CollectionClient({
         <div className="w-full">
           {isFilterLoading ? (
             <div
-              className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 gap-y-2 sm:gap-6 -mx-3 items-start"
+              className="collection-product-grid grid grid-cols-2 items-start gap-x-2 gap-y-2 lg:grid-cols-4 lg:gap-px"
               aria-busy="true"
             >
               {Array.from({ length: LISTING_PAGE_SIZE }).map((_, index) => (
@@ -1945,9 +1996,9 @@ export default function CollectionClient({
               ))}
             </div>
           ) : sortedItems.length === 0 ? (
-            <div className="text-center py-4">
-              <CubeIcon className="mx-auto h-14 w-14 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">
+            <div className={cn("py-4 text-center", COLLECTION_INSET)}>
+              <CubeIcon className="mx-auto h-14 w-14 text-text-secondary" />
+              <h3 className="mt-2 font-ploni text-[16px] font-bold text-text-primary">
                 {searchQuery 
                   ? (lng === 'he' ? `לא נמצאו תוצאות עבור "${searchQuery}"` : `No results found for "${searchQuery}"`)
                   : t.noProductsFound
@@ -1962,9 +2013,11 @@ export default function CollectionClient({
             </div>
           ) : (
             <>
+              {/* -mx-3 is gone with the max-w-7xl shell: it existed to pull the grid
+                  back out of that container's padding, and against a full-bleed
+                  parent it only dragged the cards 12px past the viewport edge. */}
               <div
                 ref={gridContainerRef}
-                className="-mx-3"
                 style={{ position: "relative", height: gridTotalSize }}
               >
                 {gridVirtualItems.map((virtualRow) => {
@@ -1983,9 +2036,13 @@ export default function CollectionClient({
                         width: "100%",
                         transform: `translateY(${virtualRow.top}px)`,
                       }}
-                      className="pb-2 sm:pb-6"
+                      // Rows are absolutely positioned, so the space BETWEEN rows is
+                      // this padding, not the grid's row-gap. It was sm:pb-6, which
+                      // left a 24px white band under every row once the cards went
+                      // flush. 1px from lg matches the column gutter.
+                      className="pb-2 lg:pb-px"
                     >
-                      <div className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 sm:gap-x-6 items-start">
+                      <div className="collection-product-grid grid grid-cols-2 items-start gap-x-2 lg:grid-cols-4 lg:gap-px">
                         {row.items.map((item, i) => {
                           const flatIndex = row.startIndex + i;
                           const isAboveFold = flatIndex < 6;
@@ -2038,7 +2095,7 @@ export default function CollectionClient({
                 })}
               </div>
               {isBrowseRefetching && pinnedGridItemCount > sortedItems.length && (
-                <div className="collection-product-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-x-2 gap-y-2 sm:gap-6 -mx-3 items-start">
+                <div className="collection-product-grid grid grid-cols-2 items-start gap-x-2 gap-y-2 lg:grid-cols-4 lg:gap-px">
                   {Array.from({
                     length: pinnedGridItemCount - sortedItems.length,
                   }).map((_, index) => (
@@ -2076,7 +2133,8 @@ export default function CollectionClient({
         {!searchQuery && categorySeoContentHtml?.trim() && (
           <section
             className={cn(
-              'mt-12 md:mt-16 pt-8 border-t border-gray-100',
+              'mt-12 border-t border-border-subtle pt-8 md:mt-16',
+              COLLECTION_INSET,
               lng === 'he' ? 'text-right' : 'text-left'
             )}
             aria-label={lng === 'he' ? 'תוכן SEO' : 'Collection content'}

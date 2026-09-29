@@ -126,7 +126,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
   if (!activeVariant) {
     return (
-      <div className="group relative border-l border-sako-black bg-surface-secondary" aria-hidden>
+      <div className="group relative border-b border-l border-sako-black bg-surface-secondary" aria-hidden>
         <div
           className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-surface-secondary block`}
         />
@@ -345,7 +345,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   }, [api, totalImages])
 
   return (
-    <div className="group relative border-l border-sako-black bg-surface-secondary">
+    <div className="group relative border-b border-l border-sako-black bg-surface-secondary">
       {/* Main Product Image Section - Clickable to go to selected variant */}
       <Link
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}

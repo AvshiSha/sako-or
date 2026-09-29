@@ -90,7 +90,6 @@ import {
   dedupeVariantItems,
   useCollectionProductList,
 } from "@/lib/useCollectionProductList";
-import { poppins } from "@/lib/fonts";
 
 const LISTING_PAGE_SIZE = 24;
 
@@ -127,10 +126,12 @@ function CollectionBarCaret() {
   // span with [&>span]:flex-1 / text-ellipsis to make the value fill the row; a
   // span caret got caught by that, stretched across the trigger - rendering as a
   // long diagonal stroke once rotated - and squeezed the label into an ellipsis.
+  // Desktop only. 438:3523 draws the mobile bar as two bare labels - no caret
+  // vectors at all - where 438:2978 gives the desktop controls one each.
   return (
     <i
       aria-hidden="true"
-      className="mb-[3px] block size-[6.6px] shrink-0 rotate-45 border-b border-r border-text-primary"
+      className="mb-[3px] hidden size-[6.6px] shrink-0 rotate-45 border-b border-r border-text-primary lg:block"
     />
   );
 }
@@ -147,11 +148,11 @@ const COLLECTION_GRID_BREAKPOINTS: ColumnBreakpoint[] = [
 // CSS in lib/collection-grid-critical-css.ts, so the initial size estimate
 // lines up with what's already reserved before Tailwind/measureElement settle.
 const COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX = 140;
-// Pre-measure estimate for the space between virtualised rows, which the row's own
-// bottom padding provides (pb-2, lg:pb-px). 8 is the mobile value; desktop's 1px is
-// close enough that the estimate settles as soon as measureElement runs. This was
-// 16, a split of the old 8/24, and it no longer matches either end.
-const COLLECTION_GRID_ROW_GAP_PX = 8;
+// Rows are absolutely positioned, so the space between them is each row's own
+// bottom padding rather than the grid's row-gap. Zero: the cards butt together
+// and their own borders do the dividing, so any value here reappears as a white
+// hairline between rows.
+const COLLECTION_GRID_ROW_GAP_PX = 0;
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -1873,7 +1874,11 @@ export default function CollectionClient({
         <div className="mb-4 md:mb-4">
           {/* The title is inset; the bar below it is not. */}
           <div className={cn("mb-4", COLLECTION_INSET)}>
-            <h1 className={cn("text-2xl md:text-4xl font-bold leading-tight text-black text-center", poppins.className)}>
+            {/* 438:2962 carries no page title - it opens straight into the campaign
+                hero. This one is kept for orientation and SEO, so it is set in the
+                design system's own section-heading treatment instead of Poppins:
+                Ploni Black at the same 32/48 step the carousel headers use. */}
+            <h1 className="text-center font-ploni text-[32px] font-black leading-[32px] text-text-primary lg:text-[48px] lg:leading-[48px]">
               Sako's {getTranslatedName(selectedCategory, selectedSubcategory)} Collection
             </h1>
           </div>
@@ -1885,7 +1890,7 @@ export default function CollectionClient({
               Select leads the markup here and the filter buttons follow. The chips,
               pills and grey rounded boxes are gone - this design system has no radius
               and no button fills outside the CTA. */}
-          <div className="flex h-[74px] items-center justify-between border-y border-border-default bg-surface-secondary px-[16px] lg:px-[36px]">
+          <div className="flex h-[58px] items-center justify-between border-y border-border-default bg-surface-secondary px-[16px] lg:h-[74px] lg:px-[36px]">
             <Select
               value={sortBy}
               onValueChange={handleSortChange}
@@ -1986,7 +1991,7 @@ export default function CollectionClient({
         <div className="w-full">
           {isFilterLoading ? (
             <div
-              className="collection-product-grid grid grid-cols-2 items-start gap-x-2 gap-y-2 lg:grid-cols-4 lg:gap-px"
+              className="collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4"
               aria-busy="true"
             >
               {Array.from({ length: LISTING_PAGE_SIZE }).map((_, index) => (
@@ -2040,9 +2045,9 @@ export default function CollectionClient({
                       // this padding, not the grid's row-gap. It was sm:pb-6, which
                       // left a 24px white band under every row once the cards went
                       // flush. 1px from lg matches the column gutter.
-                      className="pb-2 lg:pb-px"
+                      className="pb-0"
                     >
-                      <div className="collection-product-grid grid grid-cols-2 items-start gap-x-2 lg:grid-cols-4 lg:gap-px">
+                      <div className="collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4">
                         {row.items.map((item, i) => {
                           const flatIndex = row.startIndex + i;
                           const isAboveFold = flatIndex < 6;
@@ -2095,7 +2100,7 @@ export default function CollectionClient({
                 })}
               </div>
               {isBrowseRefetching && pinnedGridItemCount > sortedItems.length && (
-                <div className="collection-product-grid grid grid-cols-2 items-start gap-x-2 gap-y-2 lg:grid-cols-4 lg:gap-px">
+                <div className="collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4">
                   {Array.from({
                     length: pinnedGridItemCount - sortedItems.length,
                   }).map((_, index) => (
@@ -2140,12 +2145,7 @@ export default function CollectionClient({
             aria-label={lng === 'he' ? 'תוכן SEO' : 'Collection content'}
           >
             {categorySeoContentTitle && (
-              <h2
-                className={cn(
-                  "text-xl md:text-2xl font-semibold text-black mb-4",
-                  poppins.className
-                )}
-              >
+              <h2 className="mb-4 font-ploni text-[20px] font-bold text-text-primary md:text-[24px]">
                 <InlineHeadingContent html={categorySeoContentTitle} />
               </h2>
             )}

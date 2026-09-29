@@ -7,7 +7,7 @@ import {
 export default function CollectionProductCardSkeleton() {
   return (
     <div
-      className="group relative animate-pulse border-l border-sako-black bg-surface-secondary"
+      className="group relative animate-pulse border-b border-l border-sako-black bg-surface-secondary"
       aria-hidden
     >
       <div

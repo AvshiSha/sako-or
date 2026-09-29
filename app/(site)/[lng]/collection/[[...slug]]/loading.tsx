@@ -25,7 +25,7 @@ export default function Loading() {
           streams in, which is the shift this file exists to prevent. */}
       <div className="w-full pt-8 pb-6 md:pb-16">
         <div className="mb-4 min-h-[20px] px-4 sm:px-6 lg:px-[36px]" aria-hidden />
-        <div className="collection-product-grid grid grid-cols-2 items-start gap-x-2 gap-y-2 lg:grid-cols-4 lg:gap-px">
+        <div className="collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4">
           {Array.from({ length: LISTING_PAGE_SIZE }).map((_, index) => (
             <div key={`route-skeleton-${index}`}>
               <CollectionProductCardSkeleton />

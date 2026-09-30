@@ -12,9 +12,10 @@ import {
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
-import { FunnelIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { CubeIcon } from "@heroicons/react/24/outline";
 import { Campaign, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
+import CollectionProductCardSkeleton from "@/app/components/CollectionProductCardSkeleton";
 import ScrollToTopButton from "@/app/components/ScrollToTopButton";
 import Loader from "@/app/components/ui/Loader";
 import {
@@ -39,38 +40,53 @@ import {
 } from "@/lib/collectionFilterUrl";
 import { inStockSizeKeysFromVariant } from "@/lib/product-size";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/app/components/ui/accordion";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select";
-import { Slider } from "@/app/components/ui/slider";
+import CollectionFilterPanel, {
+  type CollectionFilterPanelProps,
+} from "@/app/components/collection/CollectionFilterPanel";
 import {
-  useResponsiveColumnCount,
-  type ColumnBreakpoint,
-} from "@/lib/useResponsiveColumnCount";
+  COLLECTION_BAR,
+  COLLECTION_BAR_CONTROL,
+  COLLECTION_GRID_BREAKPOINTS,
+  COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
+  COLLECTION_GRID_ROW_GAP_PX,
+  COLLECTION_INSET,
+  COLLECTION_LISTING_PAGE_SIZE,
+  COLLECTION_PRODUCT_GRID,
+  CollectionBarCaret,
+} from "@/app/components/collection/collectionChrome";
+import { useResponsiveColumnCount } from "@/lib/useResponsiveColumnCount";
 import { useProductGridVirtualizer } from "@/lib/useProductGridVirtualizer";
+import { useCollectionInfiniteScroll } from "@/lib/useCollectionInfiniteScroll";
 
 const motion = fmMotion as unknown as any;
 
-// Mirrors this grid's grid-cols-2 md:grid-cols-3 lg:grid-cols-4 breakpoints.
-const CAMPAIGN_GRID_BREAKPOINTS: ColumnBreakpoint[] = [
-  { minWidthPx: 0, columns: 2 },
-  { minWidthPx: 768, columns: 3 },
-  { minWidthPx: 1024, columns: 4 },
-];
-// This grid has no critical-CSS height reservation (unlike the collection
-// grid), so this is just a reasonable starting estimate — measureElement
-// corrects it after each row mounts.
-const CAMPAIGN_GRID_ROW_EXTRA_HEIGHT_PX = 140;
-const CAMPAIGN_GRID_ROW_GAP_PX = 16;
+/**
+ * A campaign is a hand-picked set of products rather than a branch of the category
+ * tree, so the shared filter panel's sub-category section is switched off here. The
+ * collection listing is the only surface that has one to show.
+ */
+const CAMPAIGN_NO_SUBCATEGORY_FILTER: Pick<
+  CollectionFilterPanelProps,
+  | "showSubSubCategoryFilter"
+  | "subSubCategoriesByParent"
+  | "selectedSubSubCategories"
+  | "onSubSubCategoryToggle"
+  | "getParentCategoryName"
+  | "getSubSubCategoryName"
+> = {
+  showSubSubCategoryFilter: false,
+  subSubCategoriesByParent: {},
+  selectedSubSubCategories: [],
+  onSubSubCategoryToggle: () => {},
+  getParentCategoryName: () => "",
+  getSubSubCategoryName: () => "",
+};
 
 function formatPrice(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -95,6 +111,7 @@ const campaignTranslations = {
     loading: "Loading...",
     loadingProducts: "Loading products...",
     noProducts: "No products found for this campaign",
+    tryAdjusting: "Try adjusting your filters or search criteria.",
   },
   he: {
     filters: "סינון",
@@ -114,6 +131,7 @@ const campaignTranslations = {
     loading: "טוען...",
     loadingProducts: "טוען מוצרים...",
     noProducts: "לא נמצאו מוצרים במבצע זה",
+    tryAdjusting: "נסו להתאים את המסננים או קריטריוני החיפוש.",
   },
 };
 
@@ -347,8 +365,9 @@ export default function CampaignClient({
   );
   const [isFilterTransitionPending, startFilterTransition] = useTransition();
   const isFilterLoading = isFilterNavigating || isFilterTransitionPending;
-  const [desktopAccordionValue, setDesktopAccordionValue] = useState<string[]>([]);
-  const [mobileAccordionValue, setMobileAccordionValue] = useState<string[]>([]);
+  // The two accordion-state variables that used to live here are gone with the
+  // hand-rolled filter drawers: the shared panel's sections are flat, so there is
+  // no open/closed state to track.
 
   // Price bounds and UI range from initial variant items
   const collectionPriceBounds = useMemo(() => {
@@ -700,7 +719,7 @@ export default function CampaignClient({
     (item: VariantItem): string => item.variantKey,
     []
   );
-  const gridColumns = useResponsiveColumnCount(CAMPAIGN_GRID_BREAKPOINTS);
+  const gridColumns = useResponsiveColumnCount(COLLECTION_GRID_BREAKPOINTS);
   const {
     containerRef: gridContainerRef,
     rows: gridRows,
@@ -711,9 +730,37 @@ export default function CampaignClient({
     items: sortedItems,
     columns: gridColumns,
     getItemKey: getGridItemKey,
-    extraRowHeightPx: CAMPAIGN_GRID_ROW_EXTRA_HEIGHT_PX,
-    rowGapPx: CAMPAIGN_GRID_ROW_GAP_PX,
+    extraRowHeightPx: COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
+    rowGapPx: COLLECTION_GRID_ROW_GAP_PX,
   });
+
+  /**
+   * Drives the "(n)" beside the Filters label in the bar. Reads the draft while a
+   * panel is open so the count tracks what the user is choosing, not what is
+   * committed to the URL - same as the collection bar.
+   */
+  /** Same label set the collection listing hands the shared panel. */
+  const filterPanelLabels: CollectionFilterPanelProps["labels"] = {
+    title: t.filters,
+    price: t.price,
+    colors: t.colors,
+    sizes: t.sizes,
+    subCategories: lng === "he" ? "תת-קטגוריות" : "Sub-Categories",
+    apply: t.applyFilters,
+    clearAll: t.clearAllFilters,
+    reset: lng === "he" ? "איפוס" : "Reset",
+    close: lng === "he" ? "סגירת הסינון" : "Close filters",
+  };
+
+  const countActivePanelFilters = () => {
+    const boundsMin = collectionPriceBounds?.min ?? 0;
+    const boundsMax = collectionPriceBounds?.max ?? 1000;
+    const [currentMin, currentMax] = panelUiRange;
+    const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
+    return (
+      panelColors.length + panelSizes.length + (hasPriceFilter ? 1 : 0)
+    );
+  };
 
   // Hydrate from store before paint when returning from PDP
   useLayoutEffect(() => {
@@ -903,6 +950,17 @@ export default function CampaignClient({
     }
   }, [isLoadingMore, hasMore, currentPage, lng, campaign.slug, totalProducts, searchParams]);
 
+  // The campaign listing used a "Load More" button; the collection listing pulls
+  // the next page in as the sentinel nears the viewport. Same hook, so the two
+  // pages page the same way and the button's brand-coloured pill can go.
+  const { sentinelRef: loadMoreSentinelRef } = useCollectionInfiniteScroll({
+    hasMore,
+    browseListReady,
+    isLoadingMore,
+    onLoadMore: handleLoadMore,
+    resetKey: campaignKey,
+  });
+
   useLayoutEffect(() => {
     setIsFilterNavigating(false);
   }, []);
@@ -973,413 +1031,324 @@ export default function CampaignClient({
         </>
       )}
 
-      {/* Description Section */}
+      {/* Campaign copy. This design system has no `prose`: the text is set in the
+          listing's own body type and inset to the same gutter as the title, and it
+          keeps the campaign's own line breaks. */}
       {description && (
-        <div className={`max-w-4xl mx-auto px-4 md:px-8 py-8 ${lng === "he" ? "text-right" : "text-left"}`}>
-          <div className="prose prose-lg max-w-none">
-            <p className="text-gray-700 leading-relaxed whitespace-pre-line">
-              {description}
-            </p>
-          </div>
+        <div
+          className={cn(
+            "pt-8 font-ploni text-[16px] leading-[24px] text-text-primary",
+            COLLECTION_INSET,
+            lng === "he" ? "text-right" : "text-left"
+          )}
+          dir={lng === "he" ? "rtl" : "ltr"}
+        >
+          <p className="whitespace-pre-line">{description}</p>
         </div>
       )}
 
-      {/* Products Grid Section with Filters */}
+      {/* Full-bleed shell, 438:2962 - the same one the collection listing uses. The
+          max-w-7xl container that used to wrap this page is gone: the grid and the
+          filter bar run to the viewport edge, and the blocks that are NOT meant to
+          bleed carry COLLECTION_INSET themselves. */}
       <div
         className={cn(
-          "max-w-7xl mx-auto px-4 md:px-8 pt-8 pb-8 md:pb-8",
+          "relative w-full pt-8 pb-6 md:pb-16",
           isFilterLoading && "pointer-events-none"
         )}
         aria-busy={isFilterLoading}
       >
-        <div className={cn("flex items-center gap-3 mb-4", lng === "he" ? "flex-row-reverse" : "flex-row")}>
-          <button
-            onClick={() => {
-              if (desktopFiltersOpen) handleCloseFiltersPanel();
-              else openFilterPanel("desktop");
-            }}
-            className="hidden md:inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
-          >
-            <FunnelIcon className={cn("h-4 w-4", lng === "he" ? "ml-2" : "mr-2")} />
-            {t.filters}
-            {(() => {
-              const [currentMin, currentMax] = uiRange;
-              const boundsMin = collectionPriceBounds?.min ?? 0;
-              const boundsMax = collectionPriceBounds?.max ?? 1000;
-              const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-              const count = selectedColors.length + selectedSizes.length + (hasPriceFilter ? 1 : 0);
-              if (count > 0) {
-                return (
-                  <span className={cn("bg-black text-white text-xs rounded-full px-2 py-1", lng === "he" ? "mr-2" : "ml-2")}>
-                    {count}
-                  </span>
-                );
-              }
-              return null;
-            })()}
-          </button>
-          <button
-            onClick={() => openFilterPanel("mobile")}
-            className="md:hidden inline-flex items-center px-4 py-2 text-sm font-medium text-black bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md transition-colors duration-200"
-          >
-            <FunnelIcon className={cn("h-4 w-4", lng === "he" ? "ml-1" : "mr-1")} />
-            {t.filters}
-            {(() => {
-              const [currentMin, currentMax] = uiRange;
-              const boundsMin = collectionPriceBounds?.min ?? 0;
-              const boundsMax = collectionPriceBounds?.max ?? 1000;
-              const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
-              const count = selectedColors.length + selectedSizes.length + (hasPriceFilter ? 1 : 0);
-              if (count > 0) {
-                return (
-                  <span className={cn("bg-black text-white text-xs rounded-full px-2 py-1", lng === "he" ? "mr-2" : "ml-2")}>
-                    {count}
-                  </span>
-                );
-              }
-              return null;
-            })()}
-          </button>
-          <Select
-            value={sortBy}
-            onValueChange={handleSortChange}
-            disabled={isFilterLoading}
-          >
-            <SelectTrigger
-              className={cn(
-                "w-full sm:w-auto text-black md:py-3 md:px-4",
-                lng === "he" && "md:ml-auto",
-                isFilterLoading && "opacity-60 pointer-events-none"
-              )}
-              dir={lng === "he" ? "rtl" : "ltr"}
+        <div className="mb-4 md:mb-4">
+          {/* The campaign's own title, in the listing's section-heading treatment.
+              The page carried no heading at all before - the name lived only inside
+              the banner artwork, so there was nothing here for assistive tech or
+              for search. */}
+          <div className={cn("mb-4", COLLECTION_INSET)}>
+            <h1 className="text-center font-ploni text-[32px] font-black leading-[32px] text-text-primary lg:text-[48px] lg:leading-[48px]">
+              {title}
+            </h1>
+          </div>
+
+          {/* Filter / sort bar, 438:2975 + 438:2977. justify-between puts the FIRST
+              child on the right under RTL, so the sort Select leads the markup here
+              and the filter buttons follow - the sides the frame draws them on,
+              kept literally rather than mirrored. The grey rounded pills, the funnel
+              icon and the black count bubble are gone: this design system has no
+              radius and no button fills outside the CTA. */}
+          <div className={COLLECTION_BAR}>
+            <Select
+              value={sortBy}
+              onValueChange={handleSortChange}
+              disabled={isFilterLoading}
             >
-              <SelectValue placeholder={t.relevance} />
-            </SelectTrigger>
-            <SelectContent dir={lng === "he" ? "rtl" : "ltr"}>
-              <SelectItem value="relevance" dir={lng === "he" ? "rtl" : "ltr"}>{t.relevance}</SelectItem>
-              <SelectItem value="price-low" dir={lng === "he" ? "rtl" : "ltr"}>{t.priceLow}</SelectItem>
-              <SelectItem value="price-high" dir={lng === "he" ? "rtl" : "ltr"}>{t.priceHigh}</SelectItem>
-              <SelectItem value="newest" dir={lng === "he" ? "rtl" : "ltr"}>{t.newest}</SelectItem>
-            </SelectContent>
-          </Select>
+              {/* [&>svg]:hidden drops the Select's own lucide chevron so the frame's
+                  rotated-square caret is the only one. */}
+              <SelectTrigger
+                className={cn(
+                  COLLECTION_BAR_CONTROL,
+                  "h-auto w-auto border-0 bg-transparent p-0 shadow-none focus:ring-0 focus:ring-offset-0 [&>svg]:hidden",
+                  isFilterLoading && "opacity-60 pointer-events-none"
+                )}
+                dir={lng === "he" ? "rtl" : "ltr"}
+              >
+                <SelectValue placeholder={t.relevance} />
+                <CollectionBarCaret />
+              </SelectTrigger>
+              <SelectContent dir={lng === "he" ? "rtl" : "ltr"} className="font-ploni text-[12px]">
+                <SelectItem value="relevance" dir={lng === "he" ? "rtl" : "ltr"}>{t.relevance}</SelectItem>
+                <SelectItem value="price-low" dir={lng === "he" ? "rtl" : "ltr"}>{t.priceLow}</SelectItem>
+                <SelectItem value="price-high" dir={lng === "he" ? "rtl" : "ltr"}>{t.priceHigh}</SelectItem>
+                <SelectItem value="newest" dir={lng === "he" ? "rtl" : "ltr"}>{t.newest}</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Desktop Filters Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (desktopFiltersOpen) handleCloseFiltersPanel();
+                else openFilterPanel("desktop");
+              }}
+              className={cn(COLLECTION_BAR_CONTROL, "hidden md:inline-flex")}
+            >
+              {t.filters}
+              {countActivePanelFilters() > 0 && (
+                <span className="tabular-nums">({countActivePanelFilters()})</span>
+              )}
+              <CollectionBarCaret />
+            </button>
+
+            {/* Mobile Filters Button */}
+            <button
+              type="button"
+              onClick={() => openFilterPanel("mobile")}
+              className={cn(COLLECTION_BAR_CONTROL, "md:hidden")}
+            >
+              {t.filters}
+              {countActivePanelFilters() > 0 && (
+                <span className="tabular-nums">({countActivePanelFilters()})</span>
+              )}
+              <CollectionBarCaret />
+            </button>
+          </div>
         </div>
 
-        {sortedItems.length > 0 && (
-          <div className="mb-4 text-sm text-gray-600">
-            {t.showing} {variantItems.length} {t.of} {totalProducts} {t.items}
-          </div>
-        )}
+        {/* Showing X of Y counter — always reserve row height */}
+        <div
+          className={cn(
+            "mb-4 min-h-[20px] font-ploni text-[12px] text-text-secondary",
+            COLLECTION_INSET,
+            sortedItems.length === 0 && "invisible"
+          )}
+          aria-hidden={sortedItems.length === 0}
+        >
+          {sortedItems.length > 0 &&
+            `${t.showing} ${variantItems.length} ${t.of} ${totalProducts} ${t.items}`}
+        </div>
 
-        {sortedItems.length === 0 ? (
-          <div className={cn("text-center py-12", lng === "he" ? "text-right" : "text-left")}>
-            <p className="text-gray-500 text-lg">{t.noProducts}</p>
-          </div>
-        ) : (
-          <>
-            <div
-              ref={gridContainerRef}
-              style={{ position: "relative", height: gridTotalSize }}
-            >
-              {gridVirtualItems.map((virtualRow) => {
-                const row = gridRows[virtualRow.index];
-                if (!row) return null;
-
-                return (
-                  <div
-                    key={virtualRow.key}
-                    ref={measureGridRow}
-                    data-index={virtualRow.index}
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      width: "100%",
-                      transform: `translateY(${virtualRow.top}px)`,
-                    }}
-                    className="pb-4 md:pb-2"
-                  >
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 md:gap-x-2">
-                      {row.items.map((item) => (
-                        <ProductCard
-                          key={item.variantKey}
-                          product={item.product}
-                          language={lng}
-                          preselectedColorSlug={item.variant.colorSlug}
-                          browseStoreKey={campaignKey}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
+        {/* Products Grid - Full Width */}
+        <div className="w-full">
+          {isFilterLoading ? (
+            <div className={COLLECTION_PRODUCT_GRID} aria-busy="true">
+              {Array.from({ length: COLLECTION_LISTING_PAGE_SIZE }).map((_, index) => (
+                <div key={`skeleton-${index}`}>
+                  <CollectionProductCardSkeleton />
+                </div>
+              ))}
             </div>
-            {hasMore && (
-              <div className="mt-8 flex justify-center">
-                <button
-                  type="button"
-                  disabled={isLoadingMore}
-                  onClick={handleLoadMore}
-                  className={cn(
-                    "px-6 py-3 bg-[#856D55] text-white font-medium rounded-md transition-colors duration-200",
-                    "hover:bg-[#856D55]/90 disabled:opacity-50 disabled:cursor-not-allowed",
-                    isLoadingMore && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  {isLoadingMore ? t.loading : t.loadMore}
-                </button>
+          ) : sortedItems.length === 0 ? (
+            <div className={cn("py-4 text-center", COLLECTION_INSET)}>
+              <CubeIcon className="mx-auto h-14 w-14 text-text-secondary" />
+              <h3 className="mt-2 font-ploni text-[16px] font-bold text-text-primary">
+                {t.noProducts}
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">{t.tryAdjusting}</p>
+            </div>
+          ) : (
+            <>
+              <div
+                ref={gridContainerRef}
+                style={{ position: "relative", height: gridTotalSize }}
+              >
+                {gridVirtualItems.map((virtualRow) => {
+                  const row = gridRows[virtualRow.index];
+                  if (!row) return null;
+
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      ref={measureGridRow}
+                      data-index={virtualRow.index}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        transform: `translateY(${virtualRow.top}px)`,
+                      }}
+                      // Rows are absolutely positioned, so the space BETWEEN rows is
+                      // this padding, not the grid's row-gap. It was pb-4 md:pb-2,
+                      // which left a white band under every row once the cards went
+                      // flush against each other.
+                      className="pb-0"
+                    >
+                      <div className={COLLECTION_PRODUCT_GRID}>
+                        {row.items.map((item, i) => {
+                          const flatIndex = row.startIndex + i;
+                          return (
+                            <div
+                              key={item.variantKey}
+                              data-collection-anchor={item.variantKey}
+                            >
+                              <ProductCard
+                                product={item.product}
+                                language={lng}
+                                selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+                                preselectedColorSlug={item.variant.colorSlug}
+                                disableImageCarousel
+                                isAboveFold={flatIndex < 6}
+                                browseStoreKey={campaignKey}
+                                collectionAnchorKey={item.variantKey}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </>
-        )}
+
+              {(hasMore || isLoadingMore) && (
+                <div
+                  className="relative mt-8 h-12 shrink-0"
+                  style={{ overflowAnchor: "none" }}
+                  aria-busy={isLoadingMore}
+                  aria-live="polite"
+                >
+                  <div
+                    ref={loadMoreSentinelRef}
+                    className="pointer-events-none absolute bottom-0 left-0 h-px w-full"
+                    aria-hidden
+                  />
+                  {isLoadingMore && (
+                    <p className="flex h-12 items-center justify-center text-sm text-gray-500">
+                      {t.loading}
+                    </p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Desktop Filter Sidebar */}
+      {/* Desktop Filter Overlay and Sidebar */}
       <AnimatePresence>
         {desktopFiltersOpen && (
           <>
-            <div className="fixed inset-0 z-[68] bg-black/30" onClick={handleCloseFiltersPanel} />
+            <div className="fixed inset-0 z-[68] lg:hidden">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 bg-black/30"
+                onClick={handleCloseFiltersPanel}
+              />
+            </div>
+
+            <div className="fixed inset-0 z-[68] hidden lg:block">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="absolute inset-0 bg-black/30"
+                onClick={handleCloseFiltersPanel}
+              />
+            </div>
+
             <motion.div
-              initial={{ x: "-100%" }}
+              initial={{ x: '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
+              exit={{ x: '-100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 h-full w-80 bg-white shadow-2xl z-[70]"
+              className="fixed left-0 top-0 z-[70] h-full w-full max-w-[501px] bg-surface-primary shadow-2xl"
             >
-              <div className="flex flex-col h-full">
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                  <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
-                  <button onClick={handleCloseFiltersPanel} className="text-black hover:text-gray-600">
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-6">
-                  <Accordion type="multiple" value={desktopAccordionValue} onValueChange={setDesktopAccordionValue} className="space-y-6">
-                    <AccordionItem value="price" className="border border-gray-200 rounded-lg">
-                      <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                        <h3 className="text-sm font-medium text-black">{t.price}</h3>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-4 pt-3 border-t border-gray-100">
-                          <div className="text-sm font-medium text-gray-900">
-                            ₪{formatPrice(uiRange[0])} - ₪{formatPrice(uiRange[1])}
-                          </div>
-                          <div className="px-2">
-                            <Slider
-                              value={panelUiRange}
-                              onValueChange={handleSliderChange}
-                              onValueCommit={handleSliderCommit}
-                              min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)}
-                              max={Math.ceil((collectionPriceBounds.max + 200) / 10) * 10}
-                              step={10}
-                              className="w-full"
-                              dir={lng === "he" ? "rtl" : "ltr"}
-                            />
-                          </div>
-                          {(uiRange[0] !== collectionPriceBounds.min || uiRange[1] !== collectionPriceBounds.max) && (
-                            <button onClick={handlePriceReset} className="text-xs text-gray-600 hover:text-gray-800 underline">
-                              {lng === "he" ? "איפוס" : "Reset"}
-                            </button>
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="colors" className="border border-gray-200 rounded-lg">
-                      <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                        <h3 className="text-sm font-medium text-black">{t.colors}</h3>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-2 pt-3 border-t border-gray-100">
-                          {allColors.map((color) => (
-                            <button
-                              key={color}
-                              onClick={() => handleColorToggle(color)}
-                              className={cn(
-                                "w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200",
-                                panelColors.includes(color) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
-                              )}
-                            >
-                              <div className="w-6 h-6 rounded-full border border-gray-200" style={{ backgroundColor: colorSlugToHex[color] || getColorHex(color) }} />
-                              <span className="text-sm font-light text-black">{getColorName(color, lng)}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="sizes" className="border border-gray-200 rounded-lg">
-                      <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                        <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-4 pt-3 border-t border-gray-100">
-                          {numericSizes.length > 0 && (
-                            <div>
-                              <h4 className="text-xs font-medium text-gray-600 mb-2">Shoes</h4>
-                              <div className="grid grid-cols-4 gap-2">
-                                {numericSizes.map((size) => (
-                                  <button
-                                    key={size}
-                                    onClick={() => handleSizeToggle(size)}
-                                    className={cn(
-                                      "p-2 rounded-sm transition-all duration-200 text-center",
-                                      panelSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
-                                    )}
-                                  >
-                                    <span className="text-sm font-light text-black">{size}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {alphaSizes.length > 0 && (
-                            <div>
-                              <h4 className="text-xs font-medium text-gray-600 mb-2">Clothing</h4>
-                              <div className="grid grid-cols-3 gap-2">
-                                {alphaSizes.map((size) => (
-                                  <button
-                                    key={size}
-                                    onClick={() => handleSizeToggle(size)}
-                                    className={cn(
-                                      "p-2 rounded-sm transition-all duration-200 text-center",
-                                      panelSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent"
-                                    )}
-                                  >
-                                    <span className="text-sm font-light text-black">{size}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  {(selectedColors.length > 0 || selectedSizes.length > 0 || uiRange[0] > (collectionPriceBounds?.min ?? 0) || uiRange[1] < (collectionPriceBounds?.max ?? 1000)) && (
-                    <div className="mb-6 mt-6">
-                      <button onClick={handleClearFilters} className="w-full py-2 px-4 text-sm font-light text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 border border-gray-200 rounded-sm">
-                        {t.clearAllFilters}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="p-6 border-t border-gray-100">
-                  <button
-                    onClick={handleApplyFilters}
-                    disabled={isFilterLoading}
-                    className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {t.applyFilters}
-                  </button>
-                </div>
-              </div>
+              <CollectionFilterPanel
+                lng={lng}
+                labels={filterPanelLabels}
+                uiRange={panelUiRange}
+                priceBounds={{ min: collectionPriceBounds?.min ?? 0, max: collectionPriceBounds?.max ?? 1000 }}
+                onSliderChange={handleSliderChange}
+                onSliderCommit={handleSliderCommit}
+                onPriceReset={handlePriceReset}
+                formatPrice={formatPrice}
+                allColors={allColors}
+                selectedColors={panelColors}
+                onColorToggle={handleColorToggle}
+                getColorHex={(color) => colorSlugToHex[color] || getColorHex(color)}
+                getColorLabel={(color) => getColorName(color, lng)}
+                numericSizes={numericSizes}
+                alphaSizes={alphaSizes}
+                selectedSizes={panelSizes}
+                onSizeToggle={handleSizeToggle}
+                {...CAMPAIGN_NO_SUBCATEGORY_FILTER}
+                onApply={handleApplyFilters}
+                onClear={handleClearFilters}
+                onClose={handleCloseFiltersPanel}
+                isBusy={isFilterLoading}
+              />
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Mobile Filter Drawer */}
+      {/* Mobile Filter Overlay */}
       <AnimatePresence>
         {mobileFiltersOpen && (
           <div className="fixed inset-0 z-[70] md:hidden">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30" onClick={handleCloseFiltersPanel} />
             <motion.div
-              initial={{ x: "-100%" }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="absolute inset-0 bg-black/30"
+              onClick={handleCloseFiltersPanel}
+            />
+
+            <motion.div
+              initial={{ x: '-100%' }}
               animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
+              exit={{ x: '-100%' }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute left-0 top-0 h-full w-80 bg-white shadow-xl z-[71]"
+              className="absolute left-0 top-0 z-[71] h-full w-full max-w-[501px] bg-surface-primary shadow-xl"
             >
-              <div className="flex flex-col h-full">
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                  <h2 className="text-lg font-light text-black tracking-wider uppercase">{t.filters}</h2>
-                  <button onClick={handleCloseFiltersPanel} className="text-black hover:text-gray-600">
-                    <XMarkIcon className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-6">
-                  <Accordion type="multiple" value={mobileAccordionValue} onValueChange={setMobileAccordionValue} className="space-y-6">
-                    <AccordionItem value="price" className="border border-gray-200 rounded-lg">
-                      <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                        <h3 className="text-sm font-medium text-black">{t.price}</h3>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-4 pt-3 border-t border-gray-100">
-                          <div className="text-sm font-medium text-gray-900">₪{formatPrice(uiRange[0])} - ₪{formatPrice(uiRange[1])}</div>
-                          <div className="px-2">
-                            <Slider value={panelUiRange} onValueChange={handleSliderChange} onValueCommit={handleSliderCommit} min={Math.max(0, Math.floor((collectionPriceBounds.min - 200) / 10) * 10)} max={Math.ceil((collectionPriceBounds.max + 200) / 10) * 10} step={10} className="w-full" dir={lng === "he" ? "rtl" : "ltr"} />
-                          </div>
-                          {(uiRange[0] !== collectionPriceBounds.min || uiRange[1] !== collectionPriceBounds.max) && (
-                            <button onClick={handlePriceReset} className="text-xs text-gray-600 hover:text-gray-800 underline">{lng === "he" ? "איפוס" : "Reset"}</button>
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="colors" className="border border-gray-200 rounded-lg">
-                      <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                        <h3 className="text-sm font-medium text-black">{t.colors}</h3>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-2 pt-3 border-t border-gray-100">
-                          {allColors.map((color) => (
-                            <button key={color} onClick={() => handleColorToggle(color)} className={cn("w-full flex items-center space-x-3 p-2 rounded-sm transition-all duration-200", panelColors.includes(color) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
-                              <div className="w-6 h-6 rounded-full border border-gray-200" style={{ backgroundColor: colorSlugToHex[color] || getColorHex(color) }} />
-                              <span className="text-sm font-light text-black">{getColorName(color, lng)}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="sizes" className="border border-gray-200 rounded-lg">
-                      <AccordionTrigger className="p-4 hover:bg-gray-50 hover:no-underline">
-                        <h3 className="text-sm font-medium text-black">{t.sizes}</h3>
-                      </AccordionTrigger>
-                      <AccordionContent className="px-4 pb-4">
-                        <div className="space-y-4 pt-3 border-t border-gray-100">
-                          {numericSizes.length > 0 && (
-                            <div>
-                              <h4 className="text-xs font-medium text-gray-600 mb-2">Shoes</h4>
-                              <div className="grid grid-cols-4 gap-2">
-                                {numericSizes.map((size) => (
-                                  <button key={size} onClick={() => handleSizeToggle(size)} className={cn("p-2 rounded-sm transition-all duration-200 text-center", panelSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
-                                    <span className="text-sm font-light text-black">{size}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {alphaSizes.length > 0 && (
-                            <div>
-                              <h4 className="text-xs font-medium text-gray-600 mb-2">Clothing</h4>
-                              <div className="grid grid-cols-3 gap-2">
-                                {alphaSizes.map((size) => (
-                                  <button key={size} onClick={() => handleSizeToggle(size)} className={cn("p-2 rounded-sm transition-all duration-200 text-center", panelSizes.includes(size) ? "bg-gray-100 border border-gray-300" : "hover:bg-gray-100 border border-transparent")}>
-                                    <span className="text-sm font-light text-black">{size}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                  {(selectedColors.length > 0 || selectedSizes.length > 0 || uiRange[0] > (collectionPriceBounds?.min ?? 0) || uiRange[1] < (collectionPriceBounds?.max ?? 1000)) && (
-                    <div className="mb-6 mt-6">
-                      <button onClick={handleClearFilters} className="w-full py-2 px-4 text-sm font-light text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-all duration-200 border border-gray-200 rounded-sm">
-                        {t.clearAllFilters}
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <div className="p-6 border-t border-gray-100">
-                  <button
-                    onClick={handleApplyFilters}
-                    disabled={isFilterLoading}
-                    className="w-full py-3 px-4 bg-[#856D55]/90 text-white text-sm font-light tracking-wider uppercase hover:bg-[#856D55] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {t.applyFilters}
-                  </button>
-                </div>
-              </div>
+              <CollectionFilterPanel
+                lng={lng}
+                labels={filterPanelLabels}
+                uiRange={panelUiRange}
+                priceBounds={{ min: collectionPriceBounds?.min ?? 0, max: collectionPriceBounds?.max ?? 1000 }}
+                onSliderChange={handleSliderChange}
+                onSliderCommit={handleSliderCommit}
+                onPriceReset={handlePriceReset}
+                formatPrice={formatPrice}
+                allColors={allColors}
+                selectedColors={panelColors}
+                onColorToggle={handleColorToggle}
+                getColorHex={(color) => colorSlugToHex[color] || getColorHex(color)}
+                getColorLabel={(color) => getColorName(color, lng)}
+                numericSizes={numericSizes}
+                alphaSizes={alphaSizes}
+                selectedSizes={panelSizes}
+                onSizeToggle={handleSizeToggle}
+                {...CAMPAIGN_NO_SUBCATEGORY_FILTER}
+                onApply={handleApplyFilters}
+                onClear={handleClearFilters}
+                onClose={handleCloseFiltersPanel}
+                isBusy={isFilterLoading}
+              />
             </motion.div>
           </div>
         )}

@@ -55,10 +55,7 @@ import {
 import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
 import { fetchCollectionPagesUpTo } from "@/lib/collectionBrowseHydration";
 import { useCollectionInfiniteScroll } from "@/lib/useCollectionInfiniteScroll";
-import {
-  useResponsiveColumnCount,
-  type ColumnBreakpoint,
-} from "@/lib/useResponsiveColumnCount";
+import { useResponsiveColumnCount } from "@/lib/useResponsiveColumnCount";
 import { useProductGridVirtualizer } from "@/lib/useProductGridVirtualizer";
 import {
   captureScrollForAppend,
@@ -82,68 +79,17 @@ import {
   useCollectionProductList,
 } from "@/lib/useCollectionProductList";
 
-const LISTING_PAGE_SIZE = 24;
-
-/**
- * Horizontal inset for the collection blocks that are not full-bleed. 36px at
- * desktop is the frame's own gutter (438:2975 sets px-36.288); the filter bar and
- * the product grid deliberately do not use it, because 438:2962 runs both to the
- * viewport edge.
- */
-const COLLECTION_INSET = "px-4 sm:px-6 lg:px-[36px]";
-
-/**
- * Shared chrome for the two controls in the 438:2977 filter/sort bar.
- *
- * The caret trails the label, so in Hebrew it sits to the label's left exactly as
- * 438:2978 draws it. This is one place where the frame's coordinates are meant
- * literally rather than mirrored - see the bar itself, which keeps the frame's
- * sides too.
- *
- * 10px gap: the frame positions caret and label absolutely, 9.6px apart on the
- * sort control and ~12px on the filter one.
- */
-const COLLECTION_BAR_CONTROL =
-  "inline-flex items-center gap-[10px] font-ploni text-[12px] text-text-primary transition-opacity hover:opacity-70";
-
-/**
- * The bar's caret (438:2979) is a small square rotated 45 degrees with two of its
- * edges drawn - a chevron built from a rectangle, which is exactly how the frame
- * vectors it. Borders are physical rather than logical on purpose: a caret points
- * down in both directions, and border-inline-end would swing it in RTL.
- */
-function CollectionBarCaret() {
-  // Deliberately an <i>, not a <span>. SelectTrigger styles every direct child
-  // span with [&>span]:flex-1 / text-ellipsis to make the value fill the row; a
-  // span caret got caught by that, stretched across the trigger - rendering as a
-  // long diagonal stroke once rotated - and squeezed the label into an ellipsis.
-  // Desktop only. 438:3523 draws the mobile bar as two bare labels - no caret
-  // vectors at all - where 438:2978 gives the desktop controls one each.
-  return (
-    <i
-      aria-hidden="true"
-      className="mb-[3px] hidden size-[6.6px] shrink-0 rotate-45 border-b border-r border-text-primary lg:block"
-    />
-  );
-}
-
-// Mirrors the "collection-product-grid" grid-cols-2 lg:grid-cols-4 breakpoint
-// (lib/collection-grid-critical-css.ts uses the same 1024px cutoff). 438:2984
-// lays the desktop grid four across; this drives row-height estimation, so it has
-// to move with the CSS or the virtualiser reserves the wrong height.
-const COLLECTION_GRID_BREAKPOINTS: ColumnBreakpoint[] = [
-  { minWidthPx: 0, columns: 2 },
-  { minWidthPx: 1024, columns: 4 },
-];
-// Same 8.75rem (140px) reserved below the aspect-square image as the critical
-// CSS in lib/collection-grid-critical-css.ts, so the initial size estimate
-// lines up with what's already reserved before Tailwind/measureElement settle.
-const COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX = 140;
-// Rows are absolutely positioned, so the space between them is each row's own
-// bottom padding rather than the grid's row-gap. Zero: the cards butt together
-// and their own borders do the dividing, so any value here reappears as a white
-// hairline between rows.
-const COLLECTION_GRID_ROW_GAP_PX = 0;
+import {
+  COLLECTION_BAR,
+  COLLECTION_BAR_CONTROL,
+  COLLECTION_GRID_BREAKPOINTS,
+  COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
+  COLLECTION_GRID_ROW_GAP_PX,
+  COLLECTION_INSET,
+  COLLECTION_LISTING_PAGE_SIZE as LISTING_PAGE_SIZE,
+  COLLECTION_PRODUCT_GRID,
+  CollectionBarCaret,
+} from "@/app/components/collection/collectionChrome";
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -1881,7 +1827,7 @@ export default function CollectionClient({
               Select leads the markup here and the filter buttons follow. The chips,
               pills and grey rounded boxes are gone - this design system has no radius
               and no button fills outside the CTA. */}
-          <div className="flex h-[58px] items-center justify-between border-y border-border-default bg-surface-secondary px-[16px] lg:h-[74px] lg:px-[36px]">
+          <div className={COLLECTION_BAR}>
             <Select
               value={sortBy}
               onValueChange={handleSortChange}
@@ -1982,7 +1928,7 @@ export default function CollectionClient({
         <div className="w-full">
           {isFilterLoading ? (
             <div
-              className="collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4"
+              className={COLLECTION_PRODUCT_GRID}
               aria-busy="true"
             >
               {Array.from({ length: LISTING_PAGE_SIZE }).map((_, index) => (
@@ -2038,7 +1984,7 @@ export default function CollectionClient({
                       // flush. 1px from lg matches the column gutter.
                       className="pb-0"
                     >
-                      <div className="collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4">
+                      <div className={COLLECTION_PRODUCT_GRID}>
                         {row.items.map((item, i) => {
                           const flatIndex = row.startIndex + i;
                           const isAboveFold = flatIndex < 6;
@@ -2091,7 +2037,7 @@ export default function CollectionClient({
                 })}
               </div>
               {isBrowseRefetching && pinnedGridItemCount > sortedItems.length && (
-                <div className="collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4">
+                <div className={COLLECTION_PRODUCT_GRID}>
                   {Array.from({
                     length: pinnedGridItemCount - sortedItems.length,
                   }).map((_, index) => (

@@ -1,6 +1,9 @@
 import CollectionProductCardSkeleton from "@/app/components/CollectionProductCardSkeleton";
-
-const LISTING_PAGE_SIZE = 24;
+import {
+  COLLECTION_INSET,
+  COLLECTION_LISTING_PAGE_SIZE,
+  COLLECTION_PRODUCT_GRID,
+} from "@/app/components/collection/collectionChrome";
 
 /**
  * Reserves the same vertical space as the loaded collection grid (prevents
@@ -24,9 +27,9 @@ export default function Loading() {
           max-width the grid paints narrow and then jumps wide when the page
           streams in, which is the shift this file exists to prevent. */}
       <div className="w-full pt-8 pb-6 md:pb-16">
-        <div className="mb-4 min-h-[20px] px-4 sm:px-6 lg:px-[36px]" aria-hidden />
-        <div className="collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4">
-          {Array.from({ length: LISTING_PAGE_SIZE }).map((_, index) => (
+        <div className={`mb-4 min-h-[20px] ${COLLECTION_INSET}`} aria-hidden />
+        <div className={COLLECTION_PRODUCT_GRID}>
+          {Array.from({ length: COLLECTION_LISTING_PAGE_SIZE }).map((_, index) => (
             <div key={`route-skeleton-${index}`}>
               <CollectionProductCardSkeleton />
             </div>

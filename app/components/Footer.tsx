@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useId, useState } from 'react';
+import { AccordionPanel, DisclosureSign } from '@/app/components/Accordion';
 import { useRouter, usePathname } from 'next/navigation';
 import { languageMetadata } from '../../i18n/settings';
 
@@ -89,28 +90,61 @@ function FooterSection({
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  const panelId = useId()
+  const summaryId = useId()
+
+  /**
+   * Only used to decide `inert`, never the visuals - those stay CSS-driven
+   * (grid-rows-[0fr] lg:grid-rows-[1fr]) so a desktop column is open on the first
+   * paint with no hydration flash.
+   *
+   * It starts false on purpose: before hydration nothing is inert, so the footer's
+   * links are reachable and crawlable on every viewport. Once we know we are below
+   * lg, a closed column stops taking focus - which the old `hidden` gave for free
+   * and an animated panel does not.
+   */
+  const [isBelowLg, setIsBelowLg] = useState(false)
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1023.98px)')
+    const sync = () => setIsBelowLg(query.matches)
+    sync()
+    query.addEventListener('change', sync)
+    return () => query.removeEventListener('change', sync)
+  }, [])
 
   return (
     <div className="border-t border-text-inverse pt-[20px] lg:border-t-0 lg:pt-0">
       <button
         type="button"
+        id={summaryId}
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
+        aria-controls={panelId}
         className="flex w-full items-center justify-between lg:pointer-events-none"
       >
         <span className={HEADING}>{title}</span>
         {/* Disclosure chrome, not content: desktop shows every column open, so the
             affordance goes away rather than sitting there inert. */}
-        <span aria-hidden="true" className="font-ploni text-[16px] font-bold text-text-inverse lg:hidden">
-          {open ? '−' : '＋'}
-        </span>
+        <DisclosureSign
+          open={open}
+          plus="＋"
+          className="font-ploni text-[16px] font-bold text-text-inverse lg:hidden"
+        />
       </button>
-      {/* Collapsed state is mobile-only. From lg the column is always shown, which is
-          why this is a class rather than conditional rendering - the links stay in the
-          DOM for crawlers and for anyone landing on a wide viewport. */}
-      <div className={`flex-col gap-[6px] pt-[20px] ${open ? 'flex' : 'hidden lg:flex'}`}>
+
+      {/* Same panel the PDP accordion uses, so both open at one rate. openFromLg
+          keeps the frame's behaviour: collapsible on mobile, always shown from lg. */}
+      <AccordionPanel
+        id={panelId}
+        labelledBy={summaryId}
+        open={open}
+        openFromLg
+        isInert={isBelowLg && !open}
+        contentClassName="flex flex-col gap-[6px] pt-[20px]"
+      >
         {children}
-      </div>
+      </AccordionPanel>
     </div>
   )
 }

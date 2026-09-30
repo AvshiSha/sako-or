@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Footer from '@/app/components/Footer';
 import { trackPurchase, PurchaseUserProperties } from '@/lib/dataLayer';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { clearCartAfterPurchase } from '@/lib/cart-clear';
@@ -266,89 +267,93 @@ function SuccessPageContent() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-          <p className="mt-4 text-gray-600">מאמת את התשלום...</p>
-        </div>
+      <div
+        dir="rtl"
+        className="flex min-h-screen flex-col items-center justify-center bg-surface-secondary px-[16px]"
+      >
+        <p className="font-ploni text-[25px] font-black leading-[25px] tracking-[-1.4px] text-text-primary">
+          SAKO OR
+        </p>
+        <p className="mt-[30px] font-ploni text-[11px] leading-[20.8px] tracking-[1.69px] text-text-primary">
+          VERIFYING PAYMENT
+        </p>
+        <p className="mt-[8px] font-ploni text-[13px] leading-[20.8px] text-text-primary">
+          מאמתים את התשלום…
+        </p>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-        {/* Success Icon */}
-        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-[#856D55]/10 mb-6">
-          <svg
-            className="h-8 w-8 text-[#856D55]"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        </div>
+  // "תודה, מאיה." in the frame. Guest checkout has no account to read a name
+  // from, so the greeting closes after "תודה" rather than printing an empty slot.
+  const firstName = user?.displayName?.trim().split(/\s+/)[0] || '';
+  const thanks = firstName
+    ? `תודה, ${firstName}. אישור ההזמנה נשלח אלייך במייל. נעדכן אותך שוב ברגע שהחבילה תצא לדרך.`
+    : 'תודה. אישור ההזמנה נשלח אלייך במייל. נעדכן אותך שוב ברגע שהחבילה תצא לדרך.';
 
-        {/* Success Message */}
-        <h1 className="text-2xl font-bold text-gray-900 mb-4"> 
-          !התשלום בוצע בהצלחה
-        </h1>
-        
-        <p className="text-gray-600 mb-6">
-          תודה על רכישתך. התשלום אושר ותוכל לקבל את ההזמנה שלך בקרוב
+  return (
+    // dir="rtl" here rather than on the layout: this group deliberately sets no
+    // direction, because it also holds the left-to-right admin panel.
+    <div dir="rtl" className="flex min-h-screen flex-col bg-surface-secondary">
+      {/* 438:3901 — one centred column. The frame carries the wordmark itself
+          rather than the site header, because the gateway returns here outside
+          the storefront shell. */}
+      <main className="flex flex-1 flex-col items-center px-[16px] pt-[72px] pb-[50px]">
+        <p className="font-ploni text-[25px] font-black leading-[25px] tracking-[-1.4px] text-text-primary">
+          SAKO OR
         </p>
 
-        {/* Order Details */}
-        {orderInfo.orderId && (
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">פרטי ההזמנה</h3>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>מספר הזמנה: {orderInfo.orderId}</p>
-              {orderInfo.amount && (
-                <p>
-                  סכום: {orderInfo.amount.toFixed(2)} {orderInfo.currency}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+        {/* 438:3905, a 33x33 design asset. Intrinsic size preserved — not scaled
+            to a utility — and inline rather than through next/image, which would
+            add an optimizer round trip for 958 bytes. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/icons/sako/order-confirmed-check.svg"
+          width={33}
+          height={33}
+          alt=""
+          aria-hidden="true"
+          className="mt-[105px]"
+        />
 
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          {/* <Link
-            href="/dashboard"
-            className="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors inline-block"
-          >
-            צפה בהזמנות שלי
-          </Link> */}
-          
-          <Link
-            href="/"
-            className="w-full bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors inline-block"
-          >
-            חזור לעמוד הבית
-          </Link>
-        </div>
+        {/* The frame prints "#SO-02481". A real order number only exists once the
+            gateway has handed one back, so the divider and number drop out
+            together rather than leaving a bare "#". */}
+        <p className="mt-[30px] mb-[20px] text-center font-ploni text-[11px] leading-[20.8px] tracking-[1.69px] text-text-primary">
+          {orderInfo.orderId ? `ORDER CONFIRMED / #${orderInfo.orderId}` : 'ORDER CONFIRMED'}
+        </p>
 
-        {/* Additional Info */}
-        <div className="mt-6 text-xs text-gray-500">
-          <p>תקבל אישור במייל עם פרטי ההזמנה</p>
-          <p>אם יש לך שאלות, אנא צור קשר עם התמיכה</p>
-        </div>
-      </div>
+        {/* The frame specifies Ploni UltraBold; this project ships Regular,
+            DemiBold, Bold and Black, so the heading takes Black (900) — the
+            nearest weight we actually load rather than a synthesized one. */}
+        <h1 className="pt-[13px] text-center font-ploni text-[60px] font-black leading-[50px] text-text-primary">
+          ההזמנה
+          <br />
+          בדרך.
+        </h1>
+
+        <p className="mt-[12px] max-w-[319px] text-center font-ploni text-[13px] leading-[20.8px] text-text-primary">
+          {thanks}
+        </p>
+
+        {/* Back to the Hebrew storefront: this route is unlocalized, so there is
+            no [lng] to inherit and the destination has to be named. */}
+        <Link
+          href="/he"
+          className="mt-[20px] flex h-[44px] items-end border-b border-border-default pb-[6px] font-ploni text-[11px] text-text-primary transition-opacity hover:opacity-60"
+        >
+          חזרה לחנות ↙
+        </Link>
+      </main>
+
+      <Footer lng="he" />
     </div>
   );
 }
 
 export default function SuccessPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="min-h-screen bg-surface-secondary" />}>
       <SuccessPageContent />
     </Suspense>
   );

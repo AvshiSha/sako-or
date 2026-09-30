@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import ProtectedRoute from '@/app/components/ProtectedRoute';
 import CategoryMerchandisingBoard from '../../_components/CategoryMerchandisingBoard';
+import CategoryBannersEditor from '../../_components/CategoryBannersEditor';
 
 function MerchandisingPageContent() {
   const params = useParams();
@@ -30,7 +31,16 @@ function MerchandisingPageContent() {
     );
   }
 
-  return <CategoryMerchandisingBoard categoryId={id} />;
+  return (
+    <>
+      <CategoryMerchandisingBoard categoryId={id} />
+      {/* Banners save through their own endpoint, so editing them here cannot
+          collide with an ordering save from the board above. */}
+      <div className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+        <CategoryBannersEditor categoryId={id} />
+      </div>
+    </>
+  );
 }
 
 export default function CategoryMerchandisingPage() {

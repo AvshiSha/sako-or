@@ -58,6 +58,17 @@ import { useCollectionInfiniteScroll } from "@/lib/useCollectionInfiniteScroll";
 import { useResponsiveColumnCount } from "@/lib/useResponsiveColumnCount";
 import { useProductGridVirtualizer } from "@/lib/useProductGridVirtualizer";
 import {
+  buildDisplayList,
+  resolveBannerPlacements,
+  type CollectionBanner,
+} from "@/lib/collection-banners";
+import CollectionGridBanner from "@/app/components/CollectionGridBanner";
+
+/** One slot in the rendered grid: a product, or a merchandising banner. */
+type CollectionDisplayEntry =
+  | { kind: "product"; item: VariantItem | Product; productIndex: number }
+  | { kind: "banner"; banner: CollectionBanner };
+import {
   captureScrollForAppend,
   restoreScrollAfterAppend,
   type ScrollAppendSnapshot,
@@ -237,6 +248,8 @@ interface CollectionClientProps {
   categorySeoContentHtml?: string;
   /** True when SSR already merged pages 1..N (?page=N deep link). */
   initialPagesBootstrapped?: boolean;
+  /** Enabled grid banners for this category; empty on search and unresolved paths. */
+  gridBanners?: CollectionBanner[];
 }
 
 export default function CollectionClient({
@@ -258,6 +271,7 @@ export default function CollectionClient({
   categorySeoContentTitle,
   categorySeoContentHtml,
   initialPagesBootstrapped = false,
+  gridBanners = [],
 }: CollectionClientProps) {
   const params = useParams();
   const router = useRouter();
@@ -1197,14 +1211,47 @@ export default function CollectionClient({
   }, [allVariantItems, allProducts, sortBy, useVariantItems]);
 
   const getGridItemKey = useCallback(
-    (item: VariantItem | Product): string =>
-      useVariantItems
+    (entry: CollectionDisplayEntry): string => {
+      if (entry.kind === 'banner') return `banner-${entry.banner.id}`;
+      const item = entry.item;
+      return useVariantItems
         ? (item as VariantItem).variantKey
-        : String((item as Product).id ?? (item as Product).sku),
+        : String((item as Product).id ?? (item as Product).sku);
+    },
     [useVariantItems]
   );
 
   const gridColumns = useResponsiveColumnCount(COLLECTION_GRID_BREAKPOINTS);
+
+  /**
+   * Banners are merchandising for the default listing only. A shopper who has
+   * filtered or searched has intent, and an interruption costs more there - so
+   * any applied filter takes them out entirely rather than shifting them.
+   */
+  const bannersApply =
+    gridBanners.length > 0 &&
+    !searchQuery &&
+    selectedColors.length === 0 &&
+    selectedSizes.length === 0 &&
+    selectedSubSubCategories.length === 0;
+
+  const bannerPlacements = useMemo(
+    () =>
+      bannersApply
+        ? resolveBannerPlacements(gridBanners, gridColumns, sortedItems.length)
+        : [],
+    [bannersApply, gridBanners, gridColumns, sortedItems.length]
+  );
+
+  /**
+   * What the grid renders. Products keep their own array, order and indices -
+   * totalProducts, the load-more baseline and the "showing X of Y" counter all
+   * read from that, so banners exist only in this derived view.
+   */
+  const displayItems = useMemo(
+    () => buildDisplayList(sortedItems as Array<VariantItem | Product>, bannerPlacements),
+    [sortedItems, bannerPlacements]
+  );
 
   const {
     containerRef: gridContainerRef,
@@ -1213,8 +1260,8 @@ export default function CollectionClient({
     totalSize: gridTotalSize,
     measureElement: measureGridRow,
     scrollToFlatIndex: scrollGridToFlatIndex,
-  } = useProductGridVirtualizer<VariantItem | Product>({
-    items: sortedItems as Array<VariantItem | Product>,
+  } = useProductGridVirtualizer<CollectionDisplayEntry>({
+    items: displayItems,
     columns: gridColumns,
     getItemKey: getGridItemKey,
     extraRowHeightPx: COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
@@ -1227,11 +1274,14 @@ export default function CollectionClient({
   const gridItemIndexRef = useRef<Map<string, number>>(new Map());
   useEffect(() => {
     const map = new Map<string, number>();
-    (sortedItems as Array<VariantItem | Product>).forEach((item, index) => {
-      map.set(getGridItemKey(item), index);
+    // Indexed over displayItems on purpose: scrollToFlatIndex addresses the list
+    // the virtualiser was handed, so mapping product indices here would scroll to
+    // the wrong card by however many banners precede it.
+    displayItems.forEach((entry, index) => {
+      map.set(getGridItemKey(entry), index);
     });
     gridItemIndexRef.current = map;
-  }, [sortedItems, getGridItemKey]);
+  }, [displayItems, getGridItemKey]);
 
   useEffect(() => {
     registerCollectionAnchorMounter((anchorKey) => {
@@ -1985,9 +2035,21 @@ export default function CollectionClient({
                       className="pb-0"
                     >
                       <div className={COLLECTION_PRODUCT_GRID}>
-                        {row.items.map((item, i) => {
+                        {row.items.map((entry, i) => {
                           const flatIndex = row.startIndex + i;
                           const isAboveFold = flatIndex < 6;
+
+                          if (entry.kind === 'banner') {
+                            return (
+                              <CollectionGridBanner
+                                key={`banner-${entry.banner.id}`}
+                                banner={entry.banner}
+                                lng={lng as 'en' | 'he'}
+                              />
+                            );
+                          }
+
+                          const item = entry.item;
 
                           if (useVariantItems) {
                             const variantItem = item as VariantItem;

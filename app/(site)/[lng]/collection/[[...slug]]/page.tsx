@@ -8,6 +8,8 @@ import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup';
 import type { Metadata } from 'next';
 import { languages } from '@/i18n/settings';
 import { buildCollectionFilterKey } from '@/lib/collectionFilterUrl';
+import { getCategoryGridBanners } from '@/lib/category-merchandising';
+import type { CollectionBanner } from '@/lib/collection-banners';
 
 // Helper to serialize Firestore timestamps or other complex objects
 const serializeValue = (value: any): any => {
@@ -347,6 +349,10 @@ export default async function CollectionSlugPage({
 
   let categorySeoContentTitle: string | undefined;
   let categorySeoContentHtml: string | undefined;
+  // Grid banners are merchandising, not search results: the same !searchQuery
+  // guard that gates the SEO block keeps them off search and off any view that
+  // did not resolve to a real category.
+  let gridBanners: CollectionBanner[] = [];
 
   if (!searchQuery && categoryPath) {
     try {
@@ -365,6 +371,7 @@ export default async function CollectionSlugPage({
             targetCategory.seoContent?.en ||
             undefined;
         }
+        gridBanners = await getCategoryGridBanners(targetId);
       }
     } catch (error) {
       console.error('Error fetching category SEO content:', error);
@@ -391,6 +398,7 @@ export default async function CollectionSlugPage({
       initialMaxPrice={initialMaxPrice}
       categorySeoContentTitle={categorySeoContentTitle}
       categorySeoContentHtml={categorySeoContentHtml}
+      gridBanners={gridBanners}
       initialPagesBootstrapped={!searchQuery && page >= 2}
     />
   );

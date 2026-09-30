@@ -12,6 +12,10 @@ import { resolveMerchandisingPreviewRows } from '@/lib/campaign-merchandising';
 const merchandisingSchema = z.object({
   mode: z.enum(['auto', 'pinned', 'manual']),
   orderedVariantKeys: z.array(z.string()).max(2000),
+  // Passed through unknown and shaped by sanitizeCollectionBanners, which is the
+  // single definition of a valid banner and is unit tested. Optional on purpose:
+  // the ordering board posts without it and must not clear what is stored.
+  banners: z.unknown().optional(),
 });
 
 async function requireAdmin(request: NextRequest) {
@@ -85,6 +89,7 @@ export async function PUT(
     const merchandising = await saveCategoryMerchandisingAdmin(id, {
       mode: parsed.data.mode,
       orderedVariantKeys: parsed.data.orderedVariantKeys,
+      banners: parsed.data.banners,
       updatedBy: auth.email ?? undefined,
     });
 

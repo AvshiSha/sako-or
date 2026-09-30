@@ -15,6 +15,7 @@ import {
   defaultCategoryMerchandising,
 } from '@/lib/category-merchandising-types';
 import { resolveMerchandisingPreviewRows } from '@/lib/campaign-merchandising';
+import { sanitizeCollectionBanners, type CollectionBanner } from '@/lib/collection-banners';
 
 export type { CategoryMerchandising, CategoryMerchandisingMode } from '@/lib/category-merchandising-types';
 export {
@@ -39,10 +40,58 @@ export async function getCategoryMerchandisingAdmin(categoryId: string): Promise
     orderedVariantKeys: Array.isArray(data.orderedVariantKeys)
       ? dedupeVariantKeys(data.orderedVariantKeys)
       : [],
+    // Sanitised on read as well as on write: these documents predate the field,
+    // and a banner saved by an older shape should cost that banner rather than
+    // the listing it sits in.
+    banners: sanitizeCollectionBanners(data.banners),
     updatedAt: data.updatedAt ?? new Date().toISOString(),
     updatedBy: data.updatedBy,
     version: data.version ?? CATEGORY_MERCHANDISING_VERSION,
   };
+}
+
+/**
+ * Enabled grid banners for a category listing, for the storefront.
+ *
+ * Reads the field directly rather than going through getCategoryMerchandisingAdmin
+ * so a page render does not also deserialise up to 2000 ordered variant keys it
+ * has no use for.
+ */
+export async function getCategoryGridBanners(categoryId: string): Promise<CollectionBanner[]> {
+  const snap = await docRef(categoryId).get();
+  if (!snap.exists) return [];
+  const data = snap.data() as { banners?: unknown } | undefined;
+  return sanitizeCollectionBanners(data?.banners).filter((banner) => banner.enabled);
+}
+
+/**
+ * Save only the banners.
+ *
+ * Deliberately separate from saveCategoryMerchandisingAdmin: that one needs a
+ * mode and a full ordering, so a banner edit routed through it would have to echo
+ * both back and could clobber a reorder saved from the board in between. This
+ * touches one field and leaves the rest of the document alone.
+ */
+export async function saveCategoryBannersAdmin(
+  categoryId: string,
+  banners: unknown,
+  updatedBy?: string
+): Promise<CategoryMerchandising> {
+  const sanitized = sanitizeCollectionBanners(banners);
+  const now = new Date().toISOString();
+
+  await docRef(categoryId).set(
+    {
+      categoryId,
+      banners: sanitized,
+      updatedAt: now,
+      updatedBy,
+      version: CATEGORY_MERCHANDISING_VERSION,
+    },
+    { merge: true }
+  );
+
+  return getCategoryMerchandisingAdmin(categoryId);
 }
 
 export async function saveCategoryMerchandisingAdmin(
@@ -50,6 +99,8 @@ export async function saveCategoryMerchandisingAdmin(
   payload: {
     mode: CategoryMerchandisingMode;
     orderedVariantKeys: string[];
+    /** Omitted leaves the stored banners untouched, so ordering saves cannot wipe them. */
+    banners?: unknown;
     updatedBy?: string;
   }
 ): Promise<CategoryMerchandising> {
@@ -65,11 +116,20 @@ export async function saveCategoryMerchandisingAdmin(
     }
   }
 
+  // The board saves ordering and the banner editor saves banners; each posts only
+  // its own field, so an absent `banners` means "leave them alone" rather than
+  // "there are none".
+  const banners =
+    payload.banners === undefined
+      ? (await getCategoryMerchandisingAdmin(categoryId)).banners
+      : sanitizeCollectionBanners(payload.banners);
+
   const now = new Date().toISOString();
   const doc: CategoryMerchandising = {
     categoryId,
     mode: payload.mode,
     orderedVariantKeys,
+    banners,
     updatedAt: now,
     updatedBy: payload.updatedBy,
     version: CATEGORY_MERCHANDISING_VERSION,

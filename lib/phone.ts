@@ -61,6 +61,44 @@ export function normalizeIsraelE164(input: string | null | undefined): string | 
 }
 
 /**
+ * Lenient entry point for a phone number a person typed into a form.
+ *
+ * normalizeIsraelE164 is strict about the shapes it takes, which is right for an
+ * API boundary and wrong for a text field: it rejects "+972 50-123-4567" written
+ * as "00972…", and it rejects the bare national number ("501234567") that
+ * IsraelPhoneInput's own placeholder invites people to type. Checkout has to
+ * accept everything a customer in Israel might reasonably write, so it goes
+ * through here and the strict function stays as it is for everyone else.
+ *
+ * Accepts: +972501234567, +972 50-123-4567, 00972501234567, 972501234567,
+ * 0501234567, 050-123-4567, 501234567, 03-6001234, 36001234.
+ * Returns canonical E.164, or null if it is not a usable Israeli number.
+ */
+export function normalizeIsraelPhoneInput(input: string | null | undefined): string | null {
+  if (!input) return null
+
+  const trimmed = input.trim()
+  if (!trimmed) return null
+
+  // 00 is the other way of writing +, and it is common on printed cards.
+  const withPlus = trimmed.replace(/^00/, '+')
+
+  const direct = normalizeIsraelE164(withPlus)
+  if (direct) return direct
+
+  // Bare national significant number — no trunk 0, no country code. 9 digits for
+  // mobile and 07x, 8 for a landline area code. Leading digit cannot be 0 or 1:
+  // 0 is the trunk prefix (handled above) and 1 is service numbers, which are
+  // not a delivery contact.
+  const digits = withPlus.replace(/\D/g, '')
+  if (/^[2-9]\d{7,8}$/.test(digits)) {
+    return normalizeIsraelE164(`0${digits}`)
+  }
+
+  return null
+}
+
+/**
  * Validates that a phone number is in valid Israel E.164 format.
  * 
  * Requirements:

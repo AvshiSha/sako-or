@@ -310,14 +310,21 @@ export function useCart(): CartHook {
     }
   }, [applyStockValidationToItems, items])
 
-  // Validate cart against current stock via server once per hook lifetime (on load)
-  // We only run this on the full cart page to avoid duplicate calls from
-  // components like the quick-buy drawer that also use the cart hook.
+  // Validate cart against current stock via server once per hook lifetime (on load).
+  // Restricted to the surfaces that price a whole order, so components like the
+  // quick-buy drawer, which also use this hook, don't each fire their own call.
+  //
+  // Checkout is included and not optional: items hydrate from localStorage with
+  // maxStock 0 and stockStatus 'checking', so without this every line looks
+  // out of stock and the order totals to zero. It is also the last point at
+  // which stale stock can still be caught before the card is charged.
   useEffect(() => {
     if (loading) return
     if (!items.length) return
     if (hasValidatedCartRef.current) return
-    if (!pathname || !pathname.endsWith('/cart')) return
+    if (!pathname) return
+    const pricesWholeOrder = /\/(cart|checkout)(\/[^/]*)?$/.test(pathname)
+    if (!pricesWholeOrder) return
 
     hasValidatedCartRef.current = true
     revalidateCart()

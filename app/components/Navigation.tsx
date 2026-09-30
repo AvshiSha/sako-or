@@ -593,6 +593,14 @@ export default function Navigation({
                 // Anchored to the right edge rather than centred: the account icon now
                 // sits next to the menu control at the end of the bar, so a centred
                 // greeting would hang off the viewport.
+                //
+                // This is the one piece of directional text in the bar, and the bar
+                // above forces dir="ltr". Without its own dir the Hebrew greeting is
+                // laid out on an LTR base, which throws the trailing comma of
+                // "היי, <name>" to the far left once the Latin name opens an LTR run.
+                // right-0 is physical, so the RTL base changes the text order only,
+                // not where the box hangs.
+                dir={lng === 'he' ? 'rtl' : 'ltr'}
                 className={`absolute top-full right-0 min-h-[14px] whitespace-nowrap pt-0.5 font-ploni text-[9px] leading-none text-text-secondary ${
                   user && !authLoading && !profileLoading && greetingName ? 'opacity-100' : 'opacity-0'
                 }`}

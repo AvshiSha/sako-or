@@ -126,6 +126,11 @@
      sako-gray ramp, where it would sit between gray-200 and gray-300 and invite
      someone to renumber the ramp. */
   --color-surface-tab-active: #d5d2cc;
+  /* Unchecked checkbox fill, checkout 438:2744. In @theme rather than the bridge
+     block below because code uses it as a utility (bg-input-unchecked), and a
+     bridge custom property generates none. Not folded into the sako-gray ramp,
+     where it would sit between 200 and 300 and invite a renumber. */
+  --color-input-unchecked: #d9d9d9;
 
   /* Spacing lives outside @theme - see the block below the closing brace. */
 
@@ -149,6 +154,10 @@
   --sako-paper-100: var(--color-sako-gray-100);
   --color-bg-page: var(--color-surface-secondary);
   --radius-none: 0;
+  /* The checkout frames (438:2725 / 438:2836) label the form's field captions
+     --color-text-muted. Same #777 the DESIGN SYSTEM page calls text-secondary, so
+     this is a bridge name and not a new token - use text-text-secondary in code. */
+  --color-text-muted: var(--color-sako-gray-700);
 
   /* Spacing — 8. Deliberately NOT in @theme. Tailwind v4 resolves the width family
      (w-*, max-w-*, min-w-*) against the `--spacing-*` namespace before falling back

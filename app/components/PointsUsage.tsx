@@ -1,7 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Accordion from './Accordion'
+
+/**
+ * Points redemption control, cart frame 46:16455 (nodes 258:12402-258:12414).
+ *
+ * The old control was an accordion wrapping a rounded brown-on-white form. The
+ * frame draws it as a permanently open block identical in shape to the coupon
+ * field directly above it: a label, a white field with a black hairline and a
+ * filled ink button, then one line of helper copy. Keeping the two fields
+ * literally the same component shape is the point - they sit 20px apart and any
+ * difference between them reads as a mistake.
+ *
+ * The field is a plain text box in the design (no spinner), so the number input
+ * is kept for the keyboard it summons on mobile but its spinners are hidden.
+ */
 
 interface PointsUsageProps {
   pointsBalance: number
@@ -18,32 +31,39 @@ interface PointsUsageProps {
 
 const pointsContent = {
   en: {
-    label: 'Use points',
-    placeholder: 'Enter points to use',
+    label: 'Redeem points',
     apply: 'Apply',
     remove: 'Remove',
     discount: 'Points discount',
-    available: 'Available points',
+    available: (balance: string) => `${balance} points to redeem. `,
+    cap: (max: string) => `Maximum redeemable - ${max}`,
     noPoints: "You don't have points available to use yet.",
-    invalid: 'Invalid amount. Please enter a number between 0 and your available balance.',
-    applied: 'Points applied successfully.',
-    cap15Percent: (max: string) => `You can use up to 15% of your cart in points (max ₪${max}).`,
+    invalid: 'Enter a number between 0 and the maximum shown above.',
+    loading: 'Loading…',
     noPointsOnCart: "You can't use points on this cart."
   },
   he: {
-    label: 'שימוש בנקודות',
-    placeholder: 'הכנס נקודות לשימוש',
+    label: 'מימוש נקודות',
     apply: 'החל',
     remove: 'הסר',
     discount: 'הנחת נקודות',
-    available: 'נקודות זמינות',
+    available: (balance: string) => `${balance} נקודות למימוש. `,
+    cap: (max: string) => `כמות נקודות מקסימלית - ${max}`,
     noPoints: 'אין לך נקודות זמינות לשימוש עדיין.',
-    invalid: 'סכום לא תקין. אנא הכנס מספר בין 0 למאזן הזמין שלך.',
-    applied: 'הנקודות הוחלו בהצלחה.',
-    cap15Percent: (max: string) => `ניתן להשתמש בעד 15% מערך העגלה בנקודות (מקסימום ₪${max}).`,
+    invalid: 'יש להזין מספר בין 0 לכמות המקסימלית שמופיעה למעלה.',
+    loading: 'טוען…',
     noPointsOnCart: 'לא ניתן להשתמש בנקודות בעגלה זו.'
   }
 } as const
+
+/** Shared with the coupon field in CartClient — same frame, same box. */
+const FIELD_CLASS =
+  'min-w-0 flex-1 border border-sako-black bg-surface-primary px-[10px] py-[17px] text-center font-ploni text-[16px] tabular-nums text-sako-black outline-none placeholder:text-sako-gray-500 focus:border-sako-ink-900 disabled:bg-sako-gray-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+
+const APPLY_CLASS =
+  'shrink-0 border border-btn-primary-bg bg-btn-primary-bg px-[18px] py-[14px] font-ploni text-[16px] font-bold leading-none text-btn-primary-text transition-colors hover:bg-sako-ink-800 disabled:border-sako-gray-500 disabled:bg-sako-gray-500'
+
+const HELPER_CLASS = 'font-ploni text-[16px] text-start text-sako-ink-800'
 
 export default function PointsUsage({
   pointsBalance,
@@ -57,43 +77,19 @@ export default function PointsUsage({
   const [pointsInput, setPointsInput] = useState('')
   const [appliedPoints, setAppliedPoints] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const isRTL = language === 'he'
   const strings = pointsContent[language]
   const effectiveMax = maxUsablePoints
 
-  const handlePointsChange = (value: string) => {
-    setPointsInput(value)
-    setError(null)
-
-    const numValue = parseFloat(value)
-    
-    if (value === '' || value === '0') {
-      // Clear points
-      setAppliedPoints(0)
-      onPointsChange(0)
-      return
-    }
-
-    if (isNaN(numValue) || numValue < 0) {
-      setError(strings.invalid)
-      return
-    }
-
-    if (numValue > effectiveMax) {
-      setError(strings.invalid)
-      return
-    }
-
-    // Valid input - round to 2 decimal places
-    const roundedValue = Math.round(numValue * 100) / 100
-    setAppliedPoints(roundedValue)
-    onPointsChange(roundedValue)
-    setError(null)
-  }
-
   const handleApply = () => {
     const numValue = parseFloat(pointsInput)
-    
+
+    if (pointsInput.trim() === '' || numValue === 0) {
+      setAppliedPoints(0)
+      onPointsChange(0)
+      setError(null)
+      return
+    }
+
     if (isNaN(numValue) || numValue < 0 || numValue > effectiveMax) {
       setError(strings.invalid)
       return
@@ -124,88 +120,85 @@ export default function PointsUsage({
     }
   }, [maxUsablePoints, appliedPoints, onPointsChange])
 
-  // Calculate discount amount (1 point = 1 ILS)
-  const discountAmount = appliedPoints
+  const formatPoints = (value: number) =>
+    value.toLocaleString(language === 'he' ? 'he-IL' : 'en-US', {
+      maximumFractionDigits: 2
+    })
 
   return (
-    <Accordion title={strings.label}>
-      <div className="pb-4" dir={isRTL ? 'rtl' : 'ltr'}>
-        {disabled ? (
-          <p className="text-sm text-gray-500">
-            {language === 'he' ? 'טוען...' : 'Loading...'}
+    <div className="flex flex-col gap-[10px]">
+      <p className="font-ploni text-[16px] font-bold leading-none text-start text-sako-ink-800">
+        {strings.label}
+      </p>
+
+      {disabled ? (
+        <p className={HELPER_CLASS}>{strings.loading}</p>
+      ) : pointsBalance > 0 && effectiveMax > 0 ? (
+        <>
+          <div className="flex items-stretch">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              max={effectiveMax}
+              value={pointsInput}
+              onChange={(event) => {
+                setPointsInput(event.target.value)
+                setError(null)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  handleApply()
+                }
+              }}
+              aria-label={strings.label}
+              aria-invalid={error ? true : undefined}
+              placeholder="0"
+              className={FIELD_CLASS}
+            />
+            <button type="button" onClick={handleApply} className={APPLY_CLASS}>
+              {strings.apply}
+            </button>
+          </div>
+
+          {/* One line, two weights — the frame splits the balance from the ceiling
+              (Bold) inside a single paragraph. The frame sets the first span in
+              Ploni Medium; we ship 400/600/700/900, so it takes Regular rather than
+              a browser-synthesized 500. */}
+          <p className={HELPER_CLASS}>
+            <span className="font-normal">{strings.available(formatPoints(pointsBalance))}</span>
+            <span className="font-bold">
+              {strings.cap(formatPoints(isCappedBy15Percent ? maxPointsBy15Percent : effectiveMax))}
+            </span>
           </p>
-        ) : pointsBalance > 0 && effectiveMax > 0 ? (
-          <>
-            <div className="mb-2 text-sm text-gray-600">
-              {strings.available}: <span className="font-medium">{pointsBalance.toFixed(2)}</span>
-            </div>
-            {isCappedBy15Percent && (
-              <p className="mb-2 text-sm text-gray-600">
-                {strings.cap15Percent(maxPointsBy15Percent.toFixed(2))}
-              </p>
-            )}
-            <div className={`flex ${isRTL ? 'flex-row-reverse space-x-reverse' : 'flex-row'} items-center gap-2`}>
-                <input
-                type="number"
-                step="0.01"
-                min="0"
-                max={effectiveMax}
-                value={pointsInput}
-                onChange={(e) => handlePointsChange(e.target.value)}
-                placeholder={strings.placeholder}
-                className={`flex-1 rounded-md border text-gray-900 py-2 px-2 shadow-sm focus:outline-none focus:ring-0.5 focus:ring-[#856D55]/90 ${isRTL ? 'text-right' : 'text-left'}`}
-                disabled={disabled || pointsBalance <= 0 || effectiveMax <= 0}
-                style={{ 
-                  borderColor: error ? 'rgba(220, 38, 38, 0.5)' : 'rgba(133, 109, 85, 0.2)',
-                  borderRadius: '2px'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = error ? 'rgba(220, 38, 38, 0.7)' : 'rgba(133, 109, 85, 0.7)'
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = error ? 'rgba(220, 38, 38, 0.5)' : 'rgba(133, 109, 85, 0.2)'
-                }}
-              />
+
+          {error && (
+            <p className="font-ploni text-[12px] text-accent-error text-start" role="alert">
+              {error}
+            </p>
+          )}
+
+          {appliedPoints > 0 && (
+            <p className={`${HELPER_CLASS} flex items-center gap-[8px]`}>
+              <span>
+                {strings.discount}: -₪{appliedPoints.toFixed(2)}
+              </span>
               <button
-                onClick={handleApply}
-                disabled={disabled || pointsBalance <= 0 || effectiveMax <= 0 || !pointsInput.trim() || parseFloat(pointsInput) <= 0}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-[#856D55]/90 hover:bg-[#856D55] disabled:opacity-70"
+                type="button"
+                onClick={handleRemove}
+                className="font-ploni text-[9px] tracking-[0.72px] text-sako-ink-900 underline transition-opacity hover:opacity-60"
               >
-                {strings.apply}
+                {strings.remove}
               </button>
-            </div>
-            {error && (
-              <p className="mt-2 text-sm text-red-600">
-                {error}
-              </p>
-            )}
-            {appliedPoints > 0 && (
-              <div className="mt-3">
-                <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                  <span>
-                    {strings.discount}: -₪{discountAmount.toFixed(2)} ({appliedPoints.toFixed(2)} {language === 'he' ? 'נקודות' : 'points'})
-                  </span>
-                  <button
-                    onClick={handleRemove}
-                    className={`${isRTL ? 'mr-2' : 'ml-2'} text-green-600 hover:text-green-800`}
-                    aria-label={strings.remove}
-                  >
-                    ×
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        ) : pointsBalance > 0 && effectiveMax <= 0 ? (
-          <p className="text-sm text-gray-500">
-            {strings.noPointsOnCart}
-          </p>
-        ) : (
-          <p className="text-sm text-gray-500">
-            {strings.noPoints}
-          </p>
-        )}
-      </div>
-    </Accordion>
+            </p>
+          )}
+        </>
+      ) : (
+        <p className={HELPER_CLASS}>
+          {pointsBalance > 0 ? strings.noPointsOnCart : strings.noPoints}
+        </p>
+      )}
+    </div>
   )
 }

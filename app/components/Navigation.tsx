@@ -754,8 +754,6 @@ export default function Navigation({
             menSubcategories={menSubcategories}
             hasMen={hasMenCategory()}
             labels={{
-              allWomen: translations[lng as keyof typeof translations].allWomen,
-              allMen: translations[lng as keyof typeof translations].allMen,
               allProducts: translations[lng as keyof typeof translations].allProducts,
               women: translations[lng as keyof typeof translations].women,
               men: translations[lng as keyof typeof translations].men,
@@ -833,8 +831,6 @@ export default function Navigation({
                 menSubcategories={menSubcategories}
                 hasMen={hasMenCategory()}
                 labels={{
-                  allWomen: translations[lng as keyof typeof translations].allWomen,
-                  allMen: translations[lng as keyof typeof translations].allMen,
                   allProducts: translations[lng as keyof typeof translations].allProducts,
                   women: translations[lng as keyof typeof translations].women,
                   men: translations[lng as keyof typeof translations].men,

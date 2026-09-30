@@ -20,13 +20,11 @@ interface ShopByCollectionProps {
 function CollectionBannerCard({
   banner,
   lng,
-  index,
   variant,
   priority,
 }: {
   banner: HomeCollectionBanner
   lng: 'en' | 'he'
-  index: number
   variant: 'tall' | 'half'
   priority: boolean
 }) {
@@ -38,8 +36,18 @@ function CollectionBannerCard({
       className="group relative block overflow-hidden bg-surface-secondary"
       aria-label={title}
     >
-      {/* 863.5x1149 and 863.5x574 in the frame. */}
-      <div className={variant === 'tall' ? 'aspect-[3/2] lg:aspect-[863/1149]' : 'aspect-[3/2]'}>
+      {/* The tall slot takes the mobile frame's 390x544 (438:3428) so it reads big
+          on a phone. The two halves deliberately keep their landscape 3:2 instead -
+          438:3427 gives every mobile banner the same 544px height, but three
+          equally tall blocks in a row looked heavier than the pair does short.
+          Desktop is the frame's 863.5x1149 and 863.5x574 either way. */}
+      <div
+        className={
+          variant === 'tall'
+            ? 'aspect-[390/544] lg:aspect-[863/1149]'
+            : 'aspect-[3/2] lg:aspect-[863/574]'
+        }
+      >
         <Image
           src={banner.image}
           alt={title}
@@ -62,15 +70,12 @@ function CollectionBannerCard({
           heading bottom-right, over the emptier side of every shot. Left to mirror,
           RTL would swing both across the product. The title keeps dir="auto" so a
           Hebrew name still sets right-to-left inside its right-aligned block. */}
+      {/* justify-end, not justify-between: the frame's index numeral (438:3249) is
+          dropped by decision, so the heading block is all that is left to place. */}
       <div
         dir="ltr"
-        className="pointer-events-none absolute inset-0 flex flex-col items-end justify-between p-[16px] lg:p-[30px]"
+        className="pointer-events-none absolute inset-0 flex flex-col items-end justify-end p-[16px] lg:p-[30px]"
       >
-        {/* Typography/Heading/Index — Black 52/52 at 65%. */}
-        <span className="font-ploni text-[32px] font-black leading-none text-text-inverse opacity-65 lg:text-[52px] lg:leading-[52px]">
-          {String(index).padStart(2, '0')}
-        </span>
-
         <span className="flex flex-col items-end gap-[10px]">
           {/* Typography/Heading/H3 — Black 96/76. */}
           <span
@@ -112,17 +117,19 @@ export default function ShopByCollection({ banners, lng }: ShopByCollectionProps
       className="w-full"
       aria-label={lng === 'he' ? 'קולקציות' : 'Shop by collection'}
     >
-      <div className="grid grid-cols-1 gap-px lg:grid-cols-2">
-        <CollectionBannerCard banner={lead} lng={lng} index={1} variant="tall" priority />
+      {/* No gutter on mobile: 438:3427 stacks the banners at a 544px pitch against
+          544px banners, i.e. flush. The 1px division is a desktop detail, where the
+          two columns need separating. */}
+      <div className="grid grid-cols-1 gap-0 lg:grid-cols-2 lg:gap-px">
+        <CollectionBannerCard banner={lead} lng={lng} variant="tall" priority />
 
         {stacked.length > 0 && (
-          <div className="grid gap-px">
-            {stacked.map((banner, i) => (
+          <div className="grid gap-0 lg:gap-px">
+            {stacked.map((banner) => (
               <CollectionBannerCard
                 key={banner.id}
                 banner={banner}
                 lng={lng}
-                index={i + 2}
                 variant="half"
                 priority={false}
               />
@@ -130,12 +137,11 @@ export default function ShopByCollection({ banners, lng }: ShopByCollectionProps
           </div>
         )}
 
-        {overflow.map((banner, i) => (
+        {overflow.map((banner) => (
           <CollectionBannerCard
             key={banner.id}
             banner={banner}
             lng={lng}
-            index={i + 2 + stacked.length}
             variant="half"
             priority={false}
           />

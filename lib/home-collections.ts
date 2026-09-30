@@ -1,7 +1,7 @@
 import {
-  getHomeCollectionAccessoriesImageUrl,
-  getHomeCollectionMenImageUrl,
-  getHomeCollectionOutletImageUrl,
+  getHomeBannerBagsImageUrl,
+  getHomeBannerLowBootsImageUrl,
+  getHomeBannerPlatformLoafersImageUrl,
 } from '@/lib/image-urls'
 
 export interface HomeCollectionBanner {
@@ -18,25 +18,29 @@ export interface HomeCollectionBanner {
 }
 
 export const HOME_COLLECTION_BANNERS: HomeCollectionBanner[] = [
+  // Order matters: the first entry fills the frame's tall slot (438:3271, index
+  // 01) and the next two stack beside it. Hebrew names are the collection
+  // catalogue's own (lib/chatbase/collection-catalog.ts) rather than fresh
+  // translations, so the banner and the search aliases agree.
   {
-    id: 'outlet',
-    title: { en: 'Outlet Collection', he: 'Outlet' },
-    href: '/collection/women/outlet',
-    image: getHomeCollectionOutletImageUrl(),
-    cta: 'SHOP OUTLET',
+    id: 'platform-loafers',
+    title: { en: 'Platform Loafers', he: 'לואפרים פלטפורמה' },
+    href: '/collection/women/shoes/platform-loafers',
+    image: getHomeBannerPlatformLoafersImageUrl(),
+    cta: 'SHOP LOAFERS',
   },
   {
-    id: 'accessories',
-    title: { en: 'Accessories Collection', he: 'Accessories' },
-    href: '/collection/women/accessories',
-    image: getHomeCollectionAccessoriesImageUrl(),
-    cta: 'SHOP ACCESSORIES',
+    id: 'bags',
+    title: { en: 'Bags', he: 'תיקים' },
+    href: '/collection/women/accessories/bags',
+    image: getHomeBannerBagsImageUrl(),
+    cta: 'SHOP BAGS',
   },
   {
-    id: 'men',
-    title: { en: 'Men Collection', he: 'Men' },
-    href: '/collection/men',
-    image: getHomeCollectionMenImageUrl(),
-    cta: 'SHOP MEN',
+    id: 'low-boots',
+    title: { en: 'Low Boots', he: 'מגפונים' },
+    href: '/collection/women/shoes/low-boots',
+    image: getHomeBannerLowBootsImageUrl(),
+    cta: 'SHOP BOOTS',
   },
 ]

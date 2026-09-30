@@ -46,7 +46,14 @@ export default function ProductCarousel({
       {/* Header band (438:2951) — rules above and below, 30/33 padding. The title is
           first in the DOM so RTL lands it on the right with the Latin eyebrow
           opposite, which is how the frame reads. items-end sits both on one baseline. */}
-      <div className="flex items-end justify-between border-y border-sako-black px-[30px] py-[33px]">
+      {/* Centred when the title stands alone. The frame pairs it with an eyebrow on
+          the opposite edge, which only reads as balanced when both are present -
+          with one item, justify-between just pins it to the inline start. */}
+      <div
+        className={`flex items-end border-y border-sako-black px-[30px] py-[33px] ${
+          eyebrow ? 'justify-between' : 'justify-center'
+        }`}
+      >
         <h2 className="font-ploni text-[32px] font-black leading-[32px] text-text-primary lg:text-[48px] lg:leading-[34.56px]">
           {title}
         </h2>

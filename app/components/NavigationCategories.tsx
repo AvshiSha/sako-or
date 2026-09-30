@@ -28,8 +28,6 @@ import type { NavSubCategory } from '@/lib/navigation-categories'
 type Gender = 'women' | 'men'
 
 export type NavigationCategoriesLabels = {
-  allWomen: string
-  allMen: string
   allProducts: string
   women: string
   men: string
@@ -183,18 +181,21 @@ export default function NavigationCategories({
           the other, matching the frame where the links sit right and the imagery left. */}
       <div dir={dir} className={aside ? 'grid grid-cols-2' : ''}>
       <div className={isPanel ? 'px-[28px] pb-[28px] pt-[8px]' : 'px-[16px]'}>
-        {/* NEW COLLECTION row — the one row set in Black at the feature size. */}
+        {/* NEW COLLECTION row — the one row set in Black at the feature size. It points
+            at the campaign page rather than the gender collection, so the label is the
+            campaign's own name in both languages rather than a translated string, and
+            it is the same row for either department. No ＋: the row has no children to
+            disclose, and the glyph read as though it did. */}
         <Link
-          href={`/${lng}/collection/${selectedGender}`}
+          href={`/${lng}/collection/campaign?slug=new-collection`}
           onClick={onNavigate}
-          className={`flex ${rowH} items-center justify-between border-b border-sako-black`}
+          className={`flex ${rowH} items-center border-b border-sako-black`}
           dir={dir}
           suppressHydrationWarning
         >
           <span className={`font-ploni ${featureText} font-black ${featureLeading} text-text-primary`}>
-            {selectedGender === 'women' ? labels.allWomen : labels.allMen}
+            NEW COLLECTION
           </span>
-          {plus}
         </Link>
 
         <Accordion type="single" collapsible className="w-full">
@@ -227,36 +228,23 @@ export default function NavigationCategories({
                 value={subcategory.id}
                 className="border-b border-sako-black"
               >
-                {/* The row is two controls, not one: the name navigates to the category
-                    and the ＋ opens its children. It used to be a single full-row
-                    AccordionTrigger, so tapping a parent category only expanded it - the
-                    menu stayed open and the category page was unreachable from its own
-                    row. The ＋ is the design's affordance for expanding, so it is what
-                    expands; the label behaves like every other row in the list. */}
-                <div className={`flex ${rowH}`} dir={dir}>
-                  <Link
-                    href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
-                    onClick={onNavigate}
-                    className={`flex flex-1 items-center font-ploni ${rowText} font-semibold leading-[23px] text-text-primary transition-opacity hover:opacity-70`}
-                    suppressHydrationWarning
-                  >
-                    {categoryName}
-                  </Link>
-                  {/* Radix ships its own chevron; [&>svg]:hidden drops it so the design's
-                      ＋ can rotate 45deg into the − instead. */}
-                  <AccordionTrigger
-                    // 44px wide for the tap target, but justify-end so the glyph still
-                    // sits flush on the row's inline edge where the frame puts it.
-                    className="w-[44px] shrink-0 justify-end px-0 py-0 hover:no-underline hover:opacity-70 [&>svg]:hidden [&[data-state=open]_.nav-plus]:rotate-45"
-                    aria-label={
-                      lng === 'he'
-                        ? `הצגת תתי הקטגוריות של ${categoryName}`
-                        : `Show ${categoryName} subcategories`
-                    }
-                  >
+                {/* The whole row expands, not just the ＋: a parent category's row is a
+                    disclosure, because its children are what the row is for. The route
+                    to the category page itself is the "show all" link that heads the
+                    expanded child grid below - so the row never has to be both a link
+                    and a toggle, which is what made tapping the name feel wrong.
+
+                    Radix ships its own chevron; [&>svg]:hidden drops it so the design's
+                    ＋ can rotate 45deg into the − instead. */}
+                <AccordionTrigger
+                  className={`${rowH} py-0 font-ploni ${rowText} font-semibold leading-[23px] text-text-primary hover:no-underline hover:opacity-70 [&>svg]:hidden [&[data-state=open]_.nav-plus]:rotate-45`}
+                  dir={dir}
+                >
+                  <span className="flex w-full items-center justify-between">
+                    <span>{categoryName}</span>
                     {plus}
-                  </AccordionTrigger>
-                </div>
+                  </span>
+                </AccordionTrigger>
                 <AccordionContent className="px-0">
                   {childGrid(
                     <>

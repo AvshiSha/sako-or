@@ -198,6 +198,24 @@ export function getHomeCollectionMenImageUrl(): string {
   return getImageUrl("home-collection-men.webp");
 }
 
+/*
+ * Home banner artwork for the redesigned 438:3244 section. Full download URLs
+ * rather than imageUrlMappings keys: these were uploaded straight to
+ * images/home_collections/ and carry their own access tokens, so there is no
+ * local path to map from.
+ */
+export function getHomeBannerPlatformLoafersImageUrl(): string {
+  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Fplatform_laofers_collection.webp?alt=media&token=6eb4ee68-ef9f-4526-8af1-e5588cc33711";
+}
+
+export function getHomeBannerBagsImageUrl(): string {
+  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Fbags_collection.webp?alt=media&token=72a2e278-8d50-4148-ab37-2663cf784135";
+}
+
+export function getHomeBannerLowBootsImageUrl(): string {
+  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Flow_boots_collection.webp?alt=media&token=3878c118-b235-4f1f-a53a-10ac2de2fc24";
+}
+
 /**
  * Get Firebase Storage URL for collection images
  */

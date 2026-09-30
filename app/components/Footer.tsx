@@ -199,10 +199,10 @@ export default function Footer({ lng }: { lng: string }) {
               {CONTACT.address[locale]}
             </span>
             <a href={`tel:${CONTACT.phone.replace(/-/g, '')}`} className={`block ${ITEM}`}>
-              ווצאפ: {CONTACT.phone}
+              {lng === 'he' ? "ווצאפ" : "WhatsApp"}: {CONTACT.phone}
             </a>
             <a href={`mailto:${CONTACT.email.toLowerCase()}`} className={`block ${ITEM}`}>
-              {CONTACT.email}
+              {lng === 'he' ? "אימייל" : "Email"}: {CONTACT.email}
             </a>
           </address>
         </FooterSection>

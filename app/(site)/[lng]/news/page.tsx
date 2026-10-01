@@ -141,10 +141,7 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
             Only border-t here: the rule below comes from the first grid row's
             own border-t, so the two do not stack into a 2px line. */}
         <header className="flex items-end justify-between gap-[16px] border-t border-sako-black px-[16px] py-[20px] lg:px-[30px] lg:py-[33px]">
-          <h2
-            dir="auto"
-            className="font-ploni text-[32px] font-black leading-[28px] text-text-primary lg:text-[48px] lg:leading-[34.56px]"
-          >
+          <h2 className="font-ploni text-[32px] font-black leading-[28px] text-text-primary lg:text-[48px] lg:leading-[34.56px]">
             {t.listTitle}
           </h2>
           <Link
@@ -158,10 +155,7 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
         {gridArticles.length === 0 ? (
           /* The header draws no bottom rule of its own, so the empty state
              carries the one the grid would have supplied. */
-          <p
-            dir="auto"
-            className="border-t border-sako-black px-[16px] py-[60px] text-center font-ploni text-[16px] text-text-secondary lg:px-[30px]"
-          >
+          <p className="border-t border-sako-black px-[16px] py-[60px] text-center font-ploni text-[16px] text-text-secondary lg:px-[30px]">
             {t.empty}
           </p>
         ) : (

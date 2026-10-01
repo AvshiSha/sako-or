@@ -72,6 +72,7 @@ export type ReviewMinAggregateOutputType = {
   rewardCreditedAt: Date | null
   rewardTransactionId: string | null
   rewardError: string | null
+  featuredAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -101,6 +102,7 @@ export type ReviewMaxAggregateOutputType = {
   rewardCreditedAt: Date | null
   rewardTransactionId: string | null
   rewardError: string | null
+  featuredAt: Date | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -131,6 +133,7 @@ export type ReviewCountAggregateOutputType = {
   rewardCreditedAt: number
   rewardTransactionId: number
   rewardError: number
+  featuredAt: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -182,6 +185,7 @@ export type ReviewMinAggregateInputType = {
   rewardCreditedAt?: true
   rewardTransactionId?: true
   rewardError?: true
+  featuredAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -211,6 +215,7 @@ export type ReviewMaxAggregateInputType = {
   rewardCreditedAt?: true
   rewardTransactionId?: true
   rewardError?: true
+  featuredAt?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -241,6 +246,7 @@ export type ReviewCountAggregateInputType = {
   rewardCreditedAt?: true
   rewardTransactionId?: true
   rewardError?: true
+  featuredAt?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -358,6 +364,7 @@ export type ReviewGroupByOutputType = {
   rewardCreditedAt: Date | null
   rewardTransactionId: string | null
   rewardError: string | null
+  featuredAt: Date | null
   createdAt: Date
   updatedAt: Date
   _count: ReviewCountAggregateOutputType | null
@@ -411,6 +418,7 @@ export type ReviewWhereInput = {
   rewardCreditedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   rewardTransactionId?: Prisma.StringNullableFilter<"Review"> | string | null
   rewardError?: Prisma.StringNullableFilter<"Review"> | string | null
+  featuredAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   order?: Prisma.XOR<Prisma.OrderScalarRelationFilter, Prisma.OrderWhereInput>
@@ -444,6 +452,7 @@ export type ReviewOrderByWithRelationInput = {
   rewardCreditedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   rewardTransactionId?: Prisma.SortOrderInput | Prisma.SortOrder
   rewardError?: Prisma.SortOrderInput | Prisma.SortOrder
+  featuredAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   order?: Prisma.OrderOrderByWithRelationInput
@@ -480,6 +489,7 @@ export type ReviewWhereUniqueInput = Prisma.AtLeast<{
   rewardCreditedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   rewardTransactionId?: Prisma.StringNullableFilter<"Review"> | string | null
   rewardError?: Prisma.StringNullableFilter<"Review"> | string | null
+  featuredAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   order?: Prisma.XOR<Prisma.OrderScalarRelationFilter, Prisma.OrderWhereInput>
@@ -513,6 +523,7 @@ export type ReviewOrderByWithAggregationInput = {
   rewardCreditedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   rewardTransactionId?: Prisma.SortOrderInput | Prisma.SortOrder
   rewardError?: Prisma.SortOrderInput | Prisma.SortOrder
+  featuredAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ReviewCountOrderByAggregateInput
@@ -551,6 +562,7 @@ export type ReviewScalarWhereWithAggregatesInput = {
   rewardCreditedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
   rewardTransactionId?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
   rewardError?: Prisma.StringNullableWithAggregatesFilter<"Review"> | string | null
+  featuredAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Review"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Review"> | Date | string
 }
@@ -579,6 +591,7 @@ export type ReviewCreateInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   order: Prisma.OrderCreateNestedOneWithoutReviewInput
@@ -612,6 +625,7 @@ export type ReviewUncheckedCreateInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   productReviews?: Prisma.ProductReviewUncheckedCreateNestedManyWithoutReviewInput
@@ -641,6 +655,7 @@ export type ReviewUpdateInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   order?: Prisma.OrderUpdateOneRequiredWithoutReviewNestedInput
@@ -674,6 +689,7 @@ export type ReviewUncheckedUpdateInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   productReviews?: Prisma.ProductReviewUncheckedUpdateManyWithoutReviewNestedInput
@@ -705,6 +721,7 @@ export type ReviewCreateManyInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -733,6 +750,7 @@ export type ReviewUpdateManyMutationInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -763,6 +781,7 @@ export type ReviewUncheckedUpdateManyInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -808,6 +827,7 @@ export type ReviewCountOrderByAggregateInput = {
   rewardCreditedAt?: Prisma.SortOrder
   rewardTransactionId?: Prisma.SortOrder
   rewardError?: Prisma.SortOrder
+  featuredAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -847,6 +867,7 @@ export type ReviewMaxOrderByAggregateInput = {
   rewardCreditedAt?: Prisma.SortOrder
   rewardTransactionId?: Prisma.SortOrder
   rewardError?: Prisma.SortOrder
+  featuredAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -876,6 +897,7 @@ export type ReviewMinOrderByAggregateInput = {
   rewardCreditedAt?: Prisma.SortOrder
   rewardTransactionId?: Prisma.SortOrder
   rewardError?: Prisma.SortOrder
+  featuredAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1007,6 +1029,7 @@ export type ReviewCreateWithoutUserInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   order: Prisma.OrderCreateNestedOneWithoutReviewInput
@@ -1038,6 +1061,7 @@ export type ReviewUncheckedCreateWithoutUserInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   productReviews?: Prisma.ProductReviewUncheckedCreateNestedManyWithoutReviewInput
@@ -1098,6 +1122,7 @@ export type ReviewScalarWhereInput = {
   rewardCreditedAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   rewardTransactionId?: Prisma.StringNullableFilter<"Review"> | string | null
   rewardError?: Prisma.StringNullableFilter<"Review"> | string | null
+  featuredAt?: Prisma.DateTimeNullableFilter<"Review"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Review"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Review"> | Date | string
 }
@@ -1126,6 +1151,7 @@ export type ReviewCreateWithoutOrderInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user?: Prisma.UserCreateNestedOneWithoutReviewsInput
@@ -1157,6 +1183,7 @@ export type ReviewUncheckedCreateWithoutOrderInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   productReviews?: Prisma.ProductReviewUncheckedCreateNestedManyWithoutReviewInput
@@ -1202,6 +1229,7 @@ export type ReviewUpdateWithoutOrderInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneWithoutReviewsNestedInput
@@ -1233,6 +1261,7 @@ export type ReviewUncheckedUpdateWithoutOrderInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   productReviews?: Prisma.ProductReviewUncheckedUpdateManyWithoutReviewNestedInput
@@ -1262,6 +1291,7 @@ export type ReviewCreateWithoutProductReviewsInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   order: Prisma.OrderCreateNestedOneWithoutReviewInput
@@ -1294,6 +1324,7 @@ export type ReviewUncheckedCreateWithoutProductReviewsInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1338,6 +1369,7 @@ export type ReviewUpdateWithoutProductReviewsInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   order?: Prisma.OrderUpdateOneRequiredWithoutReviewNestedInput
@@ -1370,6 +1402,7 @@ export type ReviewUncheckedUpdateWithoutProductReviewsInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1399,6 +1432,7 @@ export type ReviewCreateManyUserInput = {
   rewardCreditedAt?: Date | string | null
   rewardTransactionId?: string | null
   rewardError?: string | null
+  featuredAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1427,6 +1461,7 @@ export type ReviewUpdateWithoutUserInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   order?: Prisma.OrderUpdateOneRequiredWithoutReviewNestedInput
@@ -1458,6 +1493,7 @@ export type ReviewUncheckedUpdateWithoutUserInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   productReviews?: Prisma.ProductReviewUncheckedUpdateManyWithoutReviewNestedInput
@@ -1488,6 +1524,7 @@ export type ReviewUncheckedUpdateManyWithoutUserInput = {
   rewardCreditedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   rewardTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   rewardError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  featuredAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1549,6 +1586,7 @@ export type ReviewSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   rewardCreditedAt?: boolean
   rewardTransactionId?: boolean
   rewardError?: boolean
+  featuredAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
@@ -1583,6 +1621,7 @@ export type ReviewSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   rewardCreditedAt?: boolean
   rewardTransactionId?: boolean
   rewardError?: boolean
+  featuredAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
@@ -1615,6 +1654,7 @@ export type ReviewSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   rewardCreditedAt?: boolean
   rewardTransactionId?: boolean
   rewardError?: boolean
+  featuredAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
@@ -1647,11 +1687,12 @@ export type ReviewSelectScalar = {
   rewardCreditedAt?: boolean
   rewardTransactionId?: boolean
   rewardError?: boolean
+  featuredAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "userId" | "overallRating" | "serviceRating" | "deliveryRating" | "packagingRating" | "serviceComment" | "deliveryComment" | "packagingComment" | "generalComment" | "language" | "submittedAt" | "pointsAwardedAt" | "pointsBefore" | "pointsAfter" | "pointsAwardedBy" | "notifiedAt" | "notifyResult" | "rewardStatus" | "rewardPoints" | "rewardCreditedAt" | "rewardTransactionId" | "rewardError" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
+export type ReviewOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderId" | "orderNumber" | "userId" | "overallRating" | "serviceRating" | "deliveryRating" | "packagingRating" | "serviceComment" | "deliveryComment" | "packagingComment" | "generalComment" | "language" | "submittedAt" | "pointsAwardedAt" | "pointsBefore" | "pointsAfter" | "pointsAwardedBy" | "notifiedAt" | "notifyResult" | "rewardStatus" | "rewardPoints" | "rewardCreditedAt" | "rewardTransactionId" | "rewardError" | "featuredAt" | "createdAt" | "updatedAt", ExtArgs["result"]["review"]>
 export type ReviewInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   order?: boolean | Prisma.OrderDefaultArgs<ExtArgs>
   user?: boolean | Prisma.Review$userArgs<ExtArgs>
@@ -1763,6 +1804,18 @@ export type $ReviewPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
      */
     rewardTransactionId: string | null
     rewardError: string | null
+    /**
+     * --- Storefront curation --------------------------------------------------
+     * Set when an admin features this review in the About page carousel; null
+     * means not featured. A timestamp rather than a boolean so the carousel has a
+     * deterministic order (most recently featured first) without a second column,
+     * and so un-featuring and re-featuring moves a review back to the front.
+     * 
+     * Distinct from ProductReview.isPublished, which is per-product moderation for
+     * the PDP. Featuring is an editorial choice about the brand page and is made
+     * at the order level, because the carousel quotes the overall experience.
+     */
+    featuredAt: Date | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["review"]>
@@ -2216,6 +2269,7 @@ export interface ReviewFieldRefs {
   readonly rewardCreditedAt: Prisma.FieldRef<"Review", 'DateTime'>
   readonly rewardTransactionId: Prisma.FieldRef<"Review", 'String'>
   readonly rewardError: Prisma.FieldRef<"Review", 'String'>
+  readonly featuredAt: Prisma.FieldRef<"Review", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Review", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Review", 'DateTime'>
 }

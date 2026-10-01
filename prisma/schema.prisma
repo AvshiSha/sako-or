@@ -546,6 +546,17 @@ model Review {
   rewardTransactionId String?   @map("reward_transaction_id")
   rewardError         String?   @map("reward_error")
 
+  /// --- Storefront curation --------------------------------------------------
+  /// Set when an admin features this review in the About page carousel; null
+  /// means not featured. A timestamp rather than a boolean so the carousel has a
+  /// deterministic order (most recently featured first) without a second column,
+  /// and so un-featuring and re-featuring moves a review back to the front.
+  ///
+  /// Distinct from ProductReview.isPublished, which is per-product moderation for
+  /// the PDP. Featuring is an editorial choice about the brand page and is made
+  /// at the order level, because the carousel quotes the overall experience.
+  featuredAt      DateTime? @map("featured_at")
+
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -558,6 +569,8 @@ model Review {
   /// Drives the admin's "still owed points" queue.
   @@index([pointsAwardedAt])
   @@index([rewardStatus])
+  /// Drives the About page carousel, which reads only non-null rows.
+  @@index([featuredAt])
   @@map("reviews")
 }
 

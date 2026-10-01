@@ -919,3 +919,70 @@ body.admin-panel #vplugin-interface {
     transition: none;
   }
 }
+
+/* ─── Review marquee (app/components/ReviewMarquee.tsx) ──────────────────────
+   The track renders its reviews twice and travels exactly one copy's width, so
+   the second copy lands where the first began and the loop has no seam.
+
+   The direction is NOT the same in both scripts, which is the part that is easy
+   to get wrong. Under LTR a flex row's first card sits at the track's left edge,
+   the track overflows to the right, and travelling to -50% pulls the duplicate
+   leftwards into view. Under RTL the row builds from the right instead: the
+   track overflows to the LEFT, so the same -50% drags its right edge off the
+   container and leaves a growing empty gap. +50% is the mirror that keeps the
+   band full.
+
+   Duration and play-state are set inline by the component - duration scales
+   with the number of cards, and pausing is what makes a quote readable - so
+   only the properties that never vary live here. Longhands rather than the
+   `animation` shorthand, or the shorthand would reset the inline duration. */
+@keyframes sako-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes sako-marquee-rtl {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(50%);
+  }
+}
+
+.animate-sako-marquee {
+  animation-name: sako-marquee;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+[dir='rtl'] .animate-sako-marquee {
+  animation-name: sako-marquee-rtl;
+}
+
+/* Pausing is CSS rather than React state so it works before hydration and
+   cannot drift out of step with the rules above. :focus-within covers the
+   keyboard: tabbing into the band stops it rather than letting the focused
+   card slide out from under the user. */
+.sako-marquee:hover .animate-sako-marquee,
+.sako-marquee:focus-within .animate-sako-marquee {
+  animation-play-state: paused;
+}
+
+/* Belt and braces with the component's own matchMedia check: if the JS has not
+   hydrated yet, the band must still not move for someone who asked it not to.
+
+   Both selectors are listed, and that is not redundant. A media query adds no
+   specificity, so a lone `.animate-sako-marquee` here (0,1,0) loses to the
+   `[dir='rtl'] .animate-sako-marquee` rule above (0,2,0) and the band keeps
+   animating in Hebrew - i.e. the fallback would have worked in English only. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-sako-marquee,
+  [dir='rtl'] .animate-sako-marquee {
+    animation-name: none;
+  }
+}

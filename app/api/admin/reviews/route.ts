@@ -13,6 +13,12 @@ import { listReviews, type ReviewFilter } from '@/lib/reviews/admin-reviews'
 
 export const dynamic = 'force-dynamic'
 
+/**
+ * Allow-list for the `filter` query param. An unknown value falls back to 'all'
+ * rather than erroring, so anything missing from this list fails *silently* —
+ * the tab appears to work and quietly shows every review. Add new filters here
+ * and to ReviewFilter together.
+ */
 const FILTERS: ReviewFilter[] = [
   'all',
   'not_credited',
@@ -20,6 +26,7 @@ const FILTERS: ReviewFilter[] = [
   'not_registered',
   'awarded',
   'unpublished',
+  'featured',
 ]
 
 export async function GET(request: NextRequest) {

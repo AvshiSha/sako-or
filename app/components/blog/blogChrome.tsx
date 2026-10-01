@@ -53,10 +53,7 @@ export function BlogInlineLink({ children }: { children: React.ReactNode }) {
   return (
     <span className="inline-flex flex-col items-start border-b border-border-default pb-[6px]">
       <span className="inline-flex items-center gap-[10px]">
-        <span
-          dir="auto"
-          className="font-ploni text-[12px] tracking-[1.2px] text-sako-black"
-        >
+        <span className="font-ploni text-[12px] tracking-[1.2px] text-sako-black">
           {children}
         </span>
         <CornerArrow />

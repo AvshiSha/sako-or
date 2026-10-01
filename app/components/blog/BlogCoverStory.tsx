@@ -14,6 +14,11 @@ import { BlogInlineLink } from './blogChrome'
  * On phones the two stack with the image on top (flex-col-reverse over the same
  * DOM order), since there is no 390px Blog frame in the file to copy. Type steps
  * down from the frame's 116/100 heading, which is a desktop-width figure.
+ *
+ * Direction is inherited from the `dir` the [lng] layout puts on <html>, never
+ * resolved per node - the same rule LegalPage follows. An article titled
+ * "SAKO OR x ..." opens on a Latin word, and `dir="auto"` would read that first
+ * strong character and flip the whole Hebrew title to LTR.
  */
 
 interface BlogCoverStoryProps {
@@ -43,7 +48,7 @@ export default function BlogCoverStory({
       {/* 438:3318. items-start, not the frame's literal items-end: in Hebrew the
           logical start edge is the right one the frame aligns to. */}
       <div className="flex flex-col items-start p-[16px] sm:p-[30px] lg:p-[54px]">
-        {/* 438:3319 - Latin in both languages, so no dir="auto" here. */}
+        {/* 438:3319 - Latin in both languages. */}
         <p className="font-ploni text-[14px] leading-[23.1px] tracking-[1.96px] text-text-primary">
           {eyebrow}
         </p>
@@ -55,7 +60,6 @@ export default function BlogCoverStory({
           <h2 className="pb-[22px]">
             <Link
               href={href}
-              dir="auto"
               className="block font-ploni text-[48px] font-black leading-[44px] text-start text-text-primary transition-opacity hover:opacity-70 md:text-[72px] md:leading-[66px] lg:text-[116px] lg:leading-[100px]"
             >
               <InlineHeadingContent html={titleHtml} fallback={titleFallback} />
@@ -65,10 +69,7 @@ export default function BlogCoverStory({
 
         {excerpt && (
           <div className="w-full py-[14px]">
-            <p
-              dir="auto"
-              className="font-ploni text-[16px] leading-[26px] text-start text-text-primary lg:text-[21px] lg:leading-[32.55px]"
-            >
+            <p className="font-ploni text-[16px] leading-[26px] text-start text-text-primary lg:text-[21px] lg:leading-[32.55px]">
               {excerpt}
             </p>
           </div>

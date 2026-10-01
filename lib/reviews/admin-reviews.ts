@@ -16,6 +16,7 @@ export type ReviewFilter =
   | 'not_registered'
   | 'awarded'
   | 'unpublished'
+  | 'featured'
 
 export interface AdminReviewProduct {
   id: string
@@ -61,6 +62,8 @@ export interface AdminReview {
   /** pending | credited | not_eligible | failed */
   rewardStatus: string
   rewardPoints: number | null
+  /** Set when this review is shown in the About page carousel. */
+  featuredAt: string | null
   products: AdminReviewProduct[]
 }
 
@@ -74,6 +77,7 @@ export interface AdminReviewsPage {
     notRegistered: number
     awarded: number
     unpublished: number
+    featured: number
   }
 }
 
@@ -108,6 +112,10 @@ function whereFor(filter: ReviewFilter): Prisma.ReviewWhereInput {
       return { rewardStatus: 'credited' }
     case 'unpublished':
       return { productReviews: { some: { isPublished: false } } }
+    // The About page carousel's running order. Its own tab so the admin can see
+    // what is currently on the brand page without hunting through the queues.
+    case 'featured':
+      return { featuredAt: { not: null } }
     default:
       return {}
   }
@@ -204,6 +212,7 @@ export async function listReviews(params: {
     notRegistered,
     awarded,
     unpublished,
+    featured,
   ] = await Promise.all([
     prisma.review.findMany({
       where,
@@ -238,6 +247,7 @@ export async function listReviews(params: {
     prisma.review.count({ where: whereFor('not_registered') }),
     prisma.review.count({ where: whereFor('awarded') }),
     prisma.review.count({ where: whereFor('unpublished') }),
+    prisma.review.count({ where: whereFor('featured') }),
   ])
 
   // Reviews from guest checkouts have no linked user, but the person may well have
@@ -271,7 +281,7 @@ export async function listReviews(params: {
 
   return {
     total,
-    counts: { all, notCredited, awaitingPoints, notRegistered, awarded, unpublished },
+    counts: { all, notCredited, awaitingPoints, notRegistered, awarded, unpublished, featured },
     reviews: rows.map((review) => {
       const { account, matchedLater } = accountFor(review)
 
@@ -304,6 +314,7 @@ export async function listReviews(params: {
       notifyResult: review.notifyResult,
       rewardStatus: review.rewardStatus,
       rewardPoints: review.rewardPoints,
+      featuredAt: review.featuredAt?.toISOString() ?? null,
       products: review.productReviews.map((product) => ({
         id: product.id,
         productSku: product.productSku,
@@ -436,4 +447,28 @@ export async function setProductReviewPublished(params: {
     data: { isPublished: params.isPublished },
   })
   return updated.count === 1
+}
+
+/**
+ * Features or un-features a review in the About page carousel.
+ *
+ * Re-featuring an already-featured review refreshes the timestamp, which moves
+ * it to the front of the carousel - the only ordering control the admin has, and
+ * enough of one that a separate position column is not worth the complexity.
+ */
+export async function setReviewFeatured(params: {
+  reviewId: string
+  isFeatured: boolean
+}): Promise<{ updated: boolean; featuredAt: string | null }> {
+  const featuredAt = params.isFeatured ? new Date() : null
+
+  const updated = await prisma.review.updateMany({
+    where: { id: params.reviewId },
+    data: { featuredAt },
+  })
+
+  return {
+    updated: updated.count === 1,
+    featuredAt: featuredAt?.toISOString() ?? null,
+  }
 }

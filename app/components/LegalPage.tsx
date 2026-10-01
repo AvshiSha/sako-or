@@ -14,8 +14,10 @@ import { cn } from '@/lib/utils'
  * on the 390px source and 60/50 on the 1728px one. Alignment is logical
  * (text-start, items-start) rather than the frames' literal right, because these
  * same pages render LTR under /en - in Hebrew the logical start *is* that right
- * edge. `dir="auto"` on the text blocks reproduces what the frame does per node,
- * and keeps the ordinal on the correct side in both languages.
+ * edge. Direction itself is inherited from the `dir` the [lng] layout puts on
+ * <html>, never resolved per node: a CMS title such as
+ * "SAKO OR - מדיניות משלוחים" opens on a Latin brand name, so `dir="auto"` would
+ * read that first strong character and flip the whole Hebrew heading to LTR.
  */
 
 /**
@@ -66,7 +68,6 @@ export default function LegalPage({
     <div className="min-h-screen bg-surface-secondary">
       <div className={BLOCK}>
         <h1
-          dir="auto"
           className="font-ploni text-[48px] font-black leading-[34.56px] text-start text-text-primary lg:text-[60px] lg:leading-[50px]"
         >
           {ordinal ? `${ordinal} ` : ''}
@@ -74,7 +75,7 @@ export default function LegalPage({
         </h1>
 
         {(lastUpdated || body) && (
-          <div dir="auto" className={cn(LEGAL_BODY, 'space-y-[14px]')}>
+          <div className={cn(LEGAL_BODY, 'space-y-[14px]')}>
             {lastUpdated && <p>{lastUpdated}</p>}
             {body}
           </div>
@@ -101,7 +102,7 @@ interface LegalSectionProps {
 
 export function LegalSection({ title, children, className }: LegalSectionProps) {
   return (
-    <section dir="auto" className={cn(RULE, BLOCK, LEGAL_BODY, className)}>
+    <section className={cn(RULE, BLOCK, LEGAL_BODY, className)}>
       {title && <h2 className="font-bold">{title}</h2>}
       {children}
     </section>

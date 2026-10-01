@@ -2789,6 +2789,7 @@ export const ReviewScalarFieldEnum = {
   rewardCreditedAt: 'rewardCreditedAt',
   rewardTransactionId: 'rewardTransactionId',
   rewardError: 'rewardError',
+  featuredAt: 'featuredAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

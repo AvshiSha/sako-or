@@ -38,6 +38,7 @@ type Filter =
   | 'all'
   | 'awarded'
   | 'unpublished'
+  | 'featured'
 
 interface Product {
   id: string
@@ -77,6 +78,8 @@ interface Review {
   pointsAwardedBy: string | null
   notifiedAt: string | null
   notifyResult: { ok?: boolean; skipped?: boolean; reason?: string; error?: string } | null
+  /** Set when this review appears in the About page carousel. */
+  featuredAt: string | null
   products: Product[]
 }
 
@@ -87,6 +90,7 @@ interface Counts {
   notRegistered: number
   awarded: number
   unpublished: number
+  featured: number
 }
 
 const SIZING_LABEL: Record<string, string> = {
@@ -106,6 +110,7 @@ export default function AdminReviewsPage() {
     notRegistered: 0,
     awarded: 0,
     unpublished: 0,
+    featured: 0,
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -138,6 +143,8 @@ export default function AdminReviewsPage() {
     { key: 'not_registered', label: 'Not registered', count: counts.notRegistered },
     { key: 'awarded', label: 'Points given', count: counts.awarded },
     { key: 'unpublished', label: 'Unpublished', count: counts.unpublished },
+    // The running order of the About page carousel, newest-featured first.
+    { key: 'featured', label: 'On About page', count: counts.featured },
     { key: 'all', label: 'All', count: counts.all },
   ]
 
@@ -187,7 +194,9 @@ export default function AdminReviewsPage() {
                   ? 'Nobody is waiting for points. 🎉'
                   : filter === 'not_registered'
                     ? 'Every reviewer has a club account. 🎉'
-                    : 'No reviews here yet.'}
+                    : filter === 'featured'
+                      ? 'No reviews on the About page yet. Use “Feature on About” on any review to add one.'
+                      : 'No reviews here yet.'}
             </p>
           </div>
         ) : (
@@ -205,7 +214,56 @@ export default function AdminReviewsPage() {
 function ReviewCard({ review, onChanged }: { review: Review; onChanged: () => void }) {
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
+  const [featuring, setFeaturing] = useState(false)
+  const [featureError, setFeatureError] = useState<string | null>(null)
   const awarded = Boolean(review.pointsAwardedAt)
+  const featured = Boolean(review.featuredAt)
+
+  /**
+   * A review is only worth featuring if the customer actually wrote something —
+   * the carousel quotes words, and a card with nothing but stars is not a slide.
+   * Mirrors `quoteOf` in lib/reviews/featured-reviews.ts, which drops such rows
+   * on the read side too.
+   */
+  const hasQuote = Boolean(
+    review.generalComment?.trim() ||
+      review.serviceComment?.trim() ||
+      review.deliveryComment?.trim() ||
+      review.packagingComment?.trim() ||
+      review.products.some((product) => product.body?.trim())
+  )
+
+  /**
+   * Checks `response.ok` — not optional here. Without it a failing PATCH looks
+   * exactly like a working one: the button un-busies, the list reloads
+   * unchanged, and nothing anywhere says why. That is how a stale Prisma client
+   * rejecting `featuredAt` presented as "the button does nothing", and it is the
+   * same silent-failure bug lib/admin-api.ts warns about for revalidateCmsPaths.
+   */
+  async function toggleFeatured() {
+    if (!user) return
+    setFeaturing(true)
+    setFeatureError(null)
+    try {
+      const headers = await getAdminAuthHeaders(user)
+      const response = await fetch(`/api/admin/reviews/${review.id}/featured`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ isFeatured: !featured }),
+      })
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok || !data?.success) {
+        setFeatureError(data?.error ?? `Failed (${response.status})`)
+        return
+      }
+      onChanged()
+    } catch (error) {
+      setFeatureError(error instanceof Error ? error.message : 'Request failed')
+    } finally {
+      setFeaturing(false)
+    }
+  }
 
   return (
     <div className={`${adminTheme.card} p-5`}>
@@ -237,6 +295,9 @@ function ReviewCard({ review, onChanged }: { review: Review; onChanged: () => vo
                 balance {review.currentPointsBalance}
               </span>
             ) : null}
+            {featured ? (
+              <span className={adminTheme.badgeFeatured}>On About page</span>
+            ) : null}
           </div>
           <p className="mt-1 text-xs text-gray-500">
             {review.orderNumber} · {new Date(review.submittedAt).toLocaleString()}
@@ -245,7 +306,26 @@ function ReviewCard({ review, onChanged }: { review: Review; onChanged: () => vo
           </p>
         </div>
 
-        <div className="text-end">
+        <div className="flex flex-col items-end gap-2 text-end">
+          {/* Featuring publishes this customer's words and first name on the
+              About page, so it is deliberately a separate, explicit action from
+              the points workflow that owns the rest of this card. */}
+          <button
+            onClick={toggleFeatured}
+            disabled={featuring || (!featured && !hasQuote)}
+            title={
+              !featured && !hasQuote
+                ? 'This customer left ratings but no written comment, so there is nothing to quote.'
+                : 'Shown in the review carousel on /about'
+            }
+            className={`${featured ? adminTheme.buttonSecondary : adminTheme.buttonPrimary} disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            {featuring ? 'Saving…' : featured ? 'Remove from About' : 'Feature on About'}
+          </button>
+          {featureError ? (
+            <p className="max-w-[16rem] text-xs text-red-700">{featureError}</p>
+          ) : null}
+
           {awarded ? (
             <div className="text-sm">
               <span className={adminTheme.badgeActive}>

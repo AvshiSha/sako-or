@@ -62,18 +62,12 @@ export default function BlogCard({
 
       {/* 438:3342 - the frame binds black/pure here, not border-default. */}
       <div className="flex min-h-[76px] items-center justify-between gap-[16px] border-t border-sako-black px-[16px] pb-[14px] pt-[15px]">
-        <h3
-          dir="auto"
-          className="font-ploni text-[20px] font-black text-start text-text-primary"
-        >
+        <h3 className="font-ploni text-[20px] font-black text-start text-text-primary">
           <InlineHeadingContent html={titleHtml} fallback={titleFallback} />
         </h3>
 
         {/* 438:3344 */}
-        <span
-          dir="auto"
-          className="shrink-0 self-center whitespace-nowrap border-b border-border-default pb-[6px] font-ploni text-[11px] font-bold text-text-primary"
-        >
+        <span className="shrink-0 self-center whitespace-nowrap border-b border-border-default pb-[6px] font-ploni text-[11px] font-bold text-text-primary">
           {readLabel}
         </span>
       </div>

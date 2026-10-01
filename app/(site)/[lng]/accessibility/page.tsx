@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import Link from 'next/link'
+import LegalPage, { LEGAL_ORDINALS, LegalSection } from '@/app/components/LegalPage'
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -140,143 +140,72 @@ export default function AccessibilityStatement({ params }: { params: Promise<{ l
   const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
 
+  // Laid out from the Legal frames (438:4141 / 438:3872): the numbered heading
+  // block, then one hairline-ruled block per section. The tinted info panels the
+  // previous layout used - blue for "how to switch", green for improvements,
+  // yellow for exclusions - are gone; the frames carry no panel, and the design
+  // system has no tint for one. The back link went with them, since the site
+  // header above already goes home.
   return (
-    <div className={`bg-white min-h-screen ${isRTL ? 'text-right' : 'text-left'}`}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-12">
-          <Link 
-            href={`/${lng}`}
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors duration-200"
-          >
-            <svg className={`w-5 h-5 ${isRTL ? 'ml-2' : 'mr-2'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isRTL ? "M9 5l7 7-7 7" : "M15 19l-7-7 7-7"} />
-            </svg>
-            {t.backToHome}
-          </Link>
-          
-          <h1 className="text-4xl font-light text-gray-900 mb-4">
-            {t.title}
-          </h1>
-          <p className="text-gray-500 text-sm">
-            {t.lastUpdated}
-          </p>
-        </div>
+    <LegalPage
+      ordinal={LEGAL_ORDINALS.accessibility}
+      title={t.title}
+      lastUpdated={t.lastUpdated}
+      body={
+        <>
+          <p>{t.introduction}</p>
+          <p>{t.commitment}</p>
+          <p>{t.implementation}</p>
+          <p>{t.technicalDetails}</p>
+        </>
+      }
+    >
+      <LegalSection title={t.howToUse.title}>
+        <p>{t.howToUse.content}</p>
+        <p>{t.howToUse.revert}</p>
+        <p>{t.howToUse.recommendations}</p>
+      </LegalSection>
 
-        {/* Introduction */}
-        <div className="mb-8">
-          <p className="text-gray-700 leading-relaxed">
-            {t.introduction}
-          </p>
-        </div>
+      <LegalSection title={t.improvements.title}>
+        <p>{t.improvements.content}</p>
+        <h3 className="font-bold">
+          {isRTL ? 'פונקציונליות תוכנת נגישות:' : 'Accessibility Software Functionality:'}
+        </h3>
+        <ul className="grid list-disc gap-x-[30px] gap-y-[2px] ps-[18px] md:grid-cols-2">
+          {t.improvements.features.map((feature) => (
+            <li key={feature}>{feature}</li>
+          ))}
+        </ul>
+      </LegalSection>
 
-        {/* Commitment */}
-        <div className="mb-8">
-          <p className="text-gray-700 leading-relaxed">
-            {t.commitment}
-          </p>
-        </div>
+      <LegalSection title={t.exclusions.title}>
+        <p>{t.exclusions.content}</p>
+      </LegalSection>
 
-        {/* Implementation */}
-        <div className="mb-8">
-          <p className="text-gray-700 leading-relaxed">
-            {t.implementation}
-          </p>
-        </div>
-
-        {/* Technical Details */}
-        <div className="mb-8">
-          <p className="text-gray-700 leading-relaxed">
-            {t.technicalDetails}
-          </p>
-        </div>
-
-        {/* How to Use */}
-        <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
-          <h2 className="text-xl font-medium text-gray-900 mb-4">
-            {t.howToUse.title}
-          </h2>
-          <p className="text-gray-700 mb-4 leading-relaxed">
-            {t.howToUse.content}
-          </p>
-          <p className="text-gray-700 mb-4 leading-relaxed">
-            {t.howToUse.revert}
-          </p>
-          <p className="text-gray-700 leading-relaxed">
-            {t.howToUse.recommendations}
-          </p>
-        </div>
-
-        {/* Improvements */}
-        <div className="mb-8 p-6 bg-green-50 rounded-lg border border-green-200">
-          <h2 className="text-xl font-medium text-gray-900 mb-4">
-            {t.improvements.title}
-          </h2>
-          <p className="text-gray-700 mb-4 leading-relaxed">
-            {t.improvements.content}
-          </p>
-          <h3 className="text-lg font-medium text-gray-900 mb-3">
-            {isRTL ? 'פונקציונליות תוכנת נגישות:' : 'Accessibility Software Functionality:'}
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {t.improvements.features.map((feature, index) => (
-              <div key={index} className="flex items-center text-gray-700">
-                <svg className="w-4 h-4 text-green-600 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>{feature}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Exclusions */}
-        <div className="mb-8 p-6 bg-yellow-50 rounded-lg border border-yellow-200">
-          <h2 className="text-xl font-medium text-gray-900 mb-4">
-            {t.exclusions.title}
-          </h2>
-          <p className="text-gray-700 leading-relaxed">
-            {t.exclusions.content}
-          </p>
-        </div>
-
-        {/* Contact Information */}
-        <div className="mt-12 p-6 bg-gray-50 rounded-lg">
-          <h2 className="text-xl font-medium text-gray-900 mb-4">
-            {t.contact.title}
-          </h2>
-          <p className="text-gray-700 mb-4">
-            {t.contact.content}
-          </p>
-          <p className="text-gray-700 mb-4">
-            {t.contact.commitment}
-          </p>
-          
-          <div className="mb-4">
-            <h3 className="text-lg font-medium text-gray-900 mb-3">
-              {isRTL ? 'על מנת שנוכל לטפל בבעיה בדרך הטובה ביותר, אנו ממליצים מאוד לצרף פרטים מלאים ככל שניתן:' : 'To help us address the issue in the best way possible, we highly recommend including complete details such as:'}
-            </h3>
-            <ul className="list-disc list-inside space-y-1 text-gray-700">
-              {t.contact.details.map((detail, index) => (
-                <li key={index}>{detail}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="border-t border-gray-200 pt-4">
-            <p className="text-gray-700 mb-2">
-              <strong>{isRTL ? 'רכז נגישות:' : 'Accessibility Coordinator:'}</strong>
-            </p>
-            <p className="text-gray-700 mb-2">{t.contact.contactPerson}</p>
-            <a 
-              href={`mailto:${t.contact.email}`}
-              className="text-gray-900 hover:text-gray-600 transition-colors duration-200"
-            >
-              {t.contact.email}
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
+      <LegalSection title={t.contact.title}>
+        <p>{t.contact.content}</p>
+        <p>{t.contact.commitment}</p>
+        <h3 className="font-bold">
+          {isRTL
+            ? 'על מנת שנוכל לטפל בבעיה בדרך הטובה ביותר, אנו ממליצים מאוד לצרף פרטים מלאים ככל שניתן:'
+            : 'To help us address the issue in the best way possible, we highly recommend including complete details such as:'}
+        </h3>
+        <ul className="list-disc ps-[18px]">
+          {t.contact.details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+        <p className="font-bold">
+          {isRTL ? 'רכז נגישות:' : 'Accessibility Coordinator:'}
+        </p>
+        <p>{t.contact.contactPerson}</p>
+        <a
+          href={`mailto:${t.contact.email}`}
+          className="underline underline-offset-2 transition-opacity hover:opacity-70"
+        >
+          {t.contact.email}
+        </a>
+      </LegalSection>
+    </LegalPage>
   )
 }

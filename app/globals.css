@@ -559,6 +559,46 @@ body.admin-panel #vplugin-interface {
   min-height: 1.25rem;
 }
 
+/* ─── Legal documents ────────────────────────────────────────────────────────
+   The CMS body of a legal page, per the Legal frames (438:4141 / 438:3872):
+   Ploni at 14px in text-primary, where .cms-content's own default is 18px in a
+   blue-grey #374151. Written as plain CSS alongside the rules it overrides, and
+   not as Tailwind utilities on RichContent, because `@import "tailwindcss"` puts
+   every utility in a layer while these .cms-content rules are unlayered - an
+   unlayered rule wins over any layered one whatever its specificity, so
+   [&_p]:text-[14px] would generate correctly and still never apply.
+
+   Scoped to the .legal-content companion class so blog and news content, which
+   share .cms-content, keep the article scale. */
+.cms-content.legal-content p,
+.cms-content.legal-content li,
+.cms-content.legal-content ul,
+.cms-content.legal-content ol,
+.cms-content.legal-content td,
+.cms-content.legal-content th {
+  font-family: var(--font-ploni);
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.cms-content.legal-content h2,
+.cms-content.legal-content h3 {
+  margin-block: 1.25rem 0.5rem;
+  font-family: var(--font-ploni);
+  font-size: 14px;
+  line-height: 1.625;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.cms-content.legal-content strong {
+  color: var(--color-text-primary);
+}
+
+.cms-content.legal-content hr {
+  border-top-color: var(--color-sako-black);
+}
+
 /* Admin editor: match public article column width and editing chrome */
 .cms-editor .ProseMirror {
   min-height: 280px;

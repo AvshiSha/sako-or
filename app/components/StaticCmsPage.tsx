@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { staticPageService } from '@/lib/firebase'
@@ -6,6 +5,7 @@ import { buildMetadata } from '@/lib/seo'
 import { languages } from '@/i18n/settings'
 import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
 import InlineHeadingContent from './InlineHeadingContent'
+import LegalPage, { LEGAL_ORDINALS } from './LegalPage'
 import RichContent from './RichContent'
 
 // Shared shell for every CMS-managed static page in STATIC_PAGE_DEFINITIONS.
@@ -77,32 +77,20 @@ export default async function StaticCmsPage({ pageKey, lng }: Omit<StaticCmsPage
       })
     : ''
 
+  // The back link the previous layout carried is gone: the Legal frames show no
+  // such control, and the site header above it already goes home.
   return (
-    <div className={`bg-white min-h-screen ${isRTL ? 'text-right' : 'text-left'}`}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-12">
-          <Link
-            href={`/${lng}`}
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors duration-200"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            {locale === 'he' ? 'חזרה לעמוד הבית' : 'Back to Home'}
-          </Link>
-
-          <h1 className="text-4xl font-light text-gray-900 mb-4">
-            <InlineHeadingContent html={titleHtml} />
-          </h1>
-          {lastUpdated && (
-            <p className="text-gray-500 text-sm">
-              {locale === 'he' ? `עודכן לאחרונה: ${lastUpdated}` : `Last updated: ${lastUpdated}`}
-            </p>
-          )}
-        </div>
-
-        <RichContent html={content} dir={isRTL ? 'rtl' : 'ltr'} />
-      </div>
-    </div>
+    <LegalPage
+      ordinal={LEGAL_ORDINALS[pageKey]}
+      title={<InlineHeadingContent html={titleHtml} />}
+      lastUpdated={
+        lastUpdated
+          ? locale === 'he'
+            ? `עודכן לאחרונה: ${lastUpdated}`
+            : `Last updated: ${lastUpdated}`
+          : undefined
+      }
+      body={<RichContent html={content} dir={isRTL ? 'rtl' : 'ltr'} className="legal-content" />}
+    />
   )
 }

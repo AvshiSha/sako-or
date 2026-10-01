@@ -58,7 +58,7 @@ const translations = {
 /** Contact block, which the redesign introduces under the company column. */
 const CONTACT = {
   address: {
-    he: 'רחוב רוטשילד 51, ראשון לציון, ישראל',
+    he: 'רחוב רוטשילד 51, ראשון לציון',
     en: '51 Rothschild St, Rishon LeZion, Israel',
   },
   phone: '050-4487979',

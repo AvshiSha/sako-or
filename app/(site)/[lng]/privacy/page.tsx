@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import LegalPage, { LEGAL_ORDINALS, LegalSection } from '@/app/components/LegalPage'
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -118,69 +118,34 @@ const translations = {
 
 export default async function PrivacyPolicy({ params }: { params: Promise<{ lng: string }> }) {
   const { lng } = await params
-  const isRTL = lng === 'he'
   const t = translations[lng as keyof typeof translations]
 
+  // Laid out from the Legal frames (438:4141 / 438:3872): the numbered heading
+  // block, then one hairline-ruled block per section. The back link the previous
+  // layout carried is gone - the frames show no such control, and the site header
+  // above it already goes home.
   return (
-    <div className={`bg-white min-h-screen ${isRTL ? 'text-right' : 'text-left'}`}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-12">
-          <Link 
-            href={`/${lng}`}
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors duration-200"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            {t.backToHome}
-          </Link>
-          
-          <h1 className="text-4xl font-light text-gray-900 mb-4">
-            {t.title}
-          </h1>
-          <p className="text-gray-500 text-sm">
-            {t.lastUpdated}
-          </p>
-        </div>
+    <LegalPage
+      ordinal={LEGAL_ORDINALS.privacy}
+      title={t.title}
+      lastUpdated={t.lastUpdated}
+      body={<p>{t.introduction}</p>}
+    >
+      {Object.values(t.sections).map((section) => (
+        <LegalSection key={section.title} title={section.title}>
+          <p>{section.content}</p>
+        </LegalSection>
+      ))}
 
-        {/* Introduction */}
-        <div className="mb-8">
-          <p className="text-gray-700 leading-relaxed">
-            {t.introduction}
-          </p>
-        </div>
-
-        {/* Sections */}
-        <div className="space-y-8">
-          {Object.values(t.sections).map((section, index) => (
-            <div key={index} className="border-b border-gray-200 pb-6">
-              <h2 className="text-xl font-medium text-gray-900 mb-4">
-                {section.title}
-              </h2>
-              <p className="text-gray-700 leading-relaxed">
-                {section.content}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Contact Information */}
-        <div className="mt-12 p-6 bg-gray-50 rounded-lg">
-          <h2 className="text-xl font-medium text-gray-900 mb-4">
-            {t.contact.title}
-          </h2>
-          <p className="text-gray-700 mb-2">
-            {t.contact.content}
-          </p>
-          <a 
-            href={`mailto:${t.contact.email}`}
-            className="text-gray-900 hover:text-gray-600 transition-colors duration-200"
-          >
-            {t.contact.email}
-          </a>
-        </div>
-      </div>
-    </div>
+      <LegalSection title={t.contact.title}>
+        <p>{t.contact.content}</p>
+        <a
+          href={`mailto:${t.contact.email}`}
+          className="underline underline-offset-2 transition-opacity hover:opacity-70"
+        >
+          {t.contact.email}
+        </a>
+      </LegalSection>
+    </LegalPage>
   )
 }

@@ -847,6 +847,13 @@ function CategoriesPage() {
             >
               <span className="text-xs font-medium">Order</span>
             </Link>
+            <Link
+              href={`/admin/categories/${category.id!}/banners`}
+              className="p-2 text-gray-700 hover:bg-gray-100 rounded-md"
+              title="Grid banners"
+            >
+              <span className="text-xs font-medium">Banners</span>
+            </Link>
             <button
               onClick={() => handleToggleStatus(category)}
               disabled={pendingIds.has(category.id!)}

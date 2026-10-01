@@ -4,9 +4,9 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import ProtectedRoute from '@/app/components/ProtectedRoute';
-import CategoryMerchandisingBoard from '../../_components/CategoryMerchandisingBoard';
+import CategoryBannersEditor from '../../_components/CategoryBannersEditor';
 
-function MerchandisingPageContent() {
+function CategoryBannersPageContent() {
   const params = useParams();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -30,12 +30,18 @@ function MerchandisingPageContent() {
     );
   }
 
-  // Grid banners live on their own page - /admin/categories/[id]/banners - so a
-  // banner edit and an ordering save never share a screen.
-  return <CategoryMerchandisingBoard categoryId={id} />;
+  // Banners save through their own endpoint, so nothing here can collide with an
+  // ordering save on the merchandising page.
+  return (
+    <div className="min-h-screen bg-gray-50 pt-16 pb-12">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <CategoryBannersEditor categoryId={id} />
+      </div>
+    </div>
+  );
 }
 
-export default function CategoryMerchandisingPage() {
+export default function CategoryBannersPage() {
   return (
     <ProtectedRoute>
       <Suspense
@@ -45,9 +51,8 @@ export default function CategoryMerchandisingPage() {
           </div>
         }
       >
-        <MerchandisingPageContent />
+        <CategoryBannersPageContent />
       </Suspense>
     </ProtectedRoute>
   );
 }
-

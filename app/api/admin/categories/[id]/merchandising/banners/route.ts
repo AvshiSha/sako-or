@@ -26,9 +26,16 @@ async function requireAdmin(request: NextRequest) {
   return auth;
 }
 
-async function categoryExists(categoryId: string) {
+async function getCategoryMeta(categoryId: string) {
   const snap = await adminDb.collection('categories').doc(categoryId).get();
-  return snap.exists;
+  if (!snap.exists) return null;
+  const data = snap.data() as any;
+  return {
+    id: snap.id,
+    name: data?.name,
+    slug: data?.slug,
+    path: data?.path,
+  };
 }
 
 export async function GET(
@@ -39,12 +46,15 @@ export async function GET(
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
-  if (!(await categoryExists(id))) {
+  // The meta comes back with the banners so the editor can title itself without a
+  // second request to the merchandising endpoint, which also resolves previews.
+  const category = await getCategoryMeta(id);
+  if (!category) {
     return NextResponse.json({ error: 'Category not found' }, { status: 404 });
   }
 
   const merchandising = await getCategoryMerchandisingAdmin(id);
-  return NextResponse.json({ banners: merchandising.banners });
+  return NextResponse.json({ banners: merchandising.banners, category });
 }
 
 export async function PUT(
@@ -55,7 +65,7 @@ export async function PUT(
   if (auth instanceof NextResponse) return auth;
 
   const { id } = await params;
-  if (!(await categoryExists(id))) {
+  if (!(await getCategoryMeta(id))) {
     return NextResponse.json({ error: 'Category not found' }, { status: 404 });
   }
 

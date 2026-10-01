@@ -47,7 +47,7 @@ export const COLLECTION_BAR =
  * which reserves row height before Tailwind paints.
  */
 export const COLLECTION_PRODUCT_GRID =
-  'collection-product-grid grid grid-cols-2 items-start gap-0 lg:grid-cols-4'
+  'collection-product-grid grid grid-cols-2 items-stretch gap-0 lg:grid-cols-4'
 
 /**
  * Mirrors COLLECTION_PRODUCT_GRID's grid-cols-2 lg:grid-cols-4 breakpoint
@@ -65,7 +65,7 @@ export const COLLECTION_GRID_BREAKPOINTS: ColumnBreakpoint[] = [
  * CSS in lib/collection-grid-critical-css.ts, so the initial size estimate
  * lines up with what's already reserved before Tailwind/measureElement settle.
  */
-export const COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX = 140
+export const COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX = 136
 
 /**
  * Rows are absolutely positioned, so the space between them is each row's own

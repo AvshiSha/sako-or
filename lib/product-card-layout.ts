@@ -12,11 +12,14 @@
  * is inlined before Tailwind paints.
  */
 /**
- * 76px on mobile (438:3981) and 100px from lg up (438:3943). The breakpoint is lg,
- * not md, to line up with COLLECTION_GRID_CRITICAL_CSS, whose grid already switches
- * to three columns at 1024px.
+ * Raised from 76/100 when the bar became a stack: name, SKU, price, swatches. That
+ * comes to roughly 120px on mobile and 138 on desktop with a single-line name.
+ *
+ * Under-reserve rather than over-reserve. Short of the real height costs a little
+ * CLS; past it leaves blank ground inside the card, which is the white band this
+ * grid has already been chased over twice.
  */
-export const PRODUCT_CARD_INFO_MIN_H = "min-h-[76px] lg:min-h-[100px]";
+export const PRODUCT_CARD_INFO_MIN_H = "min-h-[118px] lg:min-h-[136px]";
 /** One line; the sale case lays the original and reduced price out side by side. */
 export const PRODUCT_CARD_PRICE_MIN_H = "min-h-[24px]";
 /**

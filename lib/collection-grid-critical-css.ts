@@ -25,10 +25,10 @@ export const COLLECTION_GRID_CRITICAL_CSS = `
  * 0.6025 is 235/195 halved - the mobile card's image is 4:5, not square.
  */
 .collection-product-grid > * {
-  min-height: calc((100vw - 20px) * 0.6025 + 4.75rem);
+  min-height: calc((100vw - 20px) * 0.6025 + 7.375rem);
 }
 .product-card-info-block {
-  min-height: 4.75rem;
+  min-height: 7.375rem;
 }
 .product-card-price-block {
   min-height: 1.5rem;
@@ -44,10 +44,10 @@ export const COLLECTION_GRID_CRITICAL_CSS = `
     row-gap: 0;
   }
   .collection-product-grid > * {
-    min-height: calc((100vw - 20px) / 4 + 6.25rem);
+    min-height: calc((100vw - 20px) / 4 + 8.5rem);
   }
   .product-card-info-block {
-    min-height: 6.25rem;
+    min-height: 8.5rem;
   }
 }
 `;

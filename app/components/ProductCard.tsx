@@ -346,7 +346,10 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   }, [api, totalImages])
 
   return (
-    <div className="group relative border-b border-l border-sako-black bg-surface-secondary">
+    // flex h-full: with wrapping names the cards in a row differ in height, and
+    // the grid stretches each cell. Filling it keeps the extra space on the
+    // card's own surface instead of showing the page through as a white band.
+    <div className="group relative flex h-full flex-col border-b border-l border-sako-black bg-surface-secondary">
       {/* Main Product Image Section - Clickable to go to selected variant */}
       <Link
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
@@ -548,30 +551,34 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       </Link>
 
       {/* Product information — design system 438:3943 (desktop) / 438:3981 (mobile).
-          The two stacked blocks are now one bar: product text on the RTL start edge,
-          colour swatches inline on the end edge. text-start rather than text-right so
-          the English storefront mirrors correctly instead of hardcoding RTL. */}
+          The frame sets this as one row with the swatches inline on the end edge.
+          Stacked by decision: name, SKU, price, swatches. Anything sharing the row
+          takes width from the name, and on a 195px card that is the difference
+          between a readable product name and an ellipsis - which is what both the
+          inline swatches and, after that, the end-aligned price turned out to do.
+          text-start rather than text-right so the English storefront mirrors
+          correctly instead of hardcoding RTL. */}
       <div
-        className={`mt-0 flex items-start justify-between gap-[8px] border-t border-sako-black bg-surface-secondary px-[10px] pt-[15px] pb-[14px] product-card-info-block lg:px-[16px] ${PRODUCT_CARD_INFO_MIN_H}`}
+        className={`mt-0 flex flex-1 flex-col gap-[6px] border-t border-sako-black bg-surface-secondary px-[10px] pt-[15px] pb-[14px] product-card-info-block lg:px-[16px] ${PRODUCT_CARD_INFO_MIN_H}`}
       >
-        {/* flex-1 + min-w-0 so the name, SKU and price always get at least half the
-            bar and truncate gracefully. Previously this was min-w-0 against a
-            shrink-0 swatch row, which let the swatches take the whole width and
-            squeeze the text down to a couple of characters. */}
-        <div className="min-w-0 flex-1 text-start">
-          <h3 className="truncate font-ploni text-[12px] font-black uppercase leading-[12px] text-text-primary lg:text-[18px] lg:leading-[18px]">
+        <div className="min-w-0 text-start">
+          {/* line-clamp-2 across the full width of the card. */}
+          <h3 className="line-clamp-2 font-ploni text-[12px] font-black uppercase leading-[14px] text-text-primary lg:text-[18px] lg:leading-[20px]">
             {productName}
           </h3>
 
           <div className="truncate font-ploni text-[9px] text-text-primary lg:text-[12px]">{product.sku}</div>
+        </div>
 
-          {/* tabular-nums is required: Ploni's default figures are proportional, so
-              prices in a grid column would not align without it. */}
-          <div
-            className={`font-ploni text-[14px] tabular-nums text-text-primary product-card-price-block lg:text-[17px] ${PRODUCT_CARD_PRICE_MIN_H}`}
-          >
-            {hasSalePrice() && salePrice && salePrice < originalPrice ? (
-              <div className="flex items-center gap-2">
+        {/* tabular-nums is required: Ploni's default figures are proportional, so
+            prices in a grid column would not align without it. */}
+        <div
+          className={`text-start font-ploni text-[14px] tabular-nums text-text-primary product-card-price-block lg:text-[17px] ${PRODUCT_CARD_PRICE_MIN_H}`}
+        >
+          {hasSalePrice() && salePrice && salePrice < originalPrice ? (
+              // flex-wrap so the struck original and the sale price drop to a second
+              // line on a narrow card rather than running into each other.
+              <div className="flex flex-wrap items-center gap-x-[8px] gap-y-[2px]">
                 <span className="text-text-secondary line-through">
                   ₪{originalPrice.toFixed(2)}
                 </span>
@@ -579,16 +586,15 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
                   ₪{salePrice.toFixed(2)}
                 </span>
               </div>
-            ) : (
-              <span>₪{currentPrice.toFixed(2)}</span>
-            )}
-          </div>
+          ) : (
+            <span>₪{currentPrice.toFixed(2)}</span>
+          )}
         </div>
 
-        {/* Colour swatches — rectangular in the redesign. Capped at half the bar and
-            horizontally scrollable, so a product with six variants swipes instead of
-            crowding out the product text. */}
-        <div className="flex max-w-[50%] shrink-0 gap-[6px] overflow-x-auto lg:gap-[8px]">
+        {/* Colour swatches on a row of their own, so they never compete with the
+            name or the price for width. Full width and horizontally scrollable: a
+            product with six colours swipes instead of crowding. */}
+        <div className="flex gap-[6px] overflow-x-auto lg:gap-[8px]">
           {product.colorVariants &&
             Object.values(product.colorVariants)
               .filter(variant => variant.isActive !== false)

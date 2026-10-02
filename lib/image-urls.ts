@@ -205,7 +205,7 @@ export function getHomeCollectionMenImageUrl(): string {
  * local path to map from.
  */
 export function getHomeBannerPlatformLoafersImageUrl(): string {
-  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Fplatform_laofers_collection.webp?alt=media&token=6eb4ee68-ef9f-4526-8af1-e5588cc33711";
+  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Fplatform_laofers_collection_home_page.webp?alt=media&token=33417ace-d482-4d1c-a8be-867ba0a2d133";
 }
 
 export function getHomeBannerBagsImageUrl(): string {

@@ -651,94 +651,64 @@ body.admin-panel #vplugin-interface {
   }
 }
 /* ── FAQ page ──────────────────────────────────────────────────────────────
-   Every rule uses logical properties (inline-start/end, block-start/end) and
-   `text-align: start`, so the whole page mirrors correctly under dir="rtl"
-   without a single RTL-specific override. */
+   Restyled onto the SAKO OR — Update design system.
 
-.faq-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-block-end: 1.5rem;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
+   Every selector is kept exactly as it was. FaqAccordionClient keys off
+   .faq-trigger, .faq-item, .faq-trigger-text, data-faq-* and data-open, so
+   renaming any of them would silently break the accordion, its analytics and
+   the deep-link handler. Only the declarations changed.
 
-.faq-breadcrumb-link {
-  color: #856d55;
-  text-decoration: none;
-}
+   Colours are the design tokens. They resolve in hand-written CSS because the
+   token block is `@theme static`, which emits them to :root - unlike
+   `--font-ploni`, which lives in `@theme inline` and is therefore EMPTY at
+   runtime. Nothing here sets font-family for that reason; type comes from the
+   `font-ploni` utility on the markup, which Tailwind inlines correctly.
 
-.faq-breadcrumb-link:hover {
-  text-decoration: underline;
-}
+   Four former rules are gone, replaced by the shared page chrome in
+   app/components/pageChrome.tsx: .faq-breadcrumb* (now <Breadcrumbs>),
+   .faq-heading (RuledHeader), .faq-intro (RULED_BLOCK + TYPE_LEAD) and
+   .faq-section-title (TYPE_BLOCK_TITLE). .faq-last-updated went the same way.
 
-.faq-breadcrumb-sep {
-  color: #b2a28e;
-}
-
-.faq-heading {
-  margin-block-end: 1rem;
-  font-size: 1.875rem;
-  line-height: 1.2;
-  font-weight: 300;
-  color: #111827;
-}
-
-@media (min-width: 640px) {
-  .faq-heading {
-    font-size: 2.25rem;
-  }
-}
-
-.faq-intro {
-  margin-block-end: 2rem;
-  max-inline-size: 68ch;
-}
+   Every rule uses logical properties and `text-align: start`, so the page
+   mirrors correctly under dir="rtl" without a single RTL-specific override. */
 
 .faq-jump-nav ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-block-end: 2.5rem;
+  gap: 0.75rem 1.5rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
+/* Was a pill with a 9999px radius. This system has no pills outside the sale
+   badge and the chat bubble, so the jump links are the same ruled 12px label
+   the section headers use. */
 .faq-jump-link {
   display: inline-block;
-  padding: 0.4rem 0.9rem;
-  border: 1px solid #b2a28e;
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  color: #5c4a3a;
+  padding-block-end: 6px;
+  border-block-end: 1px solid var(--color-border-default);
+  color: var(--color-text-primary);
   text-decoration: none;
 }
 
 .faq-jump-link:hover {
-  border-color: #856d55;
-  background: #e1dbd7;
+  opacity: 0.7;
 }
 
 .faq-jump-link:focus-visible {
-  outline: 2px solid #856d55;
+  outline: 2px solid var(--color-text-primary);
   outline-offset: 2px;
 }
 
-.faq-section-title {
-  margin-block: 2.5rem 0.75rem;
-  font-size: 1.375rem;
-  line-height: 1.3;
-  font-weight: 600;
-  color: #111827;
-}
-
-.faq-section:first-of-type .faq-section-title {
-  margin-block-start: 0;
-}
-
 .faq-item {
-  border-block-end: 1px solid #e1dbd7;
+  border-block-end: 1px solid var(--color-border-subtle);
+}
+
+/* The section block already draws its own rule underneath, so the last
+   question must not add a second hairline a few pixels above it. */
+.faq-item:last-child {
+  border-block-end: 0;
 }
 
 .faq-question-heading {
@@ -757,26 +727,21 @@ body.admin-panel #vplugin-interface {
      nothing above it can move when a panel expands. */
   min-block-size: 56px;
   padding-block: 1rem;
-  padding-inline: 0.25rem;
+  padding-inline: 0;
   border: 0;
   background: none;
-  font-family: inherit;
-  font-size: 1.0625rem;
-  line-height: 1.45;
-  font-weight: 500;
-  color: #111827;
+  color: var(--color-text-primary);
   text-align: start;
   cursor: pointer;
 }
 
 .faq-trigger:hover {
-  color: #856d55;
+  opacity: 0.7;
 }
 
 .faq-trigger:focus-visible {
-  outline: 2px solid #856d55;
+  outline: 2px solid var(--color-text-primary);
   outline-offset: -2px;
-  border-radius: 2px;
 }
 
 .faq-trigger-text {
@@ -785,9 +750,9 @@ body.admin-panel #vplugin-interface {
 
 .faq-chevron {
   flex: 0 0 auto;
-  inline-size: 1.25rem;
-  block-size: 1.25rem;
-  color: #856d55;
+  inline-size: 1rem;
+  block-size: 1rem;
+  color: var(--color-text-primary);
   /* Rotation, not translation: a rotated chevron needs no RTL mirroring. */
   transition: transform 0.2s ease;
 }
@@ -797,8 +762,7 @@ body.admin-panel #vplugin-interface {
 }
 
 /* The panel is `hidden` until opened, so it contributes no height and cannot
-   cause a shift on hydration. When shown, the 0fr -> 1fr grid transition
-   animates height without JS ever measuring scrollHeight. */
+   cause a shift on hydration. */
 .faq-panel {
   display: grid;
   grid-template-rows: 1fr;
@@ -807,31 +771,29 @@ body.admin-panel #vplugin-interface {
 .faq-panel-inner {
   overflow: hidden;
   padding-block-end: 1.5rem;
-  padding-inline: 0.25rem;
+  padding-inline: 0;
 }
 
+/* Was a filled, rounded, left-bordered card. Reduced to a single rule on the
+   inline start - the only emphasis device this system has for a pull quote. */
 .faq-short-answer {
   margin-block: 0 1rem;
-  padding: 0.75rem 1rem;
-  border: 1px solid #b2a28e;
-  border-inline-start: 4px solid #856d55;
-  border-radius: 0.375rem;
-  background: #e1dbd7;
-  color: #5c4a3a;
-  font-size: 1rem;
-  line-height: 1.55;
+  padding-inline-start: 1rem;
+  border-inline-start: 2px solid var(--color-border-default);
+  color: var(--color-text-primary);
 }
 
 /* The rich-text callout an admin inserts from the editor's "Note" button.
    Overrides .cms-content blockquote's italic quote styling. */
 .cms-content blockquote.faq-callout {
   margin-block: 1.25rem;
-  padding: 0.875rem 1rem;
-  border: 1px solid #b2a28e;
-  border-inline-start: 4px solid #856d55;
-  border-radius: 0.375rem;
-  background: #e1dbd7;
-  color: #5c4a3a;
+  padding-block: 0;
+  padding-inline-start: 1rem;
+  border: 0;
+  border-inline-start: 2px solid var(--color-border-default);
+  border-radius: 0;
+  background: none;
+  color: var(--color-text-primary);
   font-style: normal;
 }
 
@@ -845,7 +807,7 @@ body.admin-panel #vplugin-interface {
 }
 
 .faq-table-scroll:focus-visible {
-  outline: 2px solid #856d55;
+  outline: 2px solid var(--color-text-primary);
   outline-offset: 2px;
 }
 
@@ -855,63 +817,71 @@ body.admin-panel #vplugin-interface {
 }
 
 .faq-related-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
   margin-block: 1.25rem 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
 }
 
 .faq-related-link {
-  font-size: 0.9375rem;
-  color: #856d55;
-  text-decoration: underline;
+  padding-block-end: 4px;
+  border-block-end: 1px solid var(--color-border-default);
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.faq-related-link:hover {
+  opacity: 0.7;
 }
 
 .faq-related-link:focus-visible {
-  outline: 2px solid #856d55;
+  outline: 2px solid var(--color-text-primary);
   outline-offset: 2px;
 }
 
 .faq-cta-row {
-  margin-block: 2rem 1rem;
+  margin-block: 2rem 0;
 }
 
+/* The design system's filled CTA, as the PDP's sticky add-to-bag and the
+   filter panel's apply bar draw it: label on the inline start, U+2199 turned
+   90 degrees opposite. Square, not rounded. */
 .faq-cta {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  min-block-size: 48px;
-  padding-inline: 2rem;
-  padding-block: 0.75rem;
-  border-radius: 0.375rem;
-  background: #856d55;
-  color: #ffffff;
-  font-size: 1rem;
-  font-weight: 500;
+  justify-content: space-between;
+  block-size: 56px;
+  inline-size: 100%;
+  max-inline-size: 360px;
+  padding-inline: 17px;
+  background: var(--color-sako-ink-900);
+  color: var(--color-text-inverse);
   text-decoration: none;
   transition: background-color 0.15s ease;
 }
 
+.faq-cta::after {
+  content: '\2199';
+  flex: 0 0 auto;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+  transform: rotate(90deg);
+}
+
 .faq-cta:hover {
-  background: #95816c;
+  background: var(--color-sako-ink-800);
 }
 
 .faq-cta:focus-visible {
-  outline: 2px solid #5c4a3a;
+  outline: 2px solid var(--color-text-primary);
   outline-offset: 2px;
 }
 
 .faq-empty {
-  margin-block: 2rem;
-  color: #6b7280;
-}
-
-.faq-last-updated {
-  margin-block-start: 3rem;
-  font-size: 0.875rem;
-  color: #9ca3af;
+  color: var(--color-text-secondary);
 }
 
 @media (prefers-reduced-motion: reduce) {

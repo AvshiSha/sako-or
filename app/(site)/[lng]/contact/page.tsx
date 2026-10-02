@@ -1,10 +1,72 @@
 'use client'
 
 import React, { useState } from 'react'
-import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { MapPin, Phone, Mail, Clock } from 'lucide-react'
 import TurnstileScript from '@/app/components/TurnstileScript'
+import Breadcrumbs from '@/app/components/Breadcrumbs'
+import { Field } from '@/app/components/ui/field'
+import { cn } from '@/lib/utils'
+import {
+  MEASURE,
+  PAGE_GROUND,
+  PAGE_INSET,
+  RULED_BLOCK,
+  TWO_TRACK,
+  TYPE_BLOCK_TITLE,
+  TYPE_BODY,
+  TYPE_EYEBROW,
+  TYPE_LABEL,
+  TYPE_LEAD,
+  TYPE_PAGE_TITLE,
+} from '@/app/components/pageChrome'
+
+/**
+ * The shop's address as a geocoding input, not as display copy - the visible
+ * address lives in `translations`.
+ *
+ * Deliberately a query string rather than a lat/lon pair. OpenStreetMap has no
+ * house numbers for Rothschild St in Rishon LeZion (Nominatim returns only
+ * street segments, and the candidates for "51" sit ~1.3km apart), so any
+ * coordinate hardcoded here would be a guess at which block the shop is on.
+ * Google does hold the house number, so letting it geocode the address puts the
+ * pin on the building instead of somewhere on the right street.
+ */
+const MAP_QUERY = 'רחוב רוטשילד 51, ראשון לציון, ישראל'
+
+/**
+ * The embed URL.
+ *
+ * Prefers the documented Embed API when a key is configured. Without one it
+ * falls back to the keyless `output=embed` form, which needs no Google Cloud
+ * project or billing and is what ships today - but it is undocumented, so if
+ * Google ever retires it, setting NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is the whole
+ * fix and nothing else here changes.
+ */
+function mapEmbedSrc(locale: string): string {
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+  const q = encodeURIComponent(MAP_QUERY)
+  const hl = locale === 'he' ? 'he' : 'en'
+  return key
+    ? `https://www.google.com/maps/embed/v1/place?key=${key}&q=${q}&language=${hl}&zoom=16`
+    : `https://www.google.com/maps?q=${q}&hl=${hl}&z=16&output=embed`
+}
+
+/** Opens turn-by-turn directions in the user's own Maps app. */
+const MAP_DIRECTIONS_URL = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+  MAP_QUERY
+)}`
+
+/**
+ * Contact, rebuilt on the SAKO OR — Update design system.
+ *
+ * No Figma frame exists for this page, so it is composed from constructions
+ * approved elsewhere - see app/components/pageChrome.tsx for the four and the
+ * node ids behind them. The form controls are checkout's Field (438:2751)
+ * rather than new ones.
+ *
+ * Only the presentation changed. The Turnstile lifecycle, the email validation,
+ * the submit handler and the /api/contact contract are untouched.
+ */
 
 // Hardcoded translations for build-time rendering
 const translations = {
@@ -28,9 +90,18 @@ const translations = {
       error: 'Sorry, there was an error sending your message. Please try again.'
     },
 
+    map: {
+      title: 'Visit the shop',
+      directions: 'GET DIRECTIONS',
+    },
+
     contactInfo: {
       title: 'Contact Information',
-      address: '51 Rothchild Street, Rishon-Lezion, Israel',
+      // "Rothschild", not "Rothchild" — the street is named after Baron
+      // Rothschild, and the footer already spells it correctly. The two
+      // disagreeing on the same site is the kind of detail that reads as
+      // carelessness on a page whose job is to be trusted.
+      address: '51 Rothschild Street, Rishon LeZion, Israel',
       phone: '050-448-7979',
       email: 'info@sako-or.com',
       hours: 'Sunday - Thursday: 9:00 AM - 20:00 PM\nFriday: 9:00 AM - 15:00 PM\nSaturday: Closed',
@@ -60,6 +131,11 @@ const translations = {
       submitting: 'שולח...',
       success: 'תודה! ההודעה שלכם נשלחה בהצלחה.',
       error: 'מצטערים, הייתה שגיאה בשליחת ההודעה. אנא נסו שוב.'
+    },
+
+    map: {
+      title: 'בקרו בחנות',
+      directions: 'הוראות הגעה',
     },
 
     contactInfo: {
@@ -277,98 +353,84 @@ export default function ContactPage() {
   return (
     <>
       <TurnstileScript />
-    <div className={`bg-white min-h-screen ${isRTL ? 'text-right' : 'text-left'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-12">
-          <Link
-            href={`/${lng}`}
-            className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors duration-200"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            {t.backToHome}
-          </Link>
+    <div className={PAGE_GROUND}>
+      <Breadcrumbs
+        crumbs={[
+          { name: isRTL ? 'דף הבית' : 'Home', url: `/${lng}` },
+          { name: t.title, url: `/${lng}/contact` },
+        ]}
+      />
 
-          <h1 className="text-4xl font-light text-gray-900 mb-4">
-            {t.title}
-          </h1>
-          <p className="text-xl text-gray-600 mb-2">
-            {t.subtitle}
-          </p>
-          <p className="text-gray-500 max-w-2xl">
-            {t.description}
-          </p>
+      {/* Heading block - the blog cover's text column (438:3315) standing on
+          its own, since there is no contact photograph to put beside it. */}
+      <div className={cn(PAGE_INSET, 'flex flex-col items-start py-[30px] lg:py-[54px]')}>
+        <p className={TYPE_EYEBROW}>CONTACT / 01</p>
+        <h1 className={cn(TYPE_PAGE_TITLE, 'pb-[22px] pt-[24px]')}>{t.title}</h1>
+        <p className={cn(TYPE_LEAD, MEASURE)}>{t.description}</p>
+      </div>
+
+      {/* 01 - the form. Two-track: label column on the inline start (438:3234). */}
+      <section className={cn(RULED_BLOCK, TWO_TRACK)}>
+        <div className="flex flex-col gap-[10px]">
+          <p className={cn(TYPE_LABEL, 'text-text-secondary')}>01</p>
+          <h2 className={TYPE_BLOCK_TITLE}>{t.subtitle}</h2>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Contact Form */}
-          <div>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t.form.name}
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  placeholder={t.form.namePlaceholder}
-                  required
-                  disabled={isSubmitting}
-                  className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400"
-                />
-              </div>
+            <form onSubmit={handleSubmit} className={cn(MEASURE, 'flex w-full flex-col gap-[24px]')}>
+              {/* Checkout's "Form Input Field" (438:2751) - a 9px caption over
+                  the value, closed by a single hairline. No boxes anywhere in
+                  this system. Every input keeps its original name, validation
+                  and disabled state; only the control around them changed. */}
+              <Field
+                label={t.form.name}
+                id="name"
+                name="name"
+                type="text"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder={t.form.namePlaceholder}
+                required
+                disabled={isSubmitting}
+              />
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t.form.email}
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder={t.form.emailPlaceholder}
-                  required
-                  disabled={isSubmitting}
-                  className={`w-full px-4 py-3 border text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300'
-                    }`}
-                />
-                {emailError && (
-                  <p className="mt-1 text-sm text-red-600">
-                    {emailError}
-                  </p>
-                )}
-              </div>
+              <Field
+                label={t.form.email}
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder={t.form.emailPlaceholder}
+                required
+                disabled={isSubmitting}
+                // Field turns the rule red and wires aria-invalid /
+                // aria-describedby from this, which the hand-rolled markup
+                // never did - the old error was a red <p> with no programmatic
+                // link to the input at all.
+                error={emailError || null}
+              />
 
-              <div>
-                <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t.form.subject}
-                </label>
-                <input
-                  type="text"
-                  id="subject"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleInputChange}
-                  placeholder={t.form.subjectPlaceholder}
-                  required
-                  disabled={isSubmitting}
-                  minLength={2}
-                  maxLength={120}
-                  className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed placeholder-gray-400"
-                />
-              </div>
+              <Field
+                label={t.form.subject}
+                id="subject"
+                name="subject"
+                type="text"
+                value={formData.subject}
+                onChange={handleInputChange}
+                placeholder={t.form.subjectPlaceholder}
+                required
+                disabled={isSubmitting}
+                minLength={2}
+                maxLength={120}
+              />
 
-              <div>
-                <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-2">
-                  {t.form.message}
-                </label>
+              {/* The one control that cannot be a single 54px line, so the cell
+                  grows instead - see `cellClassName` on Field. */}
+              <Field
+                label={t.form.message}
+                id="message"
+                cellClassName="h-auto min-h-[160px]"
+              >
                 <textarea
                   id="message"
                   name="message"
@@ -380,9 +442,9 @@ export default function ContactPage() {
                   rows={6}
                   minLength={2}
                   maxLength={2000}
-                  className="w-full px-4 py-3 border border-gray-300 text-gray-900 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-vertical placeholder-gray-400"
+                  className="flex-1 resize-y border-0 bg-transparent p-0 font-ploni text-[14px] leading-[22px] text-text-primary placeholder:text-text-secondary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 />
-              </div>
+              </Field>
 
               {/* Cloudflare Turnstile Widget */}
               {isMounted && (
@@ -393,121 +455,158 @@ export default function ContactPage() {
 
               {/* Show message if Turnstile is not ready */}
               {isMounted && !turnstileToken && (
-                <div className="text-center">
-                  <p className="text-sm text-gray-500">
-                    {lng === 'he' ? 'נא להשלים את האימות למעלה' : 'Please complete the verification above'}
-                  </p>
-                </div>
+                <p className={cn(TYPE_LABEL, 'text-text-secondary')}>
+                  {lng === 'he' ? 'נא להשלים את האימות למעלה' : 'Please complete the verification above'}
+                </p>
               )}
 
+              {/* The design system's filled CTA, as the PDP and the filter panel
+                  draw it: label on the inline start, U+2199 opposite. */}
               <button
                 type="submit"
                 disabled={isSubmitting || !!emailError || !turnstileToken}
-                className="w-full bg-gray-900 text-white py-3 px-6 rounded-md hover:bg-gray-800 transition-colors duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex h-[56px] w-full items-center justify-between bg-sako-ink-900 px-[17px] transition-colors hover:bg-sako-ink-800 disabled:cursor-not-allowed disabled:bg-sako-gray-500"
               >
-                {isSubmitting ? t.form.submitting : t.form.submit}
+                <span className="font-ploni text-[12px] font-bold text-text-inverse">
+                  {isSubmitting ? t.form.submitting : t.form.submit}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="rotate-90 font-ploni text-[22px] font-black leading-none text-text-inverse"
+                >
+                  &#8601;
+                </span>
               </button>
 
-              {/* Status Messages */}
+              {/* Status. role="status" / role="alert" so the outcome is
+                  announced - the old coloured boxes were silent to a screen
+                  reader, which on a form that can fail is the whole point. */}
               {submitStatus === 'success' && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-md">
-                  <p className="text-green-800 text-sm">
-                    {t.form.success}
-                  </p>
-                </div>
+                <p
+                  role="status"
+                  className={cn(TYPE_BODY, 'border-t border-sako-black pt-[14px] font-bold')}
+                >
+                  {t.form.success}
+                </p>
               )}
 
               {submitStatus === 'error' && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-                  <p className="text-red-800 text-sm">
-                    {t.form.error}
-                  </p>
-                </div>
+                <p
+                  role="alert"
+                  className={cn(
+                    TYPE_BODY,
+                    'border-t border-accent-error pt-[14px] text-accent-error'
+                  )}
+                >
+                  {t.form.error}
+                </p>
               )}
             </form>
-          </div>
+      </section>
 
-          {/* Contact Information */}
-          <div>
-            <h2 className="text-2xl font-light text-gray-900 mb-8">
-              {t.contactInfo.title}
-            </h2>
-
-            <div className="space-y-6">
-              {/* Address */}
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
-                  <MapPin className="w-6 h-6 text-gray-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Address}</h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    {t.contactInfo.address}
-                  </p>
-                </div>
-              </div>
-
-              {/* Phone */}
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
-                  <Phone className="w-6 h-6 text-gray-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Phone}</h3>
-                  <a
-                    href="https://wa.me/972504487979"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
-                  >
-                    {t.contactInfo.phone}
-                  </a>
-                </div>
-              </div>
-
-              {/* Email */}
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
-                  <Mail className="w-6 h-6 text-gray-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.Email}</h3>
-                  <a
-                    href={`mailto:${t.contactInfo.email}`}
-                    className="text-gray-600 hover:text-gray-900 transition-colors duration-200"
-                  >
-                    {t.contactInfo.email}
-                  </a>
-                </div>
-              </div>
-
-              {/* Hours */}
-              <div className="flex items-start space-x-4">
-                <div className="flex-shrink-0">
-                  <Clock className="w-6 h-6 text-gray-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-900 mb-1">{t.contactInfo.BuisnessHours}</h3>
-                  <p className="text-gray-600 leading-relaxed whitespace-pre-line">
-                    {t.contactInfo.hours}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Map Placeholder */}
-            <div className="mt-8">
-              <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                <p className="text-gray-500 text-sm">
-                  {isRTL ? 'מפה תגיע בקרוב' : 'Map coming soon'}
-                </p>
-                <MapPin className="w-6 h-6 text-gray-400" />
-              </div>
-            </div>
-          </div>
+      {/* 02 - the details. Same two-track, so the two halves of the page read
+          as one column of blocks rather than a split screen. */}
+      <section className={cn(RULED_BLOCK, TWO_TRACK)}>
+        <div className="flex flex-col gap-[10px]">
+          <p className={cn(TYPE_LABEL, 'text-text-secondary')}>02</p>
+          <h2 className={TYPE_BLOCK_TITLE}>{t.contactInfo.title}</h2>
         </div>
-      </div>
+
+        {/* A description list, not four divs: these are label/value pairs and
+            saying so is free. The lucide icons are gone - this system draws no
+            decorative pictograms, and the captions already name each row. */}
+        <dl className={cn(MEASURE, 'grid w-full grid-cols-1 gap-[24px] sm:grid-cols-2')}>
+          <ContactRow label={t.contactInfo.Address}>{t.contactInfo.address}</ContactRow>
+
+          <ContactRow label={t.contactInfo.Phone}>
+            <a
+              href="https://wa.me/972504487979"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="border-b border-border-default pb-[2px] transition-opacity hover:opacity-70"
+            >
+              {t.contactInfo.phone}
+            </a>
+          </ContactRow>
+
+          <ContactRow label={t.contactInfo.Email}>
+            <a
+              href={`mailto:${t.contactInfo.email}`}
+              className="border-b border-border-default pb-[2px] transition-opacity hover:opacity-70"
+            >
+              {t.contactInfo.email}
+            </a>
+          </ContactRow>
+
+          {/* The hours string carries newlines, hence whitespace-pre-line. */}
+          <ContactRow label={t.contactInfo.BuisnessHours} className="whitespace-pre-line">
+            {t.contactInfo.hours}
+          </ContactRow>
+        </dl>
+      </section>
+
+      {/* 03 - the shop. */}
+      <section className={cn(RULED_BLOCK, TWO_TRACK)}>
+        <div className="flex flex-col gap-[10px]">
+          <p className={cn(TYPE_LABEL, 'text-text-secondary')}>03</p>
+          <h2 className={TYPE_BLOCK_TITLE}>{t.map.title}</h2>
+          <a
+            href={MAP_DIRECTIONS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              TYPE_LABEL,
+              'mt-[6px] self-start border-b border-border-default pb-[6px] text-text-primary transition-opacity hover:opacity-70'
+            )}
+          >
+            {t.map.directions}
+          </a>
+        </div>
+
+        {/* Desaturated to sit inside a monochrome system, and restored to full
+            colour on hover or keyboard focus - a map you are actually reading
+            needs its colour coding, and a greyed one is harder to parse.
+            loading="lazy" because this is the last block on the page: no reason
+            to pay for a third-party iframe before it is anywhere near view. */}
+        <div
+          className={cn(
+            MEASURE,
+            'w-full border border-sako-black grayscale transition-[filter] duration-300 hover:grayscale-0 focus-within:grayscale-0'
+          )}
+        >
+          <iframe
+            src={mapEmbedSrc(lng)}
+            title={t.map.title}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+            className="block h-[320px] w-full lg:h-[420px]"
+          />
+        </div>
+      </section>
     </div>
     </>
+  )
+}
+
+/**
+ * One label/value pair in the details block, built as the 9px caption over a
+ * value that checkout's Field uses - without the hairline, since these are read
+ * rather than typed into.
+ */
+function ContactRow({
+  label,
+  children,
+  className,
+}: {
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <div className="flex flex-col gap-[6px]">
+      <dt className="font-ploni text-[9px] leading-none text-text-secondary">{label}</dt>
+      <dd className={cn(TYPE_BODY, 'm-0', className)}>{children}</dd>
+    </div>
   )
 }

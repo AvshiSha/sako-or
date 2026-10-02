@@ -4,6 +4,14 @@ import FaqAnswer from '@/app/components/FaqAnswer'
 import { faqAnswerElementId, faqQuestionElementId } from '@/lib/faq-slug'
 import { pickLocalized, type FaqLocale } from '@/lib/faq-selectors'
 import type { FaqAudience, FaqCta, FaqItem } from '@/lib/faq-types'
+import { cn } from '@/lib/utils'
+import {
+  MEASURE,
+  RULED_BLOCK,
+  TWO_TRACK,
+  TYPE_BLOCK_TITLE,
+  TYPE_LABEL,
+} from '@/app/components/pageChrome'
 
 interface FaqAudienceSectionProps {
   audience: FaqAudience
@@ -41,11 +49,24 @@ export default function FaqAudienceSection({
   const dir = locale === 'he' ? 'rtl' : 'ltr'
 
   return (
-    <section id={`faq-section-${audience}`} aria-labelledby={titleId} className="faq-section">
-      <p id={titleId} className="faq-section-title">
+    // Two-track (438:3234): the audience title on the inline start, its
+    // questions opposite. The classes the accordion client keys off -
+    // .faq-item, .faq-trigger, .faq-trigger-text, data-faq-* and data-open -
+    // are untouched; only the shell around them moved onto the design system.
+    <section
+      id={`faq-section-${audience}`}
+      aria-labelledby={titleId}
+      className={cn('faq-section', RULED_BLOCK, TWO_TRACK)}
+    >
+      <p id={titleId} className={TYPE_BLOCK_TITLE}>
         {title}
       </p>
 
+      {/* List and CTA share one grid cell. Left as siblings they are separate
+          grid items, and the CTA auto-places into the next row's first track -
+          i.e. under the audience title, in the narrow label column, away from
+          the questions it belongs to. */}
+      <div className={cn(MEASURE, 'w-full')}>
       <div className="faq-list">
         {items.map((item) => {
           const question = pickLocalized(item.question, locale)
@@ -65,12 +86,17 @@ export default function FaqAudienceSection({
               data-faq-topic={item.topic}
             >
               <h2 className="faq-question-heading">
+                {/* Type lives on utilities, not in the stylesheet: --font-ploni
+                    is declared in `@theme inline` and so is empty at :root, which
+                    makes `font-family: var(--font-ploni)` in hand-written CSS a
+                    no-op. The .faq-* rules therefore carry colour and structure
+                    only. */}
                 <button
                   type="button"
                   id={questionId}
                   aria-expanded="false"
                   aria-controls={answerId}
-                  className="faq-trigger"
+                  className="faq-trigger font-ploni text-[16px] font-bold leading-[26px]"
                 >
                   <span className="faq-trigger-text">{question}</span>
                   <ChevronDownIcon className="faq-chevron" aria-hidden="true" />
@@ -84,9 +110,12 @@ export default function FaqAudienceSection({
                 className="faq-panel"
                 hidden
               >
-                <div className="faq-panel-inner">
+                {/* font-ploni here rather than on each child: the answer HTML
+                    comes from the CMS, so everything inside has to inherit the
+                    face rather than be given a class. */}
+                <div className="faq-panel-inner font-ploni text-[16px] leading-[26px]">
                   {shortAnswer && (
-                    <p className="faq-short-answer">{shortAnswer}</p>
+                    <p className="faq-short-answer font-bold">{shortAnswer}</p>
                   )}
                   <FaqAnswer html={answerHtml} dir={dir} tableLabel={question} />
 
@@ -99,7 +128,7 @@ export default function FaqAudienceSection({
                           <li key={`${item.slug}-${related.href}`}>
                             <Link
                               href={`/${lng}${related.href}`}
-                              className="faq-related-link"
+                              className={cn('faq-related-link', TYPE_LABEL)}
                               data-faq-cta="related"
                             >
                               {label}
@@ -122,13 +151,14 @@ export default function FaqAudienceSection({
               middle-clickable like any other link on the site. */}
           <Link
             href={`/${lng}${cta.href}`}
-            className="faq-cta"
+            className="faq-cta font-ploni text-[12px] font-bold"
             data-faq-cta={audience === 'men' ? 'secondary' : 'primary'}
           >
             {pickLocalized(cta.label, locale)}
           </Link>
         </div>
       )}
+      </div>
     </section>
   )
 }

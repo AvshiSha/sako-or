@@ -23,6 +23,13 @@ export interface FieldProps extends Omit<InputProps, 'variant'> {
   label: string
   /** Wrapper class — pass grid placement and width here, not on the input. */
   fieldClassName?: string
+  /**
+   * Class for the 54px cell itself, for the rare control that cannot be one
+   * line — the contact form's message box passes `h-auto` here. `cn` is
+   * tailwind-merge, so a height passed in replaces the default rather than
+   * fighting it. Checkout passes nothing and is unaffected.
+   */
+  cellClassName?: string
   /** Shown under the rule and turns it red. Also wires aria-invalid. */
   error?: string | null
   /** Renders something other than an <input> in the value slot, e.g. a <select>. */
@@ -30,7 +37,10 @@ export interface FieldProps extends Omit<InputProps, 'variant'> {
 }
 
 const Field = React.forwardRef<HTMLInputElement, FieldProps>(
-  ({ label, id, fieldClassName, className, error, children, required, ...props }, ref) => {
+  (
+    { label, id, fieldClassName, cellClassName, className, error, children, required, ...props },
+    ref
+  ) => {
     const generatedId = React.useId()
     const fieldId = id || generatedId
     const errorId = error ? `${fieldId}-error` : undefined
@@ -42,7 +52,8 @@ const Field = React.forwardRef<HTMLInputElement, FieldProps>(
             // pb-px, not pb-0: the frame insets the rule by a pixel so a descender
             // in the value never touches it.
             'flex h-[54px] flex-col gap-[10px] border-b pb-px text-start',
-            error ? 'border-accent-error' : 'border-border-default'
+            error ? 'border-accent-error' : 'border-border-default',
+            cellClassName
           )}
         >
           <label

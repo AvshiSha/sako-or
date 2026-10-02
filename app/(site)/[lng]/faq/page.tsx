@@ -5,6 +5,16 @@ import { faqService } from '@/lib/firebase'
 import { buildMetadata, buildBreadcrumbStructuredData, seoConfig } from '@/lib/seo'
 import { languages } from '@/i18n/settings'
 import RichContent from '@/app/components/RichContent'
+import Breadcrumbs from '@/app/components/Breadcrumbs'
+import { cn } from '@/lib/utils'
+import {
+  MEASURE,
+  PAGE_GROUND,
+  RULED_BLOCK,
+  RuledHeader,
+  TYPE_LABEL,
+  TYPE_LEAD,
+} from '@/app/components/pageChrome'
 import {
   FAQ_AUDIENCES,
   FAQ_SETTINGS_FALLBACK,
@@ -119,10 +129,17 @@ export default async function FaqPage({ params }: FaqPageProps) {
   )
 
   const homeLabel = isRTL ? 'דף הבית' : 'Home'
-  const breadcrumbSchema = buildBreadcrumbStructuredData([
-    { name: homeLabel, url: `${BASE_URL}/${lng}` },
-    { name: heading, url: pageUrl },
-  ])
+  // One array drives both the visible trail and the structured data, because
+  // Google requires the markup `name` to match the rendered label. The schema
+  // needs absolute URLs; the component renders relative hrefs, so they differ
+  // only by BASE_URL.
+  const crumbs = [
+    { name: homeLabel, url: `/${lng}` },
+    { name: heading, url: `/${lng}/faq` },
+  ]
+  const breadcrumbSchema = buildBreadcrumbStructuredData(
+    crumbs.map((crumb) => ({ ...crumb, url: `${BASE_URL}${crumb.url}` }))
+  )
 
   const lastUpdated = getFaqLastModified(items, rawSettings, new Date()).toLocaleDateString(
     isRTL ? 'he-IL' : 'en-US',
@@ -130,82 +147,89 @@ export default async function FaqPage({ params }: FaqPageProps) {
   )
 
   return (
-    <div className="bg-white min-h-screen" dir={dir}>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-        <nav aria-label={isRTL ? 'מסלול ניווט' : 'Breadcrumb'} className="faq-breadcrumb">
-          <Link href={`/${lng}`} className="faq-breadcrumb-link">
-            {homeLabel}
-          </Link>
-          <span aria-hidden="true" className="faq-breadcrumb-sep">
-            /
-          </span>
-          <span aria-current="page">{heading}</span>
-        </nav>
+    <div className={cn(PAGE_GROUND, 'min-h-screen')}>
+      {/* The v5 trail (438:2629), replacing this page's own breadcrumb markup.
+          Direction is inherited from <html dir>; nothing here sets it per node. */}
+      <Breadcrumbs crumbs={crumbs} />
 
-        <h1 className="faq-heading">{heading}</h1>
+      <RuledHeader
+        as="h1"
+        heading={heading}
+        label={
+          published.length > 0
+            ? `${published.length} ${isRTL ? 'שאלות' : 'QUESTIONS'}`
+            : undefined
+        }
+      />
 
-        {intro && <RichContent html={intro} dir={dir} className="faq-intro" />}
+      {intro && (
+        <div className={RULED_BLOCK}>
+          <RichContent html={intro} dir={dir} className={cn(TYPE_LEAD, MEASURE)} />
+        </div>
+      )}
 
-        {populatedAudiences.length > 1 && (
-          <nav aria-label={isRTL ? 'ניווט בעמוד' : 'On this page'} className="faq-jump-nav">
-            <ul>
-              {populatedAudiences.map((audience) => (
-                <li key={audience}>
-                  <a href={`#faq-section-${audience}`} className="faq-jump-link">
-                    {pickLocalized(settings.sectionTitles[audience], locale)}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        )}
-
-        {published.length === 0 ? (
-          <p className="faq-empty">
-            {isRTL ? 'התוכן בעמוד זה מתעדכן כעת. ' : 'This page is being updated. '}
-            <Link href={`/${lng}/contact`} className="faq-related-link">
-              {isRTL ? 'צרו קשר ונשמח לעזור' : 'Get in touch and we will help'}
-            </Link>
-          </p>
-        ) : (
-          <FaqAccordionClient
-            locale={locale}
-            questionCount={published.length}
-            audiences={populatedAudiences}
-          >
+      {populatedAudiences.length > 1 && (
+        <nav
+          aria-label={isRTL ? 'ניווט בעמוד' : 'On this page'}
+          className={cn(RULED_BLOCK, 'faq-jump-nav')}
+        >
+          <ul>
             {populatedAudiences.map((audience) => (
-              <FaqAudienceSection
-                key={audience}
-                audience={audience}
-                title={pickLocalized(settings.sectionTitles[audience], locale)}
-                items={grouped[audience]}
-                locale={locale}
-                lng={lng}
-                cta={ctaFor(audience)}
-              />
+              <li key={audience}>
+                <a href={`#faq-section-${audience}`} className="faq-jump-link">
+                  {pickLocalized(settings.sectionTitles[audience], locale)}
+                </a>
+              </li>
             ))}
-          </FaqAccordionClient>
-        )}
+          </ul>
+        </nav>
+      )}
 
-        <p className="faq-last-updated">
-          {isRTL ? `עודכן לאחרונה: ${lastUpdated}` : `Last updated: ${lastUpdated}`}
+      {published.length === 0 ? (
+        <p className={cn(RULED_BLOCK, 'faq-empty')}>
+          {isRTL ? 'התוכן בעמוד זה מתעדכן כעת. ' : 'This page is being updated. '}
+          <Link href={`/${lng}/contact`} className="faq-related-link">
+            {isRTL ? 'צרו קשר ונשמח לעזור' : 'Get in touch and we will help'}
+          </Link>
         </p>
+      ) : (
+        <FaqAccordionClient
+          locale={locale}
+          questionCount={published.length}
+          audiences={populatedAudiences}
+        >
+          {populatedAudiences.map((audience) => (
+            <FaqAudienceSection
+              key={audience}
+              audience={audience}
+              title={pickLocalized(settings.sectionTitles[audience], locale)}
+              items={grouped[audience]}
+              locale={locale}
+              lng={lng}
+              cta={ctaFor(audience)}
+            />
+          ))}
+        </FaqAccordionClient>
+      )}
 
-        {/* One FAQPage per page, never two — a second one anywhere on this route
-            would give crawlers conflicting answer sets for the same URL. */}
-        {faqSchema && (
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }}
-          />
-        )}
-        {breadcrumbSchema && (
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}
-          />
-        )}
-      </div>
+      <p className={cn(RULED_BLOCK, TYPE_LABEL, 'text-text-secondary')}>
+        {isRTL ? `עודכן לאחרונה: ${lastUpdated}` : `Last updated: ${lastUpdated}`}
+      </p>
+
+      {/* One FAQPage per page, never two — a second one anywhere on this route
+          would give crawlers conflicting answer sets for the same URL. */}
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(faqSchema) }}
+        />
+      )}
+      {breadcrumbSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbSchema) }}
+        />
+      )}
     </div>
   )
 }

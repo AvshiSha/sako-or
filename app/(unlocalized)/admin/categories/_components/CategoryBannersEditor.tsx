@@ -96,7 +96,7 @@ export default function CategoryBannersEditor({ categoryId }: { categoryId: stri
     });
   };
 
-  const upload = async (id: string, file: File, slot: 'src' | 'poster') => {
+  const upload = async (id: string, file: File, slot: 'src' | 'poster' | 'srcMobile') => {
     update(id, { uploading: true });
     try {
       const url = await uploadCmsImage(file, 'categories');
@@ -109,6 +109,13 @@ export default function CategoryBannersEditor({ categoryId }: { categoryId: stri
               ? { ...banner, media: { ...banner.media, poster: url }, uploading: false }
               : { ...banner, uploading: false };
           }
+          // Mobile art only exists for image banners; a video fills the slot
+          // by cropping and has no second source.
+          if (slot === 'srcMobile') {
+            return banner.media.type === 'image'
+              ? { ...banner, media: { ...banner.media, srcMobile: url }, uploading: false }
+              : { ...banner, uploading: false };
+          }
           return {
             ...banner,
             media: isVideo
@@ -117,7 +124,16 @@ export default function CategoryBannersEditor({ categoryId }: { categoryId: stri
                   src: url,
                   poster: banner.media.type === 'video' ? banner.media.poster : '',
                 }
-              : { type: 'image', src: url },
+              : {
+                  type: 'image',
+                  src: url,
+                  // Carry the mobile art across. Rebuilding the media object
+                  // from scratch here used to be harmless; now it would discard
+                  // a mobile upload every time the desktop one was replaced.
+                  ...(banner.media.type === 'image' && banner.media.srcMobile
+                    ? { srcMobile: banner.media.srcMobile }
+                    : {}),
+                },
             uploading: false,
           };
         })
@@ -287,9 +303,36 @@ export default function CategoryBannersEditor({ categoryId }: { categoryId: stri
                     {banner.uploading && <span className="text-xs text-gray-500">Uploading…</span>}
                     <span className="mt-1 block text-xs text-gray-500">
                       Image, or MP4/WebM. Not GIF — a short GIF loop is many times the size of the
-                      same clip as video.
+                      same clip as video. Desktop slot is about 4:5.5 (e.g. 1200×1660).
                     </span>
                   </label>
+
+                  {/* Art direction, not a nice-to-have: the banner slot is far
+                      taller on mobile (~1.84) than on desktop (~1.38), so one
+                      image covered into both loses roughly a quarter of itself
+                      at one end. Optional — without it the desktop art is used
+                      at both sizes, exactly as before. */}
+                  {banner.media.type === 'image' && (
+                    <label className="text-sm">
+                      <span className="mb-1 block font-medium text-gray-700">
+                        Mobile image <span className="font-normal text-gray-500">(optional)</span>
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void upload(banner.id, file, 'srcMobile');
+                          event.target.value = '';
+                        }}
+                        className="block w-full text-xs text-gray-600"
+                      />
+                      <span className="mt-1 block text-xs text-gray-500">
+                        {banner.media.srcMobile ? 'Set — ' : 'Not set — the desktop image is used. '}
+                        The mobile slot is much taller: crop to about 1:1.85 (e.g. 1080×2000).
+                      </span>
+                    </label>
+                  )}
 
                   {banner.media.type === 'video' && (
                     <label className="text-sm">

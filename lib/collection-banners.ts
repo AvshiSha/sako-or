@@ -9,7 +9,18 @@
  */
 
 export type CollectionBannerMedia =
-  | { type: 'image'; src: string }
+  /**
+   * `src` is the desktop artwork; `srcMobile` is optional art direction for the
+   * narrow slot, and the grid falls back to `src` without it.
+   *
+   * Two sources rather than one because the slot is not the same shape at the
+   * two breakpoints and cannot be made so: its height is the card's image area
+   * plus the info block, which gives roughly 1.84 (185x341 at 390px) against
+   * 1.38 (355x491 at 1440px). That is a third apart, so a single image
+   * object-covered into both loses about a quarter of its width or height at
+   * one of them - a 4:5 banner was being trimmed ~32% on the sides on mobile.
+   */
+  | { type: 'image'; src: string; srcMobile?: string }
   /**
    * No GIF: a three-second loop is 5-10MB as a GIF against roughly 300KB as MP4,
    * and these sit in a listing that must stay smooth on a phone. `poster` is
@@ -47,7 +58,12 @@ function sanitizeMedia(input: unknown): CollectionBannerMedia | null {
   const media = input as Record<string, unknown>
 
   if (media.type === 'image' && isNonEmptyString(media.src)) {
-    return { type: 'image', src: media.src.trim() }
+    // srcMobile is genuinely optional: banners saved before it existed have
+    // only `src`, and omitting the key entirely (rather than storing '') keeps
+    // those records and new single-image ones identical in Firestore.
+    const image: CollectionBannerMedia = { type: 'image', src: media.src.trim() }
+    if (isNonEmptyString(media.srcMobile)) image.srcMobile = media.srcMobile.trim()
+    return image
   }
   // A video without a poster would paint nothing until it downloads, so the
   // poster is part of what makes the record valid rather than an optional extra.

@@ -22,13 +22,29 @@ type UseProductGridVirtualizerParams<T> = {
   columns: number;
   getItemKey: (item: T) => string;
   /**
-   * Rough px height reserved below the card image for title/price/swatches
-   * (an estimate only — actual row height is measured after mount).
+   * Height one row is expected to take, given the measured card width and the
+   * live column count. Used for every row the virtualizer has not rendered yet,
+   * so the page's total height is the sum of the measured rows plus this for all
+   * the others — an inaccurate answer is a scroll jump, not just a rough guess.
+   *
+   * Must be a stable reference (module-level, or `useCallback`).
    */
-  extraRowHeightPx: number;
+  estimateRowHeight: (cardWidth: number, columns: number) => number;
   /** Rough px vertical gap between rows, folded into the height estimate. */
   rowGapPx: number;
   overscan?: number;
+  /**
+   * False keeps the virtualizer idle and reports an empty window, so the caller
+   * can render the whole list instead.
+   *
+   * This is how the listings get their products into server-rendered HTML.
+   * `useWindowVirtualizer` has no viewport to measure on the server, so it
+   * returns no rows at all there — the listing used to ship a grid container
+   * with a height and nothing inside it, and every product link reached a
+   * crawler only if it chose to run the page's JavaScript. The callers render a
+   * plain grid until this flips true just after hydration.
+   */
+  enabled?: boolean;
 };
 
 /**
@@ -44,19 +60,25 @@ export function useProductGridVirtualizer<T>({
   items,
   columns,
   getItemKey,
-  extraRowHeightPx,
+  estimateRowHeight,
   rowGapPx,
   overscan = 4,
+  enabled = true,
 }: UseProductGridVirtualizerParams<T>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scrollMargin, setScrollMargin] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
 
+  // `enabled` is a dependency of both of these because the caller swaps the
+  // element the ref points at when it flips — the plain grid and the positioned
+  // row container are two different nodes. Without it the ResizeObserver would go
+  // on observing the detached pre-hydration grid and `containerWidth` would stop
+  // tracking the viewport, freezing the row estimate at its mount-time value.
   useLayoutEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     setScrollMargin(el.offsetTop);
-  }, []);
+  }, [enabled]);
 
   useLayoutEffect(() => {
     const el = containerRef.current;
@@ -69,7 +91,7 @@ export function useProductGridVirtualizer<T>({
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [enabled]);
 
   const safeColumns = Math.max(1, columns);
 
@@ -87,14 +109,14 @@ export function useProductGridVirtualizer<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- getItemKey identity intentionally excluded
   }, [items, safeColumns]);
 
-  const estimateRowHeight = useCallback(() => {
+  const estimateSize = useCallback(() => {
     const cardWidth = containerWidth > 0 ? containerWidth / safeColumns : 200;
-    return cardWidth + extraRowHeightPx + rowGapPx;
-  }, [containerWidth, safeColumns, extraRowHeightPx, rowGapPx]);
+    return estimateRowHeight(cardWidth, safeColumns) + rowGapPx;
+  }, [containerWidth, safeColumns, estimateRowHeight, rowGapPx]);
 
   const virtualizer = useWindowVirtualizer<HTMLDivElement>({
-    count: rows.length,
-    estimateSize: estimateRowHeight,
+    count: enabled ? rows.length : 0,
+    estimateSize,
     overscan,
     scrollMargin,
     getItemKey: (index) => rows[index]?.key ?? index,
@@ -133,5 +155,7 @@ export function useProductGridVirtualizer<T>({
     totalSize: virtualizer.getTotalSize(),
     measureElement: virtualizer.measureElement,
     scrollToFlatIndex,
+    /** False while the caller should render every row itself (SSR, pre-hydration). */
+    isVirtualized: enabled,
   };
 }

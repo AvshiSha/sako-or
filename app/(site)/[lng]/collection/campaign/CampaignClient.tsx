@@ -9,13 +9,12 @@ import {
   useMemo,
   useTransition,
 } from "react";
-import Image from "next/image";
+import { flushSync } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion as fmMotion, AnimatePresence } from "framer-motion";
 import { CubeIcon } from "@heroicons/react/24/outline";
 import { Campaign, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
-import CollectionProductCardSkeleton from "@/app/components/CollectionProductCardSkeleton";
 import ScrollToTopButton from "@/app/components/ScrollToTopButton";
 import Loader from "@/app/components/ui/Loader";
 import {
@@ -29,8 +28,11 @@ import {
   type CollectionBrowseSnapshot,
 } from "@/lib/collectionBrowseStore";
 import {
+  cancelCollectionScrollRestoreWatchdog,
   COLLECTION_RETURN_EVENT,
   readLastCollectionScroll,
+  resetCollectionScrollForFilterChange,
+  scrollCollectionToTop,
 } from "@/lib/collectionScrollRestore";
 import { useCollectionScrollRestore } from "@/lib/useCollectionScrollRestore";
 import { CollectionBrowseProvider } from "@/app/contexts/CollectionBrowseContext";
@@ -53,16 +55,27 @@ import {
   COLLECTION_BAR,
   COLLECTION_BAR_CONTROL,
   COLLECTION_GRID_BREAKPOINTS,
-  COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
   COLLECTION_GRID_ROW_GAP_PX,
   COLLECTION_INSET,
   COLLECTION_LISTING_PAGE_SIZE,
   COLLECTION_PRODUCT_GRID,
   CollectionBarCaret,
+  estimateCollectionRowHeight,
 } from "@/app/components/collection/collectionChrome";
+import { CollectionGridSkeleton } from "@/app/components/collection/CollectionListingSkeleton";
 import { useResponsiveColumnCount } from "@/lib/useResponsiveColumnCount";
 import { useProductGridVirtualizer } from "@/lib/useProductGridVirtualizer";
+import { useGridVirtualizationReady } from "@/lib/useGridVirtualizationReady";
 import { useCollectionInfiniteScroll } from "@/lib/useCollectionInfiniteScroll";
+import {
+  captureScrollForAppend,
+  restoreScrollAfterAppend,
+  type ScrollAppendSnapshot,
+} from "@/lib/preserveScrollOnAppend";
+import {
+  lockCollectionAppend,
+  unlockCollectionAppend,
+} from "@/lib/collectionAppendLock";
 
 const motion = fmMotion as unknown as any;
 
@@ -135,141 +148,6 @@ const campaignTranslations = {
   },
 };
 
-/** Hero video: poster, play only when in view (independent), tap-to-play when blocked on mobile. */
-function CampaignHeroVideo({
-  desktopVideoUrl,
-  mobileVideoUrl,
-  desktopPosterUrl,
-  mobilePosterUrl,
-  title,
-}: {
-  desktopVideoUrl: string | undefined;
-  mobileVideoUrl: string | undefined;
-  desktopPosterUrl: string | undefined;
-  mobilePosterUrl: string | undefined;
-  title: string;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const desktopRef = useRef<HTMLVideoElement>(null);
-  const mobileRef = useRef<HTMLVideoElement>(null);
-  const [showPlayButton, setShowPlayButton] = useState(false);
-  const [isInView, setIsInView] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => setIsInView(entry.isIntersecting));
-      },
-      { threshold: 0.25, rootMargin: "0px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 768px)");
-    const update = () => setIsMobile(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-
-  const playCurrent = useCallback(async () => {
-    const video = isMobile ? mobileRef.current : desktopRef.current;
-    if (!video) return;
-    try {
-      await video.play();
-      setShowPlayButton(false);
-    } catch {
-      setShowPlayButton(true);
-    }
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (!isInView) {
-      desktopRef.current?.pause();
-      mobileRef.current?.pause();
-      return;
-    }
-    const video = isMobile ? mobileRef.current : desktopRef.current;
-    if (!video) return;
-    const p = video.play();
-    if (p && typeof p.catch === "function") {
-      p.catch(() => setShowPlayButton(true));
-    }
-  }, [isInView, isMobile]);
-
-  useEffect(() => {
-    const video = isMobile ? mobileRef.current : desktopRef.current;
-    if (!video) return;
-    const onPlaying = () => setShowPlayButton(false);
-    video.addEventListener("playing", onPlaying);
-    return () => video.removeEventListener("playing", onPlaying);
-  }, [isMobile]);
-
-  const hasDesktop = !!desktopVideoUrl;
-  const hasMobile = !!mobileVideoUrl;
-  if (!hasDesktop && !hasMobile) return null;
-
-  return (
-    <div ref={containerRef} className="relative w-full h-[70vh] md:h-[80vh] overflow-hidden bg-black">
-      <div
-        className={cn(
-          "absolute inset-0 flex md:block items-center justify-center md:overflow-hidden",
-          showPlayButton ? "z-10" : "z-0"
-        )}
-      >
-        {hasDesktop && (
-          <video
-            ref={desktopRef}
-            className="hidden md:block absolute inset-0 w-full h-full object-cover"
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster={desktopPosterUrl}
-            aria-hidden="true"
-          >
-            <source src={desktopVideoUrl} type="video/mp4" />
-          </video>
-        )}
-        {hasMobile && (
-          <video
-            ref={mobileRef}
-            className="block md:hidden absolute inset-0 w-full h-full object-cover"
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            poster={mobilePosterUrl}
-            aria-hidden="true"
-          >
-            <source src={mobileVideoUrl} type="video/mp4" />
-          </video>
-        )}
-        {showPlayButton && (
-          <button
-            type="button"
-            onClick={playCurrent}
-            className="md:hidden absolute inset-0 flex items-center justify-center z-10 bg-black/30 focus:outline-none focus:ring-2 focus:ring-white/50 rounded-none"
-            aria-label="Play video"
-          >
-            <span className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-              <svg className="w-8 h-8 text-neutral-900 ml-1" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M8 5v14l11-7L8 5z" />
-              </svg>
-            </span>
-          </button>
-        )}
-        <div className="absolute inset-0 bg-black/30" aria-hidden="true" />
-      </div>
-    </div>
-  );
-}
-
 interface CampaignClientProps {
   campaign: Campaign;
   initialVariantItems: VariantItem[];
@@ -338,6 +216,8 @@ export default function CampaignClient({
   const prevCampaignIdRef = useRef<string | undefined>(campaign.id);
   const prevFilterKeyRef = useRef<string>(filterKey);
   const stateSnapshotRef = useRef<CollectionBrowseSnapshot | null>(null);
+  /** Scroll anchor captured right before append; restored in useLayoutEffect after DOM commit. */
+  const appendRestoreRef = useRef<ScrollAppendSnapshot | null>(null);
 
   const title = campaign.title[lng] || campaign.title.en || campaign.title.he;
   const description = campaign.description?.[lng] || campaign.description?.en || campaign.description?.he;
@@ -473,20 +353,37 @@ export default function CampaignClient({
         return;
       }
 
-      // IMPORTANT: do not wrap this in flushSync. This flag swaps the entire
-      // (potentially large, infinite-scroll-accumulated) product grid out for
-      // skeleton placeholders. flushSync would force that whole subtree teardown
-      // to happen synchronously, inline, on the current call stack — React's
-      // commit-phase deletion-effects walk recurses one JS stack frame per
-      // unmounted DOM node, and on a big grid this can exceed WebKit's (Safari/iOS)
-      // much shallower call stack, throwing "RangeError: Maximum call stack size
-      // exceeded". A plain state update lets React schedule the commit normally
-      // (on a fresh stack) instead. See CollectionClient.tsx for the same fix.
-      markCollectionFilterNavPending();
-      setIsFilterNavigating(true);
-      startFilterTransition(() => {
-        router.push(newUrl, { scroll: false });
-      });
+      // Deferred one tick: this can fire from Radix Select's onValueChange, which
+      // is still tearing down its portal/focus when a synchronous DOM swap here
+      // would race with it (removeChild NotFoundError on iOS WebKit). The
+      // collection listing has carried this deferral for a while; the campaign
+      // bar is the same Radix Select and was missing it.
+      //
+      // IMPORTANT: setIsFilterNavigating must NOT be wrapped in flushSync. This
+      // flag swaps the entire (potentially large, infinite-scroll-accumulated)
+      // product grid out for skeleton placeholders. flushSync would force that
+      // whole subtree teardown to happen synchronously, inline, on the current
+      // call stack — React's commit-phase deletion-effects walk recurses one JS
+      // stack frame per unmounted DOM node, and on a big grid this can exceed
+      // WebKit's (Safari/iOS) much shallower call stack, throwing "RangeError:
+      // Maximum call stack size exceeded". A plain state update lets React
+      // schedule the commit normally (on a fresh stack) instead. See
+      // CollectionClient.tsx for the same fix.
+      setTimeout(() => {
+        markCollectionFilterNavPending();
+        setIsFilterNavigating(true);
+        // Filtering changes what the list IS, so the old scroll offset means
+        // nothing against the new one. The collection listing resets and returns
+        // to the top here; without it the campaign page left the shopper deep in
+        // a grid that had just been replaced under them.
+        resetCollectionScrollForFilterChange();
+        scrollCollectionToTop();
+
+        startFilterTransition(() => {
+          router.push(newUrl, { scroll: false });
+        });
+        requestAnimationFrame(() => scrollCollectionToTop());
+      }, 0);
     },
     [basePath, campaign.slug, currentPage, router]
   );
@@ -720,19 +617,60 @@ export default function CampaignClient({
     []
   );
   const gridColumns = useResponsiveColumnCount(COLLECTION_GRID_BREAKPOINTS);
+
+  // Products are in the server HTML only while this is false. See
+  // useGridVirtualizationReady — it flips one tick after hydration.
+  const gridVirtualizationReady = useGridVirtualizationReady();
+
   const {
     containerRef: gridContainerRef,
     rows: gridRows,
     virtualItems: gridVirtualItems,
     totalSize: gridTotalSize,
     measureElement: measureGridRow,
+    isVirtualized: isGridVirtualized,
   } = useProductGridVirtualizer<VariantItem>({
     items: sortedItems,
     columns: gridColumns,
     getItemKey: getGridItemKey,
-    extraRowHeightPx: COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
+    estimateRowHeight: estimateCollectionRowHeight,
     rowGapPx: COLLECTION_GRID_ROW_GAP_PX,
+    enabled: gridVirtualizationReady,
   });
+
+  /**
+   * One grid slot. Shared by the virtualized rows and the plain pre-hydration
+   * grid so the two cannot render a card differently — the static pass is what a
+   * crawler sees, so it has to be the same markup, not an SEO-only stand-in.
+   */
+  const renderGridItem = useCallback(
+    (item: VariantItem, flatIndex: number) => (
+      <div key={item.variantKey} data-collection-anchor={item.variantKey}>
+        <ProductCard
+          product={item.product}
+          language={lng}
+          selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+          preselectedColorSlug={item.variant.colorSlug}
+          disableImageCarousel
+          isAboveFold={flatIndex < 6}
+          browseStoreKey={campaignKey}
+          collectionAnchorKey={item.variantKey}
+        />
+      </div>
+    ),
+    [lng, selectedColors, campaignKey]
+  );
+
+  /**
+   * Placeholders for the page being fetched, sized to the next two rows rather
+   * than the whole 24 — same rule as the collection listing.
+   */
+  const loadMoreSkeletonCount = isLoadingMore
+    ? Math.max(
+        0,
+        Math.min(gridColumns * 2, Math.max(0, totalProducts - sortedItems.length))
+      )
+    : 0;
 
   /**
    * Drives the "(n)" beside the Filters label in the bar. Reads the draft while a
@@ -860,45 +798,17 @@ export default function CampaignClient({
     ],
   });
 
-  // Helper to check if a URL is a video
-  const isVideoUrl = (url?: string): boolean => {
-    if (!url) return false;
-    const videoExtensions = [".mp4", ".webm", ".ogg", ".mov", ".avi"];
-    const lowerUrl = url.toLowerCase();
-    return videoExtensions.some((ext) => lowerUrl.includes(ext));
-  };
-
-  // Determine if we have video or image content
-  const desktopVideoUrl =
-    campaign.bannerDesktopVideoUrl ||
-    (isVideoUrl(campaign.bannerDesktopUrl) ? campaign.bannerDesktopUrl : undefined);
-  const mobileVideoUrl =
-    campaign.bannerMobileVideoUrl ||
-    (isVideoUrl(campaign.bannerMobileUrl) ? campaign.bannerMobileUrl : undefined);
-  const desktopImageUrl =
-    campaign.bannerDesktopUrl && !isVideoUrl(campaign.bannerDesktopUrl)
-      ? campaign.bannerDesktopUrl
-      : undefined;
-  const mobileImageUrl =
-    campaign.bannerMobileUrl && !isVideoUrl(campaign.bannerMobileUrl)
-      ? campaign.bannerMobileUrl
-      : undefined;
-
-  const hasDesktopBanner = desktopImageUrl || desktopVideoUrl;
-  const hasMobileBanner = mobileImageUrl || mobileVideoUrl;
+  // The banner and the campaign copy live in CampaignHero now, rendered by
+  // page.tsx above this component and outside the Suspense boundary that waits
+  // on the product query — so the hero is in the first paint instead of arriving
+  // after it and pushing this listing down the page.
 
   // Load more: pass all current filter params so API returns next page of filtered set
   const handleLoadMore = useCallback(async () => {
     if (isLoadingMore || !hasMore) return;
-    const scrollYBefore = typeof window !== "undefined" ? window.scrollY : 0;
-    const scrollXBefore = typeof window !== "undefined" ? window.scrollX : 0;
-    // These restores land a frame or more later. If the user clicked a product
-    // card in the meantime, the frames run on the product page - re-applying
-    // this offset there is exactly the mid-page landing we're fixing.
-    const pathBefore = typeof window !== "undefined" ? window.location.pathname : "";
-    const stillOnSamePage = () =>
-      typeof window !== "undefined" && window.location.pathname === pathBefore;
     const nextPage = currentPage + 1;
+    cancelCollectionScrollRestoreWatchdog();
+    lockCollectionAppend();
     setIsLoadingMore(true);
     try {
       const params = new URLSearchParams();
@@ -913,16 +823,34 @@ export default function CampaignClient({
       if (!res.ok) throw new Error("Failed to load more");
       const data = await res.json();
       const nextItems = (data.variantItems ?? []) as VariantItem[];
+
+      // Pin the viewport to a card that is on screen right now, then commit the
+      // append synchronously so the useLayoutEffect below can put that same card
+      // back at the same offset before the browser paints.
+      //
+      // This replaces a pair of rAFs that re-applied a stored absolute scrollY.
+      // Storing an absolute offset means the restore fights the user if they kept
+      // scrolling during the fetch, and it had to carry a `stillOnSamePage` guard
+      // because the frames could land on the product page after a card tap.
+      // Anchoring to a card needs neither - the collection listing has worked this
+      // way for a while, and the two pages now page identically.
       if (nextItems.length > 0) {
-        setVariantItems((prev) => {
-          const existingKeys = new Set(prev.map((i) => i.variantKey));
-          const newItems = nextItems.filter((i) => !existingKeys.has(i.variantKey));
-          return [...prev, ...newItems];
+        appendRestoreRef.current = captureScrollForAppend();
+        flushSync(() => {
+          setVariantItems((prev) => {
+            const existingKeys = new Set(prev.map((i) => i.variantKey));
+            const newItems = nextItems.filter((i) => !existingKeys.has(i.variantKey));
+            return [...prev, ...newItems];
+          });
+          setCurrentPage(data.page ?? nextPage);
+          setTotalProducts(data.total ?? totalProducts);
+          setHasMore(Boolean(data.hasMore));
         });
+      } else {
+        setCurrentPage(data.page ?? nextPage);
+        setTotalProducts(data.total ?? totalProducts);
+        setHasMore(Boolean(data.hasMore));
       }
-      setCurrentPage(data.page ?? nextPage);
-      setTotalProducts(data.total ?? totalProducts);
-      setHasMore(Boolean(data.hasMore));
 
       const urlParams = new URLSearchParams((searchParams ?? new URLSearchParams()).toString());
       urlParams.set("page", String(nextPage));
@@ -930,25 +858,24 @@ export default function CampaignClient({
       if (typeof window !== "undefined") {
         window.history.replaceState({ ...window.history.state, as: newUrl, url: newUrl }, "", newUrl);
       }
-
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (stillOnSamePage()) {
-            window.scrollTo({ top: scrollYBefore, left: scrollXBefore, behavior: "auto" });
-          }
-        });
-      });
     } catch (e) {
       console.error("Campaign load more error:", e);
-      requestAnimationFrame(() => {
-        if (stillOnSamePage()) {
-          window.scrollTo({ top: scrollYBefore, left: scrollXBefore, behavior: "auto" });
-        }
-      });
     } finally {
       setIsLoadingMore(false);
+      if (!appendRestoreRef.current) {
+        unlockCollectionAppend();
+      }
     }
-  }, [isLoadingMore, hasMore, currentPage, lng, campaign.slug, totalProducts, searchParams]);
+  }, [isLoadingMore, hasMore, currentPage, lng, campaign.slug, totalProducts, searchParams, basePath]);
+
+  // Pin viewport after load-more append (after DOM commit, before paint).
+  useLayoutEffect(() => {
+    const snapshot = appendRestoreRef.current;
+    if (!snapshot) return;
+    appendRestoreRef.current = null;
+    restoreScrollAfterAppend(snapshot);
+    unlockCollectionAppend();
+  }, [variantItems.length]);
 
   // The campaign listing used a "Load More" button; the collection listing pulls
   // the next page in as the sentinel nears the viewport. Same hook, so the two
@@ -976,77 +903,11 @@ export default function CampaignClient({
       browseKey={campaignKey}
       snapshotRef={stateSnapshotRef}
     >
-    <div className="min-h-screen bg-white">
+    {/* No min-h-screen here any more: page.tsx wraps the hero and this listing
+        in one, and a second one nested under the hero would reserve a viewport's
+        worth below it that a short campaign never fills. */}
+    <div className="bg-white">
       {isFilterLoading && <Loader label={t.loadingProducts} />}
-      {/* Hero Section - video plays only when in view; tap-to-play on mobile when blocked */}
-      {(hasDesktopBanner || hasMobileBanner) && (
-        <>
-          {(desktopVideoUrl || mobileVideoUrl) ? (
-            <CampaignHeroVideo
-              desktopVideoUrl={desktopVideoUrl}
-              mobileVideoUrl={mobileVideoUrl}
-              desktopPosterUrl={desktopImageUrl}
-              mobilePosterUrl={mobileImageUrl}
-              title={title}
-            />
-          ) : (
-            <div className="relative w-full overflow-hidden bg-[#B2A28E] aspect-[4/5] md:aspect-[21/9]">
-              {desktopImageUrl && (
-                <div className="hidden md:block absolute inset-0">
-                  <Image
-                    src={desktopImageUrl}
-                    alt=""
-                    fill
-                    priority
-                    className="object-cover object-center"
-                    sizes="100vw"
-                  />
-                </div>
-              )}
-              {mobileImageUrl && (
-                <div className="md:hidden absolute inset-0">
-                  <Image
-                    src={mobileImageUrl}
-                    alt=""
-                    fill
-                    priority
-                    className="object-contain object-bottom"
-                    sizes="100vw"
-                  />
-                </div>
-              )}
-              {!desktopImageUrl && mobileImageUrl && (
-                <div className="hidden md:block absolute inset-0">
-                  <Image src={mobileImageUrl} alt={title} fill priority className="object-cover" sizes="100vw" />
-                </div>
-              )}
-              {!mobileImageUrl && desktopImageUrl && (
-                <div className="md:hidden absolute inset-0">
-                  <Image src={desktopImageUrl} alt={title} fill priority className="object-cover" sizes="100vw" />
-                </div>
-              )}
-              <div className="absolute inset-0 bg-black/30" />
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Campaign copy. This design system has no `prose`: the text is set in the
-          listing's own body type and inset to the same gutter as the title, and it
-          keeps the campaign's own line breaks. */}
-      {description && (
-        <div
-          className={cn(
-            "pt-8 font-ploni text-[16px] leading-[24px] text-text-primary",
-            COLLECTION_INSET,
-            lng === "he" ? "text-right" : "text-left"
-          )}
-          dir={lng === "he" ? "rtl" : "ltr"}
-        >
-          <p className="whitespace-pre-line">{description}</p>
-        </div>
-      )}
-
       {/* Full-bleed shell, 438:2962 - the same one the collection listing uses. The
           max-w-7xl container that used to wrap this page is gone: the grid and the
           filter bar run to the viewport edge, and the blocks that are NOT meant to
@@ -1149,13 +1010,10 @@ export default function CampaignClient({
         {/* Products Grid - Full Width */}
         <div className="w-full">
           {isFilterLoading ? (
-            <div className={COLLECTION_PRODUCT_GRID} aria-busy="true">
-              {Array.from({ length: COLLECTION_LISTING_PAGE_SIZE }).map((_, index) => (
-                <div key={`skeleton-${index}`}>
-                  <CollectionProductCardSkeleton />
-                </div>
-              ))}
-            </div>
+            <CollectionGridSkeleton
+              count={COLLECTION_LISTING_PAGE_SIZE}
+              keyPrefix="filter-skeleton"
+            />
           ) : sortedItems.length === 0 ? (
             <div className={cn("py-4 text-center", COLLECTION_INSET)}>
               <CubeIcon className="mx-auto h-14 w-14 text-text-secondary" />
@@ -1166,58 +1024,61 @@ export default function CampaignClient({
             </div>
           ) : (
             <>
-              <div
-                ref={gridContainerRef}
-                style={{ position: "relative", height: gridTotalSize }}
-              >
-                {gridVirtualItems.map((virtualRow) => {
-                  const row = gridRows[virtualRow.index];
-                  if (!row) return null;
+              {/* Two renderings of one list. The plain grid is what the server
+                  emits and what a crawler reads; the virtualized one takes over a
+                  tick after hydration, at the page's initial scroll offset, so no
+                  row above the viewport is ever re-measured underneath the user. */}
+              {isGridVirtualized ? (
+                <div
+                  ref={gridContainerRef}
+                  style={{ position: "relative", height: gridTotalSize }}
+                >
+                  {gridVirtualItems.map((virtualRow) => {
+                    const row = gridRows[virtualRow.index];
+                    if (!row) return null;
 
-                  return (
-                    <div
-                      key={virtualRow.key}
-                      ref={measureGridRow}
-                      data-index={virtualRow.index}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        transform: `translateY(${virtualRow.top}px)`,
-                      }}
-                      // Rows are absolutely positioned, so the space BETWEEN rows is
-                      // this padding, not the grid's row-gap. It was pb-4 md:pb-2,
-                      // which left a white band under every row once the cards went
-                      // flush against each other.
-                      className="pb-0"
-                    >
-                      <div className={COLLECTION_PRODUCT_GRID}>
-                        {row.items.map((item, i) => {
-                          const flatIndex = row.startIndex + i;
-                          return (
-                            <div
-                              key={item.variantKey}
-                              data-collection-anchor={item.variantKey}
-                            >
-                              <ProductCard
-                                product={item.product}
-                                language={lng}
-                                selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
-                                preselectedColorSlug={item.variant.colorSlug}
-                                disableImageCarousel
-                                isAboveFold={flatIndex < 6}
-                                browseStoreKey={campaignKey}
-                                collectionAnchorKey={item.variantKey}
-                              />
-                            </div>
-                          );
-                        })}
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        ref={measureGridRow}
+                        data-index={virtualRow.index}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualRow.top}px)`,
+                        }}
+                        // Rows are absolutely positioned, so the space BETWEEN rows is
+                        // this padding, not the grid's row-gap. It was pb-4 md:pb-2,
+                        // which left a white band under every row once the cards went
+                        // flush against each other.
+                        className="pb-0"
+                      >
+                        <div className={COLLECTION_PRODUCT_GRID}>
+                          {row.items.map((item, i) =>
+                            renderGridItem(item, row.startIndex + i)
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div ref={gridContainerRef} className={COLLECTION_PRODUCT_GRID}>
+                  {sortedItems.map((item, index) => renderGridItem(item, index))}
+                </div>
+              )}
+
+              {/* The incoming page, pre-drawn. The cards that replace these land in
+                  exactly the boxes the placeholders hold, so the sentinel block
+                  below does not travel and the footer stays put. */}
+              {loadMoreSkeletonCount > 0 && (
+                <CollectionGridSkeleton
+                  count={loadMoreSkeletonCount}
+                  keyPrefix="load-more-skeleton"
+                />
+              )}
 
               {(hasMore || isLoadingMore) && (
                 <div
@@ -1231,11 +1092,11 @@ export default function CampaignClient({
                     className="pointer-events-none absolute bottom-0 left-0 h-px w-full"
                     aria-hidden
                   />
-                  {isLoadingMore && (
-                    <p className="flex h-12 items-center justify-center text-sm text-gray-500">
-                      {t.loading}
-                    </p>
-                  )}
+                  {/* The placeholders above carry the visual load; this stays for
+                      screen readers, which get nothing from an aria-hidden grid.
+                      No role="status" on it - the wrapper is already the live
+                      region, and nesting a second one double-announces. */}
+                  <span className="sr-only">{isLoadingMore ? t.loading : ""}</span>
                 </div>
               )}
             </>

@@ -42,6 +42,13 @@ export function useCollectionInfiniteScroll({
     isLoadingMore ||
     hasPendingCollectionScrollRestore();
 
+  // NOTE: widening this to one full viewport ("0px 0px 100% 0px") was tried, to
+  // see whether more lead time would stop an arriving page from pushing a visible
+  // footer down - the single largest CLS source on this listing when it is
+  // scrolled hard to the bottom (0.96 mobile / 0.57 desktop, measured against a
+  // production build). It did not help: loading earlier just fits more appends
+  // into the same scroll, and the measurements came back unchanged or worse.
+  // Left at 200px until there is evidence for a different number.
   const { ref: sentinelRef, inView } = useInView({
     rootMargin: "0px 0px 200px 0px",
     threshold: 0,

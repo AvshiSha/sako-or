@@ -61,11 +61,52 @@ export const COLLECTION_GRID_BREAKPOINTS: ColumnBreakpoint[] = [
 ]
 
 /**
- * Same 8.75rem (140px) reserved below the aspect-square image as the critical
- * CSS in lib/collection-grid-critical-css.ts, so the initial size estimate
- * lines up with what's already reserved before Tailwind/measureElement settle.
+ * Height one grid row is expected to take, given the measured card width and the
+ * live column count. The virtualiser uses this for every row it has not rendered
+ * yet, so an inaccurate answer here is a scroll jump: total page height is the sum
+ * of the measured rows plus this estimate for all the others.
+ *
+ * The flat `cardWidth + 136` this replaced (COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
+ * now gone) was only ever right at desktop. It assumed a square image and a 136px
+ * info bar,
+ * which is 438:3939/438:3943 exactly - but the mobile card is neither. 438:3976
+ * draws the image 195x235 (4:5, so 1.205x the card width, not 1.0) and
+ * PRODUCT_CARD_INFO_MIN_H reserves 118px under it rather than 136. At a 390px
+ * viewport that came out 331px against a real 353 - 22px short on every row, or
+ * a quarter of a screen over a dozen rows.
+ *
+ * Keep in step with PRODUCT_CARD_IMAGE_ASPECT and PRODUCT_CARD_INFO_MIN_H in
+ * lib/product-card-layout.ts, and with the two min-height rules in
+ * lib/collection-grid-critical-css.ts. Those four places encode one contract.
  */
-export const COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX = 136
+export function estimateCollectionRowHeight(
+  cardWidth: number,
+  columns: number
+): number {
+  // The lg: breakpoint is the only thing that changes the card's proportions, and
+  // it is the same 1024px cutoff that moves the grid to four columns - so the live
+  // column count is a safe proxy for "are we on the desktop card?".
+  const isDesktopCard = columns >= 4
+  const imageHeight = isDesktopCard ? cardWidth : cardWidth * (235 / 195)
+  const infoHeight = isDesktopCard ? 136 : 118
+  return imageHeight + infoHeight
+}
+
+/**
+ * The campaign hero's frame, 438:2962. One constant because three places have to
+ * reserve the same box or the page jumps when the banner lands: the image hero,
+ * the video hero, and the route-level skeleton - which runs before the server has
+ * said whether this campaign even has a video.
+ *
+ * The video hero used to be h-[70vh] md:h-[80vh] while the image hero was this
+ * ratio, which is why campaign/loading.tsx reserved no hero at all: with two
+ * possible heights, guessing wrong cost more than guessing nothing. On a 390x844
+ * phone the gap was 591px against 487 - so "nothing" meant the whole listing slid
+ * 125vw down the moment the banner painted. One ratio for both makes the box
+ * knowable in advance, which is the only way the skeleton can reserve it.
+ */
+export const CAMPAIGN_HERO_FRAME =
+  'relative w-full overflow-hidden aspect-[4/5] md:aspect-[21/9]'
 
 /**
  * Rows are absolutely positioned, so the space between them is each row's own

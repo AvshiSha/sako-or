@@ -1,6 +1,9 @@
+import { Suspense } from "react";
 import { campaignService, getCampaignCollectionProducts } from "@/lib/firebase";
 import { redirect } from "next/navigation";
 import CampaignClient from "./CampaignClient";
+import CampaignHero from "@/app/components/collection/CampaignHero";
+import CollectionListingSkeleton from "@/app/components/collection/CollectionListingSkeleton";
 import { Metadata } from "next";
 
 // This page is dynamic because it uses searchParams
@@ -79,31 +82,26 @@ export async function generateMetadata(
   };
 }
 
-export default async function CampaignPage({
-  params,
-  searchParams,
-}: CampaignPageProps) {
-  const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
-  const { lng } = resolvedParams;
-  const slug = resolvedSearchParams.slug as string | undefined;
-
-  // Resolve campaign
-  let campaign;
-  if (slug) {
-    campaign = await campaignService.getCampaignBySlug(slug);
-  } else {
-    campaign = await campaignService.getActiveCampaign();
-  }
-
-  // If no campaign found, redirect to collection page
-  if (!campaign) {
-    redirect(`/${lng}/collection`);
-  }
-
+/**
+ * The products half of the page. Everything slow lives in here on purpose: this
+ * is what the <Suspense> below waits on, so the hero and the campaign copy can
+ * paint from the campaign document alone while the product query is still
+ * running.
+ */
+async function CampaignProducts({
+  campaign,
+  serializedCampaign,
+  resolvedSearchParams,
+  lng,
+}: {
+  campaign: Awaited<ReturnType<typeof campaignService.getCampaignBySlug>>;
+  serializedCampaign: any;
+  resolvedSearchParams: { [key: string]: string | string[] | undefined };
+  lng: string;
+}) {
   // Fetch first page with filters (tag-based; filter params from URL)
   const result = await getCampaignCollectionProducts(
-    campaign,
+    campaign!,
     resolvedSearchParams,
     lng as "en" | "he"
   );
@@ -111,7 +109,6 @@ export default async function CampaignPage({
   const total = result.total ?? 0;
   const hasMore = result.hasMore ?? false;
 
-  const serializedCampaign = serializeValue(campaign);
   const serializedVariantItems = variantItems.map((item) => ({
     product: serializeValue(item.product),
     variant: serializeValue(item.variant),
@@ -158,3 +155,57 @@ export default async function CampaignPage({
   );
 }
 
+export default async function CampaignPage({
+  params,
+  searchParams,
+}: CampaignPageProps) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { lng } = resolvedParams;
+  const slug = resolvedSearchParams.slug as string | undefined;
+
+  // Resolve campaign. One document read, and nothing below is allowed to start
+  // until it lands — which is also what makes the redirect below a real 307
+  // again. While this route had a loading.tsx, its fallback went out before this
+  // line ran, which sent the headers and pinned the status at 200, degrading the
+  // redirect to a meta refresh. That file is gone; the Suspense boundary further
+  // down covers the slow part instead, and it sits *inside* the page, so the
+  // status is still ours to set here.
+  let campaign;
+  if (slug) {
+    campaign = await campaignService.getCampaignBySlug(slug);
+  } else {
+    campaign = await campaignService.getActiveCampaign();
+  }
+
+  // If no campaign found, redirect to collection page
+  if (!campaign) {
+    redirect(`/${lng}/collection`);
+  }
+
+  const serializedCampaign = serializeValue(campaign);
+
+  return (
+    <div className="min-h-screen bg-white">
+      {/* Outside the boundary: this is known as soon as the campaign document is,
+          so it paints with the first chunk and never moves the listing. */}
+      <CampaignHero campaign={serializedCampaign} lng={lng as "en" | "he"} />
+
+      <Suspense
+        fallback={
+          <CollectionListingSkeleton
+            label="Loading campaign products"
+            fullHeight={false}
+          />
+        }
+      >
+        <CampaignProducts
+          campaign={campaign}
+          serializedCampaign={serializedCampaign}
+          resolvedSearchParams={resolvedSearchParams}
+          lng={lng}
+        />
+      </Suspense>
+    </div>
+  );
+}

@@ -93,6 +93,32 @@ export default function CollectionGridBanner({
             aria-hidden="true"
             className="h-full w-full object-cover"
           />
+        ) : banner.media.type === 'image' && banner.media.srcMobile ? (
+          /* Art direction, not responsive sizing. The slot is ~1.84 tall on
+             mobile and ~1.38 on desktop - a third apart - so one image
+             object-covered into both loses a quarter of itself at one of them.
+             Two <Image>s switched on the same lg breakpoint as the grid is the
+             pattern Next documents for this; <picture> would cost the
+             optimizer, and swapping src in JS would flash on hydration.
+             Only the matching one is ever on screen, and both are lazy. */
+          <>
+            <Image
+              src={banner.media.srcMobile}
+              alt=""
+              fill
+              sizes="50vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-[1.03] lg:hidden"
+              loading="lazy"
+            />
+            <Image
+              src={banner.media.src}
+              alt=""
+              fill
+              sizes="25vw"
+              className="hidden object-cover transition-transform duration-500 group-hover:scale-[1.03] lg:block"
+              loading="lazy"
+            />
+          </>
         ) : (
           <Image
             src={banner.media.src}

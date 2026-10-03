@@ -16,7 +16,6 @@ import { motion as fmMotion, AnimatePresence } from "framer-motion";
 import { CubeIcon } from "@heroicons/react/24/outline";
 import { Product, Category, productHelpers, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
-import CollectionProductCardSkeleton from "@/app/components/CollectionProductCardSkeleton";
 import { trackViewItemList } from "@/lib/dataLayer";
 import { getColorName, getColorHex } from "@/lib/colors";
 import { cn } from "@/lib/utils";
@@ -94,13 +93,15 @@ import {
   COLLECTION_BAR,
   COLLECTION_BAR_CONTROL,
   COLLECTION_GRID_BREAKPOINTS,
-  COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
   COLLECTION_GRID_ROW_GAP_PX,
   COLLECTION_INSET,
   COLLECTION_LISTING_PAGE_SIZE as LISTING_PAGE_SIZE,
   COLLECTION_PRODUCT_GRID,
   CollectionBarCaret,
+  estimateCollectionRowHeight,
 } from "@/app/components/collection/collectionChrome";
+import { CollectionGridSkeleton } from "@/app/components/collection/CollectionListingSkeleton";
+import { useGridVirtualizationReady } from "@/lib/useGridVirtualizationReady";
 
 // NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
 // animation props in this file. We cast it to avoid a build-blocking type error.
@@ -1253,6 +1254,10 @@ export default function CollectionClient({
     [sortedItems, bannerPlacements]
   );
 
+  // Products are in the server HTML only while this is false. See
+  // useGridVirtualizationReady — it flips one tick after hydration.
+  const gridVirtualizationReady = useGridVirtualizationReady();
+
   const {
     containerRef: gridContainerRef,
     rows: gridRows,
@@ -1260,13 +1265,97 @@ export default function CollectionClient({
     totalSize: gridTotalSize,
     measureElement: measureGridRow,
     scrollToFlatIndex: scrollGridToFlatIndex,
+    isVirtualized: isGridVirtualized,
   } = useProductGridVirtualizer<CollectionDisplayEntry>({
     items: displayItems,
     columns: gridColumns,
     getItemKey: getGridItemKey,
-    extraRowHeightPx: COLLECTION_GRID_ROW_EXTRA_HEIGHT_PX,
+    estimateRowHeight: estimateCollectionRowHeight,
     rowGapPx: COLLECTION_GRID_ROW_GAP_PX,
+    enabled: gridVirtualizationReady,
   });
+
+  /**
+   * One grid slot. Shared by the virtualized rows and the plain pre-hydration
+   * grid so the two cannot render a card differently — the static pass is what
+   * a crawler sees, so it has to be the same markup, not an SEO-only stand-in.
+   */
+  const renderGridEntry = useCallback(
+    (entry: CollectionDisplayEntry, flatIndex: number) => {
+      const isAboveFold = flatIndex < 6;
+
+      if (entry.kind === "banner") {
+        return (
+          <CollectionGridBanner
+            key={`banner-${entry.banner.id}`}
+            banner={entry.banner}
+            lng={lng as "en" | "he"}
+          />
+        );
+      }
+
+      const item = entry.item;
+
+      if (useVariantItems) {
+        const variantItem = item as VariantItem;
+        return (
+          <div
+            key={variantItem.variantKey}
+            data-collection-anchor={variantItem.variantKey}
+          >
+            <ProductCard
+              product={variantItem.product}
+              language={lng as "en" | "he"}
+              selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+              preselectedColorSlug={variantItem.variant.colorSlug}
+              disableImageCarousel
+              isAboveFold={isAboveFold}
+              browseStoreKey={collectionKey}
+              collectionAnchorKey={variantItem.variantKey}
+            />
+          </div>
+        );
+      }
+
+      const product = item as Product;
+      const anchorKey = String(product.id ?? product.sku);
+      return (
+        <div key={anchorKey} data-collection-anchor={anchorKey}>
+          <ProductCard
+            product={product}
+            language={lng as "en" | "he"}
+            selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+            preselectedColorSlug={
+              selectedColors.length === 0
+                ? (product as { matchedColorSlug?: string }).matchedColorSlug
+                : undefined
+            }
+            disableImageCarousel
+            isAboveFold={isAboveFold}
+            browseStoreKey={collectionKey}
+            collectionAnchorKey={anchorKey}
+          />
+        </div>
+      );
+    },
+    [lng, useVariantItems, selectedColors, collectionKey]
+  );
+
+  /**
+   * Placeholders for the page being fetched, sized to the next two rows rather
+   * than the whole 24. The rest of the incoming page lands below the fold where
+   * it costs no CLS, and two rows is what the shopper actually has in view when
+   * the sentinel trips — 24 would drop roughly four phone screens of grey.
+   */
+  const loadMoreSkeletonCount = isLoadingMore
+    ? Math.max(
+        0,
+        Math.min(
+          gridColumns * 2,
+          Math.max(0, totalProducts - sortedItems.length)
+        )
+      )
+    : 0;
 
   // Lets the scroll-restore lib (lib/collectionScrollRestore.ts) force-mount a
   // virtualized-out anchor card by index when back-navigation needs to scroll
@@ -1977,16 +2066,10 @@ export default function CollectionClient({
         {/* Products Grid - Full Width */}
         <div className="w-full">
           {isFilterLoading ? (
-            <div
-              className={COLLECTION_PRODUCT_GRID}
-              aria-busy="true"
-            >
-              {Array.from({ length: LISTING_PAGE_SIZE }).map((_, index) => (
-                <div key={`skeleton-${index}`}>
-                  <CollectionProductCardSkeleton />
-                </div>
-              ))}
-            </div>
+            <CollectionGridSkeleton
+              count={LISTING_PAGE_SIZE}
+              keyPrefix="filter-skeleton"
+            />
           ) : sortedItems.length === 0 ? (
             <div className={cn("py-4 text-center", COLLECTION_INSET)}>
               <CubeIcon className="mx-auto h-14 w-14 text-text-secondary" />
@@ -2008,106 +2091,68 @@ export default function CollectionClient({
               {/* -mx-3 is gone with the max-w-7xl shell: it existed to pull the grid
                   back out of that container's padding, and against a full-bleed
                   parent it only dragged the cards 12px past the viewport edge. */}
-              <div
-                ref={gridContainerRef}
-                style={{ position: "relative", height: gridTotalSize }}
-              >
-                {gridVirtualItems.map((virtualRow) => {
-                  const row = gridRows[virtualRow.index];
-                  if (!row) return null;
+              {/* Two renderings of one list. The plain grid is what the server
+                  emits and what a crawler reads; the virtualized one takes over a
+                  tick after hydration, at the page's initial scroll offset, so no
+                  row above the viewport is ever re-measured underneath the user. */}
+              {isGridVirtualized ? (
+                <div
+                  ref={gridContainerRef}
+                  style={{ position: "relative", height: gridTotalSize }}
+                >
+                  {gridVirtualItems.map((virtualRow) => {
+                    const row = gridRows[virtualRow.index];
+                    if (!row) return null;
 
-                  return (
-                    <div
-                      key={virtualRow.key}
-                      ref={measureGridRow}
-                      data-index={virtualRow.index}
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        transform: `translateY(${virtualRow.top}px)`,
-                      }}
-                      // Rows are absolutely positioned, so the space BETWEEN rows is
-                      // this padding, not the grid's row-gap. It was sm:pb-6, which
-                      // left a 24px white band under every row once the cards went
-                      // flush. 1px from lg matches the column gutter.
-                      className="pb-0"
-                    >
-                      <div className={COLLECTION_PRODUCT_GRID}>
-                        {row.items.map((entry, i) => {
-                          const flatIndex = row.startIndex + i;
-                          const isAboveFold = flatIndex < 6;
-
-                          if (entry.kind === 'banner') {
-                            return (
-                              <CollectionGridBanner
-                                key={`banner-${entry.banner.id}`}
-                                banner={entry.banner}
-                                lng={lng as 'en' | 'he'}
-                              />
-                            );
-                          }
-
-                          const item = entry.item;
-
-                          if (useVariantItems) {
-                            const variantItem = item as VariantItem;
-                            return (
-                              <div
-                                key={variantItem.variantKey}
-                                data-collection-anchor={variantItem.variantKey}
-                              >
-                                <ProductCard
-                                  product={variantItem.product}
-                                  language={lng as 'en' | 'he'}
-                                  selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
-                                  preselectedColorSlug={variantItem.variant.colorSlug}
-                                  disableImageCarousel
-                                  isAboveFold={isAboveFold}
-                                  browseStoreKey={collectionKey}
-                                  collectionAnchorKey={variantItem.variantKey}
-                                />
-                              </div>
-                            );
-                          }
-
-                          const product = item as Product;
-                          const anchorKey = String(product.id ?? product.sku);
-                          return (
-                            <div key={anchorKey} data-collection-anchor={anchorKey}>
-                              <ProductCard
-                                product={product}
-                                language={lng as 'en' | 'he'}
-                                selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
-                                preselectedColorSlug={
-                                  selectedColors.length === 0
-                                    ? (product as { matchedColorSlug?: string }).matchedColorSlug
-                                    : undefined
-                                }
-                                disableImageCarousel
-                                isAboveFold={isAboveFold}
-                                browseStoreKey={collectionKey}
-                                collectionAnchorKey={anchorKey}
-                              />
-                            </div>
-                          );
-                        })}
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        ref={measureGridRow}
+                        data-index={virtualRow.index}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          transform: `translateY(${virtualRow.top}px)`,
+                        }}
+                        // Rows are absolutely positioned, so the space BETWEEN rows is
+                        // this padding, not the grid's row-gap. It was sm:pb-6, which
+                        // left a 24px white band under every row once the cards went
+                        // flush. 1px from lg matches the column gutter.
+                        className="pb-0"
+                      >
+                        <div className={COLLECTION_PRODUCT_GRID}>
+                          {row.items.map((entry, i) =>
+                            renderGridEntry(entry, row.startIndex + i)
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {isBrowseRefetching && pinnedGridItemCount > sortedItems.length && (
-                <div className={COLLECTION_PRODUCT_GRID}>
-                  {Array.from({
-                    length: pinnedGridItemCount - sortedItems.length,
-                  }).map((_, index) => (
-                    <div key={`refetch-skeleton-${index}`} aria-hidden>
-                      <CollectionProductCardSkeleton />
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              ) : (
+                <div ref={gridContainerRef} className={COLLECTION_PRODUCT_GRID}>
+                  {displayItems.map((entry, index) =>
+                    renderGridEntry(entry, index)
+                  )}
+                </div>
+              )}
+              {isBrowseRefetching && pinnedGridItemCount > sortedItems.length && (
+                <CollectionGridSkeleton
+                  count={pinnedGridItemCount - sortedItems.length}
+                  keyPrefix="refetch-skeleton"
+                />
+              )}
+
+              {/* The incoming page, pre-drawn. The cards that replace these land in
+                  exactly the boxes the placeholders hold, so the sentinel block
+                  below does not travel and the footer stays put. */}
+              {loadMoreSkeletonCount > 0 && (
+                <CollectionGridSkeleton
+                  count={loadMoreSkeletonCount}
+                  keyPrefix="load-more-skeleton"
+                />
               )}
 
               {(hasMore || isLoadingMore) && (
@@ -2122,11 +2167,11 @@ export default function CollectionClient({
                     className="pointer-events-none absolute bottom-0 left-0 h-px w-full"
                     aria-hidden
                   />
-                  {isLoadingMore && (
-                    <p className="flex h-12 items-center justify-center text-sm text-gray-500">
-                      {t.loading}
-                    </p>
-                  )}
+                  {/* The placeholders above carry the visual load; this stays for
+                      screen readers, which get nothing from an aria-hidden grid.
+                      No role="status" on it - the wrapper is already the live
+                      region, and nesting a second one double-announces. */}
+                  <span className="sr-only">{isLoadingMore ? t.loading : ""}</span>
                 </div>
               )}
             </>

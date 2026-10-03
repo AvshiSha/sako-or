@@ -1,3 +1,5 @@
+import type { CollectionBanner } from '@/lib/collection-banners';
+
 export type CampaignMerchandisingMode = 'auto' | 'pinned' | 'manual';
 
 export const CAMPAIGN_MERCHANDISING_VERSION = 1;
@@ -8,6 +10,13 @@ export interface CampaignMerchandising {
   campaignSlug: string;
   mode: CampaignMerchandisingMode;
   orderedVariantKeys: string[];
+  /**
+   * Grid banners for the campaign listing, same shape and same renderer as a
+   * category's. Stored on this document rather than on the campaign itself so
+   * the two merchandising concerns - what order products appear in, and what
+   * is spliced between them - live together and share one revalidation.
+   */
+  banners: CollectionBanner[];
   updatedAt: string;
   updatedBy?: string;
   version: number;
@@ -75,6 +84,7 @@ export function defaultCampaignMerchandising(campaignSlug: string): CampaignMerc
     campaignSlug,
     mode: 'auto',
     orderedVariantKeys: [],
+    banners: [],
     updatedAt: new Date().toISOString(),
     version: CAMPAIGN_MERCHANDISING_VERSION,
   };

@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { campaignService, getCampaignCollectionProducts } from "@/lib/firebase";
+import { getCampaignGridBanners } from "@/lib/campaign-merchandising";
 import { redirect } from "next/navigation";
 import CampaignClient from "./CampaignClient";
 import CampaignHero from "@/app/components/collection/CampaignHero";
@@ -139,10 +140,18 @@ async function CampaignProducts({
     .sort()
     .join("|");
 
+  // Grid banners are merchandising, same as on a category listing. Keyed by
+  // slug, so a campaign resolved as "the active one" (no slug in the URL) still
+  // gets its own banners rather than none.
+  const gridBanners = campaign?.slug
+    ? await getCampaignGridBanners(campaign.slug)
+    : [];
+
   return (
     <CampaignClient
       key={campaignFilterKey}
       campaign={serializedCampaign}
+      gridBanners={gridBanners}
       initialVariantItems={serializedVariantItems}
       initialAvailableFilterOptions={result.availableFilterOptions}
       totalProducts={total}

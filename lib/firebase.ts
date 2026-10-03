@@ -5,6 +5,7 @@ import { getFirestore, Firestore, collection, doc, getDocs, getDoc, addDoc, upda
 import { getAuth, Auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { getStorage, FirebaseStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import type { CampaignMerchandising } from '@/lib/campaign-merchandising-types';
+import { sanitizeCollectionBanners } from '@/lib/collection-banners';
 import {
   defaultCampaignMerchandising,
   parseVariantKey,
@@ -1962,6 +1963,10 @@ export async function getCampaignMerchandising(campaignSlug: string): Promise<Ca
       campaignSlug,
       mode: data.mode ?? 'auto',
       orderedVariantKeys: Array.isArray(data.orderedVariantKeys) ? data.orderedVariantKeys : [],
+      // Sanitised on read: these documents predate the field, and a banner
+      // stored in an older shape should cost that banner rather than the whole
+      // merchandising record.
+      banners: sanitizeCollectionBanners(data.banners),
       updatedAt: data.updatedAt ?? new Date().toISOString(),
       updatedBy: data.updatedBy,
       version: data.version ?? 1,

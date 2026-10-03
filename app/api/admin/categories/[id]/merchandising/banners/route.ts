@@ -54,7 +54,15 @@ export async function GET(
   }
 
   const merchandising = await getCategoryMerchandisingAdmin(id);
-  return NextResponse.json({ banners: merchandising.banners, category });
+  // `meta` rather than `category`: the campaign twin of this route returns the
+  // same two keys, which is what lets one editor component serve both.
+  return NextResponse.json({
+    banners: merchandising.banners,
+    meta: {
+      title: category.name?.en || category.name?.he || category.id,
+      storefrontHref: category.path ? `/en/collection/${category.path}` : undefined,
+    },
+  });
 }
 
 export async function PUT(

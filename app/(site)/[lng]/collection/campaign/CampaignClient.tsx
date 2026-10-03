@@ -65,6 +65,12 @@ import {
 import { CollectionGridSkeleton } from "@/app/components/collection/CollectionListingSkeleton";
 import { useResponsiveColumnCount } from "@/lib/useResponsiveColumnCount";
 import { useProductGridVirtualizer } from "@/lib/useProductGridVirtualizer";
+import {
+  buildDisplayList,
+  resolveBannerPlacements,
+  type CollectionBanner,
+} from "@/lib/collection-banners";
+import CollectionGridBanner from "@/app/components/CollectionGridBanner";
 import { useGridVirtualizationReady } from "@/lib/useGridVirtualizationReady";
 import { useCollectionInfiniteScroll } from "@/lib/useCollectionInfiniteScroll";
 import {
@@ -148,8 +154,15 @@ const campaignTranslations = {
   },
 };
 
+/** One slot in the rendered grid: a product, or a merchandising banner. */
+type CampaignDisplayEntry =
+  | { kind: "product"; item: VariantItem; productIndex: number }
+  | { kind: "banner"; banner: CollectionBanner };
+
 interface CampaignClientProps {
   campaign: Campaign;
+  /** Enabled grid banners for this campaign; empty when none are configured. */
+  gridBanners?: CollectionBanner[];
   initialVariantItems: VariantItem[];
   /** Stable filter options from full campaign so the filter list does not collapse after selection */
   initialAvailableFilterOptions?: { colors: string[]; sizes: string[] };
@@ -163,6 +176,7 @@ interface CampaignClientProps {
 
 export default function CampaignClient({
   campaign,
+  gridBanners = [],
   initialVariantItems,
   initialAvailableFilterOptions,
   totalProducts: initialTotal,
@@ -613,10 +627,45 @@ export default function CampaignClient({
   }, [variantItems, sortBy]);
 
   const getGridItemKey = useCallback(
-    (item: VariantItem): string => item.variantKey,
+    (entry: CampaignDisplayEntry): string =>
+      entry.kind === "banner" ? `banner-${entry.banner.id}` : entry.item.variantKey,
     []
   );
   const gridColumns = useResponsiveColumnCount(COLLECTION_GRID_BREAKPOINTS);
+
+  /**
+   * Banners are merchandising for the default listing only. A shopper who has
+   * filtered has intent, and an interruption costs more there - so any applied
+   * filter takes them out entirely rather than shifting them. Same rule as the
+   * collection listing; a campaign has no search, so there is no search guard.
+   */
+  const bannersApply =
+    gridBanners.length > 0 &&
+    selectedColors.length === 0 &&
+    selectedSizes.length === 0 &&
+    // Read from the URL rather than from urlFilterState, which exposes price as
+    // a [min, max] pair defaulted to the bounds - indistinguishable from "no
+    // price filter". The params are the only place the distinction survives.
+    !safeSearchParams.get("minPrice") &&
+    !safeSearchParams.get("maxPrice");
+
+  const bannerPlacements = useMemo(
+    () =>
+      bannersApply
+        ? resolveBannerPlacements(gridBanners, gridColumns, sortedItems.length)
+        : [],
+    [bannersApply, gridBanners, gridColumns, sortedItems.length]
+  );
+
+  /**
+   * What the grid renders. Products keep their own array, order and indices -
+   * totalProducts, the load-more baseline and the "showing X of Y" counter all
+   * read from that, so banners exist only in this derived view.
+   */
+  const displayItems = useMemo(
+    () => buildDisplayList(sortedItems, bannerPlacements),
+    [sortedItems, bannerPlacements]
+  );
 
   // Products are in the server HTML only while this is false. See
   // useGridVirtualizationReady — it flips one tick after hydration.
@@ -629,8 +678,8 @@ export default function CampaignClient({
     totalSize: gridTotalSize,
     measureElement: measureGridRow,
     isVirtualized: isGridVirtualized,
-  } = useProductGridVirtualizer<VariantItem>({
-    items: sortedItems,
+  } = useProductGridVirtualizer<CampaignDisplayEntry>({
+    items: displayItems,
     columns: gridColumns,
     getItemKey: getGridItemKey,
     estimateRowHeight: estimateCollectionRowHeight,
@@ -644,20 +693,33 @@ export default function CampaignClient({
    * crawler sees, so it has to be the same markup, not an SEO-only stand-in.
    */
   const renderGridItem = useCallback(
-    (item: VariantItem, flatIndex: number) => (
-      <div key={item.variantKey} data-collection-anchor={item.variantKey}>
-        <ProductCard
-          product={item.product}
-          language={lng}
-          selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
-          preselectedColorSlug={item.variant.colorSlug}
-          disableImageCarousel
-          isAboveFold={flatIndex < 6}
-          browseStoreKey={campaignKey}
-          collectionAnchorKey={item.variantKey}
-        />
-      </div>
-    ),
+    (entry: CampaignDisplayEntry, flatIndex: number) => {
+      if (entry.kind === "banner") {
+        return (
+          <CollectionGridBanner
+            key={`banner-${entry.banner.id}`}
+            banner={entry.banner}
+            lng={lng}
+          />
+        );
+      }
+
+      const item = entry.item;
+      return (
+        <div key={item.variantKey} data-collection-anchor={item.variantKey}>
+          <ProductCard
+            product={item.product}
+            language={lng}
+            selectedColors={selectedColors.length > 0 ? selectedColors : undefined}
+            preselectedColorSlug={item.variant.colorSlug}
+            disableImageCarousel
+            isAboveFold={flatIndex < 6}
+            browseStoreKey={campaignKey}
+            collectionAnchorKey={item.variantKey}
+          />
+        </div>
+      );
+    },
     [lng, selectedColors, campaignKey]
   );
 
@@ -1066,7 +1128,7 @@ export default function CampaignClient({
                 </div>
               ) : (
                 <div ref={gridContainerRef} className={COLLECTION_PRODUCT_GRID}>
-                  {sortedItems.map((item, index) => renderGridItem(item, index))}
+                  {displayItems.map((entry, index) => renderGridItem(entry, index))}
                 </div>
               )}
 

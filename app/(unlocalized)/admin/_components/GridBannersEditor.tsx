@@ -12,7 +12,14 @@ import {
 } from '@/lib/collection-banners';
 
 /**
- * Grid banners for a category listing.
+ * Grid banners for a product listing — used by both category and campaign
+ * listings, which render the same grid through the same CollectionGridBanner.
+ *
+ * Generalised from the category-only editor rather than copied for campaigns:
+ * the two would have drifted on the next change, and the mobile/desktop art
+ * direction below is exactly the kind of thing that would have landed on one
+ * and not the other. Everything scope-specific arrives as props; the endpoint
+ * supplies the title and preview link in a `meta` object both routes return.
  *
  * Placement is a single number - how many products the banner follows - because
  * the listing renders 2 columns on mobile and 4 from lg. A row number would mean
@@ -21,12 +28,24 @@ import {
 
 type Draft = CollectionBanner & { uploading?: boolean };
 
-type CategoryMeta = {
-  id: string;
-  name?: { en?: string; he?: string };
-  slug?: { en?: string; he?: string };
-  path?: string;
+type BannerScopeMeta = {
+  title?: string;
+  storefrontHref?: string;
 };
+
+export interface GridBannersEditorProps {
+  /** REST endpoint exposing GET -> { banners, meta } and PUT { banners }. */
+  endpoint: string;
+  /** Where "Back to …" returns to, and its label. */
+  backHref: string;
+  backLabel: string;
+  /** The sibling product-ordering screen for this scope. */
+  orderHref: string;
+  /** Used in prose: "Maximum N per {scopeNoun}". */
+  scopeNoun: string;
+  /** Fallback title until `meta` arrives. */
+  fallbackTitle: string;
+}
 
 function newDraft(order: number): Draft {
   return {
@@ -52,14 +71,19 @@ async function authedFetch(input: string, init?: RequestInit) {
   });
 }
 
-export default function CategoryBannersEditor({ categoryId }: { categoryId: string }) {
+export default function GridBannersEditor({
+  endpoint,
+  backHref,
+  backLabel,
+  orderHref,
+  scopeNoun,
+  fallbackTitle,
+}: GridBannersEditorProps) {
   const [banners, setBanners] = useState<Draft[]>([]);
-  const [category, setCategory] = useState<CategoryMeta | null>(null);
+  const [meta, setMeta] = useState<BannerScopeMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
-
-  const endpoint = `/api/admin/categories/${categoryId}/merchandising/banners`;
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +93,7 @@ export default function CategoryBannersEditor({ categoryId }: { categoryId: stri
         const data = await response.json();
         if (!cancelled && response.ok) {
           setBanners(data.banners ?? []);
-          setCategory(data.category ?? null);
+          setMeta(data.meta ?? null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -189,19 +213,19 @@ export default function CategoryBannersEditor({ categoryId }: { categoryId: stri
     );
   }
 
-  const title = category?.name?.en || category?.name?.he || categoryId;
-  const storefrontHref = category?.path ? `/en/collection/${category.path}` : undefined;
+  const title = meta?.title || fallbackTitle;
+  const storefrontHref = meta?.storefrontHref;
 
   return (
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Link
-            href="/admin/categories"
+            href={backHref}
             className="mb-2 inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
           >
             <ArrowLeftIcon className="mr-1 h-4 w-4" />
-            Back to categories
+            {backLabel}
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Grid banners: {title}</h1>
           <p className="mt-1 text-sm text-gray-500">
@@ -220,7 +244,7 @@ export default function CategoryBannersEditor({ categoryId }: { categoryId: stri
             </Link>
           )}
           <Link
-            href={`/admin/categories/${categoryId}/merchandising`}
+            href={orderHref}
             className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >
             Product order
@@ -455,7 +479,7 @@ export default function CategoryBannersEditor({ categoryId }: { categoryId: stri
         </button>
         {banners.length >= MAX_COLLECTION_BANNERS && (
           <span className="ml-3 text-xs text-gray-500">
-            Maximum {MAX_COLLECTION_BANNERS} per category.
+            Maximum {MAX_COLLECTION_BANNERS} per {scopeNoun}.
           </span>
         )}
       </section>

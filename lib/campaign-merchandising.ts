@@ -14,6 +14,7 @@ import {
   isValidVariantKey,
   parseVariantKey,
 } from '@/lib/campaign-merchandising-types';
+import { sanitizeCollectionBanners, type CollectionBanner } from '@/lib/collection-banners';
 
 export type {
   CampaignMerchandising,
@@ -48,10 +49,65 @@ export async function getCampaignMerchandisingAdmin(
     orderedVariantKeys: Array.isArray(data.orderedVariantKeys)
       ? dedupeVariantKeys(data.orderedVariantKeys)
       : [],
+    // Sanitised on read as well as on write: these documents predate the field,
+    // and a banner saved by an older shape should cost that banner rather than
+    // the listing it sits in.
+    banners: sanitizeCollectionBanners(data.banners),
     updatedAt: data.updatedAt ?? new Date().toISOString(),
     updatedBy: data.updatedBy,
     version: data.version ?? CAMPAIGN_MERCHANDISING_VERSION,
   };
+}
+
+/**
+ * Enabled grid banners for a campaign listing, for the storefront.
+ *
+ * Reads the field directly rather than going through
+ * getCampaignMerchandisingAdmin so a page render does not also deserialise up
+ * to 2000 ordered variant keys it has no use for.
+ */
+export async function getCampaignGridBanners(
+  campaignSlug: string
+): Promise<CollectionBanner[]> {
+  return (await readStoredBanners(campaignSlug)).filter((banner) => banner.enabled);
+}
+
+/** Every stored banner, enabled or not — what the admin editor needs to see. */
+async function readStoredBanners(campaignSlug: string): Promise<CollectionBanner[]> {
+  const snap = await docRef(campaignSlug).get();
+  if (!snap.exists) return [];
+  const data = snap.data() as { banners?: unknown } | undefined;
+  return sanitizeCollectionBanners(data?.banners);
+}
+
+/**
+ * Save only the banners.
+ *
+ * Deliberately separate from saveCampaignMerchandisingAdmin: that one needs a
+ * mode and a full ordering, so a banner edit routed through it would have to
+ * echo both back and could clobber a reorder saved from the board in between.
+ * This touches one field and leaves the rest of the document alone.
+ */
+export async function saveCampaignBannersAdmin(
+  campaignSlug: string,
+  banners: unknown,
+  updatedBy?: string
+): Promise<CollectionBanner[]> {
+  const sanitized = sanitizeCollectionBanners(banners);
+  const now = new Date().toISOString();
+
+  await docRef(campaignSlug).set(
+    {
+      campaignSlug,
+      banners: sanitized,
+      updatedAt: now,
+      ...(updatedBy ? { updatedBy } : {}),
+      version: CAMPAIGN_MERCHANDISING_VERSION,
+    },
+    { merge: true }
+  );
+
+  return sanitized;
 }
 
 export async function saveCampaignMerchandisingAdmin(
@@ -73,7 +129,13 @@ export async function saveCampaignMerchandisingAdmin(
   }
 
   const now = new Date().toISOString();
-  const doc: CampaignMerchandising = {
+
+  // `banners` is deliberately absent from what gets written. The merge would
+  // otherwise overwrite the stored banners with whatever this caller happened
+  // to carry - and the board that calls this does not load them - so an
+  // ordering save would silently clear a category's banners. Only
+  // saveCampaignBannersAdmin writes that field.
+  const update = {
     campaignSlug,
     mode: payload.mode,
     orderedVariantKeys,
@@ -82,8 +144,14 @@ export async function saveCampaignMerchandisingAdmin(
     version: CAMPAIGN_MERCHANDISING_VERSION,
   };
 
-  await docRef(campaignSlug).set(doc, { merge: true });
-  return doc;
+  await docRef(campaignSlug).set(update, { merge: true });
+
+  // Read back rather than echoing `update`, so the returned document carries
+  // the banners that are actually stored instead of an empty array. Not
+  // getCampaignGridBanners: that drops disabled ones, which exist and belong
+  // in an admin-facing result.
+  const banners = await readStoredBanners(campaignSlug);
+  return { ...update, banners };
 }
 
 type AdminColorVariant = {

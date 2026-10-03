@@ -393,6 +393,13 @@ function CampaignsPageContent() {
                               <Squares2X2Icon className="h-5 w-5" />
                             </Link>
                             <Link
+                              href={`/admin/campaigns/${campaign.slug}/banners`}
+                              className="text-indigo-600 hover:text-indigo-900"
+                              title="Grid banners"
+                            >
+                              <span className="text-xs font-medium">Banners</span>
+                            </Link>
+                            <Link
                               href={`/admin/campaigns/${campaign.slug}`}
                               className="text-indigo-600 hover:text-indigo-900"
                               title="Edit"

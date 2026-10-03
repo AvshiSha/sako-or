@@ -6,49 +6,55 @@ import { useParams } from 'next/navigation';
 import ProtectedRoute from '@/app/components/ProtectedRoute';
 import GridBannersEditor from '../../../_components/GridBannersEditor';
 
-function CategoryBannersPageContent() {
+/**
+ * Grid banners for a campaign listing — the campaign twin of
+ * /admin/categories/[id]/banners, driven by the same editor so the two cannot
+ * drift apart.
+ *
+ * Banners save through their own endpoint, so nothing here can collide with an
+ * ordering save on the merchandising board.
+ */
+function CampaignBannersPageContent() {
   const params = useParams();
-  const rawId = params?.id;
-  const id = Array.isArray(rawId) ? rawId[0] : rawId;
+  const rawSlug = params?.slug;
+  const slug = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
 
-  if (!id || typeof id !== 'string') {
+  if (!slug || typeof slug !== 'string') {
     return (
       <div className="min-h-screen bg-gray-50 pt-16 flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <h1 className="text-lg font-semibold text-gray-900">Category not found</h1>
+          <h1 className="text-lg font-semibold text-gray-900">Campaign not found</h1>
           <p className="mt-2 text-sm text-gray-600">
-            The category id in this URL is missing or invalid.
+            The campaign slug in this URL is missing or invalid.
           </p>
           <Link
-            href="/admin/categories"
+            href="/admin/campaigns"
             className="mt-4 inline-block text-sm text-indigo-600 hover:text-indigo-800"
           >
-            ← Back to categories
+            ← Back to campaigns
           </Link>
         </div>
       </div>
     );
   }
 
-  // Banners save through their own endpoint, so nothing here can collide with an
-  // ordering save on the merchandising page.
   return (
     <div className="min-h-screen bg-gray-50 pt-16 pb-12">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <GridBannersEditor
-                  endpoint={`/api/admin/categories/${id}/merchandising/banners`}
-                  backHref="/admin/categories"
-                  backLabel="Back to categories"
-                  orderHref={`/admin/categories/${id}/merchandising`}
-                  scopeNoun="category"
-                  fallbackTitle={id}
-                />
+          endpoint={`/api/admin/campaigns/${slug}/merchandising/banners`}
+          backHref="/admin/campaigns"
+          backLabel="Back to campaigns"
+          orderHref={`/admin/campaigns/${slug}/merchandising`}
+          scopeNoun="campaign"
+          fallbackTitle={slug}
+        />
       </div>
     </div>
   );
 }
 
-export default function CategoryBannersPage() {
+export default function CampaignBannersPage() {
   return (
     <ProtectedRoute>
       <Suspense
@@ -58,7 +64,7 @@ export default function CategoryBannersPage() {
           </div>
         }
       >
-        <CategoryBannersPageContent />
+        <CampaignBannersPageContent />
       </Suspense>
     </ProtectedRoute>
   );

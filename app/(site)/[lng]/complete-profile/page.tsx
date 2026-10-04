@@ -12,6 +12,7 @@ import {
   SelectInput,
   TextInput
 } from '@/app/components/profile/ProfileFormFields'
+import { primeUserProfileCache } from '@/lib/user-profile-cache'
 
 type ApiUser = {
   id: string
@@ -178,6 +179,12 @@ export default function CompleteProfilePage() {
       if (!res.ok || !json || 'error' in json) {
         throw new Error((json && 'error' in json && json.error) || `HTTP ${res.status}`)
       }
+
+      // PATCH returns the saved row in the same shape the cache holds, so push
+      // it in rather than letting consumers re-fetch what we already have. This
+      // is also what makes the nav greeting and needsProfileCompletion correct
+      // immediately after completion, without waiting on another auth event.
+      primeUserProfileCache(firebaseUser.uid, json)
 
       router.replace(`/${lng}/profile`)
     } catch (e: any) {

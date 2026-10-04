@@ -16,6 +16,7 @@ import ConfirmDialog from '@/app/components/profile/ConfirmDialog'
 import { CheckIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { FaWhatsapp } from 'react-icons/fa'
 import { formatIsraelE164ToLocalDigits } from '@/lib/phone'
+import { primeUserProfileCache } from '@/lib/user-profile-cache'
 
 const translations = {
   en: {
@@ -357,7 +358,11 @@ export default function PersonalDetailsPage() {
       }
 
       setLoadedUser(json.user)
-      
+
+      // Keep the shared profile cache (nav greeting, Meta Pixel matching) in
+      // step with the edit that just saved, without issuing another request.
+      primeUserProfileCache(firebaseUser.uid, json)
+
       // Update original values after successful save
       if (originalValuesRef.current) {
         originalValuesRef.current = {

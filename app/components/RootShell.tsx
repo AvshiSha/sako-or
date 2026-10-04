@@ -2,6 +2,7 @@ import '../globals.css'
 import { Assistant } from 'next/font/google'
 import localFont from 'next/font/local'
 import ClientAuthProvider from './ClientAuthProvider'
+import SWRProvider from './SWRProvider'
 import ChatbaseWidget from './ChatbaseWidget'
 import CookieConsent from './CookieConsent'
 import DeferredAnalytics from './DeferredAnalytics'
@@ -142,11 +143,13 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
             style={{display:'none',visibility:'hidden'}}
           />
         </noscript>
-        <ClientAuthProvider>
-          <DeferredAnalytics />
-          <CookieConsent />
-          {children}
-        </ClientAuthProvider>
+        <SWRProvider>
+          <ClientAuthProvider>
+            <DeferredAnalytics />
+            <CookieConsent />
+            {children}
+          </ClientAuthProvider>
+        </SWRProvider>
 
         <script
           dangerouslySetInnerHTML={{

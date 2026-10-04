@@ -12,6 +12,7 @@ import {
 import { auth } from '@/lib/firebase'
 import { isAdminEmail } from '@/lib/admin'
 import { AuthContext, type AuthContextType } from '@/app/contexts/auth-context-shared'
+import { clearUserProfileCache, primeUserProfileCache } from '@/lib/user-profile-cache'
 
 export type { AuthContextType } from '@/app/contexts/auth-context-shared'
 export { AuthContext } from '@/app/contexts/auth-context-shared'
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [serverIsAdmin, setServerIsAdmin] = useState<boolean | null>(null)
+  const [profileSyncedUid, setProfileSyncedUid] = useState<string | null>(null)
 
   const isAdmin = user
     ? isAdminEmail(user.email) || serverIsAdmin === true
@@ -126,6 +128,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await res.json().catch(() => ({}))
+
+      // Seed the profile cache from this response instead of letting
+      // useUserProfile fire its own GET /api/me/profile. /api/me/sync already
+      // returns the whole row (or `user: null` when none exists yet) and the
+      // shapes match, so this is the same data one request earlier. Keyed by
+      // uid, so it can never be read by a different account.
+      //
+      // Only seed a body we actually recognise: `json()` above falls back to {}
+      // on a parse failure, and caching that would pin the user to "no profile"
+      // for the session. An unrecognised body leaves the cache empty, so the
+      // hook falls back to fetching the profile itself.
+      if (data && (data.ok === true || typeof data.needsProfileCompletion === 'boolean')) {
+        primeUserProfileCache(firebaseUser.uid, data)
+      }
+
       console.log('[AUTH_CONTEXT] User synced to Neon successfully:', {
         uid: firebaseUser.uid,
         neonId: data.id
@@ -145,6 +162,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           { uid: firebaseUser.uid }
         )
       }
+    } finally {
+      // Settle on every path, including the early returns above. This unblocks
+      // useUserProfile: if we seeded the cache it will read it without a
+      // request, and if we did not (no token, non-OK response, network error)
+      // it falls back to fetching the profile itself.
+      setProfileSyncedUid(firebaseUser.uid)
     }
   }
 
@@ -167,6 +190,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   useEffect(() => {
+    // Sign-out, or a switch to a different account: drop the previous user's
+    // cached profile so it cannot be read by whoever signs in next, and reset
+    // the gate so useUserProfile stays keyless until the new uid has synced.
+    // Keys are uid-scoped, so this is belt-and-braces rather than the only
+    // protection - but it also keeps a stale snapshot from being served to a
+    // re-login by the same account.
+    setProfileSyncedUid(null)
+    clearUserProfileCache()
+
     if (!user) return
     void resolveAdminAccess(user)
     void syncUserToNeon(user)
@@ -207,7 +239,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     logout,
     isAdmin,
-    adminCheckPending
+    adminCheckPending,
+    profileSyncedUid
   }
 
   return (

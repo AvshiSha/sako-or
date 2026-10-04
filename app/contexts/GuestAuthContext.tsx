@@ -31,6 +31,9 @@ export function GuestAuthProvider({
     },
     isAdmin: false,
     adminCheckPending: false,
+    // No Firebase user in the guest stub, so there is nothing to sync and
+    // useUserProfile stays keyless.
+    profileSyncedUid: null,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

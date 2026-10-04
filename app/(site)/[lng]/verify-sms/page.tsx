@@ -14,6 +14,7 @@ import {
   type OtpTurnstileSessionResponse,
 } from '@/lib/otp-turnstile-session'
 import TurnstileScript from '@/app/components/TurnstileScript'
+import { primeUserProfileCache } from '@/lib/user-profile-cache'
 
 const translations = {
   en: {
@@ -556,6 +557,15 @@ export default function VerifySmsPage() {
       console.log('✅ [VERIFY] Signup completed successfully')
       sessionStorage.removeItem('pendingSignup')
 
+      // The Neon row exists as of this response, so refresh the cached profile
+      // snapshot. This matters because complete-signup re-authenticates with a
+      // custom token for the SAME firebaseUid: AuthProvider's sync effect is
+      // keyed on `user?.uid`, so it does not re-run, and without this the cache
+      // would keep the pre-signup "no row yet" snapshot for the rest of the
+      // session. The /api/me/sync call just below overwrites it with the full
+      // row; this is the immediate, always-present value.
+      if (json.user) primeUserProfileCache(verifiedUser.uid, { user: json.user })
+
       // Store the custom token from complete-signup for potential re-authentication
       const completeSignupCustomToken = json.customToken || null
 
@@ -571,14 +581,17 @@ export default function VerifySmsPage() {
           headers: { Authorization: `Bearer ${syncToken}` }
         })
         const syncJson = (await syncRes.json().catch(() => null)) as
-          | { ok: true; needsProfileCompletion: boolean }
+          | { ok: true; needsProfileCompletion: boolean; user?: any }
           | { error: string }
           | null
 
         if (!syncRes.ok || !syncJson || 'error' in syncJson) {
           console.warn('[VERIFY] Sync failed, but continuing anyway:', syncJson)
           // Continue anyway - profile should be complete after complete-signup
-        } else if (syncJson.needsProfileCompletion === true) {
+        } else if (syncJson.needsProfileCompletion !== true) {
+          // Authoritative full row - overwrites the snapshot primed above.
+          primeUserProfileCache(verifiedUser.uid, syncJson)
+        } else {
           // This shouldn't happen after complete-signup, but log it
           console.warn('[VERIFY] Profile still marked incomplete after signup (unexpected)')
           // Still redirect to profile - complete-signup succeeded, so user should be fine

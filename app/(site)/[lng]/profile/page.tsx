@@ -11,6 +11,7 @@ import OrderHistory from '@/app/components/profile/OrderHistory'
 import Toast, { useToast } from '@/app/components/Toast'
 import { PencilIcon, SparklesIcon, CalendarIcon, ShoppingBagIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { formatIsraelE164ToLocalDigits } from '@/lib/phone'
+import { primeUserProfileCache } from '@/lib/user-profile-cache'
 
 const translations = {
   en: {
@@ -295,6 +296,9 @@ export default function ProfileOverviewPage() {
     }
 
     setLoadedUser(json.user)
+    // Keep the shared profile cache (nav greeting, Meta Pixel matching) in step
+    // with the edit that just saved, without issuing another request.
+    primeUserProfileCache(firebaseUser.uid, json)
     showToast(t.profileUpdated, 'success')
   }
 

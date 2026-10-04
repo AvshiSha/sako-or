@@ -1,7 +1,5 @@
 'use client'
 
-import Image from 'next/image'
-import Link from 'next/link'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { sanitizeRedirect } from '@/lib/safe-redirect'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
@@ -15,7 +13,19 @@ import {
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/app/contexts/AuthContext'
-import { profileTheme } from '@/app/components/profile/profileTheme'
+import AuthShell, {
+  AuthAside,
+  AuthAsideItem,
+  AuthError,
+  AuthLink,
+  AuthNotice,
+  AuthSkeleton,
+  AuthSubmit,
+  AUTH_CELL,
+  AUTH_LABEL,
+} from '@/app/components/auth/AuthShell'
+import { Field } from '@/app/components/ui/field'
+import { cn } from '@/lib/utils'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/app/components/ui/tabs'
 import { OtpInput } from '@/app/components/ui/otp-input'
 import { IsraelPhoneInput } from '@/app/components/ui/israel-phone-input'
@@ -26,12 +36,27 @@ import {
 } from '@/lib/otp-turnstile-session'
 import TurnstileScript from '@/app/components/TurnstileScript'
 
+/**
+ * Sign in, rebuilt on the SAKO OR — Update design system.
+ *
+ * There is no Sign in frame in the Figma file, so the page is composed from
+ * constructions approved on screens that do have one — see
+ * app/components/auth/AuthShell.tsx for the shell and the node ids behind it.
+ * The controls are the design system's own: checkout's Form Input Field
+ * (438:2751) and the CTA bar (438:7683 / 438:7685).
+ *
+ * Only the presentation changed. The Turnstile lifecycle, the OTP send/verify
+ * contracts, the cooldowns, the Google popup-then-redirect fallback and the
+ * post-login routing are all untouched.
+ */
 type SyncResponse = { ok: true; needsProfileCompletion: boolean } | { error: string }
 
 const translations = {
   en: {
     title: 'Sign in',
     subtitle: 'Sign in to your account',
+    eyebrow: 'ACCOUNT / SIGN IN',
+    chooseChannel: 'How would you like to receive your code?',
     // Tabs
     tabPhone: 'Phone',
     tabEmail: 'Email',
@@ -77,6 +102,8 @@ const translations = {
   he: {
     title: 'התחברות',
     subtitle: 'התחברו לחשבון שלכם',
+    eyebrow: 'חשבון / התחברות',
+    chooseChannel: 'לאן לשלוח את הקוד?',
     // Tabs
     tabPhone: 'טלפון',
     tabEmail: 'אימייל',
@@ -136,27 +163,7 @@ export default function SignInPage() {
 }
 
 function SignInLoading() {
-  return (
-    <div className={profileTheme.pageBg}>
-      <div className="mx-auto w-full max-w-md px-4 pt-28 pb-12">
-        <div className="flex justify-center">
-          <div className="rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur p-8 w-full">
-            <div className="flex flex-col items-center">
-              <Image
-                src="/images/logo/sako-logo.png"
-                alt="Sako-Or"
-                width={180}
-                height={60}
-                priority
-              />
-              <div className="mt-6 h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-[#856D55]" />
-              <div className="mt-4 text-sm font-medium text-slate-900">Loading…</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  return <AuthSkeleton />
 }
 
 function SignInClient() {
@@ -883,279 +890,309 @@ function SignInClient() {
   }
 
   if (authLoading || gate === 'checking' || gate === 'redirecting') {
+    return <AuthSkeleton title={t.title} />
+  }
+
+  // The code step repeats for both channels, so it is written once. Everything
+  // it needs is passed in — no channel branching inside.
+  //
+  // A function returning JSX, called as renderCodeStep({...}), NOT a nested
+  // <CodeStep /> component: a component declared inside the render body is a new
+  // type on every keystroke, so React would unmount and remount the whole
+  // subtree and the OTP box would lose focus after every digit.
+  function renderCodeStep({
+    channel,
+    sentNotice,
+    code,
+    setCode,
+    fieldError,
+    cooldown,
+    resendTurnstileRequired,
+    turnstileToken,
+    onVerify,
+    onResend,
+  }: {
+    channel: 'phone' | 'email'
+    sentNotice: string
+    code: string
+    setCode: (v: string) => void
+    fieldError: string | null
+    cooldown: number
+    resendTurnstileRequired: boolean
+    turnstileToken: string
+    onVerify: () => void
+    onResend: () => void
+  }) {
+    const errorId = `signin-${channel}-code-error`
     return (
-      <div className={profileTheme.pageBg} dir={isRTL ? 'rtl' : 'ltr'}>
-        <div className="mx-auto w-full max-w-md px-4 pt-28 pb-12">
-          <div className="flex justify-center">
-            <div className="rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur p-8 w-full">
-              <div className="flex flex-col items-center">
-                <Image
-                  src="/images/logo/sako-logo.png"
-                  alt="Sako-Or"
-                  width={180}
-                  height={60}
-                  priority
-                />
-                <div className="mt-6 h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-[#856D55]" />
-                <div className="mt-4 text-sm font-medium text-slate-900">{t.working}</div>
-              </div>
-            </div>
+      <>
+        <AuthNotice>{sentNotice}</AuthNotice>
+
+        <div className="mt-[30px]">
+          <p className="font-ploni text-[9px] leading-none text-text-secondary">{t.enterCode}</p>
+          <div className="mt-[10px]">
+            <OtpInput
+              variant="sako"
+              value={code}
+              onChange={setCode}
+              length={6}
+              disabled={busy}
+              error={Boolean(fieldError)}
+              aria-describedby={fieldError ? errorId : undefined}
+            />
           </div>
+          {fieldError && (
+            <p id={errorId} role="alert" className="pt-[6px] font-ploni text-[12px] text-accent-error">
+              {fieldError}
+            </p>
+          )}
         </div>
-      </div>
+
+        <AuthSubmit
+          className="mt-[30px]"
+          label={t.verifyCode}
+          loadingLabel={t.verifying}
+          loading={busy}
+          disabled={code.length !== 6}
+          onClick={onVerify}
+        />
+
+        {resendTurnstileRequired && isMounted && !isLocalhost && (
+          <div className="mt-[20px]">
+            <div id={`cf-turnstile-${channel}`}></div>
+          </div>
+        )}
+
+        <div className="mt-[24px] flex">
+          <AuthLink
+            onClick={onResend}
+            disabled={
+              busy ||
+              cooldown > 0 ||
+              (resendTurnstileRequired && !isLocalhost && !turnstileToken)
+            }
+          >
+            {cooldown > 0
+              ? t.cooldownMessage.replace('{seconds}', String(cooldown))
+              : t.resendCode}
+          </AuthLink>
+        </div>
+      </>
     )
   }
 
   return (
-    <div className={profileTheme.pageBg} dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="mx-auto w-full max-w-md px-2 pt-34 pb-8">
-        <div className="flex justify-center">
-          <Image
-            src="/images/logo/sako-logo.png"
-            alt="Sako-Or"
-            width={180}
-            height={180}
-            priority
-          />
-        </div>
-
-        <h1 className="mt-8 text-center text-2xl font-bold text-slate-900">{t.title}</h1>
-        <p className="mt-1 text-center text-sm text-slate-500">{t.subtitle}</p>
-
-        <div className="mt-4 rounded-xl bg-white/90 shadow-[0_10px_30px_rgba(15,23,42,0.08)] ring-1 ring-black/5 backdrop-blur p-6">
-          {error ? (
-            <div className={`mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-              {error}
-            </div>
-          ) : null}
-
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'phone' | 'email')} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="phone" className="text-slate-700 data-[state=active]:text-slate-900">{t.tabPhone}</TabsTrigger>
-              <TabsTrigger value="email" className="text-slate-700 data-[state=active]:text-slate-900">{t.tabEmail}</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="phone" className="space-y-4">
-              {!phoneOtpSent ? (
-                <>
-                  <div>
-                    <label className={profileTheme.label} dir={isRTL ? 'rtl' : 'ltr'}>{t.phoneLabel}</label>
-                    <div className="mt-1">
-                      <IsraelPhoneInput
-                        value={phoneLocalNumber}
-                        onChange={setPhoneLocalNumber}
-                        placeholder={t.phonePlaceholder}
-                        disabled={busy}
-                        dir={isRTL ? 'rtl' : 'ltr'}
-                      />
-                    </div>
-                    {phoneError && (
-                      <p className={`mt-1.5 text-sm text-red-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-                        {phoneError}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleSendPhoneCode}
-                    disabled={busy || !phoneLocalNumber || (phoneLocalNumber.replace(/\D/g, '').length < 8) || phoneResendCooldown > 0 || (!isLocalhost && !phoneTurnstileToken)}
-                    className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {busy ? t.sending : phoneResendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(phoneResendCooldown)) : t.sendCodeToPhone}
-                  </button>
-                  {isMounted && !isLocalhost && (
-                    <div className="flex justify-center">
-                      <div id="cf-turnstile-phone"></div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className={`rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-                    {t.codeSentToPhone.replace('{phone}', phoneLocalNumber ? (phoneLocalNumber.startsWith('0') ? phoneLocalNumber : `0${phoneLocalNumber}`) : '')}
-                  </div>
-                  {phoneError && (
-                    <p className={`text-sm text-red-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-                      {phoneError}
-                    </p>
-                  )}
-                  <div>
-                    <label className={profileTheme.label} dir={isRTL ? 'rtl' : 'ltr'}>{t.enterCode}</label>
-                    <div className="mt-2">
-                      <OtpInput
-                        value={phoneCode}
-                        onChange={setPhoneCode}
-                        length={6}
-                        disabled={busy}
-                        dir={isRTL ? 'rtl' : 'ltr'}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleVerifyPhoneCode}
-                    disabled={busy || phoneCode.length !== 6}
-                    className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {busy ? t.verifying : t.verifyCode}
-                  </button>
-                  {phoneResendTurnstileRequired && isMounted && !isLocalhost && (
-                    <div className="flex justify-center">
-                      <div id="cf-turnstile-phone"></div>
-                    </div>
-                  )}
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={handleSendPhoneCode}
-                      disabled={busy || phoneResendCooldown > 0 || (phoneResendTurnstileRequired && !isLocalhost && !phoneTurnstileToken)}
-                      className="text-sm text-[#856D55] hover:underline disabled:opacity-50"
-                    >
-                      {phoneResendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(phoneResendCooldown)) : t.resendCode}
-                    </button>
-                  </div>
-                </>
-              )}
-            </TabsContent>
-
-            <TabsContent value="email" className="space-y-4">
-              {!emailOtpSent ? (
-                <>
-                  <div>
-                    <label className={profileTheme.label} dir={isRTL ? 'rtl' : 'ltr'}>{t.email}</label>
-                    <input
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t.emailPlaceholder}
-                      className={profileTheme.input}
-                      disabled={busy}
-                    />
-                    {emailError && (
-                      <p className={`mt-1.5 text-sm text-red-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-                        {emailError}
-                      </p>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleSendEmailCode}
-                    disabled={busy || !email.trim() || emailResendCooldown > 0 || (!isLocalhost && !emailTurnstileToken)}
-                    className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {busy ? t.sending : emailResendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(emailResendCooldown)) : t.sendCodeToEmail}
-                  </button>
-                  {isMounted && !isLocalhost && (
-                    <div className="flex justify-center">
-                      <div id="cf-turnstile-email"></div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div className={`rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-                    {t.codeSentToEmail.replace('{email}', email)}
-                  </div>
-                  {emailError && (
-                    <p className={`text-sm text-red-600 ${isRTL ? 'text-right' : 'text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-                      {emailError}
-                    </p>
-                  )}
-                  <div>
-                    <label className={profileTheme.label} dir={isRTL ? 'rtl' : 'ltr'}>{t.enterCode}</label>
-                    <div className="mt-2">
-                      <OtpInput
-                        value={emailCode}
-                        onChange={setEmailCode}
-                        length={6}
-                        disabled={busy}
-                        dir={isRTL ? 'rtl' : 'ltr'}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleVerifyEmailCode}
-                    disabled={busy || emailCode.length !== 6}
-                    className="w-full inline-flex items-center justify-center rounded-md bg-[#856D55]/90 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#856D55] focus:outline-none focus:ring-2 focus:ring-[#856D55] disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {busy ? t.verifying : t.verifyCode}
-                  </button>
-                  {emailResendTurnstileRequired && isMounted && !isLocalhost && (
-                    <div className="flex justify-center">
-                      <div id="cf-turnstile-email"></div>
-                    </div>
-                  )}
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={handleSendEmailCode}
-                      disabled={busy || emailResendCooldown > 0 || (emailResendTurnstileRequired && !isLocalhost && !emailTurnstileToken)}
-                      className="text-sm text-[#856D55] hover:underline disabled:opacity-50"
-                    >
-                      {emailResendCooldown > 0 ? t.cooldownMessage.replace('{seconds}', String(emailResendCooldown)) : t.resendCode}
-                    </button>
-                  </div>
-                </>
-              )}
-            </TabsContent>
-
-          </Tabs>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-slate-500">{t.orDivider}</span>
-            </div>
+    <AuthShell
+      title={t.title}
+      eyebrow={t.eyebrow}
+      aside={
+        <AuthAside heading={t.clubMemberTitle}>
+          <p className="font-ploni text-[14px] leading-[22px] text-start text-text-primary">
+            {t.clubMemberIntro}
+          </p>
+          <AuthAsideItem>
+            <span className="whitespace-pre-line text-text-secondary">{t.clubMemberBody}</span>
+          </AuthAsideItem>
+          <div className="flex">
+            <AuthLink href={`/${lng}/signup`}>{t.clubMemberCta}</AuthLink>
           </div>
+        </AuthAside>
+      }
+    >
+      <AuthError>{error}</AuthError>
 
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={busy}
-            className="w-full flex items-center justify-center gap-3 rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-            {busy ? t.working : t.continueWithGoogle}
-          </button>
+      <p className={cn(AUTH_LABEL, 'text-text-secondary')}>{t.chooseChannel}</p>
 
-          <div className="mt-6 rounded-xl border border-amber-200/60 bg-amber-50/80 p-4 text-sm text-slate-700">
-            <h3 className="mb-2 font-semibold text-slate-800">{t.clubMemberTitle}</h3>
-            <p className="mb-2">{t.clubMemberIntro}</p>
-            <p className="whitespace-pre-line text-slate-600">{t.clubMemberBody}</p>
-            <p className="mt-4">
-              <Link
-                href={`/${lng}/signup`}
-                className="inline-flex items-center font-semibold text-[#856D55] hover:underline"
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as 'phone' | 'email')}
+        className="mt-[14px] w-full"
+      >
+        <TabsList variant="sako">
+          <TabsTrigger variant="sako" value="phone">
+            {t.tabPhone}
+          </TabsTrigger>
+          <TabsTrigger variant="sako" value="email">
+            {t.tabEmail}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="phone" className="mt-[30px]">
+          {!phoneOtpSent ? (
+            <>
+              <Field
+                fieldClassName={AUTH_CELL}
+                id="signin-phone"
+                label={t.phoneLabel}
+                error={phoneError}
               >
-                {t.clubMemberCta}
-              </Link>
-            </p>
-          </div>
-        </div>
+                <IsraelPhoneInput
+                  variant="sako"
+                  id="signin-phone"
+                  value={phoneLocalNumber}
+                  onChange={setPhoneLocalNumber}
+                  placeholder={t.phonePlaceholder}
+                  disabled={busy}
+                  aria-invalid={phoneError ? true : undefined}
+                  aria-describedby={phoneError ? 'signin-phone-error' : undefined}
+                />
+              </Field>
+
+              <AuthSubmit
+                className="mt-[15px]"
+                label={
+                  phoneResendCooldown > 0
+                    ? t.cooldownMessage.replace('{seconds}', String(phoneResendCooldown))
+                    : t.sendCodeToPhone
+                }
+                loadingLabel={t.sending}
+                loading={busy}
+                disabled={
+                  !phoneLocalNumber ||
+                  phoneLocalNumber.replace(/\D/g, '').length < 8 ||
+                  phoneResendCooldown > 0 ||
+                  (!isLocalhost && !phoneTurnstileToken)
+                }
+                onClick={handleSendPhoneCode}
+              />
+
+              {isMounted && !isLocalhost && (
+                <div className="mt-[20px]">
+                  <div id="cf-turnstile-phone"></div>
+                </div>
+              )}
+            </>
+          ) : (
+            renderCodeStep({
+              channel: 'phone',
+              sentNotice: t.codeSentToPhone.replace(
+                '{phone}',
+                phoneLocalNumber
+                  ? phoneLocalNumber.startsWith('0')
+                    ? phoneLocalNumber
+                    : `0${phoneLocalNumber}`
+                  : ''
+              ),
+              code: phoneCode,
+              setCode: setPhoneCode,
+              fieldError: phoneError,
+              cooldown: phoneResendCooldown,
+              resendTurnstileRequired: phoneResendTurnstileRequired,
+              turnstileToken: phoneTurnstileToken,
+              onVerify: handleVerifyPhoneCode,
+              onResend: handleSendPhoneCode,
+            })
+          )}
+        </TabsContent>
+
+        <TabsContent value="email" className="mt-[30px]">
+          {!emailOtpSent ? (
+            <>
+              <Field
+                fieldClassName={AUTH_CELL}
+                id="signin-email"
+                label={t.email}
+                type="email"
+                autoComplete="email"
+                // An address is not Hebrew text and reads backwards if it
+                // inherits the page direction.
+                dir="ltr"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder={t.emailPlaceholder}
+                disabled={busy}
+                error={emailError}
+              />
+
+              <AuthSubmit
+                className="mt-[15px]"
+                label={
+                  emailResendCooldown > 0
+                    ? t.cooldownMessage.replace('{seconds}', String(emailResendCooldown))
+                    : t.sendCodeToEmail
+                }
+                loadingLabel={t.sending}
+                loading={busy}
+                disabled={
+                  !email.trim() ||
+                  emailResendCooldown > 0 ||
+                  (!isLocalhost && !emailTurnstileToken)
+                }
+                onClick={handleSendEmailCode}
+              />
+
+              {isMounted && !isLocalhost && (
+                <div className="mt-[20px]">
+                  <div id="cf-turnstile-email"></div>
+                </div>
+              )}
+            </>
+          ) : (
+            renderCodeStep({
+              channel: 'email',
+              sentNotice: t.codeSentToEmail.replace('{email}', email),
+              code: emailCode,
+              setCode: setEmailCode,
+              fieldError: emailError,
+              cooldown: emailResendCooldown,
+              resendTurnstileRequired: emailResendTurnstileRequired,
+              turnstileToken: emailTurnstileToken,
+              onVerify: handleVerifyEmailCode,
+              onResend: handleSendEmailCode,
+            })
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* The divider, as a rule with the label sitting in it — no tinted pill. */}
+      <div className="my-[30px] flex items-center gap-[14px]">
+        <span className="h-px flex-1 bg-border-subtle" />
+        <span className={cn(AUTH_LABEL, 'text-text-secondary')}>{t.orDivider}</span>
+        <span className="h-px flex-1 bg-border-subtle" />
       </div>
-    </div>
+
+      {/* The outlined CTA (438:7685). The Google mark stays in full colour: it
+          is a brand mark that carries meaning, not one of the decorative
+          pictograms this system drops. */}
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={busy}
+        aria-busy={busy || undefined}
+        className={cn(
+          'flex h-[54px] w-full items-center justify-center gap-[12px] border border-border-default bg-transparent px-[19px] font-ploni text-[16px] font-bold leading-none text-btn-secondary-text transition-colors',
+          'hover:bg-sako-ink-900 hover:text-btn-primary-text',
+          'disabled:cursor-not-allowed disabled:border-sako-gray-500 disabled:bg-transparent disabled:text-sako-gray-500 disabled:hover:bg-transparent disabled:hover:text-sako-gray-500',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sako-ink-900'
+        )}
+      >
+        <svg className="size-[20px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="#4285F4"
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+          />
+          <path
+            fill="#34A853"
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+          />
+          <path
+            fill="#FBBC05"
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+          />
+          <path
+            fill="#EA4335"
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+          />
+        </svg>
+        {busy ? t.working : t.continueWithGoogle}
+      </button>
+
+      {/* The sign-up route, kept on the form side as well as in the panel: on a
+          phone the panel is below the fold and this is the only one visible. */}
+      <div className="mt-[30px] flex flex-wrap items-center gap-[12px] border-t border-border-subtle pt-[20px]">
+        <span className="font-ploni text-[14px] text-text-secondary">{t.notRegisteredYet}</span>
+        <AuthLink href={`/${lng}/signup`}>{t.signUp}</AuthLink>
+      </div>
+    </AuthShell>
   )
 }

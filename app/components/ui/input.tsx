@@ -16,8 +16,10 @@ const inputVariants = cva(
         // rule under the field IS the control, so the input itself is transparent
         // and borderless and the hairline belongs to the Field wrapper below.
         // Pair with <Field>, which carries the 9px caption and the 54px height.
+        // disabled:opacity-100 cancels the base 50% fade — unavailable is a flat
+        // grey here, as it is on the CTA, not a ghost of the enabled control.
         sako:
-          "flex-1 border-0 bg-transparent p-0 font-ploni text-[14px] leading-none text-text-primary placeholder:text-text-secondary",
+          "flex-1 border-0 bg-transparent p-0 font-ploni text-[14px] leading-none text-text-primary placeholder:text-text-secondary disabled:opacity-100 disabled:text-sako-gray-500 disabled:placeholder:text-sako-gray-500",
       },
     },
     defaultVariants: {

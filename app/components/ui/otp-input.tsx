@@ -3,6 +3,17 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 
+/**
+ * The 6-digit code entry.
+ *
+ * `sako` draws each digit as its own "Form Input Field" cell (438:2751) — a
+ * hairline with the value sitting on it, no box — so a row of six reads as six
+ * of the same control the rest of the form is built from. The design system has
+ * no OTP component of its own; this is the field construction repeated, which is
+ * the nearest thing it does have. Focus thickens the rule to 2px ink exactly as
+ * <Field> does, and `error` turns the whole row accent-error so a wrong code
+ * marks the control rather than only printing a message under it.
+ */
 interface OtpInputProps {
   value: string
   onChange: (value: string) => void
@@ -10,6 +21,10 @@ interface OtpInputProps {
   disabled?: boolean
   className?: string
   dir?: 'ltr' | 'rtl'
+  variant?: 'default' | 'sako'
+  /** Marks every cell invalid. The message itself belongs to the caller. */
+  error?: boolean
+  'aria-describedby'?: string
 }
 
 export function OtpInput({
@@ -19,6 +34,9 @@ export function OtpInput({
   disabled = false,
   className,
   dir = 'ltr',
+  variant = 'default',
+  error = false,
+  ...aria
 }: OtpInputProps) {
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>([])
   const [focusedIndex, setFocusedIndex] = React.useState<number | null>(null)
@@ -97,9 +115,13 @@ export function OtpInput({
     }
   }
 
+  const isSako = variant === 'sako'
+
   return (
     <div
-      className={cn('flex gap-2 justify-center', className)}
+      className={cn(isSako ? 'flex gap-[10px]' : 'flex gap-2 justify-center', className)}
+      // Always LTR: a code is digits, and typed right-to-left it would be
+      // entered backwards on the Hebrew storefront.
       dir="ltr"
       onPaste={handlePaste}
     >
@@ -111,6 +133,9 @@ export function OtpInput({
           }}
           type="text"
           inputMode="numeric"
+          // One-time-code so iOS and Android offer the SMS straight from the
+          // keyboard instead of making the customer leave the page to read it.
+          autoComplete={index === 0 ? 'one-time-code' : 'off'}
           pattern="[0-9]*"
           maxLength={1}
           value={value[index] || ''}
@@ -119,14 +144,27 @@ export function OtpInput({
           onFocus={() => setFocusedIndex(index)}
           onBlur={() => setFocusedIndex(null)}
           disabled={disabled}
+          aria-invalid={error || undefined}
           className={cn(
-            'flex h-12 w-12 rounded-md border border-[#856D55]/70 bg-[#E1DBD7]/70 text-center text-lg font-semibold text-slate-900 ring-offset-background transition-colors',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#856D55] focus-visible:ring-offset-2',
-            'disabled:cursor-not-allowed disabled:opacity-50',
-            'md:h-14 md:w-14 md:text-xl',
-            focusedIndex === index && 'ring-2 ring-[#856D55] ring-offset-2'
+            isSako
+              ? cn(
+                  // min-w-0 so six cells still fit a 320px phone rather than
+                  // forcing the page wider than the viewport.
+                  'h-[54px] min-w-0 flex-1 border-0 border-b bg-transparent pb-px text-center font-ploni text-[20px] font-black leading-none text-text-primary outline-none transition-[border-color]',
+                  'focus-visible:border-b-2 focus-visible:border-sako-ink-900 focus-visible:pb-0',
+                  'disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-sako-gray-500',
+                  error ? 'border-accent-error' : 'border-border-default'
+                )
+              : cn(
+                  'flex h-12 w-12 rounded-md border border-[#856D55]/70 bg-[#E1DBD7]/70 text-center text-lg font-semibold text-slate-900 ring-offset-background transition-colors',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#856D55] focus-visible:ring-offset-2',
+                  'disabled:cursor-not-allowed disabled:opacity-50',
+                  'md:h-14 md:w-14 md:text-xl',
+                  focusedIndex === index && 'ring-2 ring-[#856D55] ring-offset-2'
+                )
           )}
           aria-label={`Digit ${index + 1} of ${length}`}
+          {...(index === 0 ? aria : null)}
         />
       ))}
     </div>

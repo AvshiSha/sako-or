@@ -24,6 +24,12 @@ const buttonVariants = cva(
         // fade: the design expresses unavailable as a flat grey fill, not a ghost.
         sako:
           "rounded-none border border-btn-primary-bg bg-btn-primary-bg text-btn-primary-text hover:bg-sako-ink-800 disabled:border-sako-gray-500 disabled:bg-sako-gray-500 disabled:opacity-100",
+        // CTA Button State=Outlined, 438:7685. The same 54px bar drawn as a
+        // 1px ink edge on the page ground with an ink label — the design
+        // system's only secondary action. Disabled greys the edge and the label
+        // rather than fading the whole control.
+        sakoOutlined:
+          "rounded-none border border-border-default bg-transparent text-btn-secondary-text hover:bg-sako-ink-900 hover:text-btn-primary-text disabled:border-sako-gray-500 disabled:bg-transparent disabled:text-sako-gray-500 disabled:opacity-100",
       },
       size: {
         default: "h-10 px-4 py-2",
@@ -34,6 +40,11 @@ const buttonVariants = cva(
         // frame's 14px vertical padding. That comes to a 44px content box, which is
         // also the touch-target minimum, so no mobile-specific override is needed.
         sako: "h-auto w-full px-6 py-[14px] font-ploni text-[16px] font-bold leading-none",
+        // The CTA bar at the height the design system actually draws it: 54px,
+        // 438:7683 / 438:7685. `sako` above predates this and comes out at 44px
+        // from its padding, which is why checkout and contact each hand-rolled
+        // their own 58/56px bar. New work should use this one.
+        sakoBar: "h-[54px] w-full px-[19px] font-ploni text-[16px] font-bold leading-none",
       },
     },
     defaultVariants: {

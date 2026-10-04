@@ -12,25 +12,37 @@ import {
 } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useAuth } from '@/app/contexts/AuthContext'
-import ProfileShell from '@/app/components/profile/ProfileShell'
-import { profileTheme } from '@/app/components/profile/profileTheme'
-import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone'
-import { getLanguageDirection } from '@/i18n/settings'
-import { Input } from '@/app/components/ui/input'
-import { Button } from '@/app/components/ui/button'
-import { Label } from '@/app/components/ui/label'
+import AuthShell, {
+  AuthAside,
+  AuthAsideItem,
+  AuthError,
+  AuthLink,
+  AuthSkeleton,
+  AuthSubmit,
+  AUTH_CELL,
+  AUTH_LABEL,
+  AUTH_ROW,
+} from '@/app/components/auth/AuthShell'
+import { normalizeIsraelE164 } from '@/lib/phone'
+import { Field, FIELD_SELECT } from '@/app/components/ui/field'
 import { IsraelPhoneInput } from '@/app/components/ui/israel-phone-input'
 import { Checkbox } from '@/app/components/ui/checkbox'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select'
 import { cn } from '@/lib/utils'
-import { Gem, Gift, Lock, Sparkles, Star } from 'lucide-react'
 
+/**
+ * Sign up, rebuilt on the SAKO OR — Update design system.
+ *
+ * As with sign in there is no Figma frame for this screen, so it is composed
+ * from approved constructions — see app/components/auth/AuthShell.tsx. The club
+ * pitch that used to be a grid of tinted icon chips above the form is now the
+ * standing panel beside it, which is both where the design system puts a
+ * secondary column (checkout's summary, 438:2781) and the right place for copy
+ * that is read once and then ignored while the form is filled in.
+ *
+ * Only the presentation changed. The Google popup-then-redirect fallback, the
+ * /api/me/sync gate, the duplicate precheck, the validation rules and the
+ * sessionStorage hand-off to verify-sms are untouched.
+ */
 type SyncResponse =
   | { ok: true; needsProfileCompletion: boolean }
   | { error: string }
@@ -40,6 +52,12 @@ const translations = {
   en: {
     title: 'Sign Up',
     subtitle: 'Create your account to get started',
+    eyebrow: 'ACCOUNT / SIGN UP',
+    sectionAccount: '01 — Your details',
+    sectionAddress: '02 — Address',
+    sectionPreferences: '03 — Preferences',
+    optional: 'Optional',
+    selectArrow: 'Choose',
     clubTitle: 'The SAKO OR club is waiting for you ✨',
     clubSubtitle: 'Discounts. Surprises. Early access. Points on every purchase.',
     clubPoints: 'Points on every purchase',
@@ -105,6 +123,12 @@ const translations = {
   he: {
     title: 'קצת פרטים כדי שנכיר אותך :)',
     subtitle: 'צרו את החשבון שלכם כדי להתחיל',
+    eyebrow: 'חשבון / הרשמה',
+    sectionAccount: '01 — הפרטים שלך',
+    sectionAddress: '02 — כתובת',
+    sectionPreferences: '03 — העדפות',
+    optional: 'לא חובה',
+    selectArrow: 'בחרו',
     clubTitle: 'המועדון של SAKO OR מחכה לך ✨',
     clubSubtitle: 'הנחות. הפתעות. גישה מוקדמת. נקודות בכל רכישה.',
     clubPoints: 'נקודות על כל קנייה',
@@ -191,8 +215,10 @@ function SignUpClient() {
   const returnTo = sanitizeRedirect(searchParams?.get('redirect'))
   const lng = (params?.lng as string) || 'en'
   const t = translations[lng as keyof typeof translations] || translations.en
+  // isRTL only decides date-part ORDER now. Everything else is laid out with
+  // logical properties and inherits direction from the <html> the [lng] layout
+  // writes it on, so no `dir` is set per node any more.
   const isRTL = lng === 'he'
-  const direction = isRTL ? 'rtl' : 'ltr'
 
   const { user: firebaseUser, loading: authLoading, logout } = useAuth()
 
@@ -565,7 +591,7 @@ function SignUpClient() {
     setError(null)
     setServerFieldErrors({})
     try {
-      let user: User | null = firebaseUser
+      const user: User | null = firebaseUser
 
       const normalizedEmail = email.trim().toLowerCase()
       // Normalize phone (handles both 0-prefixed and non-prefixed)
@@ -704,602 +730,432 @@ function SignUpClient() {
 
   // While Firebase session is resolving, avoid UI flicker.
   if (authLoading) {
+    return <AuthSkeleton title={t.title} />
+  }
+
+  // Already signed in and being routed onwards — the same skeleton, so the page
+  // does not change shape between the two waits.
+  if (shouldGateExistingUser) {
+    return <AuthSkeleton title={t.title} />
+  }
+
+  /** A ruled section header inside the form column — blog list 438:3332. */
+  function sectionHeader(label: string, hint?: string) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-          <p className="mt-4 text-gray-600">{lng === 'he' ? 'טוען...' : 'Loading...'}</p>
-        </div>
+      <div className="mb-[20px] flex items-end justify-between gap-[16px] border-t border-sako-black pt-[20px]">
+        <h2 className="font-ploni text-[20px] font-black text-start text-text-primary">{label}</h2>
+        {hint ? (
+          <p className={cn(AUTH_LABEL, 'shrink-0 text-text-secondary')}>{hint}</p>
+        ) : null}
       </div>
     )
   }
 
-  return (
-      <ProfileShell
-        title={t.clubTitle}
-        subtitle={t.clubSubtitle}
+  /**
+   * A native <select> wearing the Form Input Field. The caret is the system's
+   * own turned arrow rather than the OS chevron, and it is positioned with
+   * `end-0` so it sits at the reading end in both directions — `right-0` would
+   * put it under the first character of the Hebrew value.
+   */
+  function selectField({
+    id,
+    label,
+    value,
+    onChange,
+    options,
+    placeholder,
+    required,
+    disabled,
+    error,
+    fieldClassName,
+  }: {
+    id: string
+    label: string
+    value: string
+    onChange: (v: string) => void
+    options: { value: string; label: string }[]
+    placeholder: string
+    required?: boolean
+    disabled?: boolean
+    error?: string | null
+    fieldClassName?: string
+  }) {
+    return (
+      <Field
+        id={id}
+        label={label}
+        required={required}
+        error={error ?? null}
+        fieldClassName={fieldClassName}
       >
-      <div className={profileTheme.section} dir={direction}>
-        {/* Club benefits with icons - between brand and Google button */}
-        {!shouldGateExistingUser && (
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4" dir={direction}>
-            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-4 sm:py-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
-                <Gem className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
-              </div>
-              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubPoints}</span>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-4 sm:py-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
-                <Gift className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
-              </div>
-              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubGifts}</span>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-4 sm:py-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
-                <Lock className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
-              </div>
-              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubEarlyAccess}</span>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-2.5 sm:px-4 sm:py-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
-              </div>
-              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubCollections}</span>
-            </div>
-            <div className="col-span-2 flex items-start gap-3 rounded-lg border border-[#856D55]/20 bg-[#856D55]/5 px-3 py-2.5 sm:px-4 sm:py-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#856D55]/10 text-[#856D55]">
-                <Star className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
-              </div>
-              <span className="text-xs font-medium text-slate-800 sm:text-sm">{t.clubStoreMembers}</span>
-            </div>
-          </div>
+        <div className="relative flex flex-1 items-center">
+          <select
+            id={id}
+            value={value}
+            disabled={disabled}
+            required={required}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? `${id}-error` : undefined}
+            onChange={(e) => onChange(e.target.value)}
+            className={cn(FIELD_SELECT, 'pe-[20px]', !value && 'text-text-secondary')}
+          >
+            <option value="">{placeholder}</option>
+            {options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute end-0 rotate-90 font-ploni text-[14px] font-black leading-none text-text-primary"
+          >
+            &#8601;
+          </span>
+        </div>
+      </Field>
+    )
+  }
+
+  return (
+    <AuthShell
+      title={t.title}
+      eyebrow={t.eyebrow}
+      aside={
+        <AuthAside heading={t.clubTitle}>
+          <p className="font-ploni text-[14px] leading-[22px] text-start text-text-primary">
+            {t.clubSubtitle}
+          </p>
+          {/* The four benefits as ruled lines. The old lucide gems, gift boxes
+              and sparkles are gone: this system draws no decorative pictograms,
+              and tinted chips were the clearest sign the page predated it. */}
+          <AuthAsideItem>{t.clubPoints}</AuthAsideItem>
+          <AuthAsideItem>{t.clubGifts}</AuthAsideItem>
+          <AuthAsideItem>{t.clubEarlyAccess}</AuthAsideItem>
+          <AuthAsideItem>{t.clubCollections}</AuthAsideItem>
+          <AuthAsideItem>
+            <span className="text-text-secondary">{t.clubStoreMembers}</span>
+          </AuthAsideItem>
+        </AuthAside>
+      }
+    >
+      <AuthError>{error}</AuthError>
+
+      {/* Google first: it is the shortest path through this form, and the
+          outlined CTA (438:7685) is how this system draws a secondary action. */}
+      <button
+        type="button"
+        onClick={handleGoogleSignIn}
+        disabled={isGoogleSignInInProgress}
+        aria-busy={isGoogleSignInInProgress || undefined}
+        className={cn(
+          'flex h-[54px] w-full items-center justify-center gap-[12px] border border-border-default bg-transparent px-[19px] font-ploni text-[16px] font-bold leading-none text-btn-secondary-text transition-colors',
+          'hover:bg-sako-ink-900 hover:text-btn-primary-text',
+          'disabled:cursor-not-allowed disabled:border-sako-gray-500 disabled:bg-transparent disabled:text-sako-gray-500 disabled:hover:bg-transparent disabled:hover:text-sako-gray-500',
+          'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sako-ink-900'
         )}
+      >
+        <svg className="size-[20px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        {busy ? t.working : t.continueWithGoogle}
+      </button>
 
-        {error ? (
-          <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        ) : null}
-        
-        {/* Gate: if already signed in, check whether profile completion is needed before showing the form */}
-        {shouldGateExistingUser ? (
-          <div className="py-10 text-center">
-            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
-            <div className="mt-4 text-sm font-medium text-slate-900">Signing you in…</div>
-            <div className="mt-1 text-xs text-slate-500">Just a moment</div>
-          </div>
-        ) : null}
+      <div className="my-[30px] flex items-center gap-[14px]">
+        <span className="h-px flex-1 bg-border-subtle" />
+        <span className={cn(AUTH_LABEL, 'text-text-secondary')}>{t.orDivider}</span>
+        <span className="h-px flex-1 bg-border-subtle" />
+      </div>
 
-        {/* Google (primary CTA), separator, then email sign-up form */}
-        {!shouldGateExistingUser && (
-          <>
-            <Button
-              type="button"
-              onClick={handleGoogleSignIn}
-              disabled={isGoogleSignInInProgress}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-[#856D55]/80 px-5 py-3 text-sm font-semibold text-white shadow-md hover:bg-[#856D55]/90 focus:outline-none focus:ring-2 focus:ring-[#856D55] focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed transition-colors"
+      <div className="flex flex-col gap-[40px]">
+        <section>
+          {sectionHeader(t.sectionAccount)}
+          <div className={AUTH_ROW}>
+            <Field
+              fieldClassName={AUTH_CELL}
+              id="firstName"
+              label={t.firstName}
+              required
+              autoComplete="given-name"
+              value={firstName}
+              onChange={(e) => {
+                setTouched((t) => ({ ...t, firstName: true }))
+                setFirstName(e.target.value)
+              }}
+              placeholder={googleFirstNamePlaceholder || t.firstName}
+              error={touched.firstName ? validationErrors.firstName ?? null : null}
+            />
+
+            <Field
+              fieldClassName={AUTH_CELL}
+              id="lastName"
+              label={t.lastName}
+              required
+              autoComplete="family-name"
+              value={lastName}
+              onChange={(e) => {
+                setTouched((t) => ({ ...t, lastName: true }))
+                setLastName(e.target.value)
+              }}
+              placeholder={googleLastNamePlaceholder || t.lastName}
+              error={touched.lastName ? validationErrors.lastName ?? null : null}
+            />
+
+            {/* Locked to the Google address once signed in — the disabled state
+                (grey rule, grey value) is what says so now, in place of the
+                floating white "Signed in with Google" chip that used to sit on
+                top of the input. The chip is a caption below instead. */}
+            <Field
+              fieldClassName={cn(AUTH_CELL, 'sm:col-span-2')}
+              id="email"
+              label={t.email}
+              type="email"
+              required
+              autoComplete="email"
+              dir="ltr"
+              value={email}
+              placeholder={t.emailPlaceholder}
+              onChange={(e) => {
+                setTouched((prev) => ({ ...prev, email: true }))
+                setEmail(e.target.value)
+                setServerFieldErrors((prev) => {
+                  const next = { ...prev }
+                  delete next.email
+                  return next
+                })
+              }}
+              disabled={isSignedInWithGoogle}
+              error={
+                touched.email ? validationErrors.email || serverFieldErrors.email || null : null
+              }
+            />
+
+            <p className="sm:col-span-2 -mt-[8px] pb-[15px] font-ploni text-[12px] leading-[18px] text-start text-text-secondary">
+              {isSignedInWithGoogle
+                ? t.signedInWithGoogle
+                : lng === 'he'
+                  ? 'החשבון ייווצר לאחר אימות SMS'
+                  : 'Your account will be created after SMS verification'}
+            </p>
+
+            <Field
+              fieldClassName={cn(AUTH_CELL, 'sm:col-span-2')}
+              id="phone"
+              label={t.phone}
+              required
+              error={
+                touched.phone ? validationErrors.phone || serverFieldErrors.phone || null : null
+              }
             >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-              </svg>
-              {busy ? t.working : t.continueWithGoogle}
-            </Button>
+              <IsraelPhoneInput
+                variant="sako"
+                id="phone"
+                value={phoneLocalNumber}
+                onChange={(value) => {
+                  setTouched((prev) => ({ ...prev, phone: true }))
+                  setPhoneLocalNumber(value)
+                  setServerFieldErrors((prev) => {
+                    const next = { ...prev }
+                    delete next.phone
+                    return next
+                  })
+                }}
+                placeholder={t.phonePlaceholder}
+                disabled={busy}
+                aria-invalid={
+                  touched.phone && (validationErrors.phone || serverFieldErrors.phone)
+                    ? true
+                    : undefined
+                }
+                aria-describedby={
+                  touched.phone && (validationErrors.phone || serverFieldErrors.phone)
+                    ? 'phone-error'
+                    : undefined
+                }
+              />
+            </Field>
 
-            <div className="relative my-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-4 bg-white text-slate-500">{t.orDivider}</span>
-              </div>
-            </div>
-
-            {/* Profile Form */}
-            <div className="space-y-8">
-            {/* Personal Information Section */}
-            <section>
-              <h2 className={profileTheme.sectionTitle}>{t.personalInfo}</h2>
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-sm font-medium text-slate-900">
-                    {t.firstName} <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => {
-                      setTouched((t) => ({ ...t, firstName: true }))
-                      setFirstName(e.target.value)
-                    }}
-                    placeholder={googleFirstNamePlaceholder || t.firstName}
-                    className={cn(
-                      'text-slate-900',
-                      touched.firstName && validationErrors.firstName ? 'border-red-500' : ''
-                    )}
-                  />
-                  {touched.firstName && validationErrors.firstName && (
-                    <p className="text-xs text-red-600">{validationErrors.firstName}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastName" className="text-sm font-medium text-slate-900">
-                    {t.lastName} <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => {
-                      setTouched((t) => ({ ...t, lastName: true }))
-                      setLastName(e.target.value)
-                    }}
-                    placeholder={googleLastNamePlaceholder || t.lastName}
-                    className={cn(
-                      'text-slate-900',
-                      touched.lastName && validationErrors.lastName ? 'border-red-500' : ''
-                    )}
-                  />
-                  {touched.lastName && validationErrors.lastName && (
-                    <p className="text-xs text-red-600">{validationErrors.lastName}</p>
-                  )}
-                </div>
-
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-slate-900">
-                    {t.email} <span className="text-red-500">*</span>
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      placeholder={t.emailPlaceholder}
-                      dir="ltr"
-                      style={{ direction: 'ltr', textAlign: 'left' }}
-                      onChange={(e) => {
-                        setTouched((prev) => ({ ...prev, email: true }))
-                        setEmail(e.target.value)
-                        setServerFieldErrors((prev) => {
-                          const next = { ...prev }
-                          delete next.email
-                          return next
-                        })
-                      }}
-                      disabled={isSignedInWithGoogle}
-                      className={cn(
-                        'text-slate-900',
-                        touched.email && (validationErrors.email || serverFieldErrors.email) ? 'border-red-500' : '',
-                        isSignedInWithGoogle && 'bg-slate-50'
-                      )}
-                    />
-                    {isSignedInWithGoogle && (
-                      <div className={cn(
-                        "absolute top-1/2 -translate-y-1/2 flex items-center gap-1.5 text-xs text-slate-500 bg-white px-2 py-0.5 rounded",
-                        isRTL ? 'left-3' : 'right-3'
-                      )}>
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
-                          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        <span>{t.signedInWithGoogle}</span>
-                      </div>
-                    )}
-                  </div>
-                  {touched.email && (validationErrors.email || serverFieldErrors.email) && (
-                    <p className="text-xs text-red-600">{validationErrors.email || serverFieldErrors.email}</p>
-                  )}
-                </div>
-
-                {!isSignedInWithGoogle && (
-                  <div className="sm:col-span-2">
-                    <p className="text-xs text-slate-500">
-                      {lng === 'he' 
-                        ? 'החשבון ייווצר לאחר אימות SMS'
-                        : 'Your account will be created after SMS verification'}
-                    </p>
-                  </div>
+            {/* Birthday. Three selects on one row, ordered day/month/year under
+                /en and year/month/day under /he, which is how each locale says
+                a date — the one place the markup legitimately branches on
+                direction rather than relying on logical properties. */}
+            <div className={cn(AUTH_CELL, 'sm:col-span-2')}>
+              <p className="font-ploni text-[9px] leading-none text-text-secondary">
+                {t.birthday} <span aria-hidden="true">*</span>
+              </p>
+              <div className="mt-[10px] grid grid-cols-3 gap-[18px]">
+                {(isRTL
+                  ? ([
+                      ['birthYear', t.selectYear, birthYear, setBirthYear, yearOptions],
+                      ['birthMonth', t.selectMonth, birthMonth, setBirthMonth, monthOptions],
+                      ['birthDay', t.selectDay, birthDay, setBirthDay, dayOptions],
+                    ] as const)
+                  : ([
+                      ['birthDay', t.selectDay, birthDay, setBirthDay, dayOptions],
+                      ['birthMonth', t.selectMonth, birthMonth, setBirthMonth, monthOptions],
+                      ['birthYear', t.selectYear, birthYear, setBirthYear, yearOptions],
+                    ] as const)
+                ).map(([id, caption, value, setValue, options]) =>
+                  selectField({
+                    id,
+                    label: caption,
+                    value,
+                    placeholder: caption,
+                    disabled: id === 'birthDay' && (!birthYear || !birthMonth),
+                    onChange: (v) => {
+                      setTouched((prev) => ({ ...prev, birthday: true }))
+                      setValue(v)
+                    },
+                    options: options.map((n) => ({ value: String(n), label: String(n) })),
+                  })
                 )}
-
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="phone" className="text-sm font-medium text-slate-900">
-                    {t.phone} <span className="text-red-500">*</span>
-                  </Label>
-                  <IsraelPhoneInput
-                    value={phoneLocalNumber}
-                    onChange={(value) => {
-                      setTouched((prev) => ({ ...prev, phone: true }))
-                      setPhoneLocalNumber(value)
-                      setServerFieldErrors((prev) => {
-                        const next = { ...prev }
-                        delete next.phone
-                        return next
-                      })
-                    }}
-                    placeholder={t.phonePlaceholder}
-                    disabled={busy}
-                    dir={direction}
-                    className={touched.phone && (validationErrors.phone || serverFieldErrors.phone) ? 'border-red-500' : ''}
-                  />
-                  {touched.phone && (validationErrors.phone || serverFieldErrors.phone) && (
-                    <p className="text-xs text-red-600">{validationErrors.phone || serverFieldErrors.phone}</p>
-                  )}
-                </div>
-
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="interestedIn" className="text-sm font-medium text-slate-900">
-                    {t.prefferedStyle}
-                  </Label>
-                  <Select 
-                    value={interestedIn} 
-                    onValueChange={setInterestedIn} 
-                    dir={direction}
-                  >
-                    <SelectTrigger id="interestedIn" dir={direction}>
-                      <SelectValue placeholder={t.prefferedStyle} />
-                    </SelectTrigger>
-                    <SelectContent dir={direction}>
-                      <SelectItem value="mens" dir={direction}>{t.mens}</SelectItem>
-                      <SelectItem value="womens" dir={direction}>{t.womens}</SelectItem>
-                      <SelectItem value="both" dir={direction}>{t.other}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="language" className="text-sm font-medium text-slate-900">
-                    {t.preferredLanguage} <span className="text-red-500">*</span>
-                  </Label>
-                  <Select 
-                    value={language} 
-                    onValueChange={(v) => {
-                      setTouched((prev) => ({ ...prev, language: true }))
-                      setLanguage(v)
-                    }} 
-                    dir={direction}
-                  >
-                    <SelectTrigger id="language" dir={direction} className={touched.language && validationErrors.language ? 'border-red-500' : ''}>
-                      <SelectValue placeholder={t.selectLanguage} />
-                    </SelectTrigger>
-                    <SelectContent dir={direction}>
-                      <SelectItem value="he" dir={direction}>{t.hebrew}</SelectItem>
-                      <SelectItem value="en" dir={direction}>{t.english}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {touched.language && validationErrors.language && (
-                    <p className="text-xs text-red-600">{validationErrors.language}</p>
-                  )}
-                </div>
-
-                <div className="sm:col-span-2 space-y-2">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-900">
-                      {t.birthday} <span className="text-red-500">*</span>
-                    </Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {isRTL ? (
-                        <>
-                          {/* RTL: Year, Month, Day */}
-                          <div className="space-y-2">
-                            <Label htmlFor="birthYear" className="text-xs text-slate-600">
-                              {t.selectYear}
-                            </Label>
-                            <Select
-                              value={birthYear}
-                              onValueChange={(value) => {
-                                setTouched((prev) => ({ ...prev, birthday: true }))
-                                setBirthYear(value)
-                              }}
-                              dir={direction}
-                            >
-                              <SelectTrigger 
-                                id="birthYear" 
-                                dir={direction}
-                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
-                              >
-                                <SelectValue placeholder={t.selectYear} />
-                              </SelectTrigger>
-                              <SelectContent dir={direction}>
-                                {yearOptions.map((year) => (
-                                  <SelectItem key={year} value={year.toString()} dir={direction}>
-                                    {year}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="birthMonth" className="text-xs text-slate-600">
-                              {t.selectMonth}
-                            </Label>
-                            <Select
-                              value={birthMonth}
-                              onValueChange={(value) => {
-                                setTouched((prev) => ({ ...prev, birthday: true }))
-                                setBirthMonth(value)
-                              }}
-                              dir={direction}
-                            >
-                              <SelectTrigger 
-                                id="birthMonth" 
-                                dir={direction}
-                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
-                              >
-                                <SelectValue placeholder={t.selectMonth} />
-                              </SelectTrigger>
-                              <SelectContent dir={direction}>
-                                {monthOptions.map((month) => (
-                                  <SelectItem key={month} value={month.toString()} dir={direction}>
-                                    {month}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="birthDay" className="text-xs text-slate-600">
-                              {t.selectDay}
-                            </Label>
-                            <Select
-                              value={birthDay}
-                              onValueChange={(value) => {
-                                setTouched((prev) => ({ ...prev, birthday: true }))
-                                setBirthDay(value)
-                              }}
-                              dir={direction}
-                              disabled={!birthYear || !birthMonth}
-                            >
-                              <SelectTrigger 
-                                id="birthDay" 
-                                dir={direction}
-                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
-                              >
-                                <SelectValue placeholder={t.selectDay} />
-                              </SelectTrigger>
-                              <SelectContent dir={direction}>
-                                {dayOptions.map((day) => (
-                                  <SelectItem key={day} value={day.toString()} dir={direction}>
-                                    {day}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* LTR: Day, Month, Year */}
-                          <div className="space-y-2">
-                            <Label htmlFor="birthDay" className="text-xs text-slate-600">
-                              {t.selectDay}
-                            </Label>
-                            <Select
-                              value={birthDay}
-                              onValueChange={(value) => {
-                                setTouched((prev) => ({ ...prev, birthday: true }))
-                                setBirthDay(value)
-                              }}
-                              dir={direction}
-                              disabled={!birthYear || !birthMonth}
-                            >
-                              <SelectTrigger 
-                                id="birthDay" 
-                                dir={direction}
-                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
-                              >
-                                <SelectValue placeholder={t.selectDay} />
-                              </SelectTrigger>
-                              <SelectContent dir={direction}>
-                                {dayOptions.map((day) => (
-                                  <SelectItem key={day} value={day.toString()} dir={direction}>
-                                    {day}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="birthMonth" className="text-xs text-slate-600">
-                              {t.selectMonth}
-                            </Label>
-                            <Select
-                              value={birthMonth}
-                              onValueChange={(value) => {
-                                setTouched((prev) => ({ ...prev, birthday: true }))
-                                setBirthMonth(value)
-                              }}
-                              dir={direction}
-                            >
-                              <SelectTrigger 
-                                id="birthMonth" 
-                                dir={direction}
-                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
-                              >
-                                <SelectValue placeholder={t.selectMonth} />
-                              </SelectTrigger>
-                              <SelectContent dir={direction}>
-                                {monthOptions.map((month) => (
-                                  <SelectItem key={month} value={month.toString()} dir={direction}>
-                                    {month}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="birthYear" className="text-xs text-slate-600">
-                              {t.selectYear}
-                            </Label>
-                            <Select
-                              value={birthYear}
-                              onValueChange={(value) => {
-                                setTouched((prev) => ({ ...prev, birthday: true }))
-                                setBirthYear(value)
-                              }}
-                              dir={direction}
-                            >
-                              <SelectTrigger 
-                                id="birthYear" 
-                                dir={direction}
-                                className={touched.birthday && validationErrors.birthday ? 'border-red-500' : ''}
-                              >
-                                <SelectValue placeholder={t.selectYear} />
-                              </SelectTrigger>
-                              <SelectContent dir={direction}>
-                                {yearOptions.map((year) => (
-                                  <SelectItem key={year} value={year.toString()} dir={direction}>
-                                    {year}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    {touched.birthday && validationErrors.birthday && (
-                      <p className="text-xs text-red-600">{validationErrors.birthday}</p>
-                    )}
-                  </div>
-                </div>
               </div>
-            </section>
-
-            {/* Address Section */}
-            <section>
-              <h2 className={profileTheme.sectionTitle}>{t.address}</h2>
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="city" className="text-sm font-medium text-slate-900">
-                    {t.city}
-                  </Label>
-                  <Input
-                    id="city"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder={t.cityPlaceholder}
-                    className="text-slate-900"
-                  />
-                </div>
-
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="streetName" className="text-sm font-medium text-slate-900">
-                    {t.streetName}
-                  </Label>
-                  <Input
-                    id="streetName"
-                    value={streetName}
-                    onChange={(e) => setStreetName(e.target.value)}
-                    placeholder={t.streetNamePlaceholder}
-                    className="text-slate-900"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="streetNumber" className="text-sm font-medium text-slate-900">
-                    {t.streetNumber}
-                  </Label>
-                  <Input
-                    id="streetNumber"
-                    type="text"
-                    value={streetNumber}
-                    onChange={(e) => setStreetNumber(e.target.value)}
-                    placeholder={t.streetNumberPlaceholder}
-                    className="text-slate-900"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="floor" className="text-sm font-medium text-slate-900">
-                    {t.floor}
-                  </Label>
-                  <Input
-                    id="floor"
-                    type="text"
-                    value={floor}
-                    onChange={(e) => setFloor(e.target.value)}
-                    placeholder={t.floorPlaceholder}
-                    className="text-slate-900"
-                  />
-                </div>
-
-                <div className="sm:col-span-2 space-y-2">
-                  <Label htmlFor="apt" className="text-sm font-medium text-slate-900">
-                    {t.apt}
-                  </Label>
-                  <Input
-                    id="apt"
-                    type="text"
-                    value={apt}
-                    onChange={(e) => setApt(e.target.value)}
-                    placeholder={t.aptPlaceholder}
-                    className="text-slate-900"
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Newsletter Section */}
-            <section>
-              <div className={cn("flex items-start gap-2", isRTL ? "flex-row" : "")}>
-                <Checkbox
-                  id="newsletter"
-                  checked={isNewsletter}
-                  onCheckedChange={(checked) => {
-                    setIsNewsletter(checked === true)
-                  }}
-                  className="mt-1 cursor-pointer"
-                />
-                <div className="space-y-1 leading-none">
-                  <Label
-                    htmlFor="newsletter"
-                    className="text-sm font-medium cursor-pointer text-slate-900"
-                  >
-                    {t.newsletter}
-                  </Label>
-                  <p className="text-xs text-slate-500">
-                    {t.newsletterDescription}
-                  </p>
-                </div>
-              </div>
-            </section>
-            </div>
-          </>
-        )}
-
-        {/* Save Profile Button */}
-        {!shouldGateExistingUser && (
-          <div className="mt-8 border-t border-slate-200 pt-6">
-            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!canSubmit}
-                className="w-full sm:w-auto bg-[#856D55] text-white hover:bg-[#856D55]/90"
-              >
-                {busy ? t.saving : t.saveProfile}
-              </Button>
-              
-              {(isSignedInWithGoogle || firebaseUser) && (
-                <Button
-                  type="button"
-                  onClick={handleCancelSignup}
-                  disabled={busy}
-                  variant="ghost"
-                  className="w-full sm:w-auto text-red-600 hover:text-red-700 hover:bg-red-50"
-                >
-                  {lng === 'he' ? 'ביטול הרשמה' : 'Cancel Signup'}
-                </Button>
+              {touched.birthday && validationErrors.birthday && (
+                <p role="alert" className="pt-[6px] font-ploni text-[12px] text-accent-error">
+                  {validationErrors.birthday}
+                </p>
               )}
             </div>
           </div>
+        </section>
+
+        <section>
+          {sectionHeader(t.sectionAddress, t.optional)}
+          <div className={AUTH_ROW}>
+            <Field
+              fieldClassName={cn(AUTH_CELL, 'sm:col-span-2')}
+              id="city"
+              label={t.city}
+              autoComplete="address-level2"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder={t.cityPlaceholder}
+            />
+
+            <Field
+              fieldClassName={cn(AUTH_CELL, 'sm:col-span-2')}
+              id="streetName"
+              label={t.streetName}
+              autoComplete="address-line1"
+              value={streetName}
+              onChange={(e) => setStreetName(e.target.value)}
+              placeholder={t.streetNamePlaceholder}
+            />
+
+            <Field
+              fieldClassName={AUTH_CELL}
+              id="streetNumber"
+              label={t.streetNumber}
+              inputMode="numeric"
+              value={streetNumber}
+              onChange={(e) => setStreetNumber(e.target.value)}
+              placeholder={t.streetNumberPlaceholder}
+            />
+
+            <Field
+              fieldClassName={AUTH_CELL}
+              id="floor"
+              label={t.floor}
+              inputMode="numeric"
+              value={floor}
+              onChange={(e) => setFloor(e.target.value)}
+              placeholder={t.floorPlaceholder}
+            />
+
+            <Field
+              fieldClassName={cn(AUTH_CELL, 'sm:col-span-2')}
+              id="apt"
+              label={t.apt}
+              inputMode="numeric"
+              value={apt}
+              onChange={(e) => setApt(e.target.value)}
+              placeholder={t.aptPlaceholder}
+            />
+          </div>
+        </section>
+
+        <section>
+          {sectionHeader(t.sectionPreferences)}
+          <div className={AUTH_ROW}>
+            {selectField({
+              id: 'language',
+              label: t.preferredLanguage,
+              required: true,
+              value: language,
+              placeholder: t.selectLanguage,
+              fieldClassName: cn(AUTH_CELL, 'sm:col-span-2'),
+              error: touched.language ? validationErrors.language ?? null : null,
+              onChange: (v) => {
+                setTouched((prev) => ({ ...prev, language: true }))
+                setLanguage(v)
+              },
+              options: [
+                { value: 'he', label: t.hebrew },
+                { value: 'en', label: t.english },
+              ],
+            })}
+
+            {selectField({
+              id: 'interestedIn',
+              label: t.prefferedStyle,
+              value: interestedIn,
+              placeholder: t.prefferedStyle,
+              fieldClassName: cn(AUTH_CELL, 'sm:col-span-2'),
+              onChange: setInterestedIn,
+              options: [
+                { value: 'mens', label: t.mens },
+                { value: 'womens', label: t.womens },
+                { value: 'both', label: t.other },
+              ],
+            })}
+          </div>
+
+          <div className="mt-[10px] flex items-start gap-[10px] text-start">
+            <Checkbox
+              id="newsletter"
+              variant="sako"
+              className="mt-[3px]"
+              checked={isNewsletter}
+              onCheckedChange={(checked) => {
+                setIsNewsletter(checked === true)
+              }}
+            />
+            <div>
+              <label
+                htmlFor="newsletter"
+                className="cursor-pointer font-ploni text-[14px] font-bold leading-none text-text-primary"
+              >
+                {t.newsletter}
+              </label>
+              <p className="mt-[6px] font-ploni text-[12px] leading-[18px] text-text-secondary">
+                {t.newsletterDescription}
+              </p>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* The commit. A rule above it, as checkout closes its form. */}
+      <div className="mt-[40px] border-t border-sako-black pt-[24px]">
+        <AuthSubmit
+          label={t.saveProfile}
+          loadingLabel={t.saving}
+          loading={busy}
+          disabled={!canSubmit}
+          onClick={handleSubmit}
+        />
+
+        {(isSignedInWithGoogle || firebaseUser) && (
+          <div className="mt-[24px] flex">
+            <AuthLink onClick={handleCancelSignup} disabled={busy}>
+              {lng === 'he' ? 'ביטול הרשמה' : 'Cancel Signup'}
+            </AuthLink>
+          </div>
         )}
       </div>
-    </ProfileShell>
+    </AuthShell>
   )
 }

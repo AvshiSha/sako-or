@@ -56,6 +56,8 @@ interface ProductCardProps {
 export default function ProductCard({ product, language = 'en', selectedColors, preselectedColorSlug, disableImageCarousel = false, isAboveFold = false, browseStoreKey, collectionAnchorKey }: ProductCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
   const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
+  /** Latches on first open so the drawer survives its own closing animation. */
+  const [hasOpenedQuickBuy, setHasOpenedQuickBuy] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
   const collectionBrowse = useCollectionBrowseContext()
 
@@ -285,6 +287,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
       return
     }
     
+    setHasOpenedQuickBuy(true)
     setIsQuickBuyOpen(true)
   }
 
@@ -641,8 +644,11 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
         </div>
       </div>
 
-      {/* Quick Buy Drawer */}
-      {isQuickBuyOpen && (
+      {/* Quick Buy Drawer. Mounted from the first open onwards rather than only
+          while open: the drawer slides out as well as in, and a card that
+          unmounts it on close tears the panel off the screen mid-animation. The
+          gate stays so the dynamic chunk is still only fetched on first use. */}
+      {hasOpenedQuickBuy && (
         <QuickBuyDrawer
           isOpen={isQuickBuyOpen}
           onClose={() => setIsQuickBuyOpen(false)}

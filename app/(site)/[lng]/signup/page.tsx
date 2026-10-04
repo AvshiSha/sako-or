@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { sanitizeRedirect } from '@/lib/safe-redirect'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -43,9 +43,72 @@ import { cn } from '@/lib/utils'
  * /api/me/sync gate, the duplicate precheck, the validation rules and the
  * sessionStorage hand-off to verify-sms are untouched.
  */
+/**
+ * /api/me/sync. The two Google name fields are only present for an account that
+ * signed in with Google and has not completed its profile — they are offered as
+ * placeholders, never pre-filled.
+ */
 type SyncResponse =
-  | { ok: true; needsProfileCompletion: boolean }
+  | {
+      ok: true
+      needsProfileCompletion: boolean
+      googleFirstName?: string | null
+      googleLastName?: string | null
+    }
   | { error: string }
+
+/* ── Pure helpers ────────────────────────────────────────────────────────────
+   At module scope, not inside the component. They close over nothing, so
+   declaring them per-render only gave every useMemo/useCallback below a
+   dependency that changed on every keystroke — which is what the exhaustive-deps
+   warnings on the validation memo were actually pointing at. Hoisted, they drop
+   out of the dependency graph entirely instead of being memoised around. */
+
+/** Day count for a 1-based month, leap years included. */
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+function isValidDate(year: string, month: string, day: string): boolean {
+  if (!year || !month || !day) return false
+  const y = parseInt(year, 10)
+  const m = parseInt(month, 10)
+  const d = parseInt(day, 10)
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return false
+  return d >= 1 && d <= getDaysInMonth(y, m)
+}
+
+/** Accepts the local number with or without its 0 prefix; null if unparseable. */
+function normalizePhoneForValidation(phone: string): string | null {
+  if (!phone.trim()) return null
+  const phoneWithZero = phone.startsWith('0') ? phone : `0${phone}`
+  return normalizeIsraelE164(phoneWithZero)
+}
+
+function formatAuthError(e: any, fallback: string) {
+  const code = typeof e?.code === 'string' ? e.code : ''
+  const msg = typeof e?.message === 'string' ? e.message : ''
+  if (code && msg) return `${code}: ${msg}`
+  if (code) return code
+  if (msg) return msg
+  return fallback
+}
+
+function isGoogleAccount(user: User) {
+  return (user.providerData || []).some((p) => p.providerId === 'google.com')
+}
+
+/** Splits a Google displayName into first/last for the name placeholders. */
+function parseGoogleDisplayName(displayName: string | null | undefined): {
+  firstName: string | null
+  lastName: string | null
+} {
+  if (!displayName) return { firstName: null, lastName: null }
+  const parts = displayName.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return { firstName: null, lastName: null }
+  if (parts.length === 1) return { firstName: parts[0], lastName: null }
+  return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
+}
 
 // Translations
 const translations = {
@@ -255,22 +318,6 @@ function SignUpClient() {
 
   const syncedUidRef = useRef<string | null>(null)
 
-  // Helper function to get days in a month (handles leap years)
-  const getDaysInMonth = (year: number, month: number): number => {
-    return new Date(year, month, 0).getDate()
-  }
-
-  // Helper function to validate date
-  const isValidDate = (year: string, month: string, day: string): boolean => {
-    if (!year || !month || !day) return false
-    const y = parseInt(year, 10)
-    const m = parseInt(month, 10)
-    const d = parseInt(day, 10)
-    if (isNaN(y) || isNaN(m) || isNaN(d)) return false
-    const daysInMonth = getDaysInMonth(y, m)
-    return d >= 1 && d <= daysInMonth
-  }
-
   // Generate year options (1940-2020)
   const yearOptions = Array.from({ length: 2020 - 1940 + 1 }, (_, i) => 1940 + i).reverse()
 
@@ -305,16 +352,6 @@ function SignUpClient() {
       }
     }
   }, [birthYear, birthMonth, birthDay])
-
-  // Validation
-  // Helper function to normalize phone number (handles both 0-prefixed and non-prefixed)
-  const normalizePhoneForValidation = (phone: string): string | null => {
-    if (!phone.trim()) return null
-    // If phone starts with 0, use it as-is; otherwise add 0 prefix
-    const phoneWithZero = phone.startsWith('0') ? phone : `0${phone}`
-    // normalizeIsraelE164 handles 0XXXXXXXXX format and converts to +972XXXXXXXXX
-    return normalizeIsraelE164(phoneWithZero)
-  }
 
   const validationErrors = useMemo(() => {
     const normalizeEmail = (v: string) => v.trim().toLowerCase()
@@ -354,66 +391,46 @@ function SignUpClient() {
     )
   }, [validationErrors, serverFieldErrors, busy])
 
-  function formatAuthError(e: any, fallback: string) {
-    const code = typeof e?.code === 'string' ? e.code : ''
-    const msg = typeof e?.message === 'string' ? e.message : ''
-    if (code && msg) return `${code}: ${msg}`
-    if (code) return code
-    if (msg) return msg
-    return fallback
-  }
+  /**
+   * Syncs the signed-in account and decides whether this page still has a job.
+   *
+   * useCallback because two effects depend on it; its identity changes only when
+   * the redirect target does (router / returnTo / lng), never per render, so
+   * adding it to those dependency arrays cannot loop. The setters it closes over
+   * are useState setters, which React guarantees are stable.
+   */
+  const checkProfileAndRedirect = useCallback(
+    async (user: User): Promise<'needs_form' | 'redirecting'> => {
+      const token = await user.getIdToken()
+      const syncRes = await fetch('/api/me/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const syncJson = (await syncRes.json().catch(() => null)) as SyncResponse | null
 
-  async function checkProfileAndRedirect(user: User): Promise<'needs_form' | 'redirecting'> {
-    const token = await user.getIdToken()
-    const syncRes = await fetch('/api/me/sync', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    const syncJson = (await syncRes.json().catch(() => null)) as
-      | { ok: true; needsProfileCompletion: boolean; googleFirstName?: string | null; googleLastName?: string | null }
-      | { error: string }
-      | null
+      if (!syncRes.ok || !syncJson || 'error' in syncJson) {
+        // If sync fails, fall back to current page behavior (show form).
+        return 'needs_form'
+      }
 
-    if (!syncRes.ok || !syncJson || 'error' in syncJson) {
-      // If sync fails, fall back to current page behavior (show form).
-      return 'needs_form'
-    }
+      // Extract Google names for use as placeholders (only for new users)
+      if ('googleFirstName' in syncJson || 'googleLastName' in syncJson) {
+        setGoogleFirstNamePlaceholder(syncJson.googleFirstName || '')
+        setGoogleLastNamePlaceholder(syncJson.googleLastName || '')
+      }
 
-    // Extract Google names for use as placeholders (only for new users)
-    if ('googleFirstName' in syncJson || 'googleLastName' in syncJson) {
-      setGoogleFirstNamePlaceholder(syncJson.googleFirstName || '')
-      setGoogleLastNamePlaceholder(syncJson.googleLastName || '')
-    }
-
-    if (syncJson.needsProfileCompletion === false) {
-      // Existing user with complete profile - redirect to profile
-      setProfileGate('redirecting')
-      router.replace(returnTo ?? `/${lng}/profile`)
-      return 'redirecting'
-    }
+      if (syncJson.needsProfileCompletion === false) {
+        // Existing user with complete profile - redirect to profile
+        setProfileGate('redirecting')
+        router.replace(returnTo ?? `/${lng}/profile`)
+        return 'redirecting'
+      }
 
       // New user or incomplete profile - keep them on the form
       return 'needs_form'
-  }
-
-  function isGoogleAccount(user: User) {
-    return (user.providerData || []).some((p) => p.providerId === 'google.com')
-  }
-
-  // Helper to parse Google displayName into firstName/lastName (for fallback)
-  function parseGoogleDisplayName(displayName: string | null | undefined): {
-    firstName: string | null
-    lastName: string | null
-  } {
-    if (!displayName) return { firstName: null, lastName: null }
-    const parts = displayName
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean)
-    if (parts.length === 0) return { firstName: null, lastName: null }
-    if (parts.length === 1) return { firstName: parts[0], lastName: null }
-    return { firstName: parts[0], lastName: parts.slice(1).join(' ') }
-  }
+    },
+    [router, returnTo, lng]
+  )
 
   async function storeSignupDataAndRedirectToSmsVerify(user: User) {
     // Store pending signup data in sessionStorage
@@ -444,7 +461,24 @@ function SignUpClient() {
     router.push(`/${lng}/verify-sms`)
   }
 
-  // Complete Google redirect sign-in (fallback when popups are blocked)
+  /**
+   * Settle the Google redirect sign-in (the fallback used when popups are
+   * blocked) and surface anything that went wrong with it.
+   *
+   * That is ALL this effect does. It used to also populate the form and call
+   * checkProfileAndRedirect itself, which was redundant and cost a second
+   * request: completing a redirect makes Firebase emit an auth state change, so
+   * `firebaseUser` lands and the effect below runs for the very same account —
+   * and because that effect guards on uid while this one guarded on a module
+   * flag, neither suppressed the other and /api/me/sync was POSTed twice per
+   * redirect sign-in. One owner for that work now, keyed on the user.
+   *
+   * Mount-only, and genuinely so: nothing here reads props, state or the
+   * callback, so the empty dependency array is accurate rather than silenced.
+   * `redirectChecked` is module-scoped so a remount does not re-consume the
+   * result — which also makes dropping a cancelled run harmless, since the
+   * sign-in itself is carried by the auth state change, not by this effect.
+   */
   useEffect(() => {
     if (redirectChecked) return
     redirectChecked = true
@@ -452,29 +486,7 @@ function SignUpClient() {
     let cancelled = false
     ;(async () => {
       try {
-        setError(null)
-        const result = await getRedirectResult(auth)
-        if (cancelled) return
-        
-        if (result?.user) {
-          // Redirect result found! Populate email and show form
-          setBusy(true)
-          setProfileGate('checking')
-          setEmail(result.user.email || '')
-          const isGoogle = isGoogleAccount(result.user)
-          setIsSignedInWithGoogle(isGoogle)
-          
-          // If Google user and sync doesn't provide names, parse from displayName as fallback
-          if (isGoogle && result.user.displayName) {
-            const parsed = parseGoogleDisplayName(result.user.displayName)
-            if (parsed.firstName) setGoogleFirstNamePlaceholder(parsed.firstName)
-            if (parsed.lastName) setGoogleLastNamePlaceholder(parsed.lastName)
-          }
-          
-          const next = await checkProfileAndRedirect(result.user)
-          if (!cancelled) setProfileGate(next === 'needs_form' ? 'needs_form' : 'redirecting')
-          if (!cancelled) setBusy(false)
-        }
+        await getRedirectResult(auth)
       } catch (e: any) {
         if (cancelled) return
         // If there was no redirect in progress, Firebase may throw depending on version.
@@ -488,8 +500,6 @@ function SignUpClient() {
           return
         }
         setError(msg)
-      } finally {
-        if (!cancelled) setBusy(false)
       }
     })()
 
@@ -498,7 +508,18 @@ function SignUpClient() {
     }
   }, [])
 
-  // Populate email from existing Firebase session (safety net for when redirect result is consumed elsewhere)
+  /**
+   * The single owner of "someone is signed in — does this page still apply?".
+   * Reached by every route in: an existing session, a Google popup, and a Google
+   * redirect once the effect above lets Firebase finish it.
+   *
+   * `syncedUidRef` keys the work on the account rather than on a render, so the
+   * effect re-running — because `checkProfileAndRedirect` changed identity, or
+   * because React re-mounted it in StrictMode — returns early instead of issuing
+   * a second /api/me/sync. Deliberately NOT cancelled on unmount: the ref is
+   * already marked, so a cancelled run would leave the gate stuck at 'checking'
+   * with nothing able to retry it.
+   */
   useEffect(() => {
     if (authLoading) return
     if (!firebaseUser) return
@@ -511,14 +532,14 @@ function SignUpClient() {
     setEmail(firebaseUser.email || '')
     const isGoogle = isGoogleAccount(firebaseUser)
     setIsSignedInWithGoogle(isGoogle)
-    
+
     // If Google user, parse names from displayName as fallback
     if (isGoogle && firebaseUser.displayName) {
       const parsed = parseGoogleDisplayName(firebaseUser.displayName)
       if (parsed.firstName) setGoogleFirstNamePlaceholder(parsed.firstName)
       if (parsed.lastName) setGoogleLastNamePlaceholder(parsed.lastName)
     }
-    
+
     void (async () => {
       try {
         const next = await checkProfileAndRedirect(firebaseUser)
@@ -527,7 +548,7 @@ function SignUpClient() {
         setBusy(false)
       }
     })()
-  }, [firebaseUser, authLoading])
+  }, [firebaseUser, authLoading, checkProfileAndRedirect])
 
   async function handleGoogleSignIn() {
     setBusy(true)
@@ -537,18 +558,12 @@ function SignUpClient() {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
       try {
-        const cred = await signInWithPopup(auth, provider)
-        setEmail(cred.user.email || '')
-        setIsSignedInWithGoogle(true)
-        
-        // Parse Google names from displayName as fallback (sync will also provide them)
-        if (cred.user.displayName) {
-          const parsed = parseGoogleDisplayName(cred.user.displayName)
-          if (parsed.firstName) setGoogleFirstNamePlaceholder(parsed.firstName)
-          if (parsed.lastName) setGoogleLastNamePlaceholder(parsed.lastName)
-        }
-        
-        await checkProfileAndRedirect(cred.user)
+        // Just complete the sign-in. Populating the form and syncing the
+        // profile belong to the firebaseUser effect, which onAuthStateChanged
+        // triggers the moment this resolves — doing it here as well is what
+        // made the popup path POST /api/me/sync twice, since that effect keys
+        // off a uid this function never marked as seen.
+        await signInWithPopup(auth, provider)
         return
       } catch (e: any) {
         const code = typeof e?.code === 'string' ? e.code : ''
@@ -563,7 +578,6 @@ function SignUpClient() {
         throw e
       }
     } catch (e: any) {
-      const code = typeof e?.code === 'string' ? e.code : ''
       setError(formatAuthError(e, 'Google sign in failed'))
     } finally {
       setBusy(false)
@@ -665,37 +679,6 @@ function SignUpClient() {
     }
   }
 
-  async function handleSignOut() {
-    setBusy(true)
-    setError(null)
-    try {
-      await logout()
-      syncedUidRef.current = null
-      redirectChecked = false // Reset the redirect check when signing out
-      setIsSignedInWithGoogle(false)
-      setEmail('')
-      setFirstName('')
-      setLastName('')
-      setPhoneLocalNumber('')
-      setInterestedIn('')
-      setLanguage('')
-      setBirthYear('')
-      setBirthMonth('')
-      setBirthDay('')
-      setCity('')
-      setStreetName('')
-      setStreetNumber('')
-      setFloor('')
-      setApt('')
-      setIsNewsletter(true)
-      setServerFieldErrors({})
-    } catch (e: any) {
-      setError(formatAuthError(e, 'Sign out failed'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function handleCancelSignup() {
     if (!firebaseUser) return
 
@@ -716,8 +699,15 @@ function SignUpClient() {
         headers: { Authorization: `Bearer ${token}` }
       })
 
-      // Sign out and redirect to home
+      // Sign out and redirect to home. Clearing the two guards is what the old
+      // unreachable handleSignOut used to do and this path now inherits: without
+      // it, signing in again in the same SPA session would find the uid already
+      // marked as synced and skip the gate.
       await logout()
+      syncedUidRef.current = null
+      redirectChecked = false
+      setProfileGate('idle')
+      setIsSignedInWithGoogle(false)
       router.replace(`/${lng}`)
     } catch (e: any) {
       setError(formatAuthError(e, 'Failed to cancel signup'))

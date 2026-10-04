@@ -9,7 +9,6 @@ interface IsraelPhoneInputProps {
   placeholder?: string
   disabled?: boolean
   className?: string
-  dir?: 'ltr' | 'rtl' // Ignored - phone numbers are always LTR
   /**
    * `sako` is the design system control: no box of its own, because it is meant
    * to sit inside <Field>, which draws the caption and the hairline. `default`
@@ -28,7 +27,6 @@ export function IsraelPhoneInput({
   placeholder = '0501234567 או 501234567',
   disabled = false,
   className,
-  dir = 'ltr', // Ignored - always use LTR for phone numbers
   variant = 'default',
   id,
   autoComplete = 'tel',

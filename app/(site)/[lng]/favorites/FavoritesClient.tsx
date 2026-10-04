@@ -128,7 +128,11 @@ export default function FavoritesClient({ recommendations = [] }: FavoritesClien
   const [items, setItems] = useState<FavoriteItem[]>([])
   const [loading, setLoading] = useState(true)
   const [isClient, setIsClient] = useState(false)
+  // The item outlives the open flag on purpose: the drawer slides out, and
+  // clearing the item on close would unmount it mid-animation and leave the row
+  // with nothing to animate. It stays set until another row is chosen.
   const [quickBuyItem, setQuickBuyItem] = useState<FavoriteItem | null>(null)
+  const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
 
   // Prevents the auto-cleanup below from firing again for a key it already removed.
   const cleanedFavoriteKeysRef = useRef<Set<string>>(new Set())
@@ -278,7 +282,10 @@ export default function FavoritesClient({ recommendations = [] }: FavoritesClien
                   labels={t}
                   formatMoney={formatMoney}
                   onRemove={() => void toggleFavorite(item.favoriteKey)}
-                  onSelectSize={() => setQuickBuyItem(item)}
+                  onSelectSize={() => {
+                    setQuickBuyItem(item)
+                    setIsQuickBuyOpen(true)
+                  }}
                 />
               ))}
             </ul>
@@ -297,8 +304,8 @@ export default function FavoritesClient({ recommendations = [] }: FavoritesClien
 
       {quickBuyItem && (
         <QuickBuyDrawer
-          isOpen={!!quickBuyItem}
-          onClose={() => setQuickBuyItem(null)}
+          isOpen={isQuickBuyOpen}
+          onClose={() => setIsQuickBuyOpen(false)}
           product={quickBuyItem}
           language={language}
           initialColorSlug={quickBuyItem.favoriteColorSlug}

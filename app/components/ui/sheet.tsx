@@ -18,14 +18,11 @@ const SheetOverlay = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-[70] bg-black/80 data-[state=open]:opacity-100 data-[state=closed]:opacity-0",
-      className
-    )}
-    style={{
-      transition: 'opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-      ...props.style,
-    } as React.CSSProperties}
+    // The fade lives in globals.css as a keyframe animation (`.sheet-overlay`),
+    // not as an opacity transition here: Radix's Presence only waits on
+    // animations, so a transition let the scrim unmount the instant the sheet
+    // closed and the panel slid out over nothing.
+    className={cn("fixed inset-0 z-[70] bg-black/80 sheet-overlay", className)}
     {...props}
     ref={ref}
   />
@@ -58,18 +55,20 @@ interface SheetContentProps
    * corner, which collides with any content placed there.
    */
   hideClose?: boolean
+  /** Classes for the scrim — e.g. a lighter fill than the default `bg-black/80`. */
+  overlayClassName?: string
 }
 
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, hideClose = false, ...props }, ref) => {
+>(({ side = "right", className, children, hideClose = false, overlayClassName, ...props }, ref) => {
   const dir = props.dir || 'ltr'
   const isRTL = dir === 'rtl'
-  
+
   return (
     <SheetPortal>
-      <SheetOverlay />
+      <SheetOverlay className={overlayClassName} />
       <SheetPrimitive.Content
         ref={ref}
         className={cn(sheetVariants({ side }), className, "sheet-content")}

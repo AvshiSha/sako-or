@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { sanitizeRedirect } from '@/lib/safe-redirect'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -172,7 +172,6 @@ function SignInClient() {
   const searchParams = useSearchParams()
   const lng = (params?.lng as string) || 'en'
   const t = translations[lng as keyof typeof translations] || translations.en
-  const isRTL = lng === 'he'
 
   const { user: firebaseUser, loading: authLoading } = useAuth()
 
@@ -259,7 +258,7 @@ function SignInClient() {
       if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
           (window as any).turnstile.remove(turnstileWidgetIdRef.current)
-        } catch (e) {
+        } catch {
           // Ignore errors if widget doesn't exist
         }
         turnstileWidgetIdRef.current = null
@@ -304,18 +303,13 @@ function SignInClient() {
       if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
           (window as any).turnstile.remove(turnstileWidgetIdRef.current)
-        } catch (e) {
+        } catch {
           // Ignore errors
         }
         turnstileWidgetIdRef.current = null
       }
     }
-  }, [isMounted, activeTab, phoneOtpSent, emailOtpSent, phoneResendTurnstileRequired, emailResendTurnstileRequired])
-
-  // Handle query params (reset success + auto-open forgot password)
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+  }, [isMounted, isLocalhost, activeTab, phoneOtpSent, emailOtpSent, phoneResendTurnstileRequired, emailResendTurnstileRequired])
 
   // Cooldown timers (per channel)
   useEffect(() => {
@@ -445,30 +439,54 @@ function SignInClient() {
 
   const turnstileRequiredMessage = lng === 'he' ? 'נא להשלים את האימות' : 'Please complete the verification'
 
-  async function postLoginRedirect(user: User) {
-    const token = await user.getIdToken()
-    const syncRes = await fetch('/api/me/sync', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    const syncJson = (await syncRes.json().catch(() => null)) as SyncResponse | null
+  /**
+   * Syncs the account and sends the customer wherever they were going.
+   *
+   * useCallback because the firebaseUser effect depends on it; its identity
+   * changes only when the destination could (router / searchParams / lng), so
+   * listing it as a dependency cannot loop.
+   */
+  const postLoginRedirect = useCallback(
+    async (user: User) => {
+      const token = await user.getIdToken()
+      const syncRes = await fetch('/api/me/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      const syncJson = (await syncRes.json().catch(() => null)) as SyncResponse | null
 
-    if (!syncRes.ok || !syncJson || 'error' in syncJson) {
-      throw new Error((syncJson && 'error' in syncJson && syncJson.error) || `HTTP ${syncRes.status}`)
-    }
+      if (!syncRes.ok || !syncJson || 'error' in syncJson) {
+        throw new Error((syncJson && 'error' in syncJson && syncJson.error) || `HTTP ${syncRes.status}`)
+      }
 
-    setGate('redirecting')
-    // A validated return path wins over the default destination, so a customer sent
-    // here from e.g. a review link lands back where they were instead of /profile.
-    const returnTo = sanitizeRedirect(searchParams?.get('redirect'))
-    if (returnTo && !syncJson.needsProfileCompletion) {
-      router.replace(returnTo)
-      return
-    }
-    router.replace(syncJson.needsProfileCompletion ? `/${lng}/signup${returnTo ? `?redirect=${encodeURIComponent(returnTo)}` : ''}` : `/${lng}/profile`)
-  }
+      setGate('redirecting')
+      // A validated return path wins over the default destination, so a customer sent
+      // here from e.g. a review link lands back where they were instead of /profile.
+      const returnTo = sanitizeRedirect(searchParams?.get('redirect'))
+      if (returnTo && !syncJson.needsProfileCompletion) {
+        router.replace(returnTo)
+        return
+      }
+      router.replace(syncJson.needsProfileCompletion ? `/${lng}/signup${returnTo ? `?redirect=${encodeURIComponent(returnTo)}` : ''}` : `/${lng}/profile`)
+    },
+    [router, searchParams, lng]
+  )
 
-  // Complete Google redirect sign-in (fallback when popups are blocked)
+  /**
+   * Settle the Google redirect sign-in (the fallback used when popups are
+   * blocked) and surface anything that went wrong with it.
+   *
+   * It no longer syncs or redirects itself. Completing the redirect makes
+   * Firebase emit an auth state change, so `firebaseUser` lands and the effect
+   * below runs for the same account — and since that effect guards on uid while
+   * this one guards on a module flag, neither suppressed the other and
+   * /api/me/sync was POSTed twice for one sign-in. The effect below is now the
+   * only place that syncs, for every route in.
+   *
+   * Mount-only and genuinely so: nothing here reads props, state or the
+   * callback, so the empty dependency array is accurate and the suppression
+   * that used to sit on it is gone.
+   */
   useEffect(() => {
     if (redirectChecked) return
     redirectChecked = true
@@ -477,13 +495,7 @@ function SignInClient() {
     ;(async () => {
       try {
         setError(null)
-        const result = await getRedirectResult(auth)
-        if (cancelled) return
-
-        if (!result?.user) return
-        setBusy(true)
-        setGate('checking')
-        await postLoginRedirect(result.user)
+        await getRedirectResult(auth)
       } catch (e: any) {
         if (cancelled) return
         const msg = formatAuthError(e, 'Google redirect sign-in failed')
@@ -496,18 +508,24 @@ function SignInClient() {
         }
         setError(msg)
         setGate('idle')
-      } finally {
-        if (!cancelled) setBusy(false)
       }
     })()
 
     return () => {
       cancelled = true
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // If already signed in, route immediately based on profile completion
+  /**
+   * The single owner of "someone is signed in — sync them and move them on".
+   * Every route in lands here: an existing session, the Google popup, the Google
+   * redirect, and both OTP channels once signInWithCustomToken resolves.
+   *
+   * `syncedUidRef` keys the work on the account rather than on a render, so a
+   * re-run — because `postLoginRedirect` changed identity, or because React
+   * re-mounted the effect in StrictMode — returns early instead of issuing a
+   * second /api/me/sync.
+   */
   useEffect(() => {
     if (authLoading) return
     if (!firebaseUser) return
@@ -518,25 +536,21 @@ function SignInClient() {
     setGate('checking')
     setError(null)
 
-    let cancelled = false
     void (async () => {
       try {
         await postLoginRedirect(firebaseUser)
       } catch (e: any) {
-        if (!cancelled) {
-          setError(e?.message || 'Unable to sign in')
-          setGate('idle')
-        }
+        // Not cancelled on unmount: the uid is already marked, so a cancelled
+        // run would leave the gate stuck at 'checking' with nothing to retry it.
+        setError(e?.message || 'Unable to sign in')
+        setGate('idle')
+        // Let another attempt re-sync this same account.
+        syncedUidRef.current = null
       } finally {
-        if (!cancelled) setBusy(false)
+        setBusy(false)
       }
     })()
-
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [firebaseUser, authLoading])
+  }, [firebaseUser, authLoading, postLoginRedirect])
 
   // Phone authentication handlers
   async function handleSendPhoneCode() {
@@ -613,7 +627,7 @@ function SignInClient() {
         if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
           try {
             (window as any).turnstile.reset(turnstileWidgetIdRef.current)
-          } catch (e) {
+          } catch {
             // Ignore errors
           }
         }
@@ -633,7 +647,7 @@ function SignInClient() {
       if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
           (window as any).turnstile.reset(turnstileWidgetIdRef.current)
-        } catch (e) {
+        } catch {
           // Ignore errors
         }
       }
@@ -677,10 +691,12 @@ function SignInClient() {
         throw new Error(data?.error || 'Failed to verify code')
       }
 
-      // Sign in with custom token
-      const userCredential = await signInWithCustomToken(auth, data.customToken)
+      // Sign in with the custom token and stop there. The firebaseUser
+      // effect syncs and redirects as soon as onAuthStateChanged fires, so
+      // calling postLoginRedirect here too just raced it into a second
+      // /api/me/sync for the same account.
+      await signInWithCustomToken(auth, data.customToken)
       setGate('checking')
-      await postLoginRedirect(userCredential.user)
     } catch (err: any) {
       const msg = typeof err?.message === 'string' ? err.message : ''
       if (msg === 'CODE_EXPIRED' || msg.includes('CODE_EXPIRED')) {
@@ -767,7 +783,7 @@ function SignInClient() {
         if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
           try {
             (window as any).turnstile.reset(turnstileWidgetIdRef.current)
-          } catch (e) {
+          } catch {
             // Ignore errors
           }
         }
@@ -787,7 +803,7 @@ function SignInClient() {
       if ((window as any).turnstile && turnstileWidgetIdRef.current != null) {
         try {
           (window as any).turnstile.reset(turnstileWidgetIdRef.current)
-        } catch (e) {
+        } catch {
           // Ignore errors
         }
       }
@@ -828,10 +844,12 @@ function SignInClient() {
         throw new Error(data?.error || 'Failed to verify code')
       }
 
-      // Sign in with custom token
-      const userCredential = await signInWithCustomToken(auth, data.customToken)
+      // Sign in with the custom token and stop there. The firebaseUser
+      // effect syncs and redirects as soon as onAuthStateChanged fires, so
+      // calling postLoginRedirect here too just raced it into a second
+      // /api/me/sync for the same account.
+      await signInWithCustomToken(auth, data.customToken)
       setGate('checking')
-      await postLoginRedirect(userCredential.user)
     } catch (err: any) {
       const msg = typeof err?.message === 'string' ? err.message : ''
       if (msg === 'CODE_EXPIRED' || msg.includes('CODE_EXPIRED')) {
@@ -858,9 +876,10 @@ function SignInClient() {
       const provider = new GoogleAuthProvider()
       provider.setCustomParameters({ prompt: 'select_account' })
       try {
-        const cred = await signInWithPopup(auth, provider)
+        // Complete the sign-in only; the firebaseUser effect owns the sync and
+        // the redirect, and used to race this call into a duplicate POST.
+        await signInWithPopup(auth, provider)
         setGate('checking')
-        await postLoginRedirect(cred.user)
         return
       } catch (e: any) {
         const code = typeof e?.code === 'string' ? e.code : ''

@@ -11,7 +11,6 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { motion as fmMotion, AnimatePresence } from "framer-motion";
 import { CubeIcon } from "@heroicons/react/24/outline";
 import { Campaign, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
@@ -51,6 +50,7 @@ import {
 import CollectionFilterPanel, {
   type CollectionFilterPanelProps,
 } from "@/app/components/collection/CollectionFilterPanel";
+import SideDrawer from "@/app/components/ui/side-drawer";
 import {
   COLLECTION_BAR,
   COLLECTION_BAR_CONTROL,
@@ -82,8 +82,6 @@ import {
   lockCollectionAppend,
   unlockCollectionAppend,
 } from "@/lib/collectionAppendLock";
-
-const motion = fmMotion as unknown as any;
 
 /**
  * A campaign is a hand-picked set of products rather than a branch of the category
@@ -245,9 +243,10 @@ export default function CampaignClient({
   const selectedColors = urlFilterState.colors;
   const selectedSizes = urlFilterState.sizes;
   const sortBy = urlFilterState.sort;
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
-  const isFilterPanelOpen = mobileFiltersOpen || desktopFiltersOpen;
+  // One state, one panel - see the matching note in CollectionClient. The mobile
+  // and desktop buttons used to hold a flag each and render a copy of the panel
+  // each, which is how the two drifted apart.
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   type FilterDraft = {
     colors: string[];
     sizes: string[];
@@ -445,8 +444,7 @@ export default function CampaignClient({
     );
     setUiRange(fromUrl.uiRange);
     setFilterDraft(null);
-    setMobileFiltersOpen(false);
-    setDesktopFiltersOpen(false);
+    setIsFilterPanelOpen(false);
   };
 
   const handleApplyFilters = () => {
@@ -467,11 +465,10 @@ export default function CampaignClient({
     });
     setUiRange(filterDraft.uiRange);
     setFilterDraft(null);
-    setMobileFiltersOpen(false);
-    setDesktopFiltersOpen(false);
+    setIsFilterPanelOpen(false);
   };
 
-  const openFilterPanel = (target: "mobile" | "desktop") => {
+  const openFilterPanel = () => {
     const fromUrl = readFilterUiStateFromSearchParams(
       safeSearchParams,
       collectionPriceBounds
@@ -482,8 +479,7 @@ export default function CampaignClient({
       uiRange: fromUrl.uiRange,
     });
     setUiRange(fromUrl.uiRange);
-    if (target === "mobile") setMobileFiltersOpen(true);
-    else setDesktopFiltersOpen(true);
+    setIsFilterPanelOpen(true);
   };
 
   const handleColorToggle = (color: string) => {
@@ -1025,27 +1021,15 @@ export default function CampaignClient({
               </SelectContent>
             </Select>
 
-            {/* Desktop Filters Button */}
+            {/* Filters — one control at every width, since there is now one panel. */}
             <button
               type="button"
               onClick={() => {
-                if (desktopFiltersOpen) handleCloseFiltersPanel();
-                else openFilterPanel("desktop");
+                if (isFilterPanelOpen) handleCloseFiltersPanel();
+                else openFilterPanel();
               }}
-              className={cn(COLLECTION_BAR_CONTROL, "hidden md:inline-flex")}
-            >
-              {t.filters}
-              {countActivePanelFilters() > 0 && (
-                <span className="tabular-nums">({countActivePanelFilters()})</span>
-              )}
-              <CollectionBarCaret />
-            </button>
-
-            {/* Mobile Filters Button */}
-            <button
-              type="button"
-              onClick={() => openFilterPanel("mobile")}
-              className={cn(COLLECTION_BAR_CONTROL, "md:hidden")}
+              aria-expanded={isFilterPanelOpen}
+              className={cn(COLLECTION_BAR_CONTROL)}
             >
               {t.filters}
               {countActivePanelFilters() > 0 && (
@@ -1166,116 +1150,41 @@ export default function CampaignClient({
         </div>
       </div>
 
-      {/* Desktop Filter Overlay and Sidebar */}
-      <AnimatePresence>
-        {desktopFiltersOpen && (
-          <>
-            <div className="fixed inset-0 z-[68] lg:hidden">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="absolute inset-0 bg-black/30"
-                onClick={handleCloseFiltersPanel}
-              />
-            </div>
-
-            <div className="fixed inset-0 z-[68] hidden lg:block">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="absolute inset-0 bg-black/30"
-                onClick={handleCloseFiltersPanel}
-              />
-            </div>
-
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 z-[70] h-full w-full max-w-[501px] bg-surface-primary shadow-2xl"
-            >
-              <CollectionFilterPanel
-                lng={lng}
-                labels={filterPanelLabels}
-                uiRange={panelUiRange}
-                priceBounds={{ min: collectionPriceBounds?.min ?? 0, max: collectionPriceBounds?.max ?? 1000 }}
-                onSliderChange={handleSliderChange}
-                onSliderCommit={handleSliderCommit}
-                onPriceReset={handlePriceReset}
-                formatPrice={formatPrice}
-                allColors={allColors}
-                selectedColors={panelColors}
-                onColorToggle={handleColorToggle}
-                getColorHex={(color) => colorSlugToHex[color] || getColorHex(color)}
-                getColorLabel={(color) => getColorName(color, lng)}
-                numericSizes={numericSizes}
-                alphaSizes={alphaSizes}
-                selectedSizes={panelSizes}
-                onSizeToggle={handleSizeToggle}
-                {...CAMPAIGN_NO_SUBCATEGORY_FILTER}
-                onApply={handleApplyFilters}
-                onClear={handleClearFilters}
-                onClose={handleCloseFiltersPanel}
-                isBusy={isFilterLoading}
-              />
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Mobile Filter Overlay */}
-      <AnimatePresence>
-        {mobileFiltersOpen && (
-          <div className="fixed inset-0 z-[70] md:hidden">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 bg-black/30"
-              onClick={handleCloseFiltersPanel}
-            />
-
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute left-0 top-0 z-[71] h-full w-full max-w-[501px] bg-surface-primary shadow-xl"
-            >
-              <CollectionFilterPanel
-                lng={lng}
-                labels={filterPanelLabels}
-                uiRange={panelUiRange}
-                priceBounds={{ min: collectionPriceBounds?.min ?? 0, max: collectionPriceBounds?.max ?? 1000 }}
-                onSliderChange={handleSliderChange}
-                onSliderCommit={handleSliderCommit}
-                onPriceReset={handlePriceReset}
-                formatPrice={formatPrice}
-                allColors={allColors}
-                selectedColors={panelColors}
-                onColorToggle={handleColorToggle}
-                getColorHex={(color) => colorSlugToHex[color] || getColorHex(color)}
-                getColorLabel={(color) => getColorName(color, lng)}
-                numericSizes={numericSizes}
-                alphaSizes={alphaSizes}
-                selectedSizes={panelSizes}
-                onSizeToggle={handleSizeToggle}
-                {...CAMPAIGN_NO_SUBCATEGORY_FILTER}
-                onApply={handleApplyFilters}
-                onClear={handleClearFilters}
-                onClose={handleCloseFiltersPanel}
-                isBusy={isFilterLoading}
-              />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* Filter drawer — the shared SideDrawer, same shell as the collection
+          page's and the navigation panel's. */}
+      <SideDrawer
+        open={isFilterPanelOpen}
+        onOpenChange={(next) => {
+          if (!next) handleCloseFiltersPanel();
+        }}
+        lng={lng}
+        title={filterPanelLabels.title}
+      >
+        <CollectionFilterPanel
+          lng={lng}
+          labels={filterPanelLabels}
+          uiRange={panelUiRange}
+          priceBounds={{ min: collectionPriceBounds?.min ?? 0, max: collectionPriceBounds?.max ?? 1000 }}
+          onSliderChange={handleSliderChange}
+          onSliderCommit={handleSliderCommit}
+          onPriceReset={handlePriceReset}
+          formatPrice={formatPrice}
+          allColors={allColors}
+          selectedColors={panelColors}
+          onColorToggle={handleColorToggle}
+          getColorHex={(color) => colorSlugToHex[color] || getColorHex(color)}
+          getColorLabel={(color) => getColorName(color, lng)}
+          numericSizes={numericSizes}
+          alphaSizes={alphaSizes}
+          selectedSizes={panelSizes}
+          onSizeToggle={handleSizeToggle}
+          {...CAMPAIGN_NO_SUBCATEGORY_FILTER}
+          onApply={handleApplyFilters}
+          onClear={handleClearFilters}
+          onClose={handleCloseFiltersPanel}
+          isBusy={isFilterLoading}
+        />
+      </SideDrawer>
 
       <ScrollToTopButton lng={lng} />
     </div>

@@ -12,7 +12,6 @@ import {
 import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { motion as fmMotion, AnimatePresence } from "framer-motion";
 import { CubeIcon } from "@heroicons/react/24/outline";
 import { Product, Category, productHelpers, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
@@ -36,6 +35,7 @@ import {
   SelectValue,
 } from '@/app/components/ui/select';
 import CollectionFilterPanel from '@/app/components/collection/CollectionFilterPanel';
+import SideDrawer from '@/app/components/ui/side-drawer';
 import {
   clearCollectionState,
   getCollectionState,
@@ -102,11 +102,6 @@ import {
 } from "@/app/components/collection/collectionChrome";
 import { CollectionGridSkeleton } from "@/app/components/collection/CollectionListingSkeleton";
 import { useGridVirtualizationReady } from "@/lib/useGridVirtualizationReady";
-
-// NOTE: React 19 + Next 16 typecheck currently treats `motion.*` as not accepting
-// animation props in this file. We cast it to avoid a build-blocking type error.
-// (Runtime behavior remains unchanged.)
-const motion = fmMotion as unknown as any;
 
 /** Stable empty params — avoids `new URLSearchParams()` on every render when search is absent. */
 const EMPTY_SEARCH_PARAMS = new URLSearchParams();
@@ -1019,9 +1014,11 @@ export default function CollectionClient({
   const selectedSubSubCategories = urlFilterState.subSubCategories;
   const sortBy = urlFilterState.sort;
 
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [desktopFiltersOpen, setDesktopFiltersOpen] = useState(false);
-  const isFilterPanelOpen = mobileFiltersOpen || desktopFiltersOpen;
+  // One state, one panel. The mobile and desktop filter buttons used to hold a
+  // flag each and render a full copy of the panel each, which is how the two
+  // drifted apart - different scrims, different z-indexes, one of them slightly
+  // differently animated. They are the same drawer at two breakpoints.
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [isFilterNavigating, setIsFilterNavigating] = useState(() =>
     takeCollectionFilterNavPending()
   );
@@ -1700,8 +1697,7 @@ export default function CollectionClient({
   const handleCloseFiltersPanel = () => {
     setUiRange(urlFilterState.uiRange);
     setFilterDraft(null);
-    setMobileFiltersOpen(false);
-    setDesktopFiltersOpen(false);
+    setIsFilterPanelOpen(false);
   };
 
   const handleApplyFilters = () => {
@@ -1723,8 +1719,7 @@ export default function CollectionClient({
     });
     setUiRange(filterDraft.uiRange);
     setFilterDraft(null);
-    setMobileFiltersOpen(false);
-    setDesktopFiltersOpen(false);
+    setIsFilterPanelOpen(false);
   };
 
   const handleColorToggle = (color: string) => {
@@ -1913,7 +1908,7 @@ export default function CollectionClient({
     return () => window.clearTimeout(id);
   }, [isFilterLoading]);
 
-  const openFilterPanel = (target: "mobile" | "desktop") => {
+  const openFilterPanel = () => {
     setFilterDraft({
       colors: [...urlFilterState.colors],
       sizes: [...urlFilterState.sizes],
@@ -1921,8 +1916,7 @@ export default function CollectionClient({
       uiRange: urlFilterState.uiRange,
     });
     setUiRange(urlFilterState.uiRange);
-    if (target === "mobile") setMobileFiltersOpen(true);
-    else setDesktopFiltersOpen(true);
+    setIsFilterPanelOpen(true);
   };
 
   return (
@@ -1993,27 +1987,17 @@ export default function CollectionClient({
               </SelectContent>
             </Select>
 
-            {/* Desktop Filters Button */}
+            {/* Filters — one control at every width, since there is now one panel.
+                The two that stood here differed only in their breakpoint class and
+                in the desktop one toggling rather than opening. */}
             <button
               type="button"
               onClick={() => {
-                if (desktopFiltersOpen) handleCloseFiltersPanel();
-                else openFilterPanel("desktop");
+                if (isFilterPanelOpen) handleCloseFiltersPanel();
+                else openFilterPanel();
               }}
-              className={cn(COLLECTION_BAR_CONTROL, "hidden md:inline-flex")}
-            >
-              {t.filters}
-              {countActivePanelFilters() > 0 && (
-                <span className="tabular-nums">({countActivePanelFilters()})</span>
-              )}
-              <CollectionBarCaret />
-            </button>
-
-            {/* Mobile Filters Button */}
-            <button
-              type="button"
-              onClick={() => openFilterPanel("mobile")}
-              className={cn(COLLECTION_BAR_CONTROL, "md:hidden")}
+              aria-expanded={isFilterPanelOpen}
+              className={cn(COLLECTION_BAR_CONTROL)}
             >
               {t.filters}
               {countActivePanelFilters() > 0 && (
@@ -2203,41 +2187,18 @@ export default function CollectionClient({
         )}
       </div>
 
-      {/* Desktop Filter Overlay and Sidebar */}
-      <AnimatePresence>
-        {desktopFiltersOpen && (
-          <>
-            {/* Desktop Filter Overlay */}
-            <div className="fixed inset-0 z-[68] lg:hidden">
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="absolute inset-0 bg-black/30"
-                onClick={handleCloseFiltersPanel}
-              />
-            </div>
-            
-            <div className="fixed inset-0 z-[68] hidden lg:block">
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="absolute inset-0 bg-black/30"
-                onClick={handleCloseFiltersPanel}
-              />
-            </div>
-            
-            {/* Desktop Filter Sidebar */}
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed left-0 top-0 z-[70] h-full w-full max-w-[501px] bg-surface-primary shadow-2xl"
-            >
+      {/* Filter drawer. The shell is the shared SideDrawer - the navigation
+          drawer's sheet - so the slide, the scrim fade, the outside-tap close and
+          the page-scroll lock are the navigation panel's, not a second spring
+          implementation. The 501px board (438:3094) is the shell's desktop cap. */}
+      <SideDrawer
+        open={isFilterPanelOpen}
+        onOpenChange={(next) => {
+          if (!next) handleCloseFiltersPanel();
+        }}
+        lng={lng}
+        title={t.filters}
+      >
         <CollectionFilterPanel
           lng={lng}
           labels={{
@@ -2277,74 +2238,7 @@ export default function CollectionClient({
           onClose={handleCloseFiltersPanel}
           isBusy={isFilterLoading}
         />
-      </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-
-      {/* Mobile Filter Overlay */}
-      <AnimatePresence>
-        {mobileFiltersOpen && (
-          <div className="fixed inset-0 z-[70] md:hidden">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 bg-black/30"
-              onClick={handleCloseFiltersPanel}
-            />
-            
-            <motion.div
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute left-0 top-0 z-[71] h-full w-full max-w-[501px] bg-surface-primary shadow-xl"
-            >
-        <CollectionFilterPanel
-          lng={lng}
-          labels={{
-            title: t.filters,
-            price: t.price,
-            colors: t.colors,
-            sizes: t.sizes,
-            subCategories: lng === 'he' ? 'תת-קטגוריות' : 'Sub-Categories',
-            apply: t.applyFilters,
-            clearAll: t.clearAllFilters,
-            reset: lng === 'he' ? 'איפוס' : 'Reset',
-            close: lng === 'he' ? 'סגירת הסינון' : 'Close filters',
-          }}
-          uiRange={panelUiRange}
-          priceBounds={{ min: collectionPriceBounds?.min ?? 0, max: collectionPriceBounds?.max ?? 1000 }}
-          onSliderChange={handleSliderChange}
-          onSliderCommit={handleSliderCommit}
-          onPriceReset={handlePriceReset}
-          formatPrice={formatPrice}
-          allColors={allColors}
-          selectedColors={panelColors}
-          onColorToggle={handleColorToggle}
-          getColorHex={(color) => colorSlugToHex[color] || getColorHex(color)}
-          getColorLabel={(color) => getColorName(color, lng as 'en' | 'he')}
-          numericSizes={numericSizes}
-          alphaSizes={alphaSizes}
-          selectedSizes={panelSizes}
-          onSizeToggle={handleSizeToggle}
-          showSubSubCategoryFilter={showSubSubCategoryFilter}
-          subSubCategoriesByParent={subSubCategoriesByParent}
-          selectedSubSubCategories={panelSubSubCategories}
-          onSubSubCategoryToggle={handleSubSubCategoryToggle}
-          getParentCategoryName={getParentCategoryName}
-          getSubSubCategoryName={getSubSubCategoryName}
-          onApply={handleApplyFilters}
-          onClear={handleClearFilters}
-          onClose={handleCloseFiltersPanel}
-          isBusy={isFilterLoading}
-        />
-          </motion.div>
-        </div>
-        )}
-      </AnimatePresence>
+      </SideDrawer>
 
       {/* Scroll to Top Button */}
       <ScrollToTopButton lng={lng as 'en' | 'he'} />

@@ -20,7 +20,6 @@ interface OtpInputProps {
   length?: number
   disabled?: boolean
   className?: string
-  dir?: 'ltr' | 'rtl'
   variant?: 'default' | 'sako'
   /** Marks every cell invalid. The message itself belongs to the caller. */
   error?: boolean
@@ -33,7 +32,6 @@ export function OtpInput({
   length = 6,
   disabled = false,
   className,
-  dir = 'ltr',
   variant = 'default',
   error = false,
   ...aria

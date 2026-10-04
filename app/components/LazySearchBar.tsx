@@ -1,7 +1,6 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { Search } from 'lucide-react'
 
 type LazySearchBarProps = {
   language: string
@@ -28,36 +27,31 @@ type LazySearchBarProps = {
  */
 function DefaultLoading() {
   return (
-    <div className="relative">
-      <div
-        className="text-gray-700 p-2 rounded-md flex items-center justify-center"
-        aria-hidden="true"
-      >
-        <Search className="h-5 w-5" />
-      </div>
+    <div
+      className="flex h-[36px] w-[32px] items-center justify-center"
+      aria-hidden="true"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icons/sako/search.svg" width={22} height={22} alt="" />
     </div>
   )
 }
 
 function InlineLoading() {
   return (
-    <div className="relative">
-      <input
-        type="text"
-        readOnly
-        tabIndex={-1}
-        aria-hidden="true"
-        // Mirrors the real input's box: same padding, border and radius. The
-        // icon uses `start-3` rather than left/right so it lands correctly
-        // under both dir="ltr" and dir="rtl" without needing the language prop.
-        className="w-full bg-gray-100 border border-gray-300 rounded-md py-2.5 ps-10 pe-4 text-gray-700 outline-none"
-      />
-      <span
-        className="absolute top-1/2 -translate-y-1/2 start-3 text-gray-500"
-        aria-hidden="true"
-      >
-        <Search className="h-5 w-5" />
-      </span>
+    // The real field, 2014:2509: 36px, square, 1px black rule, white ground, the
+    // 22px magnifier in its 32px box at the reading end. Flex rather than an
+    // absolutely placed icon for the same reason the real one is - it mirrors
+    // under dir="rtl" by itself, so this needs no language prop either.
+    <div
+      className="flex h-[36px] w-full items-center border border-sako-black bg-surface-primary"
+      aria-hidden="true"
+    >
+      <div className="h-full flex-1" />
+      <div className="flex h-[29px] w-[32px] shrink-0 items-center justify-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/sako/search.svg" width={22} height={22} alt="" />
+      </div>
     </div>
   )
 }
@@ -83,12 +77,17 @@ export default function LazySearchBar({ language, variant = 'default' }: LazySea
     )
   }
 
-  // Fixed 36x36 slot. Belt and braces alongside the `loading` placeholder: even
-  // if the chunk fails outright, or a future edit changes what SearchBar
-  // renders, the header's icon cluster keeps its width and the centred menu
-  // cannot move.
+  // Fixed 32x36 slot - the design's icon box (438:4392), the same one the
+  // favourites, account and cart links occupy. Belt and braces alongside the
+  // `loading` placeholder: even if the chunk fails outright, or a future edit
+  // changes what SearchBar renders, the header's icon cluster keeps its width
+  // and the centred wordmark cannot move.
+  //
+  // No `relative`: SearchBar's desktop panel hangs off the nav's bar row with
+  // `absolute ... top-full`, so nothing between the two may establish a
+  // containing block or the band detaches from the header and loses its bleed.
   return (
-    <div className="relative h-9 w-9 shrink-0">
+    <div className="h-[36px] w-[32px] shrink-0">
       <DefaultSearchBar language={language} variant="default" />
     </div>
   )

@@ -82,11 +82,22 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const lastSeenUidRef = useRef<string | null>(null)
   const completedUidRef = useRef<string | null | undefined>(undefined)
 
-  // Persist to localStorage ONLY in guest mode
+  // Persist to localStorage ONLY in guest mode.
+  //
+  // The `loading` guard is load-bearing, not a micro-optimisation. Effects run in
+  // declaration order, so on mount this one fires BEFORE the initialisation effect
+  // below - with `favorites` still at its SSR-safe [] and `mode` at its initial
+  // 'guest'. Without the guard it reached the empty branch and deleted the stored
+  // keys, and the initialisation effect then read an empty store a moment later:
+  // a guest's favorites did not survive a single refresh. Nothing is written until
+  // initialisation has finished and `favorites` reflects what was actually stored.
   useEffect(() => {
+    if (loading) return
     if (mode === 'guest') {
       try {
         if (favorites.length === 0) {
+          // An empty list is a real state, not an uninitialised one: a guest who
+          // removes their last favorite must still see it gone after a refresh.
           localStorage.removeItem(STORAGE_KEY)
         } else {
           localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites))

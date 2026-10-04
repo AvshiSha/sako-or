@@ -4,10 +4,3 @@ export const PRODUCT_CARD_IMAGE_SIZES =
 
 /** `sizes` for small color-variant swatches (36px below lg, 45px from lg up). */
 export const PRODUCT_SWATCH_IMAGE_SIZES = '(max-width: 1023px) 36px, 45px'
-
-/** `sizes` for compact favorite cards (~160px display). */
-export const FAVORITE_CARD_IMAGE_SIZES = '(max-width: 640px) 50vw, 160px'
-
-/** `sizes` for favorites page desktop grid (sm: 2 cols, lg: 3, xl: 4). */
-export const FAVORITES_PAGE_IMAGE_SIZES =
-  '(max-width: 1023px) 50vw, (max-width: 1279px) 33vw, 25vw'

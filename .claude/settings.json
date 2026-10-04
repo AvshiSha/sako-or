@@ -11,7 +11,8 @@
       "Bash(npx eslint *)",
       "Bash(powershell -Command ' *)",
       "Bash(powershell -Command \"Get-Content 'C:\\\\Users\\\\user\\\\.claude\\\\projects\\\\c--Users-user-sako-or\\\\12c1d4bc-1017-4275-ac2c-c4490a9b7539\\\\tool-results\\\\bt1a1ish6.txt' | ConvertFrom-Json | ConvertTo-Json -Depth 100\")",
-      "Bash(MSYS_NO_PATHCONV=1 NODE_PATH=C:/Users/user/sako-or/node_modules node verify-guest-favorites.js)"
+      "Bash(MSYS_NO_PATHCONV=1 NODE_PATH=C:/Users/user/sako-or/node_modules node verify-guest-favorites.js)",
+      "mcp__plugin_figma_figma__get_design_context"
     ]
   }
 }

@@ -21,7 +21,7 @@ import Toast, { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import QuantityStepper from '@/app/components/QuantityStepper'
 import { Button } from '@/app/components/ui/button'
-import { getProductSizeOptions, getSizeGridColumns } from '@/lib/product-size-options'
+import { getProductSizeOptions, getSizeGridColumns, SIZE_GRID_COLUMN_CLASS } from '@/lib/product-size-options'
 
 /**
  * Written out as whole class names on purpose. Tailwind scans source text, so a
@@ -35,12 +35,6 @@ import { getProductSizeOptions, getSizeGridColumns } from '@/lib/product-size-op
 const SECONDARY_ACTION_BUTTON =
   'flex h-[44px] flex-1 items-center justify-center gap-2 border border-border-default font-ploni text-[12px] text-text-primary transition-colors hover:bg-sako-gray-200'
 
-const SIZE_GRID_COLUMN_CLASS = {
-  1: 'grid-cols-1',
-  3: 'grid-cols-3',
-  4: 'grid-cols-4',
-  5: 'grid-cols-5',
-} as const
 import { trackViewItem, trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import { ProductImageCarousel } from '@/app/components/ProductImageCarousel'

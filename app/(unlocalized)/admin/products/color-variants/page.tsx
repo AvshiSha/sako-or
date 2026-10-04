@@ -180,8 +180,11 @@ export default function ColorVariantsPage() {
                         <PencilIcon className="h-4 w-4 mr-1" />
                         Edit Product
                       </Link>
+                      {/* sku, not baseSku: the storefront route resolves this segment
+                          with `where('sku', '==', segment)`, and most records carry no
+                          baseSku - which is what pointed this at /product/undefined. */}
                       <Link
-                        href={`/en/product/${product.baseSku}`}
+                        href={`/en/product/${product.sku || product.baseSku}`}
                         target="_blank"
                         className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                       >
@@ -238,7 +241,7 @@ export default function ColorVariantsPage() {
 
                         <div className="mt-4 flex items-center justify-between">
                           <Link
-                            href={`/en/product/${product.baseSku}/${variant.colorSlug}`}
+                            href={`/en/product/${product.sku || product.baseSku}/${variant.colorSlug}`}
                             target="_blank"
                             className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
                           >

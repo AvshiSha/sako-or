@@ -359,7 +359,11 @@ function FavoriteRow({
     (language === 'he' ? item.title_he || item.title_en : item.title_en || item.title_he) || ''
   const imageSrc = variant?.primaryImage || variant?.images?.[0] || '/images/placeholder.svg'
 
-  const productHref = `/${language}/product/${item.baseSku || item.sku}/${colorSlug || 'default'}`
+  // sku first: the route's [baseSku] segment is resolved by getProductByBaseSku,
+  // which queries Firestore `where('sku', '==', segment)`. baseSku-first happens to
+  // work only because most records have no baseSku to prefer - it would miss on any
+  // record where the two differ.
+  const productHref = `/${language}/product/${item.sku || item.baseSku}/${colorSlug || 'default'}`
 
   return (
     <li

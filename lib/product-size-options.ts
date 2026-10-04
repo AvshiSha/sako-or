@@ -40,6 +40,18 @@ export function getSizeGridColumns(count: number): 1 | 3 | 4 | 5 {
   return 4
 }
 
+/**
+ * Tailwind cannot see a class it has to build at runtime, so the column count has
+ * to map to whole literal class names. Lives here beside getSizeGridColumns
+ * because the PDP and the Quick Buy drawer both draw the same grid.
+ */
+export const SIZE_GRID_COLUMN_CLASS = {
+  1: 'grid-cols-1',
+  3: 'grid-cols-3',
+  4: 'grid-cols-4',
+  5: 'grid-cols-5',
+} as const
+
 export type ProductSizeOption = {
   /** Key to write into the cart and to look up in stockBySize. */
   key: string

@@ -2,18 +2,57 @@
 
 import { Fragment, useState, useEffect } from 'react'
 import { Dialog, Transition } from '@headlessui/react'
-import { XMarkIcon } from '@heroicons/react/24/outline'
-import { HeartIcon } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Product, ColorVariant, productHelpers } from '@/lib/firebase'
+import { Product, productHelpers } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
 import Toast, { useToast } from '@/app/components/Toast'
+import QuantityStepper from '@/app/components/QuantityStepper'
 import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import { buildFavoriteKey } from '@/lib/favorites'
+import {
+  getProductSizeOptions,
+  getSizeGridColumns,
+  SIZE_GRID_COLUMN_CLASS,
+} from '@/lib/product-size-options'
+
+/**
+ * Quick Buy drawer — composed, not transcribed.
+ *
+ * The SAKO OR — Update file has no Quick Buy frame: all 34 artboards were
+ * checked, and `search_design_system` finds no drawer component (the obsolete
+ * "Drawer/Cart" was deleted at 0 instances). So this is built the way the other
+ * unframed routes were — out of constructions that are already approved
+ * elsewhere, each one cited, rather than invented from the raw tokens:
+ *
+ * - Drawer shell and ruled sections — Product Filter panel, 438:3094 / 438:3579.
+ *   A 501px board whose sections are a Bold 16 label over the control, each
+ *   closed by a full-bleed hairline.
+ * - Product summary row — Cart drawer line item, 438:4600. Text column with the
+ *   name at Bold 16, the "colour / size" line at Regular 12 on gray-800, and the
+ *   price at Regular 13/16, against a 119px image column.
+ * - Size grid — PDP, 438:4234 + 438:4240. An ink-900 ground showing through 1px
+ *   gaps, which is also what draws the dividers.
+ * - Colour swatches — PDP, 438:4224, at the frame's 47px.
+ * - Quantity — the shared QuantityStepper, 438:4667.
+ * - Summary bar + CTA — Cart drawer, 438:4656 / 438:4662. A 62px ruled total row
+ *   over a 58px ink bar carrying the label and a turned arrow.
+ *
+ * Two states the design system explicitly does not provide, flagged in its own
+ * audit (438:7670) as developer gaps, are taken from what the PDP already
+ * shipped so the two screens agree: the selected size (ink fill, inverse label)
+ * and the stepper's boundary states (the stepper owns those itself).
+ */
+
+/**
+ * One entry of a product's colour map. Narrower than the exported `ColorVariant`
+ * - same reason FavoritesClient declares it - so the values coming out of
+ * `Object.values(product.colorVariants)` assign without a cast.
+ */
+type ProductColorVariant = Product['colorVariants'][string]
 
 interface QuickBuyDrawerProps {
   isOpen: boolean
@@ -24,14 +63,20 @@ interface QuickBuyDrawerProps {
   initialColorSlug?: string
 }
 
+/** 438:3102 — content inset by 30px, the rule left to run edge to edge. */
+const SECTION = 'border-b border-sako-black px-[16px] py-[20px] lg:px-[30px]'
+const SECTION_LABEL = 'font-ploni text-[16px] font-bold text-text-primary'
+
 export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'en', initialColorSlug }: QuickBuyDrawerProps) {
-  const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
+  const [selectedVariant, setSelectedVariant] = useState<ProductColorVariant | null>(null)
   const [selectedSize, setSelectedSize] = useState<string>('')
   const [quantity, setQuantity] = useState(1)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
-  const { addToCart, items } = useCart()
+  const { addToCart } = useCart()
   const { toast, showToast, hideToast } = useToast()
+
+  const isRTL = language === 'he'
 
   // When drawer opens, sync to the color variant selected on the product card
   useEffect(() => {
@@ -41,8 +86,9 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     const initialVariant = initialColorSlug
       ? activeVariants.find(v => v.colorSlug === initialColorSlug) ?? null
       : null
-    setSelectedVariant(initialVariant as ColorVariant | null)
+    setSelectedVariant(initialVariant)
     setSelectedSize('')
+    setQuantity(1)
   }, [isOpen, initialColorSlug, product.colorVariants])
 
   // Fallback when no variant is selected yet (e.g. drawer opened without initialColorSlug)
@@ -50,18 +96,15 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     ? Object.values(product.colorVariants).find(v => v.isActive !== false) || null
     : null
   const activeVariant = selectedVariant || defaultVariant
-  
+
   if (!activeVariant) {
     return null
   }
 
   // Get current price (variant price takes precedence)
   const getCurrentPrice = () => {
-    // First check for variant-specific sale price
     if (activeVariant.salePrice) return activeVariant.salePrice
-    // Then check for product-level sale price
     if (product.salePrice) return product.salePrice
-    // Then check for variant price override
     if ('priceOverride' in activeVariant && activeVariant.priceOverride) return activeVariant.priceOverride
     return product.price
   }
@@ -72,86 +115,70 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
     return product.price
   }
 
-  // Check if there's any sale price (variant or product level)
-  const hasSalePrice = () => {
-    return activeVariant.salePrice || product.salePrice
-  }
-
-  // Get the sale price (variant takes precedence over product)
-  const getSalePrice = () => {
-    return activeVariant.salePrice || product.salePrice
-  }
-
   const currentPrice = getCurrentPrice()
   const originalPrice = getOriginalPrice()
-  const salePrice = getSalePrice()
-  const productName = productHelpers.getField(product, 'name', language)
-  
+  const salePrice = activeVariant.salePrice || product.salePrice
+  const isOnSale = Boolean(salePrice && salePrice < originalPrice)
+  const productName = productHelpers.getField(product, 'name', language) || product.title_en || product.title_he || ''
+
   // Get primary image from the active variant
   const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || activeVariant.images?.[0]
-  
-  // Get available sizes for the active variant (only sizes with stock > 0)
-  const availableSizes = 'stockBySize' in activeVariant 
-    ? Object.entries(activeVariant.stockBySize).filter(([_, stock]) => stock > 0).map(([size, _]) => ({ size, stock: activeVariant.stockBySize[size] }))
-    : []
-  
-  // Check if the active variant is out of stock (no available sizes)
-  const isVariantOutOfStock = availableSizes.length === 0
-  
-  // Handle color variant selection
-  const handleVariantSelect = (variant: any) => {
+
+  const stockBySize: Record<string, number> =
+    'stockBySize' in activeVariant && activeVariant.stockBySize ? activeVariant.stockBySize : {}
+
+  // The offered range comes from the category, not from the stock table, so sizes
+  // the house does not currently hold still get a cell and are drawn unavailable
+  // (438:2692). The old drawer filtered them out, which meant its "unavailable"
+  // state could never render and the grid silently changed width per colour.
+  const sizeOptions = getProductSizeOptions(product, stockBySize)
+  const sizeGridColumns = getSizeGridColumns(sizeOptions.length)
+  const isVariantSoldOut = sizeOptions.every(option => !option.inStock)
+  const selectedStock = sizeOptions.find(option => option.key === selectedSize)?.stock ?? 0
+  const needsSize = !selectedSize
+  const canAddToCart = !isVariantSoldOut && !needsSize && !isAddingToCart
+
+  const favoriteKey = buildFavoriteKey(product.baseSku || product.sku || '', activeVariant.colorSlug || '')
+  const isWishlisted = isFavorite(favoriteKey)
+
+  const handleVariantSelect = (variant: ProductColorVariant) => {
     setSelectedVariant(variant)
     setSelectedSize('') // Reset size selection when color changes
+    setQuantity(1)
   }
-  
-  // Handle size selection
+
   const handleSizeSelect = (size: string) => {
     setSelectedSize(size)
     setQuantity(1) // Reset quantity when size changes
   }
-  
-  // Handle wishlist toggle
+
   const handleWishlistToggle = () => {
-    const baseSku = product.baseSku || product.sku || ''
-    const colorSlug = activeVariant?.colorSlug || ''
-    const favoriteKey = buildFavoriteKey(baseSku, colorSlug)
     if (favoriteKey) {
       void toggleFavorite(favoriteKey)
     }
   }
-  
-  // Handle add to cart
+
   const handleAddToCart = async () => {
     if (isAddingToCart) return
-    
+
     const sku = product.baseSku || product.sku || ''
     if (!sku) {
       console.error('No SKU found for product')
       return
     }
-    
-    // Check if variant is out of stock
-    if (isVariantOutOfStock) {
-      const errorMessage = language === 'he' 
-        ? 'פריט זה אזל מהמלאי'
-        : 'This item is out of stock'
-      showToast(errorMessage, 'error')
+
+    if (isVariantSoldOut) {
+      showToast(isRTL ? 'פריט זה אזל מהמלאי' : 'This item is out of stock', 'error')
       return
     }
-    
-    // Check if size is required but not selected
-    if (availableSizes.length > 0 && !selectedSize) {
+
+    if (needsSize) {
       return
     }
-    
+
     setIsAddingToCart(true)
-    
+
     try {
-      // Get stock for selected size, or total stock if no size selected
-      const maxStock = selectedSize 
-        ? ('stockBySize' in activeVariant ? activeVariant.stockBySize[selectedSize] || 0 : 0)
-        : ('stockBySize' in activeVariant ? Object.values(activeVariant.stockBySize).reduce((total, stock) => total + stock, 0) : 0)
-      
       const resolvedSalePrice = salePrice && salePrice > 0 ? salePrice : undefined
       const cartItem = {
         sku: sku,
@@ -162,27 +189,23 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
         price: originalPrice,
         salePrice: resolvedSalePrice && resolvedSalePrice < originalPrice ? resolvedSalePrice : undefined,
         currency: 'ILS',
-        image: typeof primaryImage === 'string' ? primaryImage : primaryImage?.url,
+        image: primaryImage,
         color: activeVariant.colorSlug,
         size: selectedSize || undefined,
-        maxStock: maxStock
+        maxStock: selectedStock
       }
-      
+
       // Track add_to_cart for GA4 data layer
       try {
-        const itemName = productHelpers.getField(product, 'name', language as 'en' | 'he') || product.title_en || product.title_he || 'Unknown Product'
-        const itemId = sku
         const categories = product.categories_path || [product.category || 'Unknown']
-        const variant = selectedSize ? `${selectedSize}-${activeVariant.colorSlug}` : activeVariant.colorSlug
-        
         trackAddToCartEvent(
           [{
-            name: itemName,
-            id: itemId,
+            name: productName || 'Unknown Product',
+            id: sku,
             price: currentPrice,
             brand: product.brand,
             categories: categories,
-            variant: variant,
+            variant: selectedSize ? `${selectedSize}-${activeVariant.colorSlug}` : activeVariant.colorSlug,
             quantity: quantity
           }],
           product.currency || 'ILS'
@@ -190,307 +213,382 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
       } catch (dataLayerError) {
         console.warn('Data layer tracking error:', dataLayerError)
       }
-      
+
       addToCart(cartItem, quantity)
-      
-      // Show success toast
-      const successMessage = language === 'he' 
-        ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה` 
+
+      const successMessage = isRTL
+        ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`
         : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
       showToast(successMessage, 'success')
-      
+
       // Close the drawer without navigating away.
       // Quick Buy is an in-place overlay; keep the user on the same page.
       onClose()
     } catch (error: any) {
       console.error('Error adding to cart:', error)
-      
-      // Show error message to user
-      let errorMessage = language === 'he' 
-        ? 'שגיאה בהוספה לעגלה'
-        : 'Error adding to cart'
-      
-      // Check if error has a specific message
+
+      let errorMessage = isRTL ? 'שגיאה בהוספה לעגלה' : 'Error adding to cart'
       if (error?.message) {
         errorMessage = error.message
       } else if (error?.error && typeof error.error === 'string') {
         errorMessage = error.error
       }
-      
+
       showToast(errorMessage, 'error')
     } finally {
       setIsAddingToCart(false)
     }
   }
 
+  const unitPrice = isOnSale && salePrice ? salePrice : currentPrice
+  const lineTotal = unitPrice * quantity
+
+  // The CTA carries the instruction rather than a separate hint line: its label is
+  // the same "בחרי מידה" the card's trigger uses (438:3916), so the drawer answers
+  // the control that opened it.
+  const ctaLabel = isAddingToCart
+    ? (isRTL ? 'מוסיף לעגלה...' : 'Adding to bag…')
+    : isVariantSoldOut
+      ? (isRTL ? 'אזל מהמלאי' : 'Out of stock')
+      : needsSize
+        ? (isRTL ? 'בחרי מידה' : 'Select size')
+        : (isRTL ? `הוספה לסל - ₪${lineTotal.toFixed(2)}` : `Add to bag - ₪${lineTotal.toFixed(2)}`)
+
+  // Anchored to the inline end, which is the side the approved filter drawer opens
+  // from for the Hebrew storefront. Transforms are not direction-aware, so the side
+  // and the slide are picked explicitly off `language` rather than with logical
+  // properties, which would move the panel without moving the animation.
+  const panelSide = isRTL ? 'left-0' : 'right-0'
+  const closedTransform = isRTL ? '-translate-x-full' : 'translate-x-full'
+
   return (
     <Transition.Root show={isOpen} as={Fragment}>
-      <Dialog 
-        as="div" 
-        className="relative z-[75]" 
-        onClose={onClose}
-      >
-         <Transition.Child
-           as={Fragment}
-           enter="ease-in-out duration-700"
-           enterFrom="opacity-0"
-           enterTo="opacity-100"
-           leave="ease-in-out duration-700"
-           leaveFrom="opacity-100"
-           leaveTo="opacity-0"
-         >
-         <div className="fixed inset-0 bg-black/20 transition-opacity" />
+      <Dialog as="div" className="relative z-[75]" onClose={onClose}>
+        <Transition.Child
+          as={Fragment}
+          enter="ease-in-out duration-500"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in-out duration-500"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          {/* black/30, the scrim both approved drawers use. */}
+          <div className="fixed inset-0 bg-black/30 transition-opacity" />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-hidden" data-quick-buy-drawer>
           <div className="absolute inset-0 overflow-hidden">
-            <div className="pointer-events-none fixed inset-y-0 right-0 flex max-w-full pl-10">
+            <div className={`pointer-events-none fixed inset-y-0 ${panelSide} flex max-w-full`}>
               <Transition.Child
                 as={Fragment}
-                enter="transform transition ease-in-out duration-700 sm:duration-1000"
-                enterFrom="translate-x-full"
+                enter="transform transition ease-in-out duration-500"
+                enterFrom={closedTransform}
                 enterTo="translate-x-0"
-                leave="transform transition ease-in-out duration-700 sm:duration-1000"
+                leave="transform transition ease-in-out duration-500"
                 leaveFrom="translate-x-0"
-                leaveTo="translate-x-full"
+                leaveTo={closedTransform}
               >
-                <Dialog.Panel className="pointer-events-auto w-screen max-w-md">
-                  <div className="flex h-full flex-col overflow-y-scroll bg-white shadow-xl">
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                      <h2 className="text-lg font-semibold text-gray-900">{language === 'he' ? product.title_he : product.title_en}</h2>
-                      <div className="flex items-center gap-3">
-                        {/* Heart Icon */}
-                        <button
-                          onClick={handleWishlistToggle}
-                          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
-                        >
-                          {isFavorite(
-                            (() => {
-                              const baseSku = product.baseSku || product.sku || ''
-                              const colorSlug = activeVariant?.colorSlug || ''
-                              return buildFavoriteKey(baseSku, colorSlug)
-                            })()
-                          ) ? (
-                            <HeartSolidIcon className="h-5 w-5 text-red-500" />
-                          ) : (
-                            <HeartIcon className="h-5 w-5 text-gray-600" />
-                          )}
-                        </button>
-                        {/* Close Button */}
+                {/* 501px is the filter drawer's board width (438:3094 / 438:3579). */}
+                <Dialog.Panel className="pointer-events-auto w-screen max-w-[501px]">
+                  <div className="flex h-full flex-col bg-surface-primary">
+                    {/* Heading, 438:3097 / 438:4595. Heading/H3 rather than the cart
+                        drawer's 40px display: the title sits above a product name,
+                        and two display sizes in 120px of drawer fight each other. */}
+                    <div className="flex shrink-0 items-center justify-between border-b border-sako-black px-[16px] py-[20px] lg:px-[30px]">
+                      <h2 className="font-ploni text-[20px] font-black leading-none text-text-primary">
+                        {isRTL ? 'בחרי מידה' : 'Select size'}
+                      </h2>
+
+                      <div className="flex items-center gap-[16px]">
+                        {/* The card's favourite control, 438:3980 — the same asset and
+                            the same accent-sale fill, so the heart does not change
+                            shape between the grid and the drawer it opens. */}
                         <button
                           type="button"
-                          className="rounded-md bg-white text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                          onClick={onClose}
+                          onClick={handleWishlistToggle}
+                          aria-pressed={isWishlisted}
+                          aria-label={
+                            isWishlisted
+                              ? (isRTL ? 'הסר ממועדפים' : 'Remove from favorites')
+                              : (isRTL ? 'הוסף למועדפים' : 'Add to favorites')
+                          }
+                          className="flex items-center justify-center transition-opacity hover:opacity-70"
                         >
-                          <span className="sr-only">Close</span>
-                          <XMarkIcon className="h-6 w-6" aria-hidden="true" />
+                          {isWishlisted ? (
+                            <HeartSolidIcon
+                              className="h-[15.4808px] w-[17.3943px] text-accent-sale"
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src="/icons/sako/heart-card.svg"
+                              width={17.3943}
+                              height={15.4808}
+                              alt=""
+                              aria-hidden="true"
+                            />
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={onClose}
+                          aria-label={isRTL ? 'סגירה' : 'Close'}
+                          className="font-ploni text-[20px] leading-none text-text-primary transition-opacity hover:opacity-70"
+                        >
+                          &#10005;
                         </button>
                       </div>
                     </div>
 
-                    {/* Content */}
-                    <div className="flex-1 px-6 py-6">
-                      {/* Price */}
-                      <div className="mb-6">
-                        {hasSalePrice() && salePrice && salePrice < originalPrice ? (
-                          <div>
-                            <div className="text-2xl font-bold text-red-800">
-                              ₪{(salePrice * quantity).toFixed(2)}
-                            </div>
-                            <div className="text-lg text-gray-700 line-through">
-                              ₪{(originalPrice * quantity).toFixed(2)}
-                            </div>
-                            {quantity > 1 && (
-                              <div className="text-sm text-gray-500 mt-1">
-                                {language === 'he' 
-                                  ? `${quantity} × ₪${salePrice.toFixed(2)} = ₪${(salePrice * quantity).toFixed(2)}`
-                                  : `${quantity} × ₪${salePrice.toFixed(2)} = ₪${(salePrice * quantity).toFixed(2)}`
-                                }
-                              </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {/* Product summary — cart line item, 438:4600. Text track first
+                          so it takes the inline start and the image the end, which is
+                          how the frame reads once mirrored out of its LTR artboard. */}
+                      <div className="flex items-stretch border-b border-sako-black">
+                        <div className="flex min-w-0 flex-1 flex-col px-[16px] pt-[17px] pb-[18px] lg:px-[30px]">
+                          <h3 className="font-ploni text-[16px] font-bold text-text-primary">
+                            {productName}
+                          </h3>
+
+                          {/* "שחור / 38" in the frame — the size joins once chosen. */}
+                          <p className="mt-[2px] font-ploni text-[12px] text-sako-gray-800">
+                            {[getColorName(activeVariant.colorSlug, language), selectedSize]
+                              .filter(Boolean)
+                              .join(' / ')}
+                          </p>
+
+                          {/* Struck original first, current second — the order the
+                              card and the PDP both use, so all three agree. */}
+                          <div className="mt-[10px] flex items-center gap-[10px] font-ploni text-[13px] leading-[16px] tabular-nums">
+                            {isOnSale && salePrice ? (
+                              <>
+                                <span className="text-text-secondary line-through">
+                                  ₪{originalPrice.toFixed(2)}
+                                </span>
+                                <span className="font-bold text-text-primary">
+                                  ₪{salePrice.toFixed(2)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="font-bold text-text-primary">
+                                ₪{currentPrice.toFixed(2)}
+                              </span>
                             )}
                           </div>
-                        ) : (
-                          <div>
-                            <div className="text-2xl font-bold text-gray-900">
-                              ₪{(currentPrice * quantity).toFixed(2)}
-                            </div>
-                            {quantity > 1 && (
-                              <div className="text-sm text-gray-500 mt-1">
-                                {language === 'he' 
-                                  ? `${quantity} × ₪${currentPrice.toFixed(2)} = ₪${(currentPrice * quantity).toFixed(2)}`
-                                  : `${quantity} × ₪${currentPrice.toFixed(2)} = ₪${(currentPrice * quantity).toFixed(2)}`
-                                }
-                              </div>
-                            )}
+                        </div>
+
+                        {/* 119px image column, 438:4618. */}
+                        {primaryImage && (
+                          <div className="relative w-[119px] shrink-0 self-stretch bg-surface-secondary">
+                            <Image
+                              src={primaryImage}
+                              alt={productName}
+                              fill
+                              sizes="119px"
+                              className="object-contain"
+                            />
                           </div>
                         )}
                       </div>
 
-                      {/* Color Selection */}
-                      {product.colorVariants && Object.values(product.colorVariants).filter(v => v.isActive !== false).length >= 1 && (
-                        <div className="mb-8">
-                            <div className={`flex items-center justify-between mb-4 ${language === 'he' ? 'flex-row-reverse' : ''}`}>
-                              <h3 className={`text-sm font-medium text-gray-900`}>
-                              {language === 'he' ? 'צבע' : 'Color'}: {getColorName(activeVariant.colorSlug, language)}
+                      {/* Colour, 438:4224. Shown whenever the product has more than
+                          one active colour - a single-colour product has nothing to
+                          choose, and the name is already on the summary row. */}
+                      {product.colorVariants &&
+                        Object.values(product.colorVariants).filter(v => v.isActive !== false).length > 1 && (
+                          <div className={SECTION}>
+                            <h3 className={SECTION_LABEL}>
+                              {isRTL ? 'צבע' : 'Colour'}
                             </h3>
-                          </div>
-                          <div className="flex gap-3">
-                            {Object.values(product.colorVariants)
-                              .filter(variant => variant.isActive !== false)
-                              .map((variant) => {
-                              const variantImage = variant.primaryImage || variant.images?.[0]
-                              const isSelected = variant.colorSlug === activeVariant.colorSlug
-                              
-                              return (
-                                <button
-                                  key={variant.colorSlug}
-                                  onClick={() => handleVariantSelect(variant)}
-                                  className="flex-shrink-0 relative group"
-                                  title={variant.colorSlug}
-                                >
-                                  {/* Product image thumbnail */}
-                                  {variantImage && (
-                                    <div className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                                      isSelected 
-                                        ? 'border-black' 
-                                        : 'border-gray-200 hover:border-gray-400'
-                                    }`}>
-                                      <Image
-                                        src={variantImage}
-                                        alt={variant.colorSlug}
-                                        width={48}
-                                        height={48}
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                  )}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
+                            <div className="mt-[16px] flex flex-wrap gap-[6px]">
+                              {Object.values(product.colorVariants)
+                                .filter(variant => variant.isActive !== false)
+                                .map((variant) => {
+                                  const variantImage = variant.primaryImage || variant.images?.[0]
+                                  const isSelected = variant.colorSlug === activeVariant.colorSlug
+                                  const variantSoldOut = Object.values(variant.stockBySize ?? {}).every(
+                                    stock => stock <= 0
+                                  )
+                                  const colorLabel = getColorName(variant.colorSlug, language)
 
-                      {/* Size Selection */}
-                      {availableSizes.length > 0 && (
-                        <div className="mb-8">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className={`text-sm font-medium text-gray-900 ${language === 'he' ? 'ml-auto text-right' : ''}`}>
-                              {language === 'he' ? 'מידה' : 'Size'}
-                            </h3>
+                                  return (
+                                    <button
+                                      key={variant.colorSlug}
+                                      type="button"
+                                      onClick={() => {
+                                        if (!variantSoldOut) handleVariantSelect(variant)
+                                      }}
+                                      disabled={variantSoldOut}
+                                      aria-pressed={isSelected}
+                                      aria-label={
+                                        variantSoldOut
+                                          ? `${colorLabel} — ${isRTL ? 'אזל מהמלאי' : 'out of stock'}`
+                                          : colorLabel
+                                      }
+                                      title={colorLabel}
+                                      className={`relative flex size-[47px] shrink-0 items-center justify-center overflow-hidden rounded-full border bg-surface-secondary transition-colors ${
+                                        isSelected
+                                          ? 'border-border-default'
+                                          : 'border-border-subtle hover:border-text-secondary'
+                                      } ${variantSoldOut ? 'cursor-not-allowed opacity-50' : ''}`}
+                                    >
+                                      {variantImage ? (
+                                        <Image
+                                          src={variantImage}
+                                          alt={colorLabel}
+                                          width={47}
+                                          height={47}
+                                          className="size-full object-cover"
+                                        />
+                                      ) : (
+                                        <span className="px-1 font-ploni text-[9px] leading-none text-text-secondary">
+                                          {colorLabel}
+                                        </span>
+                                      )}
+                                    </button>
+                                  )
+                                })}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-4 gap-2">
-                            {availableSizes.map((sizeObj) => {
-                              const isSelected = selectedSize === sizeObj.size
-                              const isOutOfStock = sizeObj.stock <= 0
-                              
-                              return (
-                                <button
-                                  key={sizeObj.size}
-                                  onClick={() => handleSizeSelect(sizeObj.size)}
-                                  disabled={isOutOfStock}
-                                  className={`p-2 text-sm text-gray-900 border rounded-md transition-colors ${
-                                    isSelected
-                                      ? 'border-[#856D55] bg-[#856D55] text-white'
-                                      : isOutOfStock
-                                      ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-                                      : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  {sizeObj.size}
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Out of Stock Message */}
-                      {isVariantOutOfStock && (
-                        <div className="mb-8">
-                          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                            <p className={`text-sm text-red-800 ${language === 'he' ? 'text-right' : ''}`}>
-                              {language === 'he' ? 'צבע זה אזל מהמלאי' : 'This color is out of stock'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Quantity Selection based on the size the user chose*/}
-                      {selectedSize && availableSizes.length > 0 && (
-                        <div className="mb-8">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-gray-900">
-                              {language === 'he' ? 'כמות' : 'Quantity'}
-                            </h3>
-                            <span className="text-xs text-gray-500">
-                              {language === 'he' 
-                                ? `מקסימום ${availableSizes.find(s => s.size === selectedSize)?.stock || 0} יחידות`
-                                : `Max ${availableSizes.find(s => s.size === selectedSize)?.stock || 0} units`
-                              }
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <button
-                              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                              disabled={quantity <= 1}
-                              className="p-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                              </svg>
-                            </button>
-                            <span className="text-lg font-medium min-w-[2rem] text-center text-gray-900">{quantity}</span>
-                            <button
-                              onClick={() => {
-                                const maxStock = availableSizes.find(s => s.size === selectedSize)?.stock || 0
-                                setQuantity(Math.min(quantity + 1, maxStock))
-                              }}
-                              disabled={quantity >= (availableSizes.find(s => s.size === selectedSize)?.stock || 0)}
-                              className="p-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <svg className="h-4 w-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Action Buttons */}
-                      <div className="space-y-3">
-                        {/* Add to Shopping Cart Button */}
-                        <button
-                          onClick={handleAddToCart}
-                          disabled={isVariantOutOfStock || (availableSizes.length > 0 && !selectedSize) || isAddingToCart}
-                          className={`w-full font-medium py-3 px-4 transition-colors duration-200 ${
-                            isVariantOutOfStock || (availableSizes.length > 0 && !selectedSize) || isAddingToCart
-                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                              : 'bg-[#856D55] text-white hover:bg-[#856D55]'
-                          }`}
+                      {/* Size, 438:4234 + 438:4240. The dividers are the grid itself:
+                          an ink ground showing through 1px gaps inside a 1px border,
+                          which keeps the hairlines even when the run wraps. */}
+                      <div className={SECTION}>
+                        <h3 className={SECTION_LABEL}>
+                          {isRTL ? 'מידה' : 'Size'}
+                        </h3>
+                        <div
+                          className={`mt-[16px] grid gap-px border border-border-default bg-sako-ink-900 p-px ${SIZE_GRID_COLUMN_CLASS[sizeGridColumns]}`}
                         >
-                          {isAddingToCart ? (
-                            language === 'he' ? 'מוסיף לעגלה...' : 'Adding to Cart...'
-                          ) : isVariantOutOfStock ? (
-                            language === 'he' ? 'אזל מהמלאי' : 'Out of Stock'
-                          ) : (
-                            language === 'he' 
-                              ? `הוסף ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`
-                              : `Add ${quantity} ${quantity === 1 ? 'Item' : 'Items'} to Cart`
-                          )}
-                        </button>
-                        
-                        {/* More Details Button */}
-                        <Link
-                          href={`/${language}/product/${product.baseSku}/${activeVariant.colorSlug}`}
-                          onClick={onClose}
-                          className="w-full border border-black bg-white text-black font-medium py-3 px-4 hover:bg-gray-50 transition-colors duration-200 text-center block"
-                        >
-                          {language === 'he' ? 'פרטים נוספים' : 'More Details'}
-                        </Link>
+                          {sizeOptions.map((option) => {
+                            const isSelected = selectedSize === option.key
+                            return (
+                              <button
+                                key={option.key}
+                                type="button"
+                                onClick={() => handleSizeSelect(option.key)}
+                                disabled={!option.inStock}
+                                aria-pressed={isSelected}
+                                aria-label={
+                                  option.inStock
+                                    ? option.label
+                                    : `${option.label} — ${isRTL ? 'אזל מהמלאי' : 'out of stock'}`
+                                }
+                                // Sold out, 438:2692: grey label ruled corner to
+                                // corner. `to top right` expresses the frame's
+                                // hard-coded 35.6deg so the rule stays on the
+                                // diagonal whatever width the cell resolves to.
+                                style={
+                                  option.inStock
+                                    ? undefined
+                                    : {
+                                        backgroundImage:
+                                          'linear-gradient(to top right, rgba(170,170,170,0) 49%, rgb(170,170,170) 50%, rgba(170,170,170,0) 51%)',
+                                      }
+                                }
+                                className={`flex h-[46px] items-center justify-center font-ploni text-[11px] tabular-nums transition-colors ${
+                                  !option.inStock
+                                    ? 'cursor-not-allowed bg-surface-secondary text-sako-gray-500'
+                                    : isSelected
+                                      ? 'bg-sako-ink-900 text-text-inverse'
+                                      : 'bg-surface-secondary text-text-primary hover:bg-sako-gray-200'
+                                }`}
+                              >
+                                {option.label}
+                              </button>
+                            )
+                          })}
+
+                          {/* Only reachable for counts that divide by nothing (7, 11).
+                              Without these the ink ground reads as a solid block. */}
+                          {Array.from({
+                            length: (sizeGridColumns - (sizeOptions.length % sizeGridColumns)) % sizeGridColumns,
+                          }).map((_, index) => (
+                            <div
+                              key={`size-spacer-${index}`}
+                              aria-hidden="true"
+                              className="h-[46px] bg-surface-secondary"
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Quantity — the sidebar's ruled row: label on the inline
+                          start, control opposite. Sold out replaces the control with
+                          the PDP's accent-error notice rather than a disabled
+                          stepper, which would read as a bug. */}
+                      <div className={`${SECTION} flex items-center justify-between`}>
+                        <h3 className={SECTION_LABEL}>
+                          {isRTL ? 'כמות' : 'Quantity'}
+                        </h3>
+                        {isVariantSoldOut ? (
+                          <p className="font-ploni text-[12px] font-bold text-accent-error">
+                            {isRTL ? 'אזל מהמלאי' : 'OUT OF STOCK'}
+                          </p>
+                        ) : (
+                          <QuantityStepper
+                            value={quantity}
+                            max={selectedStock || undefined}
+                            onChange={setQuantity}
+                            language={isRTL ? 'he' : 'en'}
+                            disabled={needsSize}
+                          />
+                        )}
                       </div>
                     </div>
+
+                    {/* Summary bar, 438:4656 — a 62px ruled row carrying the total on
+                        the inline start and, where the cart puts "סיכום ההזמנה", the
+                        route out to the full product page. */}
+                    <div className="flex h-[62px] shrink-0 items-center justify-between border-t border-sako-black bg-surface-secondary px-[16px] lg:px-[30px]">
+                      <span className="font-ploni text-[16px] font-bold tabular-nums text-text-primary">
+                        ₪{lineTotal.toFixed(2)}
+                      </span>
+                      {/* `product.sku`, not `baseSku`. The route's [baseSku] segment
+                          is resolved by getProductByBaseSku, which queries Firestore
+                          `where('sku', '==', segment)` - so the segment has to carry
+                          the sku field, and ProductCard links the same way. Most
+                          product records have no baseSku at all, which is what used to
+                          put /product/undefined/ in this href. Order matters: baseSku
+                          first would break the lookup wherever the two differ. */}
+                      <Link
+                        href={`/${language}/product/${product.sku || product.baseSku}/${activeVariant.colorSlug}`}
+                        onClick={onClose}
+                        className="font-ploni text-[11px] text-text-primary underline transition-opacity hover:opacity-70"
+                      >
+                        {isRTL ? 'פרטים נוספים' : 'More details'}
+                      </Link>
+                    </div>
+
+                    {/* CTA, 438:4662. Label on the inline start, turned arrow
+                        opposite. Unavailable is a flat gray-500 fill, the treatment
+                        the shared sako button uses - not a faded ink bar. */}
+                    <button
+                      type="button"
+                      onClick={handleAddToCart}
+                      disabled={!canAddToCart}
+                      aria-busy={isAddingToCart}
+                      className="flex h-[58px] shrink-0 items-center justify-between bg-sako-ink-900 px-[19px] transition-colors hover:bg-sako-ink-800 disabled:cursor-not-allowed disabled:bg-sako-gray-500"
+                    >
+                      <span className="font-ploni text-[13px] font-bold tabular-nums text-text-inverse">
+                        {ctaLabel}
+                      </span>
+                      {/* U+2199 turned 90 degrees, as the frame builds it. Ploni
+                          carries the glyph, so it needs no icon asset. */}
+                      <span
+                        aria-hidden="true"
+                        className="flex h-[14px] w-[32px] items-center justify-center"
+                      >
+                        <span className="rotate-90 font-ploni text-[22px] font-black leading-none text-text-inverse">
+                          &#8601;
+                        </span>
+                      </span>
+                    </button>
                   </div>
                 </Dialog.Panel>
               </Transition.Child>
@@ -498,7 +596,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
           </div>
         </div>
       </Dialog>
-      
+
       {/* Toast Notification */}
       <Toast
         message={toast.message}

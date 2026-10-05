@@ -288,7 +288,14 @@ export default function CollectionFilterPanel({
           </div>
         )}
 
-        {/* Sub-categories, 438:3205 — two columns of plain labels. */}
+        {/* Sub-categories, 438:3205 — two columns of plain labels.
+            Rows carry a minimum of the frame's 28px rather than exactly 28px: the
+            frame fills every cell with the placeholder "תת קטגוריה", so nothing in
+            it is longer than one line, and a fixed height was fine until a real
+            name was not. "לואפרים פלטפורמה" on the 244px phone measure takes two,
+            and at a locked 28px it spilled over the item underneath and pushed the
+            two columns out of step with each other. Grid rows size to their tallest
+            cell, so letting the button grow keeps the columns aligned by row. */}
         {showSubSubCategoryFilter && Object.keys(subSubCategoriesByParent).length > 0 && (
           <div className={SECTION}>
             <h3 className={SECTION_LABEL}>{labels.subCategories}</h3>
@@ -306,7 +313,7 @@ export default function CollectionFilterPanel({
                         type="button"
                         onClick={() => onSubSubCategoryToggle(category.id!)}
                         aria-pressed={isSelected}
-                        className={`flex h-[28px] items-center text-start font-ploni text-[16px] transition-opacity hover:opacity-70 ${
+                        className={`flex min-h-[28px] items-center py-[2px] text-start font-ploni text-[16px] leading-[1.25] transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sako-ink-900 ${
                           isSelected ? 'font-bold text-text-primary' : 'text-text-primary'
                         }`}
                       >

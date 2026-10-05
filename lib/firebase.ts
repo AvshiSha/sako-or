@@ -1723,6 +1723,28 @@ function collectFacetOptionsFromProduct(
   }
 }
 
+/**
+ * The filter set the facet pass runs under.
+ *
+ * `availableFilterOptions` is documented as "stable filter options from full
+ * collection (not from filtered result) so UI list does not collapse", so a facet
+ * must not narrow its own option list: a shopper who has picked one colour still
+ * has to be able to pick a second. Colour and size were dropped here from the
+ * start; sub-subcategory is the same kind of multi-select facet and was not,
+ * which meant picking "boots" shrank the section to boots alone and left no way
+ * to add "sneakers" without clearing the filter first. Everything else stays -
+ * the category path, the campaign tag and the price bounds define which products
+ * the facets are counted over, and those are not facets the panel offers.
+ */
+function buildFacetPassFilters(filters: ProductFilters): ProductFilters {
+  return {
+    ...filters,
+    color: undefined,
+    size: undefined,
+    subSubCategoryIds: undefined,
+  };
+}
+
 function buildAvailableFilterOptions(
   colorSlugs: Set<string>,
   sizes: Set<string>,
@@ -1756,7 +1778,7 @@ async function resolveListingVariantPage(
   const validatedPage = Number.isInteger(page) && page > 0 ? page : 1;
   const startIndex = (validatedPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const filtersNoColorSize = { ...filters, color: undefined, size: undefined };
+  const filtersForFacets = buildFacetPassFilters(filters);
   const normalizedColors = filters.color
     ? (Array.isArray(filters.color) ? filters.color : [filters.color]).filter(Boolean)
     : undefined;
@@ -1817,7 +1839,7 @@ async function resolveListingVariantPage(
     lastDoc = snapshot.docs[snapshot.docs.length - 1];
 
     for (const product of products) {
-      if (productMatchesListingFilters(product, filtersNoColorSize)) {
+      if (productMatchesListingFilters(product, filtersForFacets)) {
         if (!productLimit || facetProductCount < productLimit) {
           collectFacetOptionsFromProduct(
             product,
@@ -2127,7 +2149,7 @@ async function collectTagMatchedVariantItems(
   };
 }> {
   const { filters, excludeVariantKeys, productLimit, expandOptions, productFilter } = options;
-  const filtersNoColorSize = { ...filters, color: undefined, size: undefined };
+  const filtersForFacets = buildFacetPassFilters(filters);
   const colorFacetSet = new Set<string>();
   const sizeFacetSet = new Set<string>();
   const subSubFacetSet = new Set<string>();
@@ -2154,7 +2176,7 @@ async function collectTagMatchedVariantItems(
     lastDoc = snapshot.docs[snapshot.docs.length - 1];
 
     for (const product of products) {
-      if (productMatchesListingFilters(product, filtersNoColorSize)) {
+      if (productMatchesListingFilters(product, filtersForFacets)) {
         if (!productLimit || facetProductCount < productLimit) {
           collectFacetOptionsFromProduct(
             product,
@@ -2244,7 +2266,13 @@ async function resolveCampaignMerchandisedVariantPage(
     merchandising.mode === 'manual' && curatedKeys.length > pageSize;
 
   let pageItems: VariantItem[] = [];
-  let availableFilterOptions = { colors: [] as string[], sizes: [] as string[] };
+  // Annotated rather than inferred from the empty initializer: the value that
+  // replaces it below carries subSubCategoryIds, and inference off two empty
+  // arrays typed that third facet away before it could reach the client - even
+  // though collectTagMatchedVariantItems had been filling it all along.
+  let availableFilterOptions: NonNullable<
+    FilteredProductsResult['availableFilterOptions']
+  > = { colors: [], sizes: [], subSubCategoryIds: [] };
   let total = 0;
 
   if (useKeySlice) {
@@ -2358,7 +2386,13 @@ async function resolveCategoryMerchandisedVariantPage(
   const useKeySlice = merchandising.mode === 'manual' && curatedKeys.length > pageSize;
 
   let pageItems: VariantItem[] = [];
-  let availableFilterOptions = { colors: [] as string[], sizes: [] as string[] };
+  // Annotated rather than inferred from the empty initializer: the value that
+  // replaces it below carries subSubCategoryIds, and inference off two empty
+  // arrays typed that third facet away before it could reach the client - even
+  // though collectTagMatchedVariantItems had been filling it all along.
+  let availableFilterOptions: NonNullable<
+    FilteredProductsResult['availableFilterOptions']
+  > = { colors: [], sizes: [], subSubCategoryIds: [] };
   let total = 0;
 
   if (useKeySlice) {
@@ -2456,7 +2490,7 @@ export async function getCampaignCollectionProducts(
       total: 0,
       page: 1,
       pageSize: 24,
-      availableFilterOptions: { colors: [], sizes: [] },
+      availableFilterOptions: { colors: [], sizes: [], subSubCategoryIds: [] },
     };
   }
 

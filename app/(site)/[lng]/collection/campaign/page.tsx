@@ -1,5 +1,9 @@
 import { Suspense } from "react";
-import { campaignService, getCampaignCollectionProducts } from "@/lib/firebase";
+import {
+  campaignService,
+  categoryService,
+  getCampaignCollectionProducts,
+} from "@/lib/firebase";
 import { getCampaignGridBanners } from "@/lib/campaign-merchandising";
 import { redirect } from "next/navigation";
 import CampaignClient from "./CampaignClient";
@@ -100,12 +104,21 @@ async function CampaignProducts({
   resolvedSearchParams: { [key: string]: string | string[] | undefined };
   lng: string;
 }) {
-  // Fetch first page with filters (tag-based; filter params from URL)
-  const result = await getCampaignCollectionProducts(
-    campaign!,
-    resolvedSearchParams,
-    lng as "en" | "he"
-  );
+  // Fetch first page with filters (tag-based; filter params from URL).
+  //
+  // The category tree rides along because the filter panel's sub-subcategory
+  // section needs names and parents for the ids the product query reports back -
+  // availableFilterOptions carries ids only. Issued alongside the product query
+  // rather than after it: it depends on nothing above, and this is already the
+  // slow half of the page, inside the Suspense boundary.
+  const [result, categories] = await Promise.all([
+    getCampaignCollectionProducts(
+      campaign!,
+      resolvedSearchParams,
+      lng as "en" | "he"
+    ),
+    categoryService.getAllCategories(),
+  ]);
   const variantItems = result.variantItems ?? [];
   const total = result.total ?? 0;
   const hasMore = result.hasMore ?? false;
@@ -153,6 +166,7 @@ async function CampaignProducts({
       campaign={serializedCampaign}
       gridBanners={gridBanners}
       initialVariantItems={serializedVariantItems}
+      categories={categories.map((category) => serializeValue(category))}
       initialAvailableFilterOptions={result.availableFilterOptions}
       totalProducts={total}
       hasMore={hasMore}

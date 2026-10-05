@@ -12,7 +12,7 @@ import {
 import { flushSync } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { CubeIcon } from "@heroicons/react/24/outline";
-import { Campaign, VariantItem } from "@/lib/firebase";
+import { Campaign, Category, VariantItem } from "@/lib/firebase";
 import ProductCard from "@/app/components/ProductCard";
 import ScrollToTopButton from "@/app/components/ScrollToTopButton";
 import Loader from "@/app/components/ui/Loader";
@@ -84,26 +84,23 @@ import {
 } from "@/lib/collectionAppendLock";
 
 /**
- * A campaign is a hand-picked set of products rather than a branch of the category
- * tree, so the shared filter panel's sub-category section is switched off here. The
- * collection listing is the only surface that has one to show.
+ * A campaign's sub-subcategory section comes from its products, not from the URL.
+ *
+ * The collection listing derives this section from where the shopper is standing
+ * in the category tree - it reads the route's root and subcategory slugs and
+ * offers that branch's level-2 children. A campaign is a hand-picked set with no
+ * position in the tree at all, so there is no branch to read: the only honest
+ * source is which level-2 categories the campaign's own products actually sit in,
+ * which the product query already reports as
+ * `availableFilterOptions.subSubCategoryIds`. Those are bare ids, so the category
+ * tree is passed in to resolve names and parents.
+ *
+ * Below this count the section is suppressed. A campaign that is all one kind of
+ * shoe would otherwise draw a heading over a single choice that excludes nothing -
+ * a case the collection listing never hits, because a category page's level-2
+ * children always have siblings.
  */
-const CAMPAIGN_NO_SUBCATEGORY_FILTER: Pick<
-  CollectionFilterPanelProps,
-  | "showSubSubCategoryFilter"
-  | "subSubCategoriesByParent"
-  | "selectedSubSubCategories"
-  | "onSubSubCategoryToggle"
-  | "getParentCategoryName"
-  | "getSubSubCategoryName"
-> = {
-  showSubSubCategoryFilter: false,
-  subSubCategoriesByParent: {},
-  selectedSubSubCategories: [],
-  onSubSubCategoryToggle: () => {},
-  getParentCategoryName: () => "",
-  getSubSubCategoryName: () => "",
-};
+const MIN_SUB_SUB_CATEGORY_OPTIONS = 2;
 
 function formatPrice(n: number): string {
   return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
@@ -162,8 +159,14 @@ interface CampaignClientProps {
   /** Enabled grid banners for this campaign; empty when none are configured. */
   gridBanners?: CollectionBanner[];
   initialVariantItems: VariantItem[];
+  /** The whole enabled tree; only level-2 entries are read, to name the ids below. */
+  categories: Category[];
   /** Stable filter options from full campaign so the filter list does not collapse after selection */
-  initialAvailableFilterOptions?: { colors: string[]; sizes: string[] };
+  initialAvailableFilterOptions?: {
+    colors: string[];
+    sizes: string[];
+    subSubCategoryIds?: string[];
+  };
   totalProducts?: number;
   hasMore?: boolean;
   lng: "en" | "he";
@@ -176,6 +179,7 @@ export default function CampaignClient({
   campaign,
   gridBanners = [],
   initialVariantItems,
+  categories,
   initialAvailableFilterOptions,
   totalProducts: initialTotal,
   hasMore: initialHasMore = false,
@@ -242,6 +246,7 @@ export default function CampaignClient({
   );
   const selectedColors = urlFilterState.colors;
   const selectedSizes = urlFilterState.sizes;
+  const selectedSubSubCategories = urlFilterState.subSubCategories;
   const sortBy = urlFilterState.sort;
   // One state, one panel - see the matching note in CollectionClient. The mobile
   // and desktop buttons used to hold a flag each and render a copy of the panel
@@ -250,6 +255,7 @@ export default function CampaignClient({
   type FilterDraft = {
     colors: string[];
     sizes: string[];
+    subSubCategories: string[];
     uiRange: [number, number];
   };
   const [filterDraft, setFilterDraft] = useState<FilterDraft | null>(null);
@@ -336,12 +342,81 @@ export default function CampaignClient({
     return map;
   }, [initialVariantItems, allColors]);
 
+  /**
+   * The campaign's level-2 categories, grouped under their level-1 parent.
+   *
+   * Driven by the server's facet ids rather than by the items on screen: those
+   * are one page of 24, so reading them would make the section grow as the
+   * shopper scrolled. The facet pass covers the whole campaign and, since
+   * buildFacetPassFilters now drops subSubCategoryIds, it keeps reporting every
+   * option after one has been picked - which is what lets two be combined.
+   *
+   * Parent groups are ordered by the parent's own sortOrder so the section reads
+   * in the same order as the navigation, and each group by its children's.
+   */
+  const subSubCategoriesByParent = useMemo(() => {
+    const availableIds = new Set(initialAvailableFilterOptions?.subSubCategoryIds ?? []);
+    if (availableIds.size === 0) return {};
+
+    const parentSortOrder = new Map<string, number>();
+    const grouped: Record<string, Category[]> = {};
+
+    for (const category of categories) {
+      if (category.level !== 2 || !category.isEnabled || !category.id) continue;
+      if (!category.parentId || !availableIds.has(category.id)) continue;
+      (grouped[category.parentId] ||= []).push(category);
+    }
+
+    for (const category of categories) {
+      if (category.id && category.id in grouped) {
+        parentSortOrder.set(category.id, category.sortOrder ?? 0);
+      }
+    }
+
+    const ordered: Record<string, Category[]> = {};
+    for (const parentId of Object.keys(grouped).sort(
+      (a, b) => (parentSortOrder.get(a) ?? 0) - (parentSortOrder.get(b) ?? 0)
+    )) {
+      ordered[parentId] = grouped[parentId].sort(
+        (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+      );
+    }
+    return ordered;
+  }, [categories, initialAvailableFilterOptions?.subSubCategoryIds]);
+
+  const subSubCategoryOptionCount = useMemo(
+    () =>
+      Object.values(subSubCategoriesByParent).reduce(
+        (total, group) => total + group.length,
+        0
+      ),
+    [subSubCategoriesByParent]
+  );
+  const showSubSubCategoryFilter =
+    subSubCategoryOptionCount >= MIN_SUB_SUB_CATEGORY_OPTIONS;
+
+  const getParentCategoryName = useCallback(
+    (parentId: string): string => {
+      const parent = categories.find((cat) => cat.id === parentId);
+      if (!parent) return "";
+      return lng === "he" ? parent.name.he : parent.name.en;
+    },
+    [categories, lng]
+  );
+
+  const getSubSubCategoryName = useCallback(
+    (category: Category): string =>
+      lng === "he" ? category.name.he : category.name.en,
+    [lng]
+  );
+
   const basePath = `/${lng}/collection/campaign`;
   const updateURL = useCallback(
     (
       newFilters: {
         colors?: string[];
         sizes?: string[];
+        subSubCategories?: string[];
         minPrice?: string;
         maxPrice?: string;
         sort?: string;
@@ -353,6 +428,11 @@ export default function CampaignClient({
       if (!resetPage && currentPage > 1) params.set("page", String(currentPage));
       if (newFilters.colors?.length) params.set("colors", newFilters.colors.join(","));
       if (newFilters.sizes?.length) params.set("sizes", newFilters.sizes.join(","));
+      // Same param name the collection listing writes, and the one
+      // parseFacetFiltersFromSearchParams already reads on both routes.
+      if (newFilters.subSubCategories?.length) {
+        params.set("subSubCategories", newFilters.subSubCategories.join(","));
+      }
       if (newFilters.minPrice?.trim()) params.set("minPrice", newFilters.minPrice);
       if (newFilters.maxPrice?.trim()) params.set("maxPrice", newFilters.maxPrice);
       if (newFilters.sort && newFilters.sort !== "relevance") params.set("sort", newFilters.sort);
@@ -411,6 +491,7 @@ export default function CampaignClient({
       maxPrice,
       colors: selectedColors,
       sizes: selectedSizes,
+      subSubCategories: selectedSubSubCategories,
       sort: newSort,
     });
   };
@@ -435,6 +516,8 @@ export default function CampaignClient({
 
   const panelColors = filterDraft?.colors ?? selectedColors;
   const panelSizes = filterDraft?.sizes ?? selectedSizes;
+  const panelSubSubCategories =
+    filterDraft?.subSubCategories ?? selectedSubSubCategories;
   const panelUiRange = filterDraft?.uiRange ?? uiRange;
 
   const handleCloseFiltersPanel = () => {
@@ -461,6 +544,7 @@ export default function CampaignClient({
       maxPrice,
       colors: filterDraft.colors,
       sizes: filterDraft.sizes,
+      subSubCategories: filterDraft.subSubCategories,
       sort: sortBy,
     });
     setUiRange(filterDraft.uiRange);
@@ -476,6 +560,7 @@ export default function CampaignClient({
     setFilterDraft({
       colors: [...fromUrl.colors],
       sizes: [...fromUrl.sizes],
+      subSubCategories: [...fromUrl.subSubCategories],
       uiRange: fromUrl.uiRange,
     });
     setUiRange(fromUrl.uiRange);
@@ -500,7 +585,14 @@ export default function CampaignClient({
       uiRange,
       collectionPriceBounds
     );
-    updateURL({ colors: next, sizes: selectedSizes, minPrice, maxPrice, sort: sortBy });
+    updateURL({
+      colors: next,
+      sizes: selectedSizes,
+      subSubCategories: selectedSubSubCategories,
+      minPrice,
+      maxPrice,
+      sort: sortBy,
+    });
   };
 
   const handleSizeToggle = (size: string) => {
@@ -521,7 +613,14 @@ export default function CampaignClient({
       uiRange,
       collectionPriceBounds
     );
-    updateURL({ colors: selectedColors, sizes: next, minPrice, maxPrice, sort: sortBy });
+    updateURL({
+      colors: selectedColors,
+      sizes: next,
+      subSubCategories: selectedSubSubCategories,
+      minPrice,
+      maxPrice,
+      sort: sortBy,
+    });
   };
 
   const handleSliderChange = (values: number[]) => {
@@ -551,6 +650,7 @@ export default function CampaignClient({
       maxPrice,
       colors: selectedColors,
       sizes: selectedSizes,
+      subSubCategories: selectedSubSubCategories,
       sort: sortBy,
     });
   };
@@ -567,6 +667,35 @@ export default function CampaignClient({
       maxPrice: "",
       colors: selectedColors,
       sizes: selectedSizes,
+      subSubCategories: selectedSubSubCategories,
+      sort: sortBy,
+    });
+  };
+
+  const handleSubSubCategoryToggle = (categoryId: string) => {
+    if (isFilterPanelOpen && filterDraft) {
+      setFilterDraft((d) => {
+        if (!d) return d;
+        const subSubCategories = d.subSubCategories.includes(categoryId)
+          ? d.subSubCategories.filter((id) => id !== categoryId)
+          : [...d.subSubCategories, categoryId];
+        return { ...d, subSubCategories };
+      });
+      return;
+    }
+    const next = selectedSubSubCategories.includes(categoryId)
+      ? selectedSubSubCategories.filter((id) => id !== categoryId)
+      : [...selectedSubSubCategories, categoryId];
+    const { minPrice, maxPrice } = priceRangeToUrlParams(
+      uiRange,
+      collectionPriceBounds
+    );
+    updateURL({
+      colors: selectedColors,
+      sizes: selectedSizes,
+      subSubCategories: next,
+      minPrice,
+      maxPrice,
       sort: sortBy,
     });
   };
@@ -574,7 +703,12 @@ export default function CampaignClient({
   const handleClearFilters = () => {
     const { min, max } = collectionPriceBounds;
     if (isFilterPanelOpen) {
-      setFilterDraft({ colors: [], sizes: [], uiRange: [min, max] });
+      setFilterDraft({
+        colors: [],
+        sizes: [],
+        subSubCategories: [],
+        uiRange: [min, max],
+      });
       return;
     }
     setUiRange([min, max]);
@@ -583,6 +717,7 @@ export default function CampaignClient({
       maxPrice: "",
       colors: [],
       sizes: [],
+      subSubCategories: [],
       sort: "relevance",
     });
   };
@@ -639,6 +774,7 @@ export default function CampaignClient({
     gridBanners.length > 0 &&
     selectedColors.length === 0 &&
     selectedSizes.length === 0 &&
+    selectedSubSubCategories.length === 0 &&
     // Read from the URL rather than from urlFilterState, which exposes price as
     // a [min, max] pair defaulted to the bounds - indistinguishable from "no
     // price filter". The params are the only place the distinction survives.
@@ -754,7 +890,10 @@ export default function CampaignClient({
     const [currentMin, currentMax] = panelUiRange;
     const hasPriceFilter = currentMin > boundsMin || currentMax < boundsMax;
     return (
-      panelColors.length + panelSizes.length + (hasPriceFilter ? 1 : 0)
+      panelColors.length +
+      panelSizes.length +
+      panelSubSubCategories.length +
+      (hasPriceFilter ? 1 : 0)
     );
   };
 
@@ -1178,7 +1317,12 @@ export default function CampaignClient({
           alphaSizes={alphaSizes}
           selectedSizes={panelSizes}
           onSizeToggle={handleSizeToggle}
-          {...CAMPAIGN_NO_SUBCATEGORY_FILTER}
+          showSubSubCategoryFilter={showSubSubCategoryFilter}
+          subSubCategoriesByParent={subSubCategoriesByParent}
+          selectedSubSubCategories={panelSubSubCategories}
+          onSubSubCategoryToggle={handleSubSubCategoryToggle}
+          getParentCategoryName={getParentCategoryName}
+          getSubSubCategoryName={getSubSubCategoryName}
           onApply={handleApplyFilters}
           onClear={handleClearFilters}
           onClose={handleCloseFiltersPanel}

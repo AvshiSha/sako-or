@@ -98,6 +98,70 @@ const INSET = 'px-[24px] md:px-[30px]'
    body block uses for the same reason. */
 const MEASURE = 'mx-auto w-full max-w-[760px]'
 
+/* Ploni's digits are proportional, so a size table without tabular-nums does not
+   align its columns and 22.5 / 23.0 put their decimal points in different
+   places. Same reason prices carry it. */
+const CELL = 'py-[12px] px-[12px] text-center font-ploni text-[14px] text-text-primary'
+const BODY_CELL = `${CELL} tabular-nums`
+/* Column separators as border-s (inline start) rather than a physical side, so
+   the rules stay between the same columns once the table mirrors. */
+const DIVIDER = 'border-s border-border-subtle'
+
+/**
+ * One SAKO/US/cm table over the rows it is given.
+ *
+ * Rendered once with all twelve sizes below `md`, and twice - 35-40 beside
+ * 41-46 - above it, which halves the sheet's height so the guidance and the
+ * contact actions sit in view instead of below the fold. The two arrangements
+ * are separate blocks toggled by `md:hidden` / `hidden md:flex` rather than one
+ * clever reflow: a real <table> cannot be re-wrapped into two columns by CSS,
+ * and `display: none` drops the inactive block out of the accessibility tree
+ * entirely, so a screen reader is never offered the same figures twice.
+ */
+function SizeTable({
+  rows,
+  labels,
+  className = '',
+}: {
+  rows: typeof sizeData
+  labels: { sakoSize: string; usSize: string; footCm: string }
+  className?: string
+}) {
+  return (
+    <table className={`w-full border-collapse border border-border-default ${className}`}>
+      <thead>
+        <tr className="border-b border-border-default bg-surface-secondary">
+          <th scope="col" className={`${CELL} font-bold`}>
+            {labels.sakoSize}
+          </th>
+          <th scope="col" className={`${CELL} ${DIVIDER} font-bold`}>
+            {labels.usSize}
+          </th>
+          <th scope="col" className={`${CELL} ${DIVIDER} font-bold`}>
+            {labels.footCm}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map(([sakoSize, usSize, footCm]) => (
+          <tr key={sakoSize} className="border-b border-border-subtle last:border-b-0">
+            {/* The SAKO size is the key the shopper looks up, so it carries the
+                row and the weight. */}
+            <th scope="row" className={`${BODY_CELL} font-bold`}>
+              {sakoSize}
+            </th>
+            <td className={`${BODY_CELL} ${DIVIDER}`}>{usSize}</td>
+            <td className={`${BODY_CELL} ${DIVIDER}`}>{footCm.toFixed(1)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+const SIZES_LOWER = sizeData.slice(0, 6)
+const SIZES_UPPER = sizeData.slice(6)
+
 export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const t = translations[lng]
@@ -108,15 +172,6 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
     : 'Hi, I need help choosing the right size'
   const encodedMessage = encodeURIComponent(defaultMessage)
   const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}`
-
-  /* Ploni's digits are proportional, so a size table without tabular-nums does
-     not align its columns and 22.5 / 23.0 put their decimal points in different
-     places. Same reason prices carry it. */
-  const cell = 'py-[12px] px-[12px] text-center font-ploni text-[14px] text-text-primary'
-  const bodyCell = `${cell} tabular-nums`
-  /* Column separators as border-s (inline start) rather than a physical side,
-     so the rules stay between the same columns once the table mirrors. */
-  const divider = 'border-s border-border-subtle'
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -146,43 +201,23 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
         </SheetHeader>
 
         <div className={`flex-1 overflow-y-auto py-[24px] ${INSET}`}>
-          {/* Size table. One row per size rather than one column per size: at
-              390px the wide form showed 4 of 12 sizes behind a sticky 128px
-              label column, so the comparison the table exists to make was the
-              part that scrolled off. Three columns fit any phone outright -
-              no horizontal scroll, no sticky column, no edge affordance. */}
-          <div className={`mb-[32px] ${MEASURE}`}>
-            <table className="mx-auto w-full max-w-[480px] border-collapse border border-border-default">
-              <thead>
-                <tr className="border-b border-border-default bg-surface-secondary">
-                  <th scope="col" className={`${cell} font-bold`}>
-                    {t.sakoSize}
-                  </th>
-                  <th scope="col" className={`${cell} ${divider} font-bold`}>
-                    {t.usSize}
-                  </th>
-                  <th scope="col" className={`${cell} ${divider} font-bold`}>
-                    {t.footCm}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sizeData.map(([sakoSize, usSize, footCm]) => (
-                  <tr
-                    key={sakoSize}
-                    className="border-b border-border-subtle last:border-b-0"
-                  >
-                    {/* The SAKO size is the key the shopper looks up, so it
-                        carries the row and the weight. */}
-                    <th scope="row" className={`${bodyCell} font-bold`}>
-                      {sakoSize}
-                    </th>
-                    <td className={`${bodyCell} ${divider}`}>{usSize}</td>
-                    <td className={`${bodyCell} ${divider}`}>{footCm.toFixed(1)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {/* One row per size rather than one column per size: at 390px the
+              wide form showed 4 of 12 sizes behind a sticky 128px label
+              column, so the comparison the table exists to make was the part
+              that scrolled off. Three columns fit any phone outright - no
+              horizontal scroll, no sticky column, no edge affordance. */}
+
+          {/* Mobile: one continuous table, one header, all twelve sizes. */}
+          <div className="mb-[32px] md:hidden">
+            <SizeTable rows={sizeData} labels={t} className="mx-auto max-w-[480px]" />
+          </div>
+
+          {/* Desktop: 35-40 beside 41-46. The gap is spacing/lg, and the pair
+              sits inside the same 760px measure as the prose so the table and
+              the text it explains share one edge. */}
+          <div className={`mb-[32px] hidden gap-[24px] md:flex md:items-start ${MEASURE}`}>
+            <SizeTable rows={SIZES_LOWER} labels={t} className="flex-1" />
+            <SizeTable rows={SIZES_UPPER} labels={t} className="flex-1" />
           </div>
 
           {/* Description */}

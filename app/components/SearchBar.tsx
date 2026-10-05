@@ -294,8 +294,9 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
 
     measure()
     window.addEventListener('resize', measure)
-    // The header is sticky, so its underside does not move while pinned - but it
-    // does between scrollTop 0 and pinned if anything above it collapses.
+    // Only the nav bar is sticky, so the band's underside is fixed while pinned but
+    // travels the whole way up between scrollTop 0 and pinned, as the promo band
+    // above it scrolls out of the viewport. Hence the scroll listener.
     window.addEventListener('scroll', measure, { passive: true })
     return () => {
       window.removeEventListener('resize', measure)

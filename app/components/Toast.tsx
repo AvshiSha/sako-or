@@ -152,11 +152,14 @@ function ToastViewport({
   // hence a region that is always mounted and a panel that is not.
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => setPortalReady(true), [])
-  // Measured, not a fixed top-*. The sticky header is 115px on mobile and ~90px
-  // on desktop, so any single hardcoded offset either collides on one or floats
-  // on the other - and `--nav-bar-h`, which exists for exactly this, is never
-  // set by anything and silently falls back to its 73px default. Measuring the
-  // header the frame a toast arrives is what the MENU panel should be doing too.
+  // Measured, not a fixed top-*. <header> is the nav bar alone - 71px on mobile,
+  // 73px on desktop - but its rect sits lower while the promo band above it is
+  // still on screen, so the underside to clear ranges from 71px (mobile, pinned)
+  // to 115px (mobile, at the top of the page), with desktop landing at 73/99.
+  // No single hardcoded offset covers that - and `--nav-bar-h`, which exists for
+  // exactly this, is never set by anything and silently falls back to its 73px
+  // default. Measuring the header the frame a toast arrives is what the MENU panel
+  // should be doing too.
   const [headerBottom, setHeaderBottom] = useState(HEADER_FALLBACK)
 
   const id = toast?.id ?? null
@@ -176,9 +179,16 @@ function ToastViewport({
     }
     measure()
     window.addEventListener('resize', measure)
+    // Scroll, not just resize. The promo band above the nav is no longer sticky, so
+    // the header's underside travels by the band's height (26px desktop / 44px
+    // mobile) between the top of the page and the nav pinning. A toast measured
+    // once while pinned and left alone would end up behind the band as soon as the
+    // visitor scrolled back up.
+    window.addEventListener('scroll', measure, { passive: true })
     const raf = requestAnimationFrame(() => setPhase('show'))
     return () => {
       window.removeEventListener('resize', measure)
+      window.removeEventListener('scroll', measure)
       cancelAnimationFrame(raf)
     }
   }, [id])

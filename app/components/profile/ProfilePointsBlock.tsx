@@ -41,20 +41,20 @@ export default function ProfilePointsBlock({
   return (
     <div className={profileTheme.section}>
       <h3 className={profileTheme.sectionTitle}>{t.pointsHistory}</h3>
-      <p className="text-sm text-gray-600 mb-4">
+      <p className="text-sm text-text-secondary mb-4">
         {t.pointsHelp}
       </p>
 
       {pointsLoading ? (
         <div className="min-h-[400px] flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-            <p className="mt-4 text-gray-600">{locale.startsWith('he') ? 'טוען…' : 'Loading…'}</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
+            <p className="mt-4 text-text-secondary">{locale.startsWith('he') ? 'טוען…' : 'Loading…'}</p>
           </div>
         </div>
       ) : pointsHistory.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <SparklesIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+        <div className="text-center py-8 text-sako-gray-500">
+          <SparklesIcon className="h-12 w-12 mx-auto mb-2 text-sako-gray-300" />
           <p>{t.noPointsActivityYet}</p>
         </div>
       ) : (
@@ -62,18 +62,18 @@ export default function ProfilePointsBlock({
           {pointsHistory.map((transaction) => (
             <div
               key={transaction.id}
-              className="flex justify-between items-center py-3 border-b border-gray-100 last:border-0"
+              className="flex justify-between items-center py-3 border-b border-border-subtle last:border-0"
             >
               <div>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-text-primary">
                   {transaction.kind === 'EARN' ? t.earnedPoints : t.spentPoints}
                 </p>
                 {transaction.order && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-sako-gray-500">
                     {t.orderNumber(transaction.order.orderNumber)}
                   </p>
                 )}
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-sako-gray-500">
                   {new Date(transaction.createdAt).toLocaleDateString(locale, {
                     month: 'short',
                     day: 'numeric',
@@ -83,7 +83,7 @@ export default function ProfilePointsBlock({
               </div>
               <div
                 className={`text-lg font-bold ${
-                  transaction.kind === 'EARN' ? 'text-green-600' : 'text-red-600'
+                  transaction.kind === 'EARN' ? 'text-text-primary' : 'text-accent-error'
                 }`}
               >
                 {transaction.delta > 0 ? '+' : ''}

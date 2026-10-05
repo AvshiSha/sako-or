@@ -554,8 +554,8 @@ export default function PersonalDetailsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t.loading}</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
+          <p className="mt-4 text-text-secondary">{t.loading}</p>
         </div>
       </div>
     )
@@ -566,12 +566,12 @@ export default function PersonalDetailsPage() {
       <div className={profileTheme.card}>
         <div className={profileTheme.section}>
           <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">{t.pageTitle}</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-text-primary">{t.pageTitle}</h1>
             {!isEditMode ? (
               <button
                 onClick={handleEdit}
                 disabled={busy}
-                className={`flex items-center gap-2 text-xs md:text-sm text-white bg-[#856D55] hover:bg-[#856D55]/90 disabled:opacity-50 px-3 md:px-4 py-2 rounded-md transition-colors ${
+                className={`flex items-center gap-2 text-xs md:text-sm text-text-inverse bg-surface-dark hover:bg-sako-ink-800 disabled:opacity-50 px-3 md:px-4 py-2 rounded-md transition-colors ${
                   isRTL ? 'flex-row-reverse' : ''
                 }`}
               >
@@ -583,7 +583,7 @@ export default function PersonalDetailsPage() {
                 <button
                   onClick={handleCancel}
                   disabled={busy}
-                  className={`flex items-center text-xs md:text-sm text-gray-600 hover:text-gray-700 px-3 md:px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors ${
+                  className={`flex items-center text-xs md:text-sm text-text-secondary hover:text-text-primary px-3 md:px-4 py-2 rounded-md border border-border-default hover:bg-surface-secondary transition-colors ${
                     isRTL ? 'flex-row-reverse' : ''
                   }`}
                 >
@@ -593,7 +593,7 @@ export default function PersonalDetailsPage() {
                 <button
                   onClick={handleSaveProfile}
                   disabled={busy || (!isDirty && Object.keys(requiredErrors).length > 0)}
-                  className={`flex items-center text-xs md:text-sm text-white bg-[#856D55] hover:bg-[#856D55]/90 disabled:opacity-50 px-3 md:px-4 py-2 rounded-md transition-colors ${
+                  className={`flex items-center text-xs md:text-sm text-text-inverse bg-surface-dark hover:bg-sako-ink-800 disabled:opacity-50 px-3 md:px-4 py-2 rounded-md transition-colors ${
                     isRTL ? 'flex-row-reverse' : ''
                   }`}
                 >
@@ -605,7 +605,7 @@ export default function PersonalDetailsPage() {
           </div>
 
           {error && (
-            <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mb-4 rounded-md border border-accent-error bg-surface-primary px-4 py-3 text-sm text-accent-error">
               {error}
             </div>
           )}
@@ -698,7 +698,7 @@ export default function PersonalDetailsPage() {
 
           {/* Address Section */}
           <div className="mt-6">
-            <h4 className="text-sm font-semibold text-gray-700 mb-3">{t.address}</h4>
+            <h4 className="text-sm font-semibold text-text-secondary mb-3">{t.address}</h4>
             <div className={profileTheme.grid}>
               <Field label={t.streetAddress}>
                 <TextInput
@@ -748,7 +748,7 @@ export default function PersonalDetailsPage() {
           </div>
 
           {/* Newsletter Section */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="mt-6 pt-6 border-t border-border-subtle">
             <Checkbox
               checked={isNewsletter}
               onChange={setIsNewsletter}
@@ -758,21 +758,21 @@ export default function PersonalDetailsPage() {
             />
 
             {/* Locked fields help */}
-            <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 p-4">
-              <p className="text-sm text-gray-700">{t.lockedFieldsHelp}</p>
+            <div className="mt-4 rounded-lg bg-surface-secondary border border-border-subtle p-4">
+              <p className="text-sm text-text-secondary">{t.lockedFieldsHelp}</p>
               <div className="mt-3 flex flex-col sm:flex-row gap-3">
                 <a
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#856D55] hover:bg-[#6B5745] text-white rounded-md font-medium transition-colors duration-200"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-surface-dark hover:bg-sako-ink-800 text-text-inverse rounded-md font-medium transition-colors duration-200"
                 >
                   <FaWhatsapp className="w-5 h-5" />
                   {t.contactWhatsApp}
                 </a>
                 <a
                   href={`/${lng}/contact`}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 rounded-md font-medium transition-colors duration-200"
+                  className="inline-flex items-center justify-center px-4 py-2 border border-border-default hover:border-border-default text-text-secondary rounded-md font-medium transition-colors duration-200"
                 >
                   {t.contactEmail}
                 </a>

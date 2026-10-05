@@ -127,7 +127,7 @@ export default function PointsPage() {
               <CardTitle className="text-xl md:text-2xl">{t.pageTitle}</CardTitle>
               <Link
                 href={`/${lng}/profile`}
-                className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1 whitespace-nowrap"
+                className="flex items-center text-sm text-accent-link hover:text-text-primary gap-1 whitespace-nowrap"
               >
                 {!isRTL && <ArrowLeftIcon className="h-4 w-4" />}
                 {t.backToProfile}
@@ -138,8 +138,8 @@ export default function PointsPage() {
           <CardContent>
             <div className="min-h-[400px] flex items-center justify-center">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-                <p className="mt-4 text-gray-600">{t.loading}</p>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
+                <p className="mt-4 text-text-secondary">{t.loading}</p>
               </div>
             </div>
           </CardContent>
@@ -153,7 +153,7 @@ export default function PointsPage() {
       <Card className={profileTheme.card}>
         <div className={`${profileTheme.section} flex items-center justify-between gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
           <h1
-            className={`text-xl md:text-2xl font-bold text-gray-900 ${
+            className={`text-xl md:text-2xl font-bold text-text-primary ${
               isRTL ? 'order-2' : 'order-1'
             }`}
           >
@@ -161,7 +161,7 @@ export default function PointsPage() {
           </h1>
           <Link
             href={`/${lng}/profile`}
-            className={`flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1 whitespace-nowrap ${
+            className={`flex items-center text-sm text-accent-link hover:text-text-primary gap-1 whitespace-nowrap ${
               isRTL ? 'order-1' : 'order-2'
             }`}
           >
@@ -172,7 +172,7 @@ export default function PointsPage() {
         </div>
         <div className={profileTheme.section}>
           {error ? (
-            <div className="text-center py-8 text-red-600">
+            <div className="text-center py-8 text-accent-error">
               <p>{error}</p>
               <Link href={`/${lng}/profile`} className="mt-4 inline-block">
                 <Button variant="outline" className="text-sm md:text-base">
@@ -183,12 +183,12 @@ export default function PointsPage() {
           ) : (
             <>
               {/* Current Balance */}
-              <div className={`mb-6 p-4 rounded-lg ${profileTheme.section} bg-gradient-to-r from-[#856D55]/10 to-[#856D55]/5`}>
+              <div className={`mb-6 p-4 rounded-lg ${profileTheme.section} bg-sako-gray-200`}>
                 <div className={`flex items-center justify-between ${isRTL ? '' : 'flex-row-reverse'}`}>
-                  <SparklesIcon className="h-12 w-12 text-[#856D55]/80" />
+                  <SparklesIcon className="h-12 w-12 text-text-primary" />
                   <div>
-                    <p className="text-sm text-gray-600 mb-1 text-center">{t.currentBalance}</p>
-                    <p className="text-3xl font-bold text-[#856D55]/80">
+                    <p className="text-sm text-text-secondary mb-1 text-center">{t.currentBalance}</p>
+                    <p className="text-3xl font-bold text-text-primary">
                       {pointsBalance.toFixed(2)} {t.points}
                     </p>
                   </div>
@@ -200,8 +200,8 @@ export default function PointsPage() {
                 <h3 className={profileTheme.sectionTitle}>{t.pointsHistory}</h3>
                 
                 {pointsHistory.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <SparklesIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <div className="text-center py-8 text-sako-gray-500">
+                    <SparklesIcon className="h-12 w-12 mx-auto mb-2 text-sako-gray-300" />
                     <p>{t.noPointsActivityYet}</p>
                   </div>
                 ) : (
@@ -209,26 +209,26 @@ export default function PointsPage() {
                     {pointsHistory.map((transaction) => (
                       <div
                         key={transaction.id}
-                        className="flex justify-between items-start py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 transition-colors rounded px-2"
+                        className="flex justify-between items-start py-3 border-b border-border-subtle last:border-0 hover:bg-surface-secondary transition-colors rounded px-2"
                       >
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <p className={`text-sm font-medium ${transaction.kind === 'EARN' ? 'text-green-700' : 'text-red-700'}`}>
+                            <p className={`text-sm font-medium ${transaction.kind === 'EARN' ? 'text-text-primary' : 'text-accent-error'}`}>
                               {transaction.kind === 'EARN' ? t.earnedPoints : t.spentPoints}
                             </p>
                             {transaction.order && (
                               <Link
                                 href={`/${lng}/profile/orders?orderNumber=${transaction.order.orderNumber}`}
-                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                className="text-xs text-accent-link hover:text-text-primary underline"
                               >
                                 {t.orderNumber(transaction.order.orderNumber)}
                               </Link>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500 mb-1">
+                          <p className="text-xs text-sako-gray-500 mb-1">
                             {transaction.reason}
                           </p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-sako-gray-500">
                             {new Date(transaction.createdAt).toLocaleDateString(locale, {
                               year: 'numeric',
                               month: 'short',
@@ -240,7 +240,7 @@ export default function PointsPage() {
                         </div>
                         <div
                           className={`text-lg font-bold ml-4 ${
-                            transaction.kind === 'EARN' ? 'text-green-600' : 'text-red-600'
+                            transaction.kind === 'EARN' ? 'text-text-primary' : 'text-accent-error'
                           }`}
                         >
                           {transaction.delta > 0 ? '+' : ''}
@@ -255,7 +255,7 @@ export default function PointsPage() {
               {/* Back Button */}
               <div className="mt-6">
                 <Link href={`/${lng}/profile`}>
-                  <Button variant="outline" className="w-full md:w-auto text-sm bg-[#856D55]/80 text-white hover:bg-[#856D55]/90">
+                  <Button variant="outline" className="w-full md:w-auto text-sm bg-surface-dark/80 text-text-inverse hover:bg-sako-ink-800">
                     {t.backToProfile}
                   </Button>
                 </Link>

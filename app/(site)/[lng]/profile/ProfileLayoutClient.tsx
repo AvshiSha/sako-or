@@ -87,10 +87,10 @@ export default function ProfileLayoutClient({
 
   if (authLoading || checkingAuth || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-surface-secondary">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t.loading}</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
+          <p className="mt-4 text-text-secondary">{t.loading}</p>
         </div>
       </div>
     )
@@ -98,7 +98,7 @@ export default function ProfileLayoutClient({
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-b from-[#eef5ff] via-[#f4f7ff] to-white pb-12"
+      className="min-h-screen bg-surface-secondary pb-12"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8">

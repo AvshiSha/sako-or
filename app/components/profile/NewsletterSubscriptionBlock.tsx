@@ -58,7 +58,7 @@ export default function NewsletterSubscriptionBlock({
 
   return (
     <div className={profileTheme.section}>
-      <div className="pt-4 border-t border-gray-200">
+      <div className="pt-4 border-t border-border-subtle">
         {content}
       </div>
     </div>

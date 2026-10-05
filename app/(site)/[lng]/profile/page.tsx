@@ -306,8 +306,8 @@ export default function ProfileOverviewPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t.loading}</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
+          <p className="mt-4 text-text-secondary">{t.loading}</p>
         </div>
       </div>
     )
@@ -369,10 +369,10 @@ export default function ProfileOverviewPage() {
       {/* Welcome Back Header */}
       <div className={`${profileTheme.card} overflow-hidden`}>
         <div className="px-5 py-7 sm:px-8 sm:py-9 text-center">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-2">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-text-primary tracking-tight mb-2">
             WELCOME BACK
           </h2>
-          <p className="text-lg sm:text-xl md:text-2xl text-gray-700 font-medium">
+          <p className="text-lg sm:text-xl md:text-2xl text-text-secondary font-medium">
             {displayName}
           </p>
         </div>
@@ -383,18 +383,18 @@ export default function ProfileOverviewPage() {
         <div className={profileTheme.section}>
           <div className="flex items-start justify-between mb-5 flex-wrap gap-4">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+              <h1 className="text-xl md:text-2xl font-bold text-text-primary">
                 {loadedUser.firstName} {loadedUser.lastName}
               </h1>
-              <p className="text-sm text-gray-500 mt-1">{loadedUser.email}</p>
-              <p className="text-xs text-gray-400 flex items-center mt-1.5">
+              <p className="text-sm text-sako-gray-500 mt-1">{loadedUser.email}</p>
+              <p className="text-xs text-sako-gray-500 flex items-center mt-1.5">
                 <CalendarIcon className="h-3.5 w-3.5 mr-1" />
                 {t.memberSince(memberSince)}
               </p>
             </div>
             <div className="text-right">
-              <div className="text-xs md:text-sm text-gray-500 mb-1 text-center">{t.pointsBalance}</div>
-              <div className="text-2xl md:text-3xl font-bold text-[#856D55] flex items-center justify-end">
+              <div className="text-xs md:text-sm text-sako-gray-500 mb-1 text-center">{t.pointsBalance}</div>
+              <div className="text-2xl md:text-3xl font-bold text-text-primary flex items-center justify-end">
                 <SparklesIcon className="h-5 w-5 md:h-6 md:w-6 mr-1" />
                 {typeof loadedUser.pointsBalance === 'number' ? loadedUser.pointsBalance.toFixed(2) : Number(loadedUser.pointsBalance).toFixed(2)}
               </div>
@@ -402,7 +402,7 @@ export default function ProfileOverviewPage() {
           </div>
 
           {error && (
-            <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="mb-4 rounded-md border border-accent-error bg-surface-primary px-4 py-3 text-sm text-accent-error">
               {error}
             </div>
           )}
@@ -416,7 +416,7 @@ export default function ProfileOverviewPage() {
             <h3 className={profileTheme.sectionTitle}>{t.personalInformation}</h3>
             <Link
               href={`/${lng}/profile/personal`}
-              className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1"
+              className="flex items-center text-sm text-accent-link hover:text-text-primary gap-1"
             >
               {lng === 'he' ? (
                 <>
@@ -434,20 +434,20 @@ export default function ProfileOverviewPage() {
 
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-sm text-gray-500">{t.firstName}:</span>
-              <span className="text-sm font-medium text-gray-900">{loadedUser.firstName}</span>
+              <span className="text-sm text-sako-gray-500">{t.firstName}:</span>
+              <span className="text-sm font-medium text-text-primary">{loadedUser.firstName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-500">{t.lastName}:</span>
-              <span className="text-sm font-medium text-gray-900">{loadedUser.lastName}</span>
+              <span className="text-sm text-sako-gray-500">{t.lastName}:</span>
+              <span className="text-sm font-medium text-text-primary">{loadedUser.lastName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-500">{t.emailAddress}:</span>
-              <span className="text-sm font-medium text-gray-900">{loadedUser.email}</span>
+              <span className="text-sm text-sako-gray-500">{t.emailAddress}:</span>
+              <span className="text-sm font-medium text-text-primary">{loadedUser.email}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-500">{t.phoneNumber}:</span>
-              <span className="text-sm font-medium text-gray-900">{formatIsraelE164ToLocalDigits(loadedUser.phone) || '—'}</span>
+              <span className="text-sm text-sako-gray-500">{t.phoneNumber}:</span>
+              <span className="text-sm font-medium text-text-primary">{formatIsraelE164ToLocalDigits(loadedUser.phone) || '—'}</span>
             </div>
           </div>
         </div>
@@ -460,7 +460,7 @@ export default function ProfileOverviewPage() {
             <h3 className={profileTheme.sectionTitle}>{t.addressInformation}</h3>
             <Link
               href={`/${lng}/profile/personal`}
-              className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1"
+              className="flex items-center text-sm text-accent-link hover:text-text-primary gap-1"
             >
               {lng === 'he' ? (
                 <>
@@ -478,24 +478,24 @@ export default function ProfileOverviewPage() {
 
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-sm text-gray-500">{t.city}:</span>
-              <span className="text-sm font-medium text-gray-900">{loadedUser.addressCity || '—'}</span>
+              <span className="text-sm text-sako-gray-500">{t.city}:</span>
+              <span className="text-sm font-medium text-text-primary">{loadedUser.addressCity || '—'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-500">{t.street}:</span>
-              <span className="text-sm font-medium text-gray-900">
+              <span className="text-sm text-sako-gray-500">{t.street}:</span>
+              <span className="text-sm font-medium text-text-primary">
                 {loadedUser.addressStreet
                   ? `${loadedUser.addressStreet}${loadedUser.addressStreetNumber ? ' ' + loadedUser.addressStreetNumber : ''}`
                   : '—'}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-500">{t.floor}:</span>
-              <span className="text-sm font-medium text-gray-900">{loadedUser.addressFloor || '—'}</span>
+              <span className="text-sm text-sako-gray-500">{t.floor}:</span>
+              <span className="text-sm font-medium text-text-primary">{loadedUser.addressFloor || '—'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-sm text-gray-500">{t.apt}:</span>
-              <span className="text-sm font-medium text-gray-900">{loadedUser.addressApt || '—'}</span>
+              <span className="text-sm text-sako-gray-500">{t.apt}:</span>
+              <span className="text-sm font-medium text-text-primary">{loadedUser.addressApt || '—'}</span>
             </div>
           </div>
         </div>
@@ -508,7 +508,7 @@ export default function ProfileOverviewPage() {
           {orders.length > 0 && (
             <Link
               href={`/${lng}/profile/orders`}
-              className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-0.5 flex-shrink-0 whitespace-nowrap"
+              className="flex items-center text-sm text-accent-link hover:text-text-primary gap-0.5 flex-shrink-0 whitespace-nowrap"
             >
               {t.viewAllOrders}
               {lng === 'he' ? <ArrowLeftIcon className="h-4 w-4" /> : <ArrowRightIcon className="h-4 w-4" />}

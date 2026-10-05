@@ -103,8 +103,8 @@ export default function OrderHistory({
       <div className={profileTheme.section} dir={dir}>
         <div className="min-h-[400px] flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-            <p className="mt-4 text-gray-600">{lng === 'he' ? 'טוען…' : 'Loading…'}</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
+            <p className="mt-4 text-text-secondary">{lng === 'he' ? 'טוען…' : 'Loading…'}</p>
           </div>
         </div>
       </div>
@@ -114,8 +114,8 @@ export default function OrderHistory({
   if (orders.length === 0) {
     return (
       <div className={profileTheme.section} dir={dir}>
-        <div className="text-center py-8 text-gray-500">
-          <ShoppingBagIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+        <div className="text-center py-8 text-sako-gray-500">
+          <ShoppingBagIcon className="h-12 w-12 mx-auto mb-2 text-sako-gray-300" />
           <p className="mb-4">{t.noOrdersYet}</p>
         </div>
       </div>
@@ -180,7 +180,7 @@ function OrderCard({
   const priceAlign = isRTL ? 'text-right' : 'text-left'
 
   return (
-    <div className="bg-white rounded-xl overflow-hidden">
+    <div className="bg-surface-primary rounded-xl overflow-hidden">
       {/* Order Header - Elegant and Spacious */}
       <div className={`px-2 py-3 ${flexDirection} justify-between items-start border-b`} style={{ borderColor: '#EFEFEF' }}>
         <div className={textAlign}>
@@ -213,7 +213,7 @@ function OrderCard({
               const sku = item.productSku || item.modelNumber
               
               return (
-                <div key={item.id} className="flex flex-col bg-white rounded-xl overflow-hidden" style={{ border: '1px solid #EFEFEF' }}>
+                <div key={item.id} className="flex flex-col bg-surface-primary rounded-xl overflow-hidden" style={{ border: '1px solid #EFEFEF' }}>
                   {/* Product Image - At Top */}
                   {item.primaryImage && (
                     <div className="relative w-full aspect-square rounded-t-xl overflow-hidden" style={{ backgroundColor: '#FAFAFA' }}>
@@ -289,7 +289,7 @@ function OrderCard({
         {/* Side Column: Order Summary - Sticky on Desktop (Left for RTL, Right for LTR) */}
         <div className={`mt-6 lg:mt-10 ${isRTL ? 'lg:order-2' : 'lg:order-2'}`}>
           <div className="lg:sticky lg:top-6">
-            <div className="bg-white rounded-lg py-12 px-8 -mx-6 border-b" style={{ border: '4px solid #E1DBD7' }}>
+            <div className="bg-surface-primary rounded-lg py-12 px-8 -mx-6 border-b" style={{ border: '4px solid #E1DBD7' }}>
               <h4 className={`text-md font-medium uppercase tracking-wider mb-6  ${textAlign}`} style={{ color: '#8A8A8A' }}>
                 {t.total}
               </h4>

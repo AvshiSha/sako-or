@@ -93,7 +93,7 @@ export function RadioGroup({
   return (
     <div className="mt-2 flex flex-wrap gap-4">
       {options.map((opt) => (
-        <label key={opt.value} className="inline-flex items-center gap-2 text-sm text-slate-700">
+        <label key={opt.value} className="inline-flex items-center gap-2 text-sm text-text-secondary">
           <input
             type="radio"
             checked={value === opt.value}
@@ -131,9 +131,9 @@ export function Checkbox({
         disabled={disabled}
       />
       <span>
-        <span className="block text-sm font-medium text-slate-800">{label}</span>
+        <span className="block text-sm font-medium text-text-primary">{label}</span>
         {description ? (
-          <span className="block text-xs text-slate-500">{description}</span>
+          <span className="block text-xs text-sako-gray-500">{description}</span>
         ) : null}
       </span>
     </label>

@@ -343,15 +343,24 @@ export default function CollectionFilterPanel({
       {/* Apply bar, 438:3220. Label on the inline start, arrow opposite, same
           construction as the PDP's sticky add-to-bag. The frame's copy reads
           "המשך לתשלום", which belongs to checkout rather than a filter panel, so
-          the existing apply string is used instead. */}
+          the existing apply string is used instead.
+
+          Filled rather than a ghost bar: this is the same 58px label+arrow CTA
+          the cart drawer draws at 438:4662, and the system's CTA Button
+          (438:7682) has only Filled and Outlined - no transparent state. As a
+          ghost it also read as secondary to the clear-all link directly above
+          it. QuickBuyDrawer is the reference implementation of 438:4662; this
+          matches it, including the flat gray-500 disabled fill in place of a
+          faded ink bar. The border-t is kept for the 1px it contributes to the
+          panel's height, though the fill now covers it. */}
       <button
         type="button"
         onClick={onApply}
         disabled={isBusy}
-        className="flex h-[58px] shrink-0 items-center justify-between border-t border-sako-black px-[19px] transition-colors hover:bg-surface-secondary disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-[58px] shrink-0 items-center justify-between border-t border-sako-black bg-btn-primary-bg px-[19px] transition-colors hover:bg-sako-ink-800 disabled:cursor-not-allowed disabled:bg-sako-gray-500"
       >
-        <span className="font-ploni text-[13px] font-bold text-text-primary">{labels.apply}</span>
-        <span aria-hidden="true" className="font-ploni text-[22px] leading-none text-text-primary">
+        <span className="font-ploni text-[13px] font-bold text-btn-primary-text">{labels.apply}</span>
+        <span aria-hidden="true" className="font-ploni text-[22px] leading-none text-btn-primary-text">
           &#8601;
         </span>
       </button>

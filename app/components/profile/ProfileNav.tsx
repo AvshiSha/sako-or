@@ -90,8 +90,8 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
               href={item.href}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm md:text-base ${
                 active
-                  ? 'bg-[#856D55] text-white shadow-sm'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-surface-dark text-text-inverse'
+                  : 'text-text-secondary hover:bg-sako-gray-200'
               } ${isRTL ? 'flex-row-reverse justify-end text-right' : ''}`}
             >
               <Icon className="h-5 w-5" />
@@ -103,7 +103,7 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
         {/* Logout Button */}
         <button
           onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm md:text-base text-gray-700 hover:bg-gray-100 ${
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-sm md:text-base text-text-secondary hover:bg-sako-gray-200 ${
             isRTL ? 'flex-row-reverse justify-end text-right' : ''
           }`}
         >
@@ -146,8 +146,8 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
                     href={item.href}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                       active
-                        ? 'bg-[#856D55] text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-surface-dark text-text-inverse'
+                        : 'text-text-secondary hover:bg-sako-gray-200'
                     }`}
                   >
                     <Icon className="h-5 w-5" />
@@ -163,7 +163,7 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
                 setIsMobileMenuOpen(false)
                 handleLogout()
               }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-gray-700 hover:bg-gray-100"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-text-secondary hover:bg-sako-gray-200"
             >
               <ArrowRightOnRectangleIcon className="h-5 w-5" />
               <span className="font-medium">{t.logout}</span>

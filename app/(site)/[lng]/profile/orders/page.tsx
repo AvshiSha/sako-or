@@ -106,8 +106,8 @@ export default function OrdersPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t.loading}</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
+          <p className="mt-4 text-text-secondary">{t.loading}</p>
         </div>
       </div>
     )
@@ -120,7 +120,7 @@ export default function OrdersPage() {
           <h1 className={profileTheme.sectionTitle}>{t.pageTitle}</h1>
           <Link
             href={`/${lng}/profile`}
-            className="flex items-center text-sm text-[#856D55] hover:text-[#856D55]/80 gap-1"
+            className="flex items-center text-sm text-accent-link hover:text-text-primary gap-1"
           >
             {!isRTL && <ArrowLeftIcon className="h-4 w-4" />}
             {t.backToProfile}

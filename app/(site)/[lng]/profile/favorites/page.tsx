@@ -167,8 +167,8 @@ export default function ProfileFavoritesPage() {
     return (
       <div className="min-h-[400px] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t.loading}</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
+          <p className="mt-4 text-text-secondary">{t.loading}</p>
         </div>
       </div>
     )
@@ -178,12 +178,12 @@ export default function ProfileFavoritesPage() {
     <div className="pt-6 pb-20 md:pb-6 mt-4" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <HeartSolidIcon className="h-7 w-7 md:h-8 md:w-8 text-red-500" />
+        <h1 className="text-2xl md:text-3xl font-bold text-text-primary flex items-center gap-3">
+          <HeartSolidIcon className="h-7 w-7 md:h-8 md:w-8 text-accent-sale" />
           {t.pageTitle}
         </h1>
         {favorites.length > 0 && (
-          <p className="text-gray-600 mt-3 text-sm md:text-base">
+          <p className="text-text-secondary mt-3 text-sm md:text-base">
             {favorites.length} {t.totalItems}
           </p>
         )}
@@ -192,17 +192,17 @@ export default function ProfileFavoritesPage() {
       {/* Favorites Grid */}
       {favorites.length === 0 ? (
         /* Empty State */
-        <div className="bg-white rounded-xl shadow-sm p-8 md:p-12 text-center">
-          <HeartIcon className="h-14 w-14 md:h-16 md:w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
+        <div className="bg-surface-primary rounded-xl shadow-sm p-8 md:p-12 text-center">
+          <HeartIcon className="h-14 w-14 md:h-16 md:w-16 text-sako-gray-500 mx-auto mb-4" />
+          <h2 className="text-lg md:text-xl font-semibold text-text-primary mb-2">
             {t.emptyTitle}
           </h2>
-          <p className="text-sm md:text-base text-gray-600 mb-6 max-w-md mx-auto">
+          <p className="text-sm md:text-base text-text-secondary mb-6 max-w-md mx-auto">
             {t.emptyDescription}
           </p>
           <Link
             href={`/${lng}`}
-            className="inline-flex items-center px-5 py-2.5 md:px-6 md:py-3 border border-transparent text-sm md:text-base font-medium rounded-md text-white bg-[#856D55] hover:bg-[#856D55]/90 transition-colors"
+            className="inline-flex items-center px-5 py-2.5 md:px-6 md:py-3 border border-transparent text-sm md:text-base font-medium rounded-md text-text-inverse bg-surface-dark hover:bg-sako-ink-800 transition-colors"
           >
             {t.browseProducts}
           </Link>

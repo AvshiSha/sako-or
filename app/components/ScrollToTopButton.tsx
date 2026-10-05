@@ -101,7 +101,9 @@ export default function ScrollToTopButton({
         variant="outline"
         className={cn(
           'h-12 w-12 md:h-14 md:w-14 rounded-full shadow-lg',
-          'bg-[#856D55]/90 hover:bg-[#856D55] border-[#856D55]/90',
+          // ink-900, the design system's dark - same token the primary button and
+          // the VEE accessibility toggler use, so the two floating controls match.
+          'bg-surface-dark hover:bg-sako-ink-800 border-surface-dark',
           'hover:scale-110 active:scale-95',
           'transition-transform duration-200',
           'focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2'

@@ -175,9 +175,14 @@ window.args = {
 	icon : '',
 	access : 'https://vee-crm.com',
 	styles : {
-		primary_color: '#856D55',
+		/* #11110f is the design system's ink-900 - the same value surface-dark,
+		   text-primary and btn-primary-bg resolve to. VEE's config is a plain JS
+		   object injected before its script loads, so it cannot read a CSS custom
+		   property; the hex is duplicated here on purpose. If ink-900 ever moves,
+		   these three keys and the toggler rule in globals.css move with it. */
+		primary_color: '#11110f',
 		secondary_color: '#b586ff',
-		background_color: '#856D55',
+		background_color: '#11110f',
 		primary_text_color: '#636363',
 		headers_text_color: '#105675',
 		primary_font_size: 14,
@@ -212,7 +217,7 @@ window.args = {
 		disable_headings: true,
 		hide_purchase_link: false,
 		display_checkmark_icon: false,
-		active_toggler_color: '#856D55'
+		active_toggler_color: '#11110f'
 	},
 	exclude : []
 };

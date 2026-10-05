@@ -93,10 +93,10 @@ Our footwear is crafted according to European sizing. Use the Size Guide to find
    divides header from body, border-subtle (the warm #e1dbd6) does the internal
    gridlines. That is the same hierarchy the size selector just above it uses. */
 const INSET = 'px-[24px] md:px-[30px]'
-/* Pulls the scroller out to the sheet edge so the table can bleed while the
-   prose stays inset. The old -mx-8/px-2 pairing did not match its container's
-   px-6 and let the first column sit under the padding. */
-const BLEED = '-mx-[24px] px-[24px] md:-mx-[30px] md:px-[30px]'
+/* The sheet is full-bleed at any width, so without a measure the description
+   ran the whole 1440px of a desktop viewport. 760px is the cap the two-track
+   body block uses for the same reason. */
+const MEASURE = 'mx-auto w-full max-w-[760px]'
 
 export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
@@ -112,13 +112,11 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
   /* Ploni's digits are proportional, so a size table without tabular-nums does
      not align its columns and 22.5 / 23.0 put their decimal points in different
      places. Same reason prices carry it. */
-  const numericCell =
-    'py-[12px] px-[12px] text-center font-ploni text-[14px] tabular-nums text-text-primary'
-  /* The row label column is sticky. The old build faked its edge with a
-     box-shadow; the design system documents no elevation, so the edge is a 1px
-     ink rule on the inline end - which reads as a table rule, not a float. */
-  const stickyLabel =
-    'sticky start-0 z-[3] w-[128px] min-w-[128px] max-w-[128px] border-e border-border-default py-[12px] px-[16px] text-start font-ploni text-[14px] font-bold text-text-primary'
+  const cell = 'py-[12px] px-[12px] text-center font-ploni text-[14px] text-text-primary'
+  const bodyCell = `${cell} tabular-nums`
+  /* Column separators as border-s (inline start) rather than a physical side,
+     so the rules stay between the same columns once the table mirrors. */
+  const divider = 'border-s border-border-subtle'
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -148,61 +146,47 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
         </SheetHeader>
 
         <div className={`flex-1 overflow-y-auto py-[24px] ${INSET}`}>
-          {/* Size table */}
-          <div className={`mb-[32px] overflow-x-auto ${BLEED}`}>
-            <table className="w-full min-w-[600px] border-collapse border border-border-default">
+          {/* Size table. One row per size rather than one column per size: at
+              390px the wide form showed 4 of 12 sizes behind a sticky 128px
+              label column, so the comparison the table exists to make was the
+              part that scrolled off. Three columns fit any phone outright -
+              no horizontal scroll, no sticky column, no edge affordance. */}
+          <div className={`mb-[32px] ${MEASURE}`}>
+            <table className="mx-auto w-full max-w-[480px] border-collapse border border-border-default">
               <thead>
                 <tr className="border-b border-border-default bg-surface-secondary">
-                  <th
-                    scope="row"
-                    className={`${stickyLabel} bg-surface-secondary`}
-                  >
+                  <th scope="col" className={`${cell} font-bold`}>
                     {t.sakoSize}
                   </th>
-                  {sizeData.map(([sakoSize]) => (
-                    <th
-                      key={sakoSize}
-                      scope="col"
-                      className={`${numericCell} min-w-[56px] border-e border-border-subtle font-bold last:border-e-0`}
-                    >
-                      {sakoSize}
-                    </th>
-                  ))}
+                  <th scope="col" className={`${cell} ${divider} font-bold`}>
+                    {t.usSize}
+                  </th>
+                  <th scope="col" className={`${cell} ${divider} font-bold`}>
+                    {t.footCm}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-border-subtle">
-                  <th scope="row" className={`${stickyLabel} bg-surface-primary`}>
-                    {t.usSize}
-                  </th>
-                  {sizeData.map(([sakoSize, usSize]) => (
-                    <td
-                      key={`us-${sakoSize}`}
-                      className={`${numericCell} border-e border-border-subtle last:border-e-0`}
-                    >
-                      {usSize}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <th scope="row" className={`${stickyLabel} bg-surface-primary`}>
-                    {t.footCm}
-                  </th>
-                  {sizeData.map(([sakoSize, , footCm]) => (
-                    <td
-                      key={`foot-${sakoSize}`}
-                      className={`${numericCell} border-e border-border-subtle last:border-e-0`}
-                    >
-                      {footCm.toFixed(1)}
-                    </td>
-                  ))}
-                </tr>
+                {sizeData.map(([sakoSize, usSize, footCm]) => (
+                  <tr
+                    key={sakoSize}
+                    className="border-b border-border-subtle last:border-b-0"
+                  >
+                    {/* The SAKO size is the key the shopper looks up, so it
+                        carries the row and the weight. */}
+                    <th scope="row" className={`${bodyCell} font-bold`}>
+                      {sakoSize}
+                    </th>
+                    <td className={`${bodyCell} ${divider}`}>{usSize}</td>
+                    <td className={`${bodyCell} ${divider}`}>{footCm.toFixed(1)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
           {/* Description */}
-          <div className="mb-[32px]">
+          <div className={`mb-[32px] ${MEASURE}`}>
             <div
               className={`overflow-hidden font-ploni text-[14px] leading-[1.6] text-text-secondary transition-all duration-300 ${
                 isDescriptionExpanded ? 'max-h-none' : 'max-h-[120px]'
@@ -224,7 +208,7 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
           </div>
 
           {/* Measurement image */}
-          <div className="mb-[32px]">
+          <div className={`mb-[32px] ${MEASURE}`}>
             <div className="mx-auto w-full max-w-[448px]">
               <div className="relative aspect-[4/3.2] w-full overflow-hidden bg-surface-secondary">
                 <Image
@@ -247,7 +231,7 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
           </div>
 
           {/* Contact */}
-          <div className="border-t border-border-subtle pt-[24px] text-center">
+          <div className={`border-t border-border-subtle pt-[24px] text-center ${MEASURE}`}>
             <p className="mb-[16px] font-ploni text-[14px] text-text-secondary">
               {t.contactMessage}
             </p>

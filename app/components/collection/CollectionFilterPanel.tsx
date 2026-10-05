@@ -2,6 +2,7 @@
 
 import type { Category } from '@/lib/firebase'
 import { Slider } from '@/app/components/ui/slider'
+import { getSizeAccessibleLabel, getSizeDisplayLabel } from '@/lib/product-size-options'
 
 /**
  * Collection filter panel, design system 438:3094.
@@ -14,6 +15,13 @@ import { Slider } from '@/app/components/ui/slider'
  * Sections are flat: a Bold 16 label on the inline start, the control under it,
  * and a full-bleed rule closing each one (438:3102 puts border-b on the section
  * while insetting its content by 30px, so the rule runs edge to edge).
+ *
+ * The size and colour grids are sized by container query rather than by viewport.
+ * The shell is `w-[78%] max-w-[501px]`, so the content measure behind the 30px
+ * inset runs 244px on a 390px phone and 441px on the desktop board - a spread
+ * that no `sm:` breakpoint tracks, because the panel is a fraction of the
+ * viewport rather than a step function of it. Each grid therefore opens its own
+ * `@container` on the measure it actually has to fill.
  */
 
 const SECTION = 'border-b border-sako-black px-[30px] py-[20px]'
@@ -101,7 +109,11 @@ export default function CollectionFilterPanel({
     selectedSizes.length > 0 ||
     selectedSubSubCategories.length > 0
 
-  const sizeGroups = [numericSizes, alphaSizes].filter((group) => group.length > 0)
+  // One run, numbers then words. They were drawn as two grids, which put a lone
+  // "One size" in a second seven-column box of its own - one cell of content and
+  // six of nothing. Nothing in 438:3116 separates them: the frame is a single
+  // wrapping run of cells.
+  const sizes = [...numericSizes, ...alphaSizes]
 
   return (
     <div className="flex h-full flex-col bg-surface-primary">
@@ -154,78 +166,124 @@ export default function CollectionFilterPanel({
           </div>
         </div>
 
-        {/* Sizes, 438:3116. Same cell treatment as the PDP size grid: an ink ground
-            showing through 1px gaps, so the run stays evenly ruled when it wraps. */}
-        {sizeGroups.length > 0 && (
+        {/* Sizes, 438:3116. Seven 44px cells to the row, each ruled 1px ink with
+            its neighbours' edges collapsed - and 438:3135 lets the short second
+            row simply end, with nothing drawn under the cells it does not reach.
+
+            This was built with the PDP's technique instead (438:4240: an ink
+            ground showing through 1px gaps), which cannot express that. A gap
+            with no cell over it paints as solid ink, so a short row had to be
+            padded with spacers, and the panel grew a half-row of empty boxes.
+            Collapsing real borders with a -1px pull has no ground to hide, so the
+            run stops where the sizes stop. The 1px the pull takes off the leading
+            edge is given back as the wrapper's ps/pt, which keeps the grid's
+            outer rule flush with the track it is measured against. */}
+        {sizes.length > 0 && (
           <div className={SECTION}>
             <h3 className={SECTION_LABEL}>{labels.sizes}</h3>
-            {sizeGroups.map((group, groupIndex) => (
-              <div
-                key={groupIndex}
-                className="mt-[16px] grid grid-cols-7 gap-px border border-border-default bg-sako-ink-900 p-px"
-              >
-                {group.map((size) => {
+            <div className="@container mt-[16px]">
+              <div className="grid grid-cols-5 ps-px pt-px @sm:grid-cols-7">
+                {sizes.map((size) => {
                   const isSelected = selectedSizes.includes(size)
+                  const label = getSizeDisplayLabel(size)
+                  const spoken = getSizeAccessibleLabel(size, lng)
                   return (
                     <button
                       key={size}
                       type="button"
                       onClick={() => onSizeToggle(size)}
                       aria-pressed={isSelected}
-                      className={`flex h-[44px] items-center justify-center font-ploni text-[16px] tabular-nums transition-colors ${
+                      // Only one-size is abbreviated, so only it needs the long
+                      // form spoken; a number reads correctly as itself.
+                      aria-label={label === size ? undefined : spoken}
+                      className={`relative -ms-px -mt-px flex h-[44px] items-center justify-center whitespace-nowrap border border-border-default px-[6px] font-ploni text-[16px] tabular-nums transition-colors focus-visible:z-10 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sako-ink-900 ${
                         isSelected
                           ? 'bg-sako-ink-900 text-text-inverse'
                           : 'bg-surface-secondary text-text-primary hover:bg-sako-gray-200'
                       }`}
                     >
-                      {size}
+                      {label}
                     </button>
                   )
                 })}
-                {/* Spacers keep the ink ground from showing as solid blocks where a
-                    row runs short - the same reason the PDP grid pads its last row. */}
-                {Array.from({ length: (7 - (group.length % 7)) % 7 }).map((_, index) => (
-                  <div key={`size-spacer-${index}`} aria-hidden="true" className="h-[44px] bg-surface-secondary" />
-                ))}
               </div>
-            ))}
+            </div>
           </div>
         )}
 
-        {/* Colours, 438:3142. A 32px dot inside a 36px ring, with a 9px caption
-            beside it. The frame draws the ring on every swatch and documents no
-            selected state, so selection thickens the ring rather than inventing a
-            new treatment. */}
+        {/* Colours, 438:3142. A 32px dot inside a 36px ring with its caption
+            beside it, laid on a grid so the swatches line up in columns - the
+            frame's own construction (438:3144 is a five-track grid on an 11px row
+            gap, each pair pinned to its column's inline start). This was a
+            `flex-wrap` run, which gives the same swatches in roughly the same
+            places but lets every row break where its own labels happen to land,
+            so nothing aligns down the panel.
+
+            Two departures from the frame, both for legibility at the measures the
+            panel actually gets:
+
+            - The caption is Body 12, not the frame's Caption 9/0.72px tracking.
+              Nine pixels is the size the system reserves for a one-word eyebrow;
+              these are colour names, several of them two words ("חום בהיר",
+              "Black Nail Polish"), and at 9px with tracking they read as grey
+              texture rather than as words. 12 is the system's own metadata size -
+              the cart line's "colour / size" row, 438:4594 - and the tracking
+              comes off, which is what holds a Hebrew word together.
+            - Five tracks only fit the 441px desktop measure. On the 244px phone
+              measure a 36px swatch plus a readable name needs ~104px, so the
+              count steps 2 → 3 → 4 with the container and the pair never has to
+              choose between a clipped name and a shrunken swatch.
+
+            The frame documents no selected state. Selection draws an ink ring
+            clear of the swatch and sets the caption bold - the system's own two
+            ways of saying "this one", borrowed from the PDP size cell and from
+            the sub-category list below, rather than a third invented here. It is
+            an outline at a 2px offset rather than a thicker border on the 36px
+            ring, because the ring is `size-[36px]` over a 32px dot: thickening
+            its border eats the 1px the dot was floating in, and the ring then
+            touches the swatch. On a black swatch that makes the whole mark
+            disappear - the one colour in the list where the shopper most needs
+            to see it - and on white it loses the only edge the dot had. An
+            outline sits outside the 36px circle, so it reads on every colour and
+            moves nothing. */}
         {allColors.length > 0 && (
           <div className={SECTION}>
             <h3 className={SECTION_LABEL}>{labels.colors}</h3>
-            <div className="flex flex-wrap gap-x-[18px] gap-y-[11px] pt-[16px]">
-              {allColors.map((color) => {
-                const isSelected = selectedColors.includes(color)
-                return (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => onColorToggle(color)}
-                    aria-pressed={isSelected}
-                    className="group flex items-center gap-[7px] transition-opacity hover:opacity-70"
-                  >
-                    <span
-                      className={`flex size-[36px] shrink-0 items-center justify-center rounded-full transition-colors ${
-                        isSelected ? 'border-2 border-sako-ink-900' : 'border border-border-subtle'
-                      }`}
+            <div className="@container pt-[16px]">
+              <div className="grid grid-cols-2 items-center gap-x-[12px] gap-y-[14px] @2xs:grid-cols-3 @sm:grid-cols-4">
+                {allColors.map((color) => {
+                  const isSelected = selectedColors.includes(color)
+                  return (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => onColorToggle(color)}
+                      aria-pressed={isSelected}
+                      className="flex items-center gap-[10px] text-start transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sako-ink-900"
                     >
                       <span
-                        className="block size-[32px] rounded-full border border-border-subtle"
-                        style={{ backgroundColor: getColorHex(color) }}
-                      />
-                    </span>
-                    <span className="font-ploni text-[9px] tracking-[0.72px] text-text-primary">
-                      {getColorLabel(color)}
-                    </span>
-                  </button>
-                )
-              })}
+                        className={`flex size-[36px] shrink-0 items-center justify-center rounded-full border border-border-subtle ${
+                          isSelected ? 'outline-2 outline-offset-2 outline-sako-ink-900' : ''
+                        }`}
+                      >
+                        <span
+                          className="block size-[32px] rounded-full border border-border-subtle"
+                          style={{ backgroundColor: getColorHex(color) }}
+                        />
+                      </span>
+                      {/* min-w-0 so a long name wraps inside its track instead of
+                          widening it and pushing the column out of line. */}
+                      <span
+                        className={`min-w-0 font-ploni text-[12px] leading-[1.25] text-text-primary ${
+                          isSelected ? 'font-bold' : ''
+                        }`}
+                      >
+                        {getColorLabel(color)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         )}

@@ -22,6 +22,30 @@ export const ONE_SIZE_STOCK_KEY = 'One size'
 export const ONE_SIZE_LABEL = 'OS'
 const ONE_SIZE_ALIASES = ['one size', 'os', 'onesize', 'one-size']
 
+/** True for any spelling of the one-size key, however it reached us. */
+export function isOneSizeKey(size: string): boolean {
+  return ONE_SIZE_ALIASES.includes(normalizeSizeKey(size).toLowerCase())
+}
+
+/**
+ * What a size key reads as in a size cell.
+ *
+ * Only one-size differs from its own key: the PDP shows "OS" because "One size"
+ * is two words that cannot sit on one line in a 44px cell, and the collection
+ * filter draws the same cells, so it has to make the same substitution or the
+ * two surfaces disagree about what the shopper is picking. Pair it with
+ * getSizeAccessibleLabel, which keeps the long form for assistive tech.
+ */
+export function getSizeDisplayLabel(size: string): string {
+  return isOneSizeKey(size) ? ONE_SIZE_LABEL : size
+}
+
+/** The long form behind an abbreviated cell, for aria-label. */
+export function getSizeAccessibleLabel(size: string, lng: string): string {
+  if (!isOneSizeKey(size)) return size
+  return lng === 'he' ? 'מידה אחידה' : 'One size'
+}
+
 /**
  * Columns for the size grid, chosen so the last row comes out full.
  *

@@ -21,7 +21,7 @@ import { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import QuantityStepper from '@/app/components/QuantityStepper'
 import { Button } from '@/app/components/ui/button'
-import { getProductSizeOptions, getSizeGridColumns, SIZE_GRID_COLUMN_CLASS } from '@/lib/product-size-options'
+import { getProductSizeOptions, getSizeGridColumns, SIZE_GRID_COLUMN_CLASS, isFootwear } from '@/lib/product-size-options'
 
 /**
  * Written out as whole class names on purpose. Tailwind scans source text, so a
@@ -163,7 +163,23 @@ export default function ProductColorClient({
   const [quantity, setQuantity] = useState(1)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isSizeChartOpen, setIsSizeChartOpen] = useState(false)
-  
+
+  /**
+   * The size chart is footwear-only - its table converts SAKO/US/foot-cm, which
+   * means nothing for a bag or a belt.
+   *
+   * `isFootwear` rather than a literal `subCategory === 'Shoes'` test, for two
+   * reasons found in the data. The runtime product document stores
+   * `subCategory` as a category *id* ("eKedLsbjfWh7qywuslaB"), not a name, so a
+   * name comparison never matches; and in the catalogue only 110 of 343
+   * products carry the name "Shoes" at all - another 201 sit under "Outlet", a
+   * merchandising bucket holding 180 shoes and 21 bags, so even against names a
+   * literal match would hide the chart from more shoes than it showed.
+   * `isFootwear` is the predicate the size grid beside it already uses, so the
+   * chart and the sizes can never disagree about what a shoe is.
+   */
+  const showSizeChart = useMemo(() => isFootwear(product ?? {}), [product])
+
   // Favorites hook
   const { isFavorite, toggleFavorite } = useFavorites()
 
@@ -757,13 +773,18 @@ export default function ProductColorClient({
                       <h3 className="font-bold">
                         {lng === 'he' ? 'בחירת מידה' : 'Select size'}
                       </h3>
-                      <button
-                        type="button"
-                        onClick={() => setIsSizeChartOpen(true)}
-                        className="transition-opacity hover:opacity-70"
-                      >
-                        {lng === 'he' ? 'מדריך מידות' : 'Size guide'}
-                      </button>
+                      {/* Footwear only. justify-between leaves the heading on the
+                          inline start when this is absent, so the row closes up
+                          with no gap. */}
+                      {showSizeChart && (
+                        <button
+                          type="button"
+                          onClick={() => setIsSizeChartOpen(true)}
+                          className="underline decoration-1 underline-offset-[3px] transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-default"
+                        >
+                          {lng === 'he' ? 'מדריך מידות' : 'Size guide'}
+                        </button>
+                      )}
                     </div>
 
                     {/* The dividers are the grid itself: an ink-900 ground showing
@@ -1071,13 +1092,17 @@ export default function ProductColorClient({
                     <h3 className="font-bold">
                       {lng === 'he' ? 'בחירת מידה' : 'Select size'}
                     </h3>
-                    <button
-                      type="button"
-                      onClick={() => setIsSizeChartOpen(true)}
-                      className="transition-opacity hover:opacity-70"
-                    >
-                      {lng === 'he' ? 'טבלת מידות' : 'Size chart'}
-                    </button>
+                    {/* Footwear only - see showSizeChart. The ruled header keeps
+                        its rule and the heading keeps its place when this goes. */}
+                    {showSizeChart && (
+                      <button
+                        type="button"
+                        onClick={() => setIsSizeChartOpen(true)}
+                        className="underline decoration-1 underline-offset-[3px] transition-opacity hover:opacity-70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-default"
+                      >
+                        {lng === 'he' ? 'טבלת מידות' : 'Size chart'}
+                      </button>
+                    )}
                   </div>
 
                   {/* One row of equal cells. The frame fixes seven 61.41px cells to
@@ -1578,12 +1603,15 @@ export default function ProductColorClient({
         </div>
       </div>
       
-      {/* Size Chart Sheet */}
-      <SizeChart
-        isOpen={isSizeChartOpen}
-        onClose={() => setIsSizeChartOpen(false)}
-        lng={lng as 'en' | 'he'}
-      />
+      {/* Size Chart Sheet. Not mounted at all for non-footwear, so the dynamic
+          chunk is never fetched for a bag or a belt either. */}
+      {showSizeChart && (
+        <SizeChart
+          isOpen={isSizeChartOpen}
+          onClose={() => setIsSizeChartOpen(false)}
+          lng={lng as 'en' | 'he'}
+        />
+      )}
     </>
   )
 }

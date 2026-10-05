@@ -9,8 +9,8 @@ import {
   SheetTitle,
   SheetClose,
 } from '@/app/components/ui/sheet'
-import { X } from 'lucide-react'
 import { FaWhatsapp } from 'react-icons/fa'
+import { Button } from '@/app/components/ui/button'
 
 interface SizeChartProps {
   isOpen: boolean
@@ -57,6 +57,7 @@ Our footwear is crafted according to European sizing. Use the Size Guide to find
     contactWhatsApp: 'Contact us on WhatsApp',
     contactPage: 'Contact us',
     faqLink: 'Read the full sizing and fit guide',
+    close: 'Close',
   },
   he: {
     title: 'מדריך מידות',
@@ -80,146 +81,130 @@ Our footwear is crafted according to European sizing. Use the Size Guide to find
     contactWhatsApp: 'צרו קשר ב-WhatsApp',
     contactPage: 'צרו קשר במייל',
     faqLink: 'למדריך המלא למידות והתאמת נעליים',
+    close: 'סגירה',
   },
 }
+
+/* The sheet is laid out on the Product Filter drawer's construction (438:3094 /
+   438:3579): a section label over its content, closed by a hairline that runs
+   edge to edge while the content stays inset. Inset is 24px, 30px from md up.
+
+   Rules carry two weights on purpose - border-default (ink) frames the table and
+   divides header from body, border-subtle (the warm #e1dbd6) does the internal
+   gridlines. That is the same hierarchy the size selector just above it uses. */
+const INSET = 'px-[24px] md:px-[30px]'
+/* Pulls the scroller out to the sheet edge so the table can bleed while the
+   prose stays inset. The old -mx-8/px-2 pairing did not match its container's
+   px-6 and let the first column sit under the padding. */
+const BLEED = '-mx-[24px] px-[24px] md:-mx-[30px] md:px-[30px]'
 
 export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
   const t = translations[lng]
   const isRTL = lng === 'he'
   const phoneNumber = '+972504487979'
-  const defaultMessage = isRTL 
-    ? 'היי, אשמח לעזרה עם בחירת מידה' 
+  const defaultMessage = isRTL
+    ? 'היי, אשמח לעזרה עם בחירת מידה'
     : 'Hi, I need help choosing the right size'
   const encodedMessage = encodeURIComponent(defaultMessage)
   const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}`
+
+  /* Ploni's digits are proportional, so a size table without tabular-nums does
+     not align its columns and 22.5 / 23.0 put their decimal points in different
+     places. Same reason prices carry it. */
+  const numericCell =
+    'py-[12px] px-[12px] text-center font-ploni text-[14px] tabular-nums text-text-primary'
+  /* The row label column is sticky. The old build faked its edge with a
+     box-shadow; the design system documents no elevation, so the edge is a 1px
+     ink rule on the inline end - which reads as a table rule, not a float. */
+  const stickyLabel =
+    'sticky start-0 z-[3] w-[128px] min-w-[128px] max-w-[128px] border-e border-border-default py-[12px] px-[16px] text-start font-ploni text-[14px] font-bold text-text-primary'
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent
         side="bottom"
-        className="h-[90vh] max-h-[800px] overflow-hidden p-0 flex flex-col rounded-t-2xl [&>button]:hidden"
+        className="flex h-[90vh] max-h-[800px] flex-col overflow-hidden rounded-none border-t border-border-default bg-surface-primary p-0 [&>button]:hidden"
         dir={isRTL ? 'rtl' : 'ltr'}
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        <SheetHeader className="px-6 pt-6 pb-4 border-b border-gray-200 relative">
-          <SheetClose className="absolute top-7 left-6 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none z-10">
-            <X className="h-6 w-6 text-gray-900" />
-            <span className="sr-only">Close</span>
+        <SheetHeader
+          className={`relative border-b border-border-default pb-[16px] pt-[24px] ${INSET}`}
+        >
+          <SheetClose
+            aria-label={t.close}
+            className="absolute top-[22px] end-[24px] z-10 p-[8px] text-text-primary opacity-60 transition-opacity hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-default md:end-[30px]"
+          >
+            {/* Drawn, not imported - the system has no round outline icon set.
+                Same hairline cross the toast uses. */}
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+              <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
           </SheetClose>
-          <SheetTitle className="text-2xl font-bold text-gray-900 text-center">
+          {/* Heading/H3 - Ploni Black 20, the system's product-name weight. */}
+          <SheetTitle className="text-center font-ploni text-[20px] font-black leading-none text-text-primary">
             {t.title}
           </SheetTitle>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-6 py-6">
-          {/* Size Table */}
-          <div className="mb-8">
-            <div className="overflow-x-auto -mx-8 px-2" style={{ position: 'relative'}}>
-              <div className="inline-block min-w-full align-middle">
-                <table className="w-full border-collapse min-w-[600px]">
-                  <thead>
-                    <tr className="border-b-2 border-gray-300">
-                      <th 
-                        className={`${isRTL ? 'text-right' : 'text-left'} py-3 px-4 font-semibold text-gray-900 border-r border-gray-200`}
-                        style={{ 
-                          position: 'sticky',
-                          insetInlineStart: 0,
-                          zIndex: 3,
-                          backgroundColor: 'white',
-                          minWidth: '120px',
-                          maxWidth: '120px',
-                          width: '120px',
-                          boxShadow: isRTL 
-                            ? '4px 0 6px rgba(0, 0, 0, 0.05)' 
-                            : '-4px 0 6px rgba(0, 0, 0, 0.05)'
-                        }}
-                      >
-                        {t.sakoSize}
-                      </th>
-                      {sizeData.map(([sakoSize], index) => (
-                        <th
-                          key={sakoSize}
-                          className={`text-center py-3 px-3 font-semibold text-gray-900 bg-white min-w-[60px] ${
-                            index < sizeData.length ? 'border-r border-gray-200' : ''
-                          }`}
-                        >
-                          {sakoSize}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* US row */}
-                    <tr className="border-b border-gray-200 bg-gray-50">
-                      <td 
-                        className={`py-3 px-4 text-gray-900 font-semibold border-r border-gray-200`}
-                        style={{ 
-                          position: 'sticky',
-                          insetInlineStart: 0,
-                          zIndex: 3,
-                          backgroundColor: '#f9fafb',
-                          minWidth: '120px',
-                          maxWidth: '120px',
-                          width: '120px',
-                          boxShadow: isRTL 
-                            ? '4px 0 6px rgba(0, 0, 0, 0.05)' 
-                            : '-4px 0 6px rgba(0, 0, 0, 0.05)'
-                        }}
-                      >
-                        {t.usSize}
-                      </td>
-                      {sizeData.map(([sakoSize, usSize], index) => (
-                        <td
-                          key={`us-${sakoSize}`}
-                          className={`py-3 px-3 text-center text-gray-700 ${
-                            index < sizeData.length ? 'border-r border-gray-200' : ''
-                          }`}
-                        >
-                          {usSize}
-                        </td>
-                      ))}
-                    </tr>
-                    {/* Foot (CM) row */}
-                    <tr className="border-b border-gray-200 bg-white">
-                      <td 
-                        className={`py-3 px-4 text-gray-900 font-semibold border-r border-gray-200`}
-                        style={{ 
-                          position: 'sticky',
-                          insetInlineStart: 0,
-                          zIndex: 3,
-                          backgroundColor: 'white',
-                          minWidth: '120px',
-                          maxWidth: '120px',
-                          width: '120px',
-                          boxShadow: isRTL 
-                            ? '4px 0 6px rgba(0, 0, 0, 0.05)' 
-                            : '-4px 0 6px rgba(0, 0, 0, 0.05)'
-                        }}
-                      >
-                        {t.footCm}
-                      </td>
-                      {sizeData.map(([sakoSize, , footCm], index) => (
-                        <td
-                          key={`foot-${sakoSize}`}
-                          className={`py-3 px-3 text-center text-gray-700 ${
-                            index < sizeData.length ? 'border-r border-gray-200' : ''
-                          }`}
-                        >
-                          {footCm.toFixed(1)}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <div className={`flex-1 overflow-y-auto py-[24px] ${INSET}`}>
+          {/* Size table */}
+          <div className={`mb-[32px] overflow-x-auto ${BLEED}`}>
+            <table className="w-full min-w-[600px] border-collapse border border-border-default">
+              <thead>
+                <tr className="border-b border-border-default bg-surface-secondary">
+                  <th
+                    scope="row"
+                    className={`${stickyLabel} bg-surface-secondary`}
+                  >
+                    {t.sakoSize}
+                  </th>
+                  {sizeData.map(([sakoSize]) => (
+                    <th
+                      key={sakoSize}
+                      scope="col"
+                      className={`${numericCell} min-w-[56px] border-e border-border-subtle font-bold last:border-e-0`}
+                    >
+                      {sakoSize}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border-subtle">
+                  <th scope="row" className={`${stickyLabel} bg-surface-primary`}>
+                    {t.usSize}
+                  </th>
+                  {sizeData.map(([sakoSize, usSize]) => (
+                    <td
+                      key={`us-${sakoSize}`}
+                      className={`${numericCell} border-e border-border-subtle last:border-e-0`}
+                    >
+                      {usSize}
+                    </td>
+                  ))}
+                </tr>
+                <tr>
+                  <th scope="row" className={`${stickyLabel} bg-surface-primary`}>
+                    {t.footCm}
+                  </th>
+                  {sizeData.map(([sakoSize, , footCm]) => (
+                    <td
+                      key={`foot-${sakoSize}`}
+                      className={`${numericCell} border-e border-border-subtle last:border-e-0`}
+                    >
+                      {footCm.toFixed(1)}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          {/* Description Section */}
-          <div className="mb-8">
+          {/* Description */}
+          <div className="mb-[32px]">
             <div
-              className={`text-gray-700 leading-relaxed transition-all duration-300 overflow-hidden ${
+              className={`overflow-hidden font-ploni text-[14px] leading-[1.6] text-text-secondary transition-all duration-300 ${
                 isDescriptionExpanded ? 'max-h-none' : 'max-h-[120px]'
               }`}
             >
@@ -227,18 +212,21 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
                 {isDescriptionExpanded ? t.descriptionFull : t.descriptionCollapsed}
               </p>
             </div>
+            {/* Same underline idiom as the toast action and the cookie notice
+                link, so every secondary link in the system reads alike. */}
             <button
+              type="button"
               onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-              className="mt-3 text-sm text-[#856D55] hover:text-[#6B5745] underline font-medium transition-colors"
+              className="mt-[12px] font-ploni text-[14px] text-text-primary underline decoration-1 underline-offset-4 transition-opacity hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-default"
             >
               {isDescriptionExpanded ? t.readLess : t.readMore}
             </button>
           </div>
 
-          {/* Measurement Image */}
-          <div className="mb-8">
-            <div className="w-full max-w-md mx-auto">
-              <div className="relative w-full aspect-[4/3.2] bg-gray-100 rounded-lg overflow-hidden">
+          {/* Measurement image */}
+          <div className="mb-[32px]">
+            <div className="mx-auto w-full max-w-[448px]">
+              <div className="relative aspect-[4/3.2] w-full overflow-hidden bg-surface-secondary">
                 <Image
                   src="/images/size-guide/measurement-guide.webp"
                   alt={isRTL ? 'מדריך מדידה' : 'Measurement Guide'}
@@ -258,32 +246,26 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
             </div>
           </div>
 
-          {/* Contact Section */}
-          <div className="border-t border-gray-200 pt-6 text-center">
-            <p className="text-gray-600 mb-4 text-base">
+          {/* Contact */}
+          <div className="border-t border-border-subtle pt-[24px] text-center">
+            <p className="mb-[16px] font-ploni text-[14px] text-text-secondary">
               {t.contactMessage}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#856D55] hover:bg-[#6B5745] text-white rounded-md font-medium transition-colors duration-200"
-              >
-                <FaWhatsapp className="w-5 h-5" />
-                {t.contactWhatsApp}
-              </a>
-              <a
-                href={`/${lng}/contact`}
-                className="inline-flex items-center px-6 py-3 border border-gray-300 hover:border-gray-400 text-gray-700 rounded-md font-medium transition-colors duration-200"
-              >
-                {t.contactPage}
-              </a>
+            <div className="flex flex-col gap-[12px] sm:flex-row sm:justify-center">
+              <Button asChild variant="sako" size="sakoBar" className="sm:w-auto sm:px-[32px]">
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
+                  <FaWhatsapp className="h-5 w-5" />
+                  {t.contactWhatsApp}
+                </a>
+              </Button>
+              <Button asChild variant="sakoOutlined" size="sakoBar" className="sm:w-auto sm:px-[32px]">
+                <a href={`/${lng}/contact`}>{t.contactPage}</a>
+              </Button>
             </div>
-            <p className="mt-4">
+            <p className="mt-[16px]">
               <a
                 href={`/${lng}/faq#faq-section-women`}
-                className="text-sm text-[#856D55] underline hover:text-[#95816C]"
+                className="font-ploni text-[14px] text-text-primary underline decoration-1 underline-offset-4 transition-opacity hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-border-default"
               >
                 {t.faqLink}
               </a>
@@ -294,4 +276,3 @@ export default function SizeChart({ isOpen, onClose, lng }: SizeChartProps) {
     </Sheet>
   )
 }
-

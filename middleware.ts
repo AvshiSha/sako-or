@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { languages } from './i18n/settings'
 
-const PUBLIC_FILE = /\.(?:json|xml|txt|png|jpe?g|svg|ico|webmanifest)$/i
+// webp/avif/gif were missing from this list while png/jpg/svg were on it, so a
+// .webp in public/ was the one static image kind that still got locale-
+// redirected. Harmless for a plain <img>, which follows the 308 - but the
+// next/image optimizer fetches server-side, does not follow it, and answers
+// "The requested resource isn't a valid image" with a 400. That is why the size
+// guide's measurement-guide.webp had never rendered: its onError handler hid
+// the container, so the failure was silent. avif is listed here too because
+// next.config generates it, and gif for symmetry.
+const PUBLIC_FILE = /\.(?:json|xml|txt|png|jpe?g|webp|avif|gif|svg|ico|webmanifest)$/i
 
 // Default locale used when redirecting a request that has no language prefix
 // at all (e.g. an old backlink, or a URL a crawler guessed). Matches the

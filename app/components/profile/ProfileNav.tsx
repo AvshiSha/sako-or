@@ -119,7 +119,7 @@ export default function ProfileNav({ lng, translations: t }: ProfileNavProps) {
     <>
       <button
         onClick={() => setIsMobileMenuOpen(true)}
-        className="md:hidden fixed bottom-6 right-6 z-50 bg-[#856D55] text-white p-4 rounded-full shadow-lg"
+        className="md:hidden fixed bottom-6 right-6 z-50 bg-surface-dark text-text-inverse p-4 rounded-full shadow-lg"
         aria-label={t.menu}
       >
         <Menu className="h-6 w-6" />

@@ -569,7 +569,7 @@ body.admin-panel #vplugin-interface {
 }
 
 .cms-content a {
-  color: #856d55;
+  color: var(--color-accent-link);
   text-decoration: underline;
 }
 

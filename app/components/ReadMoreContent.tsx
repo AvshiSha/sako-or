@@ -62,7 +62,7 @@ export default function ReadMoreContent({
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className={cn(
-            'mt-4 text-sm font-medium text-[#856D55] hover:text-[#6d5844] underline-offset-2 hover:underline transition-colors',
+            'mt-4 text-sm font-medium text-accent-link underline-offset-2 hover:underline transition-colors',
             lng === 'he' ? 'text-right w-full' : 'text-left'
           )}
           aria-expanded={expanded}

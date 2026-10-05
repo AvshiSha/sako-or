@@ -84,7 +84,7 @@ export default function PromoCountdown({ targetDate, lng = 'en' }: PromoCountdow
 
   return (
     <div
-      className="fixed left-0 right-0 top-10 z-[60] border-t border-white/20 bg-[#856D55] text-white"
+      className="fixed left-0 right-0 top-10 z-[60] border-t border-white/20 bg-sako-brown-500 text-text-inverse"
       style={{ height: PROMO_COUNTDOWN_BAR_HEIGHT }}
       role="timer"
       aria-live="polite"

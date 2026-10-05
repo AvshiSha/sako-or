@@ -20,7 +20,9 @@ export default function InlineHeadingContent({
   return (
     <span
       className={cn(
-        'inline-heading-content [&_a]:text-[#856D55] [&_a]:underline hover:[&_a]:text-[#6d5844]',
+        // accent-link, matching .cms-content a. No hover colour: that rule changes
+        // only the underline on hover, so the two CMS link surfaces now agree.
+        'inline-heading-content [&_a]:text-accent-link [&_a]:underline',
         className
       )}
       dangerouslySetInnerHTML={{ __html: sanitized }}

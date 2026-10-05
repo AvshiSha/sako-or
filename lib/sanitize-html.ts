@@ -190,6 +190,13 @@ export function faqAnswerHadDemotedHeadings(html: string): boolean {
 
 const INLINE_ALLOWED_TAGS = ['p', 'a', 'strong', 'em', 'br']
 
+/* accent-link, the design system's link colour, on the anchors inside sanitized
+   CMS HTML. It has to stay a literal string in a scanned source file: Tailwind
+   generates utilities from the class names it finds in the source text, and the
+   markup these classes land on is assembled at runtime where the scanner cannot
+   see it. Building the name by concatenation would emit no utility at all. */
+const CMS_ANCHOR_CLASS = 'text-accent-link underline'
+
 function transformAnchorTag(tagName: string, attribs: Record<string, string>) {
   const href = attribs.href || ''
   if (href.startsWith('http://') || href.startsWith('https://')) {
@@ -199,7 +206,7 @@ function transformAnchorTag(tagName: string, attribs: Record<string, string>) {
         ...attribs,
         target: '_blank',
         rel: 'noopener noreferrer',
-        class: attribs.class || 'text-[#856D55] underline',
+        class: attribs.class || CMS_ANCHOR_CLASS,
       },
     }
   }
@@ -207,7 +214,7 @@ function transformAnchorTag(tagName: string, attribs: Record<string, string>) {
     tagName,
     attribs: {
       ...attribs,
-      class: attribs.class || 'text-[#856D55] underline',
+      class: attribs.class || CMS_ANCHOR_CLASS,
     },
   }
 }

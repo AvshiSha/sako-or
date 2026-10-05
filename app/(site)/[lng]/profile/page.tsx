@@ -8,7 +8,7 @@ import { profileTheme } from '@/app/components/profile/profileTheme'
 import ProfilePointsBlock from '@/app/components/profile/ProfilePointsBlock'
 import NewsletterSubscriptionBlock from '@/app/components/profile/NewsletterSubscriptionBlock'
 import OrderHistory from '@/app/components/profile/OrderHistory'
-import Toast, { useToast } from '@/app/components/Toast'
+import { useToast } from '@/app/components/Toast'
 import { PencilIcon, SparklesIcon, CalendarIcon, ShoppingBagIcon, ArrowRightIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
 import { formatIsraelE164ToLocalDigits } from '@/lib/phone'
 import { primeUserProfileCache } from '@/lib/user-profile-cache'
@@ -160,7 +160,7 @@ export default function ProfileOverviewPage() {
   const locale = lng === 'he' ? 'he-IL' : 'en-US'
 
   const { user: firebaseUser, loading: authLoading } = useAuth()
-  const { toast, showToast, hideToast } = useToast()
+  const { showToast } = useToast()
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -560,13 +560,6 @@ export default function ProfileOverviewPage() {
         />
       </div>
 
-      {/* Toast Notification */}
-      <Toast
-        message={toast.message}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-        type={toast.type}
-      />
     </div>
   )
 }

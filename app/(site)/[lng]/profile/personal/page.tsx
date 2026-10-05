@@ -11,7 +11,7 @@ import {
   RadioGroup,
   Checkbox
 } from '@/app/components/profile/ProfileFormFields'
-import Toast, { useToast } from '@/app/components/Toast'
+import { useToast } from '@/app/components/Toast'
 import ConfirmDialog from '@/app/components/profile/ConfirmDialog'
 import { CheckIcon, XMarkIcon, PencilIcon } from '@heroicons/react/24/outline'
 import { FaWhatsapp } from 'react-icons/fa'
@@ -168,7 +168,7 @@ export default function PersonalDetailsPage() {
   const whatsappUrl = `https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}?text=${encodedMessage}`
 
   const { user: firebaseUser, loading: authLoading } = useAuth()
-  const { toast, showToast, hideToast } = useToast()
+  const { showToast } = useToast()
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -781,14 +781,6 @@ export default function PersonalDetailsPage() {
           </div>
         </div>
       </div>
-
-      {/* Toast Notification */}
-      <Toast
-        message={toast.message}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-        type={toast.type}
-      />
 
       {/* Confirmation Dialog */}
       <ConfirmDialog

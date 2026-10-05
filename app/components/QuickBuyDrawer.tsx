@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { Product, productHelpers } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
-import Toast, { useToast } from '@/app/components/Toast'
+import { useToast } from '@/app/components/Toast'
 import QuantityStepper from '@/app/components/QuantityStepper'
 import { trackAddToCart as trackAddToCartEvent } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
@@ -74,7 +74,7 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const { isFavorite, toggleFavorite } = useFavorites()
   const { addToCart } = useCart()
-  const { toast, showToast, hideToast } = useToast()
+  const { showToast } = useToast()
 
   const isRTL = language === 'he'
 
@@ -219,7 +219,12 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
       const successMessage = isRTL
         ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`
         : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
-      showToast(successMessage, 'success')
+      showToast(successMessage, 'success', {
+        action: {
+          label: isRTL ? 'לעגלה →' : 'View cart →',
+          href: `/${language}/cart`,
+        },
+      })
 
       // Close the drawer without navigating away.
       // Quick Buy is an in-place overlay; keep the user on the same page.
@@ -568,19 +573,6 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
           </button>
         </div>
       </SideDrawer>
-
-      {/* Outside the drawer, deliberately. The toast used to be mounted inside the
-          Headless UI Transition.Root, which unmounts its subtree once `show` goes
-          false - and the only thing that raises the success toast is the add that
-          also closes the drawer, so "added to bag" was torn down in the same tick
-          it was raised. */}
-      <Toast
-        message={toast.message}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-        duration={5000}
-        type={toast.type}
-      />
     </>
   )
 }

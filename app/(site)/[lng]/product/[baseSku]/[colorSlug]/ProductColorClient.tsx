@@ -17,7 +17,7 @@ import { resolveVariantHardwareColor } from '@/lib/product-types'
 import { buildBagFactRows, buildMeasurementRows } from '@/lib/bag-facts'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
-import Toast, { useToast } from '@/app/components/Toast'
+import { useToast } from '@/app/components/Toast'
 import Accordion from '@/app/components/Accordion'
 import QuantityStepper from '@/app/components/QuantityStepper'
 import { Button } from '@/app/components/ui/button'
@@ -171,7 +171,7 @@ export default function ProductColorClient({
   const { addToCart } = useCart()
   
   // Toast hook
-  const { toast, showToast, hideToast } = useToast()
+  const { showToast } = useToast()
 
   function reorderByPrimary<T extends { url: string }>(items: T[], primaryImage: string | undefined): T[] {
     if (!primaryImage) return items
@@ -514,11 +514,17 @@ export default function ProductColorClient({
       addToCart({ ...baseCartItem })
     }
     
-    // Show success toast
-    const successMessage = lng === 'he' 
-      ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה` 
+    // Show success toast. The action link replaces the close button: the moment
+    // after an add is the best place to offer the cart.
+    const successMessage = lng === 'he'
+      ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`
       : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
-    showToast(successMessage, 'success')
+    showToast(successMessage, 'success', {
+      action: {
+        label: lng === 'he' ? 'לעגלה →' : 'View cart →',
+        href: `/${lng}/cart`,
+      },
+    })
     
     // Reset button state after a short delay
     setTimeout(() => {
@@ -1572,14 +1578,6 @@ export default function ProductColorClient({
         </div>
       </div>
       
-      {/* Toast Notification */}
-      <Toast
-        message={toast.message}
-        isVisible={toast.isVisible}
-        onClose={hideToast}
-        type={toast.type}
-      />
-
       {/* Size Chart Sheet */}
       <SizeChart
         isOpen={isSizeChartOpen}

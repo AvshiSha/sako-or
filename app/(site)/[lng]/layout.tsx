@@ -70,7 +70,7 @@ export default async function LanguageLayout({
 
   return (
     <html lang={normalizedLng} dir={direction} className="light" suppressHydrationWarning>
-      <RootShell>
+      <RootShell lng={normalizedLng}>
         <div className={`flex flex-col ${direction}`} dir={direction}>
           <script
             type="application/ld+json"

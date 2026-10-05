@@ -136,7 +136,12 @@ export default function AddToCartModal({ isOpen, onClose, product, lng }: AddToC
         ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`
         : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
       
-      showToast(successMessage, 'success')
+      showToast(successMessage, 'success', {
+        action: {
+          label: lng === 'he' ? 'לעגלה →' : 'View cart →',
+          href: `/${lng}/cart`,
+        },
+      })
       onClose()
     } catch (error) {
       console.error('Error adding to cart:', error)

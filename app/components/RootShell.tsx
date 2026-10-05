@@ -6,6 +6,7 @@ import SWRProvider from './SWRProvider'
 import ChatbaseWidget from './ChatbaseWidget'
 import CookieConsent from './CookieConsent'
 import DeferredAnalytics from './DeferredAnalytics'
+import { ToastProvider } from './Toast'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { buildAbsoluteUrl } from '@/lib/seo'
@@ -61,7 +62,15 @@ const ploni = localFont({
  * attribute at all. Each root layout renders its own <html> and delegates the
  * rest here so the two cannot drift apart.
  */
-export default function RootShell({ children }: { children: React.ReactNode }) {
+export default function RootShell({
+  children,
+  lng = 'he',
+}: {
+  children: React.ReactNode
+  // Only the toast region's close label needs this; the unlocalized group omits
+  // it, which matches the lang="he" its own <html> already sets.
+  lng?: string
+}) {
   const accessibilityKey = process.env.NEXT_PUBLIC_ACCESSIBILITY_KEY || ''
   const accessibilityPolicyUrl = buildAbsoluteUrl('en/accessibility')
 
@@ -145,9 +154,14 @@ export default function RootShell({ children }: { children: React.ReactNode }) {
         </noscript>
         <SWRProvider>
           <ClientAuthProvider>
-            <DeferredAnalytics />
-            <CookieConsent />
-            {children}
+            {/* One toast region for the whole app. Mounted here rather than in
+                the storefront layout so the unlocalized group - admin, preview,
+                the review flow - gets it too. */}
+            <ToastProvider lng={lng}>
+              <DeferredAnalytics />
+              <CookieConsent />
+              {children}
+            </ToastProvider>
           </ClientAuthProvider>
         </SWRProvider>
 

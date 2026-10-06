@@ -860,13 +860,20 @@ export default function ProductColorClient({
                     how this block ended up at 20/8/12px in the first place. */}
                 <div>
                 {/* Quantity Selector */}
+                {/* mt-[13px], matching the pb-[13px] this row already carries: the
+                    row is a band between two rules — the size grid's bottom border
+                    above it and its own border-b below — and `items-center` only
+                    centres the label against the stepper, not the pair against those
+                    rules. At mt-[30px] the stepper sat 30px below the grid and 13px
+                    above its own rule. Same shape as the disclosure rows: the gap
+                    above a ruled row lands entirely on one side of its contents. */}
                 {(() => {
-                  const allSizesOutOfStock = Object.keys(currentVariant.stockBySize).length > 0 && 
+                  const allSizesOutOfStock = Object.keys(currentVariant.stockBySize).length > 0 &&
                     Object.values(currentVariant.stockBySize).every(stock => stock <= 0)
                   
                   if (allSizesOutOfStock) {
                     return (
-                      <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px]">
+                      <div className="mt-[13px] flex items-center justify-between border-b border-border-default pb-[13px]">
                         <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
@@ -883,7 +890,7 @@ export default function ProductColorClient({
                           frame omits. Given the same ruled-row vocabulary as the swatch
                           and size headers - label on the inline start, control on the
                           end - so it reads as part of the sidebar, not a leftover. */}
-                      <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px]">
+                      <div className="mt-[13px] flex items-center justify-between border-b border-border-default pb-[13px]">
                         <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
@@ -1165,7 +1172,7 @@ export default function ProductColorClient({
                   
                   if (allSizesOutOfStock) {
                     return (
-                      <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px]">
+                      <div className="mt-[13px] flex items-center justify-between border-b border-border-default pb-[13px]">
                         <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
@@ -1182,7 +1189,7 @@ export default function ProductColorClient({
                           frame omits. Given the same ruled-row vocabulary as the swatch
                           and size headers - label on the inline start, control on the
                           end - so it reads as part of the sidebar, not a leftover. */}
-                      <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px]">
+                      <div className="mt-[13px] flex items-center justify-between border-b border-border-default pb-[13px]">
                         <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
@@ -1343,11 +1350,18 @@ export default function ProductColorClient({
               </div>
 
               {/* Material & Care and Shipping & Returns Sections */}
-              <div className="border-t border-border-subtle pt-[30px]">
-                {/* Each disclosure is one of the information sections, so they are
-                    spaced on the same 30px as the blocks above rather than the 16px
-                    they carried. */}
-                <div className="space-y-[30px]">
+              {/* pt-0, and no spacing between the rows below: a disclosure is already
+                  a fixed 62px band (100px from lg) with its label centred in it and a
+                  rule closing it underneath, so the rows have to stack flush for that
+                  centring to mean anything. Any gap here lands entirely ABOVE each
+                  title — the rule above a row belongs to the row before it — which is
+                  what made every header sit low in its own band, ~51px of air above
+                  the label against ~21px below.
+                  The 30px separating this block from the one above it is unaffected:
+                  it is the sidebar's space-y, and it sits above this section's rule
+                  rather than between the rule and the first row. */}
+              <div className="border-t border-border-subtle">
+                <div>
                   {/* Material & Care Section */}
                   {(() => {
                     const mc = product.materialCare

@@ -152,10 +152,10 @@ function ToastViewport({
   // hence a region that is always mounted and a panel that is not.
   const [portalReady, setPortalReady] = useState(false)
   useEffect(() => setPortalReady(true), [])
-  // Measured, not a fixed top-*. <header> is the nav bar alone - 71px on mobile,
+  // Measured, not a fixed top-*. <header> is the nav bar alone - 51px on mobile,
   // 73px on desktop - but its rect sits lower while the promo band above it is
-  // still on screen, so the underside to clear ranges from 71px (mobile, pinned)
-  // to 115px (mobile, at the top of the page), with desktop landing at 73/99.
+  // still on screen, so the underside to clear ranges from 51px (mobile, pinned)
+  // to 95px (mobile, at the top of the page), with desktop landing at 73/99.
   // No single hardcoded offset covers that - and `--nav-bar-h`, which exists for
   // exactly this, is never set by anything and silently falls back to its 73px
   // default. Measuring the header the frame a toast arrives is what the MENU panel

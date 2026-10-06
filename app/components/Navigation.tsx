@@ -92,6 +92,14 @@ export default function Navigation({
   const [isWomenDropdownOpen, setIsWomenDropdownOpen] = useState(false)
   const [isMenDropdownOpen, setIsMenDropdownOpen] = useState(false)
 
+  // The desktop panel dismisses on an outside press and on Escape, so it needs to
+  // know its own two boxes: anything inside the panel is interaction *with* the
+  // navigation (expanding a category, switching department) and must not close it,
+  // and the MENU control owns its own toggle - closing it from here as well would
+  // make a press on MENU close and immediately reopen the panel.
+  const desktopPanelRef = useRef<HTMLDivElement | null>(null)
+  const desktopMenuButtonRef = useRef<HTMLButtonElement | null>(null)
+
   // Read straight from the server prop rather than mirroring it into state.
   // The nav used to hold these in useState and re-fetch them from Firestore in
   // the browser on every tab focus, so the server HTML and the client could
@@ -129,12 +137,13 @@ export default function Navigation({
     ? profile?.firstName || user.displayName || (user.email ? user.email.split('@')[0] : null)
     : null
 
-  // Close menu on route change
+  // Close whichever panel is open on route change. Both surfaces need this, not
+  // just the drawer: the desktop panel's own links call onNavigate, but a link
+  // anywhere else - the wordmark, the icon cluster, a breadcrumb behind the
+  // panel - would otherwise navigate with the panel still hanging open.
   useEffect(() => {
-    if (isMobileMenuOpen) {
-      setIsMobileMenuOpen(false)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setIsMobileMenuOpen(false)
+    setIsDesktopNavOpen(false)
   }, [pathname])
 
   // Helper functions to check if categories exist
@@ -183,6 +192,43 @@ export default function Navigation({
     document.addEventListener('click', handleClickOutside)
     return () => document.removeEventListener('click', handleClickOutside)
   }, [hoverTimeout, openTimeout]) // Both timeouts are needed for cleanup
+
+  // Dismiss the desktop MENU panel the way every other overlay on the site does:
+  // outside press, Escape, or following a link (the links call onNavigate, and the
+  // route-change effect above covers links elsewhere on the page).
+  //
+  // `pointerdown`, not `click`: a click that starts inside the panel and ends
+  // outside it - a drag that began on a category row, or a text selection - fires
+  // `click` on the common ancestor and would read as an outside press. The listener
+  // is only bound while the panel is open, so there is nothing to exclude when it
+  // is closed.
+  useEffect(() => {
+    if (!isDesktopNavOpen) return
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null
+      if (!target) return
+      if (desktopPanelRef.current?.contains(target)) return
+      if (desktopMenuButtonRef.current?.contains(target)) return
+      setIsDesktopNavOpen(false)
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setIsDesktopNavOpen(false)
+      // Escape dismissed the panel without a pointer, so focus has nowhere to land.
+      // Hand it back to the control that opened it rather than dropping it on
+      // <body>, which would send the next Tab to the top of the document.
+      desktopMenuButtonRef.current?.focus()
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isDesktopNavOpen])
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false)
@@ -300,7 +346,12 @@ export default function Navigation({
           <div className="flex items-center gap-[3px] lg:gap-[20px]">
             <Link
               href={`/${lng}/favorites`}
-              className="relative flex h-[36px] w-[32px] items-center justify-center"
+              // 44px tall on mobile, not 36px: the bar is 50px, so a 36px box left
+              // 7px of dead strip above and below it for no reason. 44px is the
+              // largest box that still clears the bar's own border, and it only
+              // grows the hit area - the 22px glyph is centred either way, so
+              // nothing moves on screen. Desktop keeps the frame's 32x36 box.
+              className="relative flex h-[44px] w-[32px] items-center justify-center lg:h-[36px]"
               suppressHydrationWarning
               aria-label={favoritesAriaLabel}
             >
@@ -318,7 +369,7 @@ export default function Navigation({
 
             <Link
               href={`/${lng}/cart`}
-              className="relative flex h-[36px] w-[32px] items-center justify-center"
+              className="relative flex h-[44px] w-[32px] items-center justify-center lg:h-[36px]"
               suppressHydrationWarning
               aria-label={cartAriaLabel}
             >
@@ -339,7 +390,11 @@ export default function Navigation({
           <div className="absolute left-1/2 top-1/2 z-10 flex shrink-0 -translate-x-1/2 -translate-y-1/2 items-center px-1">
             <Link
               href={`/${lng}`}
-              className="whitespace-nowrap font-ploni text-[25px] font-black leading-[25px] tracking-[-1.4px] text-text-primary lg:text-[28px] lg:leading-[38px] lg:tracking-[-1.8px]"
+              // The 44px box on mobile is hit area only. The wordmark is the route
+              // home and was a 25px-tall strip of text; the box is centred on both
+              // axes by the wrapper, so the glyph does not move, and at 90px wide
+              // centred in a 390px bar it stays clear of both icon clusters.
+              className="flex h-[44px] items-center whitespace-nowrap font-ploni text-[25px] font-black leading-[25px] tracking-[-1.4px] text-text-primary lg:h-auto lg:text-[28px] lg:leading-[38px] lg:tracking-[-1.8px]"
               suppressHydrationWarning
             >
               SAKO OR
@@ -559,7 +614,11 @@ export default function Navigation({
               shows the design's "MENU" wordmark with its two 18x1 rules (438:4415);
               mobile shows the ☰ glyph (438:4308), which the design sets as Ploni Bold
               text rather than an asset. */}
-          <div className="flex items-center gap-[13px] lg:gap-[20px]">
+          {/* Mobile gap drops to 3px for the same reason the left cluster's does: the
+              account icon and the ☰ both sit in 32px hit areas now, so 3px of gap plus
+              their box padding is what lands the two glyphs the design's ~13px apart.
+              Desktop keeps 20px, where the controls are boxed as the frame draws them. */}
+          <div className="flex items-center gap-[3px] lg:gap-[20px]">
             {/* No language switcher here by decision: the design has no slot for one
                 and it was dropped from the bar deliberately, not by oversight.
 
@@ -572,7 +631,7 @@ export default function Navigation({
             <div className="relative flex items-center justify-center">
               <Link
                 href={user ? `/${lng}/profile` : `/${lng}/signin`}
-                className="flex h-[36px] w-[32px] items-center justify-center"
+                className="flex h-[44px] w-[32px] items-center justify-center lg:h-[36px]"
                 suppressHydrationWarning
                 aria-label={
                   user
@@ -601,7 +660,12 @@ export default function Navigation({
                 // right-0 is physical, so the RTL base changes the text order only,
                 // not where the box hangs.
                 dir={lng === 'he' ? 'rtl' : 'ltr'}
-                className={`absolute top-full right-0 min-h-[14px] whitespace-nowrap pt-0.5 font-ploni text-[9px] leading-none text-text-secondary ${
+                // Desktop only. It hangs off the bottom of the account icon's box,
+                // and a 50px bar has no room beneath a 44px box for a 9px caption -
+                // it would spill past the bar's border onto the page. Mobile has its
+                // own greeting, laid out properly, inside the navigation drawer
+                // (MobileAuthGreeting), so nothing is lost by dropping it here.
+                className={`absolute top-full right-0 hidden min-h-[14px] whitespace-nowrap pt-0.5 font-ploni text-[9px] leading-none text-text-secondary lg:block ${
                   user && !authLoading && !profileLoading && greetingName ? 'opacity-100' : 'opacity-0'
                 }`}
                 aria-hidden={!(user && greetingName)}
@@ -616,7 +680,12 @@ export default function Navigation({
 
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="flex items-center justify-center lg:hidden"
+              // Boxed at 32x44 like the icons beside it. The design sets ☰ as Ploni
+              // Bold text (438:4308), which on its own gives a ~19px square target -
+              // under half the comfortable minimum, and the single hardest control in
+              // the bar to hit. The box only extends the tappable area; the glyph is
+              // centred in it, so the bar looks the same.
+              className="flex h-[44px] w-[32px] items-center justify-center lg:hidden"
               aria-label="Menu"
               aria-expanded={isMobileMenuOpen}
               suppressHydrationWarning
@@ -627,10 +696,12 @@ export default function Navigation({
             </button>
 
             <button
+              ref={desktopMenuButtonRef}
               onClick={() => setIsDesktopNavOpen((open) => !open)}
               className="hidden h-[22px] w-[70px] items-center justify-end gap-[6px] lg:flex"
               aria-label="Menu"
               aria-expanded={isDesktopNavOpen}
+              aria-controls="desktop-nav-panel"
               suppressHydrationWarning
             >
               <span className="font-ploni text-[10px] tracking-[0.9px] text-text-primary">MENU</span>
@@ -745,7 +816,24 @@ export default function Navigation({
       {/* Desktop navigation panel (2016:2578) — a full-width dropdown under the bar
           rather than a drawer. Below lg the ☰ opens the Sheet instead. */}
       {isDesktopNavOpen && (
+        <>
+        {/* Backdrop. It starts at `top-full` rather than covering the viewport so the
+            bar itself stays live and undimmed - MENU has to remain clickable to close
+            the panel, and the icon cluster is not what the panel is covering. The fill
+            is deliberately light: the design system documents no scrim token at all,
+            and 2016:2578's own notes are that a heavy dark slab under this panel reads
+            as a blind burying the hero. It is a click target first and a hint second.
+            `pointerdown` on the document already catches presses anywhere outside the
+            panel; this exists so a press on the page cannot also activate whatever is
+            under it on the way to closing. */}
         <div
+          aria-hidden="true"
+          onClick={() => setIsDesktopNavOpen(false)}
+          className="absolute inset-x-0 top-full z-[60] hidden h-screen bg-sako-black/10 lg:block"
+        />
+        <div
+          id="desktop-nav-panel"
+          ref={desktopPanelRef}
           dir={lng === 'he' ? 'rtl' : 'ltr'}
           // Height follows content. The frame's 595px is the artboard's figure, not a
           // rule — pinning it left the panel tall and empty once the rows shrank. The
@@ -779,6 +867,7 @@ export default function Navigation({
             }
           />
         </div>
+        </>
       )}
 
       {/* Mobile Menu - Sheet Component */}
@@ -828,7 +917,13 @@ export default function Navigation({
 
           {/* Scrollable Categories List — the same component the desktop panel
               renders, at drawer scale, so the two surfaces cannot drift. */}
-          <ScrollArea className="flex-1">
+          {/* dir is passed explicitly. Radix's ScrollArea stamps dir="ltr" on its own
+              root whenever there is no DirectionProvider above it, which overrides the
+              rtl the panel and <html> both set - so every Hebrew descendant inside here
+              was being laid out on an LTR base. NavigationCategories already worked
+              around it by restating dir on each of its own boxes; giving the ScrollArea
+              the real direction fixes it at the source for anything added later. */}
+          <ScrollArea dir={lng === 'he' ? 'rtl' : 'ltr'} className="flex-1">
             <div>
               <NavigationCategories
                 lng={lng === 'he' ? 'he' : 'en'}

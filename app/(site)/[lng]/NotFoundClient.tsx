@@ -73,8 +73,14 @@ export default function NotFoundClient({ products }: Props) {
 
           The min-height floors the frames' own heights (844 / 1080) but yields to
           the content on a short viewport - it is a floor, not a cap, so nothing
-          clips when the headline is tall. */}
-      <section className="relative flex min-h-[calc(100svh-71px)] flex-col justify-between overflow-clip bg-sako-olive-900 lg:min-h-[min(1080px,calc(100svh-73px))]">
+          clips when the headline is tall.
+
+          The 51px/73px subtracted off the viewport is the nav bar's flow height,
+          border included - the same figure NAV_BAR_PULL_UP in lib/header-layout.ts
+          holds. It has to be written out because Tailwind only scans arbitrary
+          values it can see as literals, so changing the bar's height means
+          changing it here too. */}
+      <section className="relative flex min-h-[calc(100svh-51px)] flex-col justify-between overflow-clip bg-sako-olive-900 lg:min-h-[min(1080px,calc(100svh-73px))]">
         {/* The desktop frame indents the type block by 97px of its 1728 - 5.614% -
             and sets the headline at 154px, 8.912% of the same width. Both are held
             as that fraction of the viewport up to the frame width and pinned to the

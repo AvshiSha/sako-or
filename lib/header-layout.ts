@@ -15,12 +15,20 @@
  * These two must stay in step, which is why they live together rather than as two
  * literals in two files.
  */
-export const NAV_BAR_H = "h-[70px] lg:h-[72px]";
+export const NAV_BAR_H = "h-[50px] lg:h-[72px]";
 
 /**
  * One pixel taller than NAV_BAR_H on purpose. The nav carries a `border-b`, so the
- * element occupies 71px / 73px in flow, not 70px / 72px. Pulling the hero up by only
+ * element occupies 51px / 73px in flow, not 50px / 72px. Pulling the hero up by only
  * the content height leaves that single border row with nothing behind it, which
  * renders as a hairline of page ground between the announcement banner and the hero.
  */
-export const NAV_BAR_PULL_UP = "-mt-[71px] lg:-mt-[73px]";
+export const NAV_BAR_PULL_UP = "-mt-[51px] lg:-mt-[73px]";
+
+/**
+ * The same 51/73 flow height appears inside a `calc()` in NotFoundClient's
+ * full-viewport hero, which Tailwind can only read as a literal - an arbitrary value
+ * built from an interpolated constant is never scanned, so it cannot be imported from
+ * here. It is cross-referenced in a comment there instead; a change to NAV_BAR_H
+ * needs to visit it.
+ */

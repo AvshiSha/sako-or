@@ -36,8 +36,17 @@ import { trackViewCart } from '@/lib/dataLayer'
 import { getColorName } from '@/lib/colors'
 import { SHIPPING_METHOD_STORAGE_KEY, type ShippingMethod } from '@/lib/checkout-session'
 import type { Product } from '@/lib/product-types'
+import { SPLIT_SHELL_GRID } from '@/lib/split-shell-layout'
 
 const CAPTION_CLASS = 'font-ploni text-[9px] tracking-[0.72px]'
+
+/**
+ * The cart is the same two-column shell as checkout and the auth pages, so the
+ * grid and its dividing hairline come from one place — see lib/split-shell-layout
+ * for why the rule is a pseudo-element on the container rather than a border on
+ * the column, which is what made it stop partway down a short cart.
+ */
+const CART_GRID = SPLIT_SHELL_GRID
 
 const content = {
   en: {
@@ -183,9 +192,11 @@ export default function CartClient({ recommendations = [] }: CartClientProps) {
 
   return (
     <div className="min-h-screen bg-surface-secondary" dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_502px] lg:items-start">
+      <div className={CART_GRID}>
         {/* ── Line items ─────────────────────────────────────────────── */}
-        <section className="lg:border-e lg:border-sako-black">
+        {/* No lg:border-e here any more — the divider is drawn by CART_GRID so its
+            height follows the row rather than this column's content. */}
+        <section>
           <div className="px-[16px] pt-[24px] pb-[24px] lg:px-[30px] lg:pt-[30px] lg:pb-[30px]">
             <h1 className="font-ploni text-[40px] font-black leading-[40px] text-start text-text-primary lg:text-[60px] lg:leading-[50px]">
               {t.title}
@@ -386,8 +397,10 @@ export default function CartClient({ recommendations = [] }: CartClientProps) {
 export function CartSkeleton({ title }: { title?: string }) {
   return (
     <div className="min-h-screen bg-surface-secondary">
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_502px] lg:items-start">
-        <section className="lg:border-e lg:border-sako-black">
+      <div className={CART_GRID}>
+        {/* No lg:border-e here any more — the divider is drawn by CART_GRID so its
+            height follows the row rather than this column's content. */}
+        <section>
           <div className="px-[16px] pt-[24px] pb-[24px] lg:px-[30px] lg:pt-[30px] lg:pb-[30px]">
             {title ? (
               <h1 className="font-ploni text-[40px] font-black leading-[40px] text-start text-text-primary lg:text-[60px] lg:leading-[50px]">

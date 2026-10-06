@@ -317,11 +317,17 @@ export default function Navigation({
     // white ground: the design sits on surface-secondary under a hairline rule.
     // The icons stay ink-900 in both variants, per the design - so a hero that is
     // dark behind the bar would swallow them. Worth checking against real heroes.
+    // The bottom rule is now unconditional and full-strength sako-black, matching
+    // the 1px #000 the product cards divide themselves with. It used to be part of
+    // the scroll state - transparent at rest, and only 20% black on mobile once
+    // scrolled - so at the top of any page the bar had no underside at all, and on
+    // a scrolled phone it was a grey hint rather than the system's black hairline.
+    // Only the ground still answers to scroll.
     <nav
-      className={`relative w-full border-b transition-colors duration-200 ${
+      className={`relative w-full border-b border-sako-black transition-colors duration-200 ${
         isScrolled
-          ? 'border-text-primary/20 bg-surface-secondary/95 lg:border-sako-black lg:bg-surface-secondary'
-          : 'border-transparent bg-transparent'
+          ? 'bg-surface-secondary/95 lg:bg-surface-secondary'
+          : 'bg-transparent'
       }`}
     >
       <div className="mx-auto w-full px-[16px] lg:px-[36px]">

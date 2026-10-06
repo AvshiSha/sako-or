@@ -69,9 +69,36 @@ export function IsraelPhoneInput({
           ? 'w-full flex-1 border-0 bg-transparent p-0 font-ploni text-[14px] leading-none text-text-primary outline-none placeholder:text-text-secondary disabled:cursor-not-allowed disabled:text-sako-gray-500 disabled:placeholder:text-sako-gray-500'
           : 'flex-1 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed'
       )}
-      // A phone number is not Hebrew text and reads backwards if it inherits the
-      // page direction, so the field is pinned LTR on both locales.
-      style={{ direction: 'ltr', textAlign: 'left' }}
+      style={
+        isSako
+          ? // Two different things were conflated here before: which way the digits
+            // run, and which edge the field sits on. Pinning `direction: ltr` plus
+            // `text-align: left` fixed both, so a Hebrew form had its phone number
+            // hanging off the left margin while every other field was right-aligned.
+            //
+            // `unicode-bidi: plaintext` resolves the run's direction from its own
+            // content instead. A phone number has no strong characters - handleChange
+            // strips everything that is not a digit - so it always lays out
+            // left-to-right, while the element itself keeps the page's direction.
+            // That is what lets `text-align: start`, inherited from <Field>'s
+            // `text-start`, put the number on the right in Hebrew and the left in
+            // English, with the digits in reading order either way.
+            //
+            // Deliberately not `dir="auto"`, which this project bans: that rule is
+            // about CMS prose that opens on the Latin brand name and flips a whole
+            // Hebrew block. This value is digits and nothing else.
+            //
+            // `direction: inherit` is load-bearing and not a no-op: Blink's UA
+            // stylesheet forces `direction: ltr` on input[type=tel], so without this
+            // the element's own direction is ltr whatever the page says, and the
+            // `text-align: start` inherited from <Field> resolves to the LEFT edge on
+            // a Hebrew form. Taking the page's direction back is what puts the number
+            // on the reading edge; plaintext above is what keeps its digits in order.
+            { direction: 'inherit', unicodeBidi: 'plaintext' }
+          : // The legacy boxed variant keeps its hard LTR pinning; its own wrapper
+            // below sets the same thing.
+            { direction: 'ltr', textAlign: 'left' }
+      }
       maxLength={10}
       {...aria}
     />

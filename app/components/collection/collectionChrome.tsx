@@ -50,6 +50,24 @@ export const COLLECTION_PRODUCT_GRID =
   'collection-product-grid grid grid-cols-2 items-stretch gap-0 lg:grid-cols-4'
 
 /**
+ * The rule closing the top of the listing, above the first row of cards.
+ *
+ * The cards draw three of their four sides (border-b and border-l on the root,
+ * border-t on the info block) and deliberately no top border, so the grid's first
+ * row had an open edge while every row below it was closed by the row above. This
+ * supplies that one missing line.
+ *
+ * It belongs to the block *wrapping* the rows, never to COLLECTION_PRODUCT_GRID
+ * itself: once the listing virtualizes, each row is its own grid, so a rule on the
+ * grid would repeat under every row and double up against the cards' own border-b.
+ *
+ * border-sako-black, not the border-border-default the filter bar above uses -
+ * #000 is what the cards divide themselves with, and this line has to read as one
+ * of theirs rather than as the bar's #11110F.
+ */
+export const COLLECTION_GRID_TOP_RULE = 'border-t border-sako-black'
+
+/**
  * Mirrors COLLECTION_PRODUCT_GRID's grid-cols-2 lg:grid-cols-4 breakpoint
  * (lib/collection-grid-critical-css.ts uses the same 1024px cutoff). 438:2984
  * lays the desktop grid four across; this drives row-height estimation, so it has

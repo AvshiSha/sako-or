@@ -51,6 +51,21 @@ import TurnstileScript from '@/app/components/TurnstileScript'
  */
 type SyncResponse = { ok: true; needsProfileCompletion: boolean } | { error: string }
 
+/**
+ * Mobile only: a hairline that runs the full width of the page while the type above
+ * it keeps the shell's 16px inset — the "content inset, rule edge to edge"
+ * construction the filter drawer already uses. `-mx` widens the box past
+ * AuthShell's padding and the matching `px` puts the inset back on the content
+ * inside it.
+ *
+ * Both are undone at lg, where the form sits in a 681px measure inside a 30px
+ * gutter: a rule bleeding there would run out from under the form and across to
+ * the standing panel's edge.
+ */
+const AUTH_RULE_BLEED = '-mx-[16px] w-[calc(100%+32px)] lg:mx-0 lg:w-full'
+/** The same, for a <Field> cell, which has to re-inset its label and value. */
+const AUTH_FIELD_BLEED = `${AUTH_RULE_BLEED} px-[16px] lg:px-0`
+
 const translations = {
   en: {
     title: 'Sign in',
@@ -1025,9 +1040,17 @@ function SignInClient() {
       <Tabs
         value={activeTab}
         onValueChange={(v) => setActiveTab(v as 'phone' | 'email')}
+        // dir is passed explicitly. Radix stamps dir="ltr" on the Tabs root whenever
+        // there is no DirectionProvider above it, which overrode the rtl on <html>
+        // and laid the whole switch out left-to-right: טלפון came first in the DOM
+        // but landed on the LEFT, and the arrow keys walked the tabs backwards. It
+        // also leaked into both TabsContent panels, so `text-start` inside the fields
+        // resolved to "left" on the Hebrew page. The same trap as the drawer's
+        // ScrollArea in Navigation.tsx.
+        dir={lng === 'he' ? 'rtl' : 'ltr'}
         className="mt-[14px] w-full"
       >
-        <TabsList variant="sako">
+        <TabsList variant="sako" className={AUTH_RULE_BLEED}>
           <TabsTrigger variant="sako" value="phone">
             {t.tabPhone}
           </TabsTrigger>
@@ -1041,6 +1064,7 @@ function SignInClient() {
             <>
               <Field
                 fieldClassName={AUTH_CELL}
+                cellClassName={AUTH_FIELD_BLEED}
                 id="signin-phone"
                 label={t.phoneLabel}
                 error={phoneError}
@@ -1109,13 +1133,22 @@ function SignInClient() {
             <>
               <Field
                 fieldClassName={AUTH_CELL}
+                cellClassName={AUTH_FIELD_BLEED}
                 id="signin-email"
                 label={t.email}
                 type="email"
                 autoComplete="email"
-                // An address is not Hebrew text and reads backwards if it
-                // inherits the page direction.
-                dir="ltr"
+                // An address is not Hebrew text and reads backwards if it inherits
+                // the page direction — but `dir="ltr"` also dragged it to the LEFT
+                // edge of a Hebrew form, under a label sitting on the right. Same
+                // split as the phone field: plaintext takes the run's direction from
+                // its own content (an address always opens on a strong Latin
+                // character, so always LTR) while the element keeps the page's, which
+                // is what puts the value on the reading edge.
+                // direction: inherit for the same reason as the phone field — Blink's
+                // UA stylesheet pins input[type=email] to ltr, which would drag the
+                // value to the left edge of a Hebrew form under a right-aligned label.
+                style={{ direction: 'inherit', unicodeBidi: 'plaintext' }}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={t.emailPlaceholder}

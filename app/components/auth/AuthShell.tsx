@@ -31,6 +31,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { SPLIT_SHELL_GRID } from '@/lib/split-shell-layout'
 
 /** 438:2749 — two-up above sm, stacked below, on the frame's 18px gutter. */
 export const AUTH_ROW = 'grid grid-cols-1 gap-x-[18px] gap-y-0 sm:grid-cols-2'
@@ -67,8 +68,11 @@ export default function AuthShell({ title, eyebrow, aside, children }: AuthShell
     // on. Setting it per-node is how a Hebrew block that opens on "SAKO OR"
     // flips itself to LTR.
     <div className="min-h-screen bg-surface-secondary">
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_502px] lg:items-start">
-        <section className="lg:border-e lg:border-sako-black">
+      <div className={SPLIT_SHELL_GRID}>
+        {/* The seam is drawn by SPLIT_SHELL_GRID, not by a border here: on these
+            pages the standing panel is routinely taller than the form, which is
+            exactly when a border on this column stops short. */}
+        <section>
           <div className="px-[16px] pt-[24px] pb-[24px] lg:px-[30px] lg:pt-[30px] lg:pb-[30px]">
             <h1 className="font-ploni text-[40px] font-black leading-[40px] text-start text-text-primary lg:text-[60px] lg:leading-[50px]">
               {title}
@@ -286,8 +290,11 @@ export function AuthSubmit({
 export function AuthSkeleton({ title }: { title?: string }) {
   return (
     <div className="min-h-screen bg-surface-secondary">
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_502px] lg:items-start">
-        <section className="lg:border-e lg:border-sako-black">
+      <div className={SPLIT_SHELL_GRID}>
+        {/* The seam is drawn by SPLIT_SHELL_GRID, not by a border here: on these
+            pages the standing panel is routinely taller than the form, which is
+            exactly when a border on this column stops short. */}
+        <section>
           <div className="px-[16px] pt-[24px] pb-[24px] lg:px-[30px] lg:pt-[30px] lg:pb-[30px]">
             {title ? (
               <h1 className="font-ploni text-[40px] font-black leading-[40px] text-start text-text-primary lg:text-[60px] lg:leading-[50px]">

@@ -95,6 +95,7 @@ import {
   COLLECTION_GRID_BREAKPOINTS,
   COLLECTION_GRID_ROW_GAP_PX,
   COLLECTION_INSET,
+  COLLECTION_GRID_TOP_RULE,
   COLLECTION_LISTING_PAGE_SIZE as LISTING_PAGE_SIZE,
   COLLECTION_PRODUCT_GRID,
   CollectionBarCaret,
@@ -2048,7 +2049,16 @@ export default function CollectionClient({
         </div>
 
         {/* Products Grid - Full Width */}
-        <div className="w-full">
+        {/* The top rule rides this wrapper rather than the grid, because the
+            virtualized listing renders one grid per row. It is suppressed for the
+            empty state: with no cards under it, the line would read as a second
+            rule hanging ~36px below the filter bar's own. */}
+        <div
+          className={cn(
+            "w-full",
+            (isFilterLoading || sortedItems.length > 0) && COLLECTION_GRID_TOP_RULE
+          )}
+        >
           {isFilterLoading ? (
             <CollectionGridSkeleton
               count={LISTING_PAGE_SIZE}

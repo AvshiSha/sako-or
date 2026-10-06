@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 
 import {
   COLLECTION_BAR,
+  COLLECTION_GRID_TOP_RULE,
   COLLECTION_INSET,
   COLLECTION_LISTING_PAGE_SIZE,
   COLLECTION_PRODUCT_GRID,
@@ -129,7 +130,10 @@ export default function CollectionListingSkeleton({
             to say, so the skeleton has to hold it too. */}
         <div className={cn('mb-4 min-h-[20px]', COLLECTION_INSET)} aria-hidden />
 
-        <div className="w-full">
+        {/* Carries the grid's top rule for the same reason it carries every other
+            measurement in this file: the loaded page draws one here, so a fallback
+            without it makes the line blink in when the real listing streams. */}
+        <div className={cn('w-full', COLLECTION_GRID_TOP_RULE)}>
           <CollectionGridSkeleton count={count} keyPrefix="route-skeleton" />
         </div>
       </div>

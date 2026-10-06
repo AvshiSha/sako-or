@@ -653,7 +653,10 @@ export default function ProductColorClient({
                 the frame's 430px content column inside a 502px track. This is the
                 sticky one now: the frame scrolls the mosaic past it, where the build
                 had it the other way round. */}
-            <div className="space-y-6 px-4 py-4 sm:px-6 lg:sticky lg:top-28 lg:order-1 lg:self-start lg:px-[36px] lg:pb-8">
+            {/* space-y-[30px]: the buy box, the additional-information block and the
+                specification accordions are the column's top-level sections, and the
+                gap between them is the same 30px the sections inside the buy box use. */}
+            <div className="space-y-[30px] px-4 py-4 sm:px-6 lg:sticky lg:top-28 lg:order-1 lg:self-start lg:px-[36px] lg:pb-8">
               {/* Mobile Layout — promo labels on image carousel */}
               {/* Mobile buy box — design system 438:4218. The frame drives its own
                   vertical rhythm with padding (pt-12/13/32/12), so the blanket
@@ -850,10 +853,12 @@ export default function ProductColorClient({
                   </div>
                 )}
 
-                {/* Everything below the size grid is not yet redesigned, so it keeps
-                    the old space-y-2 rhythm here rather than losing its spacing when
-                    that class came off the column above. */}
-                <div className="mt-[20px] space-y-2">
+                {/* No spacing class of its own. Everything below the size grid now
+                    carries its own mt-[30px], and Tailwind v4's space-y-* is a
+                    margin-block-end on the *previous* sibling - so a wrapper rhythm
+                    here would add to each child's margin rather than set it, which is
+                    how this block ended up at 20/8/12px in the first place. */}
+                <div>
                 {/* Quantity Selector */}
                 {(() => {
                   const allSizesOutOfStock = Object.keys(currentVariant.stockBySize).length > 0 && 
@@ -861,7 +866,7 @@ export default function ProductColorClient({
                   
                   if (allSizesOutOfStock) {
                     return (
-                      <div className="mt-[20px] flex items-center justify-between border-b border-border-default pb-[13px] lg:mt-[35px]">
+                      <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px]">
                         <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
@@ -878,7 +883,7 @@ export default function ProductColorClient({
                           frame omits. Given the same ruled-row vocabulary as the swatch
                           and size headers - label on the inline start, control on the
                           end - so it reads as part of the sidebar, not a leftover. */}
-                      <div className="mt-[20px] flex items-center justify-between border-b border-border-default pb-[13px] lg:mt-[35px]">
+                      <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px]">
                         <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
@@ -912,7 +917,7 @@ export default function ProductColorClient({
                   // 438:2703 gives the desktop bar an explicit 54px, taller than the
                   // shared 14px padding produces. Scoped with lg: rather than changing
                   // the sako size variant, which the product card also uses.
-                  className="duration-200 lg:h-[54px] lg:py-0"
+                  className="mt-[30px] duration-200 lg:h-[54px] lg:py-0"
                 >
                   {(() => {
                     if (isAddingToCart) {
@@ -932,7 +937,7 @@ export default function ProductColorClient({
                 {/* Actions Row: Share & Favorites */}
                 {/* gap, not space-x-4: space-x sets a physical margin that has to be
                     flipped by hand in RTL, and this row already reversed once. */}
-                <div className="mt-[12px] flex gap-[8px]">
+                <div className="mt-[30px] flex gap-[8px]">
                   <button
                     type="button"
                     onClick={handleShare}
@@ -969,13 +974,19 @@ export default function ProductColorClient({
               </div>
 
               {/* Desktop Layout */}
-              <div className="hidden lg:block space-y-2">
+              {/* space-y-2 dropped for the same reason as the mobile block: in
+                  Tailwind v4 it is a margin on the previous sibling, so it added 8px
+                  on top of every explicit margin below instead of being overridden by
+                  it. Each child now owns its gap. */}
+              <div className="hidden lg:block">
                 {promoBadge && (
                   <ProductPromoRibbon
                     language={lng as 'en' | 'he'}
                     promoBadge={promoBadge}
                     size="page"
-                    className="w-fit max-w-full"
+                    // Carried by the ribbon rather than the title below it, so the
+                    // title sits flush at the top of the column when there is no promo.
+                    className="mb-2 w-fit max-w-full"
                   />
                 )}
 
@@ -1088,7 +1099,7 @@ export default function ProductColorClient({
                   {/* Ruled header 35px down, 12px labels. Section name first so it
                       lands on the inline start - right in Hebrew - with the size
                       chart opposite, which is how the frame reads once mirrored. */}
-                  <div className="mt-[35px] flex items-center justify-between border-b border-border-default pb-[13px] font-ploni text-[12px] text-text-primary">
+                  <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px] font-ploni text-[12px] text-text-primary">
                     <h3 className="font-bold">
                       {lng === 'he' ? 'בחירת מידה' : 'Select size'}
                     </h3>
@@ -1154,7 +1165,7 @@ export default function ProductColorClient({
                   
                   if (allSizesOutOfStock) {
                     return (
-                      <div className="mt-[20px] flex items-center justify-between border-b border-border-default pb-[13px] lg:mt-[35px]">
+                      <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px]">
                         <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
@@ -1171,7 +1182,7 @@ export default function ProductColorClient({
                           frame omits. Given the same ruled-row vocabulary as the swatch
                           and size headers - label on the inline start, control on the
                           end - so it reads as part of the sidebar, not a leftover. */}
-                      <div className="mt-[20px] flex items-center justify-between border-b border-border-default pb-[13px] lg:mt-[35px]">
+                      <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px]">
                         <h3 className="font-ploni text-[10px] font-bold text-text-primary lg:text-[12px]">
                           {lng === 'he' ? 'כמות' : 'Quantity'}
                         </h3>
@@ -1205,7 +1216,7 @@ export default function ProductColorClient({
                   // 438:2703 gives the desktop bar an explicit 54px, taller than the
                   // shared 14px padding produces. Scoped with lg: rather than changing
                   // the sako size variant, which the product card also uses.
-                  className="duration-200 lg:h-[54px] lg:py-0"
+                  className="mt-[30px] duration-200 lg:h-[54px] lg:py-0"
                 >
                   {(() => {
                     if (isAddingToCart) {
@@ -1225,7 +1236,7 @@ export default function ProductColorClient({
                 {/* Actions Row: Share & Favorites */}
                 {/* gap, not space-x-4: space-x sets a physical margin that has to be
                     flipped by hand in RTL, and this row already reversed once. */}
-                <div className="mt-[12px] flex gap-[8px]">
+                <div className="mt-[30px] flex gap-[8px]">
                   <button
                     type="button"
                     onClick={handleShare}
@@ -1261,14 +1272,18 @@ export default function ProductColorClient({
                 {/* 438:2706 puts the description in the first accordion, open by
                     default, rather than as a loose heading above the others. */}
                 {(lng === 'he' ? product.description_he : product.description_en) && (
-                  <Accordion title={lng === 'he' ? 'תיאור' : 'Description'} defaultOpen>
-                    <p>{lng === 'he' ? product.description_he : product.description_en}</p>
-                  </Accordion>
+                  // Wrapped because <Accordion> takes no className, and this is the
+                  // first of the information sections, so it keeps their 30px gap.
+                  <div className="mt-[30px]">
+                    <Accordion title={lng === 'he' ? 'תיאור' : 'Description'} defaultOpen>
+                      <p>{lng === 'he' ? product.description_he : product.description_en}</p>
+                    </Accordion>
+                  </div>
                 )}
               </div>
 
               {/* Product Info */}
-              <div className="border-t border-border-subtle pt-6">
+              <div className="border-t border-border-subtle pt-[30px]">
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-ploni text-[16px] font-bold text-text-primary">
@@ -1328,8 +1343,11 @@ export default function ProductColorClient({
               </div>
 
               {/* Material & Care and Shipping & Returns Sections */}
-              <div className="border-t border-border-subtle pt-6">
-                <div className="space-y-4">
+              <div className="border-t border-border-subtle pt-[30px]">
+                {/* Each disclosure is one of the information sections, so they are
+                    spaced on the same 30px as the blocks above rather than the 16px
+                    they carried. */}
+                <div className="space-y-[30px]">
                   {/* Material & Care Section */}
                   {(() => {
                     const mc = product.materialCare

@@ -12,6 +12,7 @@
  */
 
 import type { ReactNode } from 'react'
+import { SPLIT_SHELL_GRID } from '@/lib/split-shell-layout'
 
 export interface CheckoutShellProps {
   language: 'he' | 'en'
@@ -31,8 +32,10 @@ export default function CheckoutShell({
 }: CheckoutShellProps) {
   return (
     <div className="min-h-screen bg-surface-secondary" dir={language === 'he' ? 'rtl' : 'ltr'}>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_502px] lg:items-start">
-        <section className="lg:border-e lg:border-sako-black">
+      <div className={SPLIT_SHELL_GRID}>
+        {/* The seam is drawn by SPLIT_SHELL_GRID, not by a border here — the summary
+            is lg:sticky and often outruns a short form column. */}
+        <section>
           <div className="px-[16px] pt-[24px] pb-[24px] lg:px-[30px] lg:pt-[30px] lg:pb-[30px]">
             <h1 className="font-ploni text-[40px] font-black leading-[40px] text-start text-text-primary lg:text-[60px] lg:leading-[50px]">
               {title}

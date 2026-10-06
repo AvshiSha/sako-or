@@ -64,6 +64,9 @@ import {
 
 const SizeChart = dynamic(() => import('@/app/components/SizeChart'), { ssr: false })
 
+/** Only ever opened by a successful add, so its chunk is fetched on the click. */
+const MiniCartDrawer = dynamic(() => import('@/app/components/MiniCartDrawer'), { ssr: false })
+
 interface ColorVariantData {
   colorSlug: string;
   isActive?: boolean;
@@ -163,6 +166,15 @@ export default function ProductColorClient({
   const [quantity, setQuantity] = useState(1)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isSizeChartOpen, setIsSizeChartOpen] = useState(false)
+  /** The add-to-cart confirmation. Replaces the success toast this flow used to raise. */
+  const [isMiniCartOpen, setIsMiniCartOpen] = useState(false)
+  /**
+   * Sticky once the first add happens, so the drawer's chunk is fetched on that
+   * click rather than on every product view — but is never torn out from under
+   * its own closing animation, which is what unmounting on `isMiniCartOpen`
+   * would do.
+   */
+  const [isMiniCartMounted, setIsMiniCartMounted] = useState(false)
 
   /**
    * The size chart is footwear-only - its table converts SAKO/US/foot-cm, which
@@ -523,29 +535,30 @@ export default function ProductColorClient({
       color: currentVariant.colorSlug,
       maxStock: currentStock
     }
-    addToCart(baseCartItem)
-    
-    // Add multiple items if quantity > 1
-    for (let i = 1; i < quantity; i++) {
-      addToCart({ ...baseCartItem })
-    }
-    
-    // Show success toast. The action link replaces the close button: the moment
-    // after an add is the best place to offer the cart.
-    const successMessage = lng === 'he'
-      ? `הוספת ${quantity} ${quantity === 1 ? 'פריט' : 'פריטים'} לעגלה`
-      : `Added ${quantity} ${quantity === 1 ? 'item' : 'items'} to cart`
-    showToast(successMessage, 'success', {
-      action: {
-        label: lng === 'he' ? 'לעגלה →' : 'View cart →',
-        href: `/${lng}/cart`,
-      },
-    })
-    
-    // Reset button state after a short delay
-    setTimeout(() => {
+    try {
+      addToCart(baseCartItem)
+
+      // Add multiple items if quantity > 1
+      for (let i = 1; i < quantity; i++) {
+        addToCart({ ...baseCartItem })
+      }
+
+      // Confirmation is the mini cart drawer (438:4594), not a toast: it shows
+      // the whole cart with the new line already in it, which is both the
+      // acknowledgement and the route onwards. `addToCart` commits through
+      // flushSync, so the drawer opens on a cart that already contains the add.
+      setIsMiniCartMounted(true)
+      setIsMiniCartOpen(true)
+    } catch (error) {
+      // Only failure still speaks through the toast. Success no longer does.
+      console.error('Error adding to cart:', error)
+      showToast(lng === 'he' ? 'שגיאה בהוספה לסל' : 'Error adding to cart', 'error')
+    } finally {
+      // No artificial delay any more — the drawer is the feedback, and a button
+      // left disabled for a second behind it is just a control that looks broken
+      // when the drawer is dismissed.
       setIsAddingToCart(false)
-    }, 1000)
+    }
   }
 
   const handleShare = async () => {
@@ -1653,6 +1666,14 @@ export default function ProductColorClient({
           isOpen={isSizeChartOpen}
           onClose={() => setIsSizeChartOpen(false)}
           lng={lng as 'en' | 'he'}
+        />
+      )}
+
+      {isMiniCartMounted && (
+        <MiniCartDrawer
+          open={isMiniCartOpen}
+          onClose={() => setIsMiniCartOpen(false)}
+          lng={lng}
         />
       )}
     </>

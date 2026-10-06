@@ -1048,11 +1048,18 @@ export default function ProductColorClient({
                   </div>
                 </div>
 
-                {/* Colour swatches, 438:2672. A ruled row 35px below the heading, the
-                    swatches pushed to the inline end of it. The frame carries no
-                    "צבע" label - the empty 438:2674 spacer is where one would go. */}
+                {/* Colour swatches, 438:2672. The swatches are pushed to the inline
+                    end of a ruled row. The frame carries no "צבע" label - the empty
+                    438:2674 spacer is where one would go.
+
+                    mt-[13px], on the same 13/13 rhythm as the ruled rows below it.
+                    Unlike those, this row has NO rule above it — the price block is
+                    plain text — so this is not a centring fix: 438:2672 draws the
+                    swatches 35px under the heading, and this deliberately tightens
+                    that to keep every ruled row in the buy box on one ladder. The
+                    frame's value if it ever needs restoring is mt-[35px]. */}
                 {product.colorVariants && Object.keys(product.colorVariants).length > 1 && (
-                  <div className="mt-[35px] flex items-center justify-end gap-[8px] border-b border-border-default pb-[13px]">
+                  <div className="mt-[13px] flex items-center justify-end gap-[8px] border-b border-border-default pb-[13px]">
                     {Object.values(product.colorVariants)
                       .filter(variant => variant.isActive !== false)
                       .map((variant) => {
@@ -1106,7 +1113,11 @@ export default function ProductColorClient({
                   {/* Ruled header 35px down, 12px labels. Section name first so it
                       lands on the inline start - right in Hebrew - with the size
                       chart opposite, which is how the frame reads once mirrored. */}
-                  <div className="mt-[30px] flex items-center justify-between border-b border-border-default pb-[13px] font-ploni text-[12px] text-text-primary">
+                  {/* mt-[13px] to match its own pb-[13px]: this row is a true band
+                      between two rules — the swatch row's border-b above it and its
+                      own below — so the label and the size-chart link now sit centred
+                      between them rather than 30px down from the first. */}
+                  <div className="mt-[13px] flex items-center justify-between border-b border-border-default pb-[13px] font-ploni text-[12px] text-text-primary">
                     <h3 className="font-bold">
                       {lng === 'he' ? 'בחירת מידה' : 'Select size'}
                     </h3>

@@ -52,7 +52,7 @@ export default function ProductNotFoundClient({ products }: Props) {
   }, [baseSku])
 
   return (
-    <div className="min-h-screen bg-white" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="min-h-screen bg-surface-secondary" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* ── Hero ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-6 pt-16 md:pt-24 pb-14">
         <div className="max-w-xl mx-auto text-center">

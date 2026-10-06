@@ -1925,7 +1925,7 @@ export default function CollectionClient({
       browseKey={collectionKey}
       snapshotRef={stateSnapshotRef}
     >
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface-secondary">
       {isFilterLoading && (
         <Loader label={t.loadingProducts} />
       )}
@@ -1934,15 +1934,22 @@ export default function CollectionClient({
           three 1px gutters fill 1728. The max-w-7xl container that used to wrap the
           whole page is gone, and the blocks that are NOT meant to bleed carry
           COLLECTION_INSET themselves instead. */}
+      {/* pt-4, matching the mb-4 the title carries below itself: the two gaps either
+          side of the heading are the same 16px, so it reads as centred in its own
+          band between the header and the filter bar's top rule. It was pt-8, which
+          left twice as much room above as below. */}
       <div
         className={cn(
-          "relative w-full pt-8 pb-6 md:pb-16",
+          "relative w-full pt-4 pb-6 md:pb-16",
           isFilterLoading && "pointer-events-none"
         )}
         aria-busy={isFilterLoading}
       >
         {/* Header with Filters Button */}
-        <div className="mb-4 md:mb-4">
+        {/* No bottom margin: the grid butts straight onto the filter bar, so the
+            bar's underside and the top of the first card row are one rule rather
+            than two with a band of ground between them. */}
+        <div>
           {/* The title is inset; the bar below it is not. */}
           <div className={cn("mb-4", COLLECTION_INSET)}>
             {/* 438:2962 carries no page title - it opens straight into the campaign
@@ -2033,32 +2040,18 @@ export default function CollectionClient({
           </div>
         )}
 
-        {/* Showing X of Y counter — always reserve row height */}
-        <div
-          className={cn(
-            "mb-4 min-h-[20px] font-ploni text-[12px] text-text-secondary",
-            COLLECTION_INSET,
-            sortedItems.length === 0 && "invisible"
-          )}
-          aria-hidden={sortedItems.length === 0}
-        >
-          {sortedItems.length > 0 &&
-            (lng === 'he'
-              ? `${t.showing} ${useVariantItems ? allVariantItems.length : allProducts.length} ${t.of} ${totalProducts} ${t.items}`
-              : `${t.showing} ${useVariantItems ? allVariantItems.length : allProducts.length} ${t.of} ${totalProducts} ${t.items}`)}
-        </div>
+        {/* The "showing X of Y products" counter is gone, and so is the row that
+            reserved height for it even when it had nothing to say — otherwise its
+            mb-4 + min-h-[20px] would have stayed behind as 36px of blank band
+            between the filter bar and the grid. */}
 
         {/* Products Grid - Full Width */}
         {/* The top rule rides this wrapper rather than the grid, because the
-            virtualized listing renders one grid per row. It is suppressed for the
-            empty state: with no cards under it, the line would read as a second
-            rule hanging ~36px below the filter bar's own. */}
-        <div
-          className={cn(
-            "w-full",
-            (isFilterLoading || sortedItems.length > 0) && COLLECTION_GRID_TOP_RULE
-          )}
-        >
+            virtualized listing renders one grid per row. Unconditional now, empty
+            state included: COLLECTION_BAR gave up its own bottom border so this
+            rule could serve as both, so suppressing it would leave the filter bar
+            with no closing edge. */}
+        <div className={cn("w-full", COLLECTION_GRID_TOP_RULE)}>
           {isFilterLoading ? (
             <CollectionGridSkeleton
               count={LISTING_PAGE_SIZE}

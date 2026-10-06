@@ -57,7 +57,7 @@ export default function HomeClient({
   }
 
   return (
-    <div className={isRTL ? 'text-right bg-white' : 'text-left bg-white'}>
+    <div className={isRTL ? 'text-right bg-surface-secondary' : 'text-left bg-surface-secondary'}>
       <HomeAboutSection
         lng={lng}
         eyebrow={about.eyebrow}

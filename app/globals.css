@@ -9,7 +9,11 @@
      invisible for those visitors. It has been deleted. */
   color-scheme: light;
 
-  --background: #ffffff;
+  /* The storefront's page ground. Same value as --color-sako-gray-100 /
+     --color-surface-secondary below, written as a literal because @theme inline
+     resolves its variables into the utilities rather than guaranteeing them as
+     runtime custom properties for a plain `var()` here. The two must stay in step. */
+  --background: #f2f2f2;
   --foreground: #171717;
 }
 

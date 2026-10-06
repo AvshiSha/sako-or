@@ -1104,20 +1104,27 @@ export default function CampaignClient({
     {/* No min-h-screen here any more: page.tsx wraps the hero and this listing
         in one, and a second one nested under the hero would reserve a viewport's
         worth below it that a short campaign never fills. */}
-    <div className="bg-white">
+    <div className="bg-surface-secondary">
       {isFilterLoading && <Loader label={t.loadingProducts} />}
       {/* Full-bleed shell, 438:2962 - the same one the collection listing uses. The
           max-w-7xl container that used to wrap this page is gone: the grid and the
           filter bar run to the viewport edge, and the blocks that are NOT meant to
           bleed carry COLLECTION_INSET themselves. */}
+      {/* pt-4, matching the mb-4 the title carries below itself: the two gaps either
+          side of the heading are the same 16px, so it reads as centred in its own
+          band between whatever is above it and the filter bar's top rule. It was
+          pt-8, which left twice as much room above as below. */}
       <div
         className={cn(
-          "relative w-full pt-8 pb-6 md:pb-16",
+          "relative w-full pt-4 pb-6 md:pb-16",
           isFilterLoading && "pointer-events-none"
         )}
         aria-busy={isFilterLoading}
       >
-        <div className="mb-4 md:mb-4">
+        {/* No bottom margin: the grid butts straight onto the filter bar, so the
+            bar's underside and the top of the first card row are one rule rather
+            than two with a band of ground between them. */}
+        <div>
           {/* The campaign's own title, in the listing's section-heading treatment.
               The page carried no heading at all before - the name lived only inside
               the banner artwork, so there was nothing here for assistive tech or
@@ -1180,30 +1187,17 @@ export default function CampaignClient({
           </div>
         </div>
 
-        {/* Showing X of Y counter — always reserve row height */}
-        <div
-          className={cn(
-            "mb-4 min-h-[20px] font-ploni text-[12px] text-text-secondary",
-            COLLECTION_INSET,
-            sortedItems.length === 0 && "invisible"
-          )}
-          aria-hidden={sortedItems.length === 0}
-        >
-          {sortedItems.length > 0 &&
-            `${t.showing} ${variantItems.length} ${t.of} ${totalProducts} ${t.items}`}
-        </div>
-
+        {/* The "showing X of Y products" counter is gone, and so is the row that
+            reserved height for it even when it had nothing to say — otherwise its
+            mb-4 + min-h-[20px] would have stayed behind as 36px of blank band
+            between the filter bar and the grid. */}
         {/* Products Grid - Full Width */}
         {/* The top rule rides this wrapper rather than the grid, because the
-            virtualized listing renders one grid per row. It is suppressed for the
-            empty state: with no cards under it, the line would read as a second
-            rule hanging ~36px below the filter bar's own. */}
-        <div
-          className={cn(
-            "w-full",
-            (isFilterLoading || sortedItems.length > 0) && COLLECTION_GRID_TOP_RULE
-          )}
-        >
+            virtualized listing renders one grid per row. Unconditional now, empty
+            state included: COLLECTION_BAR gave up its own bottom border so this
+            rule could serve as both, so suppressing it would leave the filter bar
+            with no closing edge. */}
+        <div className={cn("w-full", COLLECTION_GRID_TOP_RULE)}>
           {isFilterLoading ? (
             <CollectionGridSkeleton
               count={COLLECTION_LISTING_PAGE_SIZE}

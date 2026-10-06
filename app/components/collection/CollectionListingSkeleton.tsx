@@ -68,7 +68,9 @@ export function CollectionGridSkeleton({
  */
 function CollectionListingHeaderSkeleton() {
   return (
-    <div className="mb-4">
+    // No bottom margin, matching the clients: the grid butts onto the bar so the
+    // two share one rule.
+    <div>
       <div className={cn('mb-4', COLLECTION_INSET)}>
         <div
           className="sako-skeleton mx-auto h-[32px] w-[min(280px,70%)] lg:h-[48px] lg:w-[min(460px,55%)]"
@@ -114,7 +116,7 @@ export default function CollectionListingSkeleton({
     // on a bare <div> give a screen reader nothing to read - the element has no
     // role, so there is no object for the name to belong to.
     <div
-      className={cn('bg-white', fullHeight && 'min-h-screen')}
+      className={cn('bg-surface-secondary', fullHeight && 'min-h-screen')}
       role="status"
       aria-busy="true"
       aria-label={label}
@@ -123,12 +125,15 @@ export default function CollectionListingSkeleton({
           by the blocks that are not the grid. If this container keeps a max-width
           the grid paints narrow and then jumps wide when the page streams in,
           which is the shift this file exists to prevent. */}
-      <div className="w-full pt-8 pb-6 md:pb-16">
+      {/* pt-4, not pt-8: the clients put the same 16px above the title as the title
+          carries below itself, and this fallback has to reserve the same box or the
+          listing steps down when the real page streams in. */}
+      <div className="w-full pt-4 pb-6 md:pb-16">
         <CollectionListingHeaderSkeleton />
 
-        {/* The loaded page keeps this row at min-h-[20px] even when it has nothing
-            to say, so the skeleton has to hold it too. */}
-        <div className={cn('mb-4 min-h-[20px]', COLLECTION_INSET)} aria-hidden />
+        {/* No "showing X of Y" row to stand in for any more — the clients no longer
+            render one, so reserving its height here would open a gap the loaded page
+            does not have. */}
 
         {/* Carries the grid's top rule for the same reason it carries every other
             measurement in this file: the loaded page draws one here, so a fallback

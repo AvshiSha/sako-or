@@ -576,7 +576,7 @@ export default function ProductColorClient({
         />
       )}
 
-      <div className={`min-h-screen bg-white ${isRTL ? 'rtl' : 'ltr'}`}>
+      <div className={`min-h-screen bg-surface-secondary ${isRTL ? 'rtl' : 'ltr'}`}>
         <div>
         {/* 438:2644 — a 1224/502 split, so the sidebar is a fixed 502px track and the
             mosaic takes the rest. It was 1.5fr/2fr, which gave the images 43% and the

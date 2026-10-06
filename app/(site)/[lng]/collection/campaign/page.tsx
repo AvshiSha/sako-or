@@ -209,7 +209,7 @@ export default async function CampaignPage({
   const serializedCampaign = serializeValue(campaign);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-surface-secondary">
       {/* Outside the boundary: this is known as soon as the campaign document is,
           so it paints with the first chunk and never moves the listing. */}
       <CampaignHero campaign={serializedCampaign} lng={lng as "en" | "he"} />

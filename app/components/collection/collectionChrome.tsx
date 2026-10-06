@@ -35,9 +35,15 @@ export const COLLECTION_BAR_CONTROL =
  * The ruled filter/sort band the grid sits under (438:2975 + 438:2977). Runs
  * edge to edge like the grid, so it carries its own padding rather than the
  * page inset.
+ *
+ * `border-t`, not `border-y`: the grid butts directly against this band, and its
+ * own COLLECTION_GRID_TOP_RULE is what closes the bar underneath. Keeping a
+ * bottom border here too would stack the two into a 2px line — and the grid's is
+ * the one to keep, because it is the #000 the product cards divide themselves
+ * with rather than this bar's #11110F.
  */
 export const COLLECTION_BAR =
-  'flex h-[58px] items-center justify-between border-y border-border-default bg-surface-secondary px-[16px] lg:h-[74px] lg:px-[36px]'
+  'flex h-[58px] items-center justify-between border-t border-border-default bg-surface-secondary px-[16px] lg:h-[74px] lg:px-[36px]'
 
 /**
  * The product grid itself. gap-0 is load-bearing: the cards draw their own
@@ -64,6 +70,11 @@ export const COLLECTION_PRODUCT_GRID =
  * border-sako-black, not the border-border-default the filter bar above uses -
  * #000 is what the cards divide themselves with, and this line has to read as one
  * of theirs rather than as the bar's #11110F.
+ *
+ * Apply it unconditionally, including when the listing has no products: the grid
+ * block now sits flush under COLLECTION_BAR, which dropped its own bottom border
+ * precisely so this one can serve as both. Suppress it and the filter bar is left
+ * with no closing edge at all.
  */
 export const COLLECTION_GRID_TOP_RULE = 'border-t border-sako-black'
 

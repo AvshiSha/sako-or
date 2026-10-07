@@ -946,10 +946,11 @@ export default function Navigation({
                 }}
                 onNavigate={() => setIsMobileMenuOpen(false)}
               />
-              {/* Mobile Auth Greeting Component */}
-              <div className="pt-2">
-                <MobileAuthGreeting lng={lng} />
-              </div>
+              {/* The account row is one more rung of the category ladder above it,
+                  so it butts straight onto the last category's rule. The pt-2 that
+                  used to sit here left an 8px band of ground mid-ladder, which is
+                  what made the old card read as a separate floating object. */}
+              <MobileAuthGreeting lng={lng} />
             </div>
           </ScrollArea>
         </SheetContent>

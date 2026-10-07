@@ -36,8 +36,15 @@ const sheetVariants = cva(
       side: {
         top: "inset-x-0 top-0 border-b",
         bottom: "inset-x-0 bottom-0 border-t",
-        left: "left-0 top-0 h-[calc(105vh-1rem)] w-[90%] border-r sm:max-w-sm",
-        right: "right-0 top-0 h-[calc(105vh-1rem)] w-[90%] border-l sm:max-w-sm",
+        // h-dvh, not the old h-[calc(105vh-1rem)]. `vh` is a fixed unit tied to the
+        // *large* viewport, so on a phone it ignores the browser's own toolbars: the
+        // 105% + -1rem was someone trying to paper over that by overshooting, which
+        // leaves the panel ending short of the fold on some chrome states and running
+        // past it on others. `dvh` is the dynamic viewport - exactly what is visible
+        // right now - and it re-resolves as the toolbars slide in and out, so the
+        // drawer reaches the bottom of the screen and stops there.
+        left: "left-0 top-0 h-dvh w-[90%] border-r sm:max-w-sm",
+        right: "right-0 top-0 h-dvh w-[90%] border-l sm:max-w-sm",
       },
     },
     defaultVariants: {

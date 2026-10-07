@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Sheet, SheetContent, SheetTitle } from '@/app/components/ui/sheet'
 import QuantityStepper from '@/app/components/QuantityStepper'
 import { useCart } from '@/app/hooks/useCart'
+import { useScrollLock } from '@/app/hooks/useScrollLock'
 import { getColorName } from '@/lib/colors'
 
 /**
@@ -118,29 +119,13 @@ export default function MiniCartDrawer({ open, onClose, lng }: MiniCartDrawerPro
   }, [open, loading, items.length])
 
   /**
-   * Page-scroll lock. Radix sets `overflow: hidden` on `<body>`, but this
-   * storefront's scrolling element is `<html>` — so the page behind every
-   * Sheet-based drawer in the app still scrolls, the navigation panel included.
-   * Locking the real scroller is done here rather than in `sheet.tsx` so the fix
-   * stays inside this feature; `html` keeps its scrollTop under `overflow:
-   * hidden`, which is also what returns the PDP to the same position on close.
-   * The padding replaces the scrollbar's width so the page does not jump.
+   * Page-scroll lock, kept here rather than left to Radix: the page behind this
+   * drawer was still scrolling. The hook locks `document.scrollingElement`
+   * itself and gives the scrollbar's width back as padding, and `html` keeps
+   * its scrollTop while hidden, which is what returns the PDP to the same
+   * position on close.
    */
-  useEffect(() => {
-    if (!open) return
-    const html = document.documentElement
-    const previousOverflow = html.style.overflow
-    const previousPadding = html.style.paddingInlineEnd
-    const scrollbar = window.innerWidth - html.clientWidth
-
-    html.style.overflow = 'hidden'
-    if (scrollbar > 0) html.style.paddingInlineEnd = `${scrollbar}px`
-
-    return () => {
-      html.style.overflow = previousOverflow
-      html.style.paddingInlineEnd = previousPadding
-    }
-  }, [open])
+  useScrollLock(open)
 
   const formatMoney = (value: number) =>
     `₪${value.toLocaleString(isRTL ? 'he-IL' : 'en-US', {

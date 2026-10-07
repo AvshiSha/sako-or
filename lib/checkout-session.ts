@@ -7,7 +7,10 @@
  * and the order payload both need.
  */
 
+import { formatIsraelE164ToLocalDigits } from '@/lib/phone'
 import type { CheckoutFormData } from '@/app/types/checkout'
+// Type-only, so this module keeps no runtime dependency on the SWR cache.
+import type { UserProfile } from '@/lib/user-profile-cache'
 
 export type ShippingMethod = 'delivery' | 'pickup'
 
@@ -55,6 +58,85 @@ export function splitStreetAddress(combined: string): {
   if (!match) return { streetName: value, streetNumber: '' }
 
   return { streetName: match[1].trim(), streetNumber: match[2].trim() }
+}
+
+/**
+ * Joins the profile's separate street and house number back into the one field
+ * the frame draws. The inverse of splitStreetAddress, so a prefilled address
+ * that is never touched round-trips to the same two columns it came from.
+ *
+ * A stored house number with no street is dropped: on its own it would land in
+ * the combined field as a bare "51", which splitStreetAddress reads back as a
+ * street named "51" with no number.
+ */
+function joinStreetAddress(
+  street: string | null | undefined,
+  streetNumber: string | null | undefined
+): string {
+  const name = (street ?? '').trim()
+  const number = (streetNumber ?? '').trim()
+  if (!name) return ''
+  return number ? `${name} ${number}` : name
+}
+
+/** A profile value is worth prefilling only if it is actually there. */
+const filled = (value: string | null | undefined): string => (value ?? '').trim()
+
+/**
+ * Prefills the checkout form from the signed-in customer's saved profile.
+ *
+ * Three rules, in order of importance:
+ *
+ *  - Only blank fields are written. Anything already typed wins, so a profile
+ *    that resolves late (the row is fetched, not bundled with the auth state)
+ *    can never overwrite what someone is in the middle of entering, and an
+ *    edited value stays edited if this runs again.
+ *  - Only fields the profile actually holds are written. Everything else is
+ *    left empty to be completed by hand — the row is nullable throughout, and
+ *    there is no postal code column at all, so a partial profile is normal
+ *    rather than exceptional.
+ *  - `details` is returned by reference when nothing changed, so a signed-out
+ *    visitor, or a second pass over an already-prefilled form, does not cost a
+ *    render.
+ *
+ * The profile stores phone in E.164 (+972…) and the form collects the local
+ * 0XXXXXXXXX that the order, invoice and courier SMS all carry; converting here
+ * means the prefilled value is identical to the one someone would have typed.
+ */
+export function applyProfileToCheckoutDetails(
+  details: CheckoutFormData,
+  profile: Partial<UserProfile> | null | undefined,
+  fallbackEmail?: string | null
+): CheckoutFormData {
+  const payer = { ...details.payer }
+  const deliveryAddress = { ...details.deliveryAddress }
+  let changed = false
+
+  const put = <T extends Record<string, unknown>>(target: T, key: keyof T, value: string) => {
+    if (!value) return
+    if (filled(target[key] as string | null | undefined)) return
+    target[key] = value as T[keyof T]
+    changed = true
+  }
+
+  put(payer, 'firstName', filled(profile?.firstName))
+  put(payer, 'lastName', filled(profile?.lastName))
+  // The Firebase account's email is the fallback: it is the address she signed
+  // in with, and it is present even when no profile row exists yet.
+  put(payer, 'email', filled(profile?.email) || filled(fallbackEmail))
+  put(payer, 'mobile', filled(formatIsraelE164ToLocalDigits(filled(profile?.phone) || null)))
+
+  put(deliveryAddress, 'city', filled(profile?.addressCity))
+  put(
+    deliveryAddress,
+    'streetName',
+    joinStreetAddress(profile?.addressStreet, profile?.addressStreetNumber)
+  )
+  put(deliveryAddress, 'floor', filled(profile?.addressFloor))
+  put(deliveryAddress, 'apartmentNumber', filled(profile?.addressApt))
+
+  if (!changed) return details
+  return { ...details, payer, deliveryAddress }
 }
 
 /**

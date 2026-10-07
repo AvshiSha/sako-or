@@ -35,9 +35,12 @@ import { Field } from '@/app/components/ui/field'
 import { Checkbox } from '@/app/components/ui/checkbox'
 import { useCart } from '@/app/hooks/useCart'
 import { useCartPricing } from '@/app/hooks/useCartPricing'
+import { useScrollLock } from '@/app/hooks/useScrollLock'
 import { useAuth } from '@/app/contexts/AuthContext'
+import { useUserProfile } from '@/app/hooks/useUserProfile'
 import {
   SHIPPING_METHOD_STORAGE_KEY,
+  applyProfileToCheckoutDetails,
   emptyCheckoutDetails,
   isDetailsComplete,
   splitStreetAddress,
@@ -155,6 +158,10 @@ export default function CheckoutClient({ recommendations = [] }: CheckoutClientP
 
   const { items, loading, revalidateCart } = useCart()
   const { user } = useAuth()
+  // Shares one SWR entry with the nav greeting and the pixel, and AuthProvider
+  // seeds it from the /api/me/sync response it already fetches on sign-in, so
+  // reaching checkout signed in costs no extra profile request.
+  const { profile, isLoading: profileLoading } = useUserProfile()
 
   const [isClient, setIsClient] = useState(false)
   const [details, setDetails] = useState<CheckoutFormData>(() => emptyCheckoutDetails())
@@ -185,6 +192,15 @@ export default function CheckoutClient({ recommendations = [] }: CheckoutClientP
   useEffect(() => {
     setIsClient(true)
   }, [])
+
+  /**
+   * Freeze the checkout behind the gateway. The overlay is `fixed inset-0`, so
+   * without this the page it covers scrolls under it on a stray wheel or swipe
+   * and the sheet appears to drift. Only the page is locked: the gateway is an
+   * iframe with its own scroller and a card form taller than a phone, so it goes
+   * on scrolling normally.
+   */
+  useScrollLock(!!redirectUrl)
 
   /**
    * GA4 item payload, same shape the cart builds for view_cart so the two events
@@ -225,7 +241,9 @@ export default function CheckoutClient({ recommendations = [] }: CheckoutClientP
     }
   }, [checkoutItems])
 
-  // Carry the cart's delivery choice over, and prefill from the account.
+  // Carry the cart's delivery choice over. Once, on mount: it previously also
+  // ran whenever the account's email resolved, which put the choice back to
+  // whatever the cart had if she had already switched it on this page.
   useEffect(() => {
     if (typeof window === 'undefined') return
 
@@ -237,12 +255,32 @@ export default function CheckoutClient({ recommendations = [] }: CheckoutClientP
       /* cart preference is a nicety; default to delivery */
     }
 
-    setDetails(prev => ({
-      ...prev,
-      shippingMethod: method,
-      payer: { ...prev.payer, email: user?.email ?? prev.payer.email }
-    }))
-  }, [user?.email])
+    setDetails(prev => ({ ...prev, shippingMethod: method }))
+  }, [])
+
+  /**
+   * Prefill from the account. Signed in, we already know her name, phone and
+   * address, so she should not be asked to type them again — the fields are
+   * ordinary inputs afterwards and she can change any of them for this order.
+   *
+   * Once per account, and only after the profile has settled: the row arrives a
+   * tick behind the Firebase user, and prefilling on the first pass would fill
+   * the email, mark the form done and leave the rest blank. `profileLoading`
+   * goes false whether the row loaded, came back empty or failed, so a customer
+   * with no profile row still gets the email she signed in with — which is what
+   * this page filled before.
+   *
+   * Nothing here runs for guests: no uid, no prefill, and useUserProfile stays
+   * keyless so it issues no request either.
+   */
+  const prefilledForUidRef = useRef<string | null>(null)
+  useEffect(() => {
+    const uid = user?.uid ?? null
+    if (!uid || profileLoading || prefilledForUidRef.current === uid) return
+
+    prefilledForUidRef.current = uid
+    setDetails(prev => applyProfileToCheckoutDetails(prev, profile, user?.email))
+  }, [user?.uid, user?.email, profile, profileLoading])
 
   const setPayer = (key: keyof CheckoutFormData['payer'], value: string) =>
     setDetails(prev => ({ ...prev, payer: { ...prev.payer, [key]: value } }))
@@ -671,13 +709,21 @@ export default function CheckoutClient({ recommendations = [] }: CheckoutClientP
       )}
 
       {/* The gateway. Undesigned, so it takes the system's own surfaces: a full
-          ink scrim with a paper sheet and a single caption. */}
+          ink scrim with a paper sheet and a single caption.
+
+          z-[100], the value the modal implementation used for this same overlay,
+          and not z-50: the sticky header is z-[65], so at 50 the nav bar painted
+          straight over the scrim and took the dialog's own title row and close
+          button with it. Above the header and its panels (z-[70]), below the
+          toasts (z-[110]), which should still be readable over the gateway.
+          Nothing between <body> and here establishes a stacking context, so this
+          is compared against the header directly. */}
       {redirectUrl && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label={t.payTitle}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-sako-ink-900/80 p-[16px]"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-sako-ink-900/80 p-[16px]"
         >
           <div className="flex h-full max-h-[860px] w-full max-w-[560px] flex-col bg-surface-secondary">
             <div className="flex items-center justify-between border-b border-sako-black px-[16px] py-[12px]">

@@ -1,6 +1,9 @@
 'use client'
 
-import Link from 'next/link'
+// Not next/link, and not an oversight: these hrefs point at the listing routes,
+// where prefetching intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back.
+import Link from '@/app/components/ListingLink'
 import { track } from '@vercel/analytics'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion as fmMotion } from 'framer-motion'
@@ -18,7 +21,7 @@ const DEFAULT_PROMOS: PromoItem[] = [
       he: 'הדרופ החדש כבר כאן | NEW IN SAKO OR',
       en: 'The New Drop Is Here | Shop NEW IN SAKO OR',
     },
-    href: '/collection/campaign?slug=new-collection',
+    href: '/collection/campaign/new-collection',
     icon: '✨',
   },
   // {

@@ -117,7 +117,7 @@ export function estimateCollectionRowHeight(
   // column count is a safe proxy for "are we on the desktop card?".
   const isDesktopCard = columns >= 4
   const imageHeight = isDesktopCard ? cardWidth : cardWidth * (235 / 195)
-  const infoHeight = isDesktopCard ? 136 : 118
+  const infoHeight = isDesktopCard ? 150 : 129
   return imageHeight + infoHeight
 }
 

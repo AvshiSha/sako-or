@@ -76,6 +76,7 @@ export default function ProductNotFoundClient({ products }: Props) {
           <div className="flex flex-col sm:flex-row gap-3 justify-center mb-12">
             <Link
               href={`/${lng}/collection`}
+            prefetch={false}
               className="inline-flex items-center justify-center px-8 py-3 bg-[#856D55] text-white text-sm font-semibold tracking-wide rounded-md hover:bg-[#6d5a47] transition-colors"
             >
               {t.continueShopping}

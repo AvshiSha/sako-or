@@ -429,7 +429,7 @@ export default function CampaignMerchandisingBoard({ slug: slugProp }: { slug: s
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href={`/en/collection/campaign?slug=${slug}`}
+              href={`/en/collection/campaign/${slug}`}
               target="_blank"
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
             >

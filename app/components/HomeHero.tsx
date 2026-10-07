@@ -1,6 +1,9 @@
 'use client'
 
-import Link from 'next/link'
+// Not next/link, and not an oversight: these hrefs point at the listing routes,
+// where prefetching intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back.
+import Link from '@/app/components/ListingLink'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   getHomeHeroDesktopVideoUrl,
@@ -136,7 +139,7 @@ export default function HomeHero({ lng }: HomeHeroProps) {
 
   return (
     <Link
-      href={`/${lng}/collection/campaign?slug=new-collection`}
+      href={`/${lng}/collection/campaign/new-collection`}
       // Mobile keeps 9/16. Desktop moves from 21/9 to 2/1 - roughly 17% taller - so
       // the hero reads as a fuller banner behind the transparent header.
       className="relative block aspect-[9/16] md:aspect-[2/1] group overflow-hidden"

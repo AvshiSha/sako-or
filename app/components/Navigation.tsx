@@ -1,6 +1,9 @@
 'use client'
 
-import Link from 'next/link'
+// Not next/link, and not an oversight: these hrefs point at the listing routes,
+// where prefetching intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back.
+import Link from '@/app/components/ListingLink'
 import Image from 'next/image'
 import { Menu, Heart, ShoppingBag, ChevronDown, User, X } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'

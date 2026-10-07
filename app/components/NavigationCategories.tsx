@@ -1,6 +1,9 @@
 'use client'
 
-import Link from 'next/link'
+// Not next/link, and not an oversight: these hrefs point at the listing routes,
+// where prefetching intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back.
+import Link from '@/app/components/ListingLink'
 import {
   Accordion,
   AccordionContent,
@@ -187,7 +190,7 @@ export default function NavigationCategories({
             it is the same row for either department. No ＋: the row has no children to
             disclose, and the glyph read as though it did. */}
         <Link
-          href={`/${lng}/collection/campaign?slug=new-collection`}
+          href={`/${lng}/collection/campaign/new-collection`}
           onClick={onNavigate}
           className={`flex ${rowH} items-center border-b border-sako-black`}
           dir={dir}

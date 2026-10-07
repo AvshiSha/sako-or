@@ -1,5 +1,8 @@
 import Image from 'next/image'
-import Link from 'next/link'
+// Not next/link, and not an oversight: these hrefs point at the listing routes,
+// where prefetching intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back.
+import Link from '@/app/components/ListingLink'
 import { getImageUrl } from '@/lib/image-urls'
 
 interface CollectionTile {

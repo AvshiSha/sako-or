@@ -447,6 +447,7 @@ export default function ProductColorClient({
           </p>
           <Link 
             href={`/${lng}/collection`}
+            prefetch={false}
             className="inline-flex h-[54px] items-center justify-center border border-btn-primary-bg bg-btn-primary-bg px-6 font-ploni text-[16px] font-bold text-btn-primary-text transition-colors hover:bg-sako-ink-800"
           >
             {lng === 'he' ? 'חזור לאוסף' : 'Back to Collection'}

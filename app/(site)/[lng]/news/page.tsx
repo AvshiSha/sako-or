@@ -146,6 +146,7 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
           </h2>
           <Link
             href={`/${lng}/collection`}
+            prefetch={false}
             className="shrink-0 transition-opacity hover:opacity-70"
           >
             <BlogInlineLink>{t.allProducts}</BlogInlineLink>

@@ -245,7 +245,7 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
                 />
                 {errors.slug && <p className="mt-1 text-sm text-red-500">{errors.slug}</p>}
                 <p className="mt-1 text-xs text-gray-500">
-                  Lowercase, alphanumeric with hyphens only. Used in URL: /collection/campaign?slug=...
+                  Lowercase, alphanumeric with hyphens only. Used in URL: /collection/campaign/...
                 </p>
               </div>
 
@@ -626,7 +626,7 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
                     Manage product order
                   </Link>
                   <Link
-                    href={`/en/collection/campaign?slug=${formData.slug}`}
+                    href={`/en/collection/campaign/${formData.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"

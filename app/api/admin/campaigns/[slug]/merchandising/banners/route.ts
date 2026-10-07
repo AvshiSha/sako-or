@@ -51,7 +51,7 @@ export async function GET(
     meta: {
       title: campaign.title?.en || campaign.title?.he || slug,
       // `slug`, matching the storefront page's own searchParam.
-      storefrontHref: `/en/collection/campaign?slug=${encodeURIComponent(slug)}`,
+      storefrontHref: `/en/collection/campaign/${encodeURIComponent(slug)}`,
     },
   });
 }

@@ -34,7 +34,7 @@ export const WOMEN_FEATURED_NAV_LINKS: WomenFeaturedNavLink[] = [
 ]
 
 export function womenFeaturedCampaignHref(lng: string, slug: string): string {
-  return `/${lng}/collection/campaign?slug=${encodeURIComponent(slug)}`
+  return `/${lng}/collection/campaign/${encodeURIComponent(slug)}`
 }
 
 export function womenFeaturedLinkLabel(lng: string, link: WomenFeaturedNavLink): string {

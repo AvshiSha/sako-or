@@ -90,6 +90,28 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308)
   }
 
+  // Campaign slugs moved from `?slug=` into the path, so that the route's layout
+  // can resolve the campaign - and therefore own the redirect for an unknown one -
+  // above its loading boundary. Layouts get `params`, never `searchParams`, so the
+  // query-string form could not be resolved there at all, which is why the route
+  // had no loading state to begin with.
+  //
+  // Done here rather than in the page so the hop costs no Firestore read and no
+  // render: the old URL is still live on the storefront, in the admin, and in
+  // whatever links are already out there. The rest of the query string (filters,
+  // sort, page) rides along untouched.
+  const campaignSlugMatch = pathname.match(/^\/(en|he)\/collection\/campaign\/?$/)
+
+  if (campaignSlugMatch) {
+    const slug = request.nextUrl.searchParams.get('slug')?.trim()
+    if (slug) {
+      const url = request.nextUrl.clone()
+      url.pathname = `/${campaignSlugMatch[1]}/collection/campaign/${encodeURIComponent(slug)}`
+      url.searchParams.delete('slug')
+      return NextResponse.redirect(url, 308)
+    }
+  }
+
   // Check if this is an old slug-based product URL
   const slugProductMatch = pathname.match(/^\/(en|he)\/product\/([^\/\?]+)(\?.*)?$/)
 

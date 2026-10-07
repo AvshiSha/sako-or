@@ -377,7 +377,7 @@ function CampaignsPageContent() {
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
                             <Link
-                              href={`/en/collection/campaign?slug=${campaign.slug}`}
+                              href={`/en/collection/campaign/${campaign.slug}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-indigo-600 hover:text-indigo-900"

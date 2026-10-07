@@ -17,7 +17,7 @@ export const WOMEN_BOGO_NAV_LINKS: WomenSalesNavLink[] = [
 ]
 
 export function womenSalesCampaignHref(lng: string, slug: string): string {
-  return `/${lng}/collection/campaign?slug=${encodeURIComponent(slug)}`
+  return `/${lng}/collection/campaign/${encodeURIComponent(slug)}`
 }
 
 export function womenSalesSectionTitle(lng: string): string {

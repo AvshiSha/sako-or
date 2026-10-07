@@ -411,7 +411,10 @@ export default function CampaignClient({
     [lng]
   );
 
-  const basePath = `/${lng}/collection/campaign`;
+  // The slug is a path segment now, not `?slug=` - see the route's layout.tsx for
+  // why it had to move. Nothing below writes it into the query string any more;
+  // only /api/products/campaign still takes it as a parameter, which it always did.
+  const basePath = `/${lng}/collection/campaign/${encodeURIComponent(campaign.slug)}`;
   const updateURL = useCallback(
     (
       newFilters: {
@@ -425,7 +428,6 @@ export default function CampaignClient({
       resetPage = true
     ) => {
       const params = new URLSearchParams();
-      params.set("slug", campaign.slug);
       if (!resetPage && currentPage > 1) params.set("page", String(currentPage));
       if (newFilters.colors?.length) params.set("colors", newFilters.colors.join(","));
       if (newFilters.sizes?.length) params.set("sizes", newFilters.sizes.join(","));
@@ -438,7 +440,10 @@ export default function CampaignClient({
       if (newFilters.maxPrice?.trim()) params.set("maxPrice", newFilters.maxPrice);
       if (newFilters.sort && newFilters.sort !== "relevance") params.set("sort", newFilters.sort);
       const qs = params.toString();
-      const newUrl = `${basePath}?${qs}`;
+      // No trailing "?" when every filter is cleared: the slug used to keep this
+      // query string permanently non-empty, and without that guard the "did the
+      // URL actually change" check below never matches the bare path.
+      const newUrl = qs ? `${basePath}?${qs}` : basePath;
       const currentUrl =
         typeof window !== "undefined"
           ? `${window.location.pathname}${window.location.search}`

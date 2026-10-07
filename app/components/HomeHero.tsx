@@ -1,9 +1,9 @@
 'use client'
 
-// Not next/link, and not an oversight: these hrefs point at the listing routes,
-// where prefetching intermittently renders an empty content area instead of the
-// loading skeleton. See ListingLink - do not swap this back.
-import Link from '@/app/components/ListingLink'
+// ListingLink, not next/link, for every href below that points at a listing route:
+// prefetching those intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back. Enforced by eslint.
+import ListingLink from '@/app/components/ListingLink'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   getHomeHeroDesktopVideoUrl,
@@ -138,7 +138,7 @@ export default function HomeHero({ lng }: HomeHeroProps) {
     lng === 'he' ? 'קולקציית החורף של SAKO 2026' : 'SAKO Winter Edition 2026'
 
   return (
-    <Link
+    <ListingLink
       href={`/${lng}/collection/campaign/new-collection`}
       // Mobile keeps 9/16. Desktop moves from 21/9 to 2/1 - roughly 17% taller - so
       // the hero reads as a fuller banner behind the transparent header.
@@ -164,6 +164,6 @@ export default function HomeHero({ lng }: HomeHeroProps) {
           />
         </div>
       </div>
-    </Link>
+    </ListingLink>
   )
 }

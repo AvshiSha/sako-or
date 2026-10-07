@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import ListingLink from '@/app/components/ListingLink'
 import { blogService } from '@/lib/firebase'
 import { buildMetadata } from '@/lib/seo'
 import { languages } from '@/i18n/settings'
@@ -144,13 +145,12 @@ export default async function NewsPage({ params, searchParams }: NewsPageProps) 
           <h2 className="font-ploni text-[32px] font-black leading-[28px] text-text-primary lg:text-[48px] lg:leading-[34.56px]">
             {t.listTitle}
           </h2>
-          <Link
+          <ListingLink
             href={`/${lng}/collection`}
-            prefetch={false}
             className="shrink-0 transition-opacity hover:opacity-70"
           >
             <BlogInlineLink>{t.allProducts}</BlogInlineLink>
-          </Link>
+          </ListingLink>
         </header>
 
         {gridArticles.length === 0 ? (

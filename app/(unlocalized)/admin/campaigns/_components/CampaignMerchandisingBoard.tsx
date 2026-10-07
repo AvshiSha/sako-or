@@ -30,6 +30,7 @@ import {
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import ListingLink from '@/app/components/ListingLink'
 import { useAuth } from '@/app/contexts/AuthContext';
 import { getAdminAuthHeaders } from '@/lib/admin-api';
 import {
@@ -428,14 +429,14 @@ export default function CampaignMerchandisingBoard({ slug: slugProp }: { slug: s
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link
+            <ListingLink
               href={`/en/collection/campaign/${slug}`}
               target="_blank"
               className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-700 bg-white hover:bg-gray-50"
             >
               <EyeIcon className="h-4 w-4 mr-1" />
               Preview storefront
-            </Link>
+            </ListingLink>
             <button
               type="button"
               onClick={() => handleSave()}

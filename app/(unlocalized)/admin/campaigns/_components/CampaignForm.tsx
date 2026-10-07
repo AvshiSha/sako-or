@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Campaign, CampaignProductFilter } from '@/lib/firebase'
 import { ArrowLeftIcon, EyeIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import ListingLink from '@/app/components/ListingLink'
 import { useRouter } from 'next/navigation'
 
 interface CampaignFormData {
@@ -625,7 +626,7 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
                   >
                     Manage product order
                   </Link>
-                  <Link
+                  <ListingLink
                     href={`/en/collection/campaign/${formData.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -633,7 +634,7 @@ export default function CampaignForm({ initialData, isEdit = false }: CampaignFo
                   >
                     <EyeIcon className="h-4 w-4 mr-2" />
                     Preview
-                  </Link>
+                  </ListingLink>
                 </>
               )}
 

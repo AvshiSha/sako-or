@@ -1,9 +1,9 @@
 'use client'
 
-// Not next/link, and not an oversight: these hrefs point at the listing routes,
-// where prefetching intermittently renders an empty content area instead of the
-// loading skeleton. See ListingLink - do not swap this back.
-import Link from '@/app/components/ListingLink'
+// ListingLink, not next/link, for every href below that points at a listing route:
+// prefetching those intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back. Enforced by eslint.
+import ListingLink from '@/app/components/ListingLink'
 import {
   Accordion,
   AccordionContent,
@@ -118,7 +118,7 @@ export default function NavigationCategories({
   )
 
   const childLink = (key: string, href: string, label: string) => (
-    <Link
+    <ListingLink
       key={key}
       href={href}
       onClick={onNavigate}
@@ -127,7 +127,7 @@ export default function NavigationCategories({
       suppressHydrationWarning
     >
       {label}
-    </Link>
+    </ListingLink>
   )
 
   return (
@@ -189,7 +189,7 @@ export default function NavigationCategories({
             campaign's own name in both languages rather than a translated string, and
             it is the same row for either department. No ＋: the row has no children to
             disclose, and the glyph read as though it did. */}
-        <Link
+        <ListingLink
           href={`/${lng}/collection/campaign/new-collection`}
           onClick={onNavigate}
           className={`flex ${rowH} items-center border-b border-sako-black`}
@@ -199,7 +199,7 @@ export default function NavigationCategories({
           <span className={`font-ploni ${featureText} font-black ${featureLeading} text-text-primary`}>
             NEW COLLECTION
           </span>
-        </Link>
+        </ListingLink>
 
         <Accordion type="single" collapsible className="w-full">
           {subcategories.map((subcategory) => {
@@ -209,7 +209,7 @@ export default function NavigationCategories({
             if (!hasChildren) {
               return (
                 <div key={subcategory.id} data-nav-subcategory={subcategory.slug} className="border-b border-sako-black">
-                  <Link
+                  <ListingLink
                     href={`/${lng}/collection/${selectedGender}/${subcategory.slug}`}
                     onClick={onNavigate}
                     className={`flex ${rowH} items-center justify-between transition-opacity hover:opacity-70`}
@@ -219,7 +219,7 @@ export default function NavigationCategories({
                     <span className={`font-ploni ${rowText} font-semibold leading-[23px] text-text-primary`}>
                       {categoryName}
                     </span>
-                  </Link>
+                  </ListingLink>
                 </div>
               )
             }

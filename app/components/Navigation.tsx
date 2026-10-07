@@ -1,9 +1,10 @@
 'use client'
 
-// Not next/link, and not an oversight: these hrefs point at the listing routes,
-// where prefetching intermittently renders an empty content area instead of the
-// loading skeleton. See ListingLink - do not swap this back.
-import Link from '@/app/components/ListingLink'
+// ListingLink, not next/link, for every href below that points at a listing route:
+// prefetching those intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back. Enforced by eslint.
+import Link from 'next/link'
+import ListingLink from '@/app/components/ListingLink'
 import Image from 'next/image'
 import { Menu, Heart, ShoppingBag, ChevronDown, User, X } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
@@ -458,13 +459,13 @@ export default function Navigation({
                       {translations[lng as keyof typeof translations].categories}
                     </h3>
 
-                    <Link
+                    <ListingLink
                       href={`/${lng}/collection/women`}
                       className="block text-sm text-gray-700 hover:text-gray-900 mb-1 transition-colors duration-150"
                       suppressHydrationWarning
                     >
                       {translations[lng as keyof typeof translations].allWomen}
-                    </Link>
+                    </ListingLink>
                   </div>
 
                   {womenSubcategories.map((subcategory) => (
@@ -473,13 +474,13 @@ export default function Navigation({
                         {subcategory.name}
                       </h3>
 
-                      <Link
+                      <ListingLink
                         href={`/${lng}/collection/women/${subcategory.slug}`}
                         className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150 mb-1"
                         suppressHydrationWarning
                       >
                         {translations[lng as keyof typeof translations].allProducts}
-                      </Link>
+                      </ListingLink>
 
 
 
@@ -487,13 +488,13 @@ export default function Navigation({
                         <ul className="space-y-1">
                           {subcategory.subChildren.map((subSubCategory) => (
                             <li key={subSubCategory.id}>
-                              <Link
+                              <ListingLink
                                 href={`/${lng}/collection/women/${subcategory.slug}/${subSubCategory.slug}`}
                                 className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150"
                                 suppressHydrationWarning
                               >
                                 {subSubCategory.name}
-                              </Link>
+                              </ListingLink>
                             </li>
                           ))}
                         </ul>
@@ -508,13 +509,13 @@ export default function Navigation({
                     <ul className="space-y-1">
                       {WOMEN_BOGO_NAV_LINKS.map((link) => (
                         <li key={link.slug}>
-                          <Link
+                          <ListingLink
                             href={womenSalesCampaignHref(lng, link.slug)}
                             className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150"
                             suppressHydrationWarning
                           >
                             {womenSalesLinkLabel(lng, link)}
-                          </Link>
+                          </ListingLink>
                         </li>
                       ))}
                     </ul>
@@ -557,13 +558,13 @@ export default function Navigation({
                       {translations[lng as keyof typeof translations].categories}
                     </h3>
 
-                    <Link
+                    <ListingLink
                       href={`/${lng}/collection/men`}
                       className="block text-sm text-gray-700 hover:text-gray-900 mb-1 transition-colors duration-150"
                       suppressHydrationWarning
                     >
                       {translations[lng as keyof typeof translations].allMen}
-                    </Link>
+                    </ListingLink>
                   </div>
 
                   {menSubcategories.map((subcategory) => (
@@ -572,25 +573,25 @@ export default function Navigation({
                         {subcategory.name}
                       </h3>
 
-                      <Link
+                      <ListingLink
                         href={`/${lng}/collection/men/${subcategory.slug}`}
                         className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150 mb-1"
                         suppressHydrationWarning
                       >
                         {translations[lng as keyof typeof translations].allProducts}
-                      </Link>
+                      </ListingLink>
 
                       {subcategory.subChildren && subcategory.subChildren.length > 0 && (
                         <ul className="space-y-1">
                           {subcategory.subChildren.map((subSubCategory) => (
                             <li key={subSubCategory.id}>
-                              <Link
+                              <ListingLink
                                 href={`/${lng}/collection/men/${subcategory.slug}/${subSubCategory.slug}`}
                                 className="block text-sm text-gray-600 hover:text-gray-800 transition-colors duration-150"
                                 suppressHydrationWarning
                               >
                                 {subSubCategory.name}
-                              </Link>
+                              </ListingLink>
                             </li>
                           ))}
                         </ul>

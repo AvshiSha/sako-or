@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import Link from 'next/link'
+import ListingLink from '@/app/components/ListingLink'
 import { 
   HeartIcon, 
   ShareIcon,
@@ -445,13 +446,12 @@ export default function ProductColorClient({
               : 'The product or color you\'re looking for doesn\'t exist or has been removed from the catalog.'
             }
           </p>
-          <Link 
+          <ListingLink
             href={`/${lng}/collection`}
-            prefetch={false}
             className="inline-flex h-[54px] items-center justify-center border border-btn-primary-bg bg-btn-primary-bg px-6 font-ploni text-[16px] font-bold text-btn-primary-text transition-colors hover:bg-sako-ink-800"
           >
             {lng === 'he' ? 'חזור לאוסף' : 'Back to Collection'}
-          </Link>
+          </ListingLink>
         </div>
       </div>
     )

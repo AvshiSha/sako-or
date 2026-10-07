@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
+import ListingLink from '@/app/components/ListingLink'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { 
   PlusIcon, 
@@ -376,7 +377,7 @@ function CampaignsPageContent() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
-                            <Link
+                            <ListingLink
                               href={`/en/collection/campaign/${campaign.slug}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -384,7 +385,7 @@ function CampaignsPageContent() {
                               title="Preview (EN)"
                             >
                               <EyeIcon className="h-5 w-5" />
-                            </Link>
+                            </ListingLink>
                             <Link
                               href={`/admin/campaigns/${campaign.slug}/merchandising`}
                               className="text-indigo-600 hover:text-indigo-900"

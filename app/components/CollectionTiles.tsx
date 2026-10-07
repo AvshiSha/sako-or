@@ -1,8 +1,8 @@
 import Image from 'next/image'
-// Not next/link, and not an oversight: these hrefs point at the listing routes,
-// where prefetching intermittently renders an empty content area instead of the
-// loading skeleton. See ListingLink - do not swap this back.
-import Link from '@/app/components/ListingLink'
+// ListingLink, not next/link, for every href below that points at a listing route:
+// prefetching those intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back. Enforced by eslint.
+import ListingLink from '@/app/components/ListingLink'
 import { getImageUrl } from '@/lib/image-urls'
 
 interface CollectionTile {
@@ -87,7 +87,7 @@ export default function CollectionTiles({ lng }: CollectionTilesProps) {
       <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
           {tiles.map((tile) => (
-            <Link
+            <ListingLink
               key={tile.id}
               href={`/${lng}${tile.href}`}
               className="group relative block overflow-hidden rounded-none"
@@ -121,7 +121,7 @@ export default function CollectionTiles({ lng }: CollectionTilesProps) {
                   </div>
                 )}
               </div>
-            </Link>
+            </ListingLink>
           ))}
         </div>
       </div>

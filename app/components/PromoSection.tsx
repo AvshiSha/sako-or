@@ -1,9 +1,9 @@
 'use client'
 
-// Not next/link, and not an oversight: these hrefs point at the listing routes,
-// where prefetching intermittently renders an empty content area instead of the
-// loading skeleton. See ListingLink - do not swap this back.
-import Link from '@/app/components/ListingLink'
+// ListingLink, not next/link, for every href below that points at a listing route:
+// prefetching those intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back. Enforced by eslint.
+import ListingLink from '@/app/components/ListingLink'
 import { track } from '@vercel/analytics'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion as fmMotion } from 'framer-motion'
@@ -233,7 +233,7 @@ export default function PromoSection({
     // custom property names, so the tokens resolve without translation.
     <div className="relative w-full bg-sako-ink-800 text-text-inverse">
       <div className="mx-auto max-w-7xl px-4">
-        <Link
+        <ListingLink
           href={href}
           // The design's banner is 26px tall. Keeping min-h-[44px] on touch on
           // purpose: this whole banner is a link, and 26px is well under the
@@ -314,7 +314,7 @@ export default function PromoSection({
               </div>
             )}
           </div>
-        </Link>
+        </ListingLink>
       </div>
     </div>
   )

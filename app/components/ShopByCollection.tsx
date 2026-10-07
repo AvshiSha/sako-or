@@ -1,10 +1,10 @@
 'use client'
 
 import Image from 'next/image'
-// Not next/link, and not an oversight: these hrefs point at the listing routes,
-// where prefetching intermittently renders an empty content area instead of the
-// loading skeleton. See ListingLink - do not swap this back.
-import Link from '@/app/components/ListingLink'
+// ListingLink, not next/link, for every href below that points at a listing route:
+// prefetching those intermittently renders an empty content area instead of the
+// loading skeleton. See ListingLink - do not swap this back. Enforced by eslint.
+import ListingLink from '@/app/components/ListingLink'
 import type { HomeCollectionBanner } from '@/lib/home-collections'
 
 /**
@@ -34,7 +34,7 @@ function CollectionBannerCard({
   const title = lng === 'he' ? banner.title.he : banner.title.en
 
   return (
-    <Link
+    <ListingLink
       href={`/${lng}${banner.href}`}
       className="group relative block overflow-hidden bg-surface-secondary"
       aria-label={title}
@@ -100,7 +100,7 @@ function CollectionBannerCard({
           </span>
         </span>
       </div>
-    </Link>
+    </ListingLink>
   )
 }
 

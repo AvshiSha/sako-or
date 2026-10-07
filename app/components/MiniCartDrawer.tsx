@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from 'react'
 import Image from 'next/image'
+// ProductLink, not next/link: the PDP now has a loading boundary, and prefetching
+// a dynamic route that has one intermittently renders an empty page instead of the
+// skeleton. See ProductLink - do not swap this back. Enforced by eslint.
 import Link from 'next/link'
+import ProductLink from '@/app/components/ProductLink'
 
 import { Sheet, SheetContent, SheetTitle } from '@/app/components/ui/sheet'
 import QuantityStepper from '@/app/components/QuantityStepper'
@@ -214,7 +218,7 @@ export default function MiniCartDrawer({ open, onClose, lng }: MiniCartDrawerPro
                         takes the inline start — the right in Hebrew, which is
                         where the frame draws it and where the cart page puts
                         it, so the drawer and the page it previews agree. */}
-                    <Link
+                    <ProductLink
                       href={productHref}
                       onClick={onClose}
                       className="relative w-[119px] shrink-0 self-stretch"
@@ -227,15 +231,15 @@ export default function MiniCartDrawer({ open, onClose, lng }: MiniCartDrawerPro
                         sizes="119px"
                         className="object-contain"
                       />
-                    </Link>
+                    </ProductLink>
 
                     {/* Text track, 438:4600. */}
                     <div className="flex min-w-0 flex-1 flex-col px-[14px] pt-[17px] pb-[18px] text-start">
-                      <Link href={productHref} onClick={onClose} className="min-w-0">
+                      <ProductLink href={productHref} onClick={onClose} className="min-w-0">
                         <h3 className="truncate font-ploni text-[16px] font-bold uppercase text-text-primary transition-opacity hover:opacity-70">
                           {productName}
                         </h3>
-                      </Link>
+                      </ProductLink>
 
                       {variantLine && (
                         <p className="mt-[2px] truncate font-ploni text-[12px] text-sako-gray-800">

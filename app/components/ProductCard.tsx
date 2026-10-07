@@ -1,7 +1,10 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
+// ProductLink, not next/link: the PDP now has a loading boundary, and prefetching
+// a dynamic route that has one intermittently renders an empty page instead of the
+// skeleton. See ProductLink - do not swap this back. Enforced by eslint.
+import ProductLink from '@/app/components/ProductLink'
 import { useState, useEffect, useCallback, useMemo, type MouseEvent } from 'react'
 import { Product, ColorVariant, productHelpers } from '@/lib/product-types'
 import { ShoppingCartIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
@@ -354,7 +357,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
     // card's own surface instead of showing the page through as a white band.
     <div className="group relative flex h-full flex-col border-b border-l border-sako-black bg-surface-secondary">
       {/* Main Product Image Section - Clickable to go to selected variant */}
-      <Link
+      <ProductLink
         href={`/${language}/product/${product.sku}/${activeVariant.colorSlug}`}
         // A new product page must open at the top. Back-to-collection is
         // restored from the snapshot the handlers below write before leaving
@@ -551,7 +554,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
             }
           </Button>
         </div>
-      </Link>
+      </ProductLink>
 
       {/* Product information — design system 438:3943 (desktop) / 438:3981 (mobile).
           The frame sets this as one row with the swatches inline on the end edge.

@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import Image from 'next/image'
+// ProductLink, not next/link: the PDP now has a loading boundary, and prefetching
+// a dynamic route that has one intermittently renders an empty page instead of the
+// skeleton. See ProductLink - do not swap this back. Enforced by eslint.
 import Link from 'next/link'
+import ProductLink from '@/app/components/ProductLink'
 import { Product, productHelpers } from '@/lib/firebase'
 import { useFavorites } from '@/app/hooks/useFavorites'
 import { useCart } from '@/app/hooks/useCart'
@@ -538,13 +542,13 @@ export default function QuickBuyDrawer({ isOpen, onClose, product, language = 'e
                 product records have no baseSku at all, which is what used to
                 put /product/undefined/ in this href. Order matters: baseSku
                 first would break the lookup wherever the two differ. */}
-            <Link
+            <ProductLink
               href={`/${language}/product/${product.sku || product.baseSku}/${activeVariant.colorSlug}`}
               onClick={onClose}
               className="font-ploni text-[11px] text-text-primary underline transition-opacity hover:opacity-70"
             >
               {isRTL ? 'פרטים נוספים' : 'More details'}
-            </Link>
+            </ProductLink>
           </div>
 
           {/* CTA, 438:4662. Label on the inline start, turned arrow

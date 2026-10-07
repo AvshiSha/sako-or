@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+// ProductLink, not next/link: prefetching the PDP (which now has a loading
+// boundary) intermittently renders an empty page. See ProductLink.
 import Link from 'next/link'
+import ProductLink from '@/app/components/ProductLink'
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -183,14 +186,14 @@ export default function ColorVariantsPage() {
                       {/* sku, not baseSku: the storefront route resolves this segment
                           with `where('sku', '==', segment)`, and most records carry no
                           baseSku - which is what pointed this at /product/undefined. */}
-                      <Link
+                      <ProductLink
                         href={`/en/product/${product.sku || product.baseSku}`}
                         target="_blank"
                         className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                       >
                         <EyeIcon className="h-4 w-4 mr-1" />
                         View
-                      </Link>
+                      </ProductLink>
                     </div>
                   </div>
                 </div>
@@ -240,13 +243,13 @@ export default function ColorVariantsPage() {
                         </div>
 
                         <div className="mt-4 flex items-center justify-between">
-                          <Link
+                          <ProductLink
                             href={`/en/product/${product.sku || product.baseSku}/${variant.colorSlug}`}
                             target="_blank"
                             className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
                           >
                             View Page
-                          </Link>
+                          </ProductLink>
                           <div className="flex items-center space-x-2">
                             <Link
                               href={`/admin/products/${product.id}/edit`}

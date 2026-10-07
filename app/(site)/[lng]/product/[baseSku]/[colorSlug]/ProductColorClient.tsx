@@ -63,6 +63,14 @@ import {
   isUndefinedFitValue,
 } from '@/lib/product-enums'
 
+import {
+  PDP_DESKTOP_GALLERY_GRID,
+  PDP_GALLERY_COL,
+  PDP_GRID,
+  PDP_INFO_COL,
+  PDP_INFO_HEAD,
+} from '@/app/components/product/productPageChrome'
+
 const SizeChart = dynamic(() => import('@/app/components/SizeChart'), { ssr: false })
 
 /** Only ever opened by a successful add, so its chunk is fetched on the click. */
@@ -597,8 +605,8 @@ export default function ProductColorClient({
             copy 57%, the reverse of the frame. In RTL the first track is the rightmost,
             which is where the frame puts the sidebar; order swaps the two at lg only,
             so mobile keeps images-then-details. */}
-        <div className="grid grid-cols-1 gap-0 lg:grid-cols-[502px_minmax(0,1fr)] lg:items-start">            {/* Product Images - Full Width */}
-            <div className="relative w-full lg:order-2">
+        <div className={PDP_GRID}>            {/* Product Images - Full Width */}
+            <div className={PDP_GALLERY_COL}>
               {/* Favorite Heart Icon - Top Left */}
               <button
                 onClick={() => handleToggleFavorite(buildFavoriteKey(baseSku, colorSlug))}
@@ -642,7 +650,7 @@ export default function ProductColorClient({
                   tiles the shots two across in squares, with the third spanning the
                   full width, and lets the whole column scroll past the sticky sidebar.
                   1px gaps, exactly as the frame spaces its figures. */}
-              <div className="hidden grid-cols-2 gap-px lg:grid">
+              <div className={PDP_DESKTOP_GALLERY_GRID}>
                 {productImages.map((src, index) => (
                   <div
                     key={`${src}-${index}`}
@@ -670,7 +678,7 @@ export default function ProductColorClient({
             {/* space-y-[30px]: the buy box, the additional-information block and the
                 specification accordions are the column's top-level sections, and the
                 gap between them is the same 30px the sections inside the buy box use. */}
-            <div className="space-y-[30px] px-4 py-4 sm:px-6 lg:sticky lg:top-28 lg:order-1 lg:self-start lg:px-[36px] lg:pb-8">
+            <div className={PDP_INFO_COL}>
               {/* Mobile Layout — promo labels on image carousel */}
               {/* Mobile buy box — design system 438:4218. The frame drives its own
                   vertical rhythm with padding (pt-12/13/32/12), so the blanket
@@ -679,7 +687,7 @@ export default function ProductColorClient({
                 {/* Heading block, 438:4219. Title, price and swatches stack to the
                     inline start; no items-end, which in RTL would throw all three to
                     the left - the frame's "end" is a left-to-right artboard's end. */}
-                <div className="flex flex-col gap-[10px] pt-[12px]">
+                <div className={PDP_INFO_HEAD}>
                   {/* Typography/Heading/Section: Ploni Black 40/30. The frame sets
                       whitespace-nowrap around a two-word Latin placeholder; real
                       Hebrew names are longer, so this is allowed to wrap. */}

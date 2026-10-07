@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback, Suspense } from 'react'
+// ProductLink, not next/link: prefetching the PDP (which now has a loading
+// boundary) intermittently renders an empty page. See ProductLink.
 import Link from 'next/link'
+import ProductLink from '@/app/components/ProductLink'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import {
@@ -429,13 +432,13 @@ function ProductsPageContent() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                               <div className="flex space-x-2">
-                                <Link
+                                <ProductLink
                                   href={`/en/product/${product.sku}/${product.colorVariants ? Object.values(product.colorVariants)[0]?.colorSlug || 'default' : 'default'}`}
                                   className={adminTheme.link}
                                   title="View"
                                 >
                                   <EyeIcon className="h-4 w-4" />
-                                </Link>
+                                </ProductLink>
                                 <Link
                                   href={`/admin/products/${product.id}/edit`}
                                   className="text-[#95816C] hover:text-[#856D55]"

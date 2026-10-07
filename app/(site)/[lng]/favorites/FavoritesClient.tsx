@@ -35,7 +35,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
+// ProductLink, not next/link: the PDP now has a loading boundary, and prefetching
+// a dynamic route that has one intermittently renders an empty page instead of the
+// skeleton. See ProductLink - do not swap this back. Enforced by eslint.
 import Link from 'next/link'
+import ProductLink from '@/app/components/ProductLink'
 import Image from 'next/image'
 
 import ProductCarousel from '@/app/components/ProductCarousel'
@@ -378,7 +382,7 @@ function FavoriteRow({
         isOutOfStock ? 'opacity-60' : ''
       }`}
     >
-      <Link
+      <ProductLink
         href={productHref}
         className="relative w-[120px] shrink-0 self-stretch lg:w-[185px]"
         aria-label={productName}
@@ -390,14 +394,14 @@ function FavoriteRow({
           sizes="(min-width: 1024px) 185px, 120px"
           className="object-contain"
         />
-      </Link>
+      </ProductLink>
 
       <div className="flex min-w-0 flex-1 flex-col px-[14px] pt-[17px] pb-[18px] text-start">
-        <Link href={productHref} className="min-w-0">
+        <ProductLink href={productHref} className="min-w-0">
           <h2 className="truncate font-ploni text-[16px] font-black uppercase text-text-primary transition-opacity hover:opacity-70 lg:text-[20px]">
             {productName}
           </h2>
-        </Link>
+        </ProductLink>
 
         {colorSlug && (
           <p className="mt-[2px] truncate font-ploni text-[12px] text-sako-gray-800">

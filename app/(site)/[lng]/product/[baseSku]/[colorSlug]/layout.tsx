@@ -263,11 +263,41 @@ export async function generateMetadata({
   }
 }
 
+/**
+ * Everything on this route that has to be settled before a single byte is
+ * flushed: does this product and colour exist, and what is the LCP image.
+ *
+ * The existence check lives here rather than in page.tsx so the route can have a
+ * loading.tsx at all. loading.tsx wraps a folder's *children*, so a layout in the
+ * same folder renders outside that boundary - which means the notFound() calls
+ * below still set a real 404, where the same calls inside the page would fire
+ * after the fallback had flushed and degrade to a soft 404 on a 200. That hazard
+ * is spelled out in the collection's own loading.tsx, and it is why this route
+ * had no loading state until now.
+ *
+ * Same pattern as collection/campaign/[slug]/layout.tsx. The product lookup is
+ * React.cache'd, so generateMetadata, this layout and the page share one
+ * Firestore read.
+ */
 export default async function ProductColorLayout({ children, params }: ProductColorLayoutProps) {
   const { lng, baseSku, colorSlug } = await params
-  
+
   // Validate language
   if (!['en', 'he'].includes(lng)) {
+    notFound()
+  }
+
+  // A missing product or colour is a 404, and it is decided here - above the
+  // loading boundary - so the status code is still ours to set.
+  const product = await getCachedProductByBaseSku(baseSku)
+  if (!product) {
+    notFound()
+  }
+
+  const activeVariant = Object.values(product.colorVariants || {}).find(
+    v => v.colorSlug === colorSlug
+  )
+  if (!activeVariant || activeVariant.isActive === false) {
     notFound()
   }
 
@@ -276,14 +306,12 @@ export default async function ProductColorLayout({ children, params }: ProductCo
   let breadcrumbStructuredData: object | null = null
   let breadcrumbs: BreadcrumbCrumb[] = []
   let lcpImageUrl: string | null = null
+  // Best-effort from here down: a failure building structured data must leave the
+  // page renderable, never 404 it. The two throws above are the only ones.
   try {
-    const product = await getCachedProductByBaseSku(baseSku)
-    if (product) {
-      const variant = Object.values(product.colorVariants || {}).find(
-        v => v.colorSlug === colorSlug
-      )
-
-      if (variant && variant.isActive !== false) {
+    {
+      const variant = activeVariant
+      {
         lcpImageUrl = getLcpImageUrl(variant)
         // Get current price (prefer variant price, fallback to product price)
         const currentPrice = variant.priceOverride || variant.salePrice || product.salePrice || product.price

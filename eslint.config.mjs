@@ -25,6 +25,25 @@ const LISTING_LINK_FILES = [
   "app/components/PromoSection.tsx",
 ];
 
+/**
+ * Files whose <Link>s all point at the product page. Same deal via ProductLink.
+ *
+ * CartClient, FavoritesClient, MiniCartDrawer and QuickBuyDrawer are NOT here:
+ * they mix product links with other destinations, so they import both and the
+ * href rule below is what keeps their product links honest.
+ */
+const PRODUCT_LINK_FILES = [
+  "app/components/ProductCard.tsx",
+  "app/components/ProductLanguageSwitcher.tsx",
+];
+
+const PRODUCT_LINK_REASON =
+  "Links into /[lng]/product/... must use ProductLink (app/components/ProductLink.tsx), " +
+  "not next/link. The product page has a loading.tsx, which makes it a dynamic route with " +
+  "a loading boundary - the same shape that made the router render a stale prefetch payload " +
+  "carrying neither the page nor the boundary, leaving the content area empty for seconds. " +
+  "This is a bug fix, not a performance setting, and it will not show up in local dev.";
+
 const LISTING_LINK_REASON =
   "Links into /[lng]/collection/... must use ListingLink (app/components/ListingLink.tsx), " +
   "not next/link. Prefetching a listing route intermittently makes the router render the " +
@@ -85,6 +104,16 @@ const eslintConfig = [
    * Scoped to .tsx under app/ and lib/ - the only places JSX lives here.
    */
   {
+    files: PRODUCT_LINK_FILES,
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { paths: [{ name: "next/link", message: PRODUCT_LINK_REASON }] },
+      ],
+    },
+  },
+
+  {
     files: ["app/**/*.tsx", "lib/**/*.tsx"],
     rules: {
       "no-restricted-syntax": [
@@ -98,6 +127,16 @@ const eslintConfig = [
           selector:
             "JSXOpeningElement[name.name='Link'] JSXAttribute[name.name='href'] TemplateElement[value.raw=/\\u002Fcollection(\\u002F|$)/]",
           message: LISTING_LINK_REASON,
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='Link'] JSXAttribute[name.name='href'] Literal[value=/\\u002Fproduct\\u002F/]",
+          message: PRODUCT_LINK_REASON,
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='Link'] JSXAttribute[name.name='href'] TemplateElement[value.raw=/\\u002Fproduct\\u002F/]",
+          message: PRODUCT_LINK_REASON,
         },
       ],
     },

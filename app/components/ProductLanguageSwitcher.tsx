@@ -1,6 +1,9 @@
 'use client'
 
-import Link from 'next/link'
+// ProductLink, not next/link: the PDP now has a loading boundary, and prefetching
+// a dynamic route that has one intermittently renders an empty page instead of the
+// skeleton. See ProductLink - do not swap this back. Enforced by eslint.
+import ProductLink from '@/app/components/ProductLink'
 import { useSearchParams } from 'next/navigation'
 import { languageMetadata } from '../../i18n/settings'
 import { Suspense } from 'react'
@@ -20,7 +23,7 @@ function ProductLanguageSwitcherInner({ currentLanguage, sku }: ProductLanguageS
   return (
     <div className="flex space-x-2">
       {Object.entries(languageMetadata).map(([code, meta]) => (
-        <Link
+        <ProductLink
           key={code}
           href={`/${code}/product/${sku}${queryParams}`}
           className={`px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
@@ -31,7 +34,7 @@ function ProductLanguageSwitcherInner({ currentLanguage, sku }: ProductLanguageS
           title={`${meta.name} - ${meta.nativeName}`}
         >
           {code.toUpperCase()}
-        </Link>
+        </ProductLink>
       ))}
     </div>
   )
@@ -42,7 +45,7 @@ export default function ProductLanguageSwitcher({ currentLanguage, sku }: Produc
     <Suspense fallback={
       <div className="flex space-x-2">
         {Object.entries(languageMetadata).map(([code, meta]) => (
-          <Link
+          <ProductLink
             key={code}
             href={`/${code}/product/${sku}`}
             className={`px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
@@ -53,7 +56,7 @@ export default function ProductLanguageSwitcher({ currentLanguage, sku }: Produc
             title={`${meta.name} - ${meta.nativeName}`}
           >
             {code.toUpperCase()}
-          </Link>
+          </ProductLink>
         ))}
       </div>
     }>

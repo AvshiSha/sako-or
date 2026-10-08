@@ -146,6 +146,100 @@ of these, rather than trusting that the classes went where they were sent.
 
 ---
 
+## 4c. The auth provider must never be an ancestor of the page
+
+`ClientAuthProvider` used to render two different components at the same position:
+`GuestAuthProvider` until the Firebase chunk arrived, then `AuthenticatedAppShell`.
+React reconciles by position **and type**, so that swap unmounted and remounted
+everything below it — every page, roughly 1–3s after every document load.
+
+Measured consequences: the favourites skeleton visibly reappeared at **+1324ms**,
+all page client state was discarded, and a guest part-way through the checkout
+form would have lost it. The A/B that identified it suppressed the idle upgrade:
+1 skeleton re-appearance normally, 0 with the upgrade suppressed.
+
+The fix ("Option C") keeps **one stable provider chain** mounted for the life of
+the document and mounts Firebase **beside** the page as a null-rendering sibling
+that publishes its value upward:
+
+```tsx
+const value = firebaseValue ?? guestValue
+<AuthContext.Provider value={value}>
+  {bridge}              {/* sibling — may mount/unmount freely */}
+  <FacebookPixelInit />
+  <AuthTransitionListener>      {/* fixed chain, never replaced */}
+    <ProfileCompletionGate>
+      <FavoritesProvider>{children}</FavoritesProvider>
+```
+
+React only unmounts a subtree when the chain of *ancestors* above it changes type.
+Siblings are free to come and go. So `AuthProvider` does not need to be an ancestor
+of `children` at all — it only needs to produce a value.
+
+**What is deliberately unchanged:** `AuthContext.tsx`, and *when* Firebase loads.
+All three triggers (auth routes, auth-intent clicks, the idle upgrade) are exactly
+as they were, so a returning customer's session is restored by the same code on the
+same schedule — no cold-start window, no migration, and no auth "hint" to get
+wrong. `onAuthStateChanged` remains the only authority on who is signed in.
+
+### The render loop this shape can create — read before editing either file
+
+`AuthContext.tsx` builds its context value as a plain object literal (no
+`useMemo`), so **every** render of `AuthProvider` yields a new identity. Relaying
+that object straight up deadlocks the app:
+
+```
+relay effect sees a new `value` -> onValue -> setFirebaseValue ->
+ClientAuthProvider re-renders -> recreates the <Bridge> element ->
+AuthProvider re-renders -> new `value` identity -> relay effect again
+```
+
+It never throws and never warns. React simply never goes idle, so nothing else can
+commit. The symptom was **every client-side navigation in the storefront stalling**:
+the router issued the RSC request for the new route and then never applied it, so
+links looked dead while the URL stayed put. Product, cart and `/about` links were
+all confirmed STALLED with the RSC request on the wire, while the same routes
+returned 200 to `curl` — which is what separated "client router wedged" from
+"server broken". A real mouse event reported `defaultPrevented: true`, proving
+`next/link`'s handler ran and it was the commit, not the click, that was lost.
+
+Two independent guards, kept together so a later edit to one cannot silently
+reintroduce the loop:
+
+1. **`FirebaseAuthBridge`** — the published object is memoised on the fields that
+   actually describe the session (`user`, `loading`, `isAdmin`,
+   `adminCheckPending`, `profileSyncedUid`). `signIn`/`signUp`/`logout` are stable
+   `useCallback` delegates that read a ref, so they contribute no identity churn
+   and cannot go stale.
+2. **`ClientAuthProvider`** — the `<Bridge>` element is memoised, so a
+   `setFirebaseValue` cannot re-render that subtree at all.
+
+Wrapping `AuthContext.tsx`'s value in `useMemo` would also break the loop, but
+that file owns session restoration for existing customers and this bug does not
+require touching it.
+
+### Verified after the fix
+
+```
+nav             product / cart / about links       all OK (were all STALLED)
+favourites      remounts=0  skeletonReappearances=0  counter="3 פריטים"
+after refresh   remounts=0  skeletonReappearances=0  guest favourites intact
+cart            remounts=0  totals=["1,190.00","1,190.00"]
+checkout        remounts=0  form values survive the chunk landing
+collection→PDP  landed=/he/product/5104-0021/black  back=collection  remounts=0
+tap feedback    median 92ms, worst 101ms, exactly 1 card, 0 stranded states
+CLS desktop     /he 0.0046 · collection 0.0005 · 404 0.0004 · about/news 0.0000
+CLS mobile      0.0000 across all five routes
+build + tsc     clean · eslint link rules 0 findings
+```
+
+**Not verifiable locally** — needs a real test account on a Preview deployment:
+sign-in, sign-out, refresh while signed in, favourites synchronisation between
+guest and account, and profile completion. The guest paths above are covered; the
+authenticated ones are not.
+
+---
+
 ## 5. Remaining audit findings
 
 Priority order agreed with the product owner. Each line records the measurement

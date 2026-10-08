@@ -35,6 +35,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import { useParams } from 'next/navigation'
+import SavedLineRowsSkeleton from '@/app/components/SavedLineRowsSkeleton'
 // ProductLink, not next/link: the PDP now has a loading boundary, and prefetching
 // a dynamic route that has one intermittently renders an empty page instead of the
 // skeleton. See ProductLink - do not swap this back. Enforced by eslint.
@@ -141,6 +142,29 @@ export default function FavoritesClient({ recommendations = [] }: FavoritesClien
   // Prevents the auto-cleanup below from firing again for a key it already removed.
   const cleanedFavoriteKeysRef = useRef<Set<string>>(new Set())
 
+  /**
+   * toggleFavorite is held in a ref rather than listed as a dependency below.
+   *
+   * Its own deps are [mode, user], and `user` gets a new identity when Firebase
+   * auth finishes initialising - about a second after first paint. That recreated
+   * the callback, re-ran the loader, and put `setLoading(true)` back on the
+   * screen: the empty favourites page rendered skeleton, then the empty state,
+   * then the skeleton again, then the empty state. Measured at 408ms, 1355ms and
+   * 1490ms. Only the cleanup branch calls it, and only for keys that are already
+   * gone, so it never needs to be the reason this effect re-runs.
+   */
+  const toggleFavoriteRef = useRef(toggleFavorite)
+  useEffect(() => {
+    toggleFavoriteRef.current = toggleFavorite
+  }, [toggleFavorite])
+
+  /**
+   * The identity of `favoriteKeys` is not stable across context re-renders, and
+   * what this loader actually depends on is the set of keys, not the array that
+   * carries them.
+   */
+  const favoriteKeysSignature = (favoriteKeys ?? []).join('|')
+
   useEffect(() => {
     setIsClient(true)
   }, [])
@@ -163,32 +187,43 @@ export default function FavoritesClient({ recommendations = [] }: FavoritesClien
           return
         }
 
-        // One fetch per baseSku, however many colours of it are favourited.
-        const productCache = new Map<string, Product | null>()
-        const resolved: FavoriteItem[] = []
-        const inactiveFavoriteKeys: string[] = []
+        // One fetch per baseSku, however many colours of it are favourited - and
+        // all of them at once. This loop used to await each product in turn, so a
+        // list of ten saved pairs cost ten serial round trips from the browser
+        // before anything rendered. They do not depend on each other.
+        const parsed = (favoriteKeys ?? [])
+          .map(favoriteKey => ({ favoriteKey, ...parseFavoriteKey(favoriteKey) }))
+          .filter(entry => entry.baseSku)
+        const uniqueBaseSkus = Array.from(new Set(parsed.map(entry => entry.baseSku)))
 
-        for (const favoriteKey of favoriteKeys) {
-          if (cancelled) return
-
-          const { baseSku, colorSlug } = parseFavoriteKey(favoriteKey)
-          if (!baseSku) continue
-
-          let product = productCache.get(baseSku)
-          if (product === undefined) {
+        const fetched = await Promise.all(
+          uniqueBaseSkus.map(async baseSku => {
             try {
-              product = await productService.getProductByBaseSku(baseSku)
+              let product = await productService.getProductByBaseSku(baseSku)
               if (!product) product = await productService.getProductBySku(baseSku)
               if (!product) {
+                // Last resort, and the expensive one - kept for parity with the
+                // previous behaviour, but now it can only ever run for a baseSku
+                // the two targeted lookups both missed.
                 const allProducts = await productService.getAllProducts()
                 product = allProducts.find(p => p.baseSku === baseSku) || null
               }
+              return [baseSku, product] as const
             } catch (error) {
               console.error(`Error fetching product ${baseSku}:`, error)
-              product = null
+              return [baseSku, null] as const
             }
-            productCache.set(baseSku, product)
-          }
+          })
+        )
+
+        if (cancelled) return
+
+        const productCache = new Map<string, Product | null>(fetched)
+        const resolved: FavoriteItem[] = []
+        const inactiveFavoriteKeys: string[] = []
+
+        for (const { favoriteKey, baseSku, colorSlug } of parsed) {
+          const product = productCache.get(baseSku) ?? null
 
           if (product && isProductStorefrontActive(product)) {
             resolved.push({
@@ -215,7 +250,7 @@ export default function FavoritesClient({ recommendations = [] }: FavoritesClien
           await Promise.all(
             toRemove.map(async key => {
               try {
-                await toggleFavorite(key)
+                await toggleFavoriteRef.current(key)
               } catch {
                 // Best effort — the list is already filtered either way.
               }
@@ -234,7 +269,10 @@ export default function FavoritesClient({ recommendations = [] }: FavoritesClien
     return () => {
       cancelled = true
     }
-  }, [isClient, favoritesLoading, favoriteKeys, toggleFavorite])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see the refs above:
+    // favoriteKeysSignature stands in for favoriteKeys, and toggleFavorite is held
+    // in a ref so an auth-driven identity change cannot restart the loader.
+  }, [isClient, favoritesLoading, favoriteKeysSignature])
 
   const formatMoney = (value: number) =>
     `₪${value.toLocaleString(isRTL ? 'he-IL' : 'en-US', {
@@ -461,31 +499,24 @@ function FavoriteRow({
  */
 export function FavoritesSkeleton({ title }: { title?: string }) {
   return (
-    <div className="min-h-screen bg-surface-secondary">
+    <div
+      className="min-h-screen bg-surface-secondary"
+      role="status"
+      aria-busy="true"
+      aria-label={title ?? 'Loading favorites'}
+    >
       <div className="px-[16px] pt-[24px] pb-[24px] lg:px-[30px] lg:pt-[30px] lg:pb-[30px]">
         {title ? (
           <h1 className="font-ploni text-[40px] font-black leading-[40px] text-start text-text-primary lg:text-[60px] lg:leading-[50px]">
             {title}
           </h1>
         ) : (
-          <div className="h-[50px] w-[240px] animate-pulse bg-sako-gray-300" />
+          <div className="sako-skeleton h-[50px] w-[240px]" />
         )}
       </div>
       <div className="border-t border-sako-black">
         <div className="lg:max-w-[640px]">
-          {[0, 1, 2].map(row => (
-            <div
-              key={row}
-              className="flex min-h-[150px] animate-pulse border-b border-sako-black lg:min-h-[178px]"
-            >
-              <div className="w-[120px] shrink-0 self-stretch bg-sako-gray-300 lg:w-[185px]" />
-              <div className="flex flex-1 flex-col gap-[10px] px-[14px] pt-[17px]">
-                <div className="h-[20px] w-[200px] bg-sako-gray-300" />
-                <div className="h-[12px] w-[90px] bg-sako-gray-300" />
-                <div className="h-[16px] w-[70px] bg-sako-gray-300" />
-              </div>
-            </div>
-          ))}
+          <SavedLineRowsSkeleton rows={3} />
         </div>
       </div>
     </div>

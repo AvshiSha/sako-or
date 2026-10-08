@@ -153,6 +153,43 @@ that justifies it.
 
 ### Next up
 
+- [ ] **`ClientAuthProvider` remounts the entire app subtree ~1–3s after every
+      page load.** The highest-value item on this list, and an architectural
+      change rather than a loading one — flagged rather than fixed.
+
+      `ClientAuthProvider` renders two different trees at the same position:
+
+      ```
+      !AuthShell → <GuestAuthProvider><FavoritesProvider>{children}</FavoritesProvider></GuestAuthProvider>
+       AuthShell → <AuthShell>{children}</AuthShell>      // mounts its OWN FavoritesProvider
+      ```
+
+      When the deferred `import('AuthenticatedAppShell')` resolves — on
+      `requestIdleCallback`, or its 3s timeout — the component type at that
+      position changes, so React unmounts the whole subtree and mounts a fresh
+      one. Every page's client state is discarded and every effect re-runs.
+
+      Proved by A/B on the favourites page, `requestIdleCallback` stubbed vs not:
+      1 skeleton re-appearance (at +1324ms, ~145ms long) against 0. That flash is
+      `FavoritesProvider` remounting and resetting `loading` to true — it is not
+      fixable from inside Favorites, which is why the flicker survived the
+      dependency fixes above.
+
+      Two consequences worth chasing together:
+      - It is the most plausible cause of the open document-level CLS below. A
+        full subtree remount changes the document height for a frame, is
+        attributed to the root, and fires on `requestIdleCallback` timing — which
+        matches the run-to-run variance exactly.
+      - It is almost certainly also why the collection grid's server-rendered
+        markup is discarded (§4 notes the SSR grid being thrown away at
+        hydration).
+
+      The fix is to stop changing the component type: hoist a single
+      `FavoritesProvider` so both branches share one instance, or render one auth
+      shell whose internals swap rather than the shell itself. Both touch the
+      provider tree above every page including checkout, so this wants its own
+      change with its own verification.
+
 - [ ] **A document-level layout shift on every route, source `HTML.light`.**
       Not from any of the work above — it reproduces identically on pages none of
       it touched (`/he/about`, `/he/news`) and varies run to run: `/he/about`
@@ -160,9 +197,10 @@ that justifies it.
       `/he/collection/women/shoes` 0.1102 then 0.0105, the soft 404 0.0961 on
       desktop against 0.0000 on mobile. Mobile is consistently clean and desktop
       is not, which is the sharpest clue so far. The high end is past
-      Google's 0.1 threshold, so it is worth finding. Suspects, untested: the
+      Google's 0.1 threshold, so it is worth finding. Leading suspect, now that it is identified: the
+      `ClientAuthProvider` subtree remount above. Other candidates, untested: the
       promo band, the sticky header's pull-up, the deferred VEE accessibility
-      widget, or a font swap. Needs its own investigation — per-section skeleton
+      widget, a scrollbar appearing, or a font swap. Needs its own investigation — per-section skeleton
       work cannot reach it.
 - [ ] **Cardcom end-to-end, in a safe environment.** Everything up to the gateway
       is verified (see §7); what is not is listed there. Run it against sandbox
@@ -172,6 +210,21 @@ that justifies it.
 ### Done
 
 - [x] **Collection / Campaign** — the reference implementation; see §1–§3.
+- [x] **Favorites** — guest persistence verified (survives refresh, navigation
+      *and* a removal: 6 saved → remove one → refresh → 5, storage agreeing at
+      every step; the `loading` guard in `FavoritesProvider` that fixes the old
+      "favorites vanish on refresh" bug is doing its job). Product lookups
+      parallelised: the loader awaited `getProductByBaseSku` once per saved
+      product in sequence, so ten saved pairs cost ten serial round trips from
+      the browser; they are one `Promise.all` now. `toggleFavorite` moved into a
+      ref and the effect keyed on a joined string instead of the array identity,
+      so an auth-driven callback identity change cannot restart the loader. Row
+      skeleton extracted to `SavedLineRowsSkeleton`, shared with the cart, which
+      had a byte-identical copy. Both upgraded from `animate-pulse
+      bg-sako-gray-300` to `sako-skeleton` — the last two places on the storefront
+      still using the pre-design-system treatment — and both gained
+      `role="status"` / `aria-busy` / `aria-label`. Row reservation 150 against a
+      real 153 on mobile, 178 against 178 on desktop; CLS 0.0000.
 - [x] **Blog article** `/news/[slug]` — `fetchRelatedProductsForArticle` moved
       behind an in-page `<Suspense>`; the article still renders in the shell, so
       the indexable content and the LCP image are untouched. TTFB **0.837s →

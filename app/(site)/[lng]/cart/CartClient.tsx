@@ -23,6 +23,7 @@
 
 import { useState, useEffect, useRef, useTransition } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import SavedLineRowsSkeleton from '@/app/components/SavedLineRowsSkeleton'
 // ProductLink, not next/link: the PDP now has a loading boundary, and prefetching
 // a dynamic route that has one intermittently renders an empty page instead of the
 // skeleton. See ProductLink - do not swap this back. Enforced by eslint.
@@ -437,7 +438,12 @@ export default function CartClient({ recommendations = [] }: CartClientProps) {
  */
 export function CartSkeleton({ title }: { title?: string }) {
   return (
-    <div className="min-h-screen bg-surface-secondary">
+    <div
+      className="min-h-screen bg-surface-secondary"
+      role="status"
+      aria-busy="true"
+      aria-label={title ?? 'Loading cart'}
+    >
       <div className={CART_GRID}>
         {/* No lg:border-e here any more — the divider is drawn by CART_GRID so its
             height follows the row rather than this column's content. */}
@@ -448,26 +454,14 @@ export function CartSkeleton({ title }: { title?: string }) {
                 {title}
               </h1>
             ) : (
-              <div className="h-[50px] w-[240px] animate-pulse bg-sako-gray-300" />
+              <div className="sako-skeleton h-[50px] w-[240px]" />
             )}
           </div>
           <div className="border-t border-sako-black">
-            {[0, 1].map(row => (
-              <div
-                key={row}
-                className="flex min-h-[150px] animate-pulse border-b border-sako-black lg:min-h-[178px]"
-              >
-                <div className="w-[120px] shrink-0 self-stretch bg-sako-gray-300 lg:w-[185px]" />
-                <div className="flex flex-1 flex-col gap-[10px] px-[14px] pt-[17px]">
-                  <div className="h-[20px] w-[200px] bg-sako-gray-300" />
-                  <div className="h-[12px] w-[90px] bg-sako-gray-300" />
-                  <div className="h-[16px] w-[70px] bg-sako-gray-300" />
-                </div>
-              </div>
-            ))}
+            <SavedLineRowsSkeleton rows={2} />
           </div>
         </section>
-        <aside className="min-h-[400px] animate-pulse bg-sako-gray-400" />
+        <aside className="sako-skeleton min-h-[400px]" />
       </div>
     </div>
   )

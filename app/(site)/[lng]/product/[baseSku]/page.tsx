@@ -7,6 +7,41 @@ interface ProductRedirectPageProps {
     lng: string
     baseSku: string
   }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+/**
+ * Rebuilds the incoming query string so the redirect below can carry it.
+ *
+ * This hop happens on the server, before any script on the page runs, so
+ * anything dropped here is not merely moved - it never reaches the browser at
+ * all. `fbclid` is the one that matters most: fbevents.js reads it off the
+ * landing URL to set the `_fbc` cookie, which is what lets Meta join an ad
+ * click to the session that follows. Measured 2026-10-08, this redirect
+ * answered `/he/product/5124-5317?fbclid=…&utm_source=facebook` with a bare
+ * `location: /he/product/5124-5317/black`, so every Meta ad pointed at a base
+ * SKU lost its click id and all of its utm_* tagging. The middleware's own
+ * locale redirect already preserves the query string; this one did not.
+ *
+ * Repeated keys are appended rather than overwritten, because `searchParams`
+ * hands them over as an array and a Meta URL can legitimately carry the same
+ * key twice.
+ */
+function buildQuerySuffix(
+  searchParams: Record<string, string | string[] | undefined>
+): string {
+  const query = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    if (Array.isArray(value)) {
+      for (const entry of value) query.append(key, entry)
+    } else if (value !== undefined) {
+      query.append(key, value)
+    }
+  }
+
+  const serialized = query.toString()
+  return serialized ? `?${serialized}` : ''
 }
 
 /**
@@ -29,7 +64,10 @@ interface ProductRedirectPageProps {
  * redirect would be cached by browsers and could strand a bookmark on a
  * colour that has since been discontinued.
  */
-export default async function ProductRedirectPage({ params }: ProductRedirectPageProps) {
+export default async function ProductRedirectPage({
+  params,
+  searchParams,
+}: ProductRedirectPageProps) {
   const { lng, baseSku } = await params
 
   if (!['en', 'he'].includes(lng)) {
@@ -46,5 +84,10 @@ export default async function ProductRedirectPage({ params }: ProductRedirectPag
     notFound()
   }
 
-  redirect(`/${lng}/product/${baseSku}/${primaryColorSlug}`)
+  // Awaited after the lookups above so a 404 still costs nothing extra, and so
+  // the three notFound() paths are reached on exactly the conditions they were
+  // before.
+  const querySuffix = buildQuerySuffix(await searchParams)
+
+  redirect(`/${lng}/product/${baseSku}/${primaryColorSlug}${querySuffix}`)
 }

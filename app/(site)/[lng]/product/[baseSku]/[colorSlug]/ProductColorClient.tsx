@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
@@ -309,12 +309,44 @@ export default function ProductColorClient({
     }
   }, [baseSku, colorSlug, previewMode])
 
+  /**
+   * The variant whose product view has most recently been reported.
+   *
+   * One page view must produce exactly one `view_item` / `ViewContent`, and the
+   * effect below cannot promise that on its own because it keys off `product`
+   * and `currentVariant` *objects*. The realtime listener above calls
+   * `setProduct`/`setCurrentVariant` with freshly built values on every
+   * snapshot - including the initial one Firestore delivers the moment the
+   * listener attaches, whose data is identical to the server-rendered props.
+   * New identity, same data, so the effect re-ran and reported the same view a
+   * second time. Measured 2026-10-08: every PDP landing sent two ViewContent
+   * events, which doubles the figure Meta reports and trains ad optimisation on
+   * twice the real view volume.
+   *
+   * Holding only the *last* key, rather than a set of everything seen, is what
+   * keeps real navigation honest: black -> red -> black is three genuine views
+   * and reports three times, while any number of snapshots for the colour
+   * currently on screen reports once.
+   */
+  const lastReportedViewKeyRef = useRef<string | null>(null)
+
   // Defer analytics until after LCP-critical content paints
   useEffect(() => {
     if (previewMode) return
     if (!product || !currentVariant) return
 
+    const viewKey = `${baseSku}-${colorSlug}`
+
     const fireAnalytics = () => {
+      // Checked here and not at the top of the effect, deliberately. Under
+      // Strict Mode the effect runs, is cleaned up, then runs again; a guard
+      // above would mark the view as reported on the first pass, have its idle
+      // callback cancelled by that cleanup, and then skip the second pass -
+      // suppressing the event entirely rather than de-duplicating it. Claiming
+      // the key at the moment the event is actually sent cannot do that.
+      if (lastReportedViewKeyRef.current === viewKey) return
+      lastReportedViewKeyRef.current = viewKey
+
       try {
         logEvent(getClientAnalytics(), 'view_item', {
           currency: product.currency || 'ILS',
@@ -350,15 +382,25 @@ export default function ProductColorClient({
       }
     }
 
-    const schedule =
-      typeof window.requestIdleCallback === 'function'
-        ? window.requestIdleCallback
-        : (cb: () => void) => window.setTimeout(cb, 1500)
+    // Cancelled through the same API it was scheduled with. The fallback branch
+    // used to be scheduled with setTimeout but only ever cancelled through
+    // cancelIdleCallback, so on a browser without requestIdleCallback nothing
+    // was cancelled at all: a pending callback from the previous colour could
+    // still fire after the next one had been reported, and with the de-dup
+    // above keyed on the last reported view that would report the old colour a
+    // second time.
+    // Both are plain numeric handles on `window` - `window.setTimeout` returns a
+    // number, not Node's Timeout - so one variable covers either branch.
+    const hasIdleCallback = typeof window.requestIdleCallback === 'function'
+    const handle: number = hasIdleCallback
+      ? window.requestIdleCallback(fireAnalytics)
+      : window.setTimeout(fireAnalytics, 1500)
 
-    const idleId = schedule(fireAnalytics)
     return () => {
-      if (typeof window.cancelIdleCallback === 'function') {
-        window.cancelIdleCallback(idleId as number)
+      if (hasIdleCallback) {
+        window.cancelIdleCallback(handle)
+      } else {
+        window.clearTimeout(handle)
       }
     }
   }, [product, currentVariant, baseSku, colorSlug, lng, previewMode])

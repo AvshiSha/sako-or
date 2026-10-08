@@ -15,7 +15,9 @@
       "mcp__plugin_figma_figma__get_design_context",
       "mcp__plugin_figma_figma__get_metadata",
       "Bash(curl -s \"http://127.0.0.1:3002/he\" -o h.html)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Read(//c/Users/user/.claude/projects/c--Users-user-sako-or/memory/**)",
+      "Bash(python -)"
     ]
   }
 }

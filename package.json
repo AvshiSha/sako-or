@@ -20,7 +20,8 @@
     "fix-email": "tsx scripts/fix-user-email.ts",
     "resend-order-email": "tsx scripts/resend-order-email.ts",
     "review-link": "tsx --conditions=react-server scripts/review-link.ts",
-    "hfd:inspect": "tsx scripts/hfd-webhook-inspect.ts"
+    "hfd:inspect": "tsx scripts/hfd-webhook-inspect.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -106,6 +107,7 @@
   ],
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.64.0",
     "@react-email/components": "0.5.5",
     "@react-email/preview-server": "^4.2.12",
     "@react-email/render": "^1.3.1",

@@ -190,18 +190,6 @@ that justifies it.
       provider tree above every page including checkout, so this wants its own
       change with its own verification.
 
-- [ ] **A document-level layout shift on every route, source `HTML.light`.**
-      Not from any of the work above — it reproduces identically on pages none of
-      it touched (`/he/about`, `/he/news`) and varies run to run: `/he/about`
-      measured 0.0105 on one pass and 0.0000 on the next,
-      `/he/collection/women/shoes` 0.1102 then 0.0105, the soft 404 0.0961 on
-      desktop against 0.0000 on mobile. Mobile is consistently clean and desktop
-      is not, which is the sharpest clue so far. The high end is past
-      Google's 0.1 threshold, so it is worth finding. Leading suspect, now that it is identified: the
-      `ClientAuthProvider` subtree remount above. Other candidates, untested: the
-      promo band, the sticky header's pull-up, the deferred VEE accessibility
-      widget, a scrollbar appearing, or a font swap. Needs its own investigation — per-section skeleton
-      work cannot reach it.
 - [ ] **Cardcom end-to-end, in a safe environment.** Everything up to the gateway
       is verified (see §7); what is not is listed there. Run it against sandbox
       credentials before a production release.
@@ -210,6 +198,34 @@ that justifies it.
 ### Done
 
 - [x] **Collection / Campaign** — the reference implementation; see §1–§3.
+- [x] **The document-level CLS, solved: it was the scrollbar.** `html {
+      scrollbar-gutter: stable }`. Every page starts one viewport tall, content
+      streams in, the document outgrows the viewport, the vertical scrollbar
+      appears and narrows the root element. Captured from the shift entry itself
+      on /he/about: `HTML prev:[0,0,1425,99] -> cur:[0,0,1425,900]`, with
+      `clientWidth 1440 -> 1425` and `scrollHeight 900 -> 2883` in the same frame.
+      Desktop only, because mobile uses overlay scrollbars - the asymmetry that
+      identified it.
+
+      It was **not** the `ClientAuthProvider` remount, which had been the leading
+      suspect. A/B with `requestIdleCallback` stubbed to suppress the swap left
+      the numbers unchanged (0.0105 / 0.0961 / 0.1102 either way), so the
+      hypothesis was tested and rejected before any auth code was touched.
+
+      Desktop CLS, 3 runs per route, before -> after:
+
+      | route | before | after |
+      | --- | --- | --- |
+      | `/he` | 0.0046 / 0.0105 / 0.0000 | 0.0046 / 0.0000 / 0.0000 |
+      | `/he/about` | 0.0105 / 0.0000 / 0.0653 | 0.0000 / 0.0000 / 0.0000 |
+      | `/he/news` | 0.0105 / 0.0000 / 0.0000 | 0.0000 / 0.0000 / 0.0000 |
+      | `/he/collection/women/shoes` | 0.0000 / 0.1102 / 0.0000 | 0.0000 / 0.0000 / 0.0000 |
+      | soft 404 | 0.0000 / 0.0961 / 0.0961 | 0.0000 / 0.0003 / 0.0004 |
+
+      Mobile unchanged at 0.0000 throughout. No horizontal overflow at 390, 768,
+      1024, 1440 or 1920, and the header and hero still measure full-bleed at
+      every one. The residual 0.0046 on `/he` is a different, much smaller shift
+      in the footer area at ~7s, not this one.
 - [x] **Favorites** — guest persistence verified (survives refresh, navigation
       *and* a removal: 6 saved → remove one → refresh → 5, storage agreeing at
       every step; the `loading` guard in `FavoritesProvider` that fixes the old

@@ -189,6 +189,38 @@
   --spacing-3xl: 72px;
 }
 
+/* Reserve the scrollbar's gutter whether or not a scrollbar is showing.
+ *
+ * This is the storefront's only above-threshold layout shift, and it is not a
+ * component's fault. Every page starts one viewport tall, content streams in,
+ * the document outgrows the viewport and the vertical scrollbar appears - which
+ * narrows the root element and shifts the whole page. Captured from the
+ * layout-shift entry's own geometry on /he/about:
+ *
+ *   HTML  prev:[0,0,1425,99] -> cur:[0,0,1425,900]
+ *         clientWidth  1440 -> 1425   (a 15px scrollbar arrives)
+ *         scrollHeight  900 -> 2883   (content lands)
+ *
+ * Measured 0.0105 on most routes and 0.0961-0.1102 on the taller ones, the top
+ * of that range being past Google's 0.1 "good" threshold. The magnitude tracks
+ * final page height, which is just CLS's distance fraction - it is one shift,
+ * not several. Desktop only, because mobile uses overlay scrollbars that take no
+ * width; that asymmetry is what identified it.
+ *
+ * Deliberately `scrollbar-gutter` rather than `overflow-y: scroll`: the gutter
+ * keyword reserves the space without forcing a visible track on short pages, and
+ * it follows writing direction, so the RTL storefront reserves the correct edge
+ * with no mirrored rule.
+ *
+ * Nothing in the app lays out against `100vw` - every occurrence is a next/image
+ * `sizes` hint, which is a resource hint and not a width - so reserving the
+ * gutter cannot push a full-bleed section past the viewport. The one layout use,
+ * COLLECTION_GRID_CRITICAL_CSS's `calc((100vw - 20px) * ...)`, already allows for
+ * a scrollbar and keeps under-estimating, which is the direction it wants. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

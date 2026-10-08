@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import TurnstileScript from '@/app/components/TurnstileScript'
 import Breadcrumbs from '@/app/components/Breadcrumbs'
 import { Field } from '@/app/components/ui/field'
+import { FIELD_VALUE_TEXT } from '@/app/components/ui/input'
 import { cn } from '@/lib/utils'
 import {
   MEASURE,
@@ -442,7 +443,13 @@ export default function ContactPage() {
                   rows={6}
                   minLength={2}
                   maxLength={2000}
-                  className="flex-1 resize-y border-0 bg-transparent p-0 font-ploni text-[14px] leading-[22px] text-text-primary placeholder:text-text-secondary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  // One flat string, and FIELD_VALUE_TEXT ahead of leading-[22px]
+                  // on purpose — this is the iOS zoom floor (a textarea is
+                  // focusable and zooms like an input), but tailwind-merge counts
+                  // font-size as conflicting with line-height, so running it
+                  // through cn() with the size last silently dropped the 22px
+                  // leading and grew the cell 5px.
+                  className={`flex-1 resize-y border-0 bg-transparent p-0 font-ploni ${FIELD_VALUE_TEXT} leading-[22px] text-text-primary placeholder:text-text-secondary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50`}
                 />
               </Field>
 

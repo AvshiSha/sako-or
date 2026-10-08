@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { cn } from '@/lib/utils'
+import { FIELD_VALUE_TEXT } from './input'
 
 interface IsraelPhoneInputProps {
   value: string // Local number (8-9 digits) or with 0 prefix (0XXXXXXXXX), without +972
@@ -66,8 +67,8 @@ export function IsraelPhoneInput({
       disabled={disabled}
       className={cn(
         isSako
-          ? 'w-full flex-1 border-0 bg-transparent p-0 font-ploni text-[14px] leading-none text-text-primary outline-none placeholder:text-text-secondary disabled:cursor-not-allowed disabled:text-sako-gray-500 disabled:placeholder:text-sako-gray-500'
-          : 'flex-1 bg-transparent px-3 py-2 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed'
+          ? `w-full flex-1 border-0 bg-transparent p-0 font-ploni ${FIELD_VALUE_TEXT} leading-none text-text-primary outline-none placeholder:text-text-secondary disabled:cursor-not-allowed disabled:text-sako-gray-500 disabled:placeholder:text-sako-gray-500`
+          : `flex-1 bg-transparent px-3 py-2 ${FIELD_VALUE_TEXT} text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed`
       )}
       style={
         isSako

@@ -3,6 +3,32 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * The field value's type size — and the one place the iOS zoom floor is handled.
+ *
+ * 14px is the design system's value (checkout 438:2752). iOS Safari zooms the
+ * whole page in when a control it is focusing computes to under 16px, so the
+ * designed size is also the bug: tapping any field shifted the viewport and left
+ * the customer pinching back out mid-form.
+ *
+ * Raising the computed size is the only fix that keeps pinch-to-zoom working.
+ * `maximum-scale=1` / `user-scalable=no` on the viewport meta would also stop it
+ * and is deliberately NOT used — it takes zoom away from everyone, on every page,
+ * to fix four forms.
+ *
+ * `pointer-coarse`, not a width breakpoint: the zoom is a touch-device behaviour
+ * rather than a narrow-window one. This keeps the designed 14px on every desktop
+ * at every width — including a window dragged to phone width, where `max-sm:`
+ * would have changed type the design never meant to change — and still covers the
+ * iPad, which is 768px wide and would sit on the desktop side of any `md:` line.
+ *
+ * The 2px costs no layout. The value line is `flex-1` inside <Field>'s fixed 54px
+ * cell, so its box is 33px at either size and only the glyphs grow; the contact
+ * form's textarea keeps its explicit `leading-[22px]`. Measured, not assumed —
+ * both cells come back identical at 390px wide.
+ */
+export const FIELD_VALUE_TEXT = "text-[14px] pointer-coarse:text-[16px]"
+
 const inputVariants = cva(
   "w-full ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
   {
@@ -19,7 +45,7 @@ const inputVariants = cva(
         // disabled:opacity-100 cancels the base 50% fade — unavailable is a flat
         // grey here, as it is on the CTA, not a ghost of the enabled control.
         sako:
-          "flex-1 border-0 bg-transparent p-0 font-ploni text-[14px] leading-none text-text-primary placeholder:text-text-secondary disabled:opacity-100 disabled:text-sako-gray-500 disabled:placeholder:text-sako-gray-500",
+          `flex-1 border-0 bg-transparent p-0 font-ploni ${FIELD_VALUE_TEXT} leading-none text-text-primary placeholder:text-text-secondary disabled:opacity-100 disabled:text-sako-gray-500 disabled:placeholder:text-sako-gray-500`,
       },
     },
     defaultVariants: {

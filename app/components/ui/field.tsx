@@ -3,7 +3,7 @@
 import * as React from 'react'
 
 import { cn } from '@/lib/utils'
-import { Input, type InputProps } from './input'
+import { FIELD_VALUE_TEXT, Input, type InputProps } from './input'
 
 /**
  * "Form Input Field", checkout 438:2751.
@@ -123,8 +123,12 @@ Field.displayName = 'Field'
  *
  * Empty value renders in text-secondary so an unchosen select reads as a
  * placeholder, matching the input's placeholder colour.
+ *
+ * Carries FIELD_VALUE_TEXT for the same reason the input does — iOS zooms on a
+ * <select> under 16px exactly as it does on a text field, and sign-up's three
+ * selects are in the middle of the form.
  */
 export const FIELD_SELECT =
-  'w-full flex-1 cursor-pointer appearance-none border-0 bg-transparent p-0 font-ploni text-[14px] leading-none text-text-primary outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:text-sako-gray-500'
+  `w-full flex-1 cursor-pointer appearance-none border-0 bg-transparent p-0 font-ploni ${FIELD_VALUE_TEXT} leading-none text-text-primary outline-none focus-visible:outline-none disabled:cursor-not-allowed disabled:text-sako-gray-500`
 
 export { Field }

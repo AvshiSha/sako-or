@@ -34,8 +34,14 @@ export const profileTheme = {
   grid: 'mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2',
 
   label: 'block text-sm font-medium text-text-secondary mb-1.5 rtl:text-right ltr:text-left',
+  /* `pointer-coarse:text-base` is the iOS zoom floor — text-sm is 14px and Safari
+     zooms the page in on any control under 16px, which complete-profile and
+     verify-sms hit mid sign-up. Written in the named scale rather than importing
+     FIELD_VALUE_TEXT (app/components/ui/input.tsx, which owns the reasoning and
+     the px form) so this table stays a self-contained string table. h-10 is fixed,
+     so the taller glyphs do not move the control. */
   input:
-    'flex h-10 w-full rounded-md border border-border-default bg-sako-gray-200 px-3 py-2 text-sm text-text-primary ring-offset-background placeholder:text-sako-gray-500 focus-visible:outline-none focus-visible:ring-border-default focus-visible:ring-offset-2 focus-visible:border-border-default disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-sako-gray-500',
+    'flex h-10 w-full rounded-md border border-border-default bg-sako-gray-200 px-3 py-2 text-sm pointer-coarse:text-base text-text-primary ring-offset-background placeholder:text-sako-gray-500 focus-visible:outline-none focus-visible:ring-border-default focus-visible:ring-offset-2 focus-visible:border-border-default disabled:cursor-not-allowed disabled:border-border-subtle disabled:text-sako-gray-500',
   inputDisabled: 'bg-surface-secondary text-sako-gray-500',
 
   hint: 'mt-1 text-xs text-sako-gray-500',

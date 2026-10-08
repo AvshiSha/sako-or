@@ -43,6 +43,22 @@ const QuickBuyDrawer = dynamic(() => import('./QuickBuyDrawer'), { ssr: false })
 const STATUS_BADGE_CLASS =
   'font-ploni text-[12px] font-semibold leading-[18px] tracking-[3px] px-[14px] py-[5px] pointer-events-none lg:text-[14px] lg:py-[8px]'
 
+/**
+ * The exact union the pre-split component held for `activeVariant` via
+ * `selectedVariant || defaultVariant`: the inline shape stored on
+ * `Product.colorVariants` (which lacks `colorName`, `stock`, `sizes` and the
+ * timestamps), or the richer standalone `ColorVariant`.
+ *
+ * Spelled out rather than narrowed to `ColorVariant`, so the `'x' in variant`
+ * narrowing and the optional-property reads inside `ProductCardInner` resolve
+ * exactly as they did before the split. Tightening it to `ColorVariant` fails to
+ * type-check, because that is not the shape product documents actually hold -
+ * previously the mismatch was hidden by `handleVariantSelect(variant: any)`, so
+ * the swatch handler was writing the inline shape into state declared as
+ * `ColorVariant`. The state below is now typed as what it really holds.
+ */
+type ProductCardVariant = Product['colorVariants'][string] | ColorVariant
+
 interface ProductCardProps {
   product: Product
   language?: 'en' | 'he'
@@ -56,15 +72,42 @@ interface ProductCardProps {
   collectionAnchorKey?: string
 }
 
+/**
+ * Picks the variant to display, and renders either the placeholder or the card.
+ *
+ * ## Why this is split in two
+ *
+ * This used to be one component with an early `return` for "no active variant"
+ * sitting *above* eight hooks (`useMemo` x4, `useProductCouponBadge`,
+ * `useCallback` x3). That is a rules-of-hooks violation - eight ESLint errors -
+ * and not a cosmetic one: if a single mounted instance ever rendered once with
+ * no variant and once with one, React throws "Rendered more hooks than during
+ * the previous render" and the error boundary takes out the whole grid, which is
+ * a blank content area of exactly the kind LOADING_ARCHITECTURE.md exists to
+ * prevent.
+ *
+ * It could not fire in practice only because every call site keys by product
+ * identity (`variantKey`, `product.id ?? sku`, `favoriteKey`), so a different
+ * product always gets a fresh instance and a fresh hook list. It would have
+ * fired the moment someone keyed a product list by array index - the usual
+ * reflex when React warns about duplicate keys.
+ *
+ * Moving the early return below the hooks was not an option: the derived values
+ * between them (`currentPrice`, `salePercent`, `favoriteKey`, `primaryImage`)
+ * dereference the variant unconditionally, so that swaps a latent crash for a
+ * guaranteed null dereference. Splitting instead makes the hooks unconditional
+ * by construction: this component owns the decision and calls exactly one hook,
+ * `ProductCardInner` assumes a non-null variant and owns everything else.
+ *
+ * `selectedVariant` stays *here*, above the gate, so the condition remains
+ * byte-identical to the original `selectedVariant || defaultVariant`. Keeping it
+ * in the inner component would have changed behaviour in one edge case: a
+ * product whose variants all go inactive while the shopper has a swatch
+ * selected used to keep rendering their choice, and would instead have dropped
+ * to the placeholder.
+ */
 export default function ProductCard({ product, language = 'en', selectedColors, preselectedColorSlug, disableImageCarousel = false, isAboveFold = false, browseStoreKey, collectionAnchorKey }: ProductCardProps) {
-  const [selectedVariant, setSelectedVariant] = useState<ColorVariant | null>(null)
-  const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
-  /** Latches on first open so the drawer survives its own closing animation. */
-  const [hasOpenedQuickBuy, setHasOpenedQuickBuy] = useState(false)
-  const { isFavorite, toggleFavorite } = useFavorites()
-  const collectionBrowse = useCollectionBrowseContext()
-
-  const [api, setApi] = useState<CarouselApi>()
+  const [selectedVariant, setSelectedVariant] = useState<ProductCardVariant | null>(null)
 
   // Get the default color variant for display
   // Priority: preselectedColorSlug > selectedColors filter > first active variant
@@ -100,11 +143,76 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   const defaultVariant = getDefaultVariant()
   const activeVariant = selectedVariant || defaultVariant
 
+  if (!activeVariant) {
+    return (
+      <div className="group relative border-b border-l border-sako-black bg-surface-secondary" aria-hidden>
+        <div
+          className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-surface-secondary block`}
+        />
+        <div
+          className={`mt-0 border-t border-sako-black bg-surface-secondary px-[16px] pt-[15px] pb-[14px] ${PRODUCT_CARD_INFO_MIN_H}`}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <ProductCardInner
+      product={product}
+      language={language}
+      activeVariant={activeVariant}
+      onVariantSelect={setSelectedVariant}
+      disableImageCarousel={disableImageCarousel}
+      isAboveFold={isAboveFold}
+      browseStoreKey={browseStoreKey}
+      collectionAnchorKey={collectionAnchorKey}
+    />
+  )
+}
+
+interface ProductCardInnerProps {
+  product: Product
+  language: 'en' | 'he'
+  /** Never null - that is the whole point of the split. See ProductCard. */
+  activeVariant: ProductCardVariant
+  onVariantSelect: (variant: ProductCardVariant) => void
+  disableImageCarousel: boolean
+  isAboveFold: boolean
+  browseStoreKey?: string
+  collectionAnchorKey?: string
+}
+
+/**
+ * The card itself, for a variant that is known to exist.
+ *
+ * Every hook below is unconditional: there is no early return above them, and
+ * `activeVariant` is non-null by contract, so the null guards the extracted
+ * hooks used to carry are gone rather than merely unreachable.
+ *
+ * Rendered at a fixed position by `ProductCard`, so it stays mounted across its
+ * parent's re-renders and keeps the quick-buy latch, the carousel api and the
+ * shopper's swatch choice intact.
+ */
+function ProductCardInner({
+  product,
+  language,
+  activeVariant,
+  onVariantSelect,
+  disableImageCarousel,
+  isAboveFold,
+  browseStoreKey,
+  collectionAnchorKey,
+}: ProductCardInnerProps) {
+  const [isQuickBuyOpen, setIsQuickBuyOpen] = useState(false)
+  /** Latches on first open so the drawer survives its own closing animation. */
+  const [hasOpenedQuickBuy, setHasOpenedQuickBuy] = useState(false)
+  const { isFavorite, toggleFavorite } = useFavorites()
+  const collectionBrowse = useCollectionBrowseContext()
+
+  const [api, setApi] = useState<CarouselApi>()
+
   // Get all images from active variant
-  const variantImages = useMemo(() => {
-    if (!activeVariant) return []
-    return activeVariant.images || []
-  }, [activeVariant])
+  const variantImages = useMemo(() => activeVariant.images || [], [activeVariant])
 
   const totalImages = variantImages.length
 
@@ -118,7 +226,7 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
   // Find primary image index
   const primaryImageIndex = useMemo(() => {
-    if (!activeVariant || totalImages === 0) return 0
+    if (totalImages === 0) return 0
     const primaryImage = ('primaryImage' in activeVariant && activeVariant.primaryImage) || null
     if (!primaryImage) return 0
 
@@ -128,19 +236,6 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
 
     return index >= 0 ? index : 0
   }, [activeVariant, variantImages, totalImages])
-
-  if (!activeVariant) {
-    return (
-      <div className="group relative border-b border-l border-sako-black bg-surface-secondary" aria-hidden>
-        <div
-          className={`relative ${PRODUCT_CARD_IMAGE_ASPECT} overflow-hidden bg-surface-secondary block`}
-        />
-        <div
-          className={`mt-0 border-t border-sako-black bg-surface-secondary px-[16px] pt-[15px] pb-[14px] ${PRODUCT_CARD_INFO_MIN_H}`}
-        />
-      </div>
-    )
-  }
 
   // Get current price (variant price takes precedence)
   const getCurrentPrice = () => {
@@ -264,9 +359,10 @@ export default function ProductCard({ product, language = 'en', selectedColors, 
   }
 
   // Handle color variant selection - just change the display
-  const handleVariantSelect = (variant: any, e: React.MouseEvent) => {
+  const handleVariantSelect = (variant: ProductCardVariant, e: React.MouseEvent) => {
     e.stopPropagation() // Prevent click from bubbling up to parent (e.g., SearchBar wrapper)
-    setSelectedVariant(variant)
+    // Lives on the parent, which owns the variant decision. See ProductCard.
+    onVariantSelect(variant)
   }
 
   // Handle wishlist toggle

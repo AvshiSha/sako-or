@@ -17,6 +17,25 @@ const homeDescriptions = {
   en: 'SAKO OR – women’s leather shoes, bags, and premium accessories. Updated collections, all-day comfort, and fast shipping.',
 } as const
 
+/**
+ * The page's top-level heading, for assistive tech and crawlers only.
+ *
+ * The design opens on a full-bleed video hero whose campaign copy is baked into
+ * the MP4, so there is no text node in it to promote - the homepage shipped with
+ * no <h1> at all, and its first heading was an h2 ("אודות סכו עור"). This keeps
+ * the visible design exactly as drawn while giving the document a correct
+ * heading hierarchy, which is the same trade-off the blog index makes
+ * (`news/page.tsx`).
+ *
+ * Deliberately not the hero's own aria-label ("קולקציית החורף של SAKO 2026"):
+ * that names one campaign, and it would go stale the next time the hero changes.
+ * This names the page.
+ */
+const homeHeadings = {
+  he: 'סכו עור – נעלי נשים, תיקים ואקססוריז מעור',
+  en: 'SAKO OR – women’s leather shoes, bags and accessories',
+} as const
+
 export async function generateMetadata({
   params,
 }: {
@@ -55,6 +74,9 @@ export default async function HomePage({
 
   return (
     <>
+      {/* sr-only: see homeHeadings. Must stay first in document order so the
+          heading outline opens on the h1 rather than on a section h2. */}
+      <h1 className="sr-only">{homeHeadings[locale]}</h1>
       {/* Pulled up behind the nav bar so the header's Transparent variant reveals the
           hero rather than the page ground. Without this the bar reads as plain white
           at rest and only flashes transparent as the hero scrolls past it. */}

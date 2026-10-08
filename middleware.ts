@@ -50,7 +50,20 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Skip Next.js internals and API routes
+  // Skip Next.js internals, platform endpoints and API routes.
+  //
+  // `/_vercel` is the Vercel platform namespace: Web Analytics and Speed
+  // Insights fetch their script from `/_vercel/insights/script.js` and
+  // `/_vercel/speed-insights/script.js`, then POST beacons to
+  // `/_vercel/insights/view` and `/_vercel/speed-insights/vitals`. PUBLIC_FILE
+  // above only lists image/document extensions, not `js`, so without this line
+  // the locale rule below rewrote the script request to
+  // `/he/_vercel/insights/script.js`, the [...notFound] catch-all answered it
+  // with a 200 text/html page, and the browser tried to parse HTML as
+  // JavaScript - `Uncaught SyntaxError: Unexpected token '<'` on every page of
+  // the storefront, with both <Analytics> and <SpeedInsights> (RootShell.tsx)
+  // silently dead. These paths are owned by the platform and must never be
+  // localized.
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
@@ -58,6 +71,21 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/api')
   ) {
     return NextResponse.next()
+  }
+
+  // See the note above. On Vercel the platform owns these paths, so the request
+  // must pass through untouched for Analytics and Speed Insights to work.
+  //
+  // Off Vercel there is no such endpoint, and passing through is not harmless:
+  // `[lng]` happily matches `_vercel` as a locale, so the request lands in
+  // `[lng]/[...notFound]` and comes back as a **200 text/html** 404 page for a
+  // `.js` URL - which is the `Unexpected token '<'` again, just reached by a
+  // different route. A real 404 is the honest answer, and it keeps the local
+  // console clean. Same shape as the /socket.io guard below, for the same reason.
+  if (pathname.startsWith('/_vercel')) {
+    return process.env.VERCEL
+      ? NextResponse.next()
+      : new NextResponse(null, { status: 404 })
   }
 
   // Skip socket.io requests - return 404 to prevent routing to [lng]

@@ -460,3 +460,465 @@ third party. These remain untested:
 None of these sit downstream of anything changed in the loading work — they are
 all past a boundary that has already resolved — but that is reasoning, not a test.
 **Run them against sandbox credentials before a production release.**
+
+---
+
+## 8. Final storefront-wide audit
+
+Run against a production build (`next build` + `next start`) on 2026-10-08, after
+the §4c render-loop fix. Two viewports: desktop 1440 (1x CPU) and mobile 390
+(4x CPU, Slow 4G 1.6Mbps/150ms unless stated).
+
+### What passed
+
+| Area | Result |
+|---|---|
+| Direct visit + refresh, 13 routes x 2 viewports | 0 page-subtree remounts, 0 user-visible blank states |
+| CLS, desktop | 0.0000 on every route |
+| CLS, mobile | 0.0000 on every route |
+| Cumulative CLS over a whole multi-page session | 0.0000 |
+| Journeys J1-J8 (home/collection/campaign/PDP/news/cart/checkout/favorites/profile/search) | every hop navigated; 0 remounts, 0 EMPTY frames, 0 skeleton re-appearances |
+| Collection to Collection, 40 consecutive transitions | **0 abnormal frames** (the original bug) |
+| Back / forward | correct on a clean profile: home to collection to PDP, back to collection, back to home |
+| Tap to visible PDP feedback | median **92ms**, worst 94ms, exactly 1 card, 0 stranded states |
+| Cart to Checkout | CTA navigates; form values survive the auth chunk landing (11 inputs) |
+| Guest favourites | persist across navigation and refresh; counter stable at 3 items |
+| Guest `/he/profile` | correctly redirects to `/he/signin`, 0 remounts |
+| Search | 21 product results for a Hebrew query, 0 remounts |
+| Structured data | PDP `Product`+`BreadcrumbList`, article `Article`, FAQ `FAQPage`, `Organization` sitewide; no malformed JSON-LD |
+| Playwright `tracking-regression.spec.ts` | **18/18** (desktop + mobile) |
+| Build / TypeScript / ESLint link rules | clean / clean / **0 findings** |
+
+### Measurement artifacts, not defects
+
+Recorded here because each one looks like a bug in a raw log:
+
+- **`EMPTY` frames on PDP / news-article direct loads.** Both occur *before* FCP
+  (PDP: EMPTY at +1262ms, FCP 1284ms; home: +698ms vs FCP 720ms). Nothing was on
+  screen yet, so there was no blank state to see.
+- **`CONTENT>SKELETON>CONTENT`.** Progressive streaming, not a flicker: the
+  below-fold rail is still a skeleton while the top of the page is already
+  readable, and `main`'s height never shrinks (news-article 1906 to 9223 to
+  9224px). A probe that asks "is there a skeleton anywhere in `main`" cannot tell
+  this apart from a regression; make it path-aware and height-aware.
+- **"skeleton reappeared" on a client-side navigation.** A skeleton for a *new*
+  route is the intended behaviour. Only a skeleton returning on the *same* path
+  after content counts.
+- **`optionc.js` reporting `skeletonReappearances=1` on favourites.** Its `skel()`
+  sets `sawContent = true` on any frame with no skeleton, including the frames
+  before the skeleton first mounts, so the first appearance is counted as a
+  return. `fav-ab.js` traces the node count directly and reports
+  `12 to 0 at +341ms, never again` = **0**.
+- **"back did nothing".** The shared Chrome profile had `history.length` capped at
+  50 from earlier runs, so back walked into leftover entries. On a fresh profile
+  `history.length` is 4 and back/forward are correct. Always use a clean
+  `--user-data-dir` for history assertions.
+
+### Open findings
+
+Ordered by what I would fix first. None is a regression from the loading work.
+
+**1. Middleware locale-prefixes `/_vercel/*`, so Analytics and Speed Insights
+never load.** `PUBLIC_FILE` in `middleware.ts` does not list `js`, and the skip
+list covers `/_next`, `/static`, `/assets`, `/api` but not `/_vercel`. So:
+
+```
+/_vercel/insights/script.js  ->  308  ->  /he/_vercel/insights/script.js  ->  200 text/html
+```
+
+The catch-all answers with HTML, the browser parses it as JS, and every page logs
+`Uncaught SyntaxError: Unexpected token '<'`. `RootShell.tsx:248-249` mounts
+`<Analytics mode="production" />` and `<SpeedInsights />`, so locally both are
+dead. Whether production is affected depends on whether Vercel's edge serves
+`/_vercel/*` before middleware - **unverified**, because the preview share token
+has expired. The fix is correct either way:
+
+```ts
+pathname.startsWith('/_next') ||
+pathname.startsWith('/_vercel') ||   // add
+pathname.startsWith('/static') ||
+```
+
+**2. The homepage has no `<h1>`** - 0 in SSR and 0 after hydration, against 3
+`<h2>`. Every other route has exactly 1. The storefront's single most important
+page is the one with no top-level heading.
+
+**3. Campaign pages emit no canonical.** Campaign is the one listing route whose
+`generateMetadata` is hand-rolled instead of going through `buildMetadata`
+(`lib/seo.ts`), which self-canonicalises. Campaign is `force-dynamic` and reads
+filter/sort out of `searchParams`, so every filter permutation is an indexable
+duplicate. Route it through `buildMetadata` like collection does.
+
+**4. CMS category copy links to the production domain.** The SEO text block at the
+bottom of a collection page (`DIV.cms-content`) contains editor-authored
+`<a href="https://www.sako-or.com/he/collection/...">`. Absolute same-site URLs
+are full page loads rather than client-side navigations, and on preview or local
+they send the visitor to production. Fix in the CMS content, or rewrite same-host
+absolute hrefs to relative paths when rendering `cms-content`.
+
+**5. Collection LCP is CPU-bound.** Bandwidth barely moves it; CPU does:
+
+| CPU throttle | FCP | LCP | full content |
+|---|---|---|---|
+| 1x | 1400ms | 3216ms | 3203ms |
+| 2x | 1364ms | 3064ms | 3025ms |
+| 4x | 1476ms | 4908ms | 3634ms |
+| 6x | 1912ms | 6064ms | 5976ms |
+
+LCP tracks "all 24 cards hydrated" almost exactly, so the cost is hydrating 24
+`ProductCard`s, not the 230KB gzipped document (TTFB is 182ms). On a mid-tier
+phone that is 5-6s against a 2.5s target. Reducing the initial SSR card count is
+now a legitimate lever: it was declined earlier only because it would have masked
+the prefetch race, and that race is fixed deterministically by `ListingLink`.
+
+**6. Homepage LCP is the hero video.** The LCP element is
+`VIDEO.h-full w-full object-cover` (253KB mp4): 3156ms on Fast 4G, 9772ms on
+Slow 4G, 22508ms on Slow 3G - while *full content* is ready at 967ms / 1605ms /
+2683ms. The page is usable long before LCP fires. A poster image would decouple
+the two.
+
+**7. `ProductCard.tsx` violates rules-of-hooks in 8 places** - see §9.
+
+### Pre-existing, unrelated to this work
+
+- **9 ESLint errors**: 8 rules-of-hooks in `ProductCard.tsx` (§9) and 1
+  `prefer-const` in `CheckoutModal.tsx:404`.
+- **1 failing unit test**: `faq-ssr-markup.test.tsx:179` asserts
+  `/<a[^>]+class="faq-cta"/`, but the CTA renders
+  `class="faq-cta font-ploni text-[12px] font-bold"`. The anchor is crawlable and
+  locale-prefixed (`href="/he/collection/women"`), so the regex is stale, not the
+  markup. Both the assertion and those classes predate this branch's work
+  (present at `74e62d9f`). Loosen the regex to `class="[^"]*faq-cta`.
+- **Soft 404 on the catch-all** (`/he/<unknown>` returns 200). Deliberate and
+  documented in `[...notFound]/page.tsx`: with two root layouts, a real
+  `notFound()` boundary renders without `<html lang>`, header, footer or
+  `globals.css`. Held out of the index with `robots: index:false`, which the audit
+  confirmed is present. The real fix is consolidating the root layouts.
+- **Unknown campaign slug returns 307, not 404.** By design - the campaign
+  redirect behaviour the product owner asked to preserve.
+
+### Still unverified - needs a Preview deployment with a real test account
+
+Everything below is a guest path or a code path that cannot be driven locally.
+
+1. Sign in, sign out, and refresh while signed in.
+2. Favourites synchronisation between a guest session and an account on sign-in.
+3. Profile completion (`ProfileCompletionGate`) for a real incomplete profile.
+4. Admin detection (`isAdmin`, `adminCheckPending`) and `profileSyncedUid`.
+5. Whether `/_vercel/*` survives middleware on Vercel's edge (finding 1).
+6. The five Cardcom scenarios in §7.
+
+### The two render-loop guards: are they both needed?
+
+A/B on production builds, measured with `probe-nav.js` (clicks a product link, a
+cart link and an `/about` link, asserting the URL changes):
+
+| Guard 1 (memoised `published`) | Guard 2 (memoised element) | Navigation |
+|---|---|---|
+| off | off | **all three STALLED** |
+| on | off | all three OK |
+| off | on | all three OK |
+| on | on (shipped) | all three OK |
+
+So each guard is *individually sufficient*; neither is strictly necessary while
+the other is in place. They are deliberate redundancy, not two halves of one fix -
+and the "off/off" row is the proof that the diagnosis in §4c is correct.
+
+**No unnecessary updates.** An instrumented build counted publishes against
+`AuthProvider` renders:
+
+```
+guest home, 20s idle      : 3 AuthProvider renders -> 2 publishes
+guest collection, 20s     : 4 AuthProvider renders -> 2 publishes
+/he/signin (auth route)   : 4 AuthProvider renders -> 2 publishes
+```
+
+Both publishes are real transitions - `loading: true` then `loading: false` - which
+is the same sequence consumers saw when the shell was swapped. The extra renders
+are absorbed by the memo.
+
+**No stale values.** `signInStable=true` on the second publish confirms the method
+identities hold across publishes, and the delegates read `latest.current`, which is
+reassigned on every render, so a call always reaches the current implementation.
+Skipping a publish can therefore never strand a consumer on an old `signIn`,
+`signUp` or `logout`.
+
+---
+
+## 9. `ProductCard.tsx` and the conditional hooks
+
+ESLint is right; this is not a configuration artifact. `ProductCard.tsx:132` is an
+early `return` for `!activeVariant`, and **eight hooks sit below it**: `useMemo`
+at 194, 206, 215 and 221, `useProductCouponBadge` at 219, and `useCallback` at
+297, 309 and 346.
+
+If one mounted instance ever renders once with `activeVariant` null and once
+without, React throws *"Rendered more hooks than during the previous render"* and
+the error boundary takes out the grid - a blank content area, the exact failure
+class the rest of this document exists to prevent.
+
+**Why it does not fire today.** `activeVariant = selectedVariant || defaultVariant`:
+
+- `selectedVariant` starts null and is only set by `handleVariantSelect`, which is
+  unreachable from the placeholder branch (it renders no swatches). It can
+  therefore only go null to set while `activeVariant` was already non-null.
+- `defaultVariant` falls back to `activeVariants[0]`, so a `selectedColors` or
+  `preselectedColorSlug` change cannot make it null.
+- That leaves one path: the *same* mounted instance receiving a different
+  `product` across the null boundary. Every call site keys by product identity -
+  `variantKey` (CollectionClient, CampaignClient), `product.id ?? sku`
+  (CollectionClient, ProductCarousel), `product.id` (SearchBar), `favoriteKey`
+  (profile favourites) - so a different product gets a different key, a fresh
+  instance, and a fresh hook list.
+
+So it is latent, not live. It becomes live the moment someone keys a product list
+by array index - the usual reflex when React warns about duplicate keys - or live
+product data flips a variant's `isActive` mid-session.
+
+**The safe correction, and why the obvious one is wrong.** Do *not* simply move
+the early return below the hooks: lines 172-191 (`currentPrice`, `originalPrice`,
+`salePercent`, `favoriteKey`, `primaryImage`) dereference `activeVariant`
+unconditionally, and `statusBadge` at 221 closes over `hasSalePrice()` and
+`salePercent`, so hoisting the return past them turns a latent crash into a
+guaranteed null dereference.
+
+Split the component instead:
+
+- `ProductCard` - resolves `activeVariant`, then returns either the placeholder or
+  `<ProductCardInner variant={activeVariant} ... />`. It calls no hooks that depend
+  on a variant.
+- `ProductCardInner` - takes a non-null variant as a prop and holds every hook and
+  derived value. Hooks are then unconditional by construction, and the placeholder
+  stops being a sibling branch of a hook list.
+
+This is a refactor of a component on the storefront's hottest path, so it wants
+its own change and its own verification pass, not a drive-by edit.
+
+---
+
+## 10. Final cleanup (2026-10-08)
+
+The four §8 findings that were agreed as pre-production work. The larger LCP
+items (collection hydration, homepage video poster) are deliberately deferred to
+a separate performance task.
+
+### 10.1 Middleware no longer locale-prefixes `/_vercel/*`
+
+`middleware.ts` now has a dedicated guard above the locale rule. It is two
+branches, not one, and both matter:
+
+```ts
+if (pathname.startsWith('/_vercel')) {
+  return process.env.VERCEL
+    ? NextResponse.next()                        // platform owns these paths
+    : new NextResponse(null, { status: 404 })    // nothing serves them locally
+}
+```
+
+Passing through is the right answer **on** Vercel, where the platform serves the
+Analytics and Speed Insights scripts. It is the wrong answer off Vercel, and this
+was only caught by measuring after the first attempt: with the 308 removed,
+`[lng]` happily matched `_vercel` as a locale, the request fell into
+`[lng]/[...notFound]`, and the browser got a **200 text/html** page for a `.js`
+URL - the same `Unexpected token '<'`, reached by a different route. A real 404
+is the honest answer and keeps the console clean. Same shape as the `/socket.io`
+guard directly below it.
+
+Verified:
+
+```
+/_vercel/insights/script.js        404, 0 bytes   (was 308 -> 200 text/html)
+/_vercel/speed-insights/script.js  404, 0 bytes
+/_vercel/insights/view             404, 0 bytes
+script requests answered with text/html:  0   (clean profile, cache cleared)
+console exceptions on /he:                0   (desktop and mobile)
+```
+
+Locale routing is unchanged - this was the explicit regression risk:
+
+| path | status | location |
+|---|---|---|
+| `/` | 308 | `/he` |
+| `/collection/women/shoes` | 308 | `/he/collection/women/shoes` |
+| `/he`, `/he/collection/women/shoes`, `/he/news` | 200 | - |
+| `/Success`, `/admin` (unlocalized routes) | 200 | - |
+| `/sitemap.xml`, `/robots.txt`, `/api/products/search`, `/_next/...` | 200 | - |
+
+**Carry this to production:** the old redirect was a **308 Permanent**, which
+Chrome caches. A browser that has already loaded a storefront page will keep
+resolving `/_vercel/insights/script.js` to `/he/_vercel/insights/script.js` from
+its own HTTP cache after the fix ships, until that entry is evicted. This is
+exactly what produced the two residual mobile errors mid-verification, and they
+vanished on a cache-cleared profile. Nothing in the app can clear a third party's
+cache, so expect a tail of affected returning visitors rather than an instant
+fix, and do not read early post-deploy console noise as the fix having failed.
+
+### 10.2 The homepage has an `<h1>`
+
+The design opens on a full-bleed video whose campaign copy is baked into the MP4,
+so there is no text node to promote - the page shipped with no `<h1>` and opened
+its heading outline on an h2. `homeHeadings` in `[lng]/page.tsx` supplies an
+`sr-only` h1, first in document order, naming the page rather than the campaign
+(the hero's own `aria-label` names one season and would go stale). Same trade-off
+the blog index already makes.
+
+```
+/he  h1 count=1  "סכו עור – נעלי נשים, תיקים ואקססוריז מעור"       sr-only
+/en  h1 count=1  "SAKO OR – women’s leather shoes, bags and accessories"  sr-only
+```
+
+Every audited route now reports exactly one `<h1>`, in SSR and after hydration,
+on both viewports. The visible layout is untouched.
+
+### 10.3 Campaign pages canonicalise
+
+Campaign was the one listing route that hand-rolled its `Metadata` and therefore
+had no canonical at all, while being `force-dynamic` over filter/sort/page
+`searchParams` - an unbounded space of indexable duplicates. It now goes through
+`buildMetadata`, keeping only `?page=` exactly as the collection route does:
+
+| URL | canonical |
+|---|---|
+| `…/new-collection` | `…/new-collection` |
+| `?page=2` | `…/new-collection?page=2` |
+| `?page=abc`, `?page=0` | `…/new-collection` |
+| `?sort=price-asc` | `…/new-collection` |
+| `?colors=black&sizes=38` | `…/new-collection` |
+| `?sort=newest&colors=black&page=3` | `…/new-collection?page=3` |
+| `?utm_source=fb` | `…/new-collection` |
+
+hreflang (`en`, `he`, `x-default`) is now emitted too, the `en` page
+self-canonicalises, and an unknown slug still answers **307** by design. The
+collection route's own canonical is unchanged (`?sort=price-asc` still
+canonicalises to the clean path).
+
+**One intentional title change.** `buildMetadata` appends `| SAKO-OR` unless the
+title already contains that exact string. The old hand-rolled metadata wrote
+`| SAKO OR` - space, no hyphen - which does not match that test, so passing it
+through produced a doubled `קולקציה חדשה | SAKO OR – עמוד 2 | SAKO-OR`. The brand
+suffix is now left to `buildMetadata`, which also settles campaign onto the
+hyphenated brand every other route already uses:
+
+```
+before:  קולקציה חדשה | SAKO OR
+after:   קולקציה חדשה | SAKO-OR
+page 2:  קולקציה חדשה – עמוד 2 | SAKO-OR
+```
+
+### 10.4 `ProductCard` / `ProductCardInner` split
+
+The eight rules-of-hooks errors are gone (§9 has the full reasoning). `ProductCard`
+now resolves the variant, calls exactly one hook, and returns either the
+placeholder or `<ProductCardInner>`; `ProductCardInner` takes a non-null variant
+and owns every other hook, unconditionally.
+
+Two details worth keeping:
+
+- **`selectedVariant` stays in the outer component**, above the gate, so the
+  condition remains byte-identical to the original `selectedVariant ||
+  defaultVariant`. Moving it inward would have changed behaviour in one edge
+  case: a product whose variants all go inactive while the shopper has a swatch
+  selected used to keep rendering their choice, and would instead have dropped to
+  the placeholder.
+- **`ProductCardVariant`** spells out the union the component always actually
+  held: the inline shape on `Product.colorVariants`, or the standalone
+  `ColorVariant`. Narrowing it to `ColorVariant` does not compile, because that is
+  not what product documents contain - the mismatch had been hidden by
+  `handleVariantSelect(variant: any)`, which was writing the inline shape into
+  state declared as `ColorVariant`. The state is now typed as what it holds.
+
+Behaviour verified on both viewports, 12/12 each:
+
+```
+cards render                    24 desktop / 12 mobile, all with text
+no placeholder cards leaked     0
+prices render                   24 / 12
+status badges render            ["NEW","Last Call","NEW",…]
+swatch changes aria-pressed     2 -> 0
+swatch changes product href     /he/product/5129-6188/black -> …/beige
+favourites toggle persists      ["5104-0021::black"]
+favourites aria-label flips     "הוסף לרשימת המשאלות" -> "הסר מרשימת המשאלות"
+quick buy opens a drawer        1 dialog
+card navigates to the PDP       collection -> /he/product/5104-0021/black
+homepage carousel renders       13 product links
+no unexpected console errors    0
+tap -> pending feedback         median 96ms, 1 card, 0 stranded
+```
+
+### 10.5 Full regression after all four
+
+| Suite | Result |
+|---|---|
+| Journeys J1-J8, desktop 1440 | **no findings**; 0 remounts, 0 EMPTY, 0 skeleton returns, err=0 |
+| Journeys J1-J8, mobile 390 | **no findings**; same |
+| Session-cumulative CLS, both viewports | **0.0000** |
+| Collection to Collection x30 | **0 abnormal frames** |
+| Direct + refresh, 13 routes x 2 viewports | 0 remounts; h1=1 everywhere; CLS 0.0000 except cart (see below) |
+| Option C regression | remounts=0 everywhere; favourites/cart/checkout state intact |
+| Favourites dedicated probe | 0 skeleton re-appearances |
+| Navigation sanity (product/cart/about) | all OK |
+| SSR/SEO/status/structured data | campaign canonical present; all status codes as designed |
+| Playwright | **18/18** |
+| Unit tests | 531/532 (the pre-existing stale FAQ regex, §8) |
+| Build / TypeScript | clean / clean |
+| ESLint | **0** link-rule findings; errors **9 -> 1** |
+
+The one remaining ESLint error is the pre-existing `prefer-const` at
+`CheckoutModal.tsx:404`, left alone to keep this change set isolated.
+
+### 10.6 Cart CLS: measured, pre-existing, not from this work
+
+The cart page carries a single deterministic layout shift - **0.0063 desktop,
+0.0355 mobile** - in the order-summary column (`ASIDE.bg-sako-gray-400` on
+mobile; the summary `SECTION` plus the checkout CTA on desktop). A `<p>` moves
+down ~24-30px and the CTA rises ~38px as the panel settles.
+
+It is **not** a regression from this cleanup. A/B against a build of HEAD with all
+four fixes stashed, identical methodology and seeded cart:
+
+| | with fixes | baseline (no fixes) |
+|---|---|---|
+| desktop | 0.00626, 1 shift, same sources | 0.00626, 1 shift, same sources |
+| mobile | 0.03546, 1 shift, same geometry | 0.03546, 1 shift, same geometry |
+
+Worth noting that an earlier §8 run recorded cart CLS as 0.0000 - that reading
+came from a different cart state, not from a build without the shift. Both values
+are still inside the "good" CWV band, and the mobile one is the largest shift
+left anywhere on the storefront, so it is the natural first candidate for the
+deferred performance task.
+
+### What still requires manual Preview testing
+
+Nothing below can be exercised locally. Each needs a Preview deployment and, where
+noted, a real test account.
+
+**Authentication (real test account required)**
+
+1. Sign in, sign out, and refresh while signed in.
+2. Favourites synchronisation between a guest session and an account at sign-in.
+3. Profile completion (`ProfileCompletionGate`) for a genuinely incomplete profile.
+4. Admin detection (`isAdmin`, `adminCheckPending`) and `profileSyncedUid`.
+5. That the page subtree still does not remount once a *real* user is signed in -
+   the local runs only ever exercise the guest value.
+
+**Vercel platform behaviour**
+
+6. That `/_vercel/insights/script.js` and `/_vercel/speed-insights/script.js`
+   return JavaScript on the deployment, i.e. that the platform serves them ahead
+   of middleware and §10.1's `next()` branch is reached. Check the Network panel
+   for a `200 application/javascript`, and confirm pageviews arrive in the Vercel
+   Analytics dashboard. This is the one §10 fix whose production half is
+   unverified, because the preview share token has expired.
+7. Whether returning visitors still hit the cached 308 (§10.1). Compare a normal
+   profile against a hard-reload / cleared-cache profile.
+
+**SEO, once a Preview URL exists**
+
+8. That campaign canonicals render with the production origin rather than
+   `localhost:3000` - locally `metadataBase` has no site URL to resolve against,
+   so only the path portion is meaningful in the §10.3 table.
+9. Rich Results / URL Inspection on a campaign page, a PDP and an article.
+
+**Payments**
+
+10. The five Cardcom scenarios in §7, against sandbox credentials.

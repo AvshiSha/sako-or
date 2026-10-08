@@ -5,26 +5,28 @@ import dynamic from 'next/dynamic'
 import { useParams, usePathname } from 'next/navigation'
 
 import HomeAboutSection from '@/app/components/HomeAboutSection'
-import ProductCarousel from '@/app/components/ProductCarousel'
 import type { HomeCollectionBanner } from '@/lib/home-collections'
-import type { Product } from '@/lib/product-types'
 
 const ShopByCollection = dynamic(() => import('@/app/components/ShopByCollection'), {
   ssr: true,
 })
 
 interface HomeClientProps {
-  initialBestSellers?: Product[]
   collectionBanners?: HomeCollectionBanner[]
 }
 
+/**
+ * The two home sections that need no server data: the About band and Shop by
+ * Collection. Both are presentational and the banners are a module constant, so
+ * this renders outside the page's Suspense boundary and reaches the browser in
+ * the first flush. Best sellers - the only part that waits on a fetch - live in
+ * HomeProducts behind that boundary.
+ */
 export default function HomeClient({
-  initialBestSellers = [],
   collectionBanners = [],
 }: HomeClientProps) {
   const params = useParams()
   const pathname = usePathname()
-  const bestSellers = initialBestSellers
 
   const lng = React.useMemo((): 'en' | 'he' => {
     if (pathname) {
@@ -41,7 +43,6 @@ export default function HomeClient({
   }, [pathname, params?.lng])
 
   const isRTL = lng === 'he'
-  const bestSellersTitle = lng === 'he' ? 'הנמכרים ביותר' : 'Best Sellers'
 
   // 438:3234 ships placeholder copy ("טקסט על החנות"). The heading and standfirst
   // are taken from the About page's own strings instead, so the band says
@@ -67,13 +68,6 @@ export default function HomeClient({
         href="/about"
       />
       <ShopByCollection banners={collectionBanners} lng={lng} />
-      {bestSellers.length > 0 && (
-        <ProductCarousel
-          products={bestSellers}
-          title={bestSellersTitle}
-          language={lng}
-        />
-      )}
     </div>
   )
 }

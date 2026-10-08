@@ -8,7 +8,9 @@ import { languages } from '@/i18n/settings'
 import HomeHero from '@/app/components/HomeHero'
 import { NAV_BAR_PULL_UP } from '@/lib/header-layout'
 
+import HomeClient from './HomeClient'
 import HomeProducts, { HomeProductsFallback } from './HomeProducts'
+import { HOME_COLLECTION_BANNERS } from '@/lib/home-collections'
 
 const homeDescriptions = {
   he: 'סכו עור - SAKO OR – מותג ישראלי לנעלי נשים, תיקים ואקססוריז מעור איכותי בעבודת יד. קולקציות עדכניות ומשלוחים מהירים לכל הארץ.',
@@ -59,8 +61,14 @@ export default async function HomePage({
       <div className={NAV_BAR_PULL_UP}>
         <HomeHero lng={locale} />
       </div>
-      <Suspense fallback={<HomeProductsFallback />}>
-        <HomeProducts />
+      {/* Outside the boundary on purpose: neither of these waits on anything -
+          HOME_COLLECTION_BANNERS is a module constant and both components are
+          presentational - so they belong in the first flush rather than behind a
+          fallback that has to guess their height. Between them they are 73% of the
+          page below the hero. */}
+      <HomeClient collectionBanners={HOME_COLLECTION_BANNERS} />
+      <Suspense fallback={<HomeProductsFallback lng={locale} />}>
+        <HomeProducts lng={locale} />
       </Suspense>
     </>
   )

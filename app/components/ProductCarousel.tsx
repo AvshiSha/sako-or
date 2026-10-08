@@ -1,6 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+
+import {
+  CAROUSEL_HEADER_BAND,
+  CAROUSEL_ITEM_BASIS,
+  CAROUSEL_TITLE,
+} from '@/app/components/carouselChrome'
 import ProductCard from './ProductCard'
 import type { Product } from '@/lib/product-types'
 import {
@@ -50,11 +56,11 @@ export default function ProductCarousel({
           the opposite edge, which only reads as balanced when both are present -
           with one item, justify-between just pins it to the inline start. */}
       <div
-        className={`flex items-end border-y border-sako-black px-[30px] py-[33px] ${
+        className={`${CAROUSEL_HEADER_BAND} ${
           eyebrow ? 'justify-between' : 'justify-center'
         }`}
       >
-        <h2 className="font-ploni text-[32px] font-black leading-[32px] text-text-primary lg:text-[48px] lg:leading-[34.56px]">
+        <h2 className={CAROUSEL_TITLE}>
           {title}
         </h2>
         {eyebrow && (
@@ -98,7 +104,7 @@ export default function ProductCarousel({
                   key={product.id || product.sku}
                   // 418px from lg is the frame's card width; the gutter is handled by
                   // itemVariant="flush" above rather than by cancelling padding here.
-                  className="basis-[55%] sm:basis-[40%] lg:basis-[418px]"
+                  className={CAROUSEL_ITEM_BASIS}
                 >
                   <ProductCard
                     product={product}

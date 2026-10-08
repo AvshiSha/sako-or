@@ -123,6 +123,29 @@ there is no card to put a pending state on.
 
 ---
 
+## 4b. Never import shared constants from a `'use client'` module
+
+A chrome module (`collectionChrome`, `productPageChrome`, `checkoutChrome`,
+`carouselChrome`) must be a **plain module with no `'use client'`**, even when its
+only consumers are client components.
+
+Export a constant from a client module and import it into a server component and
+it arrives as a *client reference*, not a string. Interpolating it into a
+`className` renders the source of a throwing stub straight into the markup:
+
+```
+class="function(){throw Error(&quot;Attempted to call CAROUSEL_HEADER_BAND() from
+       the server but CAROUSEL_HEADER_BAND is on the client...&quot;)}"
+```
+
+It does not fail to build. It does not fail to type-check. The page renders, just
+unstyled in that one spot — the home fallback measured 280px against the
+carousel's real 487.8px before this was caught by measuring the two against each
+other. Which is the argument for measuring fallback and real geometry on every one
+of these, rather than trusting that the classes went where they were sent.
+
+---
+
 ## 5. Remaining audit findings
 
 Priority order agreed with the product owner. Each line records the measurement
@@ -130,10 +153,19 @@ that justifies it.
 
 ### Next up
 
-- [ ] **Homepage** — `HomeProductsFallback` reserves **420px** against **1833px**
-      of real below-hero content. Measured CLS stays near zero only because the
-      shift is below the fold; the footer still travels 1413px. Also `aria-hidden`
-      with no `role="status"`, so it is not announced. *Low risk.*
+- [ ] **A document-level layout shift on every route, source `HTML.light`.**
+      Not from any of the work above — it reproduces identically on pages none of
+      it touched (`/he/about`, `/he/news`) and varies run to run: `/he/about`
+      measured 0.0105 on one pass and 0.0000 on the next,
+      `/he/collection/women/shoes` 0.1102 then 0.0105. The high end is past
+      Google's 0.1 threshold, so it is worth finding. Suspects, untested: the
+      promo band, the sticky header's pull-up, the deferred VEE accessibility
+      widget, or a font swap. Needs its own investigation — per-section skeleton
+      work cannot reach it.
+- [ ] **Cardcom end-to-end, in a safe environment.** Everything up to the gateway
+      is verified (see §7); what is not is listed there. Run it against sandbox
+      credentials before a production release.
+
 - [ ] **Blog article** `/news/[slug]` — blocks the first byte (0.84s local /
       1.04s deployed warm) with no loading state, and
       `fetchRelatedProductsForArticle` (a below-the-fold carousel) sits on the
@@ -151,6 +183,15 @@ that justifies it.
 ### Done
 
 - [x] **Collection / Campaign** — the reference implementation; see §1–§3.
+- [x] **Homepage** — the About band and Shop by Collection moved *outside* the
+      Suspense boundary (neither waits on anything: the banners are a module
+      constant and both components are presentational), so 73% of the below-hero
+      content now ships in the first flush. The boundary reserves only the
+      best-sellers carousel, via `carouselChrome.ts` and the existing
+      `CollectionProductCardSkeleton` — the carousel's cards *are* ProductCards.
+      Fallback vs real: 487.3 against 487.8 on mobile, 670.6 against 671.1 on
+      desktop. Page height across the swap: 2475 → 2475 (mobile), 2588 → 2589
+      (desktop).
 - [x] **Cart → Checkout CTA** — `router.push` wrapped in `useTransition`, so the
       pending state spans the stock revalidation *and* the navigation. It used to
       clear in a `finally` immediately before `router.push`, which is exactly when
@@ -204,3 +245,36 @@ that justifies it.
 4. Add the link wrapper for every href into it, in the same change.
 5. Verify: TTFB, that the fallback is in the first flush, real status codes, CLS,
    and that repeated client navigation never produces header-then-footer.
+
+---
+
+## 7. Cardcom: what is verified, and what is not
+
+The checkout fallback cannot touch the payment flow — `PaymentIframe` renders
+*inside* the Suspense boundary (`CheckoutClient.tsx`), so it only exists once the
+fallback is gone. That is structural, not incidental.
+
+**Verified locally**, with a seeded cart:
+
+- 0 skeleton nodes in the DOM once hydrated; no `PaymentIframe` before pay.
+- `CheckoutSkeleton` and `CheckoutShell` have no global side effects — no
+  `useScrollLock`, no portal, no `document`/`window` access.
+- Filling the form and submitting reaches
+  `POST /api/payments/create-low-profile` with a well-formed payload (`orderId`,
+  `amount`, `currencyIso`, `language`, `productName`, `productSku`, `items[]`).
+- Server-side validation failures surface via `role="alert"` and the page stays put.
+
+**NOT verified, and deliberately so.** `.env.local` carries live
+`CARDCOM_API_NAME` / `CARDCOM_API_PASSWORD` / `CARDCOM_TERMINAL_NUMBER`, so
+driving the flow past validation would open a real low-profile session with a
+third party. These remain untested:
+
+1. Cardcom low-profile session creation (a 200 from `create-low-profile`).
+2. `PaymentIframe` rendering with a live `paymentUrl`.
+3. `useScrollLock(!!redirectUrl)` while the gateway overlay is open.
+4. The gateway redirect and the Success / Failed / Cancel returns.
+5. The `/api/webhook/cardcom` callback.
+
+None of these sit downstream of anything changed in the loading work — they are
+all past a boundary that has already resolved — but that is reasoning, not a test.
+**Run them against sandbox credentials before a production release.**

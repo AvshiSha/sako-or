@@ -7,7 +7,14 @@ import type { Product } from '@/lib/firebase'
 import ProductCarousel from '@/app/components/ProductCarousel'
 
 interface Props {
-  products: Product[]
+  /**
+   * The best-sellers rail, already rendered - or its placeholder while the query
+   * is still running. Passed in rather than fetched into this component so the
+   * 404 message itself never waits on Firestore: the page renders this below a
+   * Suspense boundary and the apology paints from the first chunk.
+   */
+  carousel?: React.ReactNode
+  products?: Product[]
 }
 
 /**
@@ -45,7 +52,7 @@ const copy = {
   },
 }
 
-export default function NotFoundClient({ products }: Props) {
+export default function NotFoundClient({ carousel, products = [] }: Props) {
   const params = useParams()
   const lng = (params?.lng as string) || 'he'
   const isRTL = lng !== 'en'
@@ -162,13 +169,14 @@ export default function NotFoundClient({ products }: Props) {
       {/* ── Best sellers ──
           Same carousel the product-level 404 already runs, on the same
           fetchHomeBestSellers feed. */}
-      {products.length > 0 && (
-        <ProductCarousel
-          products={products}
-          title={t.carouselTitle}
-          language={isRTL ? 'he' : 'en'}
-        />
-      )}
+      {carousel ??
+        (products.length > 0 && (
+          <ProductCarousel
+            products={products}
+            title={t.carouselTitle}
+            language={isRTL ? 'he' : 'en'}
+          />
+        ))}
     </div>
   )
 }

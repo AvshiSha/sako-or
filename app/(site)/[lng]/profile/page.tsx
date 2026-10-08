@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { profileTheme } from '@/app/components/profile/profileTheme'
+import ProfilePaneSkeleton from '@/app/components/profile/ProfilePaneSkeleton'
 import ProfilePointsBlock from '@/app/components/profile/ProfilePointsBlock'
 import NewsletterSubscriptionBlock from '@/app/components/profile/NewsletterSubscriptionBlock'
 import OrderHistory from '@/app/components/profile/OrderHistory'
@@ -304,12 +305,7 @@ export default function ProfileOverviewPage() {
 
   if (authLoading || !loadedUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
-          <p className="mt-4 text-text-secondary">{t.loading}</p>
-        </div>
-      </div>
+      <ProfilePaneSkeleton rows={4} label={t.loading} />
     )
   }
 

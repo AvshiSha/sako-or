@@ -1,5 +1,9 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
+
 import { fetchHomeBestSellers } from '@/lib/home-products'
+import ProductCarousel from '@/app/components/ProductCarousel'
+import ProductCarouselSkeleton from '@/app/components/ProductCarouselSkeleton'
 import NotFoundClient from '../NotFoundClient'
 
 /**
@@ -31,7 +35,43 @@ export const metadata: Metadata = {
   },
 }
 
-export default async function StorefrontNotFoundPage() {
+/**
+ * The suggestions rail. Everything slow on this page is in here on purpose: a
+ * visitor who has hit a dead end should be told so immediately, not after a
+ * Firestore round trip for a carousel below the apology. Measured before this
+ * split: 1.8s to any content, all of it waiting on this query.
+ */
+async function NotFoundBestSellers({ title, language }: { title: string; language: 'en' | 'he' }) {
   const products = await fetchHomeBestSellers()
-  return <NotFoundClient products={products} />
+
+  if (products.length === 0) return null
+
+  return <ProductCarousel products={products} title={title} language={language} />
+}
+
+export default async function StorefrontNotFoundPage({
+  params,
+}: {
+  params: Promise<{ lng: string }>
+}) {
+  const { lng } = await params
+  const language = lng === 'en' ? 'en' : 'he'
+  const carouselTitle = language === 'he' ? 'הנמכרים ביותר' : 'Best Sellers'
+
+  return (
+    <NotFoundClient
+      carousel={
+        <Suspense
+          fallback={
+            <ProductCarouselSkeleton
+              title={carouselTitle}
+              label="Loading suggestions"
+            />
+          }
+        >
+          <NotFoundBestSellers title={carouselTitle} language={language} />
+        </Suspense>
+      }
+    />
+  )
 }

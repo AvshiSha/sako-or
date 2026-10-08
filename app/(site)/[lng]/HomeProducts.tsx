@@ -1,12 +1,7 @@
 import { fetchHomeBestSellers } from '@/lib/home-products'
 
-import CollectionProductCardSkeleton from '@/app/components/CollectionProductCardSkeleton'
 import ProductCarousel from '@/app/components/ProductCarousel'
-import {
-  CAROUSEL_HEADER_BAND,
-  CAROUSEL_ITEM_WIDTH,
-  CAROUSEL_TITLE,
-} from '@/app/components/carouselChrome'
+import ProductCarouselSkeleton from '@/app/components/ProductCarouselSkeleton'
 
 /**
  * The best-sellers band - the only part of the home page that waits on data.
@@ -49,29 +44,10 @@ function bandClassName(lng: 'en' | 'he') {
 export function HomeProductsFallback({ lng = 'he' }: { lng?: 'en' | 'he' }) {
   return (
     <div className={bandClassName(lng)}>
-      <section
-        className="w-full overflow-clip"
-        role="status"
-        aria-busy="true"
-        aria-label="Loading best sellers"
-      >
-        <div className={`${CAROUSEL_HEADER_BAND} justify-center`}>
-          <h2 className={CAROUSEL_TITLE}>{bestSellersTitle(lng)}</h2>
-        </div>
-
-        <div className="relative bg-surface-dark">
-          <div className="flex">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <div
-                key={`home-bestseller-${index}`}
-                className={`${CAROUSEL_ITEM_WIDTH} min-w-0 shrink-0 grow-0`}
-              >
-                <CollectionProductCardSkeleton />
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <ProductCarouselSkeleton
+        title={bestSellersTitle(lng)}
+        label="Loading best sellers"
+      />
     </div>
   )
 }

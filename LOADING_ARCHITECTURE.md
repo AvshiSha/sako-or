@@ -157,7 +157,9 @@ that justifies it.
       Not from any of the work above — it reproduces identically on pages none of
       it touched (`/he/about`, `/he/news`) and varies run to run: `/he/about`
       measured 0.0105 on one pass and 0.0000 on the next,
-      `/he/collection/women/shoes` 0.1102 then 0.0105. The high end is past
+      `/he/collection/women/shoes` 0.1102 then 0.0105, the soft 404 0.0961 on
+      desktop against 0.0000 on mobile. Mobile is consistently clean and desktop
+      is not, which is the sharpest clue so far. The high end is past
       Google's 0.1 threshold, so it is worth finding. Suspects, untested: the
       promo band, the sticky header's pull-up, the deferred VEE accessibility
       widget, or a font swap. Needs its own investigation — per-section skeleton
@@ -166,23 +168,31 @@ that justifies it.
       is verified (see §7); what is not is listed there. Run it against sandbox
       credentials before a production release.
 
-- [ ] **Blog article** `/news/[slug]` — blocks the first byte (0.84s local /
-      1.04s deployed warm) with no loading state, and
-      `fetchRelatedProductsForArticle` (a below-the-fold carousel) sits on the
-      critical path after the article fetch. Article above the boundary, related
-      products behind it. *Low risk.*
-- [ ] **Profile** — nine hand-rolled `animate-spin` divs across `profile/page`,
-      `/orders`, `/personal`, `/points`, `/favorites`, `ProfileLayoutClient`,
-      `OrderHistory`, `ProfilePointsBlock`. No dimension reservation; 6.4s to
-      content measured. Wants one `ProfilePaneSkeleton`. *Low-medium risk, many
-      files.*
-- [ ] **Blog index** `/news` and **soft 404** `/[lng]/[...notFound]` — both block
-      the first byte with no loading state (0.27s and ~1.8s to content). *Very
-      low risk.*
 
 ### Done
 
 - [x] **Collection / Campaign** — the reference implementation; see §1–§3.
+- [x] **Blog article** `/news/[slug]` — `fetchRelatedProductsForArticle` moved
+      behind an in-page `<Suspense>`; the article still renders in the shell, so
+      the indexable content and the LCP image are untouched. TTFB **0.837s →
+      0.285s**. Fallback vs real carousel 0.5px at both breakpoints, CLS 0.0001
+      mobile / 0.0000 desktop, unknown slug still a real 404.
+- [x] **Soft 404** `/[lng]/[...notFound]` — same split: the apology renders in the
+      first flush, the best-sellers rail streams behind it. TTFB **0.366s →
+      0.198s**, first paint of the message 865–1118ms → **644–679ms** warm.
+      Status stays 200 with `noindex` (documented, deliberate) and real
+      `notFound()` routes still return 404.
+- [x] **Profile** — seven of nine hand-rolled spinners replaced by
+      `ProfilePaneSkeleton` (built from `profileTheme`) and in-card row
+      placeholders. Two kept on purpose: `ConfirmDialog`'s is a button affordance,
+      and `ProfileLayoutClient`'s is an **auth boundary**, not a content loader —
+      changing it would render the profile chrome to a visitor who is about to be
+      redirected. All five profile routes still redirect to `/signin` when signed
+      out. *The skeletons themselves are not visually verified: they only render
+      for an authenticated session, which cannot be created locally.*
+- [x] **Shared `ProductCarouselSkeleton`** — one stand-in for every suspended
+      carousel (home best sellers, article related products, 404 suggestions),
+      reading `carouselChrome` and reusing `CollectionProductCardSkeleton`.
 - [x] **Homepage** — the About band and Shop by Collection moved *outside* the
       Suspense boundary (neither waits on anything: the banners are a module
       constant and both components are presentational), so 73% of the below-hero
@@ -212,6 +222,15 @@ that justifies it.
       for prefetch safety and the tap acknowledgement in §4.
 
 ### Looked at, deliberately left alone
+
+- **Blog index `/news` — tried, measured, reverted.** An in-page `<Suspense>`
+  around the article list made the page *worse*, not better. The list is the whole
+  of the page's content, so splitting the response bought a skeleton at
+  1120–1237ms while pushing the articles themselves from 1030–1270ms out to
+  1611–2815ms. On a page already delivering in one flush at ~0.2s TTFB the
+  streaming overhead exceeds the gain. Reverted; the measurement is the reason,
+  and it is worth re-checking only if the article query gets materially slower.
+
 
 - **Cart / Favorites** — `CartSkeleton` / `FavoritesSkeleton` already serve as
   both the route fallback and the client loading state, and match the real

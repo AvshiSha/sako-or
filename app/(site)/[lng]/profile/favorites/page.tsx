@@ -165,10 +165,22 @@ export default function ProfileFavoritesPage() {
   // Show loading state
   if (!isClient || loading) {
     return (
-      <div className="min-h-[400px] flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-border-default mx-auto"></div>
-          <p className="mt-4 text-text-secondary">{t.loading}</p>
+      <div className="min-h-[400px]" role="status" aria-busy="true" aria-label={t.loading}>
+        {/* Rows at the shape the list actually takes, inside the same reserved
+            box. A centred spinner left the 400px empty and the content replaced it. */}
+        <div className="flex flex-col gap-[14px] py-[8px]">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={`pane-skeleton-${index}`}
+              className="flex items-center justify-between gap-4 border-b border-border-subtle pb-[14px] last:border-b-0 last:pb-0"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="sako-skeleton sako-skeleton-muted mb-[8px] h-[14px] w-[58%]" aria-hidden />
+                <div className="sako-skeleton sako-skeleton-muted h-[12px] w-[34%]" aria-hidden />
+              </div>
+              <div className="sako-skeleton sako-skeleton-muted h-[14px] w-[72px] shrink-0" aria-hidden />
+            </div>
+          ))}
         </div>
       </div>
     )

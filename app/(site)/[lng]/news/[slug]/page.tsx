@@ -8,7 +8,9 @@ import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
 import InlineHeadingContent from '@/app/components/InlineHeadingContent'
 import RichContent from '@/app/components/RichContent'
 import ProductCarousel from '@/app/components/ProductCarousel'
+import ProductCarouselSkeleton from '@/app/components/ProductCarouselSkeleton'
 import { fetchRelatedProductsForArticle } from '@/lib/blog-related-products'
+import { Suspense } from 'react'
 import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
@@ -70,7 +72,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
     notFound()
   }
 
-  const relatedProducts = await fetchRelatedProductsForArticle(article.relatedProductsCarousel)
+  const relatedTitle = locale === 'he' ? 'מוצרים שיעניינו אותך' : 'You Might Also Like'
 
   const titleHtml = article.title[locale] || article.title.en || article.slug
   const titlePlain = cmsHtmlToPlainText(titleHtml) || article.slug
@@ -178,13 +180,52 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         />
       </div>
 
-      {relatedProducts.length > 0 && (
-        <ProductCarousel
-          products={relatedProducts}
-          title={locale === 'he' ? 'מוצרים שיעניינו אותך' : 'You Might Also Like'}
-          language={locale}
+      {/* Below the fold, and the only thing on this page that is not the article.
+          It used to be awaited in the page body, which put a second serial
+          Firestore round trip in front of the first byte - for a carousel nobody
+          has scrolled to yet. The article still renders in the shell, so the
+          indexable content and the LCP image are unaffected.
+
+          An in-page <Suspense>, deliberately not a route-level loading.tsx: the
+          notFound() above has to stay outside any boundary to keep returning a
+          real 404, and a loading.tsx here would wrap it. */}
+      <Suspense
+        fallback={
+          <ProductCarouselSkeleton
+            title={relatedTitle}
+            label="Loading related products"
+          />
+        }
+      >
+        <ArticleRelatedProducts
+          carousel={article.relatedProductsCarousel}
+          title={relatedTitle}
+          locale={locale}
         />
-      )}
+      </Suspense>
     </article>
+  )
+}
+
+/**
+ * The related-products rail. Everything slow on this page lives here on purpose:
+ * this is what the <Suspense> above waits on, so the article itself paints from
+ * the first chunk.
+ */
+async function ArticleRelatedProducts({
+  carousel,
+  title,
+  locale,
+}: {
+  carousel: Parameters<typeof fetchRelatedProductsForArticle>[0]
+  title: string
+  locale: 'en' | 'he'
+}) {
+  const relatedProducts = await fetchRelatedProductsForArticle(carousel)
+
+  if (relatedProducts.length === 0) return null
+
+  return (
+    <ProductCarousel products={relatedProducts} title={title} language={locale} />
   )
 }

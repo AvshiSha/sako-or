@@ -21,7 +21,7 @@
  *   from the same tokens as the states it does draw.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useTransition } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 // ProductLink, not next/link: the PDP now has a loading boundary, and prefetching
 // a dynamic route that has one intermittently renders an empty page instead of the
@@ -111,6 +111,16 @@ export default function CartClient({ recommendations = [] }: CartClientProps) {
   const [isClient, setIsClient] = useState(false)
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('delivery')
   const [isRevalidating, setIsRevalidating] = useState(false)
+  /**
+   * The navigation half of the checkout handoff. router.push resolves as soon as
+   * it is called, so without a transition there is nothing to hold a pending
+   * state against - and isRevalidating is already false by then, which is why the
+   * CTA used to go live again at the exact moment the ~1.5s wait began.
+   */
+  const [isNavigatingToCheckout, startCheckoutNavigation] = useTransition()
+  const isCheckingOut = isRevalidating || isNavigatingToCheckout
+  /** Guards the synchronous double-click window, before any state has committed. */
+  const checkoutInFlightRef = useRef(false)
 
   const pricing = useCartPricing({ items, loading, lng, shippingMethod })
   const { purchasableItems, subtotal } = pricing
@@ -169,6 +179,8 @@ export default function CartClient({ recommendations = [] }: CartClientProps) {
    * sold-out line is caught here rather than after the address form.
    */
   const handleCheckout = async () => {
+    if (checkoutInFlightRef.current) return
+    checkoutInFlightRef.current = true
     setIsRevalidating(true)
     let freshItems: typeof items | null = null
     try {
@@ -187,8 +199,29 @@ export default function CartClient({ recommendations = [] }: CartClientProps) {
         )
     )
 
-    if (stillPurchasable.length > 0) router.push(`/${lng}/checkout`)
+    // Sold out while they were looking at it: stay put and let them try again.
+    if (stillPurchasable.length === 0) {
+      checkoutInFlightRef.current = false
+      return
+    }
+
+    // Inside a transition so isNavigatingToCheckout stays true until the checkout
+    // route actually commits, which is the window the CTA has to keep answering for.
+    startCheckoutNavigation(() => {
+      router.push(`/${lng}/checkout`)
+    })
   }
+
+  /**
+   * Both halves finished and this component is still mounted, so the handoff did
+   * not happen - the navigation was interrupted, or revalidateCart threw. Release
+   * the guard so the CTA is clickable again rather than stuck pending.
+   */
+  useEffect(() => {
+    if (!isCheckingOut) {
+      checkoutInFlightRef.current = false
+    }
+  }, [isCheckingOut])
 
   if (!isClient || loading) return <CartSkeleton title={t.title} />
 
@@ -341,7 +374,11 @@ export default function CartClient({ recommendations = [] }: CartClientProps) {
           showPoints={!!user}
           ctaLabel={t.checkout}
           onCta={handleCheckout}
-          ctaDisabled={purchasableItems.length === 0 || subtotal <= 0 || isRevalidating}
+          // isRevalidating moved out of `disabled`: a greyed-out button reads as
+          // unavailable, where this one is working. ctaPending carries it instead,
+          // and handleCheckout refuses re-entry on its own.
+          ctaDisabled={purchasableItems.length === 0 || subtotal <= 0}
+          ctaPending={isCheckingOut}
           notice={
             !isEmpty && (purchasableItems.length === 0 || subtotal <= 0)
               ? t.cartInvalidMessage

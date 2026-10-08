@@ -46,6 +46,7 @@ const strings = {
     free: 'Free',
     total: 'Order total',
     vatNote: 'Prices include VAT',
+    ctaPending: 'Opening checkout',
     pointsDiscount: 'Points discount',
     bogo: 'BOGO deal',
     bogoLeftover: 'Deal applies to pairs only. Add 1 more eligible item to activate another pair.',
@@ -67,6 +68,7 @@ const strings = {
     free: 'חינם',
     total: 'סך כל ההזמנה',
     vatNote: 'המחירים כוללים מע״מ',
+    ctaPending: 'פותח את עמוד התשלום',
     pointsDiscount: 'הנחת נקודות',
     bogo: 'מבצע זוגות',
     bogoLeftover: 'המבצע חל על זוגות בלבד. הוסיפי עוד פריט זכאי כדי להפעיל זוג נוסף.',
@@ -85,6 +87,13 @@ export interface OrderSummaryPanelProps {
   ctaLabel: string
   onCta: () => void
   ctaDisabled?: boolean
+  /**
+   * The CTA is working - revalidating stock, or holding the navigation it started.
+   * Deliberately separate from ctaDisabled: disabled greys the button out, which
+   * reads as unavailable, and this one is busy. The caller is responsible for
+   * refusing re-entry; this only draws it.
+   */
+  ctaPending?: boolean
   /** Rendered under the totals, above the CTA. */
   notice?: string | null
   /** Rendered between the points block and the totals. */
@@ -100,6 +109,7 @@ export default function OrderSummaryPanel({
   ctaLabel,
   onCta,
   ctaDisabled = false,
+  ctaPending = false,
   notice,
   children,
   className = ''
@@ -331,8 +341,24 @@ export default function OrderSummaryPanel({
           type="button"
           onClick={onCta}
           disabled={ctaDisabled}
-          className="flex h-[58px] w-full items-center justify-between border border-btn-primary-bg bg-btn-primary-bg px-[19px] transition-colors hover:bg-sako-ink-800 disabled:border-sako-gray-500 disabled:bg-sako-gray-500"
+          // aria-disabled rather than disabled while pending: a disabled button
+          // drops out of the tab order and loses focus mid-flow, and the caller
+          // already refuses re-entry.
+          aria-disabled={ctaDisabled || ctaPending || undefined}
+          aria-busy={ctaPending || undefined}
+          className="relative overflow-hidden flex h-[58px] w-full items-center justify-between border border-btn-primary-bg bg-btn-primary-bg px-[19px] transition-colors hover:bg-sako-ink-800 disabled:border-sako-gray-500 disabled:bg-sako-gray-500"
         >
+          {ctaPending && (
+            <>
+              <span
+                className="sako-cta-pending-sheen pointer-events-none absolute inset-0"
+                aria-hidden="true"
+              />
+              <span className="sr-only" role="status">
+                {t.ctaPending}
+              </span>
+            </>
+          )}
           <span className="font-ploni text-[13px] font-bold text-text-inverse">{ctaLabel}</span>
           <span
             aria-hidden="true"

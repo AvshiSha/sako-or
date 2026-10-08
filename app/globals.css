@@ -513,6 +513,34 @@ body.admin-panel #vplugin-interface {
   animation: sako-skeleton-sheen 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+/* A filled CTA that is working. The label and the box stay exactly as they are -
+ * swapping the text for "Loading..." would resize the button and shift the panel -
+ * so the signal is a sheen travelling across the fill, the same sweep the skeletons
+ * use, at the same tempo as the tapped-card rule.
+ *
+ * Painted by an absolutely positioned overlay inside the button, so it cannot
+ * affect the button's own box. */
+.sako-cta-pending-sheen {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-sako-white) 24%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: sako-skeleton-sheen 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Still has to read as busy without moving: a flat wash instead of a sweep. */
+  .sako-cta-pending-sheen {
+    animation: none;
+    background-image: none;
+    background-color: color-mix(in srgb, var(--color-sako-white) 14%, transparent);
+  }
+}
+
 /* The scrim over the tapped card. A wash of the page's own ground, not a grey
    veil - enough to register as "this one", nowhere near enough to read as
    disabled. It fades in so an instant navigation does not flash.

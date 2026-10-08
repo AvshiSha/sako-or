@@ -16,8 +16,10 @@ import { SPLIT_SHELL_GRID } from '@/lib/split-shell-layout'
 
 export interface CheckoutShellProps {
   language: 'he' | 'en'
-  title: string
-  eyebrow: string
+  /** Node rather than string so CheckoutSkeleton can hand in placeholder bars
+      and reuse this shell verbatim instead of reproducing it. */
+  title: ReactNode
+  eyebrow: ReactNode
   /** The OrderSummaryPanel for this step. */
   summary: ReactNode
   children: ReactNode

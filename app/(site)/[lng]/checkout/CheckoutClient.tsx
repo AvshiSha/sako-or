@@ -28,6 +28,7 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 
 import CheckoutShell from '@/app/components/checkout/CheckoutShell'
+import { CHECKOUT_CELL, CHECKOUT_ROW_GRID } from '@/app/components/checkout/checkoutChrome'
 import OrderSummaryPanel from '@/app/components/checkout/OrderSummaryPanel'
 import ProductCarousel from '@/app/components/ProductCarousel'
 import PaymentIframe from '@/app/components/PaymentIframe'
@@ -143,8 +144,9 @@ const content = {
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /** 438:2749 — two 331.5px columns, 18px apart, each cell closing with 15px. */
-const ROW_GRID = 'grid grid-cols-1 gap-x-[18px] gap-y-0 sm:grid-cols-2'
-const CELL = 'pb-[15px]'
+// Shared with CheckoutSkeleton so the fallback cannot drift out of register.
+const ROW_GRID = CHECKOUT_ROW_GRID
+const CELL = CHECKOUT_CELL
 
 export interface CheckoutClientProps {
   recommendations?: Product[]

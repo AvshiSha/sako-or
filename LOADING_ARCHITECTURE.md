@@ -130,10 +130,6 @@ that justifies it.
 
 ### Next up
 
-- [ ] **Checkout** — its Suspense fallback is a blank `min-h-screen` box
-      (`checkout/page.tsx`). Reserves height, communicates nothing, on the
-      highest-intent page we have. Wants a checkout-shaped skeleton like
-      `CartSkeleton`. *Low risk.*
 - [ ] **Homepage** — `HomeProductsFallback` reserves **420px** against **1833px**
       of real below-hero content. Measured CLS stays near zero only because the
       shift is below the fold; the footer still travels 1413px. Also `aria-hidden`
@@ -155,6 +151,20 @@ that justifies it.
 ### Done
 
 - [x] **Collection / Campaign** — the reference implementation; see §1–§3.
+- [x] **Cart → Checkout CTA** — `router.push` wrapped in `useTransition`, so the
+      pending state spans the stock revalidation *and* the navigation. It used to
+      clear in a `finally` immediately before `router.push`, which is exactly when
+      the ~1.5s wait began. Feedback now at a median of 70ms: a sheen across the
+      filled CTA (`.sako-cta-pending-sheen`), `aria-busy`, and an sr-only status.
+      Re-entry is refused by a ref guard — five clicks in one frame produce one
+      overlay and one `/api/cart/validate` call.
+- [x] **Checkout** — `CheckoutSkeleton` built on the real `CheckoutShell`, so the
+      grid, seam, heading band and eyebrow are the same elements the loaded page
+      uses; form measurements shared via `checkoutChrome.ts`. Desktop CLS
+      0.0107 → 0.0002. Note for anyone working here: `useCartPricing` calls
+      `useSearchParams()`, which bails the whole boundary out of SSR
+      (`BAILOUT_TO_CLIENT_SIDE_RENDERING` is in the served HTML), so the fallback
+      is what every visitor sees until hydration — it is not an edge case.
 - [x] **PDP** — `loading.tsx` + `ProductPageSkeleton` for cold loads (skeleton in
       the first flush, CLS 0.0000, mobile reservation within 45px / gallery exact),
       `notFound()` hoisted into the layout so both 404s survive, and `ProductLink`

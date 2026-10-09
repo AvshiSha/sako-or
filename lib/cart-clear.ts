@@ -6,7 +6,7 @@
  * - Signed-in users: Forces cart reload from Neon (which excludes PURCHASED items)
  */
 
-import { clearCartState } from './guestReset'
+import { clearCartPromotions, clearCartState } from './guestReset'
 
 /**
  * Session storage key pattern for tracking cart loads
@@ -34,7 +34,13 @@ export function clearCartAfterPurchase(userId?: string): void {
       // This will cause useCart to reload, which will exclude PURCHASED items
       const sessionKey = `${SESSION_LOADED_KEY}_${userId}`
       sessionStorage.removeItem(sessionKey)
-      
+
+      // The items reload from Neon, but the coupon codes and the points
+      // redemption live in localStorage and would otherwise carry into the next
+      // cart — points redemption is signed-in only, so this is the branch that
+      // has to drop it.
+      clearCartPromotions()
+
       // Dispatch cartReload event to trigger immediate reload in useCart
       window.dispatchEvent(new CustomEvent('cartReload'))
       console.log('[clearCartAfterPurchase] Cleared sessionStorage flag for signed-in user, dispatched cartReload event')

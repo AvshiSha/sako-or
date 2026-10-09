@@ -29,6 +29,29 @@ import { cn } from "@/lib/utils"
  */
 export const FIELD_VALUE_TEXT = "text-[14px] pointer-coarse:text-[16px]"
 
+/**
+ * The boxed field's type size — the order summary's coupon and points controls,
+ * which are drawn as bordered boxes rather than on a rule and so start from a
+ * different number than the fields above.
+ *
+ * Same iOS zoom floor, different trap. These two are drawn at 16px (cart
+ * 438:3991), which is exactly Safari's threshold rather than under it — and
+ * exactly at the threshold is not enough. `font-ploni` loads with
+ * `font-display: swap`, and the `ploni Fallback` face Next generates for it
+ * carries `size-adjust: 97.13%`, so for the whole swap window the declared 16px
+ * is *used* as 15.54px. On a phone that window is precisely when someone taps
+ * the coupon field, Safari measures 15.54px, and the page zooms.
+ *
+ * One pixel on touch devices puts the used size back over the floor —
+ * 17 × 0.9713 = 16.51px in the fallback, 17px once Ploni lands — and costs no
+ * layout: both fields are fixed-height boxes (54px for the coupon row) with the
+ * input stretched inside, so only the glyphs change.
+ *
+ * `pointer-coarse` rather than a width breakpoint, and never
+ * `maximum-scale=1` / `user-scalable=no`, for the reasons spelled out above.
+ */
+export const FIELD_BOX_TEXT = "text-[16px] pointer-coarse:text-[17px]"
+
 const inputVariants = cva(
   "w-full ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
   {

@@ -27,7 +27,24 @@
       "Bash(curl -s -m 45 -o /dev/null -w 'preview /_vercel/insights/script.js -> status=%{http_code} type=%{content_type}\\\\n' -H 'Cookie: _vercel_share=huP8HaVEP3HPep7wNjpzMSWxIVuoJnf0' https://sako-5bbogogy1-sako-or.vercel.app/_vercel/insights/script.js)",
       "Bash(MSYS_NO_PATHCONV=1 NODE_PATH=\"C:/Users/user/sako-or/node_modules\" node coll2coll.js 40)",
       "Bash(MSYS_NO_PATHCONV=1 NODE_PATH=\"C:/Users/user/sako-or/node_modules\" node audit-journey.js 390)",
-      "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const r=JSON.parse\\(s\\);for\\(const f of r\\)for\\(const m of f.messages\\)console.log\\(\\(m.severity===2?'ERROR':'warn '\\)+' '+m.line+':'+m.column+' '+\\(m.ruleId||''\\)+' '+m.message.slice\\(0,80\\)\\);}\\);\")"
+      "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const r=JSON.parse\\(s\\);for\\(const f of r\\)for\\(const m of f.messages\\)console.log\\(\\(m.severity===2?'ERROR':'warn '\\)+' '+m.line+':'+m.column+' '+\\(m.ruleId||''\\)+' '+m.message.slice\\(0,80\\)\\);}\\);\")",
+      "Bash(git log *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:3002/he/cart)",
+      "Bash(curl -s http://127.0.0.1:3002/he/cart)",
+      "Bash(\"/c/Program Files/Google/Chrome/Application/chrome.exe\" --headless=new --remote-debugging-port=9333 --user-data-dir=\"C:\\\\Users\\\\user\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-user-sako-or\\\\e6526bab-1dba-4b4e-8f44-2f4446a9dd43\\\\scratchpad\\\\cdp-profile\" about:blank)",
+      "Bash(curl -s http://127.0.0.1:9333/json/version)",
+      "Bash(MSYS_NO_PATHCONV=1 NODE_PATH=C:/Users/user/sako-or/node_modules node probe.js 9333 /he/cart)",
+      "Bash(MSYS_NO_PATHCONV=1 NODE_PATH=C:/Users/user/sako-or/node_modules node probe.js 9333 /he/checkout)",
+      "Bash(npx next *)",
+      "Bash(curl -s http://127.0.0.1:3002/_next/static/chunks/3qqwtr50ay6rq.css)",
+      "Bash(grep -o 'pointer-coarse\\\\\\\\:text-\\\\\\\\\\\\[17px\\\\\\\\\\\\]{[^}]*}')",
+      "Bash(QA_BASE_URL=http://127.0.0.1:3002 npx playwright test order-summary-regression --project=mobile)",
+      "Bash(QA_BASE_URL=http://127.0.0.1:3002 npx playwright test __authprobe --project=mobile --reporter=list)",
+      "Bash(QA_BASE_URL=http://127.0.0.1:3002 npx playwright test order-summary-regression --reporter=list)",
+      "Bash(QA_BASE_URL=http://127.0.0.1:3002 npx playwright test --reporter=list)",
+      "Bash(git --no-pager diff app/hooks/useCartPricing.ts)",
+      "Bash(taskkill //F //IM chrome.exe)",
+      "Bash(git check-ignore *)"
     ]
   }
 }

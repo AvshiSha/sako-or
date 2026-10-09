@@ -1,8 +1,9 @@
 import { defineConfig, devices } from '@playwright/test'
 
 /**
- * Browser-level regression tests. Currently one spec, covering the two tracking
- * defects fixed on 2026-10-08 — see tests/e2e/tracking-regression.spec.ts.
+ * Browser-level regression tests: the two tracking defects fixed on 2026-10-08
+ * and the two order-summary defects fixed on 2026-10-09 — see
+ * tests/e2e/README.md.
  *
  * Deliberately has **no `webServer`**: these must run against a production
  * build, and starting one from here would rebuild or tear it down between

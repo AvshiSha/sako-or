@@ -7,6 +7,23 @@
 import { resetFacebookPixelAdvancedMatching } from '@/lib/facebookPixel';
 
 /**
+ * Promotions attached to the cart rather than to the items: applied coupon codes
+ * and the loyalty-points redemption. Both outlive the page they were applied on
+ * by design, so both have to be dropped wherever the cart they belong to is.
+ * Leaving the points key behind would silently re-spend points on the next cart.
+ */
+export function clearCartPromotions(): void {
+  if (typeof window === 'undefined') return
+
+  try {
+    localStorage.removeItem('cart_coupons')
+    localStorage.removeItem('cart_points')
+  } catch (error) {
+    console.error('Error clearing cart promotions:', error)
+  }
+}
+
+/**
  * Clears cart state from localStorage and dispatches a cartUpdated event
  * to notify all mounted useCart() instances.
  */
@@ -16,8 +33,8 @@ export function clearCartState(): void {
   try {
     // Remove cart from localStorage
     localStorage.removeItem('cart')
-    localStorage.removeItem('cart_coupons')
-    
+    clearCartPromotions()
+
     // Dispatch event to update all mounted useCart() hooks
     window.dispatchEvent(new CustomEvent('cartUpdated', { detail: [] }))
   } catch (error) {
@@ -36,9 +53,9 @@ export function clearGuestStateStorage(): void {
   if (typeof window === 'undefined') return
 
   try {
-    // Cart page coupons (cart and favorites are handled by their contexts)
-    localStorage.removeItem('cart_coupons')
-    
+    // Cart page coupons and points (cart and favorites are handled by their contexts)
+    clearCartPromotions()
+
     // Optional: Clear any other guest-specific keys here
     // localStorage.removeItem('bf_popup_seen') // Uncomment if you want to reset popup state
   } catch (error) {

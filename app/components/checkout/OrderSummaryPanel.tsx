@@ -14,11 +14,15 @@
 import { useState, type ReactNode } from 'react'
 
 import PointsUsage from '@/app/components/PointsUsage'
+import { FIELD_BOX_TEXT } from '@/app/components/ui/input'
 import type { CartPricing } from '@/app/hooks/useCartPricing'
 
-/** 438:2793 — white field, pure-black hairline, centred uppercase value. */
+/**
+ * 438:2793 — white field, pure-black hairline, centred uppercase value.
+ * Its type size comes from FIELD_BOX_TEXT, which owns the iOS zoom floor.
+ */
 const FIELD_CLASS =
-  'min-w-0 flex-1 border border-sako-black bg-surface-primary px-[10px] text-center font-ploni text-[16px] uppercase text-sako-black outline-none placeholder:text-sako-gray-500 placeholder:normal-case focus:border-sako-ink-900 disabled:bg-sako-gray-300'
+  `min-w-0 flex-1 border border-sako-black bg-surface-primary px-[10px] text-center font-ploni ${FIELD_BOX_TEXT} uppercase text-sako-black outline-none placeholder:text-sako-gray-500 placeholder:normal-case focus:border-sako-ink-900 disabled:bg-sako-gray-300`
 
 /** 438:2792 "CTA Button" — 54px, ink fill, paper label. No border in the Update file. */
 const APPLY_CLASS =
@@ -125,6 +129,7 @@ export default function OrderSummaryPanel({
     applyCouponCode,
     removeCoupon,
     pointsBalance,
+    pointsToUse,
     setPointsToUse,
     pointsLoading,
     usablePoints,
@@ -193,6 +198,12 @@ export default function OrderSummaryPanel({
             <input
               id="summary-coupon"
               type="text"
+              // The field renders uppercase and the code is normalised to
+              // uppercase before it is validated, so the keyboard may as well
+              // match; autocorrect otherwise rewrites codes into words.
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
               value={couponInput}
               onChange={(event) => setCouponInput(event.target.value)}
               onKeyDown={(event) => {
@@ -257,6 +268,7 @@ export default function OrderSummaryPanel({
               maxUsablePoints={usablePoints}
               isCappedBy15Percent={isCappedBy15Percent}
               maxPointsBy15Percent={maxPointsBy15Percent}
+              appliedPoints={pointsToUse}
               onPointsChange={setPointsToUse}
               language={language}
               disabled={pointsLoading}

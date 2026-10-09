@@ -25,6 +25,19 @@ import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '@/lib/pricing'
 
 const COUPON_STORAGE_KEY = 'cart_coupons'
 
+/**
+ * Redeemed loyalty points, persisted for the same reason coupons are: the cart
+ * and checkout are separate route mounts, so a redemption held only in this
+ * hook's state is gone the moment the customer presses "Checkout" — and gone
+ * again on a checkout refresh.
+ *
+ * Keyed by uid, unlike the coupon key. A balance belongs to one account, so
+ * restoring one account's redemption into another's cart on a shared device
+ * would spend points the signed-in user does not have; the uid check drops the
+ * stored value instead of applying it.
+ */
+const POINTS_STORAGE_KEY = 'cart_points'
+
 export type CouponStatus = { type: 'success' | 'error' | 'info'; message: string } | null
 
 const couponMessages = {
@@ -65,7 +78,7 @@ export function useCartPricing({
   shippingMethod,
   enableAutoApply = true
 }: UseCartPricingOptions) {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const searchParams = useSearchParams()
   const strings = couponMessages[lng === 'he' ? 'he' : 'en']
   const cartCurrency = 'ILS'
@@ -76,8 +89,15 @@ export function useCartPricing({
   const [autoApplyAttempted, setAutoApplyAttempted] = useState(false)
 
   const [pointsBalance, setPointsBalance] = useState(0)
-  const [pointsToUse, setPointsToUse] = useState(0)
+  const [pointsToUse, setPointsToUseState] = useState(0)
   const [pointsLoading, setPointsLoading] = useState(false)
+  /**
+   * The balance fetch has answered at least once. Until it has, `pointsBalance`
+   * is a placeholder 0 and so is `usablePoints` — and clamping a restored
+   * redemption against that false ceiling is exactly how the value gets eaten on
+   * the way in.
+   */
+  const [pointsBalanceLoaded, setPointsBalanceLoaded] = useState(false)
 
   const [bogoDiscountAmount, setBogoDiscountAmount] = useState(0)
   const [bogoHasLeftover, setBogoHasLeftover] = useState(false)
@@ -87,6 +107,7 @@ export function useCartPricing({
   const revalidatingRef = useRef(false)
   const lastCartSignatureRef = useRef<string | null>(null)
   const urlCouponAttemptedRef = useRef<string | null>(null)
+  const pointsHydratedRef = useRef(false)
 
   const appliedCodes = useMemo(
     () => appliedCoupons.map(coupon => coupon.coupon.code),
@@ -148,6 +169,44 @@ export function useCartPricing({
       return []
     }
   }, [])
+
+  const savePointsToStorage = useCallback((points: number, uid?: string) => {
+    if (typeof window === 'undefined') return
+    try {
+      if (!uid || points <= 0) localStorage.removeItem(POINTS_STORAGE_KEY)
+      else localStorage.setItem(POINTS_STORAGE_KEY, JSON.stringify({ uid, points }))
+    } catch (storageError) {
+      console.warn('Failed to persist redeemed points:', storageError)
+    }
+  }, [])
+
+  const loadPointsFromStorage = useCallback((uid: string): number => {
+    if (typeof window === 'undefined') return 0
+    try {
+      const stored = localStorage.getItem(POINTS_STORAGE_KEY)
+      if (!stored || !stored.trim()) return 0
+      const parsed = JSON.parse(stored)
+      if (!parsed || parsed.uid !== uid) return 0
+      const points = Number(parsed.points)
+      return Number.isFinite(points) && points > 0 ? points : 0
+    } catch (storageError) {
+      console.warn('Failed to load redeemed points from storage:', storageError)
+      return 0
+    }
+  }, [])
+
+  /**
+   * The setter the summary panel calls. Writes through to storage, so the cart
+   * and checkout agree on the redemption without either screen knowing the other
+   * exists.
+   */
+  const setPointsToUse = useCallback(
+    (points: number) => {
+      setPointsToUseState(points)
+      savePointsToStorage(points, user?.uid)
+    },
+    [savePointsToStorage, user?.uid]
+  )
 
   const applyCouponCode = useCallback(
     async (
@@ -395,7 +454,12 @@ export function useCartPricing({
   useEffect(() => {
     if (!user) {
       setPointsBalance(0)
-      setPointsToUse(0)
+      // The non-persisting setter on purpose: `user` is null for the first
+      // frames of every load while Firebase resolves, and purging storage here
+      // would delete the redemption before we know whether anyone is signed in.
+      // A real sign-out clears the key through resetOnLogout.
+      setPointsToUseState(0)
+      setPointsBalanceLoaded(false)
       return
     }
 
@@ -415,7 +479,12 @@ export function useCartPricing({
         console.error('Error loading points:', e)
         if (!cancelled) setPointsBalance(0)
       } finally {
-        if (!cancelled) setPointsLoading(false)
+        if (!cancelled) {
+          setPointsLoading(false)
+          // Marked loaded even on failure: a balance we could not read is a
+          // ceiling of zero, and refusing to redeem is the safe direction.
+          setPointsBalanceLoaded(true)
+        }
       }
     })()
 
@@ -476,6 +545,19 @@ export function useCartPricing({
     [purchasableItems]
   )
 
+  /**
+   * Items hydrate from localStorage with maxStock 0 and stockStatus 'checking',
+   * so between mount and the server's stock reply every line looks unpurchasable
+   * and the order totals to zero. Callers use this to hold a loading state
+   * instead of flashing "your cart is empty" and a ₪0.00 summary at someone who
+   * is halfway through checking out — and the points restore below uses it to
+   * avoid clamping a redemption against that transient zero.
+   */
+  const isValidatingStock =
+    items.length > 0 &&
+    purchasableItems.length === 0 &&
+    items.every(item => item.stockStatus === 'checking')
+
   const isBogoActive = bogoDiscountAmount > 0
   const couponsDiscountTotal = appliedCoupons.reduce((sum, c) => sum + c.discountAmount, 0)
   const totalDiscount = isBogoActive ? bogoDiscountAmount : couponsDiscountTotal
@@ -485,13 +567,59 @@ export function useCartPricing({
   const usablePoints = Math.min(pointsBalance, maxPointsBy15Percent)
   const isCappedBy15Percent = pointsBalance > maxPointsBy15Percent
 
-  // Clamp when the cap drops (cart or coupons changed).
+  /**
+   * Restore a redemption applied on the other screen.
+   *
+   * Deliberately the last thing to run: it needs the signed-in uid (auth), the
+   * ceiling (balance) and a settled cart (stock), and every one of those three
+   * reads as zero before it arrives. Hydrating earlier means restoring against a
+   * ceiling of zero, which is indistinguishable from the customer never having
+   * redeemed anything.
+   */
   useEffect(() => {
-    const before = Math.max(subtotal - totalDiscount, 0)
-    const cap = Math.round(0.15 * before * 100) / 100
-    const usable = Math.min(pointsBalance, cap)
-    setPointsToUse(prev => (prev > usable ? usable : prev))
-  }, [subtotal, totalDiscount, pointsBalance])
+    if (pointsHydratedRef.current) return
+    if (authLoading || !user) return
+    if (!pointsBalanceLoaded || loading || isValidatingStock) return
+
+    pointsHydratedRef.current = true
+
+    const stored = loadPointsFromStorage(user.uid)
+    if (stored <= 0) return
+
+    // The cart may have shrunk since the redemption was applied, so the stored
+    // value still has to pass through the cap.
+    const clamped = Math.min(stored, usablePoints)
+    setPointsToUseState(clamped)
+    savePointsToStorage(clamped, user.uid)
+  }, [
+    authLoading,
+    isValidatingStock,
+    loadPointsFromStorage,
+    loading,
+    pointsBalanceLoaded,
+    savePointsToStorage,
+    usablePoints,
+    user
+  ])
+
+  // Clamp when the cap drops (cart or coupons changed). Held off until the cart
+  // and the balance have settled, for the same reason the restore above is:
+  // clamping against a ceiling that has not loaded yet wipes the redemption
+  // rather than capping it.
+  useEffect(() => {
+    if (loading || isValidatingStock || !pointsBalanceLoaded) return
+    if (pointsToUse <= usablePoints) return
+    setPointsToUseState(usablePoints)
+    savePointsToStorage(usablePoints, user?.uid)
+  }, [
+    isValidatingStock,
+    loading,
+    pointsBalanceLoaded,
+    pointsToUse,
+    savePointsToStorage,
+    usablePoints,
+    user?.uid
+  ])
 
   const pointsDiscount = pointsToUse // 1 point = 1 ILS
   const discountedSubtotal = Math.max(subtotal - totalDiscount - pointsDiscount, 0)
@@ -512,18 +640,6 @@ export function useCartPricing({
 
   const finalTotal = Math.max(discountedSubtotal + deliveryFee, 0)
   const remainingForFreeDelivery = Math.max(FREE_DELIVERY_THRESHOLD_ILS - subtotal, 0)
-
-  /**
-   * Items hydrate from localStorage with maxStock 0 and stockStatus 'checking',
-   * so between mount and the server's stock reply every line looks unpurchasable
-   * and the order totals to zero. Callers use this to hold a loading state
-   * instead of flashing "your cart is empty" and a ₪0.00 summary at someone who
-   * is halfway through checking out.
-   */
-  const isValidatingStock =
-    items.length > 0 &&
-    purchasableItems.length === 0 &&
-    items.every(item => item.stockStatus === 'checking')
 
   return {
     purchasableItems,

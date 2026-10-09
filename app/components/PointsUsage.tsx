@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+import { FIELD_BOX_TEXT } from '@/app/components/ui/input'
 
 /**
  * Points redemption control, cart frame 46:16455 (nodes 258:12402-258:12414).
@@ -24,6 +26,13 @@ interface PointsUsageProps {
   isCappedBy15Percent?: boolean
   /** 15% of cart amount, for display in the cap message. */
   maxPointsBy15Percent?: number
+  /**
+   * Points currently redeemed. Owned by useCartPricing, not by this component:
+   * a local copy cannot show a redemption that was applied on the cart and is
+   * being restored here on checkout, and the two copies drift the moment the
+   * hook clamps the value against a smaller cart.
+   */
+  appliedPoints: number
   onPointsChange: (points: number) => void
   language: 'he' | 'en'
   disabled?: boolean
@@ -56,9 +65,12 @@ const pointsContent = {
   }
 } as const
 
-/** Shared with the coupon field in CartClient — same frame, same box. */
+/**
+ * Shared with the coupon field in the order summary — same frame, same box, and
+ * the same FIELD_BOX_TEXT type size, which owns the iOS zoom floor for both.
+ */
 const FIELD_CLASS =
-  'min-w-0 flex-1 border border-sako-black bg-surface-primary px-[10px] py-[17px] text-center font-ploni text-[16px] tabular-nums text-sako-black outline-none placeholder:text-sako-gray-500 focus:border-sako-ink-900 disabled:bg-sako-gray-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none'
+  `min-w-0 flex-1 border border-sako-black bg-surface-primary px-[10px] py-[17px] text-center font-ploni ${FIELD_BOX_TEXT} tabular-nums text-sako-black outline-none placeholder:text-sako-gray-500 focus:border-sako-ink-900 disabled:bg-sako-gray-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`
 
 const APPLY_CLASS =
   'shrink-0 border border-btn-primary-bg bg-btn-primary-bg px-[18px] py-[14px] font-ploni text-[16px] font-bold leading-none text-btn-primary-text transition-colors hover:bg-sako-ink-800 disabled:border-sako-gray-500 disabled:bg-sako-gray-500'
@@ -70,12 +82,14 @@ export default function PointsUsage({
   maxUsablePoints,
   isCappedBy15Percent = false,
   maxPointsBy15Percent = 0,
+  appliedPoints,
   onPointsChange,
   language,
   disabled = false
 }: PointsUsageProps) {
-  const [pointsInput, setPointsInput] = useState('')
-  const [appliedPoints, setAppliedPoints] = useState(0)
+  const [pointsInput, setPointsInput] = useState(() =>
+    appliedPoints > 0 ? String(appliedPoints) : ''
+  )
   const [error, setError] = useState<string | null>(null)
   const strings = pointsContent[language]
   const effectiveMax = maxUsablePoints
@@ -84,7 +98,6 @@ export default function PointsUsage({
     const numValue = parseFloat(pointsInput)
 
     if (pointsInput.trim() === '' || numValue === 0) {
-      setAppliedPoints(0)
       onPointsChange(0)
       setError(null)
       return
@@ -96,29 +109,30 @@ export default function PointsUsage({
     }
 
     // Round to 2 decimal places
-    const roundedValue = Math.round(numValue * 100) / 100
-    setAppliedPoints(roundedValue)
-    onPointsChange(roundedValue)
+    onPointsChange(Math.round(numValue * 100) / 100)
     setError(null)
   }
 
   const handleRemove = () => {
     setPointsInput('')
-    setAppliedPoints(0)
     onPointsChange(0)
     setError(null)
   }
 
-  // When cap drops (e.g. cart/coupons changed), clamp local state to maxUsablePoints
+  /**
+   * Mirror the redeemed value into the field when it moves from outside — the
+   * hook restoring a redemption applied on the other screen, or clamping it
+   * against a cart that shrank. Guarded by the last value we echoed rather than
+   * run on every render, so typing a new amount is not overwritten by the amount
+   * still applied.
+   */
+  const echoedPointsRef = useRef(appliedPoints)
   useEffect(() => {
-    if (appliedPoints > maxUsablePoints) {
-      const clamped = maxUsablePoints
-      setAppliedPoints(clamped)
-      setPointsInput(clamped.toFixed(2))
-      onPointsChange(clamped)
-      setError(null)
-    }
-  }, [maxUsablePoints, appliedPoints, onPointsChange])
+    if (echoedPointsRef.current === appliedPoints) return
+    echoedPointsRef.current = appliedPoints
+    setPointsInput(appliedPoints > 0 ? String(appliedPoints) : '')
+    setError(null)
+  }, [appliedPoints])
 
   const formatPoints = (value: number) =>
     value.toLocaleString(language === 'he' ? 'he-IL' : 'en-US', {
@@ -138,6 +152,10 @@ export default function PointsUsage({
           <div className="flex items-stretch">
             <input
               type="number"
+              // iOS gives type=number the full keyboard unless asked; decimal
+              // gets the numeric pad with a separator, which is what a points
+              // amount is typed on.
+              inputMode="decimal"
               step="0.01"
               min="0"
               max={effectiveMax}

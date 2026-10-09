@@ -1,6 +1,6 @@
 # Browser regression tests
 
-One spec, `tracking-regression.spec.ts`, covering two tracking defects fixed on
+`tracking-regression.spec.ts`, covering two tracking defects fixed on
 2026-10-08:
 
 - **`ViewContent` fired twice per PDP view.** The analytics effect in
@@ -11,6 +11,47 @@ One spec, `tracking-regression.spec.ts`, covering two tracking defects fixed on
 - **`/[lng]/product/[baseSku]` dropped the query string** when redirecting to
   the primary colour, so `fbclid` never reached the browser and `_fbc` was never
   set.
+
+`order-summary-regression.spec.ts`, covering two order-summary defects fixed on
+2026-10-09:
+
+- **A points redemption applied on the cart did not reach checkout.**
+  `useCartPricing` persisted coupon codes but held `pointsToUse` in plain
+  `useState`, and the cart and checkout are separate route mounts — so pressing
+  "Checkout" dropped the redemption, its discount and the order total, and a
+  checkout refresh dropped it again. Now persisted under `cart_points`, keyed by
+  uid. The spec carries a **negative control**: with the key removed by hand,
+  checkout must show no redemption. Without it, a green checkout assertion would
+  not distinguish a working handoff from one that never mattered.
+- **Both summary fields sat exactly on the iOS 16px zoom floor.** `FIELD_BOX_TEXT`
+  in `app/components/ui/input.tsx` now adds a pixel on coarse pointers; that file
+  explains why 16px was not enough (`font-display: swap` plus the generated
+  `ploni Fallback`'s `size-adjust: 97.13%` uses a declared 16px as 15.54px).
+  The spec asserts the computed size, which is the cause — Chromium cannot
+  reproduce Safari's zoom itself, so the behaviour still wants a real device.
+
+## Signing in without a real account
+
+The points block renders only for a signed-in user and the balance comes from
+`/api/me/points`, which verifies a real Firebase token against the production
+database. `order-summary-regression.spec.ts` fakes the session instead, and two
+details are load-bearing:
+
+1. **Firebase prefers IndexedDB persistence, which cannot be seeded from an init
+   script** — the write is asynchronous and loses the race against the SDK's own
+   read. The spec makes `indexedDB` unavailable, which drops the SDK onto
+   `browserLocalPersistence`: one synchronous `localStorage` key.
+2. **The persistence key is named after the API key, and the `firebase.js` at the
+   repo root is a stale leftover carrying a different one.** The real key comes
+   from `NEXT_PUBLIC_FIREBASE_API_KEY`, which is what the spec reads. Seeding
+   under the wrong key fails silently: the record simply sits there unread, the
+   page renders as a signed-out cart, and nothing in the console says why.
+
+Also note the auth chunk is **lazy on storefront routes** — `ClientAuthProvider`
+loads it on idle with a 3s timeout — so the points block arrives a beat after the
+rest of the summary. Wait for it with a web-first assertion, not a fixed delay.
+
+`/api/me/points` is never reached, no order is created and no points are spent.
 
 ## Running
 

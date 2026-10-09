@@ -53,7 +53,7 @@ const translations = {
     reviewsTitle: 'In their words',
     reviewsLabel: 'FROM OUR CUSTOMERS',
     intro:
-      'Our story begins in 1977, when Moshe Shacharbani from Ness Ziona founded SAKO-OR out of love for the art of leather and meticulous craftsmanship. From the beginning, we focused on creating unique leather bags and handcrafted fashion accessories that combine classic design with uncompromising quality.',
+      'Our story begins in 1977, when Moshe Shaharbani from Ness Ziona founded SAKO-OR out of love for the art of leather and meticulous craftsmanship. From the beginning, we focused on creating unique leather bags and handcrafted fashion accessories that combine classic design with uncompromising quality.',
     theBeginnings: 'The Beginning',
     beginningsText:
       'Success was not long in coming – and in the first year alone, we expanded our product range to include leather shoes and sandals, which quickly became symbols of comfort and elegance.',
@@ -68,7 +68,7 @@ const translations = {
       'At the beginning of 2020, with a strategic vision for market trends and customer preferences, we decided to focus our operations and adapt to the digital age. We closed most stores and kept the flagship branch in Rishon LeZion, alongside a significant strengthening of online sales at sako-or.com, to offer customers a convenient, fast, and secure shopping experience from anywhere.',
     today: 'Today',
     todayText:
-      'Today, under the management of Moshe Shacharbani, SAKO-OR continues to lead in the field with products of the highest quality, meticulous design, and advanced technology, accompanying our customers in every moment of daily life – from city walks to special events.',
+      'Today, under the management of Moshe Shaharbani, SAKO-OR continues to lead in the field with products of the highest quality, meticulous design, and advanced technology, accompanying our customers in every moment of daily life – from city walks to special events.',
     closing: 'SAKO-OR – The choice of those who appreciate quality, design, and tradition.',
   },
   he: {

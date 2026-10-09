@@ -28,18 +28,18 @@ export const CARE_INSTRUCTIONS_PRESETS: TextPreset[] = [
     label_en: 'Suede Leather',
     label_he: 'זמש',
     text_en:
-      'Gently clean using a dedicated suede brush, brushing in one consistent direction. Do not clean with water or a wet cloth. A suede protection spray is recommended before use, after testing it on a hidden area. Avoid contact with rain, oil and moisture.',
+      'Gently clean using a dedicated suede brush, brushing in one consistent direction. Do not clean with water or a wet cloth. A suede protection spray is recommended before use, after testing it on a hidden area.',
     text_he:
-      'יש לנקות בעדינות באמצעות מברשת ייעודית לזמש ובכיוון אחיד. אין להשתמש במים או במטלית רטובה. מומלץ להשתמש בספריי הגנה ייעודי לזמש לפני השימוש. יש להימנע ממגע עם גשם, שמן ולחות.',
+      'יש לנקות בעדינות באמצעות מברשת ייעודית לזמש ובכיוון אחיד. אין להשתמש במים או במטלית רטובה. מומלץ להשתמש בספריי הגנה ייעודי לזמש לפני השימוש.',
   },
   {
     id: 'nubuck_leather',
     label_en: 'Nubuck Leather',
     label_he: 'עור נובוק',
     text_en:
-      'Gently clean using a dedicated suede/nubuck brush, brushing in one consistent direction to lift dirt and restore the nap. Do not clean with water or a wet cloth. A nubuck protection spray is recommended before use, after testing it on a hidden area. Avoid contact with rain, oil and moisture.',
+      'Gently clean using a dedicated suede/nubuck brush, brushing in one consistent direction to lift dirt and restore the nap. Do not clean with water or a wet cloth. A nubuck protection spray is recommended before use, after testing it on a hidden area.',
     text_he:
-      'יש לנקות בעדינות באמצעות מברשת ייעודית לזמש/נובוק ובכיוון אחיד, כדי להסיר לכלוך ולהחזיר את המרקם השעיר. אין להשתמש במים או במטלית רטובה. מומלץ להשתמש בספריי הגנה ייעודי לעור נובוק לפני השימוש. יש להימנע ממגע עם גשם, שמן ולחות.',
+      'יש לנקות בעדינות באמצעות מברשת ייעודית לזמש/נובוק ובכיוון אחיד, כדי להסיר לכלוך ולהחזיר את המרקם השעיר. אין להשתמש במים או במטלית רטובה. מומלץ להשתמש בספריי הגנה ייעודי לעור נובוק לפני השימוש.',
   },
   {
     id: 'patent_leather',

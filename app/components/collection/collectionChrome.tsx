@@ -117,7 +117,17 @@ export function estimateCollectionRowHeight(
   // column count is a safe proxy for "are we on the desktop card?".
   const isDesktopCard = columns >= 4
   const imageHeight = isDesktopCard ? cardWidth : cardWidth * (235 / 195)
-  const infoHeight = isDesktopCard ? 150 : 129
+  // PRODUCT_CARD_INFO_MIN_H's three values. The third one is the bar from xl,
+  // where the swatches move up beside the name and the bar loses a 45px row and a
+  // 6px gap. That boundary is a viewport one and all this function has is the card,
+  // so it is read back off the width: four across at 1280 is a 316px card, and the
+  // grid is four across at every width this branch runs at. The two are continuous
+  // across the breakpoint - a 1279px viewport also gives ~316 - so viewports within
+  // a pixel or so of 1280 can be classified as the shorter bar while still drawing
+  // the taller one. That is the safe direction, and the same one the rest of this
+  // contract errs in: under-reserving costs a little CLS, over-reserving shows as
+  // blank ground inside the card.
+  const infoHeight = isDesktopCard ? (cardWidth >= 316 ? 106 : 150) : 129
   return imageHeight + infoHeight
 }
 

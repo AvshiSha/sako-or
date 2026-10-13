@@ -282,14 +282,25 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
       const band = bandRef.current
       if (!band) return
       const available = window.innerHeight - band.getBoundingClientRect().bottom
-      // Half the viewport, never more. Fitting the preview to the space available
-      // is not the same as it being a preview: at 1728x900 the eight cards come to
-      // ~710px and simply reach the fold, which is how the open search ended up
-      // reading as a collection page. Capping it at half leaves a real band of the
-      // page in view underneath - the thing that makes it read as a panel over the
-      // site rather than a replacement for it - and the second row is still one
-      // scroll away, so all eight results are kept.
-      setPanelMaxH(Math.max(0, Math.min(available, window.innerHeight * 0.5)))
+      // A fraction of the viewport, never the whole space available. Fitting the
+      // preview to the space available is not the same as it being a preview: at
+      // 1728x900 the eight cards simply reach the fold, which is how the open
+      // search ended up reading as a collection page. Leaving a real band of the
+      // page in view underneath is what makes it read as a panel over the site
+      // rather than a replacement for it, and the second row is still one scroll
+      // away, so all eight results are kept either way.
+      //
+      // 0.65, raised from the 0.5 this was written at. The fraction has to clear
+      // one whole row or the panel's first row is cut through the product name,
+      // which is worse than a shorter panel: a preview nobody can read a price in
+      // previews nothing. A row is a quarter of the panel's width (square image)
+      // plus the 106px info bar, and the panel is now the full width of the field
+      // rather than a fixed 681px, so the row grew with it - ~480px at 1600x900
+      // against a 450px cap. That ratio is near enough constant across 16:9 and
+      // 16:10, where a row and the results header come to 56-61% of the height:
+      // 520/900 at 1600, 604/1080 at 1920, 466/768 at 1366. 0.65 clears all of
+      // them and still leaves ~130px of page showing at 900.
+      setPanelMaxH(Math.max(0, Math.min(available, window.innerHeight * 0.65)))
     }
 
     measure()
@@ -417,11 +428,14 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
       ) : searchResults.length > 0 ? (
         <>
           {resultsHeader}
-          {/* Four up in both variants. On desktop the preview is a fixed 681px, so
-              the columns are fixed too - there is no viewport for them to respond
-              to. 681/4 lands each card at ~170px, within a dozen pixels of the
-              159px the phone gives it, which is the whole point: same card, same
-              scale, two surfaces. */}
+          {/* Four up on desktop, two on the phone - the same counts the collection
+              grid uses at those widths, since this panel is a preview of it. The
+              columns are a fixed count rather than a responsive one because each
+              panel's width is already settled by the surface it hangs in: the
+              desktop preview spans the search field, so a quarter of it is ~378px
+              at 1600 and ~298px at 1280, and the phone's spans the drawer. Both
+              land within ~20px of what the real listing gives a card at the same
+              width, which is what makes the cards here the listing's own. */}
           <div
             className={cn(
               'grid border-t border-sako-black',
@@ -562,7 +576,13 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
           // No overflow here any more: the band is only ever the field row now,
           // and the preview below is a positioned child that has to be allowed to
           // hang outside it.
-          className="absolute -left-[36px] -right-[36px] top-full z-[70] border-t border-sako-black bg-surface-secondary"
+          //
+          // Ruled on both edges. The band used to carry only border-t, so an open
+          // search had no underside: the field floated over whatever page was
+          // behind it with nothing closing the band off. border-b is the same 1px
+          // sako-black the header bar above it and the card rows below it are
+          // divided by, so the open band reads as a second bar under the first.
+          className="absolute -left-[36px] -right-[36px] top-full z-[70] border-y border-sako-black bg-surface-secondary"
         >
           <div ref={bandRef}>
             <form onSubmit={handleSearchSubmit} className="px-[36px] py-[24px]">
@@ -574,36 +594,57 @@ export default function SearchBar({ language, variant = 'default' }: SearchBarPr
                 inputRef={inputRef}
                 submitLabel={t.searchButton}
                 clearLabel={t.clear}
-                // 681px is the system's form measure (checkout 438:2725). A field
-                // stretched across a 1728px band is unreadable and reads as
-                // chrome; this keeps it at the width the system already gives its
-                // inputs.
-                className="w-full max-w-[681px]"
+                // Full width of the band, inside its 36px gutters.
+                //
+                // This was capped at 681px - the system's form measure (checkout
+                // 438:2725) - on the argument that a field stretched across the
+                // band reads as chrome. In place it did the opposite: the cap is
+                // applied from the inline start, so on a 1600px desktop the field
+                // sat in the right-hand 681px with 868px of empty band beside it,
+                // which read as a panel that had failed to lay itself out. A
+                // search field is not a form field someone fills in a column with
+                // others; it is the band, and the band is the width of the header.
+                className="w-full"
               />
             </form>
           </div>
 
           {/* Results preview.
 
-              A panel of its own hanging under the band rather than more band:
-              eight full-width cards made the open search read as a collection
-              page that had replaced the site. This is the phone's construction at
-              desktop scale - square, ruled, on the paper ground - pinned to the
-              field's own start edge and cut to the field's own width, so it reads
-              as that field's preview and not as a second page.
+              A panel of its own hanging under the band rather than more band, so
+              the page stays visible around and below it: it is still a preview of
+              a listing and not the listing itself.
 
-              Because it is 681px and the band's bottom edge carries no rule, the
-              page stays visible around and below it, which is the point.
+              It spans the field, edge to edge. It used to be a fixed 681px pinned
+              to the field's start, cut to the measure the field had back when the
+              field was capped at 681px too - so once the field grew to the band's
+              full width, the preview was a third of it, hanging off one end. Width
+              is now implied by the two insets rather than declared, which is what
+              keeps it on both of the field's edges at every viewport instead of
+              only the one it was measured at.
 
-              start-[36px] rather than left: it inherits the panel's dir, so it
-              tracks the field to the right-hand gutter in Hebrew. The band's own
-              bleed is physical (-left/-right) because that cancels a physical
-              padding; this tracks content, so it is logical. */}
+              Four across, so each card takes a quarter of that: ~378px at 1600,
+              which is within 20px of what the collection grid gives a card at the
+              same width. That is the point of the panel - it should read as the
+              listing it previews - and it is what lets these cards take the same
+              desktop info bar as the listing's, with the swatches beside the name
+              rather than scrolling under the price.
+
+              start/end rather than left/right: they inherit the panel's dir, so
+              they track the field's gutters in Hebrew. The band's own bleed stays
+              physical (-left/-right) because that cancels a physical padding; this
+              tracks content, so it is logical. */}
           {showResults && (
             <div
-              // max-h-[50vh] is the static expression of the same rule, in case
-              // this ever paints before the measurement lands.
-              className="absolute top-full start-[36px] max-h-[50vh] w-[681px] max-w-[calc(100%-72px)] overflow-y-auto border border-sako-black bg-surface-secondary"
+              // max-h-[65vh] is the static expression of the same rule, in case
+              // this ever paints before the measurement lands. Keep the two in
+              // step.
+              //
+              // border-t-0: the band closes with a rule of its own, and this panel
+              // starts at that rule's outer edge - so its own top border would
+              // stack into a 2px line across the preview's width, which reads as a
+              // mistake rather than a heavier rule.
+              className="absolute top-full start-[36px] end-[36px] max-h-[65vh] overflow-y-auto border border-t-0 border-sako-black bg-surface-secondary"
               style={panelMaxH !== null ? { maxHeight: panelMaxH } : undefined}
             >
               {resultsBody}

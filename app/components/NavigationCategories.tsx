@@ -239,8 +239,13 @@ export default function NavigationCategories({
 
                     Radix ships its own chevron; [&>svg]:hidden drops it so the design's
                     ＋ can rotate 45deg into the − instead. */}
+                {/* px-0 is load-bearing: the shared AccordionTrigger carries px-4,
+                    which inset every parent row 16px while NEW COLLECTION, the
+                    childless rows and the expanded child grid all sit flush to the
+                    container's own padding - so a category's name hung 16px inside
+                    its own children. Zeroing it puts the whole ladder on one edge. */}
                 <AccordionTrigger
-                  className={`${rowH} py-0 font-ploni ${rowText} font-semibold leading-[23px] text-text-primary hover:no-underline hover:opacity-70 [&>svg]:hidden [&[data-state=open]_.nav-plus]:rotate-45`}
+                  className={`${rowH} px-0 py-0 font-ploni ${rowText} font-semibold leading-[23px] text-text-primary hover:no-underline hover:opacity-70 [&>svg]:hidden [&[data-state=open]_.nav-plus]:rotate-45`}
                   dir={dir}
                 >
                   <span className="flex w-full items-center justify-between">
@@ -272,8 +277,9 @@ export default function NavigationCategories({
 
           {selectedGender === 'women' && (
             <AccordionItem value="women-nav-sales" className="border-b border-sako-black">
+              {/* px-0 for the same reason as the category rows above. */}
               <AccordionTrigger
-                className={`${rowH} py-0 font-ploni ${rowText} font-semibold leading-[23px] text-text-primary hover:no-underline hover:opacity-70 [&>svg]:hidden [&[data-state=open]_.nav-plus]:rotate-45`}
+                className={`${rowH} px-0 py-0 font-ploni ${rowText} font-semibold leading-[23px] text-text-primary hover:no-underline hover:opacity-70 [&>svg]:hidden [&[data-state=open]_.nav-plus]:rotate-45`}
                 dir={dir}
               >
                 <span className="flex w-full items-center justify-between">

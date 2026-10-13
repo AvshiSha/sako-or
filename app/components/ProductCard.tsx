@@ -318,15 +318,21 @@ function ProductCardInner({
     // accent-error by decision - it read as just another dark chip next to NEW,
     // which is the one state that must not look like an ordinary label. Last Call
     // still predates the redesign and needs design sign-off.
+    //
+    // Every label on this chip is set in Latin caps in both locales, as NEW and
+    // "% OFF" already were: it is the one element on the card that is a stamp
+    // rather than copy, and a Hebrew "אזל מהמלאי" was the only thing breaking that.
+    // The Hebrew wording is still what a screen reader gets - it is on the quick
+    // buy control's accessible name (quickBuyAriaLabel) and on the CTA bar.
     if (isOutOfStock) {
       return {
-        text: language === 'he' ? 'אזל מהמלאי' : 'Out of Stock',
+        text: 'SOLD OUT',
         className: 'bg-accent-error',
       }
     }
     if (isLastCall) {
       return {
-        text: language === 'he' ? 'Last Call' : 'Last Call',
+        text: 'LAST CALL',
         className: 'bg-sako-brown-500',
       }
     }
@@ -654,16 +660,46 @@ function ProductCardInner({
 
       {/* Product information — design system 438:3943 (desktop) / 438:3981 (mobile).
           The frame sets this as one row with the swatches inline on the end edge.
-          Stacked by decision: name, SKU, price, swatches. Anything sharing the row
-          takes width from the name, and on a 195px card that is the difference
-          between a readable product name and an ellipsis - which is what both the
-          inline swatches and, after that, the end-aligned price turned out to do.
+          Mobile stays stacked - name, SKU, price, swatches - because on a 195px
+          card anything sharing the row takes width from the name, which is the
+          difference between a readable product name and an ellipsis.
+
+          Desktop is the frame: a two-track grid with the text on the inline start
+          and the swatches opposite it, which is what the 417px card has the room
+          for. Laid out with explicit row/column placement rather than reordering
+          the DOM, so the reading order stays name, SKU, price, colours in both
+          layouts, and the only focusable things in the bar are the swatches - so
+          nothing about the tab order changes either:
+
+              ┌ col 1 (text) ────────┬ col 2 (auto) ┐
+              │ name + SKU           │ swatches     │  row 1
+              │ price                │              │  row 2
+              └──────────────────────┴──────────────┘
+
+          The text track is minmax(50%,1fr), not minmax(0,1fr): an auto track is
+          sized to max-content, so five 45px swatches would claim 257px of a 364px
+          bar and leave the name 91px. The percentage resolves against the bar's
+          own width, so the split holds at every desktop width instead of only the
+          one it was measured at.
+
+          content-start because flex-1 above makes this block absorb the height
+          difference between cards in a row. A grid with auto rows stretches them
+          into that space, which would push the price away from the name; start
+          keeps the slack at the bottom, where flex-col used to leave it.
+
+          xl, not lg. Measured on the production build: at lg the four-column card
+          is 251px wide, and the swatch strip's half of it comes to 93px - under
+          the 98px two 45px swatches need, so 14 of 24 cards in a mixed grid hid
+          their second colour behind a scroll. At xl the card is 315px and two fit;
+          at 1600 it is 395px and three do. "The extra desktop space" is real from
+          1280 up, and below that the stack is the better card.
+
           text-start rather than text-right so the English storefront mirrors
           correctly instead of hardcoding RTL. */}
       <div
-        className={`mt-0 flex flex-1 flex-col gap-[6px] border-t border-sako-black bg-surface-secondary px-[10px] pt-[15px] pb-[14px] product-card-info-block lg:px-[16px] ${PRODUCT_CARD_INFO_MIN_H}`}
+        className={`mt-0 flex flex-1 flex-col gap-[6px] border-t border-sako-black bg-surface-secondary px-[10px] pt-[15px] pb-[14px] product-card-info-block lg:px-[16px] xl:grid xl:grid-cols-[minmax(50%,1fr)_auto] xl:content-start xl:items-start xl:gap-x-[16px] ${PRODUCT_CARD_INFO_MIN_H}`}
       >
-        <div className="min-w-0 text-start">
+        <div className="min-w-0 text-start xl:col-start-1 xl:row-start-1">
           {/* line-clamp-2 across the full width of the card. */}
           <h3 className="line-clamp-2 font-ploni text-[12px] font-black uppercase leading-[14px] text-text-primary lg:text-[18px] lg:leading-[20px]">
             {productName}
@@ -675,7 +711,7 @@ function ProductCardInner({
         {/* tabular-nums is required: Ploni's default figures are proportional, so
             prices in a grid column would not align without it. */}
         <div
-          className={`text-start font-ploni text-[14px] tabular-nums text-text-primary product-card-price-block lg:text-[17px] ${PRODUCT_CARD_PRICE_MIN_H}`}
+          className={`text-start font-ploni text-[14px] tabular-nums text-text-primary product-card-price-block lg:text-[17px] xl:col-start-1 xl:row-start-2 ${PRODUCT_CARD_PRICE_MIN_H}`}
         >
           {hasSalePrice() && salePrice && salePrice < originalPrice ? (
               // flex-wrap so the struck original and the sale price drop to a second
@@ -693,10 +729,19 @@ function ProductCardInner({
           )}
         </div>
 
-        {/* Colour swatches on a row of their own, so they never compete with the
-            name or the price for width. Full width and horizontally scrollable: a
-            product with six colours swipes instead of crowding. */}
-        <div className="flex gap-[6px] overflow-x-auto lg:gap-[8px]">
+        {/* Colour swatches. Below xl a row of their own, so they never compete with
+            the name or the price for width; from xl they take the grid's second
+            track, beside the name. Horizontally scrollable at both sizes: a product
+            with six colours swipes instead of crowding.
+
+            xl:no-scrollbar is load-bearing, not cosmetic. The track is capped at
+            half the bar, so four or more colours now overflow on desktop where
+            they never did across the full width - and a classic Windows scrollbar
+            is drawn inside the box, which would add ~15px to this row and make the
+            card's info bar a different height for those products alone, against
+            one reserved minimum. The strip still scrolls by wheel, trackpad and
+            keyboard. */}
+        <div className="flex gap-[6px] overflow-x-auto lg:gap-[8px] xl:col-start-2 xl:row-start-1 xl:no-scrollbar">
           {product.colorVariants &&
             Object.values(product.colorVariants)
               .filter(variant => variant.isActive !== false)

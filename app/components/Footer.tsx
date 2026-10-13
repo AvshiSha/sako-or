@@ -180,7 +180,13 @@ export default function Footer({ lng }: { lng: string }) {
   ]
 
   return (
-    <footer className="bg-sako-olive-900 p-[30px] text-text-inverse">
+    // Side padding is 22px below lg, not the frame's 30px, so the footer's own
+    // edges land on the header's icons rather than 8px inside them: the header
+    // gutter is 16px and its glyphs sit in 32px hit boxes, which puts the heart's
+    // left edge at 21px and the ☰'s right edge at 23px. 22px splits those, so a
+    // column heading's end edge and its ＋ read as continuing the two header
+    // icons above them. Vertical padding and the desktop gutter stay at 30px.
+    <footer className="bg-sako-olive-900 px-[22px] py-[30px] text-text-inverse lg:px-[30px]">
       {/* Desktop is the frame's two-track grid: a 459px monogram column beside the
           content. The monogram is first in the DOM so RTL places it on the inline
           start - the right - which is where both frames put it. On mobile the same
@@ -208,10 +214,13 @@ export default function Footer({ lng }: { lng: string }) {
               330px content box. */}
           {/* Centred by decision. Both frames set the wordmark flush to the inline
               start (the right, in RTL); centring is a deliberate departure. */}
-          {/* Centred on mobile, pushed to the far edge on desktop. The monogram sits
-              in the grid's first track, which RTL puts on the right, so text-end lands
-              the wordmark on the opposite side of the footer from it. */}
-          <p className="text-center font-ploni text-[60px] font-black leading-[60px] text-text-inverse lg:text-end">
+          {/* Centred on mobile, flush to the inline start on desktop. It used to be
+              text-end, which in RTL threw the wordmark to the far left of the footer
+              while the monogram and all four columns began on the right - so the one
+              large gesture in the footer was the only thing not on the column grid.
+              text-start lands it on the start edge of the content track, directly over
+              the first column's heading and beside the monogram. */}
+          <p className="text-center font-ploni text-[60px] font-black leading-[60px] text-text-inverse lg:text-start">
             {t.brand}
           </p>
 

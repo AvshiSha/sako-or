@@ -2168,8 +2168,14 @@ export default function CollectionClient({
         {/* Category SEO Content */}
         {!searchQuery && categorySeoContentHtml?.trim() && (
           <section
+            // font-ploni on the section, not inside RichContent: `.cms-content p`
+            // sets a font-size and a colour but no font-family, so the face is
+            // inherited and one utility here carries the whole block - the heading,
+            // the prose and the Read more control. It has to be a utility rather
+            // than a `.cms-content` rule, because --font-ploni lives in
+            // `@theme inline` and is empty at runtime (see globals.css).
             className={cn(
-              'mt-12 border-t border-border-subtle pt-8 md:mt-16',
+              'mt-12 border-t border-border-subtle pt-8 font-ploni md:mt-16',
               COLLECTION_INSET,
               lng === 'he' ? 'text-right' : 'text-left'
             )}

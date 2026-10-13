@@ -235,11 +235,13 @@ export default function PromoSection({
       <div className="mx-auto max-w-7xl px-4">
         <ListingLink
           href={href}
-          // The design's banner is 26px tall. Keeping min-h-[44px] on touch on
-          // purpose: this whole banner is a link, and 26px is well under the
-          // minimum tap target. Above sm the pointer is precise, so it takes the
-          // designed height.
-          className="mx-auto block w-full max-w-3xl min-h-[44px] py-2.5 text-center sm:min-h-[26px] sm:py-0"
+          // The design's banner is 26px tall. Mobile still overrides that because
+          // the whole banner is a link and 26px is well under a usable tap target -
+          // but 38px, not the 44px it used to be: against a 50px header bar the
+          // band read as a second bar rather than a strip over one, and 38px is
+          // still comfortably above the 24px WCAG target-size floor. Above sm the
+          // pointer is precise, so it takes the designed height.
+          className="mx-auto block w-full max-w-3xl min-h-[38px] py-[7px] text-center sm:min-h-[26px] sm:py-0"
           suppressHydrationWarning
           onClick={() =>
             track('promo_ribbon_click', {

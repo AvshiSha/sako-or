@@ -50,4 +50,16 @@ export const COLLECTION_GRID_CRITICAL_CSS = `
     min-height: 9.375rem;
   }
 }
+/* The bar lays the swatches beside the name from xl rather than under the price,
+   which is a 45px row and a 6px gap shorter: 6.625rem = 106px against 9.375rem.
+   The column count does not change here - this is the same four-across grid, with
+   a shorter card. Keep in step with PRODUCT_CARD_INFO_MIN_H's three values. */
+@media (min-width: 1280px) {
+  .collection-product-grid > * {
+    min-height: calc((100vw - 20px) / 4 + 6.625rem);
+  }
+  .product-card-info-block {
+    min-height: 6.625rem;
+  }
+}
 `;

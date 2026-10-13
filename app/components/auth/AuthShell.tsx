@@ -67,8 +67,14 @@ export default function AuthShell({ title, eyebrow, aside, children }: AuthShell
     // No dir here: direction comes from the <html> the [lng] layout writes it
     // on. Setting it per-node is how a Hebrew block that opens on "SAKO OR"
     // flips itself to LTR.
-    <div className="min-h-screen bg-surface-secondary">
-      <div className={SPLIT_SHELL_GRID}>
+    // flex column, with the grid as the growing child: the min-h-screen belongs to
+    // this wrapper, so without it the grid is only as tall as the taller of its two
+    // columns and SPLIT_SHELL_GRID's inset-y-0 seam ends there - measured at 642px
+    // against a 900px wrapper, leaving 258px of open ground between the end of the
+    // rule and the footer. flex-1 hands the grid the wrapper's full height, which is
+    // what the seam spans.
+    <div className="flex min-h-screen flex-col bg-surface-secondary">
+      <div className={cn(SPLIT_SHELL_GRID, 'flex-1')}>
         {/* The seam is drawn by SPLIT_SHELL_GRID, not by a border here: on these
             pages the standing panel is routinely taller than the form, which is
             exactly when a border on this column stops short. */}
@@ -289,8 +295,11 @@ export function AuthSubmit({
  */
 export function AuthSkeleton({ title }: { title?: string }) {
   return (
-    <div className="min-h-screen bg-surface-secondary">
-      <div className={SPLIT_SHELL_GRID}>
+    // flex-1 under a flex column wrapper, as AuthShell above - so the skeleton's
+    // seam reaches the footer too and the rule does not visibly grow when the real
+    // shell replaces it.
+    <div className="flex min-h-screen flex-col bg-surface-secondary">
+      <div className={cn(SPLIT_SHELL_GRID, 'flex-1')}>
         {/* The seam is drawn by SPLIT_SHELL_GRID, not by a border here: on these
             pages the standing panel is routinely taller than the form, which is
             exactly when a border on this column stops short. */}

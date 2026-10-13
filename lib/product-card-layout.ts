@@ -22,13 +22,31 @@
  * (233.8 and 315.3), so the whole of the grid's residual CLS - 352.8px reserved
  * against a 364.3px card, ~138px over twelve mobile rows - sat in this one number.
  *
+ * A third step then appeared at xl, where the bar stops being a stack: the swatches
+ * move up beside the name and SKU (438:3943's own arrangement), which removes a
+ * 45px row and its 6px gap. So there are three heights, one per arrangement, not
+ * two per breakpoint:
+ *
+ *   base   129  phone card, small type, stacked
+ *   lg     150  desktop type, still stacked (the lg card is only 251px wide)
+ *   xl     106  desktop type, swatches inline
+ *
+ * 106 was measured the same way as the other two: production build at 1600, with
+ * both the reserved minimum and flex-grow neutralised, since flex-1 otherwise
+ * stretches the bar to whatever the grid cell reserved and every card reads back as
+ * the old number. Every single-line card rendered its bar at exactly 106.5px and
+ * the two two-line names in the grid at 119.5, independent of how many swatches the
+ * product had. Mobile re-measured at 129.5, unchanged, because mobile is still the
+ * stack.
+ *
  * Still under-reserved, by half a pixel, and deliberately: short of the real height
  * costs a little CLS; past it leaves blank ground inside the card, which is the
  * white band this grid has already been chased over twice. These are minimums the
  * real bar clears on its own content, so raising them to here changes nothing about
  * a loaded card - only what the skeleton and the pre-paint reservation claim.
  */
-export const PRODUCT_CARD_INFO_MIN_H = "min-h-[129px] lg:min-h-[150px]";
+export const PRODUCT_CARD_INFO_MIN_H =
+  "min-h-[129px] lg:min-h-[150px] xl:min-h-[106px]";
 /** One line; the sale case lays the original and reduced price out side by side. */
 export const PRODUCT_CARD_PRICE_MIN_H = "min-h-[24px]";
 /**

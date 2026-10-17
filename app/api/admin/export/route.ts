@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { productService } from '@/lib/firebase'
-import { requireAdmin } from '@/lib/server/auth'
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth'
 
 export async function GET(request: NextRequest) {
   try {

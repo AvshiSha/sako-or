@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth'
 import { googleDriveService } from '@/lib/google-drive'
 
 export async function POST(request: NextRequest) {
+  // Admin-only: this is the product-image picker, not a public integration.
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
+
   try {
     const { fileIds } = await request.json()
 

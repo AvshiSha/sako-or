@@ -3,6 +3,8 @@ import { randomUUID } from 'crypto';
 import { normalizeIsraelE164, isValidIsraelE164 } from '@/lib/phone';
 import { userExistsByPhone, userExistsByEmail } from '@/lib/user-check';
 import { NextRequest } from 'next/server';
+import { getClientIp } from '@/lib/turnstile';
+import { verifyTurnstileToken } from '@/lib/server/turnstile';
 
 const requestSchema = z.object({
   otpType: z.enum(['sms', 'email']),
@@ -12,29 +14,6 @@ const requestSchema = z.object({
   resendToken: z.string().optional(),
 });
 
-// 🔐 Verify Cloudflare Turnstile token
-async function validateTurnstile(token: string, remoteip?: string) {
-  const params = new URLSearchParams();
-  params.append('secret', process.env.TURNSTILE_SECRET_KEY || '');
-  params.append('response', token);
-  if (remoteip) params.append('remoteip', remoteip);
-
-  try {
-    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: params.toString()
-    });
-
-    const data = await resp.json();
-    return data;
-  } catch (err) {
-    console.error('[OTP SEND] Turnstile validation error:', err);
-    return { success: false, 'error-codes': ['http-error'] };
-  }
-}
 
 const INFORU_API_URL = 'https://capi.inforu.co.il/api/Otp/SendOtp';
 const INFORU_USERNAME = process.env.INFORU_USERNAME;
@@ -112,16 +91,27 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Extract client IP for Turnstile validation
-        const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 
-                   request.headers.get('x-real-ip') || 
-                   'unknown';
+        // cf-connecting-ip first: Cloudflare proxies this site, so the first
+        // x-forwarded-for entry is attacker-supplied in principle. This is a
+        // deliberate change from the previous x-forwarded-for preference.
+        const ip = getClientIp(request.headers);
 
         // 🔐 TURNSTILE VERIFICATION
-        const validation = await validateTurnstile(turnstileToken, ip);
+        //
+        // mode 'shadow': hostname/action mismatches are logged but not
+        // rejected. Nothing checked those fields before, so the real values
+        // this endpoint sees in production are not yet known — flipping to
+        // 'reject' without observing them first would break the storefront.
+        // Tracked in docs/admin-security-hardening.md.
+        const validation = await verifyTurnstileToken({
+          token: turnstileToken,
+          remoteIp: ip,
+          mode: 'shadow',
+          logTag: 'OTP SEND',
+        });
 
-        if (!validation.success) {
-          console.error('[OTP SEND] Invalid Turnstile token:', validation['error-codes']);
+        if (!validation.ok) {
+          console.error('[OTP SEND] Invalid Turnstile token:', validation.reason, validation.errorCodes);
           return Response.json(
             { error: 'Invalid verification. Please try again.' },
             { status: 400 }

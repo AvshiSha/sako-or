@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/server/auth'
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth'
 import { upsertProductDraft } from '@/lib/server/product-drafts'
 import { signPreviewToken } from '@/lib/server/preview-token'
 

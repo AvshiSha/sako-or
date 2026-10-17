@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth } from '@/lib/firebase-admin'
 import { normalizeEmail, SUPER_ADMIN_EMAIL } from '@/lib/admin'
 import { resolveIsAdmin } from '@/lib/server/admin'
+import { ADMIN_SESSION_COOKIE } from '@/lib/admin-session'
+import { verifyAdminSessionCookie } from '@/lib/server/admin-session'
 
 export type AuthedRequestContext = {
   token: string
@@ -91,4 +93,48 @@ export async function requireSuperAdmin(
     return NextResponse.json({ error: 'Super admin access required' }, { status: 403 })
   }
   return auth
+}
+
+/**
+ * Admin auth accepting EITHER credential: a bearer ID token (what the admin
+ * UI's fetches send) or the httpOnly admin session cookie.
+ *
+ * The cookie path is what lets a route be gated when the caller cannot set a
+ * header — most concretely /api/google-drive/callback, which is a top-level
+ * navigation back from Google and carries the SameSite=Lax cookie but no
+ * Authorization header.
+ *
+ * Returns the same `AuthedRequestContext | NextResponse` union as the other
+ * helpers, so call sites keep the `instanceof NextResponse` idiom unchanged.
+ */
+export async function requireAdminSession(
+  request: NextRequest
+): Promise<AuthedRequestContext | NextResponse> {
+  if (getBearerToken(request)) {
+    return requireAdmin(request)
+  }
+
+  const cookie = request.cookies.get(ADMIN_SESSION_COOKIE)?.value
+  if (!cookie) {
+    return NextResponse.json({ error: 'Admin authentication required' }, { status: 401 })
+  }
+
+  const session = await verifyAdminSessionCookie(cookie)
+  if (!session) {
+    return NextResponse.json({ error: 'Invalid or expired admin session' }, { status: 401 })
+  }
+
+  // Shaped like the bearer path so downstream handlers cannot tell the
+  // difference. `token` is empty: there is no ID token on this path, and
+  // inventing one would be worse than an obviously absent value.
+  const firebaseUser = await adminAuth.getUser(session.uid)
+  return {
+    token: '',
+    decoded: { uid: session.uid, email: session.email },
+    firebaseUid: session.uid,
+    firebaseUser,
+    email: session.email,
+    isAdmin: true,
+    authProvider: 'session-cookie',
+  }
 }

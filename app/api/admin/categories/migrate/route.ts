@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server'
 import { categoryService } from '@/lib/firebase'
-import { requireAdmin } from '@/lib/server/auth'
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth'
 
 export async function POST(request: NextRequest) {
   try {

@@ -12,6 +12,7 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline'
 import Image from 'next/image'
+import { getAdminAuthHeadersFromSession } from '@/lib/admin-api'
 
 // Component to handle thumbnail loading with multiple fallback methods
 function ThumbnailImage({ file }: { file: GoogleDriveFile }) {
@@ -104,7 +105,7 @@ export default function GoogleDrivePicker({
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch('/api/google-drive/auth-status')
+      const response = await fetch('/api/google-drive/auth-status', { headers: await getAdminAuthHeadersFromSession() })
       const data = await response.json()
       setIsAuthenticated(data.authenticated)
     } catch (error) {
@@ -121,7 +122,7 @@ export default function GoogleDrivePicker({
 
     try {
       const url = `/api/google-drive/files?folderId=${folderId || ''}${pageToken ? `&pageToken=${pageToken}` : ''}`
-      const response = await fetch(url)
+      const response = await fetch(url, { headers: await getAdminAuthHeadersFromSession() })
       
       // Check if response is HTML (error page)
       const contentType = response.headers.get('content-type')
@@ -265,7 +266,7 @@ export default function GoogleDrivePicker({
     setError(null)
 
     try {
-      const response = await fetch(`/api/google-drive/search?query=${encodeURIComponent(searchQuery)}&folderId=${currentFolderId || ''}`)
+      const response = await fetch(`/api/google-drive/search?query=${encodeURIComponent(searchQuery)}&folderId=${currentFolderId || ''}`, { headers: await getAdminAuthHeadersFromSession() })
       const data = await response.json()
 
       if (data.error) {
@@ -290,7 +291,7 @@ export default function GoogleDrivePicker({
   const handleAuth = async () => {
     try {
       setError(null)
-      const response = await fetch('/api/google-drive/auth-url')
+      const response = await fetch('/api/google-drive/auth-url', { headers: await getAdminAuthHeadersFromSession() })
       const data = await response.json()
       
       if (data.error) {
@@ -312,7 +313,8 @@ export default function GoogleDrivePicker({
   const handleLogout = async () => {
     try {
       const response = await fetch('/api/google-drive/logout', {
-        method: 'POST'
+        method: 'POST',
+        headers: await getAdminAuthHeadersFromSession()
       })
       
       if (response.ok) {

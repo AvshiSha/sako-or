@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { sanitizeCmsHtml, stripInlineBlockWrapper } from '@/lib/sanitize-html'
-import { requireAdmin } from '@/lib/server/auth'
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth'
 
 // Sanitizes unsaved admin-form HTML server-side so the preview modal can
 // safely render it without pulling the Node-only `sanitize-html` package

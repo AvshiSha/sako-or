@@ -117,3 +117,30 @@ localStorage plus `POST /api/cart/validate`, which only reads stock.
    *disabled size button*, and since the size grid precedes the CTA, `.first()`
    picks it and `click()` waits out the full timeout with nothing useful in the
    error. Anchor the pattern.
+
+## admin-login.spec.ts — Turnstile keys, never the bypass
+
+`admin-login.spec.ts` covers the admin access gates added on 2026-10-17: the
+server-side page guard, the Turnstile check on `POST /api/admin/login`, and the
+catalog/Drive endpoints that used to be reachable with no credential at all.
+
+Everything in that spec runs against an ordinary build and needs no
+credentials, because every case asserts a **rejection**. The signed-in happy
+path is deliberately not covered: it needs a real admin password and a
+solvable widget, and it cannot be stubbed — the whole point of the change is
+that the credential check happens server-side against Google, so intercepting
+it locally would assert nothing.
+
+To exercise the happy path by hand, build with Cloudflare's always-pass test
+keys. The widget then auto-solves and the real verifier still runs end to end:
+
+```bash
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA \
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA \
+npm run build && PORT=3002 npm run start
+```
+
+**Do not use `TURNSTILE_DEV_BYPASS` for QA.** It exists for `npm run dev` only,
+and a bypass flag that the test suite depends on is a bypass flag that
+eventually ships. It is also inert on Vercel by construction — it requires
+`VERCEL` to be unset, and Vercel sets `VERCEL=1` in every environment.

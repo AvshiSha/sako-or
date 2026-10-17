@@ -140,7 +140,10 @@ Put any caveats (e.g. "no Semrush data for X combo, so Y used instead") as a sho
 
 ### 10. Apply only if the user confirms
 
-- **Existing product**: `GET /api/products/{id}` against the running dev server (default `http://localhost:3000` — confirm if unsure), merge the confirmed values into the product payload, then `PUT /api/products/{id}` with the full merged payload — that endpoint requires the whole product object, not a partial patch. Field mapping:
+- **Existing product**: `GET /api/products/{id}` against the running dev server (default `http://localhost:3000` — confirm if unsure), merge the confirmed values into the product payload, then `PUT /api/products/{id}` with the full merged payload — that endpoint requires the whole product object, not a partial patch.
+  > **`PUT`/`POST /api/products` now require admin auth.** `GET` is still open. Send `Authorization: Bearer <Firebase ID token>`; get one from the browser console while signed in as an admin: `await firebase.auth().currentUser.getIdToken()`, or from the app's own helper, `getAdminAuthHeadersFromSession()` in [lib/admin-api.ts](../../../lib/admin-api.ts). Tokens last one hour. Without the header the write returns `401 {"error":"Missing Authorization Bearer token"}` — if a `PUT` appears to no-op, check the status code before assuming the zod-stripping bug below has returned. There is deliberately no env-gated bypass for this skill.
+
+  Field mapping:
   - Items 1–6 → top-level `shortTitle_en`, `shortTitle_he`, `shortDescription_en`, `shortDescription_he`, `description_en`, `description_he`.
   - Item 7 → for each color variant, upsert entries in `colorVariants[colorSlug].imageDetails` keyed by the image's existing `url` (preserve any `type`/`order` already set; add/update only `altEn`/`altHe`).
   - Items 8–11, 12–15 → the `seo` block (`title_en`, `title_he`, `description_en`, `description_he`, `focusKeyword_en`, `focusKeyword_he`, `secondaryKeywords_en`, `secondaryKeywords_he`). Leave `slug` and everything else in `seo` untouched unless asked.

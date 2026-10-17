@@ -1,35 +1,13 @@
 
 import { Resend } from 'resend';
 import { prisma } from '../../lib/prisma';
-import axios from 'axios';
 import { render } from '@react-email/render';
 import { ContactMessageEmail } from '../../app/emails/contact-message';
+import { getClientIp } from '../../lib/turnstile';
+import { verifyTurnstileToken } from '../../lib/server/turnstile';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// 🔐 Verify Cloudflare Turnstile token
-async function validateTurnstile(token, remoteip) {
-  const params = new URLSearchParams();
-  params.append('secret', process.env.TURNSTILE_SECRET_KEY);
-  params.append('response', token);
-  if (remoteip) params.append('remoteip', remoteip);
-
-  try {
-    const resp = await axios.post('https://challenges.cloudflare.com/turnstile/v0/siteverify',
-      params.toString(),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      }
-    );
-    const data = resp.data;
-    return data;
-  } catch (err) {
-    const detail = (axios.isAxiosError(err) && err.response?.data) || null;
-    return { success: false, 'error-codes': ['http-error'], detail };
-  }
-}
 
 // Contact form API - Production ready with full Turnstile verification
 export default async function handler(req, res) {
@@ -40,7 +18,9 @@ export default async function handler(req, res) {
   }
 
   // Extract request metadata for logging
-  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  // cf-connecting-ip first (Cloudflare proxies this site); falls back to the
+  // socket address, which is all a direct origin request can offer.
+  const ip = getClientIp(new Headers(Object.entries(req.headers).map(([k, v]) => [k, Array.isArray(v) ? v.join(',') : String(v ?? '')]))) || req.socket.remoteAddress || 'unknown';
   const userAgent = req.headers['user-agent'] || 'unknown';
 
   try {
@@ -64,14 +44,26 @@ export default async function handler(req, res) {
     }
 
     // 🔐 TURNSTILE VERIFICATION
-    const validation = await validateTurnstile(turnstileToken, ip);
+    //
+    // mode 'shadow': hostname/action mismatches are logged, not rejected.
+    // Nothing checked those fields before this refactor, so the values this
+    // endpoint really sees are not yet known. See
+    // docs/admin-security-hardening.md before flipping to 'reject'.
+    const validation = await verifyTurnstileToken({
+      token: turnstileToken,
+      remoteIp: ip,
+      mode: 'shadow',
+      logTag: 'CONTACT API',
+    });
 
-    if (!validation.success) {
-      console.error('[CONTACT API] Invalid Turnstile token:', validation['error-codes']);
+    if (!validation.ok) {
+      console.error('[CONTACT API] Invalid Turnstile token:', validation.reason, validation.errorCodes);
+      // Cloudflare's raw error-codes used to be echoed back here; they are
+      // diagnostic detail about our own verification and do not belong in a
+      // public response body.
       return res.status(400).json({
         success: false,
-        error: 'Invalid verification. Please try again.',
-        errorCodes: validation['error-codes']
+        error: 'Invalid verification. Please try again.'
       });
     }
 

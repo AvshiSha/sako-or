@@ -1,7 +1,7 @@
 import { revalidatePath } from 'next/cache'
 import * as Sentry from '@sentry/nextjs'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/server/auth'
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth'
 import { revalidateNavigationCategories } from '@/lib/navigation-revalidate'
 
 export async function POST(request: NextRequest) {

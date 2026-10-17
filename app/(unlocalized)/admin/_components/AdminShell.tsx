@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/AuthContext'
 import { adminTheme } from './adminTheme'
 
@@ -11,6 +12,7 @@ interface AdminShellProps {
 
 export default function AdminShell({ children }: AdminShellProps) {
   const { user, logout } = useAuth()
+  const router = useRouter()
   const [signingOut, setSigningOut] = useState(false)
   const [signOutError, setSignOutError] = useState<string | null>(null)
 
@@ -18,7 +20,18 @@ export default function AdminShell({ children }: AdminShellProps) {
     setSignOutError(null)
     setSigningOut(true)
     try {
+      // Server first: this revokes refresh tokens and clears the httpOnly
+      // session cookie. Failing it must not block the local sign-out, or a
+      // transient network error leaves the admin stuck in a session they
+      // cannot use and cannot leave.
+      try {
+        await fetch('/api/admin/logout', { method: 'POST' })
+      } catch (error) {
+        console.error('Admin session logout failed:', error)
+      }
+
       await logout()
+      router.replace('/admin/login')
     } catch (error) {
       console.error('Logout error:', error)
       setSignOutError('Could not sign out. Please try again.')

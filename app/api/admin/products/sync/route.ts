@@ -5,7 +5,7 @@ import { buildProductSearchDerivedFields } from '@/lib/build-product-search-keyw
 import { deleteMeilisearchProduct, upsertMeilisearchProduct } from '@/lib/meilisearch'
 import { prisma } from '@/lib/prisma'
 import { productExtensionsSchema, type ProductExtensionsInput } from '@/lib/schemas/product-schema'
-import { requireAdmin } from '@/lib/server/auth'
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth'
 import {
   getOptionLabel,
   type EnumOption,

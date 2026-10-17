@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { languages } from './i18n/settings'
+import { ADMIN_SESSION_COOKIE } from './lib/admin-session'
 
 // webp/avif/gif were missing from this list while png/jpg/svg were on it, so a
 // .webp in public/ was the one static image kind that still got locale-
@@ -44,6 +45,35 @@ const UNLOCALIZED_ROUTES = new Set([
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Admin gate (UX layer only).
+  //
+  // This checks that the session cookie is PRESENT, not that it is valid: the
+  // Edge runtime cannot verify a Firebase session cookie, because
+  // firebase-admin is Node-only. Hand-verifying it here would mean fetching
+  // and caching Google's public certs and reimplementing the aud/iss/auth_time
+  // checks — a security-critical reimplementation to save a redirect on a
+  // single-user admin panel.
+  //
+  // The authoritative page gate is app/(unlocalized)/admin/layout.tsx, which
+  // runs on Node and calls verifySessionCookie. This block exists so a logged
+  // out visitor gets a clean redirect instead of a rendered-then-bounced page.
+  //
+  // /admin/login is exempt and also lives outside that layout's subtree, in
+  // the (admin-public) route group, so it stays reachable while signed out.
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    if (pathname === '/admin/login') {
+      return NextResponse.next()
+    }
+    if (!request.cookies.has(ADMIN_SESSION_COOKIE)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/admin/login'
+      url.search = ''
+      url.searchParams.set('from', pathname)
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
 
   // Bypass static file requests like /meta.json, /sitemap.xml, etc.
   if (PUBLIC_FILE.test(pathname)) {

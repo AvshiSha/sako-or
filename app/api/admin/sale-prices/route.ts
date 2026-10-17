@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs'
-import { requireAdmin } from '@/lib/server/auth';
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth';
 import { processSalePriceCsv } from '@/lib/sale-prices';
 
 /**

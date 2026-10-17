@@ -48,6 +48,7 @@ import BagSpecificationsSection, {
 } from '../../_components/BagSpecificationsSection'
 import ProductSeoSection from '../../_components/ProductSeoSection'
 import ProductImageSeoFields from '../../_components/ProductImageSeoFields'
+import { getAdminAuthHeadersFromSession } from '@/lib/admin-api'
 
 interface ColorVariantData {
   id: string;
@@ -836,9 +837,7 @@ function EditProductPage() {
       // Download files from Google Drive
       const response = await fetch('/api/google-drive/download', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await getAdminAuthHeadersFromSession(),
         body: JSON.stringify({
           fileIds: files.map(file => file.id)
         })
@@ -964,9 +963,7 @@ function EditProductPage() {
       // Download file from Google Drive
       const response = await fetch('/api/google-drive/download', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await getAdminAuthHeadersFromSession(),
         body: JSON.stringify({
           fileIds: [file.id]
         })

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { CouponDiscountType } from '@prisma/client'
 import { z } from 'zod'
-import { requireAdmin } from '@/lib/server/auth'
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth'
 
 const discountTypeValues: [CouponDiscountType, CouponDiscountType, CouponDiscountType, CouponDiscountType] = [
   'percent_all',

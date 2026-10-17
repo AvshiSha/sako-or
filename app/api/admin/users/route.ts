@@ -9,7 +9,7 @@ import {
   normalizeEmail,
   SUPER_ADMIN_EMAIL,
 } from '@/lib/admin'
-import { requireAdmin, requireSuperAdmin } from '@/lib/server/auth'
+import { requireAdminSession as requireAdmin, requireSuperAdmin } from '@/lib/server/auth'
 
 const ADMIN_PLACEHOLDER_BIRTHDAY = new Date('1970-01-01T00:00:00.000Z')
 

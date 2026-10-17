@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/server/auth';
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth';
 import { faqSettingsSchema } from '@/lib/schemas/faq-schema';
 import { getFaqSettingsAdmin, upsertFaqSettings } from '@/lib/server/faq-mutations';
 import { sanitizeCmsHtml } from '@/lib/sanitize-html';

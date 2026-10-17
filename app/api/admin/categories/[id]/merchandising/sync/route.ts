@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { requireUserAuth } from '@/lib/server/auth';
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth';
 import { adminDb } from '@/lib/firebase-admin';
 import {
   getCategoryMerchandisingAdmin,
@@ -15,14 +15,6 @@ const syncSchema = z.object({
   save: z.boolean().default(false),
 });
 
-async function requireAdmin(request: NextRequest) {
-  const auth = await requireUserAuth(request);
-  if (auth instanceof NextResponse) return auth;
-  if (!auth.isAdmin) {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-  }
-  return auth;
-}
 
 async function categoryExists(categoryId: string): Promise<boolean> {
   const snap = await adminDb.collection('categories').doc(categoryId).get();

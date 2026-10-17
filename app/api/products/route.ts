@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import * as Sentry from '@sentry/nextjs'
 import { productService } from '@/lib/firebase'
+import { requireAdmin } from '@/lib/server/auth'
 import { z } from 'zod'
 import {
   shoeFitSchema,
@@ -156,6 +157,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/products - Create a new product
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request)
+  if (auth instanceof NextResponse) return auth
+
   try {
     const body = await request.json()
     const validatedData = productSchema.parse(body)

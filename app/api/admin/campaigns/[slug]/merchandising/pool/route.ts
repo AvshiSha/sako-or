@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireUserAuth } from '@/lib/server/auth';
+import { requireAdminSession as requireAdmin } from '@/lib/server/auth';
 import { campaignService } from '@/lib/firebase';
 import {
   listCampaignMerchandisingPool,
   resolveMerchandisingPreviewRows,
 } from '@/lib/campaign-merchandising';
 
-async function requireAdmin(request: NextRequest) {
-  const auth = await requireUserAuth(request);
-  if (auth instanceof NextResponse) return auth;
-  if (!auth.isAdmin) {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-  }
-  return auth;
-}
 
 export async function GET(
   request: NextRequest,

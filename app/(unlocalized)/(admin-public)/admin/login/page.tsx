@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { signInWithCustomToken } from 'firebase/auth'
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import TurnstileScript from '@/app/components/TurnstileScript'
@@ -14,13 +14,19 @@ import HideStorefrontWidgets from '@/app/(unlocalized)/admin/_components/HideSto
 /**
  * Admin login.
  *
- * This page no longer calls signInWithEmailAndPassword. Credentials go to
- * POST /api/admin/login, which verifies Turnstile and throttles before it
- * looks at the password — none of which was enforceable while the browser
- * talked to Google directly.
+ * The password is checked HERE, in the browser, by signInWithEmailAndPassword.
+ * That is deliberate and was learned the hard way: the Firebase Web API keys
+ * are HTTP-referrer restricted, so the same call from a Vercel function gets
+ * 403 "Requests from referer <empty> are blocked". A browser sends a valid
+ * referrer; a server does not.
  *
- * The route answers with a custom token, which is exchanged here for a real
- * client Firebase session. That session is not optional: admin pages write to
+ * The resulting ID token is then exchanged at POST /api/admin/login, together
+ * with a Turnstile token, for the httpOnly session cookie that actually gates
+ * /admin and the admin APIs. No Turnstile, no cookie, no admin access — so
+ * Turnstile is strictly enforced for admin entry even though the password
+ * itself is verified client-side.
+ *
+ * The client Firebase session is not optional either: admin pages write to
  * Firestore through the client SDK and firestore.rules gates those writes on
  * the `admin` claim.
  *
@@ -166,26 +172,35 @@ function AdminLoginForm() {
     setError('')
 
     try {
+      // 1. Password check in the browser, where the API key's referrer
+      //    restriction is satisfied.
+      const credential = await signInWithEmailAndPassword(auth, email, password)
+      const idToken = await credential.user.getIdToken()
+
+      // 2. Exchange it, with Turnstile, for the admin session cookie.
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, turnstileToken }),
+        body: JSON.stringify({ idToken, turnstileToken }),
       })
       const data = await res.json().catch(() => ({}))
 
       if (!res.ok) {
+        // Do not leave a half-authenticated browser session behind: the
+        // password was right but this user has no admin access, or Turnstile
+        // failed. Either way they are not signed in to the admin.
+        await signOut(auth).catch(() => {})
         resetTurnstile()
         setError(messageForCode(data?.code, 'Login failed. Please check your credentials.'))
         return
       }
 
-      await signInWithCustomToken(auth, data.customToken)
-
       // The admin claim must be on the ID token before the first Firestore
-      // write, or every write fails with PERMISSION_DENIED. The server sets
-      // the claim before minting, so this retry should never fire — but a
-      // silently claim-less session is a bad enough failure to be worth the
-      // assertion.
+      // write, or every write fails with PERMISSION_DENIED. This refresh is
+      // load-bearing here, not defensive: the token above was minted by
+      // signInWithEmailAndPassword BEFORE the route had a chance to set the
+      // claim, so on the first login after a claim grant it genuinely is
+      // missing and only a forced refresh picks it up.
       let result = await auth.currentUser!.getIdTokenResult()
       if (result.claims.admin !== true) {
         await auth.currentUser!.getIdToken(true)
@@ -199,8 +214,30 @@ function AdminLoginForm() {
       router.replace(resolveRedirect(searchParams, '/admin', 'from'))
     } catch (err) {
       console.error('Login error:', err)
+      await signOut(auth).catch(() => {})
       resetTurnstile()
-      setError('Login failed. Please try again.')
+      const code = (err as { code?: string })?.code
+      switch (code) {
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+        case 'auth/invalid-credential':
+          setError('Invalid email or password.')
+          break
+        case 'auth/invalid-email':
+          setError('Invalid email address.')
+          break
+        case 'auth/user-disabled':
+          setError('This account has been disabled.')
+          break
+        case 'auth/too-many-requests':
+          setError('Too many failed attempts. Please try again later.')
+          break
+        case 'auth/network-request-failed':
+          setError('Network error. Please check your connection and try again.')
+          break
+        default:
+          setError('Login failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }

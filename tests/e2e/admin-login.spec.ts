@@ -83,28 +83,32 @@ test.describe('admin pages are gated server-side', () => {
   })
 })
 
-test.describe('the login route enforces Turnstile before the password', () => {
-  test('a forged Turnstile token is rejected, and the answer does not depend on the password', async ({
-    baseURL,
-  }) => {
+test.describe('the login route enforces Turnstile before it trusts anything', () => {
+  // The route takes { idToken, turnstileToken }. The password is verified in
+  // the browser by signInWithEmailAndPassword, because the Firebase Web API
+  // keys are HTTP-referrer restricted and reject a server-side call with
+  // 403 "Requests from referer <empty> are blocked". Turnstile still gates
+  // the session cookie, which is what /admin actually requires.
+
+  test('a forged Turnstile token is rejected whatever ID token is supplied', async ({ baseURL }) => {
     const api = await playwrightRequest.newContext({ baseURL })
 
-    const post = (password: string) =>
+    const post = (idToken: string) =>
       api.post('/api/admin/login', {
-        data: { email: 'nobody@example.com', password, turnstileToken: 'forged-token' },
+        data: { idToken, turnstileToken: 'forged-token' },
         failOnStatusCode: false,
       })
 
-    const wrong = await post('definitely-the-wrong-password')
-    const alsoWrong = await post('a-completely-different-password')
+    const a = await post('forged.id.token')
+    const b = await post('a-completely-different-forged-token')
 
-    expect(wrong.status()).toBe(403)
-    expect((await wrong.json()).code).toBe('TURNSTILE_FAILED')
+    expect(a.status()).toBe(403)
+    expect((await a.json()).code).toBe('TURNSTILE_FAILED')
 
-    // Same verdict for a different password: the route never reached the
-    // credential check, so it cannot be used as a password oracle.
-    expect(alsoWrong.status()).toBe(403)
-    expect((await alsoWrong.json()).code).toBe('TURNSTILE_FAILED')
+    // Identical verdict for a different token: Turnstile is checked before
+    // the ID token is looked at, so this cannot be used to probe tokens.
+    expect(b.status()).toBe(403)
+    expect((await b.json()).code).toBe('TURNSTILE_FAILED')
 
     await api.dispose()
   })
@@ -112,12 +116,20 @@ test.describe('the login route enforces Turnstile before the password', () => {
   test('a missing Turnstile token is rejected the same way', async ({ baseURL }) => {
     const api = await playwrightRequest.newContext({ baseURL })
     const res = await api.post('/api/admin/login', {
-      data: { email: 'nobody@example.com', password: 'x' },
+      data: { idToken: 'forged.id.token' },
       failOnStatusCode: false,
     })
 
     expect(res.status()).toBe(403)
     expect((await res.json()).code).toBe('TURNSTILE_FAILED')
+    await api.dispose()
+  })
+
+  test('a valid-looking request with no credentials at all is rejected', async ({ baseURL }) => {
+    const api = await playwrightRequest.newContext({ baseURL })
+    const res = await api.post('/api/admin/login', { data: {}, failOnStatusCode: false })
+    expect(res.status()).toBe(400)
+    expect((await res.json()).code).toBe('INVALID_REQUEST')
     await api.dispose()
   })
 
@@ -129,7 +141,7 @@ test.describe('the login route enforces Turnstile before the password', () => {
     const api = await playwrightRequest.newContext({ baseURL })
     const res = await api.post('/api/admin/login', {
       headers: { Host: 'localhost' },
-      data: { email: 'nobody@example.com', password: 'x', turnstileToken: '' },
+      data: { idToken: 'forged.id.token', turnstileToken: '' },
       failOnStatusCode: false,
     })
 

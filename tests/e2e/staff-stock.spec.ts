@@ -224,18 +224,78 @@ test.describe('signed in', () => {
     await expect(page.getByTestId('staff-search')).toBeInViewport()
   })
 
-  test('an incomplete model number is not looked up', async ({ page }) => {
+  test('the input and the Search button share one row', async ({ page }) => {
+    const input = page.getByTestId('staff-model-input')
+    const button = page.getByTestId('staff-search')
+
+    const inputBox = (await input.boundingBox())!
+    const buttonBox = (await button.boundingBox())!
+
+    // Same row: tops aligned, not stacked.
+    expect(Math.abs(inputBox.y - buttonBox.y)).toBeLessThanOrEqual(2)
+    // Matching heights, which is what `items-stretch` buys.
+    expect(Math.abs(inputBox.height - buttonBox.height)).toBeLessThanOrEqual(2)
+    // The input takes the remaining width; the button stays at its own size.
+    expect(inputBox.width).toBeGreaterThan(buttonBox.width)
+    // RTL: the button sits to the LEFT of the field.
+    expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(inputBox.x + 2)
+  })
+
+  test('the row does not reflow while a search is loading', async ({ page }) => {
+    // Hold the response open so the button is in its loading state when
+    // measured -- the label swaps to a different string there.
+    await page.route('**/api/staff/stock**', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+    })
+
+    const input = page.getByTestId('staff-model-input')
+    const button = page.getByTestId('staff-search')
+
+    await input.fill('4925-0301')
+    const before = (await button.boundingBox())!
+
+    await button.click()
+    await expect(button).toBeDisabled()
+
+    const during = (await button.boundingBox())!
+    const inputDuring = (await input.boundingBox())!
+
+    // The min-width on the button absorbs the longer loading label.
+    expect(Math.abs(before.width - during.width)).toBeLessThanOrEqual(1)
+    expect(Math.abs(inputDuring.y - during.y)).toBeLessThanOrEqual(2)
+  })
+
+  test('nothing is looked up until the Search button is pressed', async ({ page }) => {
     let requests = 0
     await page.route('**/api/staff/stock**', async (route) => {
       requests++
-      await route.continue()
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
     })
 
-    await page.getByTestId('staff-model-input').fill('4925')
-    // Comfortably past the 400ms debounce.
-    await page.waitForTimeout(1200)
+    const input = page.getByTestId('staff-model-input')
 
+    // An incomplete number: nothing to search for.
+    await input.fill('4925')
+    await page.waitForTimeout(800)
     expect(requests).toBe(0)
+
+    // A COMPLETE, valid number must still not fire on its own. This is the
+    // behaviour change: typing or pasting a whole SKU prepares the field, it
+    // does not call the ERP.
+    await input.fill('4925-0301')
+    await page.waitForTimeout(800)
+    expect(requests).toBe(0)
+
+    // Pasting it in one go is the same.
+    await input.fill('')
+    await input.fill('50240019')
+    await page.waitForTimeout(800)
+    expect(requests).toBe(0)
+
+    // Only the explicit press searches.
+    await page.getByTestId('staff-search').click()
+    await expect.poll(() => requests).toBe(1)
   })
 
   test('an invalid model number is rejected in Hebrew, without a request', async ({ page }) => {
@@ -337,6 +397,7 @@ test.describe('signed in', () => {
     })
 
     await page.getByTestId('staff-model-input').fill('4925-0301')
+    await page.getByTestId('staff-search').click()
     await expect(page.getByTestId('staff-result')).toBeVisible()
 
     // Two colours, each with its own card.
@@ -398,6 +459,7 @@ test.describe('signed in', () => {
     })
 
     await page.getByTestId('staff-model-input').fill('4925-0301')
+    await page.getByTestId('staff-search').click()
 
     await expect(page.getByTestId('staff-stock-error')).toBeVisible()
     // The location half is still usable.
@@ -445,9 +507,16 @@ test.describe('signed in', () => {
     })
 
     const input = page.getByTestId('staff-model-input')
+
+    // First search: the stub holds this one open for 2.5s.
     await input.fill('4925-0301')
-    await page.waitForTimeout(600)
+    await page.getByTestId('staff-search').click()
+
+    // Switch models while it is still in flight. Enter rather than the button,
+    // because the button is disabled during a search -- Enter is the deliberate
+    // escape hatch for "this one is hanging, I need the other model now".
     await input.fill('5024-0019')
+    await input.press('Enter')
 
     await expect(page.getByTestId('staff-result-model')).toHaveText('5024-0019')
     await expect(page.getByTestId('staff-size-quantity')).toHaveText('222')
@@ -489,6 +558,7 @@ test.describe('signed in', () => {
     })
 
     await page.getByTestId('staff-model-input').fill('4925-0301')
+    await page.getByTestId('staff-search').click()
     await page.getByTestId('staff-edit-location').click()
 
     const pinInput = page.getByTestId('staff-pin-input')

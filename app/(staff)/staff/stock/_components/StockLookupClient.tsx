@@ -7,7 +7,7 @@ import type { StaffColorCard } from '@/lib/staff/combine-stock'
 import type { StoredLocation } from '@/lib/staff/location-types'
 import { defaultRoomRoutes } from '@/lib/staff/warehouse-config'
 import { MODEL_CODE_MESSAGES, staffText } from '@/lib/staff/messages'
-import { isCompleteModelCode, parseModelCode } from '@/lib/staff/model-code'
+import { parseModelCode } from '@/lib/staff/model-code'
 import { staffTheme } from '../../../_components/staffTheme'
 import ColorStockCard from './ColorStockCard'
 import LocationEditDialog from './LocationEditDialog'
@@ -25,13 +25,20 @@ import ManagerPinDialog from './ManagerPinDialog'
  * rendered from the response rather than from the input field, so even a bug in
  * all three could not label one model's stock with another's number.
  *
- * ## One lookup per complete number
+ * ## Searching is explicit
  *
- * The debounce fires only once `isCompleteModelCode` is true, so an incomplete
- * or invalid number never reaches Verifone, and the button and Enter key share
- * the same path. Retries are explicit: there is no automatic retry anywhere
- * here, which is what keeps a busy period from turning into a request storm
- * against an upstream that is already struggling.
+ * A lookup runs only when the employee presses חיפוש, or Enter, which submits
+ * the same form through the same path. Typing, pasting or completing an
+ * eight-digit number does NOT fire a request.
+ *
+ * That is a deliberate change from the original debounce. On a shared device
+ * in a busy warehouse, searching on completion means every corrected typo
+ * costs a second call to the slowest thing on the screen, and it takes the
+ * decision of when to hit the ERP away from the person holding the iPad.
+ *
+ * Validation still runs while typing, because it costs nothing and catches a
+ * wrong character before the search rather than after it. Retries are explicit
+ * too: there is no automatic retry anywhere here.
  *
  * ## Stale stock is labelled, not hidden and not zeroed
  *
@@ -39,9 +46,6 @@ import ManagerPinDialog from './ManagerPinDialog'
  * notice saying so and its own timestamp. It is never replaced by zeros, and
  * "last successful retrieval" always refers to a real successful call.
  */
-
-/** Long enough to finish typing eight digits, short enough to feel immediate. */
-const DEBOUNCE_MS = 400
 
 type EditSession = {
   card: StaffColorCard
@@ -67,11 +71,11 @@ export default function StockLookupClient() {
   /**
    * The latest result, read inside `runLookup`.
    *
-   * A ref rather than the state value because `runLookup` is handed to a
-   * `setTimeout` by the debounce. If it closed over `result` directly, a lookup
-   * that resolved during the 400ms wait would leave the pending callback
-   * holding a stale snapshot, and the "keep the last good stock" decision below
-   * would be made against the wrong data.
+   * A ref rather than the state value because `runLookup` is created once (its
+   * dependency list is empty, so the submit and refresh handlers always call
+   * the same function). Closing over `result` directly would pin it to the
+   * value at first render -- null -- and the "keep the last good stock on
+   * screen" decision below would never see anything.
    */
   const resultRef = useRef<StaffStockResponse | null>(null)
   useEffect(() => {
@@ -160,7 +164,7 @@ export default function StockLookupClient() {
     []
   )
 
-  // Debounced automatic lookup once the number is complete.
+  // Live validation only -- this effect never starts a lookup.
   useEffect(() => {
     const trimmed = input.trim()
     if (!trimmed) {
@@ -182,14 +186,9 @@ export default function StockLookupClient() {
       return
     }
 
+    // Valid and complete. The input is ready; the request waits for חיפוש.
     setValidation(null)
-
-    const timer = setTimeout(() => {
-      void runLookup(parsed.canonical)
-    }, DEBOUNCE_MS)
-
-    return () => clearTimeout(timer)
-  }, [input, runLookup])
+  }, [input])
 
   /** The search button and the Enter key. Validates out loud. */
   function submitSearch() {
@@ -271,16 +270,23 @@ export default function StockLookupClient() {
       <h1 className="sr-only">{staffText.pageTitle}</h1>
 
       <form
-        className={staffTheme.searchRow}
         onSubmit={(event) => {
           event.preventDefault()
           submitSearch()
         }}
       >
-        <div className="flex-1">
-          <label htmlFor="staff-model" className={staffTheme.label}>
-            {staffText.modelLabel}
-          </label>
+        <label htmlFor="staff-model" className={staffTheme.label}>
+          {staffText.modelLabel}
+        </label>
+
+        {/*
+          The input and the button are siblings in one non-wrapping row, with
+          the label above it and the hint below it. Keeping the hint OUT of this
+          row is what fixes the alignment: when it lived in a column beside the
+          button, `items-end` aligned the button to the bottom of the hint
+          rather than to the input, which read as two separate rows.
+        */}
+        <div className={staffTheme.searchRow}>
           <input
             id="staff-model"
             name="model"
@@ -297,30 +303,40 @@ export default function StockLookupClient() {
             placeholder="XXXX-XXXX"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            className={`${staffTheme.input} ${validation ? staffTheme.inputInvalid : ''}`}
+            className={`${staffTheme.input} ${staffTheme.searchInput} ${
+              validation ? staffTheme.inputInvalid : ''
+            }`}
             aria-invalid={validation ? true : undefined}
             aria-describedby={validation ? 'staff-model-error' : 'staff-model-hint'}
             data-testid="staff-model-input"
           />
-          {validation ? (
-            <p id="staff-model-error" className={staffTheme.fieldError} data-testid="staff-model-error">
-              {validation}
-            </p>
-          ) : (
-            <p id="staff-model-hint" className={staffTheme.hint}>
-              {staffText.modelHint}
-            </p>
-          )}
+
+          <button
+            type="submit"
+            className={`${staffTheme.buttonPrimary} ${staffTheme.searchButton}`}
+            // Only the in-flight state disables it. An invalid number leaves the
+            // button live on purpose, so pressing it explains what is wrong
+            // instead of leaving a dead control with no reason given.
+            disabled={loading}
+            data-testid="staff-search"
+          >
+            {loading ? staffText.searching : staffText.searchAction}
+          </button>
         </div>
 
-        <button
-          type="submit"
-          className={staffTheme.buttonPrimary}
-          disabled={loading && !isCompleteModelCode(input)}
-          data-testid="staff-search"
-        >
-          {loading ? staffText.searching : staffText.searchAction}
-        </button>
+        {validation ? (
+          <p
+            id="staff-model-error"
+            className={staffTheme.fieldError}
+            data-testid="staff-model-error"
+          >
+            {validation}
+          </p>
+        ) : (
+          <p id="staff-model-hint" className={staffTheme.hint}>
+            {staffText.modelHint}
+          </p>
+        )}
       </form>
 
       {/* --- result heading, always from the response, never from the field --- */}

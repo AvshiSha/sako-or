@@ -36,7 +36,26 @@ export const staffTheme = {
   container: 'mx-auto w-full max-w-[900px] px-4 pb-16 pt-4',
 
   // --- lookup ------------------------------------------------------------
-  searchRow: 'flex flex-col gap-3 sm:flex-row sm:items-end',
+  /**
+   * The input and the Search button share ONE row at every width -- desktop,
+   * iPad portrait and iPad landscape alike.
+   *
+   * `items-stretch` rather than `items-end`: both controls carry
+   * `min-h-[48px]`, so stretching makes them exactly the same height and
+   * removes the half-row offset that `items-end` produced once the hint text
+   * sat inside the same column as the input.
+   *
+   * `flex-nowrap` is explicit so the button can never drop to its own line at a
+   * narrow width, which is the failure this replaced.
+   */
+  searchRow: 'flex flex-nowrap items-stretch gap-3',
+  /** `min-w-0` lets the input actually shrink inside the flex row. */
+  searchInput: 'flex-1 min-w-0',
+  /**
+   * `shrink-0` keeps the button at its natural width, and the `min-w` stops the
+   * row resizing when the label swaps to its loading text mid-search.
+   */
+  searchButton: 'shrink-0 whitespace-nowrap min-w-[7rem]',
   label: 'block text-[15px] font-bold text-text-primary mb-1',
   hint: 'mt-1 text-[14px] text-text-secondary',
   input: [

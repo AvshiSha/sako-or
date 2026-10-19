@@ -30,7 +30,9 @@ export const staffText = {
   searchAction: 'חיפוש',
   refreshAction: 'רענון מלאי',
   refreshing: 'מרענן...',
-  searching: 'מחפש מלאי...',
+  // Kept short deliberately: it sits inside the Search button, and a long
+  // label would resize the button and reflow the row mid-search.
+  searching: 'מחפש...',
   lastUpdatedPrefix: 'עודכן לאחרונה',
   emptyPrompt: 'הזינו מספר דגם כדי לראות מלאי ומיקום',
 

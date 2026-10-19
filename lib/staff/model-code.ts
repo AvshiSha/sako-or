@@ -86,8 +86,9 @@ export function formatModelCode(digits: string): string {
 /**
  * True once the input holds a complete, valid model number.
  *
- * This is the debounce trigger: the screen fires a lookup only when this is
- * true, so a partially typed number never reaches Verifone.
+ * Searching is explicit -- the screen looks a model up only when the employee
+ * presses the Search button -- so this is a predicate for callers that want to
+ * know whether the field is ready, not a trigger for anything.
  */
 export function isCompleteModelCode(input: string | null | undefined): boolean {
   return parseModelCode(input).ok

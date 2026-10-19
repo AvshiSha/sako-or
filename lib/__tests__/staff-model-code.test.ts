@@ -104,11 +104,10 @@ describe('formatModelCode', () => {
 })
 
 describe('isCompleteModelCode', () => {
-  it('is the debounce trigger: true only for a complete valid number', () => {
+  it('is true only for a complete, valid number', () => {
     assert.equal(isCompleteModelCode('4925-0301'), true)
     assert.equal(isCompleteModelCode('49250301'), true)
-    // Every intermediate state while typing must be false, or a partial number
-    // reaches Verifone.
+    // Every intermediate state while typing is false.
     for (const partial of ['4', '49', '492', '4925', '4925-', '4925-0', '4925-030']) {
       assert.equal(isCompleteModelCode(partial), false, `expected ${partial} incomplete`)
     }

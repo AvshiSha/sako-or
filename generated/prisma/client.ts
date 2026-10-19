@@ -175,3 +175,49 @@ export type OrderCoupon = Prisma.OrderCouponModel
  * 
  */
 export type Points = Prisma.PointsModel
+/**
+ * Model WarehouseLocation
+ * Physical warehouse location for one MODEL + COLOUR.
+ * 
+ * The assignment unit is the model/colour pair, never the size: every size of
+ * a colour sits in one drawer, while two colours of the same model routinely
+ * do not. A drawer is not exclusive -- many model/colour pairs can share one.
+ * 
+ * `modelCode` is the canonical dashed form `XXXX-XXXX`, matching
+ * `Product.sku` and the Verifone `ItemCode`; `colorCode` is Verifone's own
+ * two-digit code rather than a slug or a translated name, so the join does not
+ * depend on the catalog knowing the colour.
+ * 
+ * No index on `modelCode` alone: the `@@unique` below creates one on
+ * (model_code, color_code), and Postgres can serve `WHERE model_code = ?` from
+ * its leading column.
+ */
+export type WarehouseLocation = Prisma.WarehouseLocationModel
+/**
+ * Model WarehouseLocationHistory
+ * Append-only change log for warehouse locations.
+ * 
+ * Written in the same transaction as the location itself, so an assignment can
+ * never exist without the entry that explains it.
+ * 
+ * `onDelete: Restrict`, not Cascade: this is an audit trail, and deleting a
+ * location must not take its history with it. Nothing in the application
+ * deletes locations, so the constraint costs nothing today and refuses the
+ * wrong thing if that changes.
+ * 
+ * `actorUid`/`actorEmail` record the authenticated account only. On the shared
+ * warehouse iPad that is the shared account, which does NOT identify the person
+ * who made the change, and the UI does not claim otherwise.
+ */
+export type WarehouseLocationHistory = Prisma.WarehouseLocationHistoryModel
+/**
+ * Model StaffEditGrant
+ * A short-lived, single-use permission to edit one model/colour location,
+ * minted by a correct manager PIN and bound to the session that asked.
+ * 
+ * In Postgres rather than Firestore so that consuming the grant, writing the
+ * location and appending the history entry are one transaction. Consumption is
+ * a conditional UPDATE whose row count is the check, which is what stops two
+ * in-flight saves from both spending the same grant.
+ */
+export type StaffEditGrant = Prisma.StaffEditGrantModel

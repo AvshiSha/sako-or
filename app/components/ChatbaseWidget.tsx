@@ -19,10 +19,12 @@ const CHATBASE_EMBED = `(function(){if(!window.chatbase||window.chatbase("getSta
 export default function ChatbaseWidget() {
   const pathname = usePathname()
 
-  // Never in the admin panel. The WhatsApp button excluded it for the same
-  // reason: it is internal tooling, not a place to offer customer support, and
-  // staff traffic would otherwise burn Chatbase message quota.
-  if (pathname?.startsWith('/admin')) {
+  // Never on an internal surface. The WhatsApp button excluded the admin panel
+  // for the same reason: it is internal tooling, not a place to offer customer
+  // support, and staff traffic would otherwise burn Chatbase message quota.
+  // `/staff` is the warehouse stock screen, which is a shared iPad on a
+  // warehouse floor -- a customer support bubble there is pure obstruction.
+  if (pathname?.startsWith('/admin') || pathname?.startsWith('/staff')) {
     return null
   }
 
@@ -32,8 +34,8 @@ export default function ChatbaseWidget() {
   // next/script's afterInteractive strategy injects only after hydration, so
   // the markup never shows it.
   //
-  // Nothing is lost by skipping client-side navigation handling: /admin and the
-  // storefront are separate route groups with their own <html>, so moving
-  // between them is always a full page load.
+  // Nothing is lost by skipping client-side navigation handling: /admin,
+  // /staff and the storefront are separate route groups with their own <html>,
+  // so moving between them is always a full page load.
   return <script dangerouslySetInnerHTML={{ __html: CHATBASE_EMBED }} />
 }

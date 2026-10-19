@@ -76,7 +76,10 @@ export const ModelName = {
   Coupon: 'Coupon',
   CouponRedemption: 'CouponRedemption',
   OrderCoupon: 'OrderCoupon',
-  Points: 'Points'
+  Points: 'Points',
+  WarehouseLocation: 'WarehouseLocation',
+  WarehouseLocationHistory: 'WarehouseLocationHistory',
+  StaffEditGrant: 'StaffEditGrant'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -684,6 +687,57 @@ export const PointsScalarFieldEnum = {
 } as const
 
 export type PointsScalarFieldEnum = (typeof PointsScalarFieldEnum)[keyof typeof PointsScalarFieldEnum]
+
+
+export const WarehouseLocationScalarFieldEnum = {
+  id: 'id',
+  modelCode: 'modelCode',
+  colorCode: 'colorCode',
+  room: 'room',
+  route: 'route',
+  drawer: 'drawer',
+  version: 'version',
+  updatedBy: 'updatedBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type WarehouseLocationScalarFieldEnum = (typeof WarehouseLocationScalarFieldEnum)[keyof typeof WarehouseLocationScalarFieldEnum]
+
+
+export const WarehouseLocationHistoryScalarFieldEnum = {
+  id: 'id',
+  locationId: 'locationId',
+  modelCode: 'modelCode',
+  colorCode: 'colorCode',
+  prevRoom: 'prevRoom',
+  prevRoute: 'prevRoute',
+  prevDrawer: 'prevDrawer',
+  newRoom: 'newRoom',
+  newRoute: 'newRoute',
+  newDrawer: 'newDrawer',
+  actorUid: 'actorUid',
+  actorEmail: 'actorEmail',
+  actorRole: 'actorRole',
+  viaPin: 'viaPin',
+  changedAt: 'changedAt'
+} as const
+
+export type WarehouseLocationHistoryScalarFieldEnum = (typeof WarehouseLocationHistoryScalarFieldEnum)[keyof typeof WarehouseLocationHistoryScalarFieldEnum]
+
+
+export const StaffEditGrantScalarFieldEnum = {
+  id: 'id',
+  firebaseUid: 'firebaseUid',
+  modelCode: 'modelCode',
+  colorCode: 'colorCode',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type StaffEditGrantScalarFieldEnum = (typeof StaffEditGrantScalarFieldEnum)[keyof typeof StaffEditGrantScalarFieldEnum]
 
 
 export const SortOrder = {

@@ -238,8 +238,13 @@ body {
 }
 
 /* Hide storefront widgets on admin pages */
+/* Internal surfaces hide the accessibility plugin: it is a storefront widget,
+   and on the warehouse iPad it injects itself on the first touch and covers
+   the stock card. `staff-panel` is set by app/(staff)/_components/StaffChrome. */
 body.admin-panel #vplugin-toggler,
-body.admin-panel #vplugin-interface {
+body.admin-panel #vplugin-interface,
+body.staff-panel #vplugin-toggler,
+body.staff-panel #vplugin-interface {
   display: none !important;
 }
 

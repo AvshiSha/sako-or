@@ -26,12 +26,25 @@ export default function CookieConsent() {
   const pathname = usePathname();
   const [showBanner, setShowBanner] = useState(false);
 
+  /**
+   * Internal tooling gets no consent banner.
+   *
+   * It is a storefront notice aimed at customers, and on the shared warehouse
+   * iPad it opens over the stock card on any device whose storage has been
+   * cleared -- exactly the moment someone is trying to read a drawer number.
+   * `/admin` is excluded for the same reason; it had no exclusion before.
+   */
+  const isInternalSurface =
+    pathname?.startsWith('/admin') || pathname?.startsWith('/staff');
+
   // Determine language from pathname
   const lng = pathname?.startsWith('/he') ? 'he' : 'en';
   const isRTL = lng === 'he';
   const t = translations[lng];
 
   useEffect(() => {
+    if (isInternalSurface) return;
+
     // Check if user has already seen the notice
     if (!hasCookieNoticeBeenSeen()) {
       setShowBanner(true);
@@ -43,6 +56,12 @@ export default function CookieConsent() {
 
       return () => clearTimeout(timer);
     }
+    // Mount-only, as it was before the internal-surface check was added:
+    // `isInternalSurface` is derived from the pathname and cannot change while
+    // this component is mounted on a given route, and re-running the banner
+    // logic on a locale switch would be a behaviour change this guard does not
+    // intend.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleClose = () => {

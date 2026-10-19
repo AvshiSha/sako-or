@@ -16,6 +16,7 @@ import {
   PencilSquareIcon,
   DocumentTextIcon,
   StarIcon,
+  MapPinIcon,
   QuestionMarkCircleIcon
 } from '@heroicons/react/24/outline'
 import { adminTheme } from './_components/adminTheme'
@@ -89,6 +90,12 @@ function AdminDashboard() {
       href: '/admin/reviews',
       icon: StarIcon,
       description: 'Read reviews, record loyalty points, notify customers'
+    },
+    {
+      name: 'Warehouse Locations',
+      href: '/admin/warehouse-locations',
+      icon: MapPinIcon,
+      description: 'Room, route and drawer per model/colour, and the change log'
     },
   ]
 

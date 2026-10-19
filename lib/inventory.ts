@@ -18,46 +18,14 @@ import { adminDb } from './firebase-admin';
 import { buildProductSearchDerivedFields } from './build-product-search-keywords';
 import { prisma } from './prisma';
 import { getStockByModel } from './verifone';
+import { COLOR_CODE_MAP, COLOR_SLUG_TO_CODE } from './color-codes';
 
-// Color code to slug mapping
-// This maps 2-digit codes to their color slugs used in the database
-export const COLOR_CODE_MAP: Record<string, string> = {
-  '01': 'black',
-  '02': 'white',
-  '03': 'dark-brown',
-  '04': 'light-brown',
-  '05': 'zebra',
-  '06': 'coffee',
-  '07': 'off-white',
-  '08': 'beige',
-  '09': 'caramel',
-  '10': 'dark-blue',
-  '11': 'red',
-  '12': 'green',
-  '13': 'bordeaux',
-  '14': 'black-lack',
-  '15': 'white-lack',
-  '16': 'yellow',
-  '17': 'tabbacco',
-  '18': 'capuchino',
-  '19': 'light-pink',
-  '20': 'lyla',
-  '21': 'silver',
-  '22': 'gold',
-  '26': 'pink',
-  '29': 'light-blue',
-  '30': 'orange',
-  '33': 'olive',
-  '35': 'gray',
-  '37': 'turquoise',
-  '57': 'purple',
-  '61': 'dark-gray',
-  '69': 'camel',
-  '89': 'natural',
-  '91': 'multicolor',
-  '95': 'black-white',
-  '99': 'nude'
-};
+// The Verifone colour-code <-> slug maps live in `lib/color-codes.ts` so that
+// pure, unit-testable modules can import them: this file pulls in
+// `./firebase-admin` and `./verifone`, both `server-only`, and `server-only`
+// throws under the plain `tsx` that `npm test` uses. Re-exported here so every
+// existing import site keeps working against a single definition.
+export { COLOR_CODE_MAP, COLOR_SLUG_TO_CODE } from './color-codes';
 
 /**
  * Map size from Verifone/SKU format to our DB format.
@@ -69,14 +37,6 @@ function sizeToDbFormat(size: string): string {
   return trimmed;
 }
 
-// Reverse map for encoding
-export const COLOR_SLUG_TO_CODE: Record<string, string> = Object.entries(COLOR_CODE_MAP).reduce(
-  (acc, [code, slug]) => {
-    acc[slug] = code;
-    return acc;
-  },
-  {} as Record<string, string>
-);
 
 export interface ParsedInventorySku {
   fullSku: string;

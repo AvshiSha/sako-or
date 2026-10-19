@@ -1,0 +1,507 @@
+import { test, expect, request as playwrightRequest } from '@playwright/test'
+
+/**
+ * Access control and RTL for the staff warehouse screen (/staff/stock).
+ *
+ * ## What these lock down
+ *
+ * - **The gate.** `/staff/*` has two server layers, the same shape as the admin
+ *   area: a cookie-presence redirect in `middleware.ts` and an authoritative
+ *   `verifySessionCookie` in `app/(staff)/staff/layout.tsx`. Both are pinned
+ *   here, including the forged-cookie case that only the Node layer can catch.
+ * - **Write denial.** The shared viewer account can search and read all day and
+ *   cannot change a location. Every mutating endpoint is asserted to refuse an
+ *   unauthenticated caller, and `PUT /api/staff/locations` to refuse even a
+ *   well-formed body with no manager grant.
+ * - **Right-to-left.** The whole surface is Hebrew and RTL. `dir` has to be on
+ *   `<html>`, not on a wrapper, or Headless UI's portalled dialog panels and
+ *   the `[dir="rtl"]` descendant rules in `app/globals.css` silently do not
+ *   apply. The assertion below fails if someone ever moves it.
+ * - **Locale routing.** `/staff/stock` must NOT be rewritten to
+ *   `/he/staff/stock`. That depends on `'staff'` being in `UNLOCALIZED_ROUTES`
+ *   in `middleware.ts`, and without it the screen 404s.
+ *
+ * ## What is NOT covered here, and why
+ *
+ * The signed-in screen itself. The credential is a Firebase SESSION COOKIE
+ * minted by `adminAuth.createSessionCookie` and verified against Google with
+ * `checkRevoked`, so unlike a client Firebase session it cannot be faked from
+ * `page.addInitScript` the way `order-summary-regression.spec.ts` fakes one.
+ * Stubbing it would mean adding a test-only bypass to the gate, and a bypass
+ * that QA depends on is a bypass that eventually ships.
+ *
+ * So the behind-the-gate test below performs a REAL sign-in, and skips itself
+ * unless `QA_STAFF_EMAIL` and `QA_STAFF_PASSWORD` are set. Run it with
+ * Cloudflare's always-pass Turnstile test keys, exactly as
+ * `tests/e2e/README.md` prescribes for the admin happy path:
+ *
+ *   NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA \
+ *   TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA \
+ *   npm run build && PORT=3002 npm run start
+ *
+ *   QA_STAFF_EMAIL=... QA_STAFF_PASSWORD=... \
+ *   QA_BASE_URL=http://127.0.0.1:3002 npx playwright test staff-stock
+ *
+ * Note this must run against a local production build, never a Vercel preview:
+ * deployment protection is `all_except_custom_domains`, so a preview URL asks
+ * for a Vercel login first. And never against `next dev` -- React does not
+ * hydrate there under headless Chromium (see tests/e2e/README.md).
+ *
+ * The presentation logic these tests cannot reach is unit-tested instead, in
+ * `lib/__tests__/staff-combine-stock.test.ts`: colour cards, locations per
+ * colour, one location across sizes, zero stock, missing images, unmapped
+ * colour codes and size ordering.
+ */
+
+const PROTECTED_PATHS = ['/staff', '/staff/stock']
+
+test.describe('staff pages are gated server-side', () => {
+  for (const path of PROTECTED_PATHS) {
+    test(`${path} redirects to the staff login when signed out`, async ({ page }) => {
+      const response = await page.goto(path, { waitUntil: 'domcontentloaded' })
+
+      expect(response, `no response for ${path}`).not.toBeNull()
+      await expect(page).toHaveURL(/\/staff\/login/)
+
+      // The originally requested path is preserved so the login can return the
+      // user to where they were going.
+      expect(new URL(page.url()).searchParams.get('from')).toBe(path)
+    })
+  }
+
+  test('a forged session cookie serves no staff content', async ({ page, context, baseURL }) => {
+    // Middleware only checks that the cookie is PRESENT -- it runs on the Edge
+    // and cannot verify a Firebase session cookie. This asserts the second
+    // layer, the Node layout, actually rejects a cookie that merely exists.
+    const url = new URL(baseURL!)
+    await context.addCookies([
+      {
+        name: url.protocol === 'https:' ? '__Host-sako_staff' : 'sako_staff_dev',
+        value: 'forged-not-a-real-session-cookie',
+        domain: url.hostname,
+        path: '/',
+      },
+    ])
+
+    await page.goto('/staff/stock', { waitUntil: 'domcontentloaded' })
+
+    // The model-number field is the one thing every signed-in view has.
+    await expect(page.getByTestId('staff-model-input')).toHaveCount(0)
+  })
+
+  test('the login page itself stays reachable while signed out', async ({ page }) => {
+    const response = await page.goto('/staff/login', { waitUntil: 'domcontentloaded' })
+
+    expect(response?.status()).toBeLessThan(400)
+    await expect(page).toHaveURL(/\/staff\/login/)
+    await expect(page.getByTestId('staff-login-submit')).toBeVisible()
+  })
+})
+
+test.describe('the staff surface is Hebrew and right-to-left', () => {
+  test('dir is on <html>, not on a wrapper', async ({ page }) => {
+    await page.goto('/staff/login', { waitUntil: 'domcontentloaded' })
+
+    // Load-bearing: Headless UI portals dialog panels to document.body, so a
+    // `dir` set on a nested div would not reach the manager PIN dialog, and the
+    // `[dir="rtl"] …` descendant rules in app/globals.css would match nothing.
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'he')
+  })
+
+  test('the staff paths are not locale-rewritten', async ({ page }) => {
+    // Without 'staff' in UNLOCALIZED_ROUTES, middleware 308s this to
+    // /he/staff/stock, which does not exist.
+    await page.goto('/staff/stock', { waitUntil: 'domcontentloaded' })
+    expect(page.url()).not.toContain('/he/staff')
+  })
+})
+
+test.describe('the staff API refuses unauthenticated callers', () => {
+  test('every endpoint answers 401 with no session', async ({ baseURL }) => {
+    const api = await playwrightRequest.newContext({ baseURL })
+
+    const stock = await api.get('/api/staff/stock?model=4925-0301')
+    expect(stock.status()).toBe(401)
+
+    const unlock = await api.post('/api/staff/locations/unlock', {
+      data: { modelCode: '4925-0301', colorCode: '01', pin: '123456' },
+    })
+    expect(unlock.status()).toBe(401)
+
+    const revoke = await api.post('/api/staff/locations/revoke', { data: {} })
+    expect(revoke.status()).toBe(401)
+
+    const save = await api.put('/api/staff/locations', {
+      data: {
+        modelCode: '4925-0301',
+        colorCode: '01',
+        room: 1,
+        route: 1,
+        drawer: 1,
+        expectedVersion: null,
+      },
+    })
+    expect(save.status()).toBe(401)
+
+    await api.dispose()
+  })
+
+  test('the admin location API is not reachable without an admin session', async ({ baseURL }) => {
+    const api = await playwrightRequest.newContext({ baseURL })
+
+    const read = await api.get('/api/admin/warehouse-locations?modelCode=4925-0301')
+    expect(read.status()).toBe(401)
+
+    const write = await api.put('/api/admin/warehouse-locations', {
+      data: {
+        modelCode: '4925-0301',
+        colorCode: '01',
+        room: 1,
+        route: 1,
+        drawer: 1,
+        expectedVersion: null,
+      },
+    })
+    expect(write.status()).toBe(401)
+
+    await api.dispose()
+  })
+
+  test('a stock lookup never reaches Verifone with an invalid model number', async ({
+    baseURL,
+  }) => {
+    // Authentication is checked before validation, so these are 401 rather than
+    // 400 -- which is the point: an unauthenticated caller cannot use this
+    // endpoint to probe the upstream at all.
+    const api = await playwrightRequest.newContext({ baseURL })
+
+    for (const model of ['', '123', '4925-03010135', 'abcdabcd']) {
+      const response = await api.get(`/api/staff/stock?model=${encodeURIComponent(model)}`)
+      expect(response.status()).toBe(401)
+    }
+
+    await api.dispose()
+  })
+})
+
+/**
+ * Behind the gate. Skipped unless a real QA staff credential is supplied -- see
+ * the header for why this cannot be stubbed.
+ */
+test.describe('signed in', () => {
+  const email = process.env.QA_STAFF_EMAIL
+  const password = process.env.QA_STAFF_PASSWORD
+
+  test.skip(
+    !email || !password,
+    'Set QA_STAFF_EMAIL and QA_STAFF_PASSWORD to run the signed-in staff checks'
+  )
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/staff/login', { waitUntil: 'domcontentloaded' })
+    await page.getByTestId('staff-login-email').fill(email!)
+    await page.getByTestId('staff-login-password').fill(password!)
+    await page.getByTestId('staff-login-submit').click()
+    await expect(page).toHaveURL(/\/staff\/stock/, { timeout: 30_000 })
+  })
+
+  test('the lookup field is usable on this viewport', async ({ page }) => {
+    const input = page.getByTestId('staff-model-input')
+    await expect(input).toBeVisible()
+
+    // Touch target and the iOS zoom floor, asserted on the real device metrics
+    // of whichever iPad project is running.
+    const box = await input.boundingBox()
+    expect(box!.height).toBeGreaterThanOrEqual(44)
+
+    const fontSize = await input.evaluate((el) =>
+      parseFloat(window.getComputedStyle(el).fontSize)
+    )
+    expect(fontSize).toBeGreaterThanOrEqual(16)
+
+    // The search button must be reachable without scrolling on either orientation.
+    await expect(page.getByTestId('staff-search')).toBeInViewport()
+  })
+
+  test('an incomplete model number is not looked up', async ({ page }) => {
+    let requests = 0
+    await page.route('**/api/staff/stock**', async (route) => {
+      requests++
+      await route.continue()
+    })
+
+    await page.getByTestId('staff-model-input').fill('4925')
+    // Comfortably past the 400ms debounce.
+    await page.waitForTimeout(1200)
+
+    expect(requests).toBe(0)
+  })
+
+  test('an invalid model number is rejected in Hebrew, without a request', async ({ page }) => {
+    let requests = 0
+    await page.route('**/api/staff/stock**', async (route) => {
+      requests++
+      await route.continue()
+    })
+
+    await page.getByTestId('staff-model-input').fill('4925-03a1')
+    await page.getByTestId('staff-search').click()
+
+    await expect(page.getByTestId('staff-model-error')).toBeVisible()
+    // Hebrew, not English.
+    await expect(page.getByTestId('staff-model-error')).toContainText(/[֐-׿]/)
+    expect(requests).toBe(0)
+  })
+
+  test('a viewer cannot save a location without a manager PIN', async ({ page }) => {
+    // The session is real, so this is the actual write-denial path: a valid
+    // viewer session with no grant.
+    const response = await page.request.put('/api/staff/locations', {
+      data: {
+        modelCode: '4925-0301',
+        colorCode: '01',
+        room: 1,
+        route: 1,
+        drawer: 1,
+        expectedVersion: null,
+      },
+    })
+
+    expect(response.status()).toBe(403)
+    const body = await response.json()
+    expect(body.code).toBe('FORBIDDEN')
+  })
+
+  test('a wrong manager PIN is refused', async ({ page }) => {
+    const response = await page.request.post('/api/staff/locations/unlock', {
+      data: { modelCode: '4925-0301', colorCode: '01', pin: '000000' },
+    })
+
+    // 403 for a wrong PIN, 429 once the throttle has tripped, 503 if no PIN is
+    // configured in this environment. Never 200.
+    expect([403, 429, 503]).toContain(response.status())
+  })
+
+  test('the stock response keeps failure, empty and zero apart', async ({ page }) => {
+    // Served from a stub so the assertion does not depend on Verifone being
+    // reachable, which it is not from a development machine.
+    await page.route('**/api/staff/stock**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          modelCode: '4925-0301',
+          productName: 'נעלי סירה',
+          fetchedAt: new Date().toISOString(),
+          stock: { state: 'ok', detail: null },
+          locations: { state: 'ok' },
+          totalQuantity: 3,
+          warehouse: { roomRoutes: { 1: [1, 2, 3] }, configError: null },
+          colors: [
+            {
+              colorCode: '01',
+              colorSlug: 'black',
+              colorName: 'שחור',
+              colorNameSource: 'hebrew',
+              stockKnown: true,
+              location: {
+                room: 2,
+                route: 1,
+                drawer: 18,
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                updatedBy: null,
+              },
+              sizes: [
+                { size: '35', label: '35', quantity: 3, trusted: true },
+                { size: '36', label: '36', quantity: 0, trusted: true },
+              ],
+              totalQuantity: 3,
+              image: null,
+            },
+            {
+              colorCode: '77',
+              colorSlug: null,
+              colorName: 'גוון 77',
+              colorNameSource: 'code',
+              stockKnown: true,
+              location: null,
+              sizes: [{ size: '38', label: '38', quantity: 5, trusted: true }],
+              totalQuantity: 5,
+              image: null,
+            },
+          ],
+        }),
+      })
+    })
+
+    await page.getByTestId('staff-model-input').fill('4925-0301')
+    await expect(page.getByTestId('staff-result')).toBeVisible()
+
+    // Two colours, each with its own card.
+    await expect(page.getByTestId('staff-color-card')).toHaveCount(2)
+
+    // A real zero is shown as a row, not hidden.
+    await expect(page.getByTestId('staff-size-quantity').nth(1)).toHaveText('0')
+
+    // The assigned colour shows its location; the unassigned one says so
+    // explicitly rather than showing a blank or an error.
+    await expect(page.getByTestId('staff-location')).toContainText('18')
+    await expect(page.getByTestId('staff-location-unassigned')).toBeVisible()
+
+    // No image for either colour, so no image element at all -- not a
+    // placeholder and not reserved space.
+    await expect(page.getByTestId('staff-color-image')).toHaveCount(0)
+
+    // The heading comes from the response, never from the input field.
+    await expect(page.getByTestId('staff-result-model')).toHaveText('4925-0301')
+  })
+
+  test('a Verifone failure is never rendered as zero stock', async ({ page }) => {
+    await page.route('**/api/staff/stock**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          modelCode: '4925-0301',
+          productName: null,
+          fetchedAt: new Date().toISOString(),
+          stock: { state: 'unavailable', detail: 'HTTP 503' },
+          locations: { state: 'ok' },
+          // Null, not 0.
+          totalQuantity: null,
+          warehouse: { roomRoutes: { 2: [1] }, configError: null },
+          colors: [
+            {
+              colorCode: '01',
+              colorSlug: 'black',
+              colorName: 'שחור',
+              colorNameSource: 'hebrew',
+              // Location is known, stock is not.
+              stockKnown: false,
+              location: {
+                room: 2,
+                route: 1,
+                drawer: 18,
+                version: 1,
+                updatedAt: new Date().toISOString(),
+                updatedBy: null,
+              },
+              sizes: [],
+              totalQuantity: 0,
+              image: null,
+            },
+          ],
+        }),
+      })
+    })
+
+    await page.getByTestId('staff-model-input').fill('4925-0301')
+
+    await expect(page.getByTestId('staff-stock-error')).toBeVisible()
+    // The location half is still usable.
+    await expect(page.getByTestId('staff-location')).toContainText('18')
+    // And no size table, so nothing reads as "we have none".
+    await expect(page.getByTestId('staff-size-table')).toHaveCount(0)
+    await expect(page.getByTestId('staff-color-total')).toHaveCount(0)
+  })
+
+  test('one model stock can never appear under another model heading', async ({ page }) => {
+    // The slow response is for the first model, the fast one for the second.
+    await page.route('**/api/staff/stock**', async (route) => {
+      const model = new URL(route.request().url()).searchParams.get('model')
+      const slow = model === '4925-0301'
+      if (slow) await new Promise((resolve) => setTimeout(resolve, 2500))
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          modelCode: model,
+          productName: null,
+          fetchedAt: new Date().toISOString(),
+          stock: { state: 'ok', detail: null },
+          locations: { state: 'ok' },
+          totalQuantity: slow ? 111 : 222,
+          warehouse: { roomRoutes: { 1: [1] }, configError: null },
+          colors: [
+            {
+              colorCode: '01',
+              colorSlug: 'black',
+              colorName: 'שחור',
+              colorNameSource: 'hebrew',
+              stockKnown: true,
+              location: null,
+              sizes: [
+                { size: '35', label: '35', quantity: slow ? 111 : 222, trusted: true },
+              ],
+              totalQuantity: slow ? 111 : 222,
+              image: null,
+            },
+          ],
+        }),
+      })
+    })
+
+    const input = page.getByTestId('staff-model-input')
+    await input.fill('4925-0301')
+    await page.waitForTimeout(600)
+    await input.fill('5024-0019')
+
+    await expect(page.getByTestId('staff-result-model')).toHaveText('5024-0019')
+    await expect(page.getByTestId('staff-size-quantity')).toHaveText('222')
+
+    // The slow first response lands here. It must be discarded.
+    await page.waitForTimeout(3000)
+    await expect(page.getByTestId('staff-result-model')).toHaveText('5024-0019')
+    await expect(page.getByTestId('staff-size-quantity')).toHaveText('222')
+  })
+
+  test('the manager PIN dialog opens right-to-left and is portalled', async ({ page }) => {
+    await page.route('**/api/staff/stock**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          modelCode: '4925-0301',
+          productName: null,
+          fetchedAt: new Date().toISOString(),
+          stock: { state: 'ok', detail: null },
+          locations: { state: 'ok' },
+          totalQuantity: 1,
+          warehouse: { roomRoutes: { 1: [1] }, configError: null },
+          colors: [
+            {
+              colorCode: '01',
+              colorSlug: 'black',
+              colorName: 'שחור',
+              colorNameSource: 'hebrew',
+              stockKnown: true,
+              location: null,
+              sizes: [{ size: '35', label: '35', quantity: 1, trusted: true }],
+              totalQuantity: 1,
+              image: null,
+            },
+          ],
+        }),
+      })
+    })
+
+    await page.getByTestId('staff-model-input').fill('4925-0301')
+    await page.getByTestId('staff-edit-location').click()
+
+    const pinInput = page.getByTestId('staff-pin-input')
+    await expect(pinInput).toBeVisible()
+
+    // The panel carries its own dir, because Headless UI renders it under
+    // <body> rather than inside the staff layout.
+    const dir = await pinInput.evaluate(
+      (el) => el.closest('[dir]')?.getAttribute('dir') ?? null
+    )
+    expect(dir).toBe('rtl')
+
+    // The PIN must not be readable over a shoulder on a shared tablet.
+    await expect(pinInput).toHaveAttribute('type', 'password')
+  })
+})

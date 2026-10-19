@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { syncInventoryFromFirebaseToNeon } from '@/lib/inventory';
+import { pruneExpiredEditGrants } from '@/lib/server/warehouse-locations';
 
 /**
  * GET /api/cron/inventory-sync-neon
@@ -58,9 +59,25 @@ export async function GET(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
+    // Housekeeping for the staff warehouse feature, piggy-backed here rather
+    // than given a cron of its own: an expired manager edit grant is already
+    // useless, so this is tidying a small table, not a security control.
+    // Never allowed to fail the sync it is riding on.
+    let prunedGrants = 0;
+    try {
+      prunedGrants = await pruneExpiredEditGrants();
+      if (prunedGrants > 0) {
+        console.log(`[CRON_INVENTORY_SYNC_NEON] Pruned ${prunedGrants} expired staff edit grant(s)`);
+      }
+    } catch (pruneError) {
+      Sentry.captureException(pruneError);
+      console.error('[CRON_INVENTORY_SYNC_NEON] Grant prune failed', pruneError);
+    }
+
     const response = {
       success: result.failed === 0,
       duration: `${duration}ms`,
+      prunedStaffEditGrants: prunedGrants,
       timestamp: new Date().toISOString(),
       summary: {
         total: result.total,

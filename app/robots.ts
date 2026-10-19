@@ -16,7 +16,7 @@ const baseUrl = seoConfig.baseUrl.replace(/\/$/, '')
  * blank in the crawler's screenshot, which costs far more than the crawl
  * budget it saves. (Crawl-budget tuning only pays off above ~500K URLs.)
  */
-const DISALLOWED_PATHS = ['/admin/', '/api/']
+const DISALLOWED_PATHS = ['/admin/', '/staff/', '/api/']
 
 /**
  * AI crawlers that read the site in order to answer a question and cite the

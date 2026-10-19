@@ -199,7 +199,9 @@ export interface AppUser {
   id?: string;
   email: string;
   name?: string;
-  role: 'USER' | 'ADMIN';
+  // 'STAFF' is the shared warehouse viewer: it unlocks /staff/stock and nothing
+  // else, and is never accepted by an admin check. See lib/admin.ts.
+  role: 'USER' | 'ADMIN' | 'STAFF';
   createdAt: Date;
   updatedAt: Date;
 }

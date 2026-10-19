@@ -21,6 +21,8 @@
     "resend-order-email": "tsx scripts/resend-order-email.ts",
     "review-link": "tsx --conditions=react-server scripts/review-link.ts",
     "hfd:inspect": "tsx scripts/hfd-webhook-inspect.ts",
+    "staff:pin": "tsx scripts/hash-staff-pin.ts",
+    "staff:grant": "tsx scripts/grant-staff-role.ts",
     "test:e2e": "playwright test"
   },
   "dependencies": {

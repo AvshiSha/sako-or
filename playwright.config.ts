@@ -34,6 +34,9 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
+      // The staff specs are excluded here and run in the iPad projects below.
+      // Without this, a serial suite would walk them four times for no coverage.
+      testIgnore: /staff-.*\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
     {
@@ -42,7 +45,43 @@ export default defineConfig({
       // the PDP renders a separate buy box per breakpoint, so a desktop-only
       // run would not exercise the controls a real ad click actually touches.
       name: 'mobile',
+      testIgnore: /staff-.*\.spec\.ts/,
       use: { ...devices['iPhone 13'], defaultBrowserType: 'chromium', isMobile: true, hasTouch: true },
+    },
+    // The warehouse screen's primary device is a shared iPad, and the brief
+    // requires both orientations, so it gets its own two projects rather than
+    // riding on the phone profile.
+    //
+    // `testMatch` is what keeps these from re-running the whole suite: this
+    // config is serial with a 90s timeout and a cold-start compile.
+    //
+    // `defaultBrowserType: 'chromium'` is load-bearing. `devices['iPad (gen 7)']`
+    // defaults to webkit, which is not installed here - see the mobile note above.
+    //
+    // `isMobile: false`: Chromium's mobile emulation forces a narrow visual
+    // viewport that does not match how iPadOS reports itself, and the layout
+    // branches on width.
+    {
+      name: 'ipad-portrait',
+      testMatch: /staff-.*\.spec\.ts/,
+      use: {
+        ...devices['iPad (gen 7)'],
+        defaultBrowserType: 'chromium',
+        isMobile: false,
+        hasTouch: true,
+        viewport: { width: 810, height: 1080 },
+      },
+    },
+    {
+      name: 'ipad-landscape',
+      testMatch: /staff-.*\.spec\.ts/,
+      use: {
+        ...devices['iPad (gen 7) landscape'],
+        defaultBrowserType: 'chromium',
+        isMobile: false,
+        hasTouch: true,
+        viewport: { width: 1080, height: 810 },
+      },
     },
   ],
 })

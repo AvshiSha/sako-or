@@ -409,7 +409,10 @@ export const ModelName = {
   Coupon: 'Coupon',
   CouponRedemption: 'CouponRedemption',
   OrderCoupon: 'OrderCoupon',
-  Points: 'Points'
+  Points: 'Points',
+  WarehouseLocation: 'WarehouseLocation',
+  WarehouseLocationHistory: 'WarehouseLocationHistory',
+  StaffEditGrant: 'StaffEditGrant'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -425,7 +428,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "cartItem" | "favorite" | "newsletterEmails" | "category" | "bogoGroup" | "product" | "tag" | "productTag" | "order" | "verifoneManualInvoiceAudit" | "shipment" | "shipmentEvent" | "webhookEvent" | "reviewRequest" | "review" | "productReview" | "orderItem" | "payment" | "paymentToken" | "checkout" | "contactMessage" | "coupon" | "couponRedemption" | "orderCoupon" | "points"
+    modelProps: "user" | "cartItem" | "favorite" | "newsletterEmails" | "category" | "bogoGroup" | "product" | "tag" | "productTag" | "order" | "verifoneManualInvoiceAudit" | "shipment" | "shipmentEvent" | "webhookEvent" | "reviewRequest" | "review" | "productReview" | "orderItem" | "payment" | "paymentToken" | "checkout" | "contactMessage" | "coupon" | "couponRedemption" | "orderCoupon" | "points" | "warehouseLocation" | "warehouseLocationHistory" | "staffEditGrant"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2353,6 +2356,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    WarehouseLocation: {
+      payload: Prisma.$WarehouseLocationPayload<ExtArgs>
+      fields: Prisma.WarehouseLocationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.WarehouseLocationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.WarehouseLocationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>
+        }
+        findFirst: {
+          args: Prisma.WarehouseLocationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.WarehouseLocationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>
+        }
+        findMany: {
+          args: Prisma.WarehouseLocationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>[]
+        }
+        create: {
+          args: Prisma.WarehouseLocationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>
+        }
+        createMany: {
+          args: Prisma.WarehouseLocationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.WarehouseLocationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>[]
+        }
+        delete: {
+          args: Prisma.WarehouseLocationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>
+        }
+        update: {
+          args: Prisma.WarehouseLocationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>
+        }
+        deleteMany: {
+          args: Prisma.WarehouseLocationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.WarehouseLocationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.WarehouseLocationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>[]
+        }
+        upsert: {
+          args: Prisma.WarehouseLocationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationPayload>
+        }
+        aggregate: {
+          args: Prisma.WarehouseLocationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateWarehouseLocation>
+        }
+        groupBy: {
+          args: Prisma.WarehouseLocationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WarehouseLocationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.WarehouseLocationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WarehouseLocationCountAggregateOutputType> | number
+        }
+      }
+    }
+    WarehouseLocationHistory: {
+      payload: Prisma.$WarehouseLocationHistoryPayload<ExtArgs>
+      fields: Prisma.WarehouseLocationHistoryFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.WarehouseLocationHistoryFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.WarehouseLocationHistoryFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>
+        }
+        findFirst: {
+          args: Prisma.WarehouseLocationHistoryFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.WarehouseLocationHistoryFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>
+        }
+        findMany: {
+          args: Prisma.WarehouseLocationHistoryFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>[]
+        }
+        create: {
+          args: Prisma.WarehouseLocationHistoryCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>
+        }
+        createMany: {
+          args: Prisma.WarehouseLocationHistoryCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.WarehouseLocationHistoryCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>[]
+        }
+        delete: {
+          args: Prisma.WarehouseLocationHistoryDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>
+        }
+        update: {
+          args: Prisma.WarehouseLocationHistoryUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>
+        }
+        deleteMany: {
+          args: Prisma.WarehouseLocationHistoryDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.WarehouseLocationHistoryUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.WarehouseLocationHistoryUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>[]
+        }
+        upsert: {
+          args: Prisma.WarehouseLocationHistoryUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$WarehouseLocationHistoryPayload>
+        }
+        aggregate: {
+          args: Prisma.WarehouseLocationHistoryAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateWarehouseLocationHistory>
+        }
+        groupBy: {
+          args: Prisma.WarehouseLocationHistoryGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WarehouseLocationHistoryGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.WarehouseLocationHistoryCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.WarehouseLocationHistoryCountAggregateOutputType> | number
+        }
+      }
+    }
+    StaffEditGrant: {
+      payload: Prisma.$StaffEditGrantPayload<ExtArgs>
+      fields: Prisma.StaffEditGrantFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.StaffEditGrantFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.StaffEditGrantFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>
+        }
+        findFirst: {
+          args: Prisma.StaffEditGrantFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.StaffEditGrantFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>
+        }
+        findMany: {
+          args: Prisma.StaffEditGrantFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>[]
+        }
+        create: {
+          args: Prisma.StaffEditGrantCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>
+        }
+        createMany: {
+          args: Prisma.StaffEditGrantCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.StaffEditGrantCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>[]
+        }
+        delete: {
+          args: Prisma.StaffEditGrantDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>
+        }
+        update: {
+          args: Prisma.StaffEditGrantUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>
+        }
+        deleteMany: {
+          args: Prisma.StaffEditGrantDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.StaffEditGrantUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.StaffEditGrantUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>[]
+        }
+        upsert: {
+          args: Prisma.StaffEditGrantUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$StaffEditGrantPayload>
+        }
+        aggregate: {
+          args: Prisma.StaffEditGrantAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateStaffEditGrant>
+        }
+        groupBy: {
+          args: Prisma.StaffEditGrantGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StaffEditGrantGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.StaffEditGrantCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.StaffEditGrantCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2983,6 +3208,57 @@ export const PointsScalarFieldEnum = {
 export type PointsScalarFieldEnum = (typeof PointsScalarFieldEnum)[keyof typeof PointsScalarFieldEnum]
 
 
+export const WarehouseLocationScalarFieldEnum = {
+  id: 'id',
+  modelCode: 'modelCode',
+  colorCode: 'colorCode',
+  room: 'room',
+  route: 'route',
+  drawer: 'drawer',
+  version: 'version',
+  updatedBy: 'updatedBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type WarehouseLocationScalarFieldEnum = (typeof WarehouseLocationScalarFieldEnum)[keyof typeof WarehouseLocationScalarFieldEnum]
+
+
+export const WarehouseLocationHistoryScalarFieldEnum = {
+  id: 'id',
+  locationId: 'locationId',
+  modelCode: 'modelCode',
+  colorCode: 'colorCode',
+  prevRoom: 'prevRoom',
+  prevRoute: 'prevRoute',
+  prevDrawer: 'prevDrawer',
+  newRoom: 'newRoom',
+  newRoute: 'newRoute',
+  newDrawer: 'newDrawer',
+  actorUid: 'actorUid',
+  actorEmail: 'actorEmail',
+  actorRole: 'actorRole',
+  viaPin: 'viaPin',
+  changedAt: 'changedAt'
+} as const
+
+export type WarehouseLocationHistoryScalarFieldEnum = (typeof WarehouseLocationHistoryScalarFieldEnum)[keyof typeof WarehouseLocationHistoryScalarFieldEnum]
+
+
+export const StaffEditGrantScalarFieldEnum = {
+  id: 'id',
+  firebaseUid: 'firebaseUid',
+  modelCode: 'modelCode',
+  colorCode: 'colorCode',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type StaffEditGrantScalarFieldEnum = (typeof StaffEditGrantScalarFieldEnum)[keyof typeof StaffEditGrantScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -3305,6 +3581,9 @@ export type GlobalOmitConfig = {
   couponRedemption?: Prisma.CouponRedemptionOmit
   orderCoupon?: Prisma.OrderCouponOmit
   points?: Prisma.PointsOmit
+  warehouseLocation?: Prisma.WarehouseLocationOmit
+  warehouseLocationHistory?: Prisma.WarehouseLocationHistoryOmit
+  staffEditGrant?: Prisma.StaffEditGrantOmit
 }
 
 /* Types for Logging */

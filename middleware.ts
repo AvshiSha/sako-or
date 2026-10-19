@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { languages } from './i18n/settings'
 import { ADMIN_SESSION_COOKIE } from './lib/admin-session'
+import { STAFF_SESSION_COOKIE } from './lib/staff-session'
 
 // webp/avif/gif were missing from this list while png/jpg/svg were on it, so a
 // .webp in public/ was the one static image kind that still got locale-
@@ -29,7 +30,10 @@ const DEFAULT_LOCALE = 'he'
 // is reached from a signed one-off link and is deliberately chrome-free, so it
 // must not inherit the [lng] layout's header and footer. It carries its own
 // `lng` path segment (/review/he/order/...). They're marked noindex in
-// their own layouts rather than redirected.
+// their own layouts rather than redirected. `staff` is the internal
+// warehouse stock and location screen (app/(staff)), which needs its own
+// root layout because it is the one internal surface that is right-to-left;
+// without an entry here /staff/stock would 308 to /he/staff/stock and 404.
 // Matched case-insensitively: the actual Next.js routes (app/Cancel etc.) are
 // case-sensitive and would 404 on a differently-cased request regardless,
 // but we still must not let a case variant slip past this guard and get
@@ -41,6 +45,7 @@ const UNLOCALIZED_ROUTES = new Set([
   'admin',
   'preview',
   'review',
+  'staff',
 ])
 
 export function middleware(request: NextRequest) {
@@ -68,6 +73,33 @@ export function middleware(request: NextRequest) {
     if (!request.cookies.has(ADMIN_SESSION_COOKIE)) {
       const url = request.nextUrl.clone()
       url.pathname = '/admin/login'
+      url.search = ''
+      url.searchParams.set('from', pathname)
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
+
+  // Staff gate (UX layer only), the same shape and the same caveat as the admin
+  // block above: it checks the cookie is PRESENT, not that it is valid, because
+  // the Edge runtime cannot verify a Firebase session cookie.
+  //
+  // The authoritative gate is app/(staff)/staff/layout.tsx, which runs on Node
+  // and calls verifySessionCookie with revocation checking. This block only
+  // spares a signed-out visitor a rendered-then-bounced page.
+  //
+  // /staff/login is exempt and also lives outside that layout's subtree, in the
+  // (staff-public) route group, so it stays reachable while signed out.
+  //
+  // This does NOT cover /api/staff/*: the matcher at the bottom of this file
+  // excludes /api entirely, so every staff route handler is its own only gate.
+  if (pathname === '/staff' || pathname.startsWith('/staff/')) {
+    if (pathname === '/staff/login') {
+      return NextResponse.next()
+    }
+    if (!request.cookies.has(STAFF_SESSION_COOKIE)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/staff/login'
       url.search = ''
       url.searchParams.set('from', pathname)
       return NextResponse.redirect(url)

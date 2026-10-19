@@ -781,6 +781,105 @@ model Points {
   @@map("points")
 }
 
+/// Physical warehouse location for one MODEL + COLOUR.
+///
+/// The assignment unit is the model/colour pair, never the size: every size of
+/// a colour sits in one drawer, while two colours of the same model routinely
+/// do not. A drawer is not exclusive -- many model/colour pairs can share one.
+///
+/// `modelCode` is the canonical dashed form `XXXX-XXXX`, matching
+/// `Product.sku` and the Verifone `ItemCode`; `colorCode` is Verifone's own
+/// two-digit code rather than a slug or a translated name, so the join does not
+/// depend on the catalog knowing the colour.
+///
+/// No index on `modelCode` alone: the `@@unique` below creates one on
+/// (model_code, color_code), and Postgres can serve `WHERE model_code = ?` from
+/// its leading column.
+model WarehouseLocation {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  modelCode String   @map("model_code")
+  colorCode String   @map("color_code")
+  room      Int
+  route     Int
+  drawer    Int
+  /// Optimistic-concurrency token. The client echoes it back on save, and a
+  /// mismatch is a 409 rather than a silent overwrite of a newer location.
+  version   Int      @default(1)
+  /// Best available identity. With a shared warehouse account this is the
+  /// account, not the individual operator -- see WarehouseLocationHistory.
+  updatedBy String?  @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  history WarehouseLocationHistory[]
+
+  @@unique([modelCode, colorCode])
+  @@map("warehouse_locations")
+}
+
+/// Append-only change log for warehouse locations.
+///
+/// Written in the same transaction as the location itself, so an assignment can
+/// never exist without the entry that explains it.
+///
+/// `onDelete: Restrict`, not Cascade: this is an audit trail, and deleting a
+/// location must not take its history with it. Nothing in the application
+/// deletes locations, so the constraint costs nothing today and refuses the
+/// wrong thing if that changes.
+///
+/// `actorUid`/`actorEmail` record the authenticated account only. On the shared
+/// warehouse iPad that is the shared account, which does NOT identify the person
+/// who made the change, and the UI does not claim otherwise.
+model WarehouseLocationHistory {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  locationId String   @map("location_id") @db.Uuid
+  modelCode  String   @map("model_code")
+  colorCode  String   @map("color_code")
+  /// Null for a first-time assignment.
+  prevRoom   Int?     @map("prev_room")
+  prevRoute  Int?     @map("prev_route")
+  prevDrawer Int?     @map("prev_drawer")
+  newRoom    Int      @map("new_room")
+  newRoute   Int      @map("new_route")
+  newDrawer  Int      @map("new_drawer")
+  actorUid   String?  @map("actor_uid")
+  actorEmail String?  @map("actor_email")
+  /// 'ADMIN' or 'STAFF' -- which authorization path was used.
+  actorRole  String   @map("actor_role")
+  /// True when a manager PIN authorized the edit (the staff screen), false for
+  /// an admin editing through the admin area.
+  viaPin     Boolean  @default(false) @map("via_pin")
+  changedAt  DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+
+  location WarehouseLocation @relation(fields: [locationId], references: [id], onDelete: Restrict)
+
+  @@index([modelCode, colorCode, changedAt(sort: Desc)])
+  @@map("warehouse_location_history")
+}
+
+/// A short-lived, single-use permission to edit one model/colour location,
+/// minted by a correct manager PIN and bound to the session that asked.
+///
+/// In Postgres rather than Firestore so that consuming the grant, writing the
+/// location and appending the history entry are one transaction. Consumption is
+/// a conditional UPDATE whose row count is the check, which is what stops two
+/// in-flight saves from both spending the same grant.
+model StaffEditGrant {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  firebaseUid String    @map("firebase_uid")
+  modelCode   String    @map("model_code")
+  colorCode   String    @map("color_code")
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  /// Set when a save has spent it. One grant, one successful save.
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(6)
+  /// Set on cancel or sign-out.
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([firebaseUid, expiresAt])
+  @@map("staff_edit_grants")
+}
+
 enum CartItemStatus {
   IN_CART
   REMOVED

@@ -20,7 +20,14 @@
 
 import { createInterface } from 'node:readline'
 
-import { PIN_BCRYPT_ROUNDS, checkPinShape, hashPin, MAX_PIN_LENGTH, MIN_PIN_LENGTH } from '../lib/staff/pin-hash'
+import {
+  PIN_BCRYPT_ROUNDS,
+  checkPinShape,
+  hashPin,
+  isPublicTestPin,
+  MAX_PIN_LENGTH,
+  MIN_PIN_LENGTH,
+} from '../lib/staff/pin-hash'
 
 function prompt(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stderr })
@@ -43,6 +50,17 @@ async function main() {
   const shapeError = checkPinShape(pin)
   if (shapeError) {
     process.stderr.write(`\nRejected: ${shapeError}\n`)
+    process.exit(1)
+  }
+
+  // Checked here as well as inside hashPin, so the reason reads as a message
+  // rather than arriving as a stack trace.
+  if (isPublicTestPin(pin)) {
+    process.stderr.write(
+      '\nRejected: PUBLIC_TEST_PIN.\n' +
+        'This PIN appears in the public repository as the unit-test fixture, so\n' +
+        'it protects nothing. Choose a different one.\n'
+    )
     process.exit(1)
   }
 

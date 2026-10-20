@@ -575,3 +575,145 @@ test.describe('signed in', () => {
     await expect(pinInput).toHaveAttribute('type', 'password')
   })
 })
+
+/**
+ * Auto-formatting of the model-number field, on the real page.
+ *
+ * The rules themselves are unit tested in
+ * `lib/__tests__/staff-model-input-format.test.ts`; what needs a browser is the
+ * wiring -- that the caret really is restored after a controlled re-render, and
+ * that no attribute on the element quietly blocks an edit. A `maxLength` did
+ * exactly that during development: it made overtyping a digit in a full field
+ * do nothing, and only a real browser showed it.
+ */
+test.describe('signed in: model-number formatting', () => {
+  const email = process.env.QA_STAFF_EMAIL
+  const password = process.env.QA_STAFF_PASSWORD
+
+  test.skip(
+    !email || !password,
+    'Set QA_STAFF_EMAIL and QA_STAFF_PASSWORD to run the signed-in staff checks'
+  )
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/staff/login', { waitUntil: 'domcontentloaded' })
+    await page.getByTestId('staff-login-email').fill(email!)
+    await page.getByTestId('staff-login-password').fill(password!)
+    await page.getByTestId('staff-login-submit').click()
+    await expect(page).toHaveURL(/\/staff\/stock/, { timeout: 30_000 })
+  })
+
+  /** The field value and caret, as the DOM actually holds them. */
+  const fieldState = (page: import('@playwright/test').Page) =>
+    page.evaluate(() => {
+      const el = document.querySelector(
+        '[data-testid="staff-model-input"]'
+      ) as HTMLInputElement
+      return { value: el.value, caret: el.selectionStart }
+    })
+
+  const setCaret = (page: import('@playwright/test').Page, at: number) =>
+    page.evaluate((position) => {
+      const el = document.querySelector(
+        '[data-testid="staff-model-input"]'
+      ) as HTMLInputElement
+      el.setSelectionRange(position, position)
+    }, at)
+
+  test('typing eight digits inserts the separator', async ({ page }) => {
+    await page.getByTestId('staff-model-input').click()
+    await page.keyboard.type('51276825')
+
+    const state = await fieldState(page)
+    expect(state.value).toBe('5127-6825')
+    expect(state.caret).toBe(9)
+  })
+
+  test('the numeric keyboard is preserved', async ({ page }) => {
+    const input = page.getByTestId('staff-model-input')
+    await expect(input).toHaveAttribute('inputmode', 'numeric')
+    // type=text, not number: number would strip leading zeros and the dash.
+    await expect(input).toHaveAttribute('type', 'text')
+  })
+
+  test('an already-formatted number does not gain a second separator', async ({ page }) => {
+    await page.getByTestId('staff-model-input').fill('5127-6825')
+    expect((await fieldState(page)).value).toBe('5127-6825')
+  })
+
+  test('leading zeros survive and the field caps at eight digits', async ({ page }) => {
+    const input = page.getByTestId('staff-model-input')
+
+    await input.fill('00120034')
+    expect((await fieldState(page)).value).toBe('0012-0034')
+
+    await input.fill('')
+    await input.click()
+    await page.keyboard.type('512768259999')
+    expect((await fieldState(page)).value).toBe('5127-6825')
+  })
+
+  test('editing a digit mid-number does not send the caret to the end', async ({ page }) => {
+    // The regression this guards: a full field plus a value-replacing
+    // re-render is where auto-formatting fields usually become unusable.
+    const input = page.getByTestId('staff-model-input')
+    await input.fill('51276825')
+    await setCaret(page, 2)
+    await page.keyboard.type('9')
+
+    const state = await fieldState(page)
+    expect(state.value).toBe('5192-7682')
+    expect(state.caret).toBe(3)
+  })
+
+  test('Backspace and Delete behave naturally around the separator', async ({ page }) => {
+    const input = page.getByTestId('staff-model-input')
+
+    // Caret just after the separator: Backspace removes the digit before it,
+    // rather than appearing to do nothing.
+    await input.fill('51276825')
+    await setCaret(page, 5)
+    await page.keyboard.press('Backspace')
+    expect((await fieldState(page)).value).toBe('5126-825')
+
+    // Caret just before the separator: Delete removes the digit after it.
+    await input.fill('51276825')
+    await setCaret(page, 4)
+    await page.keyboard.press('Delete')
+    expect((await fieldState(page)).value).toBe('5127-825')
+  })
+
+  test('replacing a selection works', async ({ page }) => {
+    await page.getByTestId('staff-model-input').fill('51276825')
+    await page.evaluate(() => {
+      const el = document.querySelector(
+        '[data-testid="staff-model-input"]'
+      ) as HTMLInputElement
+      el.setSelectionRange(0, 4)
+    })
+    await page.keyboard.type('9999')
+    expect((await fieldState(page)).value).toBe('9999-6825')
+  })
+
+  test('formatting never triggers a stock request', async ({ page }) => {
+    let requests = 0
+    await page.route('**/api/staff/stock**', async (route) => {
+      requests++
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+    })
+
+    const input = page.getByTestId('staff-model-input')
+    await input.click()
+    await page.keyboard.type('51276825')
+    await input.fill('0012-0034')
+    await setCaret(page, 2)
+    await page.keyboard.type('9')
+    await page.waitForTimeout(800)
+
+    expect(requests).toBe(0)
+
+    // Still explicit, and the value sent upstream is the formatted one.
+    await page.getByTestId('staff-search').click()
+    await expect.poll(() => requests).toBe(1)
+  })
+})

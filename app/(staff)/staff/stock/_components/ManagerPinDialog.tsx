@@ -87,6 +87,8 @@ export default function ManagerPinDialog({
 
       if (failure.code === STAFF_EDIT_ERROR_CODES.PIN_LOCKED) {
         setError(pinLockedOutMessage(failure.retryAfterSeconds ?? 600))
+      } else if (failure.code === STAFF_EDIT_ERROR_CODES.PIN_INSECURE) {
+        setError(staffText.pinInsecure)
       } else if (failure.code === STAFF_EDIT_ERROR_CODES.PIN_NOT_CONFIGURED) {
         setError(staffText.pinNotConfigured)
       } else {

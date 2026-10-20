@@ -69,6 +69,8 @@ export const STAFF_EDIT_ERROR_CODES = {
   PIN_LOCKED: 'PIN_LOCKED',
   /** No PIN configured in this environment. */
   PIN_NOT_CONFIGURED: 'PIN_NOT_CONFIGURED',
+  /** A PIN is configured, but it is one published in this repository. */
+  PIN_INSECURE: 'PIN_INSECURE',
   /** A newer location exists; nothing was overwritten. */
   CONFLICT: 'CONFLICT',
   /** Room, route or drawer outside the configured warehouse. */

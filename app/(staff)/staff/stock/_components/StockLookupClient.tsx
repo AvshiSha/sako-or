@@ -1,13 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 
 import type { StaffApiError, StaffStockResponse, UnlockResponse } from '@/lib/staff/api-types'
 import type { StaffColorCard } from '@/lib/staff/combine-stock'
 import type { StoredLocation } from '@/lib/staff/location-types'
 import { defaultRoomRoutes } from '@/lib/staff/warehouse-config'
 import { MODEL_CODE_MESSAGES, staffText } from '@/lib/staff/messages'
-import { parseModelCode } from '@/lib/staff/model-code'
+import {
+  deleteAroundSeparator,
+  formatModelInput,
+  parseModelCode,
+} from '@/lib/staff/model-code'
 import { staffTheme } from '../../../_components/staffTheme'
 import ColorStockCard from './ColorStockCard'
 import LocationEditDialog from './LocationEditDialog'
@@ -64,6 +68,10 @@ export default function StockLookupClient() {
 
   const [pinTarget, setPinTarget] = useState<StaffColorCard | null>(null)
   const [editSession, setEditSession] = useState<EditSession | null>(null)
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  /** Caret position to restore after the next reformat, or null. */
+  const caretRef = useRef<number | null>(null)
 
   const sequence = useRef(0)
   const abortRef = useRef<AbortController | null>(null)
@@ -164,31 +172,49 @@ export default function StockLookupClient() {
     []
   )
 
-  // Live validation only -- this effect never starts a lookup.
+  /**
+   * Clears a validation message once the field is usable again.
+   *
+   * There is no live "this is wrong" message any more, and there is nothing to
+   * report: `formatModelInput` drops non-digits and caps the field at eight, so
+   * the only reachable complaint is "too short", and nagging about that after
+   * the first digit teaches people to ignore the message. Too-short is reported
+   * on submit instead, where it is actually actionable.
+   *
+   * This effect never starts a lookup.
+   */
   useEffect(() => {
-    const trimmed = input.trim()
-    if (!trimmed) {
-      setValidation(null)
-      return
-    }
-
-    const parsed = parseModelCode(trimmed)
-
-    if (!parsed.ok) {
-      // Only definite mistakes are flagged while typing. "Too short" is the
-      // normal state of a field someone is halfway through, and nagging about
-      // it after the first digit teaches people to ignore the message.
-      setValidation(
-        parsed.reason === 'NON_DIGIT' || parsed.reason === 'TOO_LONG'
-          ? MODEL_CODE_MESSAGES[parsed.reason]
-          : null
-      )
-      return
-    }
-
-    // Valid and complete. The input is ready; the request waits for חיפוש.
-    setValidation(null)
+    if (!input.trim() || parseModelCode(input).ok) setValidation(null)
   }, [input])
+
+  /**
+   * Applies the formatter and remembers where the caret belongs.
+   *
+   * The caret is restored in a layout effect rather than here: this is a
+   * controlled input, so React has not written the new value to the DOM yet and
+   * calling `setSelectionRange` now would act on the old text.
+   */
+  const applyFormatted = useCallback((raw: string, caret: number) => {
+    const next = formatModelInput(raw, caret)
+    caretRef.current = next.caret
+    setInput(next.value)
+  }, [])
+
+  /**
+   * Puts the caret back after the value is reformatted.
+   *
+   * `useLayoutEffect` so it happens before paint -- with `useEffect` the caret
+   * visibly flicks to the end of the field and back on every keystroke.
+   * Falls back to `useEffect` on the server, where layout effects do not run
+   * and React would otherwise warn on every render of this island.
+   */
+  const useCaretEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect
+  useCaretEffect(() => {
+    const element = inputRef.current
+    if (!element || caretRef.current === null) return
+    element.setSelectionRange(caretRef.current, caretRef.current)
+    caretRef.current = null
+  })
 
   /** The search button and the Enter key. Validates out loud. */
   function submitSearch() {
@@ -301,8 +327,39 @@ export default function StockLookupClient() {
             // Latin digits read in the correct order inside the RTL page.
             dir="ltr"
             placeholder="XXXX-XXXX"
+            // Deliberately NO maxLength. It looks like a harmless backstop and
+            // is not: once the field holds a full `XXXX-XXXX` the browser
+            // refuses every further keystroke, so overtyping a digit in the
+            // middle silently does nothing. The cap belongs in the formatter,
+            // which truncates to eight digits AFTER applying the edit.
+            ref={inputRef}
             value={input}
-            onChange={(event) => setInput(event.target.value)}
+            // Covers typing AND pasting: a paste fires change like any other
+            // edit, so both go through the same formatter.
+            onChange={(event) =>
+              applyFormatted(
+                event.target.value,
+                event.target.selectionStart ?? event.target.value.length
+              )
+            }
+            onKeyDown={(event) => {
+              if (event.key !== 'Backspace' && event.key !== 'Delete') return
+
+              const element = event.currentTarget
+              const start = element.selectionStart
+              const end = element.selectionEnd
+              // A selection deletes itself; only a collapsed caret next to the
+              // separator needs help.
+              if (start === null || end === null || start !== end) return
+
+              const redirect = deleteAroundSeparator(element.value, start, event.key)
+              if (!redirect) return
+
+              // Without this, the browser removes the hyphen, the formatter puts
+              // it straight back, and the key appears to have done nothing.
+              event.preventDefault()
+              applyFormatted(redirect.raw, redirect.caret)
+            }}
             className={`${staffTheme.input} ${staffTheme.searchInput} ${
               validation ? staffTheme.inputInvalid : ''
             }`}

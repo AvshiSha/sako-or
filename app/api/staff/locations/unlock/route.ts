@@ -3,7 +3,7 @@ import * as Sentry from '@sentry/nextjs'
 
 import { getClientIp } from '@/lib/turnstile'
 import { requireStaffRequest } from '@/lib/server/staff-request'
-import { isManagerPinConfigured, verifyManagerPin } from '@/lib/server/staff-pin'
+import { getManagerPinStatus, verifyManagerPin } from '@/lib/server/staff-pin'
 import {
   checkPinThrottle,
   recordPinAttempt,
@@ -61,11 +61,21 @@ export async function POST(request: NextRequest) {
   // Distinguished from a wrong PIN on purpose: otherwise a deployment that was
   // never given a PIN looks like five wrong guesses and a lockout, and nobody
   // can tell why.
-  if (!isManagerPinConfigured()) {
+  const pinStatus = await getManagerPinStatus()
+  if (pinStatus !== 'ok') {
+    // Reported separately from a wrong PIN: otherwise an environment that was
+    // never configured -- or was configured with the published test PIN --
+    // looks like five wrong guesses and a lockout, and nobody can tell why.
     return NextResponse.json(
       {
-        error: 'Manager PIN is not configured',
-        code: STAFF_EDIT_ERROR_CODES.PIN_NOT_CONFIGURED,
+        error:
+          pinStatus === 'public_test_pin'
+            ? 'Manager PIN is a published test value and must be replaced'
+            : 'Manager PIN is not configured',
+        code:
+          pinStatus === 'public_test_pin'
+            ? STAFF_EDIT_ERROR_CODES.PIN_INSECURE
+            : STAFF_EDIT_ERROR_CODES.PIN_NOT_CONFIGURED,
       },
       { status: 503, headers: { 'Cache-Control': 'no-store' } }
     )

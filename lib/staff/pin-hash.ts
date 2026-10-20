@@ -24,6 +24,35 @@ export const MAX_PIN_LENGTH = 12
 /** Cost factor for generated hashes. */
 export const PIN_BCRYPT_ROUNDS = 12
 
+/**
+ * PINs that appear in this repository and are therefore public knowledge.
+ *
+ * `246813` is the fixture in `lib/__tests__/staff-pin-hash.test.ts`. The
+ * repository is public, so anyone can read it, and a comment saying "do not use
+ * this in production" is not a control -- it is a hope. These are enforced in
+ * three places instead:
+ *
+ *  1. `hashPin` refuses to produce a hash for one, so `scripts/hash-staff-pin.ts`
+ *     cannot create the bad configuration in the first place.
+ *  2. `lib/server/staff-pin.ts` checks the CONFIGURED hash against this list at
+ *     runtime and refuses every location edit if it matches -- which catches a
+ *     hash pasted in from anywhere, not just one made by our script.
+ *  3. A unit test asserts the list is enforced.
+ *
+ * Point 2 is the one that matters: it is salt-independent, so it catches any
+ * hash of a blocked PIN rather than only the literal string committed here.
+ *
+ * Add to this list any PIN that ever appears in the repo, in a ticket, or in a
+ * chat log. Removing one is almost never right.
+ */
+export const PUBLIC_TEST_PINS: readonly string[] = Object.freeze(['246813'])
+
+/** True when the PIN is published somewhere and must never protect anything. */
+export function isPublicTestPin(pin: string | null | undefined): boolean {
+  if (pin === null || pin === undefined) return false
+  return PUBLIC_TEST_PINS.includes(String(pin))
+}
+
 export type PinShapeError = 'EMPTY' | 'NON_DIGIT' | 'TOO_SHORT' | 'TOO_LONG'
 
 /**
@@ -74,5 +103,40 @@ export async function comparePin(
 export async function hashPin(pin: string): Promise<string> {
   const shapeError = checkPinShape(pin)
   if (shapeError) throw new Error(`PIN rejected: ${shapeError}`)
+
+  // Refused at the point of creation, so the setup script cannot mint a
+  // configuration that the runtime guard would then have to reject.
+  if (isPublicTestPin(pin)) {
+    throw new Error(
+      'PIN rejected: PUBLIC_TEST_PIN - this value appears in the public ' +
+        'repository and cannot be used to protect anything. Choose another.'
+    )
+  }
+
   return bcrypt.hash(pin, PIN_BCRYPT_ROUNDS)
+}
+
+/**
+ * Whether a stored hash is a hash of one of the published test PINs.
+ *
+ * Salt-independent on purpose: it compares against the PIN values, not against
+ * the committed hash string, so it catches a hash produced anywhere by anyone.
+ *
+ * Costs one bcrypt comparison per blocked PIN, so callers memoise it rather
+ * than running it per request.
+ */
+export async function hashIsPublicTestPin(
+  hash: string | null | undefined
+): Promise<boolean> {
+  if (!hash || !String(hash).trim()) return false
+
+  for (const pin of PUBLIC_TEST_PINS) {
+    try {
+      if (await bcrypt.compare(pin, String(hash))) return true
+    } catch {
+      // A malformed hash is not a match; `comparePin` rejects it separately.
+    }
+  }
+
+  return false
 }

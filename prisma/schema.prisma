@@ -801,13 +801,14 @@ model WarehouseLocation {
   colorCode String   @map("color_code")
   room      Int
   route     Int
-  /// Null when, and only when, `placement` is FLOOR. A database CHECK keeps the
-  /// two consistent, so there is only ever one stored shape per real location.
-  drawer    Int?
-  /// Stock on the floor of a route is a real, permanent location rather than a
-  /// missing drawer number, so it is modelled explicitly instead of being
-  /// encoded as a magic drawer value.
-  placement WarehousePlacement @default(DRAWER)
+  drawer    Int
+  /// The stock sits on the floor directly beneath that drawer.
+  ///
+  /// A modifier on a drawer, not an alternative to one: the drawer number is
+  /// always required, because the floor is identified by the drawer above it.
+  /// Defaults to false, so every assignment made before this existed keeps its
+  /// exact meaning.
+  onFloor   Boolean @default(false) @map("on_floor")
   /// Optimistic-concurrency token. The client echoes it back on save, and a
   /// mismatch is a 409 rather than a silent overwrite of a newer location.
   version   Int      @default(1)
@@ -842,15 +843,14 @@ model WarehouseLocationHistory {
   modelCode  String   @map("model_code")
   colorCode  String   @map("color_code")
   /// Null for a first-time assignment.
-  prevRoom      Int?                @map("prev_room")
-  prevRoute     Int?                @map("prev_route")
-  prevDrawer    Int?                @map("prev_drawer")
-  prevPlacement WarehousePlacement? @map("prev_placement")
-  newRoom       Int                 @map("new_room")
-  newRoute      Int                 @map("new_route")
-  /// Null when the new placement is FLOOR.
-  newDrawer     Int?                @map("new_drawer")
-  newPlacement  WarehousePlacement  @default(DRAWER) @map("new_placement")
+  prevRoom    Int?     @map("prev_room")
+  prevRoute   Int?     @map("prev_route")
+  prevDrawer  Int?     @map("prev_drawer")
+  prevOnFloor Boolean? @map("prev_on_floor")
+  newRoom     Int      @map("new_room")
+  newRoute    Int      @map("new_route")
+  newDrawer   Int      @map("new_drawer")
+  newOnFloor  Boolean  @default(false) @map("new_on_floor")
   actorUid   String?  @map("actor_uid")
   actorEmail String?  @map("actor_email")
   /// 'ADMIN' or 'STAFF' -- which authorization path was used.
@@ -887,12 +887,6 @@ model StaffEditGrant {
 
   @@index([firebaseUid, expiresAt])
   @@map("staff_edit_grants")
-}
-
-/// Where within a room and route stock sits: a numbered drawer, or the floor.
-enum WarehousePlacement {
-  DRAWER
-  FLOOR
 }
 
 enum CartItemStatus {

@@ -40,7 +40,7 @@ export async function PUT(request: NextRequest) {
     )
   }
 
-  const { modelCode, colorCode, room, route, drawer, placement, expectedVersion, grantId } =
+  const { modelCode, colorCode, room, route, drawer, onFloor, expectedVersion, grantId } =
     parsed.data
 
   // A viewer with no grant is refused before any work happens. This is the
@@ -63,7 +63,7 @@ export async function PUT(request: NextRequest) {
       room,
       route,
       drawer,
-      placement,
+      onFloor,
       expectedVersion,
       grantId,
       actor: { uid: auth.uid, email: auth.email, role: auth.role },

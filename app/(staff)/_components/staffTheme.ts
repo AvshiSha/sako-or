@@ -150,6 +150,23 @@ export const staffTheme = {
     TOUCH,
     FIELD_BOX_TEXT,
   ].join(' '),
+  /**
+   * A toggle button, not a checkbox: it is a single yes/no with a large target,
+   * which is easier to hit accurately on a tablet than a checkbox and its
+   * label. The two states differ by fill AND by a check glyph, so the state is
+   * not carried by colour alone.
+   */
+  toggleOn: [
+    'inline-flex w-full items-center justify-center gap-2 rounded-sako-sm',
+    'bg-btn-primary-bg px-6 text-btn-primary-text text-[16px] font-bold',
+    'min-h-[48px]',
+  ].join(' '),
+  toggleOff: [
+    'inline-flex w-full items-center justify-center gap-2 rounded-sako-sm',
+    'border border-border-subtle bg-surface-primary px-6 text-text-secondary text-[16px] font-bold',
+    'hover:border-border-default hover:text-text-primary transition-colors',
+    'min-h-[48px]',
+  ].join(' '),
   pinInput: [
     'block w-full rounded-sako-sm border border-border-subtle bg-surface-primary',
     'px-4 py-3 text-center text-[22px] tracking-[0.5em] tabular-nums',

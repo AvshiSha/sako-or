@@ -26,7 +26,6 @@
 import { COLOR_CODE_MAP } from '../color-codes'
 import { getColorName } from '../colors'
 import type { VerifoneItemStock } from '../verifone-stock-parse'
-import type { WarehousePlacement } from './warehouse-config'
 import { staffText, unknownColorLabel } from './messages'
 
 /** Verifone marks a one-size item with this in the size slice. */
@@ -35,9 +34,9 @@ const ONE_SIZE_CODE = 'OS'
 export type StaffLocation = {
   room: number
   route: number
-  /** Null when, and only when, `placement` is `FLOOR`. */
-  drawer: number | null
-  placement: WarehousePlacement
+  drawer: number
+  /** True when the stock sits on the floor directly beneath that drawer. */
+  onFloor: boolean
   /** Optimistic-concurrency token; the client sends it back on save. */
   version: number
   updatedAt: string | null

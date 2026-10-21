@@ -13,10 +13,7 @@
  */
 
 import type { ModelCodeReason } from './model-code'
-import type {
-  LocationValidationError,
-  WarehousePlacement,
-} from './warehouse-config'
+import type { LocationValidationError } from './warehouse-config'
 
 /** Separator between the three parts of a location, as the brief specifies. */
 const LOCATION_SEPARATOR = ' · '
@@ -48,7 +45,7 @@ export const staffText = {
   roomLabel: 'חדר',
   routeLabel: 'מסלול',
   drawerLabel: 'מגירה',
-  /** The floor of a route, for stock that is not in a numbered drawer. */
+  /** The floor directly beneath a drawer. Appended to the location, not instead of it. */
   floorLabel: 'רצפה',
   editLocation: 'עריכת מיקום',
 
@@ -130,8 +127,7 @@ export const LOCATION_ERROR_MESSAGES: Record<LocationValidationError, string> = 
   ROUTE_OUT_OF_RANGE: 'מסלול לא חוקי',
   ROUTE_NOT_IN_ROOM: 'המסלול הזה לא קיים בחדר שנבחר',
   DRAWER_OUT_OF_RANGE: 'מגירה לא חוקית',
-  PLACEMENT_INVALID: 'סוג מיקום לא חוקי',
-  PLACEMENT_DRAWER_MISMATCH: 'בחרו מגירה או רצפה',
+  ON_FLOOR_INVALID: 'סימון רצפה לא חוקי',
 }
 
 /**
@@ -145,18 +141,20 @@ export const LOCATION_ERROR_MESSAGES: Record<LocationValidationError, string> = 
 export function formatLocation(location: {
   room: number
   route: number
-  drawer: number | null
-  placement?: WarehousePlacement
+  drawer: number
+  onFloor?: boolean
 }): string {
-  // A floor placement reads `חדר 2 · מסלול 1 · רצפה` -- the third part is the
-  // word itself, with no number, because there is no drawer to name.
-  const isFloor = location.placement === 'FLOOR' || location.drawer === null
-
-  return [
+  // `רצפה` is APPENDED, never substituted: it means the floor beneath that
+  // drawer, so the drawer number still has to be there to find it.
+  const parts = [
     `${staffText.roomLabel} ${location.room}`,
     `${staffText.routeLabel} ${location.route}`,
-    isFloor ? staffText.floorLabel : `${staffText.drawerLabel} ${location.drawer}`,
-  ].join(LOCATION_SEPARATOR)
+    `${staffText.drawerLabel} ${location.drawer}`,
+  ]
+
+  if (location.onFloor) parts.push(staffText.floorLabel)
+
+  return parts.join(LOCATION_SEPARATOR)
 }
 
 /** Lockout copy, including the escape hatch so nobody is left stuck. */

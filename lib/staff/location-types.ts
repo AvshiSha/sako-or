@@ -6,17 +6,14 @@
  * the client island that renders and edits it consumes it. A client component
  * cannot import from a `server-only` module, so the type cannot live there.
  */
-import type { WarehousePlacement } from './warehouse-config'
-
 export type StoredLocation = {
   modelCode: string
   colorCode: string
   room: number
   route: number
-  /** Null when, and only when, `placement` is `FLOOR`. */
-  drawer: number | null
-  /** `DRAWER` for a numbered drawer, `FLOOR` for stock kept on the floor. */
-  placement: WarehousePlacement
+  drawer: number
+  /** True when the stock sits on the floor directly beneath that drawer. */
+  onFloor: boolean
   /**
    * Optimistic-concurrency token. The client holds whatever it was shown and
    * sends it back on save; the server refuses a mismatch rather than

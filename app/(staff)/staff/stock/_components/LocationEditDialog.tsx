@@ -7,13 +7,7 @@ import type { StaffColorCard } from '@/lib/staff/combine-stock'
 import type { SaveLocationResponse, StaffApiError } from '@/lib/staff/api-types'
 import type { StoredLocation } from '@/lib/staff/location-types'
 import type { RoomRoutes } from '@/lib/staff/warehouse-config'
-import {
-  DRAWERS,
-  FLOOR_OPTION,
-  MIN_ROOM,
-  ROOMS,
-  type WarehousePlacement,
-} from '@/lib/staff/warehouse-config'
+import { DRAWERS, MIN_ROOM, ROOMS } from '@/lib/staff/warehouse-config'
 import {
   LOCATION_ERROR_MESSAGES,
   formatLocation,
@@ -60,14 +54,9 @@ export default function LocationEditDialog({
 
   const [room, setRoom] = useState<number>(current?.room ?? MIN_ROOM)
   const [route, setRoute] = useState<number>(current?.route ?? 1)
-  /**
-   * The drawer selector holds either a drawer number or the floor sentinel, so
-   * one control covers both. It is split back into `{drawer, placement}` at
-   * save time, which is the shape the API and the database use.
-   */
-  const [drawerChoice, setDrawerChoice] = useState<number | typeof FLOOR_OPTION>(
-    current?.placement === 'FLOOR' ? FLOOR_OPTION : current?.drawer ?? 1
-  )
+  const [drawer, setDrawer] = useState<number>(current?.drawer ?? 1)
+  /** The floor directly beneath the chosen drawer. Off unless already saved on. */
+  const [onFloor, setOnFloor] = useState<boolean>(current?.onFloor ?? false)
   const [error, setError] = useState<string | null>(null)
   const [conflict, setConflict] = useState<StoredLocation | null>(null)
   const [working, setWorking] = useState(false)
@@ -79,7 +68,10 @@ export default function LocationEditDialog({
     if (!open) return
     setRoom(current?.room ?? MIN_ROOM)
     setRoute(current?.route ?? 1)
-    setDrawerChoice(current?.placement === 'FLOOR' ? FLOOR_OPTION : current?.drawer ?? 1)
+    setDrawer(current?.drawer ?? 1)
+    // Restores the saved state when re-opening, and defaults off for every
+    // assignment made before the toggle existed.
+    setOnFloor(current?.onFloor ?? false)
     setError(null)
     setConflict(null)
     setWorking(false)
@@ -114,11 +106,8 @@ export default function LocationEditDialog({
           colorCode: card.colorCode,
           room,
           route,
-          // Exactly one of these two shapes, never both.
-          drawer: drawerChoice === FLOOR_OPTION ? null : drawerChoice,
-          placement: (drawerChoice === FLOOR_OPTION
-            ? 'FLOOR'
-            : 'DRAWER') satisfies WarehousePlacement,
+          drawer,
+          onFloor,
           // Null when the card showed "not yet assigned". The server refuses to
           // create over a row this client never saw.
           expectedVersion: current?.version ?? null,
@@ -255,26 +244,35 @@ export default function LocationEditDialog({
                     </label>
                     <select
                       id="staff-drawer"
-                      value={drawerChoice}
-                      onChange={(event) =>
-                        setDrawerChoice(
-                          event.target.value === FLOOR_OPTION
-                            ? FLOOR_OPTION
-                            : Number(event.target.value)
-                        )
-                      }
+                      value={drawer}
+                      onChange={(event) => setDrawer(Number(event.target.value))}
                       className={staffTheme.select}
                       data-testid="staff-drawer-select"
                     >
-                      {/* First, so it is reachable without scrolling past 50
-                          drawers on a touch wheel. */}
-                      <option value={FLOOR_OPTION}>{staffText.floorLabel}</option>
                       {DRAWERS.map((value) => (
                         <option key={value} value={value}>
                           {value}
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  {/*
+                    After the three selectors, as a toggle rather than a fourth
+                    dropdown: it is a yes/no about the drawer already chosen,
+                    not a separate coordinate. `aria-pressed` is what makes a
+                    button a toggle for assistive technology.
+                  */}
+                  <div className="col-span-3">
+                    <button
+                      type="button"
+                      aria-pressed={onFloor}
+                      onClick={() => setOnFloor((previous) => !previous)}
+                      className={onFloor ? staffTheme.toggleOn : staffTheme.toggleOff}
+                      data-testid="staff-floor-toggle"
+                    >
+                      {staffText.floorLabel}
+                    </button>
                   </div>
 
                   <p className={`${staffTheme.meta} col-span-3`}>

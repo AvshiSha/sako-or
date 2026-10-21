@@ -9,13 +9,7 @@ import type { LocationAssignment } from '@/lib/staff/combine-stock'
 import type { StaffApiError } from '@/lib/staff/api-types'
 import type { StoredLocation } from '@/lib/staff/location-types'
 import type { RoomRoutes } from '@/lib/staff/warehouse-config'
-import {
-  DRAWERS,
-  FLOOR_OPTION,
-  ROOMS,
-  defaultRoomRoutes,
-  type WarehousePlacement,
-} from '@/lib/staff/warehouse-config'
+import { DRAWERS, ROOMS, defaultRoomRoutes } from '@/lib/staff/warehouse-config'
 import { resolveColorName } from '@/lib/staff/combine-stock'
 import { parseModelCode } from '@/lib/staff/model-code'
 import { STAFF_EDIT_ERROR_CODES } from '@/lib/staff-session'
@@ -53,24 +47,17 @@ type HistoryEntry = {
   changedAt: string
 }
 
-type Draft = {
-  room: number
-  route: number
-  /** A drawer number, or the floor sentinel. Split at save time. */
-  drawerChoice: number | typeof FLOOR_OPTION
-}
+type Draft = { room: number; route: number; drawer: number; onFloor: boolean }
 
 function describe(location: {
   room: number
   route: number
-  drawer: number | null
-  placement?: WarehousePlacement
+  drawer: number
+  onFloor?: boolean
 }): string {
-  const where =
-    location.placement === 'FLOOR' || location.drawer === null
-      ? 'Floor'
-      : `Drawer ${location.drawer}`
-  return `Room ${location.room} / Route ${location.route} / ${where}`
+  // Appended, matching the Hebrew screen: the floor is beneath that drawer.
+  const base = `Room ${location.room} / Route ${location.route} / Drawer ${location.drawer}`
+  return location.onFloor ? `${base} / Floor` : base
 }
 
 export default function AdminWarehouseLocationsPage() {
@@ -86,7 +73,7 @@ export default function AdminWarehouseLocationsPage() {
   )
 
   const [editing, setEditing] = useState<string | null>(null)
-  const [draft, setDraft] = useState<Draft>({ room: 1, route: 1, drawerChoice: 1 })
+  const [draft, setDraft] = useState<Draft>({ room: 1, route: 1, drawer: 1, onFloor: false })
   const inFlight = useRef(false)
 
   const load = useCallback(async (modelCode: string) => {
@@ -151,8 +138,8 @@ export default function AdminWarehouseLocationsPage() {
     setDraft({
       room: assignment.room,
       route: assignment.route,
-      drawerChoice:
-        assignment.placement === 'FLOOR' ? FLOOR_OPTION : assignment.drawer ?? 1,
+      drawer: assignment.drawer,
+      onFloor: assignment.onFloor,
     })
     setNotice(null)
   }
@@ -171,8 +158,8 @@ export default function AdminWarehouseLocationsPage() {
           colorCode: assignment.colorCode,
           room: draft.room,
           route: draft.route,
-          drawer: draft.drawerChoice === FLOOR_OPTION ? null : draft.drawerChoice,
-          placement: draft.drawerChoice === FLOOR_OPTION ? 'FLOOR' : 'DRAWER',
+          drawer: draft.drawer,
+          onFloor: draft.onFloor,
           // The version this row was rendered with. A mismatch is a 409 rather
           // than an overwrite of someone else's newer value.
           expectedVersion: assignment.version,
@@ -206,7 +193,7 @@ export default function AdminWarehouseLocationsPage() {
                 room: saved.room,
                 route: saved.route,
                 drawer: saved.drawer,
-                placement: saved.placement,
+                onFloor: saved.onFloor,
                 version: saved.version,
                 updatedAt: saved.updatedAt,
                 updatedBy: saved.updatedBy,
@@ -368,25 +355,36 @@ export default function AdminWarehouseLocationsPage() {
                               </select>
                               <select
                                 aria-label="Drawer"
-                                value={draft.drawerChoice}
+                                value={draft.drawer}
                                 onChange={(event) =>
                                   setDraft((prev) => ({
                                     ...prev,
-                                    drawerChoice:
-                                      event.target.value === FLOOR_OPTION
-                                        ? FLOOR_OPTION
-                                        : Number(event.target.value),
+                                    drawer: Number(event.target.value),
                                   }))
                                 }
                                 className={adminTheme.select}
                               >
-                                <option value={FLOOR_OPTION}>Floor</option>
                                 {DRAWERS.map((value) => (
                                   <option key={value} value={value}>
                                     Drawer {value}
                                   </option>
                                 ))}
                               </select>
+                              {/* After the selectors, matching the staff screen. */}
+                              <button
+                                type="button"
+                                aria-pressed={draft.onFloor}
+                                onClick={() =>
+                                  setDraft((prev) => ({ ...prev, onFloor: !prev.onFloor }))
+                                }
+                                className={
+                                  draft.onFloor
+                                    ? adminTheme.buttonPrimary
+                                    : adminTheme.buttonSecondary
+                                }
+                              >
+                                Floor
+                              </button>
                             </div>
                           ) : (
                             describe(assignment)

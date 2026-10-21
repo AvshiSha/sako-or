@@ -25,7 +25,7 @@ function location(
     room,
     route,
     drawer,
-    placement: 'DRAWER',
+    onFloor: false,
     version: 1,
     updatedAt: '2026-10-19T09:00:00.000Z',
     updatedBy: 'manager@sako-or.com',

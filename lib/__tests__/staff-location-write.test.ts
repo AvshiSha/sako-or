@@ -57,19 +57,19 @@ describe('decideWrite', () => {
 describe('isNoOpWrite', () => {
   it('spots a save that changes nothing', () => {
     assert.equal(
-      isNoOpWrite({ room: 2, route: 1, drawer: 18, placement: 'DRAWER' }, { room: 2, route: 1, drawer: 18, placement: 'DRAWER' }),
+      isNoOpWrite({ room: 2, route: 1, drawer: 18, onFloor: false }, { room: 2, route: 1, drawer: 18, onFloor: false }),
       true
     )
   })
 
   it('treats any changed component as a change', () => {
-    const current = { room: 2, route: 1, drawer: 18, placement: 'DRAWER' }
-    assert.equal(isNoOpWrite(current, { room: 3, route: 1, drawer: 18, placement: 'DRAWER' }), false)
-    assert.equal(isNoOpWrite(current, { room: 2, route: 2, drawer: 18, placement: 'DRAWER' }), false)
-    assert.equal(isNoOpWrite(current, { room: 2, route: 1, drawer: 19, placement: 'DRAWER' }), false)
+    const current = { room: 2, route: 1, drawer: 18, onFloor: false }
+    assert.equal(isNoOpWrite(current, { room: 3, route: 1, drawer: 18, onFloor: false }), false)
+    assert.equal(isNoOpWrite(current, { room: 2, route: 2, drawer: 18, onFloor: false }), false)
+    assert.equal(isNoOpWrite(current, { room: 2, route: 1, drawer: 19, onFloor: false }), false)
   })
 
   it('is never a no-op when there is no current row', () => {
-    assert.equal(isNoOpWrite(null, { room: 1, route: 1, drawer: 1, placement: 'DRAWER' }), false)
+    assert.equal(isNoOpWrite(null, { room: 1, route: 1, drawer: 1, onFloor: false }), false)
   })
 })

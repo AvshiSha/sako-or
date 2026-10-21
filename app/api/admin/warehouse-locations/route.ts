@@ -106,7 +106,7 @@ export async function PUT(request: NextRequest) {
     )
   }
 
-  const { modelCode, colorCode, room, route, drawer, placement, expectedVersion } =
+  const { modelCode, colorCode, room, route, drawer, onFloor, expectedVersion } =
     parsed.data
 
   try {
@@ -116,7 +116,7 @@ export async function PUT(request: NextRequest) {
       room,
       route,
       drawer,
-      placement,
+      onFloor,
       expectedVersion,
       // No grant on this path: the admin session IS the authorization. Recorded
       // in the history with `viaPin: false`, so the two routes stay

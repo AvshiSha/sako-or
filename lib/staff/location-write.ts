@@ -72,18 +72,18 @@ export function isNoOpWrite(
   current: {
     room: number
     route: number
-    drawer: number | null
-    placement: string
+    drawer: number
+    onFloor: boolean
   } | null,
-  next: { room: number; route: number; drawer: number | null; placement: string }
+  next: { room: number; route: number; drawer: number; onFloor: boolean }
 ): boolean {
   if (!current) return false
   return (
     current.room === next.room &&
     current.route === next.route &&
     current.drawer === next.drawer &&
-    // Placement is part of the identity of a location: moving stock from
-    // drawer 7 to the floor of the same route is a real change.
-    current.placement === next.placement
+    // Part of the identity of a location: moving stock from inside drawer 41 to
+    // the floor beneath it is a real change, not a no-op.
+    current.onFloor === next.onFloor
   )
 }

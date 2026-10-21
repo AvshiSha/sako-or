@@ -77,15 +77,15 @@ export const saveLocationSchema = z.object({
   colorCode: colorCodeSchema,
   room: z.number().int().min(MIN_ROOM).max(MAX_ROOM),
   route: z.number().int().min(MIN_ROUTE).max(MAX_ROUTE),
+  /** Always required: the floor is identified by the drawer above it. */
+  drawer: z.number().int().min(MIN_DRAWER).max(MAX_DRAWER),
   /**
-   * Null for a floor placement. The consistency rule between these two is
-   * enforced by the `superRefine` below, by `validateLocation` in the service,
-   * and by a CHECK constraint in the database -- three layers, because two
-   * different stored shapes meaning the same location is the kind of thing that
-   * is very hard to unpick later.
+   * The floor directly beneath that drawer.
+   *
+   * Defaulted rather than required, so an older client that does not send the
+   * field gets the documented "off" rather than a validation error.
    */
-  drawer: z.number().int().min(MIN_DRAWER).max(MAX_DRAWER).nullable(),
-  placement: z.enum(['DRAWER', 'FLOOR']),
+  onFloor: z.boolean().default(false),
   /**
    * The version the client was shown, or null when it was shown "unassigned".
    * Required -- not optional -- so a client cannot omit it and get
@@ -94,48 +94,13 @@ export const saveLocationSchema = z.object({
   expectedVersion: z.number().int().min(0).nullable(),
   /** The manager grant to spend. Absent on the admin path. */
   grantId: z.string().uuid().optional(),
-}).superRefine((value, ctx) => {
-  if (value.placement === 'FLOOR' && value.drawer !== null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['drawer'],
-      message: 'A floor placement carries no drawer number',
-    })
-  }
-  if (value.placement === 'DRAWER' && value.drawer === null) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['drawer'],
-      message: 'A drawer placement requires a drawer number',
-    })
-  }
 })
 
 /**
  * The admin path takes no manager grant -- the admin session is the
- * authorization. Declared via `innerType().omit(...)` because `superRefine`
- * returns a ZodEffects, which has no `.omit`; the refinement is re-applied so
- * the drawer/placement consistency rule still holds on this path.
+ * authorization.
  */
-export const adminSaveLocationSchema = saveLocationSchema
-  .innerType()
-  .omit({ grantId: true })
-  .superRefine((value, ctx) => {
-    if (value.placement === 'FLOOR' && value.drawer !== null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['drawer'],
-        message: 'A floor placement carries no drawer number',
-      })
-    }
-    if (value.placement === 'DRAWER' && value.drawer === null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['drawer'],
-        message: 'A drawer placement requires a drawer number',
-      })
-    }
-  })
+export const adminSaveLocationSchema = saveLocationSchema.omit({ grantId: true })
 
 export const historyQuerySchema = z.object({
   modelCode: modelCodeSchema,

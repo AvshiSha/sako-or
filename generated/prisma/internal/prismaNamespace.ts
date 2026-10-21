@@ -3215,7 +3215,7 @@ export const WarehouseLocationScalarFieldEnum = {
   room: 'room',
   route: 'route',
   drawer: 'drawer',
-  placement: 'placement',
+  onFloor: 'onFloor',
   version: 'version',
   updatedBy: 'updatedBy',
   createdAt: 'createdAt',
@@ -3233,11 +3233,11 @@ export const WarehouseLocationHistoryScalarFieldEnum = {
   prevRoom: 'prevRoom',
   prevRoute: 'prevRoute',
   prevDrawer: 'prevDrawer',
-  prevPlacement: 'prevPlacement',
+  prevOnFloor: 'prevOnFloor',
   newRoom: 'newRoom',
   newRoute: 'newRoute',
   newDrawer: 'newDrawer',
-  newPlacement: 'newPlacement',
+  newOnFloor: 'newOnFloor',
   actorUid: 'actorUid',
   actorEmail: 'actorEmail',
   actorRole: 'actorRole',
@@ -3446,20 +3446,6 @@ export type EnumPointsKindFieldRefInput<$PrismaModel> = FieldRefInputType<$Prism
  * Reference to a field of type 'PointsKind[]'
  */
 export type ListEnumPointsKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'PointsKind[]'>
-    
-
-
-/**
- * Reference to a field of type 'WarehousePlacement'
- */
-export type EnumWarehousePlacementFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WarehousePlacement'>
-    
-
-
-/**
- * Reference to a field of type 'WarehousePlacement[]'
- */
-export type ListEnumWarehousePlacementFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'WarehousePlacement[]'>
     
 
 /**

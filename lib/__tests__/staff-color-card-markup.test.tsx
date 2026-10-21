@@ -40,7 +40,7 @@ function card(overrides: Partial<StaffColorCard> = {}): StaffColorCard {
       room: 2,
       route: 1,
       drawer: 18,
-      placement: 'DRAWER',
+      onFloor: false,
       version: 1,
       updatedAt: '2026-10-19T09:00:00.000Z',
       updatedBy: 'manager@sako-or.com',
@@ -231,27 +231,28 @@ describe('out of stock is shown in red, and only when confirmed', () => {
   })
 })
 
-describe('floor placement', () => {
-  it('renders the floor as a word, with no drawer number', () => {
+describe('the floor flag', () => {
+  it('appends רצפה after the drawer, keeping the drawer number', () => {
     const html = render({
       location: {
-        room: 2,
+        room: 3,
         route: 1,
-        drawer: null,
-        placement: 'FLOOR',
+        drawer: 41,
+        onFloor: true,
         version: 1,
         updatedAt: '2026-10-21T09:00:00.000Z',
         updatedBy: null,
       },
     })
 
-    assert.match(html, /חדר 2/)
+    assert.match(html, /חדר 3/)
     assert.match(html, /מסלול 1/)
+    // Both the drawer AND the floor: the floor is beneath drawer 41.
+    assert.match(html, /מגירה 41/)
     assert.match(html, new RegExp(staffText.floorLabel))
-    assert.doesNotMatch(html, new RegExp(staffText.drawerLabel))
   })
 
-  it('still renders an existing numbered drawer unchanged', () => {
+  it('shows nothing extra when the flag is off', () => {
     const html = render()
     assert.match(html, /מגירה 18/)
     assert.doesNotMatch(html, new RegExp(staffText.floorLabel))

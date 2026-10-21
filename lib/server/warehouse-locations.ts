@@ -17,7 +17,6 @@ import {
   validateLocation,
   type LocationValidationError,
   type WarehouseConfig,
-  type WarehousePlacement,
 } from '@/lib/staff/warehouse-config'
 
 /**
@@ -42,9 +41,9 @@ export type SaveLocationInput = {
   colorCode: string
   room: number
   route: number
-  /** Null when, and only when, `placement` is `FLOOR`. */
-  drawer: number | null
-  placement: WarehousePlacement
+  drawer: number
+  /** The floor directly beneath that drawer. */
+  onFloor: boolean
   /** The version the caller was shown, or null when it was shown "unassigned". */
   expectedVersion: number | null
   actor: SaveActor
@@ -84,8 +83,8 @@ function toStoredLocation(row: {
   colorCode: string
   room: number
   route: number
-  drawer: number | null
-  placement: WarehousePlacement
+  drawer: number
+  onFloor: boolean
   version: number
   updatedAt: Date
   updatedBy: string | null
@@ -96,7 +95,7 @@ function toStoredLocation(row: {
     room: row.room,
     route: row.route,
     drawer: row.drawer,
-    placement: row.placement,
+    onFloor: row.onFloor,
     version: row.version,
     updatedAt: row.updatedAt.toISOString(),
     updatedBy: row.updatedBy,
@@ -122,7 +121,7 @@ export async function listLocationsForModel(
       room: true,
       route: true,
       drawer: true,
-      placement: true,
+      onFloor: true,
       version: true,
       updatedAt: true,
       updatedBy: true,
@@ -134,7 +133,7 @@ export async function listLocationsForModel(
     room: row.room,
     route: row.route,
     drawer: row.drawer,
-    placement: row.placement,
+    onFloor: row.onFloor,
     version: row.version,
     updatedAt: row.updatedAt.toISOString(),
     updatedBy: row.updatedBy,
@@ -234,11 +233,11 @@ class SaveAbort extends Error {
 export async function saveLocation(
   input: SaveLocationInput
 ): Promise<SaveLocationResult> {
-  const { modelCode, colorCode, room, route, drawer, placement, expectedVersion, actor, grantId } =
+  const { modelCode, colorCode, room, route, drawer, onFloor, expectedVersion, actor, grantId } =
     input
 
   const config = getWarehouseConfig()
-  const locationError = validateLocation(config, { room, route, drawer, placement })
+  const locationError = validateLocation(config, { room, route, drawer, onFloor })
   if (locationError) {
     return { kind: 'invalid_location', reason: locationError }
   }
@@ -306,7 +305,7 @@ export async function saveLocation(
       // A save that changes nothing still spends the grant -- a manager did
       // authorize an edit -- but must not append a history entry claiming a
       // change that did not happen.
-      if (current && isNoOpWrite(current, { room, route, drawer, placement })) {
+      if (current && isNoOpWrite(current, { room, route, drawer, onFloor })) {
         return {
           kind: 'saved' as const,
           location: toStoredLocation(current),
@@ -320,7 +319,7 @@ export async function saveLocation(
       if (decision.kind === 'create') {
         try {
           saved = await tx.warehouseLocation.create({
-            data: { modelCode, colorCode, room, route, drawer, placement, updatedBy },
+            data: { modelCode, colorCode, room, route, drawer, onFloor, updatedBy },
           })
         } catch (error) {
           // Someone else created the same model/colour between our read and
@@ -337,7 +336,7 @@ export async function saveLocation(
       } else {
         const result = await tx.warehouseLocation.updateMany({
           where: { modelCode, colorCode, version: decision.version },
-          data: { room, route, drawer, placement, updatedBy, version: { increment: 1 } },
+          data: { room, route, drawer, onFloor, updatedBy, version: { increment: 1 } },
         })
 
         if (result.count !== 1) {
@@ -367,11 +366,11 @@ export async function saveLocation(
           prevRoom: current?.room ?? null,
           prevRoute: current?.route ?? null,
           prevDrawer: current?.drawer ?? null,
-          prevPlacement: current?.placement ?? null,
+          prevOnFloor: current?.onFloor ?? null,
           newRoom: room,
           newRoute: route,
           newDrawer: drawer,
-          newPlacement: placement,
+          newOnFloor: onFloor,
           actorUid: actor.uid,
           actorEmail: actor.email,
           actorRole: actor.role,
@@ -391,8 +390,8 @@ export type LocationHistoryEntry = {
   id: string
   modelCode: string
   colorCode: string
-  previous: { room: number; route: number; drawer: number | null; placement: WarehousePlacement } | null
-  next: { room: number; route: number; drawer: number | null; placement: WarehousePlacement }
+  previous: { room: number; route: number; drawer: number; onFloor: boolean } | null
+  next: { room: number; route: number; drawer: number; onFloor: boolean }
   actorEmail: string | null
   actorRole: string
   viaPin: boolean
@@ -424,19 +423,19 @@ export async function listLocationHistory(params: {
     modelCode: row.modelCode,
     colorCode: row.colorCode,
     previous:
-      row.prevRoom === null || row.prevRoute === null
+      row.prevRoom === null || row.prevRoute === null || row.prevDrawer === null
         ? null
         : {
             room: row.prevRoom,
             route: row.prevRoute,
             drawer: row.prevDrawer,
-            placement: row.prevPlacement ?? 'DRAWER',
+            onFloor: row.prevOnFloor ?? false,
           },
     next: {
       room: row.newRoom,
       route: row.newRoute,
       drawer: row.newDrawer,
-      placement: row.newPlacement,
+      onFloor: row.newOnFloor,
     },
     actorEmail: row.actorEmail,
     actorRole: row.actorRole,

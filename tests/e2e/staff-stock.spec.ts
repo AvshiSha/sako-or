@@ -369,7 +369,7 @@ test.describe('signed in', () => {
                 room: 2,
                 route: 1,
                 drawer: 18,
-                placement: 'DRAWER',
+                onFloor: false,
                 version: 1,
                 updatedAt: new Date().toISOString(),
                 updatedBy: null,
@@ -448,7 +448,7 @@ test.describe('signed in', () => {
                 room: 2,
                 route: 1,
                 drawer: 18,
-                placement: 'DRAWER',
+                onFloor: false,
                 version: 1,
                 updatedAt: new Date().toISOString(),
                 updatedBy: null,
@@ -747,7 +747,7 @@ test.describe('signed in: sold out and floor placement', () => {
     stock: { state: 'ok', detail: null },
     locations: { state: 'ok' },
     totalQuantity: 5,
-    warehouse: { roomRoutes: { 2: [1, 2, 3] }, configError: null },
+    warehouse: { roomRoutes: { 3: [1, 2, 3] }, configError: null },
     colors,
   })
 
@@ -758,10 +758,10 @@ test.describe('signed in: sold out and floor placement', () => {
     colorNameSource: 'hebrew',
     stockKnown: true,
     location: {
-      room: 2,
+      room: 3,
       route: 1,
-      drawer: 18,
-      placement: 'DRAWER',
+      drawer: 41,
+      onFloor: false,
       version: 1,
       updatedAt: new Date().toISOString(),
       updatedBy: null,
@@ -773,6 +773,15 @@ test.describe('signed in: sold out and floor placement', () => {
     totalQuantity: 5,
     image: null,
     soldOut: false,
+  }
+
+  /** Same drawer, but recorded as the floor beneath it. */
+  const onFloorColor = {
+    ...withStock,
+    colorCode: '10',
+    colorName: 'כחול כהה',
+    colorSlug: 'dark-blue',
+    location: { ...withStock.location, onFloor: true },
   }
 
   const allSoldOut = {
@@ -853,16 +862,20 @@ test.describe('signed in: sold out and floor placement', () => {
     await expect(card.getByTestId('staff-size-table')).toHaveCount(0)
   })
 
-  test('a floor location reads as רצפה, with no drawer number', async ({ page }) => {
-    await search(page, [withStock, allSoldOut])
+  test('the floor flag is appended to the location, not instead of the drawer', async ({
+    page,
+  }) => {
+    await search(page, [withStock, onFloorColor])
 
     const locations = page.getByTestId('staff-location')
-    await expect(locations.nth(0)).toHaveText('חדר 2 · מסלול 1 · מגירה 18')
-    await expect(locations.nth(1)).toHaveText('חדר 2 · מסלול 1 · רצפה')
+    await expect(locations.nth(0)).toHaveText('חדר 3 · מסלול 1 · מגירה 41')
+    await expect(locations.nth(1)).toHaveText('חדר 3 · מסלול 1 · מגירה 41 · רצפה')
   })
 
-  test('the drawer selector offers רצפה alongside the numbers', async ({ page }) => {
-    await search(page, [withStock])
+  test('the toggle sits after the selectors and restores its saved state', async ({
+    page,
+  }) => {
+    await search(page, [onFloorColor])
 
     await page.route('**/api/staff/locations/unlock', async (route) => {
       await route.fulfill({
@@ -873,7 +886,7 @@ test.describe('signed in: sold out and floor placement', () => {
           grantId: '00000000-0000-4000-8000-000000000000',
           expiresAt: new Date(Date.now() + 180_000).toISOString(),
           modelCode: '5127-6825',
-          colorCode: '01',
+          colorCode: '10',
         }),
       })
     })
@@ -882,21 +895,18 @@ test.describe('signed in: sold out and floor placement', () => {
     await page.getByTestId('staff-pin-input').fill('246813')
     await page.getByTestId('staff-pin-submit').click()
 
-    const select = page.getByTestId('staff-drawer-select')
-    await select.waitFor()
+    const toggle = page.getByTestId('staff-floor-toggle')
+    await toggle.waitFor()
+    await expect(toggle).toHaveText('רצפה')
+    // Restored from the saved assignment.
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true')
 
-    // Floor first, so it is reachable without scrolling 50 drawers on a wheel.
-    const options = await select.locator('option').allInnerTexts()
-    expect(options[0]).toBe('רצפה')
-    expect(options).toHaveLength(51)
-
-    // Room and route selection is unchanged.
+    // The drawer is still required and still chosen separately.
+    await expect(page.getByTestId('staff-drawer-select')).toHaveValue('41')
     await expect(page.getByTestId('staff-room-select')).toBeVisible()
     await expect(page.getByTestId('staff-route-select')).toBeVisible()
 
-    // Selecting it sends placement FLOOR and no drawer number.
-    // Captured into an object rather than a bare `let`: TypeScript narrows a
-    // variable only ever assigned inside a callback to `never` at the asserts.
+    // Toggling off sends the drawer with the flag cleared.
     const captured: { body: Record<string, unknown> | null } = { body: null }
     await page.route('**/api/staff/locations', async (route) => {
       if (route.request().method() === 'PUT') {
@@ -905,10 +915,11 @@ test.describe('signed in: sold out and floor placement', () => {
       await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
     })
 
-    await select.selectOption('FLOOR')
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-pressed', 'false')
     await page.getByTestId('staff-save-location').click()
 
-    await expect.poll(() => captured.body?.placement).toBe('FLOOR')
-    expect(captured.body?.drawer).toBeNull()
+    await expect.poll(() => captured.body?.onFloor).toBe(false)
+    expect(captured.body?.drawer).toBe(41)
   })
 })

@@ -25,6 +25,7 @@ function location(
     room,
     route,
     drawer,
+    placement: 'DRAWER',
     version: 1,
     updatedAt: '2026-10-19T09:00:00.000Z',
     updatedBy: 'manager@sako-or.com',
@@ -318,5 +319,109 @@ describe('locationOnlyCards', () => {
 
   it('returns nothing when no colour of the model has been assigned', () => {
     assert.deepEqual(locationOnlyCards([]), [])
+  })
+})
+
+describe('out of stock is only ever a CONFIRMED zero', () => {
+  const soldOutItems = [
+    { productCode: '4925-03010135', sku: MODEL, colorCode: '01', size: '35', quantity: 0 },
+    { productCode: '4925-03010136', sku: MODEL, colorCode: '01', size: '36', quantity: 0 },
+  ]
+
+  it('marks an individual size whose quantity is zero', () => {
+    const result = combineStock({
+      modelCode: MODEL,
+      items: PARSED_ITEMS_4925_0301,
+      assignments: [],
+    })
+
+    const black = result.colors.find((c) => c.colorCode === '01')!
+    assert.deepEqual(
+      black.sizes.map((s) => [s.size, s.soldOut]),
+      [
+        ['35', false],
+        ['36', true],
+        ['37', false],
+      ]
+    )
+  })
+
+  it('marks the whole colour only when every size is zero', () => {
+    const result = combineStock({
+      modelCode: MODEL,
+      items: soldOutItems,
+      assignments: [],
+    })
+
+    assert.equal(result.colors[0].soldOut, true)
+    assert.equal(result.colors[0].totalQuantity, 0)
+  })
+
+  it('does not mark the colour when one size still has stock', () => {
+    const result = combineStock({
+      modelCode: MODEL,
+      items: PARSED_ITEMS_4925_0301,
+      assignments: [],
+    })
+
+    // Black has a zero at size 36 but stock at 35 and 37.
+    const black = result.colors.find((c) => c.colorCode === '01')!
+    assert.equal(black.soldOut, false)
+    assert.ok(black.sizes.some((s) => s.soldOut))
+  })
+
+  it('marks a colour whose single size is zero', () => {
+    const result = combineStock({
+      modelCode: MODEL,
+      items: [
+        { productCode: '4925-030101OS', sku: MODEL, colorCode: '01', size: 'OS', quantity: 0 },
+      ],
+      assignments: [],
+    })
+    assert.equal(result.colors[0].soldOut, true)
+  })
+
+  it('still marks a size whose LABEL is untrustworthy', () => {
+    // The quantity and the size come from different parts of the ProductCode:
+    // not knowing which size it is does not make the count unknown.
+    const result = combineStock({
+      modelCode: MODEL,
+      items: [
+        { productCode: '4925-0301013', sku: MODEL, colorCode: '01', size: '3', quantity: 0 },
+      ],
+      assignments: [],
+    })
+    assert.equal(result.colors[0].sizes[0].trusted, false)
+    assert.equal(result.colors[0].sizes[0].soldOut, true)
+  })
+
+  describe('what must NEVER be reported as out of stock', () => {
+    it('a card built from a stored location when Verifone was unreachable', () => {
+      // The single most damaging false positive available here: an ERP outage
+      // telling a picker the shelf is empty.
+      const cards = locationOnlyCards([location('01', 2, 1, 18)])
+      assert.equal(cards[0].stockKnown, false)
+      assert.equal(cards[0].soldOut, false)
+      assert.deepEqual(cards[0].sizes, [])
+    })
+
+    it('an empty response - no colours at all', () => {
+      const result = combineStock({ modelCode: MODEL, items: [], assignments: [] })
+      // Nothing to mark, and nothing claimed.
+      assert.deepEqual(result.colors, [])
+    })
+
+    it('a colour whose rows were all dropped as belonging to another model', () => {
+      const result = combineStock({
+        modelCode: MODEL,
+        items: [
+          { productCode: '1111-22220135', sku: '1111-2222', colorCode: '01', size: '35', quantity: 0 },
+        ],
+        assignments: [],
+      })
+      // The row is not ours, so no card and no claim about it.
+      assert.equal(result.foreignRowsDropped, 1)
+      assert.deepEqual(result.colors, [])
+    })
   })
 })

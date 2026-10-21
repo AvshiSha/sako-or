@@ -60,6 +60,7 @@ export type WarehouseLocationMinAggregateOutputType = {
   room: number | null
   route: number | null
   drawer: number | null
+  placement: $Enums.WarehousePlacement | null
   version: number | null
   updatedBy: string | null
   createdAt: Date | null
@@ -73,6 +74,7 @@ export type WarehouseLocationMaxAggregateOutputType = {
   room: number | null
   route: number | null
   drawer: number | null
+  placement: $Enums.WarehousePlacement | null
   version: number | null
   updatedBy: string | null
   createdAt: Date | null
@@ -86,6 +88,7 @@ export type WarehouseLocationCountAggregateOutputType = {
   room: number
   route: number
   drawer: number
+  placement: number
   version: number
   updatedBy: number
   createdAt: number
@@ -115,6 +118,7 @@ export type WarehouseLocationMinAggregateInputType = {
   room?: true
   route?: true
   drawer?: true
+  placement?: true
   version?: true
   updatedBy?: true
   createdAt?: true
@@ -128,6 +132,7 @@ export type WarehouseLocationMaxAggregateInputType = {
   room?: true
   route?: true
   drawer?: true
+  placement?: true
   version?: true
   updatedBy?: true
   createdAt?: true
@@ -141,6 +146,7 @@ export type WarehouseLocationCountAggregateInputType = {
   room?: true
   route?: true
   drawer?: true
+  placement?: true
   version?: true
   updatedBy?: true
   createdAt?: true
@@ -240,7 +246,8 @@ export type WarehouseLocationGroupByOutputType = {
   colorCode: string
   room: number
   route: number
-  drawer: number
+  drawer: number | null
+  placement: $Enums.WarehousePlacement
   version: number
   updatedBy: string | null
   createdAt: Date
@@ -276,7 +283,8 @@ export type WarehouseLocationWhereInput = {
   colorCode?: Prisma.StringFilter<"WarehouseLocation"> | string
   room?: Prisma.IntFilter<"WarehouseLocation"> | number
   route?: Prisma.IntFilter<"WarehouseLocation"> | number
-  drawer?: Prisma.IntFilter<"WarehouseLocation"> | number
+  drawer?: Prisma.IntNullableFilter<"WarehouseLocation"> | number | null
+  placement?: Prisma.EnumWarehousePlacementFilter<"WarehouseLocation"> | $Enums.WarehousePlacement
   version?: Prisma.IntFilter<"WarehouseLocation"> | number
   updatedBy?: Prisma.StringNullableFilter<"WarehouseLocation"> | string | null
   createdAt?: Prisma.DateTimeFilter<"WarehouseLocation"> | Date | string
@@ -290,7 +298,8 @@ export type WarehouseLocationOrderByWithRelationInput = {
   colorCode?: Prisma.SortOrder
   room?: Prisma.SortOrder
   route?: Prisma.SortOrder
-  drawer?: Prisma.SortOrder
+  drawer?: Prisma.SortOrderInput | Prisma.SortOrder
+  placement?: Prisma.SortOrder
   version?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -308,7 +317,8 @@ export type WarehouseLocationWhereUniqueInput = Prisma.AtLeast<{
   colorCode?: Prisma.StringFilter<"WarehouseLocation"> | string
   room?: Prisma.IntFilter<"WarehouseLocation"> | number
   route?: Prisma.IntFilter<"WarehouseLocation"> | number
-  drawer?: Prisma.IntFilter<"WarehouseLocation"> | number
+  drawer?: Prisma.IntNullableFilter<"WarehouseLocation"> | number | null
+  placement?: Prisma.EnumWarehousePlacementFilter<"WarehouseLocation"> | $Enums.WarehousePlacement
   version?: Prisma.IntFilter<"WarehouseLocation"> | number
   updatedBy?: Prisma.StringNullableFilter<"WarehouseLocation"> | string | null
   createdAt?: Prisma.DateTimeFilter<"WarehouseLocation"> | Date | string
@@ -322,7 +332,8 @@ export type WarehouseLocationOrderByWithAggregationInput = {
   colorCode?: Prisma.SortOrder
   room?: Prisma.SortOrder
   route?: Prisma.SortOrder
-  drawer?: Prisma.SortOrder
+  drawer?: Prisma.SortOrderInput | Prisma.SortOrder
+  placement?: Prisma.SortOrder
   version?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -343,7 +354,8 @@ export type WarehouseLocationScalarWhereWithAggregatesInput = {
   colorCode?: Prisma.StringWithAggregatesFilter<"WarehouseLocation"> | string
   room?: Prisma.IntWithAggregatesFilter<"WarehouseLocation"> | number
   route?: Prisma.IntWithAggregatesFilter<"WarehouseLocation"> | number
-  drawer?: Prisma.IntWithAggregatesFilter<"WarehouseLocation"> | number
+  drawer?: Prisma.IntNullableWithAggregatesFilter<"WarehouseLocation"> | number | null
+  placement?: Prisma.EnumWarehousePlacementWithAggregatesFilter<"WarehouseLocation"> | $Enums.WarehousePlacement
   version?: Prisma.IntWithAggregatesFilter<"WarehouseLocation"> | number
   updatedBy?: Prisma.StringNullableWithAggregatesFilter<"WarehouseLocation"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"WarehouseLocation"> | Date | string
@@ -356,7 +368,8 @@ export type WarehouseLocationCreateInput = {
   colorCode: string
   room: number
   route: number
-  drawer: number
+  drawer?: number | null
+  placement?: $Enums.WarehousePlacement
   version?: number
   updatedBy?: string | null
   createdAt?: Date | string
@@ -370,7 +383,8 @@ export type WarehouseLocationUncheckedCreateInput = {
   colorCode: string
   room: number
   route: number
-  drawer: number
+  drawer?: number | null
+  placement?: $Enums.WarehousePlacement
   version?: number
   updatedBy?: string | null
   createdAt?: Date | string
@@ -384,7 +398,8 @@ export type WarehouseLocationUpdateInput = {
   colorCode?: Prisma.StringFieldUpdateOperationsInput | string
   room?: Prisma.IntFieldUpdateOperationsInput | number
   route?: Prisma.IntFieldUpdateOperationsInput | number
-  drawer?: Prisma.IntFieldUpdateOperationsInput | number
+  drawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  placement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   version?: Prisma.IntFieldUpdateOperationsInput | number
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -398,7 +413,8 @@ export type WarehouseLocationUncheckedUpdateInput = {
   colorCode?: Prisma.StringFieldUpdateOperationsInput | string
   room?: Prisma.IntFieldUpdateOperationsInput | number
   route?: Prisma.IntFieldUpdateOperationsInput | number
-  drawer?: Prisma.IntFieldUpdateOperationsInput | number
+  drawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  placement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   version?: Prisma.IntFieldUpdateOperationsInput | number
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -412,7 +428,8 @@ export type WarehouseLocationCreateManyInput = {
   colorCode: string
   room: number
   route: number
-  drawer: number
+  drawer?: number | null
+  placement?: $Enums.WarehousePlacement
   version?: number
   updatedBy?: string | null
   createdAt?: Date | string
@@ -425,7 +442,8 @@ export type WarehouseLocationUpdateManyMutationInput = {
   colorCode?: Prisma.StringFieldUpdateOperationsInput | string
   room?: Prisma.IntFieldUpdateOperationsInput | number
   route?: Prisma.IntFieldUpdateOperationsInput | number
-  drawer?: Prisma.IntFieldUpdateOperationsInput | number
+  drawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  placement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   version?: Prisma.IntFieldUpdateOperationsInput | number
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -438,7 +456,8 @@ export type WarehouseLocationUncheckedUpdateManyInput = {
   colorCode?: Prisma.StringFieldUpdateOperationsInput | string
   room?: Prisma.IntFieldUpdateOperationsInput | number
   route?: Prisma.IntFieldUpdateOperationsInput | number
-  drawer?: Prisma.IntFieldUpdateOperationsInput | number
+  drawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  placement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   version?: Prisma.IntFieldUpdateOperationsInput | number
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -457,6 +476,7 @@ export type WarehouseLocationCountOrderByAggregateInput = {
   room?: Prisma.SortOrder
   route?: Prisma.SortOrder
   drawer?: Prisma.SortOrder
+  placement?: Prisma.SortOrder
   version?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -477,6 +497,7 @@ export type WarehouseLocationMaxOrderByAggregateInput = {
   room?: Prisma.SortOrder
   route?: Prisma.SortOrder
   drawer?: Prisma.SortOrder
+  placement?: Prisma.SortOrder
   version?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -490,6 +511,7 @@ export type WarehouseLocationMinOrderByAggregateInput = {
   room?: Prisma.SortOrder
   route?: Prisma.SortOrder
   drawer?: Prisma.SortOrder
+  placement?: Prisma.SortOrder
   version?: Prisma.SortOrder
   updatedBy?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -506,6 +528,10 @@ export type WarehouseLocationSumOrderByAggregateInput = {
 export type WarehouseLocationScalarRelationFilter = {
   is?: Prisma.WarehouseLocationWhereInput
   isNot?: Prisma.WarehouseLocationWhereInput
+}
+
+export type EnumWarehousePlacementFieldUpdateOperationsInput = {
+  set?: $Enums.WarehousePlacement
 }
 
 export type WarehouseLocationCreateNestedOneWithoutHistoryInput = {
@@ -528,7 +554,8 @@ export type WarehouseLocationCreateWithoutHistoryInput = {
   colorCode: string
   room: number
   route: number
-  drawer: number
+  drawer?: number | null
+  placement?: $Enums.WarehousePlacement
   version?: number
   updatedBy?: string | null
   createdAt?: Date | string
@@ -541,7 +568,8 @@ export type WarehouseLocationUncheckedCreateWithoutHistoryInput = {
   colorCode: string
   room: number
   route: number
-  drawer: number
+  drawer?: number | null
+  placement?: $Enums.WarehousePlacement
   version?: number
   updatedBy?: string | null
   createdAt?: Date | string
@@ -570,7 +598,8 @@ export type WarehouseLocationUpdateWithoutHistoryInput = {
   colorCode?: Prisma.StringFieldUpdateOperationsInput | string
   room?: Prisma.IntFieldUpdateOperationsInput | number
   route?: Prisma.IntFieldUpdateOperationsInput | number
-  drawer?: Prisma.IntFieldUpdateOperationsInput | number
+  drawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  placement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   version?: Prisma.IntFieldUpdateOperationsInput | number
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -583,7 +612,8 @@ export type WarehouseLocationUncheckedUpdateWithoutHistoryInput = {
   colorCode?: Prisma.StringFieldUpdateOperationsInput | string
   room?: Prisma.IntFieldUpdateOperationsInput | number
   route?: Prisma.IntFieldUpdateOperationsInput | number
-  drawer?: Prisma.IntFieldUpdateOperationsInput | number
+  drawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  placement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   version?: Prisma.IntFieldUpdateOperationsInput | number
   updatedBy?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -628,6 +658,7 @@ export type WarehouseLocationSelect<ExtArgs extends runtime.Types.Extensions.Int
   room?: boolean
   route?: boolean
   drawer?: boolean
+  placement?: boolean
   version?: boolean
   updatedBy?: boolean
   createdAt?: boolean
@@ -643,6 +674,7 @@ export type WarehouseLocationSelectCreateManyAndReturn<ExtArgs extends runtime.T
   room?: boolean
   route?: boolean
   drawer?: boolean
+  placement?: boolean
   version?: boolean
   updatedBy?: boolean
   createdAt?: boolean
@@ -656,6 +688,7 @@ export type WarehouseLocationSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   room?: boolean
   route?: boolean
   drawer?: boolean
+  placement?: boolean
   version?: boolean
   updatedBy?: boolean
   createdAt?: boolean
@@ -669,13 +702,14 @@ export type WarehouseLocationSelectScalar = {
   room?: boolean
   route?: boolean
   drawer?: boolean
+  placement?: boolean
   version?: boolean
   updatedBy?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type WarehouseLocationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "modelCode" | "colorCode" | "room" | "route" | "drawer" | "version" | "updatedBy" | "createdAt" | "updatedAt", ExtArgs["result"]["warehouseLocation"]>
+export type WarehouseLocationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "modelCode" | "colorCode" | "room" | "route" | "drawer" | "placement" | "version" | "updatedBy" | "createdAt" | "updatedAt", ExtArgs["result"]["warehouseLocation"]>
 export type WarehouseLocationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   history?: boolean | Prisma.WarehouseLocation$historyArgs<ExtArgs>
   _count?: boolean | Prisma.WarehouseLocationCountOutputTypeDefaultArgs<ExtArgs>
@@ -694,7 +728,17 @@ export type $WarehouseLocationPayload<ExtArgs extends runtime.Types.Extensions.I
     colorCode: string
     room: number
     route: number
-    drawer: number
+    /**
+     * Null when, and only when, `placement` is FLOOR. A database CHECK keeps the
+     * two consistent, so there is only ever one stored shape per real location.
+     */
+    drawer: number | null
+    /**
+     * Stock on the floor of a route is a real, permanent location rather than a
+     * missing drawer number, so it is modelled explicitly instead of being
+     * encoded as a magic drawer value.
+     */
+    placement: $Enums.WarehousePlacement
     /**
      * Optimistic-concurrency token. The client echoes it back on save, and a
      * mismatch is a 409 rather than a silent overwrite of a newer location.
@@ -1137,6 +1181,7 @@ export interface WarehouseLocationFieldRefs {
   readonly room: Prisma.FieldRef<"WarehouseLocation", 'Int'>
   readonly route: Prisma.FieldRef<"WarehouseLocation", 'Int'>
   readonly drawer: Prisma.FieldRef<"WarehouseLocation", 'Int'>
+  readonly placement: Prisma.FieldRef<"WarehouseLocation", 'WarehousePlacement'>
   readonly version: Prisma.FieldRef<"WarehouseLocation", 'Int'>
   readonly updatedBy: Prisma.FieldRef<"WarehouseLocation", 'String'>
   readonly createdAt: Prisma.FieldRef<"WarehouseLocation", 'DateTime'>

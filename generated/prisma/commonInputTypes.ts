@@ -530,6 +530,40 @@ export type EnumPointsKindWithAggregatesFilter<$PrismaModel = never> = {
   _max?: Prisma.NestedEnumPointsKindFilter<$PrismaModel>
 }
 
+export type EnumWarehousePlacementFilter<$PrismaModel = never> = {
+  equals?: $Enums.WarehousePlacement | Prisma.EnumWarehousePlacementFieldRefInput<$PrismaModel>
+  in?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel>
+  notIn?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumWarehousePlacementFilter<$PrismaModel> | $Enums.WarehousePlacement
+}
+
+export type EnumWarehousePlacementWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.WarehousePlacement | Prisma.EnumWarehousePlacementFieldRefInput<$PrismaModel>
+  in?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel>
+  notIn?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumWarehousePlacementWithAggregatesFilter<$PrismaModel> | $Enums.WarehousePlacement
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumWarehousePlacementFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumWarehousePlacementFilter<$PrismaModel>
+}
+
+export type EnumWarehousePlacementNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.WarehousePlacement | Prisma.EnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  in?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumWarehousePlacementNullableFilter<$PrismaModel> | $Enums.WarehousePlacement | null
+}
+
+export type EnumWarehousePlacementNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.WarehousePlacement | Prisma.EnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  in?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumWarehousePlacementNullableWithAggregatesFilter<$PrismaModel> | $Enums.WarehousePlacement | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumWarehousePlacementNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumWarehousePlacementNullableFilter<$PrismaModel>
+}
+
 export type NestedStringNullableFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel> | null
   in?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel> | null
@@ -977,6 +1011,40 @@ export type NestedEnumPointsKindWithAggregatesFilter<$PrismaModel = never> = {
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumPointsKindFilter<$PrismaModel>
   _max?: Prisma.NestedEnumPointsKindFilter<$PrismaModel>
+}
+
+export type NestedEnumWarehousePlacementFilter<$PrismaModel = never> = {
+  equals?: $Enums.WarehousePlacement | Prisma.EnumWarehousePlacementFieldRefInput<$PrismaModel>
+  in?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel>
+  notIn?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumWarehousePlacementFilter<$PrismaModel> | $Enums.WarehousePlacement
+}
+
+export type NestedEnumWarehousePlacementWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.WarehousePlacement | Prisma.EnumWarehousePlacementFieldRefInput<$PrismaModel>
+  in?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel>
+  notIn?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumWarehousePlacementWithAggregatesFilter<$PrismaModel> | $Enums.WarehousePlacement
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumWarehousePlacementFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumWarehousePlacementFilter<$PrismaModel>
+}
+
+export type NestedEnumWarehousePlacementNullableFilter<$PrismaModel = never> = {
+  equals?: $Enums.WarehousePlacement | Prisma.EnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  in?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumWarehousePlacementNullableFilter<$PrismaModel> | $Enums.WarehousePlacement | null
+}
+
+export type NestedEnumWarehousePlacementNullableWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.WarehousePlacement | Prisma.EnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  in?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  notIn?: $Enums.WarehousePlacement[] | Prisma.ListEnumWarehousePlacementFieldRefInput<$PrismaModel> | null
+  not?: Prisma.NestedEnumWarehousePlacementNullableWithAggregatesFilter<$PrismaModel> | $Enums.WarehousePlacement | null
+  _count?: Prisma.NestedIntNullableFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumWarehousePlacementNullableFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumWarehousePlacementNullableFilter<$PrismaModel>
 }
 
 

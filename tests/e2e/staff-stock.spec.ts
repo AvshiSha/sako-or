@@ -369,16 +369,18 @@ test.describe('signed in', () => {
                 room: 2,
                 route: 1,
                 drawer: 18,
+                placement: 'DRAWER',
                 version: 1,
                 updatedAt: new Date().toISOString(),
                 updatedBy: null,
               },
               sizes: [
-                { size: '35', label: '35', quantity: 3, trusted: true },
-                { size: '36', label: '36', quantity: 0, trusted: true },
+                { size: '35', label: '35', quantity: 3, soldOut: false, trusted: true },
+                { size: '36', label: '36', quantity: 0, soldOut: true, trusted: true },
               ],
               totalQuantity: 3,
               image: null,
+              soldOut: false,
             },
             {
               colorCode: '77',
@@ -387,9 +389,10 @@ test.describe('signed in', () => {
               colorNameSource: 'code',
               stockKnown: true,
               location: null,
-              sizes: [{ size: '38', label: '38', quantity: 5, trusted: true }],
+              sizes: [{ size: '38', label: '38', quantity: 5, soldOut: false, trusted: true }],
               totalQuantity: 5,
               image: null,
+              soldOut: false,
             },
           ],
         }),
@@ -445,6 +448,7 @@ test.describe('signed in', () => {
                 room: 2,
                 route: 1,
                 drawer: 18,
+                placement: 'DRAWER',
                 version: 1,
                 updatedAt: new Date().toISOString(),
                 updatedBy: null,
@@ -452,6 +456,7 @@ test.describe('signed in', () => {
               sizes: [],
               totalQuantity: 0,
               image: null,
+              soldOut: false,
             },
           ],
         }),
@@ -496,10 +501,11 @@ test.describe('signed in', () => {
               stockKnown: true,
               location: null,
               sizes: [
-                { size: '35', label: '35', quantity: slow ? 111 : 222, trusted: true },
+                { size: '35', label: '35', quantity: slow ? 111 : 222, soldOut: false, trusted: true },
               ],
               totalQuantity: slow ? 111 : 222,
               image: null,
+              soldOut: false,
             },
           ],
         }),
@@ -548,9 +554,10 @@ test.describe('signed in', () => {
               colorNameSource: 'hebrew',
               stockKnown: true,
               location: null,
-              sizes: [{ size: '35', label: '35', quantity: 1, trusted: true }],
+              sizes: [{ size: '35', label: '35', quantity: 1, soldOut: false, trusted: true }],
               totalQuantity: 1,
               image: null,
+              soldOut: false,
             },
           ],
         }),
@@ -715,5 +722,193 @@ test.describe('signed in: model-number formatting', () => {
     // Still explicit, and the value sent upstream is the formatted one.
     await page.getByTestId('staff-search').click()
     await expect.poll(() => requests).toBe(1)
+  })
+})
+
+/**
+ * Out-of-stock labelling and floor placement, on the real page.
+ *
+ * Both are served from a stub, so the assertions do not depend on Verifone
+ * being reachable -- which it is not from a development machine.
+ */
+test.describe('signed in: sold out and floor placement', () => {
+  const email = process.env.QA_STAFF_EMAIL
+  const password = process.env.QA_STAFF_PASSWORD
+
+  test.skip(
+    !email || !password,
+    'Set QA_STAFF_EMAIL and QA_STAFF_PASSWORD to run the signed-in staff checks'
+  )
+
+  const stock = (colors: unknown[]) => ({
+    modelCode: '5127-6825',
+    productName: 'נעלי סירה',
+    fetchedAt: new Date().toISOString(),
+    stock: { state: 'ok', detail: null },
+    locations: { state: 'ok' },
+    totalQuantity: 5,
+    warehouse: { roomRoutes: { 2: [1, 2, 3] }, configError: null },
+    colors,
+  })
+
+  const withStock = {
+    colorCode: '01',
+    colorSlug: 'black',
+    colorName: 'שחור',
+    colorNameSource: 'hebrew',
+    stockKnown: true,
+    location: {
+      room: 2,
+      route: 1,
+      drawer: 18,
+      placement: 'DRAWER',
+      version: 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: null,
+    },
+    sizes: [
+      { size: '35', label: '35', quantity: 5, soldOut: false, trusted: true },
+      { size: '36', label: '36', quantity: 0, soldOut: true, trusted: true },
+    ],
+    totalQuantity: 5,
+    image: null,
+    soldOut: false,
+  }
+
+  const allSoldOut = {
+    ...withStock,
+    colorCode: '10',
+    colorName: 'כחול כהה',
+    colorSlug: 'dark-blue',
+    // On the floor rather than in a drawer.
+    location: { ...withStock.location, drawer: null, placement: 'FLOOR' },
+    sizes: [
+      { size: '35', label: '35', quantity: 0, soldOut: true, trusted: true },
+      { size: '36', label: '36', quantity: 0, soldOut: true, trusted: true },
+    ],
+    totalQuantity: 0,
+    soldOut: true,
+  }
+
+  const stockUnknown = {
+    ...withStock,
+    colorCode: '77',
+    colorName: 'גוון 77',
+    colorSlug: null,
+    colorNameSource: 'code',
+    stockKnown: false,
+    sizes: [],
+    totalQuantity: 0,
+    soldOut: false,
+  }
+
+  async function search(page: import('@playwright/test').Page, colors: unknown[]) {
+    await page.route('**/api/staff/stock**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(stock(colors)),
+      })
+    })
+    await page.goto('/staff/login', { waitUntil: 'domcontentloaded' })
+    await page.getByTestId('staff-login-email').fill(email!)
+    await page.getByTestId('staff-login-password').fill(password!)
+    await page.getByTestId('staff-login-submit').click()
+    await expect(page).toHaveURL(/\/staff\/stock/, { timeout: 30_000 })
+    await page.getByTestId('staff-model-input').fill('51276825')
+    await page.getByTestId('staff-search').click()
+    await page.getByTestId('staff-color-card').first().waitFor()
+  }
+
+  test('a zero size is labelled in red', async ({ page }) => {
+    await search(page, [withStock])
+
+    const label = page.getByTestId('staff-size-sold-out')
+    await expect(label).toHaveCount(1)
+    await expect(label).toHaveText('אזל מהמלאי')
+
+    // The design system red, not an invented colour.
+    const color = await label.evaluate((el) => getComputedStyle(el).color)
+    expect(color).toBe('rgb(182, 68, 68)')
+  })
+
+  test('the colour is labelled only when every size is zero', async ({ page }) => {
+    await search(page, [withStock, allSoldOut])
+
+    const cards = page.getByTestId('staff-color-card')
+    // Has stock at 35, so no colour-level badge.
+    await expect(cards.nth(0).getByTestId('staff-color-sold-out')).toHaveCount(0)
+    // Every size zero.
+    await expect(cards.nth(1).getByTestId('staff-color-sold-out')).toHaveText('אזל מהמלאי')
+  })
+
+  test('unreadable stock is never shown as sold out', async ({ page }) => {
+    // The most damaging false positive available: an ERP outage telling a
+    // picker the shelf is empty.
+    await search(page, [stockUnknown])
+
+    const card = page.getByTestId('staff-color-card').first()
+    await expect(card.getByTestId('staff-color-sold-out')).toHaveCount(0)
+    await expect(card.getByTestId('staff-size-sold-out')).toHaveCount(0)
+    await expect(card.getByTestId('staff-size-table')).toHaveCount(0)
+  })
+
+  test('a floor location reads as רצפה, with no drawer number', async ({ page }) => {
+    await search(page, [withStock, allSoldOut])
+
+    const locations = page.getByTestId('staff-location')
+    await expect(locations.nth(0)).toHaveText('חדר 2 · מסלול 1 · מגירה 18')
+    await expect(locations.nth(1)).toHaveText('חדר 2 · מסלול 1 · רצפה')
+  })
+
+  test('the drawer selector offers רצפה alongside the numbers', async ({ page }) => {
+    await search(page, [withStock])
+
+    await page.route('**/api/staff/locations/unlock', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          grantId: '00000000-0000-4000-8000-000000000000',
+          expiresAt: new Date(Date.now() + 180_000).toISOString(),
+          modelCode: '5127-6825',
+          colorCode: '01',
+        }),
+      })
+    })
+
+    await page.getByTestId('staff-edit-location').first().click()
+    await page.getByTestId('staff-pin-input').fill('246813')
+    await page.getByTestId('staff-pin-submit').click()
+
+    const select = page.getByTestId('staff-drawer-select')
+    await select.waitFor()
+
+    // Floor first, so it is reachable without scrolling 50 drawers on a wheel.
+    const options = await select.locator('option').allInnerTexts()
+    expect(options[0]).toBe('רצפה')
+    expect(options).toHaveLength(51)
+
+    // Room and route selection is unchanged.
+    await expect(page.getByTestId('staff-room-select')).toBeVisible()
+    await expect(page.getByTestId('staff-route-select')).toBeVisible()
+
+    // Selecting it sends placement FLOOR and no drawer number.
+    // Captured into an object rather than a bare `let`: TypeScript narrows a
+    // variable only ever assigned inside a callback to `never` at the asserts.
+    const captured: { body: Record<string, unknown> | null } = { body: null }
+    await page.route('**/api/staff/locations', async (route) => {
+      if (route.request().method() === 'PUT') {
+        captured.body = JSON.parse(route.request().postData() ?? '{}')
+      }
+      await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+    })
+
+    await select.selectOption('FLOOR')
+    await page.getByTestId('staff-save-location').click()
+
+    await expect.poll(() => captured.body?.placement).toBe('FLOOR')
+    expect(captured.body?.drawer).toBeNull()
   })
 })

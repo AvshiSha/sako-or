@@ -9,6 +9,14 @@
 * 🟢 You can import this file directly.
 */
 
+export const WarehousePlacement = {
+  DRAWER: 'DRAWER',
+  FLOOR: 'FLOOR'
+} as const
+
+export type WarehousePlacement = (typeof WarehousePlacement)[keyof typeof WarehousePlacement]
+
+
 export const CartItemStatus = {
   IN_CART: 'IN_CART',
   REMOVED: 'REMOVED',

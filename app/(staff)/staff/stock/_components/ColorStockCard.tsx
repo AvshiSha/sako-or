@@ -48,6 +48,17 @@ export default function ColorStockCard({
           <h2 className={staffTheme.colorName} data-testid="staff-color-name">
             {card.colorName}
           </h2>
+
+          {/*
+            Only when every size Verifone returned is a confirmed zero. A card
+            whose stock could not be read carries `soldOut: false`, so an
+            unreachable ERP can never appear here as "sold out".
+          */}
+          {card.soldOut && (
+            <p className={`${staffTheme.soldOutBadge} mt-1`} data-testid="staff-color-sold-out">
+              {staffText.outOfStock}
+            </p>
+          )}
           {/* The Verifone colour code, which is the stable identifier and the
               thing to quote when something looks wrong. */}
           <p className={staffTheme.meta}>
@@ -125,11 +136,18 @@ export default function ColorStockCard({
                 <td className={staffTheme.sizeCell}>{row.label}</td>
                 <td
                   className={`${staffTheme.sizeCell} ${
-                    row.quantity === 0 ? staffTheme.sizeCellZero : ''
+                    row.soldOut ? staffTheme.sizeCellZero : ''
                   }`}
                   data-testid="staff-size-quantity"
                 >
-                  {row.quantity}
+                  <span className="flex items-center gap-2">
+                    <span>{row.quantity}</span>
+                    {row.soldOut && (
+                      <span className={staffTheme.soldOutTag} data-testid="staff-size-sold-out">
+                        {staffText.outOfStock}
+                      </span>
+                    )}
+                  </span>
                 </td>
               </tr>
             ))}

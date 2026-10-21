@@ -263,6 +263,7 @@ export default function StockLookupClient() {
                   room: location.room,
                   route: location.route,
                   drawer: location.drawer,
+                  placement: location.placement,
                   version: location.version,
                   updatedAt: location.updatedAt,
                   updatedBy: location.updatedBy,

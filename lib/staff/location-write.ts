@@ -69,13 +69,21 @@ export function decideWrite(
  * happen.
  */
 export function isNoOpWrite(
-  current: { room: number; route: number; drawer: number } | null,
-  next: { room: number; route: number; drawer: number }
+  current: {
+    room: number
+    route: number
+    drawer: number | null
+    placement: string
+  } | null,
+  next: { room: number; route: number; drawer: number | null; placement: string }
 ): boolean {
   if (!current) return false
   return (
     current.room === next.room &&
     current.route === next.route &&
-    current.drawer === next.drawer
+    current.drawer === next.drawer &&
+    // Placement is part of the identity of a location: moving stock from
+    // drawer 7 to the floor of the same route is a real change.
+    current.placement === next.placement
   )
 }

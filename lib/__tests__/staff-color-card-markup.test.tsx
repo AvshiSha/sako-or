@@ -40,16 +40,18 @@ function card(overrides: Partial<StaffColorCard> = {}): StaffColorCard {
       room: 2,
       route: 1,
       drawer: 18,
+      placement: 'DRAWER',
       version: 1,
       updatedAt: '2026-10-19T09:00:00.000Z',
       updatedBy: 'manager@sako-or.com',
     },
     sizes: [
-      { size: '35', label: '35', quantity: 3, trusted: true },
-      { size: '36', label: '36', quantity: 0, trusted: true },
+      { size: '35', label: '35', quantity: 3, soldOut: false, trusted: true },
+      { size: '36', label: '36', quantity: 0, soldOut: true, trusted: true },
     ],
     totalQuantity: 3,
     image: null,
+    soldOut: false,
     stockKnown: true,
     ...overrides,
   }
@@ -143,7 +145,7 @@ describe('quantities', () => {
   it('renders no size table and no total when stock is not known', () => {
     // Verifone unreachable: the location is still useful, but a quantity here
     // would be a service failure masquerading as "we have none".
-    const html = render({ stockKnown: false, sizes: [], totalQuantity: 0 })
+    const html = render({ stockKnown: false, sizes: [], totalQuantity: 0, soldOut: false })
 
     assert.doesNotMatch(html, /<table/)
     assert.match(html, new RegExp(staffText.stockUnavailable))
@@ -153,7 +155,9 @@ describe('quantities', () => {
 
   it('labels an untrustworthy size instead of a plausible wrong one', () => {
     const html = render({
-      sizes: [{ size: '3', label: staffText.sizeUnknown, quantity: 2, trusted: false }],
+      sizes: [
+        { size: '3', label: staffText.sizeUnknown, quantity: 2, soldOut: false, trusted: false },
+      ],
     })
     assert.match(html, new RegExp(staffText.sizeUnknown))
   })
@@ -179,5 +183,77 @@ describe('the colour heading', () => {
   it('offers the edit action on every card, assigned or not', () => {
     assert.match(render(), new RegExp(staffText.editLocation))
     assert.match(render({ location: null }), new RegExp(staffText.editLocation))
+  })
+})
+
+describe('out of stock is shown in red, and only when confirmed', () => {
+  it('labels an individual zero size', () => {
+    const html = render()
+    assert.match(html, new RegExp(staffText.outOfStock))
+    // The red comes from the design system token, not an invented colour.
+    assert.match(html, /text-accent-error/)
+  })
+
+  it('labels the whole colour when every size is zero', () => {
+    const html = render({
+      sizes: [
+        { size: '35', label: '35', quantity: 0, soldOut: true, trusted: true },
+        { size: '36', label: '36', quantity: 0, soldOut: true, trusted: true },
+      ],
+      totalQuantity: 0,
+      soldOut: true,
+    })
+
+    assert.match(html, /data-testid="staff-color-sold-out"/)
+    assert.match(html, new RegExp(staffText.outOfStock))
+  })
+
+  it('does not label the colour when one size still has stock', () => {
+    // The default fixture has stock at 35 and a zero at 36.
+    const html = render()
+    assert.doesNotMatch(html, /data-testid="staff-color-sold-out"/)
+    // ...but the zero size is still flagged.
+    assert.match(html, /data-testid="staff-size-sold-out"/)
+  })
+
+  it('says nothing about stock when Verifone could not be read', () => {
+    const html = render({ stockKnown: false, sizes: [], totalQuantity: 0, soldOut: false })
+
+    assert.doesNotMatch(html, new RegExp(staffText.outOfStock))
+    assert.match(html, new RegExp(staffText.stockUnavailable))
+    // And the location half is still there.
+    assert.match(html, /מגירה 18/)
+  })
+
+  it('says nothing about stock when the location read failed either', () => {
+    const html = render({ stockKnown: false, sizes: [], soldOut: false }, 'error')
+    assert.doesNotMatch(html, new RegExp(staffText.outOfStock))
+  })
+})
+
+describe('floor placement', () => {
+  it('renders the floor as a word, with no drawer number', () => {
+    const html = render({
+      location: {
+        room: 2,
+        route: 1,
+        drawer: null,
+        placement: 'FLOOR',
+        version: 1,
+        updatedAt: '2026-10-21T09:00:00.000Z',
+        updatedBy: null,
+      },
+    })
+
+    assert.match(html, /חדר 2/)
+    assert.match(html, /מסלול 1/)
+    assert.match(html, new RegExp(staffText.floorLabel))
+    assert.doesNotMatch(html, new RegExp(staffText.drawerLabel))
+  })
+
+  it('still renders an existing numbered drawer unchanged', () => {
+    const html = render()
+    assert.match(html, /מגירה 18/)
+    assert.doesNotMatch(html, new RegExp(staffText.floorLabel))
   })
 })

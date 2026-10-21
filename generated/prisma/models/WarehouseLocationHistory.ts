@@ -64,9 +64,11 @@ export type WarehouseLocationHistoryMinAggregateOutputType = {
   prevRoom: number | null
   prevRoute: number | null
   prevDrawer: number | null
+  prevPlacement: $Enums.WarehousePlacement | null
   newRoom: number | null
   newRoute: number | null
   newDrawer: number | null
+  newPlacement: $Enums.WarehousePlacement | null
   actorUid: string | null
   actorEmail: string | null
   actorRole: string | null
@@ -82,9 +84,11 @@ export type WarehouseLocationHistoryMaxAggregateOutputType = {
   prevRoom: number | null
   prevRoute: number | null
   prevDrawer: number | null
+  prevPlacement: $Enums.WarehousePlacement | null
   newRoom: number | null
   newRoute: number | null
   newDrawer: number | null
+  newPlacement: $Enums.WarehousePlacement | null
   actorUid: string | null
   actorEmail: string | null
   actorRole: string | null
@@ -100,9 +104,11 @@ export type WarehouseLocationHistoryCountAggregateOutputType = {
   prevRoom: number
   prevRoute: number
   prevDrawer: number
+  prevPlacement: number
   newRoom: number
   newRoute: number
   newDrawer: number
+  newPlacement: number
   actorUid: number
   actorEmail: number
   actorRole: number
@@ -138,9 +144,11 @@ export type WarehouseLocationHistoryMinAggregateInputType = {
   prevRoom?: true
   prevRoute?: true
   prevDrawer?: true
+  prevPlacement?: true
   newRoom?: true
   newRoute?: true
   newDrawer?: true
+  newPlacement?: true
   actorUid?: true
   actorEmail?: true
   actorRole?: true
@@ -156,9 +164,11 @@ export type WarehouseLocationHistoryMaxAggregateInputType = {
   prevRoom?: true
   prevRoute?: true
   prevDrawer?: true
+  prevPlacement?: true
   newRoom?: true
   newRoute?: true
   newDrawer?: true
+  newPlacement?: true
   actorUid?: true
   actorEmail?: true
   actorRole?: true
@@ -174,9 +184,11 @@ export type WarehouseLocationHistoryCountAggregateInputType = {
   prevRoom?: true
   prevRoute?: true
   prevDrawer?: true
+  prevPlacement?: true
   newRoom?: true
   newRoute?: true
   newDrawer?: true
+  newPlacement?: true
   actorUid?: true
   actorEmail?: true
   actorRole?: true
@@ -279,9 +291,11 @@ export type WarehouseLocationHistoryGroupByOutputType = {
   prevRoom: number | null
   prevRoute: number | null
   prevDrawer: number | null
+  prevPlacement: $Enums.WarehousePlacement | null
   newRoom: number
   newRoute: number
-  newDrawer: number
+  newDrawer: number | null
+  newPlacement: $Enums.WarehousePlacement
   actorUid: string | null
   actorEmail: string | null
   actorRole: string
@@ -320,9 +334,11 @@ export type WarehouseLocationHistoryWhereInput = {
   prevRoom?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
   prevRoute?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
   prevDrawer?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
+  prevPlacement?: Prisma.EnumWarehousePlacementNullableFilter<"WarehouseLocationHistory"> | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
   newRoute?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
-  newDrawer?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
+  newDrawer?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFilter<"WarehouseLocationHistory"> | $Enums.WarehousePlacement
   actorUid?: Prisma.StringNullableFilter<"WarehouseLocationHistory"> | string | null
   actorEmail?: Prisma.StringNullableFilter<"WarehouseLocationHistory"> | string | null
   actorRole?: Prisma.StringFilter<"WarehouseLocationHistory"> | string
@@ -339,9 +355,11 @@ export type WarehouseLocationHistoryOrderByWithRelationInput = {
   prevRoom?: Prisma.SortOrderInput | Prisma.SortOrder
   prevRoute?: Prisma.SortOrderInput | Prisma.SortOrder
   prevDrawer?: Prisma.SortOrderInput | Prisma.SortOrder
+  prevPlacement?: Prisma.SortOrderInput | Prisma.SortOrder
   newRoom?: Prisma.SortOrder
   newRoute?: Prisma.SortOrder
-  newDrawer?: Prisma.SortOrder
+  newDrawer?: Prisma.SortOrderInput | Prisma.SortOrder
+  newPlacement?: Prisma.SortOrder
   actorUid?: Prisma.SortOrderInput | Prisma.SortOrder
   actorEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   actorRole?: Prisma.SortOrder
@@ -361,9 +379,11 @@ export type WarehouseLocationHistoryWhereUniqueInput = Prisma.AtLeast<{
   prevRoom?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
   prevRoute?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
   prevDrawer?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
+  prevPlacement?: Prisma.EnumWarehousePlacementNullableFilter<"WarehouseLocationHistory"> | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
   newRoute?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
-  newDrawer?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
+  newDrawer?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFilter<"WarehouseLocationHistory"> | $Enums.WarehousePlacement
   actorUid?: Prisma.StringNullableFilter<"WarehouseLocationHistory"> | string | null
   actorEmail?: Prisma.StringNullableFilter<"WarehouseLocationHistory"> | string | null
   actorRole?: Prisma.StringFilter<"WarehouseLocationHistory"> | string
@@ -380,9 +400,11 @@ export type WarehouseLocationHistoryOrderByWithAggregationInput = {
   prevRoom?: Prisma.SortOrderInput | Prisma.SortOrder
   prevRoute?: Prisma.SortOrderInput | Prisma.SortOrder
   prevDrawer?: Prisma.SortOrderInput | Prisma.SortOrder
+  prevPlacement?: Prisma.SortOrderInput | Prisma.SortOrder
   newRoom?: Prisma.SortOrder
   newRoute?: Prisma.SortOrder
-  newDrawer?: Prisma.SortOrder
+  newDrawer?: Prisma.SortOrderInput | Prisma.SortOrder
+  newPlacement?: Prisma.SortOrder
   actorUid?: Prisma.SortOrderInput | Prisma.SortOrder
   actorEmail?: Prisma.SortOrderInput | Prisma.SortOrder
   actorRole?: Prisma.SortOrder
@@ -406,9 +428,11 @@ export type WarehouseLocationHistoryScalarWhereWithAggregatesInput = {
   prevRoom?: Prisma.IntNullableWithAggregatesFilter<"WarehouseLocationHistory"> | number | null
   prevRoute?: Prisma.IntNullableWithAggregatesFilter<"WarehouseLocationHistory"> | number | null
   prevDrawer?: Prisma.IntNullableWithAggregatesFilter<"WarehouseLocationHistory"> | number | null
+  prevPlacement?: Prisma.EnumWarehousePlacementNullableWithAggregatesFilter<"WarehouseLocationHistory"> | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntWithAggregatesFilter<"WarehouseLocationHistory"> | number
   newRoute?: Prisma.IntWithAggregatesFilter<"WarehouseLocationHistory"> | number
-  newDrawer?: Prisma.IntWithAggregatesFilter<"WarehouseLocationHistory"> | number
+  newDrawer?: Prisma.IntNullableWithAggregatesFilter<"WarehouseLocationHistory"> | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementWithAggregatesFilter<"WarehouseLocationHistory"> | $Enums.WarehousePlacement
   actorUid?: Prisma.StringNullableWithAggregatesFilter<"WarehouseLocationHistory"> | string | null
   actorEmail?: Prisma.StringNullableWithAggregatesFilter<"WarehouseLocationHistory"> | string | null
   actorRole?: Prisma.StringWithAggregatesFilter<"WarehouseLocationHistory"> | string
@@ -423,9 +447,11 @@ export type WarehouseLocationHistoryCreateInput = {
   prevRoom?: number | null
   prevRoute?: number | null
   prevDrawer?: number | null
+  prevPlacement?: $Enums.WarehousePlacement | null
   newRoom: number
   newRoute: number
-  newDrawer: number
+  newDrawer?: number | null
+  newPlacement?: $Enums.WarehousePlacement
   actorUid?: string | null
   actorEmail?: string | null
   actorRole: string
@@ -442,9 +468,11 @@ export type WarehouseLocationHistoryUncheckedCreateInput = {
   prevRoom?: number | null
   prevRoute?: number | null
   prevDrawer?: number | null
+  prevPlacement?: $Enums.WarehousePlacement | null
   newRoom: number
   newRoute: number
-  newDrawer: number
+  newDrawer?: number | null
+  newPlacement?: $Enums.WarehousePlacement
   actorUid?: string | null
   actorEmail?: string | null
   actorRole: string
@@ -459,9 +487,11 @@ export type WarehouseLocationHistoryUpdateInput = {
   prevRoom?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevRoute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  prevPlacement?: Prisma.NullableEnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFieldUpdateOperationsInput | number
   newRoute?: Prisma.IntFieldUpdateOperationsInput | number
-  newDrawer?: Prisma.IntFieldUpdateOperationsInput | number
+  newDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   actorUid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorRole?: Prisma.StringFieldUpdateOperationsInput | string
@@ -478,9 +508,11 @@ export type WarehouseLocationHistoryUncheckedUpdateInput = {
   prevRoom?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevRoute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  prevPlacement?: Prisma.NullableEnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFieldUpdateOperationsInput | number
   newRoute?: Prisma.IntFieldUpdateOperationsInput | number
-  newDrawer?: Prisma.IntFieldUpdateOperationsInput | number
+  newDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   actorUid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorRole?: Prisma.StringFieldUpdateOperationsInput | string
@@ -496,9 +528,11 @@ export type WarehouseLocationHistoryCreateManyInput = {
   prevRoom?: number | null
   prevRoute?: number | null
   prevDrawer?: number | null
+  prevPlacement?: $Enums.WarehousePlacement | null
   newRoom: number
   newRoute: number
-  newDrawer: number
+  newDrawer?: number | null
+  newPlacement?: $Enums.WarehousePlacement
   actorUid?: string | null
   actorEmail?: string | null
   actorRole: string
@@ -513,9 +547,11 @@ export type WarehouseLocationHistoryUpdateManyMutationInput = {
   prevRoom?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevRoute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  prevPlacement?: Prisma.NullableEnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFieldUpdateOperationsInput | number
   newRoute?: Prisma.IntFieldUpdateOperationsInput | number
-  newDrawer?: Prisma.IntFieldUpdateOperationsInput | number
+  newDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   actorUid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorRole?: Prisma.StringFieldUpdateOperationsInput | string
@@ -531,9 +567,11 @@ export type WarehouseLocationHistoryUncheckedUpdateManyInput = {
   prevRoom?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevRoute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  prevPlacement?: Prisma.NullableEnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFieldUpdateOperationsInput | number
   newRoute?: Prisma.IntFieldUpdateOperationsInput | number
-  newDrawer?: Prisma.IntFieldUpdateOperationsInput | number
+  newDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   actorUid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorRole?: Prisma.StringFieldUpdateOperationsInput | string
@@ -559,9 +597,11 @@ export type WarehouseLocationHistoryCountOrderByAggregateInput = {
   prevRoom?: Prisma.SortOrder
   prevRoute?: Prisma.SortOrder
   prevDrawer?: Prisma.SortOrder
+  prevPlacement?: Prisma.SortOrder
   newRoom?: Prisma.SortOrder
   newRoute?: Prisma.SortOrder
   newDrawer?: Prisma.SortOrder
+  newPlacement?: Prisma.SortOrder
   actorUid?: Prisma.SortOrder
   actorEmail?: Prisma.SortOrder
   actorRole?: Prisma.SortOrder
@@ -586,9 +626,11 @@ export type WarehouseLocationHistoryMaxOrderByAggregateInput = {
   prevRoom?: Prisma.SortOrder
   prevRoute?: Prisma.SortOrder
   prevDrawer?: Prisma.SortOrder
+  prevPlacement?: Prisma.SortOrder
   newRoom?: Prisma.SortOrder
   newRoute?: Prisma.SortOrder
   newDrawer?: Prisma.SortOrder
+  newPlacement?: Prisma.SortOrder
   actorUid?: Prisma.SortOrder
   actorEmail?: Prisma.SortOrder
   actorRole?: Prisma.SortOrder
@@ -604,9 +646,11 @@ export type WarehouseLocationHistoryMinOrderByAggregateInput = {
   prevRoom?: Prisma.SortOrder
   prevRoute?: Prisma.SortOrder
   prevDrawer?: Prisma.SortOrder
+  prevPlacement?: Prisma.SortOrder
   newRoom?: Prisma.SortOrder
   newRoute?: Prisma.SortOrder
   newDrawer?: Prisma.SortOrder
+  newPlacement?: Prisma.SortOrder
   actorUid?: Prisma.SortOrder
   actorEmail?: Prisma.SortOrder
   actorRole?: Prisma.SortOrder
@@ -665,6 +709,10 @@ export type WarehouseLocationHistoryUncheckedUpdateManyWithoutLocationNestedInpu
   deleteMany?: Prisma.WarehouseLocationHistoryScalarWhereInput | Prisma.WarehouseLocationHistoryScalarWhereInput[]
 }
 
+export type NullableEnumWarehousePlacementFieldUpdateOperationsInput = {
+  set?: $Enums.WarehousePlacement | null
+}
+
 export type WarehouseLocationHistoryCreateWithoutLocationInput = {
   id?: string
   modelCode: string
@@ -672,9 +720,11 @@ export type WarehouseLocationHistoryCreateWithoutLocationInput = {
   prevRoom?: number | null
   prevRoute?: number | null
   prevDrawer?: number | null
+  prevPlacement?: $Enums.WarehousePlacement | null
   newRoom: number
   newRoute: number
-  newDrawer: number
+  newDrawer?: number | null
+  newPlacement?: $Enums.WarehousePlacement
   actorUid?: string | null
   actorEmail?: string | null
   actorRole: string
@@ -689,9 +739,11 @@ export type WarehouseLocationHistoryUncheckedCreateWithoutLocationInput = {
   prevRoom?: number | null
   prevRoute?: number | null
   prevDrawer?: number | null
+  prevPlacement?: $Enums.WarehousePlacement | null
   newRoom: number
   newRoute: number
-  newDrawer: number
+  newDrawer?: number | null
+  newPlacement?: $Enums.WarehousePlacement
   actorUid?: string | null
   actorEmail?: string | null
   actorRole: string
@@ -736,9 +788,11 @@ export type WarehouseLocationHistoryScalarWhereInput = {
   prevRoom?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
   prevRoute?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
   prevDrawer?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
+  prevPlacement?: Prisma.EnumWarehousePlacementNullableFilter<"WarehouseLocationHistory"> | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
   newRoute?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
-  newDrawer?: Prisma.IntFilter<"WarehouseLocationHistory"> | number
+  newDrawer?: Prisma.IntNullableFilter<"WarehouseLocationHistory"> | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFilter<"WarehouseLocationHistory"> | $Enums.WarehousePlacement
   actorUid?: Prisma.StringNullableFilter<"WarehouseLocationHistory"> | string | null
   actorEmail?: Prisma.StringNullableFilter<"WarehouseLocationHistory"> | string | null
   actorRole?: Prisma.StringFilter<"WarehouseLocationHistory"> | string
@@ -753,9 +807,11 @@ export type WarehouseLocationHistoryCreateManyLocationInput = {
   prevRoom?: number | null
   prevRoute?: number | null
   prevDrawer?: number | null
+  prevPlacement?: $Enums.WarehousePlacement | null
   newRoom: number
   newRoute: number
-  newDrawer: number
+  newDrawer?: number | null
+  newPlacement?: $Enums.WarehousePlacement
   actorUid?: string | null
   actorEmail?: string | null
   actorRole: string
@@ -770,9 +826,11 @@ export type WarehouseLocationHistoryUpdateWithoutLocationInput = {
   prevRoom?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevRoute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  prevPlacement?: Prisma.NullableEnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFieldUpdateOperationsInput | number
   newRoute?: Prisma.IntFieldUpdateOperationsInput | number
-  newDrawer?: Prisma.IntFieldUpdateOperationsInput | number
+  newDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   actorUid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorRole?: Prisma.StringFieldUpdateOperationsInput | string
@@ -787,9 +845,11 @@ export type WarehouseLocationHistoryUncheckedUpdateWithoutLocationInput = {
   prevRoom?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevRoute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  prevPlacement?: Prisma.NullableEnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFieldUpdateOperationsInput | number
   newRoute?: Prisma.IntFieldUpdateOperationsInput | number
-  newDrawer?: Prisma.IntFieldUpdateOperationsInput | number
+  newDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   actorUid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorRole?: Prisma.StringFieldUpdateOperationsInput | string
@@ -804,9 +864,11 @@ export type WarehouseLocationHistoryUncheckedUpdateManyWithoutLocationInput = {
   prevRoom?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevRoute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   prevDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  prevPlacement?: Prisma.NullableEnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement | null
   newRoom?: Prisma.IntFieldUpdateOperationsInput | number
   newRoute?: Prisma.IntFieldUpdateOperationsInput | number
-  newDrawer?: Prisma.IntFieldUpdateOperationsInput | number
+  newDrawer?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  newPlacement?: Prisma.EnumWarehousePlacementFieldUpdateOperationsInput | $Enums.WarehousePlacement
   actorUid?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorEmail?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   actorRole?: Prisma.StringFieldUpdateOperationsInput | string
@@ -824,9 +886,11 @@ export type WarehouseLocationHistorySelect<ExtArgs extends runtime.Types.Extensi
   prevRoom?: boolean
   prevRoute?: boolean
   prevDrawer?: boolean
+  prevPlacement?: boolean
   newRoom?: boolean
   newRoute?: boolean
   newDrawer?: boolean
+  newPlacement?: boolean
   actorUid?: boolean
   actorEmail?: boolean
   actorRole?: boolean
@@ -843,9 +907,11 @@ export type WarehouseLocationHistorySelectCreateManyAndReturn<ExtArgs extends ru
   prevRoom?: boolean
   prevRoute?: boolean
   prevDrawer?: boolean
+  prevPlacement?: boolean
   newRoom?: boolean
   newRoute?: boolean
   newDrawer?: boolean
+  newPlacement?: boolean
   actorUid?: boolean
   actorEmail?: boolean
   actorRole?: boolean
@@ -862,9 +928,11 @@ export type WarehouseLocationHistorySelectUpdateManyAndReturn<ExtArgs extends ru
   prevRoom?: boolean
   prevRoute?: boolean
   prevDrawer?: boolean
+  prevPlacement?: boolean
   newRoom?: boolean
   newRoute?: boolean
   newDrawer?: boolean
+  newPlacement?: boolean
   actorUid?: boolean
   actorEmail?: boolean
   actorRole?: boolean
@@ -881,9 +949,11 @@ export type WarehouseLocationHistorySelectScalar = {
   prevRoom?: boolean
   prevRoute?: boolean
   prevDrawer?: boolean
+  prevPlacement?: boolean
   newRoom?: boolean
   newRoute?: boolean
   newDrawer?: boolean
+  newPlacement?: boolean
   actorUid?: boolean
   actorEmail?: boolean
   actorRole?: boolean
@@ -891,7 +961,7 @@ export type WarehouseLocationHistorySelectScalar = {
   changedAt?: boolean
 }
 
-export type WarehouseLocationHistoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "locationId" | "modelCode" | "colorCode" | "prevRoom" | "prevRoute" | "prevDrawer" | "newRoom" | "newRoute" | "newDrawer" | "actorUid" | "actorEmail" | "actorRole" | "viaPin" | "changedAt", ExtArgs["result"]["warehouseLocationHistory"]>
+export type WarehouseLocationHistoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "locationId" | "modelCode" | "colorCode" | "prevRoom" | "prevRoute" | "prevDrawer" | "prevPlacement" | "newRoom" | "newRoute" | "newDrawer" | "newPlacement" | "actorUid" | "actorEmail" | "actorRole" | "viaPin" | "changedAt", ExtArgs["result"]["warehouseLocationHistory"]>
 export type WarehouseLocationHistoryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   location?: boolean | Prisma.WarehouseLocationDefaultArgs<ExtArgs>
 }
@@ -918,9 +988,14 @@ export type $WarehouseLocationHistoryPayload<ExtArgs extends runtime.Types.Exten
     prevRoom: number | null
     prevRoute: number | null
     prevDrawer: number | null
+    prevPlacement: $Enums.WarehousePlacement | null
     newRoom: number
     newRoute: number
-    newDrawer: number
+    /**
+     * Null when the new placement is FLOOR.
+     */
+    newDrawer: number | null
+    newPlacement: $Enums.WarehousePlacement
     actorUid: string | null
     actorEmail: string | null
     /**
@@ -1364,9 +1439,11 @@ export interface WarehouseLocationHistoryFieldRefs {
   readonly prevRoom: Prisma.FieldRef<"WarehouseLocationHistory", 'Int'>
   readonly prevRoute: Prisma.FieldRef<"WarehouseLocationHistory", 'Int'>
   readonly prevDrawer: Prisma.FieldRef<"WarehouseLocationHistory", 'Int'>
+  readonly prevPlacement: Prisma.FieldRef<"WarehouseLocationHistory", 'WarehousePlacement'>
   readonly newRoom: Prisma.FieldRef<"WarehouseLocationHistory", 'Int'>
   readonly newRoute: Prisma.FieldRef<"WarehouseLocationHistory", 'Int'>
   readonly newDrawer: Prisma.FieldRef<"WarehouseLocationHistory", 'Int'>
+  readonly newPlacement: Prisma.FieldRef<"WarehouseLocationHistory", 'WarehousePlacement'>
   readonly actorUid: Prisma.FieldRef<"WarehouseLocationHistory", 'String'>
   readonly actorEmail: Prisma.FieldRef<"WarehouseLocationHistory", 'String'>
   readonly actorRole: Prisma.FieldRef<"WarehouseLocationHistory", 'String'>

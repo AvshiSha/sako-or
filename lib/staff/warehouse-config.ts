@@ -154,10 +154,26 @@ export function parseRoomRoutes(raw: string | null | undefined): WarehouseConfig
   return { roomRoutes: Object.freeze(out), configError: null }
 }
 
+/**
+ * Where within a room/route the stock actually sits.
+ *
+ * Most stock is in a numbered drawer. Some sits on the floor of the route --
+ * bulky boxes, overflow -- and that is a real, permanent location rather than a
+ * missing drawer number, so it is modelled explicitly instead of encoding it as
+ * a magic drawer value like 0. `drawer` is null exactly when this is `FLOOR`,
+ * which the database enforces with a CHECK constraint.
+ */
+export type WarehousePlacement = 'DRAWER' | 'FLOOR'
+
+/** The value the drawer selector uses for the floor option. */
+export const FLOOR_OPTION = 'FLOOR' as const
+
 export type WarehouseLocationInput = {
   room: number
   route: number
-  drawer: number
+  /** Null when, and only when, `placement` is `FLOOR`. */
+  drawer: number | null
+  placement: WarehousePlacement
 }
 
 export type LocationValidationError =
@@ -165,6 +181,16 @@ export type LocationValidationError =
   | 'ROUTE_OUT_OF_RANGE'
   | 'ROUTE_NOT_IN_ROOM'
   | 'DRAWER_OUT_OF_RANGE'
+  | 'PLACEMENT_INVALID'
+  /** A drawer number was sent for a floor placement, or none for a drawer. */
+  | 'PLACEMENT_DRAWER_MISMATCH'
+
+/** True when the stored shape says "on the floor". */
+export function isFloorPlacement(
+  location: Pick<WarehouseLocationInput, 'placement'>
+): boolean {
+  return location.placement === 'FLOOR'
+}
 
 /**
  * The single validator for a location, used by every write path -- the staff
@@ -176,7 +202,9 @@ export function validateLocation(
   config: WarehouseConfig,
   location: WarehouseLocationInput
 ): LocationValidationError | null {
-  const { room, route, drawer } = location
+  const { room, route, drawer, placement } = location
+
+  if (placement !== 'DRAWER' && placement !== 'FLOOR') return 'PLACEMENT_INVALID'
 
   if (!Number.isInteger(room) || room < MIN_ROOM || room > MAX_ROOM) {
     return 'ROOM_OUT_OF_RANGE'
@@ -184,8 +212,16 @@ export function validateLocation(
   if (!Number.isInteger(route) || route < MIN_ROUTE || route > MAX_ROUTE) {
     return 'ROUTE_OUT_OF_RANGE'
   }
-  if (!Number.isInteger(drawer) || drawer < MIN_DRAWER || drawer > MAX_DRAWER) {
-    return 'DRAWER_OUT_OF_RANGE'
+
+  if (placement === 'FLOOR') {
+    // A floor placement carries no drawer. Accepting one would let two
+    // different stored shapes mean the same thing.
+    if (drawer !== null && drawer !== undefined) return 'PLACEMENT_DRAWER_MISMATCH'
+  } else {
+    if (drawer === null || drawer === undefined) return 'PLACEMENT_DRAWER_MISMATCH'
+    if (!Number.isInteger(drawer) || drawer < MIN_DRAWER || drawer > MAX_DRAWER) {
+      return 'DRAWER_OUT_OF_RANGE'
+    }
   }
 
   const allowed = config.roomRoutes[room]

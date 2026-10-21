@@ -114,7 +114,18 @@ export const staffTheme = {
   sizeTable: 'w-full text-[17px] tabular-nums',
   sizeHead: 'bg-sako-gray-100 text-[14px] font-bold text-text-secondary',
   sizeCell: 'px-3 py-2 text-start',
-  sizeCellZero: 'text-text-secondary',
+  /**
+   * A confirmed zero. Red, because it changes what the picker does -- they stop
+   * looking. `accent-error` is the design system's red; nothing here invents a
+   * colour.
+   */
+  sizeCellZero: 'text-accent-error font-bold',
+  /** The `אזל מהמלאי` label on a single size. */
+  soldOutTag: 'text-accent-error font-bold text-[14px] whitespace-nowrap',
+  /** The same label for a whole colour, as a badge beside the colour name. */
+  soldOutBadge:
+    'inline-flex items-center rounded-sako-sm bg-accent-error/10 text-accent-error ' +
+    'border border-accent-error/40 px-2 py-1 text-[14px] font-bold whitespace-nowrap',
   totalRow: 'border-t border-border-subtle font-bold',
 
   // --- states ------------------------------------------------------------

@@ -26,6 +26,7 @@
 import { COLOR_CODE_MAP } from '../color-codes'
 import { getColorName } from '../colors'
 import type { VerifoneItemStock } from '../verifone-stock-parse'
+import type { WarehousePlacement } from './warehouse-config'
 import { staffText, unknownColorLabel } from './messages'
 
 /** Verifone marks a one-size item with this in the size slice. */
@@ -34,7 +35,9 @@ const ONE_SIZE_CODE = 'OS'
 export type StaffLocation = {
   room: number
   route: number
-  drawer: number
+  /** Null when, and only when, `placement` is `FLOOR`. */
+  drawer: number | null
+  placement: WarehousePlacement
   /** Optimistic-concurrency token; the client sends it back on save. */
   version: number
   updatedAt: string | null
@@ -47,6 +50,13 @@ export type StaffSizeRow = {
   /** What the picker reads. */
   label: string
   quantity: number
+  /**
+   * A CONFIRMED zero: Verifone answered for this size and said none.
+   *
+   * Only ever set on a card whose `stockKnown` is true, so "we could not read
+   * the stock" can never reach the screen as "sold out".
+   */
+  soldOut: boolean
   /**
    * False when the size slice is neither two characters nor `OS`. The parser
    * admits a 12-character `ProductCode` whose size comes out one character
@@ -70,6 +80,14 @@ export type StaffColorCard = {
   sizes: StaffSizeRow[]
   totalQuantity: number
   image: { url: string; alt: string } | null
+  /**
+   * The whole colour is out of stock: every size Verifone returned for it is a
+   * confirmed zero.
+   *
+   * Requires `stockKnown`, and requires at least one size -- a colour with no
+   * rows at all is "we were told nothing about this", not "there is none".
+   */
+  soldOut: boolean
   /**
    * False on a card built from a stored location alone, because Verifone could
    * not be reached. `sizes` is then empty and `totalQuantity` is meaningless --
@@ -244,6 +262,9 @@ export function combineStock(input: CombineStockInput): CombineStockOutput {
           size: row.size,
           label: sizeLabel(row.size, trusted),
           quantity: row.quantity,
+          // The quantity is trustworthy even when the size LABEL is not: the
+          // two come from different parts of the ProductCode.
+          soldOut: row.quantity === 0,
           trusted,
         }
       })
@@ -251,6 +272,10 @@ export function combineStock(input: CombineStockInput): CombineStockOutput {
 
     const colorTotal = sizes.reduce((sum, row) => sum + row.quantity, 0)
     totalQuantity += colorTotal
+
+    // Every returned size is a confirmed zero. `sizes.length > 0` matters: a
+    // colour Verifone said nothing about must not be labelled sold out.
+    const colorSoldOut = sizes.length > 0 && sizes.every((row) => row.soldOut)
 
     colors.push({
       colorCode,
@@ -262,6 +287,7 @@ export function combineStock(input: CombineStockInput): CombineStockOutput {
       totalQuantity: colorTotal,
       // Only ever this colour's own image.
       image: (colorSlug && catalog?.imagesByColorSlug?.[colorSlug]) || null,
+      soldOut: colorSoldOut,
       stockKnown: true,
     })
   }
@@ -297,6 +323,10 @@ export function locationOnlyCards(
         sizes: [],
         totalQuantity: 0,
         image: (colorSlug && catalog?.imagesByColorSlug?.[colorSlug]) || null,
+        // Verifone could not be reached, so nothing is confirmed about stock.
+        // This is the single most important false here: an unreachable ERP
+        // must never render as "sold out".
+        soldOut: false,
         stockKnown: false,
       }
     })

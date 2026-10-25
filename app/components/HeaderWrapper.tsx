@@ -1,6 +1,7 @@
 'use client'
 
 import PromoSection from '@/app/components/PromoSection'
+import PromoCountdown from '@/app/components/PromoCountdown'
 import Navigation from '@/app/components/Navigation'
 import type { NavigationCategoriesData } from '@/lib/navigation-categories'
 
@@ -21,6 +22,13 @@ export default function HeaderWrapper({ lng, initialNavData }: HeaderWrapperProp
           nav's containing block the page column, so it pins for the whole scroll
           with no JS, no measured offsets and nothing to shift during load. */}
       <PromoSection lng={lng} />
+      {/* Second row of that same band, on the same ground and in the same
+          gutter, so the ribbon and the campaign clock read as one element. A
+          sibling rather than a child of PromoSection because the ribbon is one
+          big <a> and a live timer has no business inside a link. It removes
+          itself when the campaign closes; nothing above or below it is
+          positioned off its height, so that costs one collapse and no shift. */}
+      <PromoCountdown lng={lng} />
       {/* The only persistent element. Its flow position is directly under the
           band, so it travels up with the page and lands on top: 0 exactly as the
           band's last pixel leaves - no gap above it, and no height removed from

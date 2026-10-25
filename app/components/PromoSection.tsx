@@ -17,13 +17,36 @@ export type PromoItem = {
 
 const DEFAULT_PROMOS: PromoItem[] = [
   {
+    // Kept short enough to set on ONE line at 320px, which is a layout
+    // constraint rather than a copy preference: this band has no ellipsis
+    // clamp by design (see the note further down), so a promo that wraps makes
+    // it 50px instead of 38px - and because the promos rotate, the band would
+    // then grow and shrink every 4s and walk the hero 12px down the page with
+    // it. Measured at 320/360/390: the longer draft of this line wrapped at all
+    // three and scored 0.027 CLS on the homepage; this one is flat at 0.
     text: {
-      he: 'הדרופ החדש כבר כאן | NEW IN SAKO OR',
-      en: 'The New Drop Is Here | Shop NEW IN SAKO OR',
+      he: 'מבצע הבחירות | 10% באתר ובחנות | ELEC10',
+      en: 'Election Sale | 10% off everything | ELEC10',
     },
     href: '/collection/campaign/new-collection',
-    icon: '✨',
+    icon: '🗳️',
+    // Deliberately no countdownEnd. The campaign clock is PromoCountdown, the
+    // band's second row - it carries the "המבצע מסתיים בעוד" label and days,
+    // which this component's inline d:hh:mm:ss has neither of. Setting it here
+    // too would print the same deadline twice, one row apart.
   },
+  // Parked for the Election Sale, not retired - put it back when the campaign
+  // ends. Note what its absence changes: with one promo left the band no longer
+  // rotates at all (the interval is skipped at items.length <= 1), so the
+  // Election line is now permanent rather than one of two.
+  // {
+  //   text: {
+  //     he: 'הדרופ החדש כבר כאן | NEW IN SAKO OR',
+  //     en: 'The New Drop Is Here | Shop NEW IN SAKO OR',
+  //   },
+  //   href: '/collection/campaign/new-collection',
+  //   icon: '✨',
+  // },
   // {
   //  {
   //   text: {

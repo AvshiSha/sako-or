@@ -373,14 +373,41 @@ export function useCartPricing({
     initializedCouponsRef.current = true
   }, [loadCouponsFromStorage])
 
+  /**
+   * Restore the codes the other screen applied.
+   *
+   * The `cartItemsPayload.length` guard is the whole fix for the cart-to-
+   * checkout handoff, and it has to be *here* rather than only inside
+   * `revalidateCouponCodes`. That function bails when the payload is empty — it
+   * has to, since /api/coupons/apply rejects a cart of zero lines — but this
+   * effect used to hand over the codes and null the ref before calling it. So
+   * the one restore attempt was spent during a window in which it could not
+   * possibly succeed, and nothing was left to retry with.
+   *
+   * That window is every route mount, not a rare race: `useCart` flips
+   * `loading` to false in the same tick it seeds each line from localStorage
+   * with `maxStock: 0` / `stockStatus: 'checking'`, and `purchasableItems`
+   * filters exactly those out. So `loading === false` arrives a full server
+   * round trip before the cart has a single priceable line in it — and the
+   * coupon, the discount and the order total were dropped in between.
+   *
+   * Holding the codes instead costs nothing when the cart never settles (an
+   * empty or wholly out-of-stock cart totals zero anyway, and the codes stay in
+   * storage for the next visit), and re-runs here the moment a real line
+   * appears, because the signature changes.
+   */
   useEffect(() => {
     if (!initializedCouponsRef.current || loading) return
     if (!pendingCodesRef.current || pendingCodesRef.current.length === 0) return
+    if (cartItemsPayload.length === 0) return
 
     const codes = [...pendingCodesRef.current]
     pendingCodesRef.current = null
+    // Claim this signature so the cart-changed effect below does not
+    // immediately re-validate the same codes against the same cart.
+    lastCartSignatureRef.current = cartItemsSignature
     revalidateCouponCodes(codes, { silent: true })
-  }, [loading, revalidateCouponCodes, cartItemsSignature])
+  }, [cartItemsPayload.length, cartItemsSignature, loading, revalidateCouponCodes])
 
   // Re-check applied coupons whenever the cart's contents actually change.
   useEffect(() => {

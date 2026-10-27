@@ -15,7 +15,8 @@ import { useEffect, useMemo, useState } from 'react'
  */
 
 /**
- * End of the campaign: midnight closing Tuesday 27 October 2026, Israel time.
+ * End of the campaign: 07:00 on Wednesday 28 October 2026, Israel time
+ * (extended from the original midnight close).
  *
  * The offset is written out rather than left to the visitor's clock, so the
  * deadline is the same instant for a shopper in Tel Aviv and one in New York.
@@ -23,8 +24,15 @@ import { useEffect, useMemo, useState } from 'react'
  * October (25 Oct 2026), so the campaign closes on IST. A different campaign
  * date needs this checked again - between late March and late October the
  * right literal is +03:00. Resolved against the IANA database, not assumed.
+ *
+ * This is also the coupon's expiry. ELEC10's `endDate` in the database is set
+ * from this exact constant by scripts/election-coupon-deadline.ts, which
+ * imports it rather than restating it - so the clock on screen and the code at
+ * the till cannot drift apart by one of them being edited alone. Changing the
+ * literal below means re-running that script with `--apply`; running it without
+ * the flag reports whether the two currently agree.
  */
-export const ELECTION_SALE_END = '2026-10-28T00:00:00+02:00'
+export const ELECTION_SALE_END = '2026-10-28T07:00:00+02:00'
 
 /** Parsed once per module, not per render: the string is a constant, and
  * Date.parse of an ISO string with an explicit offset gives the same instant on

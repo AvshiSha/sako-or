@@ -22,31 +22,28 @@ const DEFAULT_PROMOS: PromoItem[] = [
     // clamp by design (see the note further down), so a promo that wraps makes
     // it 50px instead of 38px - and because the promos rotate, the band would
     // then grow and shrink every 4s and walk the hero 12px down the page with
-    // it. Measured at 320/360/390: the longer draft of this line wrapped at all
-    // three and scored 0.027 CLS on the homepage; this one is flat at 0.
+    // it. Measured at 320/360/390: an earlier, longer draft wrapped at all
+    // three and scored 0.027 CLS on the homepage; this one is flat at 0. The
+    // Winter 27 copy below was re-measured in Ploni bold 12px at those same
+    // three widths when it replaced the Election line - one line and a 24px
+    // row at each, identical to the line it replaced.
     text: {
-      he: 'מבצע הבחירות | 10% באתר ובחנות | ELEC10',
-      en: 'Election Sale | 10% off everything | ELEC10',
+      he: 'קולקציית WINTER 27 כבר כאן',
+      en: 'The WINTER 27 collection is here',
     },
     href: '/collection/campaign/new-collection',
-    icon: '🗳️',
-    // Deliberately no countdownEnd. The campaign clock is PromoCountdown, the
-    // band's second row - it carries the "המבצע מסתיים בעוד" label and days,
-    // which this component's inline d:hh:mm:ss has neither of. Setting it here
-    // too would print the same deadline twice, one row apart.
+    icon: '✨',
+    // Deliberately no countdownEnd - and now nothing to count down to either.
+    // This promo is an arrival, not an offer with a deadline: the Election
+    // Sale's clock was PromoCountdown, the band's second row, which retires
+    // itself once its date passes (it did, 28 Oct 2026 07:00 IST).
   },
-  // Parked for the Election Sale, not retired - put it back when the campaign
-  // ends. Note what its absence changes: with one promo left the band no longer
-  // rotates at all (the interval is skipped at items.length <= 1), so the
-  // Election line is now permanent rather than one of two.
-  // {
-  //   text: {
-  //     he: 'הדרופ החדש כבר כאן | NEW IN SAKO OR',
-  //     en: 'The New Drop Is Here | Shop NEW IN SAKO OR',
-  //   },
-  //   href: '/collection/campaign/new-collection',
-  //   icon: '✨',
-  // },
+  // The old "New Drop" line lived here, parked for the Election Sale. It is not
+  // being restored: 'הדרופ החדש כבר כאן | NEW IN SAKO OR' and the Winter 27
+  // line above say the same thing and point at the same collection, so the band
+  // would rotate between two near-identical messages. One promo also means the
+  // rotation interval is skipped entirely (items.length <= 1), which is why
+  // this line is permanent rather than one of two.
   // {
   //  {
   //   text: {

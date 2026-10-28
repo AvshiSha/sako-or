@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
 import { buildMetadata } from '@/lib/seo'
-import { getHeroImageUrl } from '@/lib/image-urls'
+import { getWinter27PosterUrl } from '@/lib/image-urls'
 import { languages } from '@/i18n/settings'
 
 import HomeHero from '@/app/components/HomeHero'
@@ -27,9 +27,9 @@ const homeDescriptions = {
  * heading hierarchy, which is the same trade-off the blog index makes
  * (`news/page.tsx`).
  *
- * Deliberately not the hero's own aria-label ("קולקציית החורף של SAKO 2026"):
- * that names one campaign, and it would go stale the next time the hero changes.
- * This names the page.
+ * Deliberately not the hero's own aria-label, whatever it currently reads:
+ * that names one campaign, and it would go stale the next time the hero changes
+ * - as it has, twice, since this was written. This names the page.
  */
 const homeHeadings = {
   he: 'סכו עור – נעלי נשים, תיקים ואקססוריז מעור',
@@ -52,7 +52,11 @@ export async function generateMetadata({
     title,
     description,
     url,
-    image: getHeroImageUrl(),
+    // The Winter 27 key art, which is also the hero video's poster - the share
+    // card and the page a visitor lands on therefore open on the same image.
+    // Portrait (1320x1854), so Facebook/X/WhatsApp will centre-crop it to their
+    // own landscape card; the "SAKO OR" lockup sits mid-frame and survives that.
+    image: getWinter27PosterUrl(),
     type: 'website',
     locale,
     alternateLocales: languages

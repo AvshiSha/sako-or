@@ -20,6 +20,9 @@ const imageUrlMappings: Record<string, string> = {
   "/images/hero/new-drop-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fnew_drop_26_aug_desktop.webp?alt=media&token=7bb97f09-3c45-4c0d-a332-e1e64b96ae1c",
   "/images/hero/new-drop-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fnew_drop_aug_26_mobile.webp?alt=media&token=981ce80f-e29e-4c58-8285-31ff41ff9951",
   "/images/hero/election-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FElection%2FElection_sale_desktop.webp?alt=media&token=a96c33f8-acc1-4089-a72a-c2fbf4d1ce42",
+  "/images/hero/winter-27-poster.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fwinter-27-poster.webp?alt=media&token=36d5807f-cbb8-433b-8ee7-d6d86471ee51",
+  "/images/hero/winter-27-poster-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fwinter-27-poster-mobile.webp?alt=media&token=9e408445-d2eb-429b-a556-015000e60f4b",
+  "/images/hero/winter-27-poster-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fwinter-27-poster-desktop.webp?alt=media&token=d39ab5b5-8e0a-4aa8-9bce-5be0611e89fd",
   "/images/hero/election-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FElection%2FElection_sale_mobile.webp?alt=media&token=f9ffa373-ede9-4c04-9b5d-f0837ae0d621",
   "/images/hero/main-hero.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
   "/images/hero/bags-hero-poster.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbags_image_hero_mobile.webp?alt=media&token=d55a6e62-028f-4793-988e-65aa54d63536",
@@ -43,8 +46,18 @@ const videoUrlMappings: Record<string, string> = {
   "/videos/sako-or-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_OR_EDITION.mp4?alt=media&token=84b2745c-0008-4c91-9c88-ea251489954c",
   "/videos/hero3-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2FSAKO_SALES_DESKTOP.mp4?alt=media&token=7b109db9-67f6-47c8-b8cd-99c072f68a02",
   "/videos/hero3-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Fthird_section_new.mp4?alt=media&token=a049aaf7-08de-43be-ba86-1e4251ae6e53",
-  "/videos/home-hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_mobile_v2.mp4?alt=media&token=30a18efe-6cb2-4e70-869d-ecb4bfea36d9",
-  "/videos/home-hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2Fhero_desktop_v2.mp4?alt=media&token=546a7259-a994-47f0-a9e8-b81c48b3d78d",
+  // "Winter 27" homepage hero. Mobile is 1080x1920 (9:16), desktop 1920x1080
+  // (16:9); HomeHero's aspect-ratio boxes are built from these numbers.
+  //
+  // These are the *_faststart cuts, not the originals the campaign shipped as.
+  // The delivered files carried `moov` last (ftyp free mdat moov), so a browser
+  // had to range-request the tail before it could decode a single frame. These
+  // are the same files with `moov` moved in front of `mdat` and the stco chunk
+  // offsets rebased - a pure remux, verified frame-identical to the originals,
+  // same byte count, nothing re-encoded. The originals are still in the bucket
+  // under their old names if these ever need to be rolled back.
+  "/videos/home-hero-mobile.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2FNov_vid_1_mobile_faststart.mp4?alt=media&token=04ab879c-d531-4916-b6c5-2bb9956dd690",
+  "/videos/home-hero-desktop.mp4": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/videos%2Ffirst_hero_home%2FNov_vid_1_desktop_faststart.mp4?alt=media&token=0e9a6f23-49b5-48c2-bffc-e0a8e8c96cc6",
 };
 
 /**
@@ -160,6 +173,36 @@ export function getHomeHeroDesktopVideoUrl(): string {
 }
 
 /**
+ * "Winter 27" campaign key art: 1320x1854 portrait. OpenGraph/social only.
+ *
+ * Deliberately NOT the hero video's poster. It is a different frame from a
+ * different setup, and it is portrait, so in the 2:1 desktop hero box
+ * object-cover kept only the middle ~36% of its height - a headless crop that
+ * then jump-cut to the video's wide opening shot. The posters below are the
+ * videos' own first frames instead.
+ */
+export function getWinter27PosterUrl(): string {
+  return getImageUrl("/images/hero/winter-27-poster.webp");
+}
+
+/**
+ * Hero video posters: frame 0 of each cut, decoded from the exact MP4s that
+ * ship and re-encoded as WebP (~51KB each, native 1080x1920 / 1920x1080).
+ *
+ * Being the first frame is the whole point - the poster and the first thing the
+ * decoder paints are the same picture, so the handover is invisible rather than
+ * a cut between two different images. Re-export these whenever the MP4s change
+ * or the two will drift apart.
+ */
+export function getWinter27MobilePosterUrl(): string {
+  return getImageUrl("/images/hero/winter-27-poster-mobile.webp");
+}
+
+export function getWinter27DesktopPosterUrl(): string {
+  return getImageUrl("/images/hero/winter-27-poster-desktop.webp");
+}
+
+/**
  * Get Firebase Storage URL for the desktop hero video
  */
 export function getHeroDesktopVideoUrl(): string {
@@ -222,17 +265,24 @@ export function getHomeCollectionMenImageUrl(): string {
  * rather than imageUrlMappings keys: these were uploaded straight to
  * images/home_collections/ and carry their own access tokens, so there is no
  * local path to map from.
+ *
+ * November 2026 refresh. The three *_nov_1 cuts match the aspect ratios of the
+ * artwork they replace - 1792x2400 (0.747) for the tall slot, 2048x1376 (1.488)
+ * for the two wide ones - so they drop into ShopByCollection's existing
+ * aspect-[390/544] lg:aspect-[863/1149] and aspect-[3/2] lg:aspect-[863/574]
+ * boxes with the same object-cover crop as before. Positions, headings, CTAs
+ * and hrefs are untouched in lib/home-collections.ts.
  */
 export function getHomeBannerPlatformLoafersImageUrl(): string {
-  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Fplatform_laofers_collection_home_page.webp?alt=media&token=33417ace-d482-4d1c-a8be-867ba0a2d133";
+  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Flaofers_nov_1.webp?alt=media&token=68c7147e-f0d4-4de2-ad38-0ba66a2a7b63";
 }
 
 export function getHomeBannerBagsImageUrl(): string {
-  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Fbags_collection.webp?alt=media&token=72a2e278-8d50-4148-ab37-2663cf784135";
+  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Fbags_nov_1.webp?alt=media&token=eba96599-7a59-4065-8407-434d2272b586";
 }
 
 export function getHomeBannerLowBootsImageUrl(): string {
-  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Flow_boots_collection.webp?alt=media&token=3878c118-b235-4f1f-a53a-10ac2de2fc24";
+  return "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Flow_boots_nov_1.webp?alt=media&token=f4061246-1b3f-447f-ba20-85642f4510c7";
 }
 
 /**

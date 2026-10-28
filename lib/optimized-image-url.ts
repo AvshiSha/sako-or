@@ -16,19 +16,29 @@ export function getOptimizedRemoteImageUrl(
   return `/_next/image?${params.toString()}`
 }
 
+/**
+ * Quality for the poster helpers below. It MUST be one of `images.qualities` in
+ * next.config.ts (currently [75, 85, 100]) - the optimizer answers 400 for any
+ * other value and the poster silently never loads.
+ *
+ * These helpers asked for 80 until this was spotted, which is not in that list,
+ * so every poster built through them was a dead request.
+ */
+const POSTER_QUALITY = 85
+
 /** Mobile hero video poster (9:16, ~2× typical phone width). */
 export function getHomeHeroMobilePosterUrl(posterSrc: string): string {
-  return getOptimizedRemoteImageUrl(posterSrc, 1080, 80)
+  return getOptimizedRemoteImageUrl(posterSrc, 1080, POSTER_QUALITY)
 }
 
 /** Mobile hero video poster (~412px display width). */
 export function getMobileVideoPosterUrl(posterSrc: string): string {
-  return getOptimizedRemoteImageUrl(posterSrc, 828, 80)
+  return getOptimizedRemoteImageUrl(posterSrc, 828, POSTER_QUALITY)
 }
 
 /** Desktop hero video poster. */
 export function getDesktopVideoPosterUrl(posterSrc: string): string {
-  return getOptimizedRemoteImageUrl(posterSrc, 1200, 80)
+  return getOptimizedRemoteImageUrl(posterSrc, 1200, POSTER_QUALITY)
 }
 
 /**

@@ -104,11 +104,29 @@ export default function PromoCountdown({ lng, endsAt }: PromoCountdownProps) {
   const [remaining, setRemaining] = useState<Remaining | null>(null)
 
   useEffect(() => {
-    const tick = () => setRemaining(getRemaining(endMs))
+    let id: ReturnType<typeof setInterval> | null = null
+
+    // Stop the clock the moment it reaches zero. Returning null below does not
+    // unmount this component, so without this the interval kept firing once a
+    // second - for every visitor, on every page, forever - re-rendering a
+    // component whose only output is null. Harmless on 27 Oct 2026, pure waste
+    // on 29 Oct.
+    const tick = () => {
+      const next = getRemaining(endMs)
+      setRemaining(next)
+      if (next.totalMs <= 0 && id !== null) {
+        clearInterval(id)
+        id = null
+      }
+    }
 
     tick()
-    const id = setInterval(tick, 1000)
-    return () => clearInterval(id)
+    if (getRemaining(endMs).totalMs > 0) {
+      id = setInterval(tick, 1000)
+    }
+    return () => {
+      if (id !== null) clearInterval(id)
+    }
   }, [endMs])
 
   // Only ever decided on the client, for the same staleness reason as above.

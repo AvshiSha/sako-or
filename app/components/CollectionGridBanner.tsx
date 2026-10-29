@@ -4,8 +4,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 
-import type { CollectionBanner } from '@/lib/collection-banners'
+import { BANNER_FOCAL_CLASS, type CollectionBanner } from '@/lib/collection-banners'
 import { PRODUCT_CARD_IMAGE_ASPECT, PRODUCT_CARD_INFO_MIN_H } from '@/lib/product-card-layout'
+import { cn } from '@/lib/utils'
 
 /**
  * A merchandising banner occupying one card slot in the product grid.
@@ -91,7 +92,16 @@ export default function CollectionGridBanner({
             playsInline
             preload="none"
             aria-hidden="true"
-            className="h-full w-full object-cover"
+            // The focal class only bites where the slot is wider than the clip
+            // and there is vertical overflow to position - from lg up. On a
+            // phone a 9:16 clip overflows horizontally instead, so the vertical
+            // term is inert there and this stays safe to set per banner.
+            className={cn(
+              'h-full w-full object-cover',
+              BANNER_FOCAL_CLASS[
+                (banner.media.type === 'video' ? banner.media.focal : undefined) ?? 'center'
+              ]
+            )}
           />
         ) : banner.media.type === 'image' && banner.media.srcMobile ? (
           /* Art direction, not responsive sizing. The slot is ~1.84 tall on

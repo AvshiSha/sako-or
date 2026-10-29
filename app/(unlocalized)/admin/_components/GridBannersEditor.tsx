@@ -7,8 +7,10 @@ import { auth } from '@/lib/firebase';
 import { uploadCmsImage } from '@/lib/upload-cms-image';
 import {
   BANNER_CADENCE,
+  BANNER_FOCAL_CLASS,
   MAX_COLLECTION_BANNERS,
   type CollectionBanner,
+  type CollectionBannerFocal,
 } from '@/lib/collection-banners';
 
 /**
@@ -299,7 +301,16 @@ export default function GridBannersEditor({
                 <div className="h-24 w-20 shrink-0 overflow-hidden rounded border border-gray-200 bg-gray-50">
                   {banner.media.src ? (
                     banner.media.type === 'video' ? (
-                      <video src={banner.media.src} muted className="h-full w-full object-cover" />
+                      // This thumbnail is 80x96, within a few percent of the
+                      // desktop slot's own proportions, so the focal choice
+                      // below previews here more or less as it will ship.
+                      <video
+                        src={banner.media.src}
+                        muted
+                        className={`h-full w-full object-cover ${
+                          BANNER_FOCAL_CLASS[banner.media.focal ?? 'center']
+                        }`}
+                      />
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={banner.media.src} alt="" className="h-full w-full object-cover" />
@@ -375,6 +386,40 @@ export default function GridBannersEditor({
                       />
                       <span className="mt-1 block text-xs text-gray-500">
                         Shown before the video loads, and instead of it for reduced-motion. Required.
+                      </span>
+                    </label>
+                  )}
+
+                  {/* Videos have no second crop the way images have a mobile
+                      upload, so this is the only control over what survives the
+                      desktop slot - which keeps roughly the middle 70-75% of a
+                      9:16 clip's height from 1280px up. It does nothing on a
+                      phone, where such a clip is cropped on the sides instead. */}
+                  {banner.media.type === 'video' && (
+                    <label className="text-sm">
+                      <span className="mb-1 block font-medium text-gray-700">
+                        Keep in frame <span className="font-normal text-gray-500">(desktop)</span>
+                      </span>
+                      <select
+                        value={banner.media.focal ?? 'center'}
+                        onChange={(event) => {
+                          const focal = event.target.value as CollectionBannerFocal;
+                          if (banner.media.type !== 'video') return;
+                          update(banner.id, {
+                            media: { ...banner.media, focal },
+                          });
+                        }}
+                        className="block w-full rounded border border-gray-300 px-2 py-1 text-xs"
+                      >
+                        <option value="top">Top — faces near the top edge</option>
+                        <option value="upper">Upper — bias up, keep some foreground</option>
+                        <option value="center">Centre (default)</option>
+                        <option value="lower">Lower — bias down, keep some sky</option>
+                        <option value="bottom">Bottom — product on the ground</option>
+                      </select>
+                      <span className="mt-1 block text-xs text-gray-500">
+                        Preview at a desktop width before saving: a wide shot can lose a head at
+                        centre and the product at top.
                       </span>
                     </label>
                   )}

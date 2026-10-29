@@ -3102,7 +3102,16 @@ export const storageService = {
   async uploadImage(file: File, path: string): Promise<string> {
     try {
       const storageRef = ref(storage, path);
-      const snapshot = await uploadBytes(storageRef, file);
+      // Without explicit metadata Firebase stores no cacheControl, and the
+      // download URL then serves `private, max-age=0` - every visitor re-fetches
+      // the full asset on every page view. That is invisible on a 40KB thumbnail
+      // and expensive on a 700KB banner video, which is what this path mostly
+      // carries now. Safe to mark immutable because callers mint a fresh
+      // `${Date.now()}-${random}` filename per upload (see uploadCmsImage), so a
+      // replacement is always a new URL rather than new bytes at the old one.
+      const snapshot = await uploadBytes(storageRef, file, {
+        cacheControl: 'public, max-age=31536000, immutable',
+      });
       const downloadURL = await getDownloadURL(snapshot.ref);
       return downloadURL;
     } catch (error) {

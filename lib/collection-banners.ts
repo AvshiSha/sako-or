@@ -8,6 +8,37 @@
  * The row is derived here at runtime instead.
  */
 
+/**
+ * Where a video's centre of interest sits vertically, used as `object-position`.
+ *
+ * Only videos carry this. An image banner solves the same problem with
+ * `srcMobile` - a second crop - which a video cannot have, because the slot is
+ * filled by one file at every width (see the admin editor's media field).
+ *
+ * It is needed because the slot's aspect is not fixed: measured from the card
+ * tokens it runs 0.52 at 360px to 0.82 at 1920px. A 9:16 clip therefore loses
+ * nothing vertically on a phone but 25-31% of its height from 1280px up, and
+ * `object-cover` takes that out of the middle. Whether the middle is the right
+ * place is a property of the clip, not of the grid: a campaign film that pushes
+ * in on a shoe wants its lower half, and one framed on a model's face wants its
+ * upper. Centre is correct often enough to stay the default.
+ */
+export type CollectionBannerFocal = 'top' | 'upper' | 'center' | 'lower' | 'bottom'
+
+/**
+ * Full class literals, not interpolated - Tailwind scans source text, so
+ * `object-[50%_${n}%]` would never be generated.
+ */
+export const BANNER_FOCAL_CLASS: Record<CollectionBannerFocal, string> = {
+  top: 'object-top',
+  upper: 'object-[50%_25%]',
+  center: 'object-center',
+  lower: 'object-[50%_75%]',
+  bottom: 'object-bottom',
+}
+
+const FOCAL_VALUES: CollectionBannerFocal[] = ['top', 'upper', 'center', 'lower', 'bottom']
+
 export type CollectionBannerMedia =
   /**
    * `src` is the desktop artwork; `srcMobile` is optional art direction for the
@@ -26,7 +57,7 @@ export type CollectionBannerMedia =
    * and these sit in a listing that must stay smooth on a phone. `poster` is
    * required so the first paint is an image and the video stays opt-in weight.
    */
-  | { type: 'video'; src: string; poster: string }
+  | { type: 'video'; src: string; poster: string; focal?: CollectionBannerFocal }
 
 export interface CollectionBanner {
   id: string
@@ -68,7 +99,17 @@ function sanitizeMedia(input: unknown): CollectionBannerMedia | null {
   // A video without a poster would paint nothing until it downloads, so the
   // poster is part of what makes the record valid rather than an optional extra.
   if (media.type === 'video' && isNonEmptyString(media.src) && isNonEmptyString(media.poster)) {
-    return { type: 'video', src: media.src.trim(), poster: media.poster.trim() }
+    const video: CollectionBannerMedia = {
+      type: 'video',
+      src: media.src.trim(),
+      poster: media.poster.trim(),
+    }
+    // Omitted rather than defaulted to 'center', so records saved before this
+    // field existed and ones explicitly centred stay byte-identical in Firestore.
+    if (FOCAL_VALUES.includes(media.focal as CollectionBannerFocal)) {
+      video.focal = media.focal as CollectionBannerFocal
+    }
+    return video
   }
   return null
 }

@@ -190,6 +190,35 @@ test('sanitize drops entries the grid could not render', () => {
   assert.deepEqual(cleaned, [])
 })
 
+test('sanitize keeps a valid video focal and drops anything else', () => {
+  const [upper, bogus, absent] = sanitizeCollectionBanners([
+    {
+      id: 'upper',
+      media: { type: 'video', src: '/a.mp4', poster: '/a.webp', focal: 'upper' },
+      href: '/x',
+      afterProducts: 1,
+    },
+    {
+      id: 'bogus',
+      media: { type: 'video', src: '/a.mp4', poster: '/a.webp', focal: 'sideways' },
+      href: '/x',
+      afterProducts: 2,
+    },
+    {
+      id: 'absent',
+      media: { type: 'video', src: '/a.mp4', poster: '/a.webp' },
+      href: '/x',
+      afterProducts: 3,
+    },
+  ])
+
+  assert.equal(upper.media.type === 'video' && upper.media.focal, 'upper')
+  // Unrecognised and omitted both come back with no key at all rather than an
+  // explicit 'center', so older records round-trip unchanged.
+  assert.ok(bogus.media.type === 'video' && !('focal' in bogus.media), 'bogus focal dropped')
+  assert.ok(absent.media.type === 'video' && !('focal' in absent.media), 'absent stays absent')
+})
+
 test('sanitize refuses off-site destinations', () => {
   const cleaned = sanitizeCollectionBanners([
     { id: 'a', media: { type: 'image', src: '/a.webp' }, href: 'https://elsewhere.com', afterProducts: 4 },

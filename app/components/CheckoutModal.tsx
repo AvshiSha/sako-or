@@ -466,6 +466,8 @@ export default function CheckoutModal({
         city: formData.deliveryAddress.city,
         zip: formData.deliveryAddress.zipCode,
         country: 'israel',
+        // Guests resolve to the persisted guest id inside the pixel helper.
+        externalId: firebaseUser?.uid,
       });
 
       // Mark cart items as CHECKED_OUT for signed-in users

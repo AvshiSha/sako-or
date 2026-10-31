@@ -7,19 +7,20 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const lpid = searchParams.get('lpid');
+    // The success page falls back to ?orderId= when CardCom redirects without an LPID.
+    // That call used to 400 here, which left the page with no server-verified status.
+    const orderId = searchParams.get('orderId');
 
-    if (!lpid) {
+    if (!lpid && !orderId) {
       return NextResponse.json(
-        { error: 'Missing required parameter: lpid' },
+        { error: 'Missing required parameter: lpid or orderId' },
         { status: 400 }
       );
     }
 
-    // Find order by CardCom Low Profile ID
+    // Find order by CardCom Low Profile ID, or by order number when that is all we have
     const order = await prisma.order.findFirst({
-      where: {
-        cardcomLowProfileId: lpid
-      },
+      where: lpid ? { cardcomLowProfileId: lpid } : { orderNumber: orderId as string },
       include: {
         orderItems: true,
         payments: {

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { PaymentStatus, PaymentStatusResponse } from '../types/checkout';
 import Link from 'next/link';
 import { trackPurchase } from '@/lib/dataLayer';
+import { hasPurchaseBeenTracked, markPurchaseTracked } from '@/lib/purchase-tracking-guard';
 
 interface PaymentResultProps {
   lpid: string;
@@ -84,6 +85,13 @@ export default function PaymentResult({
       return;
     }
 
+    // Shared with the /Success page: either component can report the same order, and
+    // this one is reachable again after a reload.
+    if (hasPurchaseBeenTracked(paymentData.order.orderNumber)) {
+      hasTrackedPurchase.current = true;
+      return;
+    }
+
     try {
       const items =
         paymentData.order.orderItems?.length > 0
@@ -101,6 +109,8 @@ export default function PaymentResult({
                 quantity: 1,
               },
             ];
+
+      markPurchaseTracked(paymentData.order.orderNumber);
 
       trackPurchase(paymentData.order.orderNumber, items, {
         currency: paymentData.order.currency || 'ILS',

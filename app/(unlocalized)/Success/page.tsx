@@ -7,6 +7,7 @@ import Footer from '@/app/components/Footer';
 import { trackPurchase, PurchaseUserProperties } from '@/lib/dataLayer';
 import { useAuth } from '@/app/contexts/AuthContext';
 import { clearCartAfterPurchase } from '@/lib/cart-clear';
+import { hasPurchaseBeenTracked, markPurchaseTracked } from '@/lib/purchase-tracking-guard';
 
 function SuccessPageContent() {
   const searchParams = useSearchParams();
@@ -69,98 +70,18 @@ function SuccessPageContent() {
       currency: currency || 'ILS',
     });
 
-    // Track purchase event for GA4 data layer (use ref to avoid stale closure in async callbacks)
-    // Fire if we have either LPID or OrderId; derive values from backend if not in URL
+    // Report Purchase only once the server confirms the payment actually succeeded.
+    //
+    // This used to fire as soon as `lpid || orderId` was present, and its fallback
+    // branches took the value straight from the `amount` URL parameter — so a failed
+    // payment landing here, or anyone opening /Success?orderId=x&amount=9999, reported
+    // a Purchase with an attacker-chosen value. Values now come only from the order
+    // record, and nothing is reported until paymentStatus is 'completed'.
     if (!hasTrackedRef.current && (lpid || orderId)) {
       hasTrackedRef.current = true;
-      try {
-        // Fetch order details from API (prefer LPID)
-        const url = lpid
-          ? `/api/payments/by-low-profile-id?lpid=${encodeURIComponent(lpid)}`
-          : `/api/payments/by-low-profile-id?orderId=${encodeURIComponent(orderId as string)}`;
-
-        fetch(url)
-          .then(res => res.json())
-          .then(data => {
-            const order = data?.order;
-            if (order && Array.isArray(order.orderItems) && order.orderItems.length > 0) {
-              const orderItems = order.orderItems.map((item: any) => ({
-                name: item.productName || 'Unknown Product',
-                id: item.productSku || 'unknown',
-                price: item.price || 0,
-                brand: undefined,
-                categories: undefined,
-                variant: item.size || undefined,
-                quantity: item.quantity || 1
-              }));
-
-              // Get user properties from checkout if available
-              const userProperties: PurchaseUserProperties = {
-                customer_email: order.customerEmail || undefined,
-                user_id: undefined,
-                customer_first_name: undefined,
-                customer_last_name: undefined,
-                customer_phone: undefined,
-                customer_city: undefined,
-                customer_zip: undefined,
-                customer_address_1: undefined,
-                customer_address_2: undefined,
-                customer_country: undefined,
-                customer_province: undefined
-              };
-
-              trackPurchase(
-                order.orderNumber || orderId,
-                orderItems,
-                {
-                  currency: order.currency || currency || 'ILS',
-                  value: typeof order.total === 'number' ? order.total : (amount ? parseFloat(amount) : undefined),
-                  tax: typeof order.tax === 'number' ? order.tax : undefined,
-                  shipping: typeof order.deliveryFee === 'number' ? order.deliveryFee : undefined,
-                  affiliation: 'Sako Online Store',
-                  userProperties: userProperties
-                }
-              );
-            } else {
-              // Fallback: track purchase with minimal data
-              trackPurchase(
-                order?.orderNumber || orderId || 'unknown',
-                [{
-                  name: 'Order',
-                  id: 'order',
-                  price: order?.total ?? (amount ? parseFloat(amount) : 0),
-                  quantity: 1
-                }],
-                {
-                  currency: order?.currency || currency || 'ILS',
-                  value: order?.total ?? (amount ? parseFloat(amount) : 0),
-                  affiliation: 'Sako Online Store'
-                }
-              );
-            }
-          })
-          .catch(err => {
-            console.error('Error fetching order details for tracking:', err);
-            // Fallback: track purchase with minimal data
-            trackPurchase(
-              orderId || 'unknown',
-              [{
-                name: 'Order',
-                id: 'order',
-                price: amount ? parseFloat(amount) : 0,
-                quantity: 1
-              }],
-              {
-                currency: currency || 'ILS',
-                value: amount ? parseFloat(amount) : 0,
-                affiliation: 'Sako Online Store'
-              }
-            );
-          });
-      } catch (error) {
-        console.error('Error tracking purchase:', error);
-        hasTrackedRef.current = false; // allow retry if sync path failed
-      }
+      trackVerifiedPurchase(lpid, orderId).catch(err => {
+        console.error('Error tracking purchase:', err);
+      });
     }
 
     // Track Google Ads conversion event
@@ -177,6 +98,109 @@ function SuccessPageContent() {
 
     setIsLoading(false);
   }, [searchParams]);
+
+  /**
+   * Waits for the order to reach a server-verified 'success' before reporting Purchase.
+   *
+   * The wait matters: `verifyPaymentStatus` runs in parallel and is what confirms the
+   * transaction with CardCom (or the webhook gets there first), so on arrival the order
+   * is usually still 'pending'. Giving up immediately would silently drop conversions,
+   * so poll briefly and let a genuinely unconfirmed payment report nothing at all.
+   */
+  const trackVerifiedPurchase = async (
+    lpid?: string | null,
+    orderId?: string | null
+  ): Promise<void> => {
+    const query = lpid
+      ? `lpid=${encodeURIComponent(lpid)}`
+      : `orderId=${encodeURIComponent(orderId as string)}`;
+
+    const maxAttempts = 8;
+    const retryDelayMs = 2000;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      let data: any = null;
+      try {
+        const res = await fetch(`/api/payments/by-low-profile-id?${query}`);
+        data = res.ok ? await res.json() : null;
+      } catch (err) {
+        console.warn('[Success] purchase verification lookup failed', err);
+      }
+
+      const order = data?.order;
+
+      // Only a completed payment is reportable; a failed/cancelled one never becomes one.
+      if (data?.status === 'failed' || data?.status === 'cancelled') {
+        console.info('[Success] payment not successful; Purchase not reported', {
+          status: data.status,
+        });
+        return;
+      }
+
+      if (data?.status === 'success' && order) {
+        const orderNumber = order.orderNumber || orderId;
+        if (!orderNumber) return;
+
+        // Survives reloads, unlike the in-component ref.
+        if (hasPurchaseBeenTracked(orderNumber)) {
+          console.info('[Success] Purchase already reported for this order; skipping', {
+            orderNumber,
+          });
+          return;
+        }
+
+        const orderItems =
+          Array.isArray(order.orderItems) && order.orderItems.length > 0
+            ? order.orderItems.map((item: any) => ({
+                name: item.productName || 'Unknown Product',
+                id: item.productSku || 'unknown',
+                price: item.price || 0,
+                brand: undefined,
+                categories: undefined,
+                variant: item.size || undefined,
+                quantity: item.quantity || 1,
+              }))
+            : [
+                {
+                  name: 'Order',
+                  id: orderNumber,
+                  price: order.total ?? 0,
+                  quantity: 1,
+                },
+              ];
+
+        // NOTE: /api/payments/by-low-profile-id does not return customerEmail today, so
+        // this stays undefined — it was already a no-op before this change. Adding the
+        // field to that response would raise Meta's email coverage, but the route is
+        // unauthenticated and keyed by order number, so it needs an authenticated path
+        // first rather than returning a customer's address to anyone who guesses an id.
+        const userProperties: PurchaseUserProperties = {
+          customer_email: order.customerEmail || undefined,
+          user_id: userRef.current?.uid || undefined,
+        };
+
+        markPurchaseTracked(orderNumber);
+
+        trackPurchase(orderNumber, orderItems, {
+          // Currency and value come from the order record, never from the URL.
+          currency: order.currency || 'ILS',
+          value: typeof order.total === 'number' ? order.total : undefined,
+          tax: typeof order.tax === 'number' ? order.tax : undefined,
+          shipping: typeof order.deliveryFee === 'number' ? order.deliveryFee : undefined,
+          affiliation: 'Sako Online Store',
+          userProperties,
+          externalId: userRef.current?.uid,
+        });
+        return;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+      }
+    }
+
+    console.warn('[Success] payment not confirmed in time; Purchase not reported');
+  };
 
   const verifyPaymentStatus = async (
     lpid: string,

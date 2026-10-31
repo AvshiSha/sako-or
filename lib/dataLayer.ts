@@ -11,6 +11,9 @@ import {
   fbqTrackViewContent,
   setFacebookPixelAdvancedMatching,
 } from '@/lib/facebookPixel';
+import { resolveMetaExternalId } from '@/lib/metaExternalId';
+import { readMetaBrowserIds } from '@/lib/metaBrowserIds';
+import { buildPurchaseEventId } from '@/lib/purchase-tracking-guard';
 
 declare global {
   interface Window {
@@ -589,6 +592,8 @@ export function trackPurchase(
     affiliation?: string;
     coupon?: string;
     userProperties?: PurchaseUserProperties;
+    /** Firebase uid of the buyer, when signed in. Guests fall back to the persisted guest id. */
+    externalId?: string | null;
   } = {}
 ): void {
   clearEcommerce();
@@ -610,8 +615,24 @@ export function trackPurchase(
         return sum + (parseFloat(item.price) * parseFloat(item.quantity));
       }, 0) + (options.tax || 0) + (options.shipping || 0);
 
+  const externalId = resolveMetaExternalId(options.externalId ?? options.userProperties?.user_id);
+  const purchaseEventId = buildPurchaseEventId(transactionId);
+  const browserIds = readMetaBrowserIds();
+
   const eventData: any = {
     event: 'purchase',
+    // Identifiers for the server-side (Stape) Conversions API tag. The browser pixel
+    // does not need them — fbevents.js reads _fbp/_fbc itself and gets external_id from
+    // fbq('init') — but a server tag can only use what the event payload carries, which
+    // is why Purchase was reaching Meta server-side without fbp or external_id.
+    //
+    // `event_id` must be mapped to the Meta tag's Event ID in the server container for
+    // dedup against the browser pixel's eventID, which is this same value.
+    event_id: purchaseEventId,
+    user_data: {
+      external_id: externalId,
+      ...browserIds,
+    },
     ecommerce: {
       currency: options.currency || 'ILS',
       value: totalValue,
@@ -642,18 +663,24 @@ export function trackPurchase(
 
   pushEvent(eventData);
 
-  if (options.userProperties) {
-    setFacebookPixelAdvancedMatching({
-      email: options.userProperties.customer_email,
-      phone: options.userProperties.customer_phone,
-      firstName: options.userProperties.customer_first_name,
-      lastName: options.userProperties.customer_last_name,
-      city: options.userProperties.customer_city,
-      zip: options.userProperties.customer_zip,
-      country: options.userProperties.customer_country,
-      state: options.userProperties.customer_province,
-    });
-  }
+  // Always register advanced matching before the Purchase fires, even with no customer
+  // fields to add: this is what carries external_id, which Meta reported as missing and
+  // which the pixel had no way to express at all.
+  setFacebookPixelAdvancedMatching({
+    ...(options.userProperties
+      ? {
+          email: options.userProperties.customer_email,
+          phone: options.userProperties.customer_phone,
+          firstName: options.userProperties.customer_first_name,
+          lastName: options.userProperties.customer_last_name,
+          city: options.userProperties.customer_city,
+          zip: options.userProperties.customer_zip,
+          country: options.userProperties.customer_country,
+          state: options.userProperties.customer_province,
+        }
+      : {}),
+    externalId: externalId,
+  });
 
   fbqTrackPurchase(
     items.map((item) => ({
@@ -663,7 +690,13 @@ export function trackPurchase(
       brand: item.brand,
       item_variant: item.variant,
     })),
-    { currency: eventData.ecommerce.currency, value: eventData.ecommerce.value }
+    {
+      currency: eventData.ecommerce.currency,
+      value: eventData.ecommerce.value,
+      // Same value as the dataLayer `event_id` above, so the browser pixel and the
+      // server-side report of this purchase collapse into one Purchase at Meta.
+      eventId: purchaseEventId,
+    }
   );
 }
 

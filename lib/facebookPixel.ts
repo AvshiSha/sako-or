@@ -1,6 +1,7 @@
 'use client';
 
 import { normalizeIsraelE164 } from '@/lib/phone';
+import { resolveMetaExternalId } from '@/lib/metaExternalId';
 
 /**
  * Facebook / Meta Pixel utilities.
@@ -21,6 +22,8 @@ export interface AdvancedMatchingData {
   country?: string;
   db?: string;
   ge?: string;
+  /** Stable advertiser-side person id — Firebase uid, or the persisted guest id. */
+  external_id?: string;
 }
 
 type TrackCommand = 'track' | 'trackCustom';
@@ -69,6 +72,7 @@ type AdvancedMatchingInput = {
   state?: string | null;
   zip?: string | null;
   country?: string | null;
+  externalId?: string | null;
 };
 
 export type { AdvancedMatchingInput };
@@ -184,8 +188,23 @@ export function buildAdvancedMatchingData(input: AdvancedMatchingInput): Advance
   if (input.state?.trim()) data.st = normalizeName(input.state);
   if (input.zip?.trim()) data.zp = input.zip.trim().toLowerCase();
   if (input.country?.trim()) data.country = normalizeName(input.country);
+  // Trimmed but not lower-cased: a Firebase uid is case-sensitive, and the raw value
+  // has to stay byte-identical to whatever any server-side event reports.
+  if (input.externalId?.trim()) data.external_id = input.externalId.trim();
 
   return Object.keys(data).length > 0 ? data : undefined;
+}
+
+/**
+ * Fills in external_id when the caller didn't name one, so *every* event carries it
+ * — the same way fbevents.js attaches _fbp to every event on its own. An explicit
+ * value (the signed-in uid) always wins over the guest fallback.
+ */
+function withResolvedExternalId(input: AdvancedMatchingInput): AdvancedMatchingInput {
+  if (input.externalId !== undefined) return input;
+
+  const externalId = resolveMetaExternalId();
+  return externalId ? { ...input, externalId } : input;
 }
 
 /** Sync-key helper using the same normalization as data sent to fbq('init'). */
@@ -198,6 +217,7 @@ const ADVANCED_MATCHING_SYNC_KEY_FIELDS: Array<keyof AdvancedMatchingData> = [
   'st',
   'zp',
   'country',
+  'external_id',
 ];
 
 export function buildAdvancedMatchingSyncKey(uid: string, input: AdvancedMatchingInput): string {
@@ -363,7 +383,7 @@ function whenFbqReady(callback: () => void): void {
  */
 export function setFacebookPixelAdvancedMatching(input: AdvancedMatchingInput): void {
   const pixelId = FACEBOOK_PIXEL_ID;
-  mergeAdvancedMatchingInput(input);
+  mergeAdvancedMatchingInput(withResolvedExternalId(input));
   if (!pixelId || !getAccumulatedAdvancedMatchingData()) return;
 
   whenFbqReady(() => {
@@ -385,6 +405,13 @@ export interface PixelContent {
 export interface PixelEventOptions {
   currency?: string;
   value?: number;
+  /**
+   * Meta `eventID`. Must equal the `event_id` of the same event reported through the
+   * Conversions API for Meta to collapse the pair, and must be *deterministic* for a
+   * given real-world event so a repeat report (success-page refresh, webhook retry)
+   * collapses into the first one instead of counting twice.
+   */
+  eventId?: string;
 }
 
 function warnMissingFbq(eventName: string) {
@@ -436,7 +463,15 @@ export function initFacebookPixel(advancedMatching?: AdvancedMatchingData): void
     const isPixelInitialized = Boolean(fbq.getState?.()?.pixels?.[pixelId]);
     if (isPixelInitialized) return;
 
-    fbq('init', pixelId, advancedMatching);
+    // Attach external_id from the very first init, so guest PageView/ViewContent
+    // events carry it too rather than only the events fired after a login.
+    const externalId = resolveMetaExternalId();
+    const initMatching =
+      !externalId || advancedMatching?.external_id
+        ? advancedMatching
+        : { ...advancedMatching, external_id: externalId };
+
+    fbq('init', pixelId, initMatching);
 
     // Avoid double PageView (e.g., GTM also fires PageView)
     const pageViewSentFlag = '__fbqPageViewSent';
@@ -454,7 +489,8 @@ export function fbqTrack(
   eventName: string,
   params?: Record<string, any>,
   isCustom: boolean = false,
-  attempt: number = 0
+  attempt: number = 0,
+  eventId?: string
 ): void {
   if (typeof window === 'undefined') return;
 
@@ -462,7 +498,7 @@ export function fbqTrack(
     // Try to initialize pixel once if missing, then retry once after a short delay.
     if (attempt === 0) {
       initFacebookPixel();
-      setTimeout(() => fbqTrack(eventName, params, isCustom, attempt + 1), 250);
+      setTimeout(() => fbqTrack(eventName, params, isCustom, attempt + 1, eventId), 250);
     } else {
       warnMissingFbq(eventName);
     }
@@ -470,6 +506,12 @@ export function fbqTrack(
   }
 
   const command: TrackCommand = isCustom ? 'trackCustom' : 'track';
+
+  if (eventId) {
+    window.fbq(command, eventName, params, { eventID: eventId });
+    return;
+  }
+
   window.fbq(command, eventName, params);
 }
 
@@ -594,18 +636,24 @@ export function fbqTrackPurchase(
   if (!items || items.length === 0) return;
 
   const value = options.value ?? items.reduce((sum, item) => sum + (item.item_price || 0) * (item.quantity || 1), 0);
-  fbqTrack('Purchase', {
-    currency: options.currency || 'ILS',
-    value,
-    contents: items.map((item) => ({
-      id: item.id,
-      quantity: item.quantity || 1,
-      item_price: item.item_price,
-      brand: item.brand,
-      item_variant: item.item_variant,
-    })),
-    content_ids: items.map((item) => item.id),
-    content_type: 'product',
-  });
+  fbqTrack(
+    'Purchase',
+    {
+      currency: options.currency || 'ILS',
+      value,
+      contents: items.map((item) => ({
+        id: item.id,
+        quantity: item.quantity || 1,
+        item_price: item.item_price,
+        brand: item.brand,
+        item_variant: item.item_variant,
+      })),
+      content_ids: items.map((item) => item.id),
+      content_type: 'product',
+    },
+    false,
+    0,
+    options.eventId
+  );
 }
 

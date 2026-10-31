@@ -3,7 +3,12 @@
 
 declare global {
   interface FacebookPixel {
-    (command: 'init' | 'track' | 'trackCustom', eventNameOrId: string, params?: Record<string, any>): void;
+    (
+      command: 'init' | 'track' | 'trackCustom',
+      eventNameOrId: string,
+      params?: Record<string, any>,
+      options?: { eventID?: string }
+    ): void;
     queue?: any[];
     loaded?: boolean;
     version?: string;

@@ -21,6 +21,11 @@ function buildFirebaseAuthAdvancedMatching(firebaseUser: {
   return matching;
 }
 
+/** The uid was already this component's local sync key; it is also Meta's external_id. */
+function withUidAsExternalId(uid: string, matching: AdvancedMatchingInput): AdvancedMatchingInput {
+  return { ...matching, externalId: uid };
+}
+
 function buildScopedSyncKey(
   scope: 'auth' | 'profile',
   uid: string,
@@ -33,8 +38,12 @@ function syncAuthOnlyAdvancedMatching(
   firebaseUser: { uid: string; email: string | null; phoneNumber: string | null },
   lastSyncedKeyRef: MutableRefObject<string | null>
 ): void {
-  const authOnlyMatching = buildFirebaseAuthAdvancedMatching(firebaseUser);
-  if (Object.keys(authOnlyMatching).length === 0) return;
+  // No emptiness check any more: even with no email or phone on the Firebase user,
+  // the uid alone is worth reporting as external_id.
+  const authOnlyMatching = withUidAsExternalId(
+    firebaseUser.uid,
+    buildFirebaseAuthAdvancedMatching(firebaseUser)
+  );
 
   const syncKey = buildScopedSyncKey('auth', firebaseUser.uid, authOnlyMatching);
   if (lastSyncedKeyRef.current === syncKey) return;
@@ -67,14 +76,17 @@ export default function FacebookPixelAdvancedMatching() {
     }
 
     try {
-      const profileMatching = omitNullAdvancedMatchingFields({
-        email: profile.email ?? firebaseUser.email,
-        phone: profile.phone ?? firebaseUser.phoneNumber,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        city: profile.addressCity,
-        country: 'israel',
-      });
+      const profileMatching = withUidAsExternalId(
+        firebaseUser.uid,
+        omitNullAdvancedMatchingFields({
+          email: profile.email ?? firebaseUser.email,
+          phone: profile.phone ?? firebaseUser.phoneNumber,
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          city: profile.addressCity,
+          country: 'israel',
+        })
+      );
       const syncKey = buildScopedSyncKey('profile', firebaseUser.uid, profileMatching);
 
       if (lastSyncedKeyRef.current === syncKey) return;

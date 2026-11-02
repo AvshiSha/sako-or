@@ -46,6 +46,12 @@ const UNLOCALIZED_ROUTES = new Set([
   'preview',
   'review',
   'staff',
+  // The OAuth consent screen for the MCP SEO content integration, at
+  // /mcp/authorize. It lives in app/(unlocalized) like the admin panel, so
+  // without this entry the locale rule below 308s it to /he/mcp/authorize,
+  // which nothing serves — and the redirect ChatGPT follows out of
+  // /api/mcp/oauth/authorize dead-ends in a 404 instead of a consent page.
+  'mcp',
 ])
 
 export function middleware(request: NextRequest) {
@@ -126,10 +132,19 @@ export function middleware(request: NextRequest) {
   // the storefront, with both <Analytics> and <SpeedInsights> (RootShell.tsx)
   // silently dead. These paths are owned by the platform and must never be
   // localized.
+  // `/.well-known` is the same class of problem as `/_vercel` below, and it bit
+  // exactly the same way: the locale rule rewrote
+  // `/.well-known/oauth-protected-resource` to
+  // `/he/.well-known/oauth-protected-resource`, which `[lng]/[...notFound]`
+  // answered with a 200 HTML page. An OAuth client following RFC 9728 then
+  // parsed that page as JSON and the whole MCP connector failed to discover its
+  // authorization server. These paths are defined by spec to live at the
+  // origin root and must never be localized.
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
     pathname.startsWith('/assets') ||
+    pathname.startsWith('/.well-known') ||
     pathname.startsWith('/api')
   ) {
     return NextResponse.next()

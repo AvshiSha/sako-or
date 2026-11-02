@@ -9,6 +9,8 @@ import RichTextEditor from '@/app/(unlocalized)/admin/_components/RichTextEditor
 import { uploadCmsImage } from '@/lib/upload-cms-image'
 import { slugify, revalidateCmsPaths } from '@/lib/cms-utils'
 import { cleanupCmsHtml, cmsHtmlToPlainText, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'
+import { useAuth } from '@/app/hooks/useAuth'
+import { EDITORIAL_TIMEZONE, utcToLocalWallClock } from '@/lib/blog-schedule'
 
 interface BlogFormData {
   slug: string
@@ -35,6 +37,7 @@ const emptyLocalized = () => ({ en: '', he: '' })
 
 export default function BlogArticleForm({ initialData, isEdit = false }: BlogArticleFormProps) {
   const router = useRouter()
+  const { user } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isUploadingFeatured, setIsUploadingFeatured] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -237,6 +240,11 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
         ogDescription: formData.ogDescription,
         ogImage: formData.ogImage || undefined,
         canonicalUrl: formData.canonicalUrl.trim(),
+        // Provenance. An article imported through the SEO/MCP integration carries
+        // lastEditedVia: 'mcp'; stamping 'admin' on every save here means it stops
+        // claiming that the moment a person edits it by hand.
+        updatedBy: user?.email || 'admin',
+        lastEditedVia: 'admin' as const,
         relatedProductsCarousel: {
           enabled: relatedEnabled,
           mode: 'random' as const,
@@ -684,7 +692,19 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
       </div>
 
       {/* Actions */}
-      <div className="flex flex-wrap gap-3 border-t border-gray-200 pt-6">
+      <div className="space-y-3 border-t border-gray-200 pt-6">
+        {/* A scheduled article has a pending publication time, and both buttons
+            below discard it — "Save Draft" unschedules and "Publish" goes live
+            now. Neither is wrong, but neither is obvious from the label, so the
+            state is spelled out rather than silently overridden. */}
+        {initialData?.status === 'scheduled' && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            This article is scheduled to publish at{' '}
+            <strong>{utcToLocalWallClock(initialData.publishedAt)}</strong> ({EDITORIAL_TIMEZONE}).
+            Saving it as a draft cancels that; publishing puts it live immediately.
+          </div>
+        )}
+        <div className="flex flex-wrap gap-3">
         <button
           type="button"
           onClick={() => handleSubmit('draft')}
@@ -701,6 +721,7 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
         >
           {isSubmitting ? 'Publishing…' : 'Publish'}
         </button>
+        </div>
       </div>
     </form>
   )

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { blogService, BlogArticle } from '@/lib/firebase'
 import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
+import { EDITORIAL_TIMEZONE, utcToLocalWallClock } from '@/lib/blog-schedule'
 import ProtectedRoute from '@/app/components/ProtectedRoute'
 import {
   ArrowLeftIcon,
@@ -15,7 +16,7 @@ import {
 function BlogListPage() {
   const [articles, setArticles] = useState<BlogArticle[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState<'all' | 'draft' | 'published'>('all')
+  const [filter, setFilter] = useState<'all' | 'draft' | 'scheduled' | 'published'>('all')
 
   useEffect(() => {
     fetchArticles()
@@ -68,7 +69,7 @@ function BlogListPage() {
         </div>
 
         <div className="flex gap-2 mb-6">
-          {(['all', 'published', 'draft'] as const).map((f) => (
+          {(['all', 'published', 'scheduled', 'draft'] as const).map((f) => (
             <button
               key={f}
               type="button"
@@ -121,15 +122,30 @@ function BlogListPage() {
                           className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                             article.status === 'published'
                               ? 'bg-green-100 text-green-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                              : article.status === 'scheduled'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-yellow-100 text-yellow-800'
                           }`}
                         >
                           {article.status}
                         </span>
+                        {/* Provenance, so an article that arrived through the SEO
+                            integration is distinguishable from one typed in here. */}
+                        {article.lastEditedVia && article.lastEditedVia !== 'admin' && (
+                          <div className="mt-1 text-[11px] text-gray-400">
+                            via {article.lastEditedVia}
+                            {article.updatedBy ? ` · ${article.updatedBy}` : ''}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
+                        {/* A scheduled article's publishedAt is a future time, so it
+                            needs the clock as well as the date to be useful. Shown in
+                            the editorial timezone rather than the viewer's. */}
                         {article.publishedAt
-                          ? new Date(article.publishedAt).toLocaleDateString()
+                          ? article.status === 'scheduled'
+                            ? `${utcToLocalWallClock(article.publishedAt)} (${EDITORIAL_TIMEZONE})`
+                            : new Date(article.publishedAt).toLocaleDateString()
                           : '—'}
                       </td>
                       <td className="px-4 py-3 text-right">

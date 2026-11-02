@@ -231,7 +231,18 @@ export interface CampaignProductFilter {
   orderDirection?: 'asc' | 'desc';
 }
 
-export type BlogArticleStatus = 'draft' | 'published';
+/**
+ * 'scheduled' is a draft with a publication time attached.
+ *
+ * It was added rather than reusing 'published' with a future `publishedAt`
+ * because getPublishedArticles filters on `status` alone -- a future-dated
+ * 'published' article is live, listed and in the sitemap the moment it is
+ * saved. Keeping scheduling in the status means the storefront, the sitemap and
+ * firestore.rules all treat an unpublished article as private with no change to
+ * any of them, and /api/cron/publish-scheduled-articles is the single place
+ * that decides an article is due.
+ */
+export type BlogArticleStatus = 'draft' | 'scheduled' | 'published';
 
 // Only 'random' is implemented today; other modes are reserved so the schema
 // doesn't need to change when manual/bestsellers/new-arrivals/custom selection
@@ -267,6 +278,20 @@ export interface BlogArticle {
   ogImage?: string;
   canonicalUrl?: string;
   relatedProductsCarousel?: RelatedProductsCarouselConfig;
+  /**
+   * Stable reference to whatever the article was imported from (a Google Drive
+   * file id, a row key, a ticket). Set by the MCP import tools and used as the
+   * idempotency key: re-running an import with the same sourceRef updates the
+   * existing article instead of creating a second one. Absent on articles
+   * written by hand in /admin/blog.
+   */
+  sourceRef?: string;
+  /** Email of whoever created the article. Absent on pre-existing articles. */
+  createdBy?: string;
+  /** Email of whoever last changed it. */
+  updatedBy?: string;
+  /** Which surface made the last write. */
+  lastEditedVia?: 'admin' | 'mcp' | 'cron';
   createdAt: string;
   updatedAt: string;
 }
@@ -3973,6 +3998,11 @@ function cleanBlogLocalizedFields(data: Partial<BlogArticle>): Record<string, un
   // article to its own self-canonical URL instead of being silently ignored.
   if (data.canonicalUrl !== undefined) clean.canonicalUrl = data.canonicalUrl;
   if (data.relatedProductsCarousel) clean.relatedProductsCarousel = data.relatedProductsCarousel;
+  // Provenance. The admin form sets updatedBy/lastEditedVia on every save so an
+  // article edited by hand after an MCP import stops claiming it came from MCP.
+  // sourceRef is deliberately only writable on create — see createArticle.
+  if (data.updatedBy) clean.updatedBy = data.updatedBy;
+  if (data.lastEditedVia) clean.lastEditedVia = data.lastEditedVia;
 
   return clean;
 }
@@ -4082,6 +4112,8 @@ export const blogService = {
         featuredImageAlt: data.featuredImageAlt || { en: '', he: '' },
         status: data.status,
         publishedAt: data.publishedAt || now,
+        ...(data.sourceRef ? { sourceRef: data.sourceRef } : {}),
+        ...(data.createdBy ? { createdBy: data.createdBy } : {}),
         createdAt: now,
         updatedAt: now,
       });

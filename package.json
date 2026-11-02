@@ -23,7 +23,11 @@
     "hfd:inspect": "tsx scripts/hfd-webhook-inspect.ts",
     "staff:pin": "tsx scripts/hash-staff-pin.ts",
     "staff:grant": "tsx scripts/grant-staff-role.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "verify:mcp": "tsx scripts/verify-mcp-endpoint.ts",
+    "verify:mcp-tools": "node --conditions=react-server --import tsx scripts/verify-mcp-tools.ts",
+    "verify:mcp-rules": "tsx scripts/verify-mcp-firestore-rules.ts",
+    "mcp:editors": "tsx scripts/mcp-content-editors.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -32,6 +36,7 @@
     "@google-cloud/storage": "^7.17.1",
     "@headlessui/react": "^2.2.2",
     "@heroicons/react": "^2.0.18",
+    "@modelcontextprotocol/server": "^2.4.0",
     "@opentelemetry/api": "^1.9.0",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
@@ -80,6 +85,7 @@
     "js-cookie": "^3.0.5",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.507.0",
+    "mcp-handler": "^2.3.0",
     "next": "^16.0.7",
     "next-auth": "^4.24.5",
     "pg": "^8.16.3",
@@ -99,7 +105,8 @@
     "swr": "^2.4.2",
     "tailwind-merge": "^3.2.0",
     "web-streams-polyfill": "^4.2.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "zod4": "npm:zod@^4.6.7"
   },
   "browserslist": [
     "chrome >= 111",

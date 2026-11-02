@@ -139,6 +139,14 @@ export async function GET(request: Request) {
     resource: resource ?? '',
   })
 
+  // Logged so a flow that stalls can be placed precisely: register -> authorize
+  // -> otp -> approve -> token each leave a line, and the first one missing is
+  // the step that failed. No request id, code or state is logged.
+  console.log(
+    '[MCP_OAUTH_AUTHORIZE]',
+    JSON.stringify({ outcome: 'consent_redirect', clientId, scopes })
+  )
+
   const consent = new URL(absoluteUrl(MCP_PATHS.consentPage))
   consent.searchParams.set('request', requestId)
 

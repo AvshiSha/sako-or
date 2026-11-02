@@ -562,6 +562,106 @@ async function main() {
       return 'explained, not silently emptied'
     })
 
+    // ── Consent -> code -> token ──────────────────────────────────────────
+    section('The full authorization chain')
+
+    await check('consent 303s to the callback and the code exchanges for a token', async () => {
+      // The exact chain that failed on the first real connection: consent
+      // succeeded, a code was issued, and no token was ever requested. Every
+      // other test covered the pieces either side of this join. This one walks
+      // it, skipping only the emailed OTP, which needs a human inbox.
+      const { createHash, randomBytes } = await import('node:crypto')
+      const { registerClient, createAuthRequest, markAuthRequestVerified } = await import(
+        '@/lib/mcp/oauth/store'
+      )
+      const { getIssuer: issuer } = await import('@/lib/mcp/oauth/config')
+
+      const verifier = randomBytes(32).toString('base64url')
+      const challenge = createHash('sha256').update(verifier).digest('base64url')
+      const redirectUri = 'https://chatgpt.com/connector_platform_oauth_redirect'
+
+      const client = await registerClient({
+        clientName: 'chain check',
+        redirectUris: [redirectUri],
+      })
+      const requestId = await createAuthRequest({
+        clientId: client.clientId,
+        redirectUri,
+        state: 'chain-state',
+        codeChallenge: challenge,
+        scopes: ['content:read', 'content:write', 'offline_access'],
+        resource: `${issuer()}/api/mcp`,
+      })
+      // Stands in for the emailed six-digit code.
+      await markAuthRequestVerified(requestId, role.email)
+
+      // Approve exactly as the consent page now does: a form POST.
+      const approve = await fetch(`${BASE}/api/mcp/oauth/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ request: requestId, decision: 'approve' }),
+        redirect: 'manual',
+      })
+      expect(approve.status === 303, `approve should 303, got ${approve.status}`)
+
+      const location = approve.headers.get('location') ?? ''
+      const callback = new URL(location)
+      expect(callback.origin === 'https://chatgpt.com', `wrong callback origin: ${callback.origin}`)
+      expect(callback.searchParams.get('state') === 'chain-state', 'state was not echoed')
+      const code = callback.searchParams.get('code') ?? ''
+      expect(Boolean(code), 'no code on the callback URL')
+
+      // Now the step that never happened in production.
+      const tokenResponse = await fetch(`${BASE}/api/mcp/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          client_id: client.clientId,
+          redirect_uri: redirectUri,
+          code_verifier: verifier,
+        }),
+      })
+      const tokenRaw = await tokenResponse.text()
+      expect(tokenResponse.ok, `token exchange failed ${tokenResponse.status}: ${tokenRaw.slice(0, 300)}`)
+      const tokens = JSON.parse(tokenRaw) as Record<string, string>
+      expect(Boolean(tokens.access_token), 'no access_token')
+      expect(Boolean(tokens.refresh_token), 'offline_access should yield a refresh token')
+
+      // And the token actually works.
+      const issued = new McpClient(tokens.access_token)
+      const tools = await issued.listTools()
+      expect(tools.length === 8, `the issued token saw ${tools.length} tools`)
+
+      // Replaying the code must fail: single use.
+      const replay = await fetch(`${BASE}/api/mcp/oauth/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          code,
+          client_id: client.clientId,
+          redirect_uri: redirectUri,
+          code_verifier: verifier,
+        }),
+      })
+      expect(replay.status === 400, `code replay should fail, got ${replay.status}`)
+
+      return `303 -> code -> token -> ${tools.length} tools; replay refused`
+    })
+
+    await check('the authorization code lifetime leaves room for a real redirect', async () => {
+      const { AUTH_CODE_TTL_MS } = await import('@/lib/mcp/oauth/config')
+      // 60s broke the first real connection. RFC 6749 4.1.2 recommends a
+      // maximum of ten minutes; anything under two is asking for the same bug.
+      expect(
+        AUTH_CODE_TTL_MS >= 2 * 60 * 1000 && AUTH_CODE_TTL_MS <= 10 * 60 * 1000,
+        `AUTH_CODE_TTL_MS is ${AUTH_CODE_TTL_MS}ms`
+      )
+      return `${AUTH_CODE_TTL_MS / 1000}s`
+    })
+
     // ── Token renewal ─────────────────────────────────────────────────────
     section('Token renewal')
 

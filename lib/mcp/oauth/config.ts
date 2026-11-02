@@ -31,7 +31,20 @@ export const SUPPORTED_SCOPES = [...GRANTABLE_SCOPES, SCOPE_CONTENT_PUBLISH] as 
 
 /** Lifetimes. Short access tokens, long rotating refresh tokens. */
 export const AUTH_REQUEST_TTL_MS = 10 * 60 * 1000
-export const AUTH_CODE_TTL_MS = 60 * 1000
+
+/**
+ * How long an authorization code stays redeemable.
+ *
+ * This was 60 seconds, which broke the very first real ChatGPT connection:
+ * consent completed at 14:22:50, the code expired at 14:23:49, and ChatGPT's
+ * token request never arrived inside that window. The code is single-use and
+ * PKCE-bound, so its lifetime is not what protects it -- binding is -- and
+ * RFC 6749 section 4.1.2 recommends a maximum of ten minutes. Five gives a
+ * real browser redirect and a third-party backend room to complete while
+ * staying well inside the guidance.
+ */
+export const AUTH_CODE_TTL_MS = 5 * 60 * 1000
+
 export const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000
 export const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000
 

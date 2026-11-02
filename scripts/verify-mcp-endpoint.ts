@@ -496,18 +496,22 @@ async function verifyConsent(requestId: string): Promise<void> {
     return `HTTP ${response.status}`
   })
 
-  await check('a denial produces a redirect carrying access_denied', async () => {
+  await check('a denial 303s to the callback carrying access_denied', async () => {
+    // A server redirect, not JSON for the page to act on: the browser must
+    // land on the client's callback by itself. Sent as a form POST, which is
+    // what the consent page now submits.
     const response = await fetch(`${BASE}/api/mcp/oauth/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ request: requestId, decision: 'deny' }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ request: requestId, decision: 'deny' }),
+      redirect: 'manual',
     })
-    expect(response.ok, `expected success, got ${response.status}`)
-    const body = (await response.json()) as Record<string, unknown>
-    const redirect = String(body.redirectTo ?? '')
-    expect(redirect.includes('error=access_denied'), `unexpected redirect: ${redirect}`)
-    expect(redirect.includes('state=verify-state'), 'state must be echoed back')
-    return 'access_denied with state echoed'
+    expect(response.status === 303, `expected 303, got ${response.status}`)
+    const location = response.headers.get('location') ?? ''
+    expect(location.startsWith('https://chatgpt.com/'), `unexpected target: ${location}`)
+    expect(location.includes('error=access_denied'), `unexpected redirect: ${location}`)
+    expect(location.includes('state=verify-state'), 'state must be echoed back')
+    return '303 to the callback, access_denied with state echoed'
   })
 
   if (!EDITOR_EMAIL) {

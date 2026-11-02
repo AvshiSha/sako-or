@@ -107,22 +107,16 @@ export default function ConsentForm() {
     setStep('consent')
   }
 
-  async function decide(decision: 'approve' | 'deny') {
-    setBusy(true)
-    setError('')
-
-    const { ok, data } = await post('/api/mcp/oauth/approve', { request: requestId, decision })
-
-    if (!ok || typeof data.redirectTo !== 'string') {
-      setBusy(false)
-      setError(typeof data.message === 'string' ? data.message : 'Could not complete the request.')
-      return
-    }
-
-    // A full navigation, not a router push: the target is ChatGPT's callback on
-    // another origin, which the Next router cannot handle.
-    window.location.href = data.redirectTo
-  }
+  // Approve and Deny are a plain form POST to /api/mcp/oauth/approve, which
+  // answers with a 303 to the client's callback. No fetch, no
+  // `window.location.href`, no JavaScript in the path at all.
+  //
+  // The first real ChatGPT connection failed exactly here: consent succeeded
+  // and the code was issued, but the browser never reached the callback
+  // ChatGPT was watching, so the token was never requested and the connector
+  // ended up with no credential. A server redirect from a form submission is
+  // what every other OAuth consent screen does and what clients are built
+  // against.
 
   return (
     <div className="space-y-6">
@@ -227,24 +221,15 @@ export default function ConsentForm() {
             products, prices, stock, orders, customers, coupons or site settings.
           </p>
 
-          <div className="space-y-3">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => decide('approve')}
-              className={BUTTON_CLASS}
-            >
-              {busy ? 'Working…' : 'Approve'}
+          <form method="POST" action="/api/mcp/oauth/approve" className="space-y-3">
+            <input type="hidden" name="request" value={requestId} />
+            <button type="submit" name="decision" value="approve" className={BUTTON_CLASS}>
+              Approve
             </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => decide('deny')}
-              className={SECONDARY_BUTTON_CLASS}
-            >
+            <button type="submit" name="decision" value="deny" className={SECONDARY_BUTTON_CLASS}>
               Deny
             </button>
-          </div>
+          </form>
         </div>
       )}
     </div>

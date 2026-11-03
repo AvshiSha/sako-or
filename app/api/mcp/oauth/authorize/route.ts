@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import {
   MCP_PATHS,
   absoluteUrl,
+  buildAuthorizationResponse,
   negotiateScopes,
   resourceMatches,
 } from '@/lib/mcp/oauth/config'
@@ -46,10 +47,13 @@ function redirectWithError(
   description: string,
   state: string | null
 ): NextResponse {
-  const target = new URL(redirectUri)
-  target.searchParams.set('error', error)
-  target.searchParams.set('error_description', description)
-  if (state) target.searchParams.set('state', state)
+  // Error responses carry `iss` as well; RFC 9207 does not exempt them, and a
+  // client that validates the parameter will reject one that omits it.
+  const target = buildAuthorizationResponse(redirectUri, {
+    error,
+    error_description: description,
+    state,
+  })
   return NextResponse.redirect(target.toString(), { status: 302 })
 }
 

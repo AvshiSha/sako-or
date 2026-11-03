@@ -47,8 +47,17 @@ export async function GET() {
       code_challenge_methods_supported: ['S256'],
       token_endpoint_auth_methods_supported: ['none'],
       revocation_endpoint_auth_methods_supported: ['none'],
-      // RFC 8707. ChatGPT appends `resource` to both requests and we validate
-      // it, so saying so lets the client skip a probe.
+      // RFC 9207: every authorization response carries an `iss` parameter
+      // naming this server, so a client configured with several servers cannot
+      // be fed a code minted by a different one.
+      //
+      // This flag was originally added with a comment about RFC 8707 resource
+      // indicators -- a different spec that this server does implement. The
+      // mislabel is how it came to claim a feature that was never built: the
+      // metadata said yes, all three redirects sent no `iss`, and ChatGPT did
+      // what the spec requires and refused the response. Only set this while
+      // lib/mcp/oauth/config.ts:buildAuthorizationResponse is what builds every
+      // authorization response.
       authorization_response_iss_parameter_supported: true,
       service_documentation: `${getIssuer()}/docs/mcp-seo-content`,
     },

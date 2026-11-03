@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
+import { buildAuthorizationResponse } from '@/lib/mcp/oauth/config'
 import { deleteAuthRequest, getAuthRequest, issueAuthCode } from '@/lib/mcp/oauth/store'
 import { isMcpEnabled, resolveContentRole } from '@/lib/server/content-role'
 
@@ -108,15 +109,16 @@ export async function POST(request: Request) {
     )
   }
 
-  const target = new URL(pending.redirectUri)
-  if (pending.state) target.searchParams.set('state', pending.state)
-
   if (parsed.data.decision === 'deny') {
     await deleteAuthRequest(parsed.data.request)
-    target.searchParams.set('error', 'access_denied')
-    target.searchParams.set('error_description', 'The user declined the request.')
     console.log('[MCP_OAUTH_APPROVE]', JSON.stringify({ outcome: 'denied' }))
-    return redirectTo(target)
+    return redirectTo(
+      buildAuthorizationResponse(pending.redirectUri, {
+        state: pending.state,
+        error: 'access_denied',
+        error_description: 'The user declined the request.',
+      })
+    )
   }
 
   if (!pending.verifiedEmail) {
@@ -143,7 +145,10 @@ export async function POST(request: Request) {
   // cannot be approved twice to mint a second code.
   await deleteAuthRequest(parsed.data.request)
 
-  target.searchParams.set('code', code)
+  const target = buildAuthorizationResponse(pending.redirectUri, {
+    state: pending.state,
+    code,
+  })
 
   console.log(
     '[MCP_OAUTH_APPROVE]',

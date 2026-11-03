@@ -511,7 +511,63 @@ async function verifyConsent(requestId: string): Promise<void> {
     expect(location.startsWith('https://chatgpt.com/'), `unexpected target: ${location}`)
     expect(location.includes('error=access_denied'), `unexpected redirect: ${location}`)
     expect(location.includes('state=verify-state'), 'state must be echoed back')
-    return '303 to the callback, access_denied with state echoed'
+
+    // RFC 9207. If the metadata advertises the parameter, every authorization
+    // response must carry it -- error responses included. Claiming support and
+    // not sending it is what made the first two real connections fail.
+    const issued = new URL(location).searchParams.get('iss')
+    expect(Boolean(issued), `no iss on the error response: ${location}`)
+    return `303 to the callback, access_denied, state echoed, iss=${issued}`
+  })
+
+  await check('the advertised iss support matches what is actually sent', async () => {
+    const metadata = await fetch(`${BASE}/.well-known/oauth-authorization-server`).then((r) =>
+      r.json()
+    )
+    const advertised = Boolean(metadata.authorization_response_iss_parameter_supported)
+    if (!advertised) return 'not advertised, nothing to honour'
+
+    // Drive a fresh request to a denial and read the real redirect.
+    const probeClient = await fetch(`${BASE}/api/mcp/oauth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_name: 'iss check',
+        redirect_uris: ['https://chatgpt.com/connector_platform_oauth_redirect'],
+      }),
+    }).then((r) => r.json())
+
+    const { challenge } = pkce()
+    const authorizeUrl = new URL(`${BASE}/api/mcp/oauth/authorize`)
+    authorizeUrl.searchParams.set('client_id', String(probeClient.client_id))
+    authorizeUrl.searchParams.set(
+      'redirect_uri',
+      'https://chatgpt.com/connector_platform_oauth_redirect'
+    )
+    authorizeUrl.searchParams.set('response_type', 'code')
+    authorizeUrl.searchParams.set('code_challenge', challenge)
+    authorizeUrl.searchParams.set('code_challenge_method', 'S256')
+    authorizeUrl.searchParams.set('state', 'iss-check')
+
+    const authorized = await fetch(authorizeUrl, { redirect: 'manual' })
+    const consentUrl = new URL(authorized.headers.get('location') ?? '', BASE)
+    const probeRequest = consentUrl.searchParams.get('request')
+    expect(Boolean(probeRequest), 'no consent request id')
+
+    const denied = await fetch(`${BASE}/api/mcp/oauth/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ request: String(probeRequest), decision: 'deny' }),
+      redirect: 'manual',
+    })
+    const target = new URL(denied.headers.get('location') ?? '')
+    const sent = target.searchParams.get('iss')
+    expect(Boolean(sent), 'metadata advertises iss support but the response omits it')
+    expect(
+      sent === String(metadata.issuer),
+      `iss "${sent}" does not match the advertised issuer "${metadata.issuer}"`
+    )
+    return `advertised and sent, matching ${sent}`
   })
 
   if (!EDITOR_EMAIL) {

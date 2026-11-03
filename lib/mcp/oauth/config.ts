@@ -129,6 +129,36 @@ export function absoluteUrl(path: string): string {
 }
 
 /**
+ * Build an authorization response URL, always carrying `iss`.
+ *
+ * RFC 9207 (OAuth 2.0 Authorization Server Issuer Identification) adds an
+ * `iss` parameter to the authorization response so a client with several
+ * configured servers cannot be tricked into accepting a code minted by the
+ * wrong one. A client that knows the server supports it -- because the server
+ * metadata says `authorization_response_iss_parameter_supported` -- MUST
+ * reject any authorization response without it.
+ *
+ * This exists as a single function because the metadata claimed that support
+ * while none of the three redirect sites sent the parameter, and ChatGPT did
+ * exactly what the spec requires: it discarded the code and never exchanged
+ * it. Routing every authorization response through one builder means the claim
+ * and the behaviour cannot drift apart again.
+ *
+ * `iss` goes on error responses too, not only successful ones.
+ */
+export function buildAuthorizationResponse(
+  redirectUri: string,
+  params: Record<string, string | null | undefined>
+): URL {
+  const target = new URL(redirectUri)
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined) target.searchParams.set(key, value)
+  }
+  target.searchParams.set('iss', getIssuer())
+  return target
+}
+
+/**
  * Compare a client-supplied RFC 8707 `resource` against our own identifier.
  *
  * ChatGPT appends this to both the authorize and token requests. Checking it

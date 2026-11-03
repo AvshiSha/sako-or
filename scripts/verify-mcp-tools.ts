@@ -611,6 +611,11 @@ async function main() {
       const code = callback.searchParams.get('code') ?? ''
       expect(Boolean(code), 'no code on the callback URL')
 
+      // RFC 9207. A client that sees the metadata flag refuses a response
+      // without this, which is how the first two real connections died here.
+      const sentIssuer = callback.searchParams.get('iss')
+      expect(sentIssuer === issuer(), `iss was "${sentIssuer}", expected "${issuer()}"`)
+
       // Now the step that never happened in production.
       const tokenResponse = await fetch(`${BASE}/api/mcp/oauth/token`, {
         method: 'POST',

@@ -170,7 +170,12 @@ export async function createPaymentSession(
     const message =
       errorData.error || errorData.message || `HTTP ${response.status}: ${response.statusText}`
     console.error('Payment session creation failed:', { status: response.status, errorData })
-    throw Object.assign(new Error(message), { code: errorData.code })
+    // `code` and `fields` are what the caller renders from — the message is English
+    // and is carried only for the console and for unmapped cases.
+    throw Object.assign(new Error(message), {
+      code: errorData.code,
+      fields: Array.isArray(errorData.fields) ? (errorData.fields as string[]) : undefined
+    })
   }
 
   try {

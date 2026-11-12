@@ -87,16 +87,29 @@ export async function POST(request: NextRequest) {
     });
 
     // Validate required fields
+    // Every 4xx below carries a stable `code`, and the field-level ones carry the
+    // exact `fields` that failed. The checkout page is Hebrew for most customers
+    // and these strings are English, so the client renders from the code and never
+    // from `error` - that is what put "Missing required delivery address
+    // information" in front of a Hebrew-speaking customer.
     if (!body.amount || body.amount <= 0) {
       return NextResponse.json(
-        { error: 'Missing or invalid required fields: amount' },
+        { error: 'Missing or invalid required fields: amount', code: 'AMOUNT_INVALID' },
         { status: 400 }
       );
     }
 
-    if (!body.customer.firstName || !body.customer.lastName || !body.customer.email || !body.customer.mobile) {
+    // Optional chaining throughout: a payload with no `customer` object at all used
+    // to throw a TypeError here and surface as a 500 instead of this 400.
+    const missingCustomerFields = (['firstName', 'lastName', 'email', 'mobile'] as const)
+      .filter(field => !body.customer?.[field]);
+    if (missingCustomerFields.length > 0) {
       return NextResponse.json(
-        { error: 'Missing required customer information' },
+        {
+          error: 'Missing required customer information',
+          code: 'CUSTOMER_INCOMPLETE',
+          fields: missingCustomerFields,
+        },
         { status: 400 }
       );
     }
@@ -116,7 +129,7 @@ export async function POST(request: NextRequest) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (customerEmail.includes('..') || !emailRegex.test(customerEmail)) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
+        { error: 'Invalid email format', code: 'EMAIL_INVALID', fields: ['email'] },
         { status: 400 }
       );
     }
@@ -158,7 +171,7 @@ export async function POST(request: NextRequest) {
       : 0;
     if (pointsToSpend > 0 && !userId) {
       return NextResponse.json(
-        { error: 'Must be logged in to spend points' },
+        { error: 'Must be logged in to spend points', code: 'POINTS_AUTH_REQUIRED' },
         { status: 401 }
       );
     }
@@ -173,7 +186,7 @@ export async function POST(request: NextRequest) {
       // Prisma stores decimals as Decimal objects; convert to number before comparison
       if (!user || user.pointsBalance === null) {
         return NextResponse.json(
-          { error: 'Insufficient points balance' },
+          { error: 'Insufficient points balance', code: 'POINTS_INSUFFICIENT' },
           { status: 400 }
         );
       }
@@ -181,7 +194,7 @@ export async function POST(request: NextRequest) {
       const pointsBalanceNumber = user.pointsBalance.toNumber();
       if (pointsBalanceNumber < pointsToSpend) {
         return NextResponse.json(
-          { error: 'Insufficient points balance' },
+          { error: 'Insufficient points balance', code: 'POINTS_INSUFFICIENT' },
           { status: 400 }
         );
       }
@@ -193,7 +206,7 @@ export async function POST(request: NextRequest) {
       const maxPointsAllowed = Math.round(0.15 * cartAmountBeforePoints * 100) / 100;
       if (pointsToSpend > maxPointsAllowed) {
         return NextResponse.json(
-          { error: 'Points cannot exceed 15% of the order' },
+          { error: 'Points cannot exceed 15% of the order', code: 'POINTS_LIMIT_EXCEEDED' },
           { status: 400 }
         );
       }
@@ -201,10 +214,21 @@ export async function POST(request: NextRequest) {
 
     const shippingMethod = body.shippingMethod ?? 'delivery';
 
+    // streetNumber is deliberately NOT required, and must stay that way: block/parcel
+    // addresses ("5026/2" in נצרת and much of the north), named squares and kibbutzim
+    // have no house number at all. Requiring it here rejected those customers with a
+    // 400 they could not act on - one of them stripped items out of a 2,388 ILS cart
+    // trying to guess what was wrong. lib/checkout-session agrees on this.
     if (shippingMethod !== 'pickup') {
-      if (!body.deliveryAddress.city || !body.deliveryAddress.streetName || !body.deliveryAddress.streetNumber) {
+      const missingAddressFields = (['city', 'streetName'] as const)
+        .filter(field => !body.deliveryAddress?.[field]);
+      if (missingAddressFields.length > 0) {
         return NextResponse.json(
-          { error: 'Missing required delivery address information' },
+          {
+            error: 'Missing required delivery address information',
+            code: 'ADDRESS_INCOMPLETE',
+            fields: missingAddressFields,
+          },
           { status: 400 }
         );
       }
@@ -320,7 +344,7 @@ export async function POST(request: NextRequest) {
     const hasCoupons = Array.isArray(body.coupons) && body.coupons.length > 0;
     if (hasBogoDiscount && hasCoupons) {
       return NextResponse.json(
-        { error: 'Coupons cannot be combined with the automatic pairs deal.' },
+        { error: 'Coupons cannot be combined with the automatic pairs deal.', code: 'COUPON_BOGO_CONFLICT' },
         { status: 400 }
       );
     }
@@ -502,9 +526,13 @@ export async function POST(request: NextRequest) {
         language: body.language || 'he',
         // Receipt/Document options
         customerTaxId: "",
+        // Filtered join, not a template: an address with no house number would
+        // otherwise reach the invoice with a trailing space.
         customerAddress: shippingMethod === 'pickup'
           ? STORE_ADDRESS
-          : `${body.deliveryAddress.streetName} ${body.deliveryAddress.streetNumber}`,
+          : [body.deliveryAddress.streetName, body.deliveryAddress.streetNumber]
+              .filter(Boolean)
+              .join(' '),
         customerAddress2: "",
         customerCity: shippingMethod === 'pickup'
           ? STORE_CITY
@@ -548,8 +576,9 @@ export async function POST(request: NextRequest) {
     console.error('Payment creation error:', error);
     
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to create payment session',
+        code: 'PAYMENT_SESSION_FAILED',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

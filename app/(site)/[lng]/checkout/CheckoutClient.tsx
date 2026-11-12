@@ -21,6 +21,10 @@
  *   from the same tokens as the states that are.
  * - The address fields are a flat list with no country or region, matching a
  *   storefront that ships within Israel only.
+ * - The frame draws street and house number as ONE field ("רחוב ומספר בית").
+ *   Built as two, deliberately: parsing the number back out of the combined
+ *   field was lossy for any address that does not end in one, and those orders
+ *   were rejected at the gateway. The house number field is optional.
  */
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
@@ -44,7 +48,6 @@ import {
   applyProfileToCheckoutDetails,
   emptyCheckoutDetails,
   isDetailsComplete,
-  splitStreetAddress,
   type ShippingMethod
 } from '@/lib/checkout-session'
 import {
@@ -75,7 +78,8 @@ const content = {
     lastName: 'Last name',
     email: 'Email',
     phone: 'Phone',
-    street: 'Street and house number',
+    street: 'Street',
+    houseNumber: 'House number',
     city: 'City',
     zip: 'Postal code',
     floor: 'Floor',
@@ -95,6 +99,15 @@ const content = {
     invalidEmail: 'Enter a valid email address',
     invalidPhone: 'Enter a valid phone number',
     incomplete: 'Please complete the required fields above.',
+    errAddress: 'These delivery address details are missing',
+    errCustomer: 'These contact details are missing',
+    errFieldsSuffix: 'Please complete them and try again.',
+    errEmail: 'The email address is not valid. Please check it and try again.',
+    errAmount: 'The order total is no longer valid. Please refresh your cart and try again.',
+    errPointsInsufficient: 'You do not have enough points for this order.',
+    errPointsLimit: 'Points cannot cover more than 15% of the order.',
+    errPointsAuth: 'Please sign in to use your points.',
+    errCouponBogo: 'A coupon cannot be combined with the automatic pairs deal.',
     genericError: 'Something went wrong opening the payment page. Please try again.',
     cartInvalid:
       'One or more products in your cart are no longer available. Please update your cart before continuing.',
@@ -113,7 +126,8 @@ const content = {
     lastName: 'שם משפחה',
     email: 'מייל',
     phone: 'טלפון',
-    street: 'רחוב ומספר בית',
+    street: 'רחוב',
+    houseNumber: 'מספר בית',
     city: 'עיר',
     zip: 'מיקוד',
     floor: 'קומה',
@@ -133,6 +147,15 @@ const content = {
     invalidEmail: 'יש להזין כתובת מייל תקינה',
     invalidPhone: 'יש להזין מספר טלפון תקין',
     incomplete: 'יש להשלים את שדות החובה שלמעלה.',
+    errAddress: 'חסרים פרטים בכתובת המשלוח',
+    errCustomer: 'חסרים פרטי התקשרות',
+    errFieldsSuffix: 'יש להשלים אותם ולנסות שוב.',
+    errEmail: 'כתובת המייל אינה תקינה. נא לבדוק אותה ולנסות שוב.',
+    errAmount: 'סכום ההזמנה אינו תקף יותר. נא לרענן את הסל ולנסות שוב.',
+    errPointsInsufficient: 'אין מספיק נקודות ביתרה שלך עבור הזמנה זו.',
+    errPointsLimit: 'לא ניתן לממש יותר מ-15% מסכום ההזמנה בנקודות.',
+    errPointsAuth: 'יש להתחבר לחשבון כדי לממש נקודות.',
+    errCouponBogo: 'לא ניתן לשלב קופון עם מבצע הזוגות האוטומטי.',
     genericError: 'אירעה תקלה בפתיחת עמוד התשלום. נא לנסות שוב.',
     cartInvalid: 'אחד או יותר מהמוצרים בסל אינם זמינים יותר. נא לעדכן את הסל לפני שממשיכים.',
     backToCart: 'חזרה לסל',
@@ -142,6 +165,65 @@ const content = {
 } as const
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+type Copy = (typeof content)[keyof typeof content]
+
+/**
+ * Server field name → the label this page already draws above that input, so a
+ * message naming a missing field uses the same word the customer is looking at
+ * rather than a second translation of it.
+ */
+const FIELD_LABELS = {
+  firstName: 'firstName',
+  lastName: 'lastName',
+  email: 'email',
+  mobile: 'phone',
+  city: 'city',
+  streetName: 'street',
+  streetNumber: 'houseNumber'
+} as const satisfies Record<string, keyof Copy>
+
+/**
+ * Turns the order API's `code`/`fields` into a sentence in the page's language.
+ *
+ * Returns null for anything unmapped, which the caller logs and replaces with the
+ * generic line — the raw `error` string from the server is always English and must
+ * never reach a customer on the Hebrew page.
+ */
+function describeCheckoutError(t: Copy, code?: string, fields?: string[]): string | null {
+  const named = (fields ?? [])
+    .map(field => FIELD_LABELS[field as keyof typeof FIELD_LABELS])
+    .filter(Boolean)
+    .map(key => t[key] as string)
+
+  const listing = (prefix: string) =>
+    named.length > 0
+      ? `${prefix}: ${named.join(', ')}. ${t.errFieldsSuffix}`
+      : `${prefix}. ${t.errFieldsSuffix}`
+
+  switch (code) {
+    case 'ADDRESS_INCOMPLETE':
+      return listing(t.errAddress)
+    case 'CUSTOMER_INCOMPLETE':
+      return listing(t.errCustomer)
+    case 'EMAIL_INVALID':
+      return t.errEmail
+    case 'TERMS_NOT_ACCEPTED':
+      return t.termsRequired
+    case 'AMOUNT_INVALID':
+      return t.errAmount
+    case 'POINTS_INSUFFICIENT':
+      return t.errPointsInsufficient
+    case 'POINTS_LIMIT_EXCEEDED':
+      return t.errPointsLimit
+    case 'POINTS_AUTH_REQUIRED':
+      return t.errPointsAuth
+    case 'COUPON_BOGO_CONFLICT':
+      return t.errCouponBogo
+    default:
+      return null
+  }
+}
 
 /** 438:2749 — two 331.5px columns, 18px apart, each cell closing with 15px. */
 // Shared with CheckoutSkeleton so the fallback cannot drift out of register.
@@ -348,21 +430,17 @@ export default function CheckoutClient({ recommendations = [] }: CheckoutClientP
     setError(null)
     setIsCreating(true)
 
-    // The frame's single "רחוב ומספר בית" field has to become the two the order
-    // API wants. Done here rather than on every keystroke, so the house number
-    // isn't torn off the street name while it's being typed.
-    const { streetName, streetNumber } = splitStreetAddress(details.deliveryAddress.streetName)
-
     // However it was typed — +972, 00972, bare national — the order, the invoice
     // and the courier SMS all get the same 0XXXXXXXXX, which is the shape this
     // backend has always received. Validation above guarantees this parses.
     const e164 = normalizeIsraelPhoneInput(details.payer.mobile)
     const mobile = e164 ? formatIsraelE164ToLocalDigits(e164) : details.payer.mobile
 
+    // Street and house number are collected as two fields, so the address goes
+    // to the order API exactly as it was typed — nothing is parsed apart here.
     const payload: CheckoutFormData = {
       ...details,
-      payer: { ...details.payer, mobile },
-      deliveryAddress: { ...details.deliveryAddress, streetName, streetNumber }
+      payer: { ...details.payer, mobile }
     }
 
     // Tracking is wrapped separately and never rethrows: an analytics failure
@@ -434,11 +512,16 @@ export default function CheckoutClient({ recommendations = [] }: CheckoutClientP
       setCreatedOrderId(result.orderId || orderId)
     } catch (err) {
       const code = (err as { code?: string } | null)?.code
+      const fields = (err as { fields?: string[] } | null)?.fields
       if (code && CART_INVALID_ERROR_CODES.has(code)) {
         setError(t.cartInvalid)
         await revalidateCart()
       } else {
-        setError(err instanceof Error ? err.message : t.genericError)
+        const described = describeCheckoutError(t, code, fields)
+        // Anything unmapped is a gap in the table above, not something to show a
+        // customer in English — surface the generic line and keep the original here.
+        if (!described) console.error('[checkout] Unmapped payment error:', err)
+        setError(described ?? t.genericError)
       }
     } finally {
       setIsCreating(false)
@@ -589,15 +672,26 @@ export default function CheckoutClient({ recommendations = [] }: CheckoutClientP
 
               {shippingMethod === 'delivery' && (
                 <>
-                  <Field
-                    fieldClassName={CELL}
-                    label={t.street}
-                    required
-                    autoComplete="street-address"
-                    value={details.deliveryAddress.streetName}
-                    onChange={(e) => setAddress('streetName', e.target.value)}
-                    error={errorFor('streetName')}
-                  />
+                  {/* House number is NOT required: block/parcel addresses
+                      ("5026/2" in נצרת), named squares and kibbutzim have none,
+                      and the order API accepts an empty one. */}
+                  <div className={ROW_GRID}>
+                    <Field
+                      fieldClassName={CELL}
+                      label={t.street}
+                      required
+                      autoComplete="address-line1"
+                      value={details.deliveryAddress.streetName}
+                      onChange={(e) => setAddress('streetName', e.target.value)}
+                      error={errorFor('streetName')}
+                    />
+                    <Field
+                      fieldClassName={CELL}
+                      label={t.houseNumber}
+                      value={details.deliveryAddress.streetNumber ?? ''}
+                      onChange={(e) => setAddress('streetNumber', e.target.value)}
+                    />
+                  </div>
 
                   <div className={ROW_GRID}>
                     <Field

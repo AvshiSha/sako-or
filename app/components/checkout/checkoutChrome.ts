@@ -36,9 +36,9 @@ export const CHECKOUT_TITLE_H = 'h-[40px] lg:h-[50px]'
  * How many field placeholders the skeleton draws.
  *
  * The form has two shapes and the fallback cannot know which is coming: delivery
- * renders ten fields (name, surname, email, phone, street, city, zip, floor,
- * apartment, notes) and is the default for anyone without a stored preference;
- * pickup renders the first four and hides the address block.
+ * renders eleven fields (name, surname, email, phone, street, house number, city,
+ * zip, floor, apartment, notes) and is the default for anyone without a stored
+ * preference; pickup renders the first four and hides the address block.
  *
  * Six sits between them deliberately. Reserving ten would be exact for the common
  * case but leave roughly 240px of blank ground for a returning pickup customer -

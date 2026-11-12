@@ -37,47 +37,17 @@ export function emptyCheckoutDetails(shippingMethod: ShippingMethod = 'delivery'
 }
 
 /**
- * The frame (438:2762) collects street and house number in ONE field, labelled
- * "רחוב ומספר בית", but DeliveryAddress — and the order API behind it — wants
- * them apart. Split on the trailing number so the designed single field still
- * produces the shape the gateway expects.
+ * Street and house number are two fields, in the form and everywhere behind it.
  *
- * "רוטשילד 51" → { streetName: "רוטשילד", streetNumber: "51" }
- * "רוטשילד 51ב" → { streetName: "רוטשילד", streetNumber: "51ב" }
- * "שדרות הנשיא" → { streetName: "שדרות הנשיא", streetNumber: "" }
+ * The frame (438:2762) drew ONE field labelled "רחוב ומספר בית", and we used to
+ * parse it apart at submit time by splitting on a trailing number. That parse
+ * was lossy in exactly the cases it mattered: an address with no trailing house
+ * number — "5026/2" in נצרת, a named square, a kibbutz — produced an empty
+ * streetNumber, which the order API then rejected with a 400 the customer could
+ * not act on. The profile already stores addressStreet and addressStreetNumber
+ * as separate columns, so collecting them separately removes the round-trip
+ * rather than adding work.
  */
-export function splitStreetAddress(combined: string): {
-  streetName: string
-  streetNumber: string
-} {
-  const value = combined.trim().replace(/\s+/g, ' ')
-  if (!value) return { streetName: '', streetNumber: '' }
-
-  // Last whitespace-delimited token that starts with a digit.
-  const match = value.match(/^(.*?)[\s,]+(\d+\S*)$/)
-  if (!match) return { streetName: value, streetNumber: '' }
-
-  return { streetName: match[1].trim(), streetNumber: match[2].trim() }
-}
-
-/**
- * Joins the profile's separate street and house number back into the one field
- * the frame draws. The inverse of splitStreetAddress, so a prefilled address
- * that is never touched round-trips to the same two columns it came from.
- *
- * A stored house number with no street is dropped: on its own it would land in
- * the combined field as a bare "51", which splitStreetAddress reads back as a
- * street named "51" with no number.
- */
-function joinStreetAddress(
-  street: string | null | undefined,
-  streetNumber: string | null | undefined
-): string {
-  const name = (street ?? '').trim()
-  const number = (streetNumber ?? '').trim()
-  if (!name) return ''
-  return number ? `${name} ${number}` : name
-}
 
 /** A profile value is worth prefilling only if it is actually there. */
 const filled = (value: string | null | undefined): string => (value ?? '').trim()
@@ -127,11 +97,8 @@ export function applyProfileToCheckoutDetails(
   put(payer, 'mobile', filled(formatIsraelE164ToLocalDigits(filled(profile?.phone) || null)))
 
   put(deliveryAddress, 'city', filled(profile?.addressCity))
-  put(
-    deliveryAddress,
-    'streetName',
-    joinStreetAddress(profile?.addressStreet, profile?.addressStreetNumber)
-  )
+  put(deliveryAddress, 'streetName', filled(profile?.addressStreet))
+  put(deliveryAddress, 'streetNumber', filled(profile?.addressStreetNumber))
   put(deliveryAddress, 'floor', filled(profile?.addressFloor))
   put(deliveryAddress, 'apartmentNumber', filled(profile?.addressApt))
 
@@ -142,10 +109,10 @@ export function applyProfileToCheckoutDetails(
 /**
  * Everything required before a low-profile payment session can be created.
  *
- * streetNumber is deliberately NOT required: it is parsed out of the combined
- * field above and plenty of Israeli addresses (named squares, kibbutzim) have
- * no house number at all. Requiring it here made the designed single field
- * impossible to satisfy.
+ * streetNumber is deliberately NOT required, and now has its own field: plenty
+ * of Israeli addresses have no house number at all — block/parcel numbering in
+ * נצרת and much of the north, named squares, kibbutzim. The server agrees
+ * (app/api/payments/create-low-profile), so what passes here is accepted there.
  */
 export function isDetailsComplete(details: CheckoutFormData | null): boolean {
   if (!details) return false

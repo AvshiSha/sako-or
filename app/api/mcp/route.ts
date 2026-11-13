@@ -9,11 +9,16 @@ import {
   verifyMcpToken,
   type McpAuthContext,
 } from '@/lib/mcp/auth'
+import { BLOG_IMAGE_HEIGHT, BLOG_IMAGE_WIDTH } from '@/lib/blog-image-spec'
 import { MCP_PATHS, getIssuer } from '@/lib/mcp/oauth/config'
 import { consumeToolCall } from '@/lib/mcp/rate-limit'
 import { runTool, type McpToolResult } from '@/lib/mcp/responses'
-import { McpValidationError } from '@/lib/mcp/validation'
-import { getContent, searchContent } from '@/lib/mcp/tools/read-tools'
+import {
+  MAX_CAROUSEL_PRODUCTS,
+  MIN_CAROUSEL_PRODUCTS,
+  McpValidationError,
+} from '@/lib/mcp/validation'
+import { getContent, listCollections, searchContent } from '@/lib/mcp/tools/read-tools'
 import {
   createBlogDraft,
   scheduleBlogPost,
@@ -90,7 +95,10 @@ const BLOG_FIELD_SCHEMA = {
   featuredImage: z
     .string()
     .optional()
-    .describe('URL returned by upload_article_image. No other host is accepted.'),
+    .describe(
+      'URL returned by upload_article_image with purpose "editorial". No other host is ' +
+        `accepted. The asset is ${BLOG_IMAGE_WIDTH}x${BLOG_IMAGE_HEIGHT}.`
+    ),
   featuredImageAlt: localized
     .optional()
     .describe('Alt text for the featured image, in both languages.'),
@@ -101,13 +109,47 @@ const BLOG_FIELD_SCHEMA = {
   ogImage: z
     .string()
     .optional()
-    .describe('Social preview image URL from upload_article_image. Defaults to featuredImage.'),
+    .describe(
+      'Social preview image URL from upload_article_image. Defaults to featuredImage. ' +
+        `Stored at ${BLOG_IMAGE_WIDTH}x${BLOG_IMAGE_HEIGHT}, which is what the page declares ` +
+        'as og:image:width/height.'
+    ),
   canonicalUrl: z
     .string()
     .optional()
     .describe(
       'Only to point this article at another page on this site. Must be a path or a URL on ' +
         'this domain. Pass "" to clear it. Leave unset for a normal article.'
+    ),
+  // looseObject, for the same reason the three write tools declare one at the
+  // top level: a plain z.object STRIPS unknown keys before the handler runs, so
+  // a payload of { collectionId, categoryIds } reached the server with
+  // `categoryIds` already gone. The association applied, the hand-built chain
+  // was correctly not stored -- and the call returned ok:true, telling a caller
+  // that had tried to choose the product set itself that it had succeeded.
+  // Passing the key through is what lets validateProductCollection refuse the
+  // whole call and name it.
+  productCollection: z
+    .looseObject({
+      collectionId: z
+        .string()
+        .describe('Collection id from list_product_collections. Not the slug from the URL.'),
+      maxProducts: z
+        .number()
+        .int()
+        .min(MIN_CAROUSEL_PRODUCTS)
+        .max(MAX_CAROUSEL_PRODUCTS)
+        .optional()
+        .describe('How many cards to show. Omit to keep what the article already uses (8 by default).'),
+    })
+    .nullable()
+    .optional()
+    .describe(
+      'Which product collection the article\'s product section draws from. ' +
+        'Omit to leave the current selection alone, pass an object to set or replace it, ' +
+        'or pass null to remove the section. One selection serves both Hebrew and English. ' +
+        'This only points the article at a collection that already exists — it cannot create ' +
+        'a collection, change which products are in one, or touch a product, price or stock level.'
     ),
 }
 
@@ -208,7 +250,9 @@ const handler = createMcpHandler(
           'Read the editable fields of one blog article or category, plus its updatedAt. ' +
           'Always call this before an update: updatedAt is the conflict token that ' +
           'update_blog_content requires, and it is how a concurrent edit by a human gets ' +
-          'detected instead of silently overwritten.',
+          'detected instead of silently overwritten. ' +
+          'For an article the response also carries productCollection — the collection its ' +
+          'product section draws from, or null when it has none.',
         annotations: { readOnlyHint: true, openWorldHint: false },
         inputSchema: z.object({
           contentType: z.enum(['blog_article', 'category']),
@@ -218,6 +262,35 @@ const handler = createMcpHandler(
       async (args, ctx) => {
         return runReadTool('get_content', ctx.http?.authInfo, () =>
           getContent(args as Record<string, unknown>)
+        )
+      }
+    )
+
+    server.registerTool(
+      'list_product_collections',
+      {
+        title: 'List product collections',
+        description:
+          'List the product collections a blog article can point its product section at, with ' +
+          'each one\'s id, Hebrew and English names, public URLs and how many products are ' +
+          'currently live in it. This is the only way to discover a collectionId — it is not ' +
+          'the slug in the collection URL. Returns counts only: no product name, price, stock ' +
+          'level or image is reachable here or anywhere else in this integration.',
+        annotations: { readOnlyHint: true, openWorldHint: false },
+        inputSchema: z.object({
+          query: z
+            .string()
+            .optional()
+            .describe('Hebrew or English substring to match against names and paths, e.g. "מגפיים" or "boots".'),
+          includeProductCounts: z
+            .boolean()
+            .optional()
+            .describe('Defaults to true. Set false for a faster list when the count does not matter.'),
+        }),
+      },
+      async (args, ctx) => {
+        return runReadTool('list_product_collections', ctx.http?.authInfo, () =>
+          listCollections(args as Record<string, unknown>)
         )
       }
     )
@@ -261,7 +334,9 @@ const handler = createMcpHandler(
         title: 'Update blog article fields',
         description:
           'Change specified fields of an article. Only the fields you pass are touched; ' +
-          'everything else is left alone. Requires expectedUpdatedAt from get_content. ' +
+          'everything else is left alone — including its product collection, which keeps its ' +
+          'current value unless you pass productCollection explicitly. ' +
+          'Requires expectedUpdatedAt from get_content. ' +
           'This tool cannot change publication status — use schedule_blog_post for that.',
         annotations: { destructiveHint: false, idempotentHint: false, openWorldHint: false },
         inputSchema: z.looseObject({
@@ -328,14 +403,37 @@ const handler = createMcpHandler(
         title: 'Upload an article image',
         description:
           'Store an image for use in an article or a category editorial block, and return its ' +
-          'URL. Supply either imageBase64 (up to 3 MB of image) or sourceUrl (a publicly ' +
-          'reachable https URL — a Google Drive link only works if the file is shared with ' +
-          '"anyone with the link"). Hebrew and English alt text are both required. ' +
-          'Identical images are stored once, so retrying is safe.',
+          'URL and the dimensions it was actually stored at. Supply either imageBase64 (up to ' +
+          '3 MB of image) or sourceUrl (a publicly reachable https URL — a Google Drive link ' +
+          'only works if the file is shared with "anyone with the link"). Hebrew and English ' +
+          'alt text are both required. Identical images are stored once, so retrying is safe.\n\n' +
+          `Featured and Open Graph images are stored at exactly ${BLOG_IMAGE_WIDTH}x` +
+          `${BLOG_IMAGE_HEIGHT}. A larger source of the same proportions is scaled down; a ` +
+          'source that is the wrong shape is refused with its measurements, unless you pass ' +
+          'fit: "cover" to accept a centre crop; a source smaller than that is always refused, ' +
+          'because enlarging it would publish a soft image. Nothing you supply is overwritten ' +
+          '— a resized image is stored as a new object.',
         annotations: { destructiveHint: false, idempotentHint: true, openWorldHint: true },
         inputSchema: z.object({
           altHe: z.string().describe('What the image shows, in Hebrew. Required.'),
           altEn: z.string().describe('What the image shows, in English. Required.'),
+          purpose: z
+            .enum(['editorial', 'inline'])
+            .optional()
+            .describe(
+              `Defaults to "editorial": the featured or Open Graph image, stored at exactly ` +
+                `${BLOG_IMAGE_WIDTH}x${BLOG_IMAGE_HEIGHT}. Use "inline" for a picture that goes ` +
+                'inside the article body — those keep their own proportions and are only ' +
+                'scaled down if they are very large.'
+            ),
+          fit: z
+            .enum(['strict', 'cover'])
+            .optional()
+            .describe(
+              'Editorial images only. "strict" (the default) refuses a source whose ' +
+                'proportions are wrong, and says by how much. "cover" takes the centre crop ' +
+                'instead — use it only when you have decided the crop is acceptable.'
+            ),
           imageBase64: z
             .string()
             .optional()
@@ -406,11 +504,22 @@ const handler = createMcpHandler(
     serverInfo: { name: 'sako-or-seo-content', version: '1.0.0' },
     instructions:
       'SEO content tools for the SAKO-OR store. Scope: blog articles, the editorial/SEO text of ' +
-      'existing product categories, and images for those. Nothing else on the site is reachable.\n\n' +
+      'existing product categories, images for those, and which collection a blog article\'s ' +
+      'product section draws from. Nothing else on the site is reachable: no product, price, ' +
+      'stock level, category structure or collection membership can be changed by any tool here.\n\n' +
       'Workflow: search_content to find a record, get_content to read it and obtain its ' +
       'updatedAt, then create_blog_draft / update_blog_content / update_category_seo. Upload ' +
       'images with upload_article_image and use the URL it returns — no other image host is ' +
       'accepted. schedule_blog_post queues an article; the site publishes it on its own timer.\n\n' +
+      `Blog featured and Open Graph images are ${BLOG_IMAGE_WIDTH}x${BLOG_IMAGE_HEIGHT}. Upload ` +
+      'them at that size, or larger with the same proportions; upload_article_image reports the ' +
+      'dimensions it actually stored, and refuses anything it would have to enlarge or crop ' +
+      'without being told to. Pictures inside the article body use purpose: "inline" and keep ' +
+      'their own shape.\n\n' +
+      'To put products under an article: list_product_collections to find the collection id, ' +
+      'then pass productCollection: { collectionId } to update_blog_content. One selection ' +
+      'serves both languages. Pass productCollection: null to remove the section; omitting the ' +
+      'field keeps whatever is already there.\n\n' +
       'Content is Hebrew-first. Write Hebrew into the `he` field and English into `en`; do not ' +
       'add dir or lang attributes, the page handles direction. Slugs must be latin lowercase, ' +
       'so a Hebrew headline needs an explicitly chosen slug.\n\n' +

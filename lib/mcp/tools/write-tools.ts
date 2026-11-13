@@ -9,7 +9,15 @@ import {
   parseFieldPayload,
   validateReadyToPublish,
   validateSlug,
+  type ProductCollectionSelection,
 } from '@/lib/mcp/validation'
+import {
+  CollectionResolutionError,
+  DEFAULT_MAX_PRODUCTS,
+  countCollectionProducts,
+  resolveProductCollection,
+} from '@/lib/server/blog-collection'
+import type { RelatedProductsCarouselConfig } from '@/lib/firebase'
 import { getIssuer } from '@/lib/mcp/oauth/config'
 import { changedFieldNames, recordAudit, snapshotArticleRevision } from '@/lib/mcp/audit'
 import { consumeUpload } from '@/lib/mcp/rate-limit'
@@ -46,6 +54,119 @@ import {
 interface ToolContext {
   auth: McpAuthContext
   requestId: string
+}
+
+// ── productCollection → relatedProductsCarousel ────────────────────────────
+
+/**
+ * Turn the caller's `productCollection` into the config the storefront reads.
+ *
+ * Mutates `fields` in place: the tool-level name is removed and the stored
+ * field takes its place, so everything downstream -- the Firestore write, the
+ * revision snapshot, `changedFieldNames` -- sees the real document shape and
+ * the audit log records `relatedProductsCarousel`, which is what actually
+ * changed.
+ *
+ * `current` is the article's existing config. It is merged rather than
+ * replaced because `relatedProductsCarousel` is one Firestore field: writing
+ * it at all rewrites the whole object, so an update that only names a
+ * collection would otherwise silently reset `maxProducts` to the default and
+ * `mode` to 'random'. Partial-update behaviour has to hold *inside* the object
+ * as well as across the document.
+ */
+async function materializeProductCollection(
+  fields: Record<string, unknown>,
+  current: RelatedProductsCarouselConfig | undefined
+): Promise<{ warnings: string[]; summary: unknown }> {
+  if (!('productCollection' in fields)) return { warnings: [], summary: undefined }
+
+  const selection = fields.productCollection as ProductCollectionSelection | null
+  delete fields.productCollection
+
+  // Whatever the storefront was told to do with the selection is preserved.
+  // Only 'random' is implemented today (see lib/blog-related-products.ts), but
+  // reading it back rather than hardcoding it means this stays correct the day
+  // another mode ships and somebody sets it in the admin panel.
+  const mode = current?.mode ?? 'random'
+
+  if (selection === null) {
+    fields.relatedProductsCarousel = {
+      enabled: false,
+      mode,
+      categoryIds: [],
+      maxProducts: current?.maxProducts && current.maxProducts > 0
+        ? current.maxProducts
+        : DEFAULT_MAX_PRODUCTS,
+    } satisfies RelatedProductsCarouselConfig
+
+    return {
+      warnings: [],
+      summary: {
+        productCollection: null,
+        collectionNote:
+          'The product section was removed from this article. No product, price, stock ' +
+          'level or collection membership was changed — only this article stopped pointing ' +
+          'at a collection.',
+      },
+    }
+  }
+
+  let resolved
+  try {
+    resolved = await resolveProductCollection(selection.collectionId)
+  } catch (error) {
+    if (error instanceof CollectionResolutionError) {
+      throw new McpValidationError(
+        error.reason === 'not_found' ? 'NOT_FOUND' : 'VALIDATION_FAILED',
+        [error.message]
+      )
+    }
+    throw error
+  }
+
+  const maxProducts =
+    selection.maxProducts ??
+    (current?.maxProducts && current.maxProducts > 0 ? current.maxProducts : DEFAULT_MAX_PRODUCTS)
+
+  fields.relatedProductsCarousel = {
+    enabled: true,
+    mode,
+    categoryIds: resolved.categoryIds,
+    maxProducts,
+  } satisfies RelatedProductsCarouselConfig
+
+  // Counted after resolution, not before: an empty collection is a legitimate
+  // thing to point at (the editor may be publishing ahead of a drop), so this
+  // is a warning rather than a refusal. It is still worth saying, because a
+  // section that renders nothing is otherwise indistinguishable from a
+  // selection that did not save.
+  const { count, capped } = await countCollectionProducts(resolved.categoryIds)
+  const warnings =
+    count === 0
+      ? [
+          `"${resolved.breadcrumb.en}" currently has no products that are live on the site, so ` +
+            'the article will render no product section until it does. The association was ' +
+            'saved regardless.',
+        ]
+      : []
+
+  return {
+    warnings,
+    summary: {
+      productCollection: {
+        collectionId: resolved.collectionId,
+        path: resolved.path,
+        title: resolved.title,
+        breadcrumb: resolved.breadcrumb,
+        urls: resolved.urls,
+        maxProducts,
+      },
+      liveProducts: capped ? `${count}+` : count,
+      collectionNote:
+        'One association serves both languages. The section shows up to ' +
+        `${maxProducts} products, with names and prices rendered in the visitor's locale.`,
+    },
+  }
 }
 
 // ── create_blog_draft ──────────────────────────────────────────────────────
@@ -96,6 +217,11 @@ export async function createBlogDraft(
     ])
   }
 
+  // After the slug/sourceRef checks, so a create that is going to be refused
+  // for a duplicate slug does not first spend two Firestore reads resolving a
+  // collection it will never store.
+  const collection = await materializeProductCollection(fields, undefined)
+
   const id = await createArticleAdmin({
     slug,
     fields,
@@ -128,6 +254,7 @@ export async function createBlogDraft(
     updatedAt: created?.updatedAt,
     warnings: [
       ...warnings,
+      ...collection.warnings,
       ...(missing.length > 0
         ? [
             'Still needed before this can be scheduled: ' + missing.join(' '),
@@ -137,6 +264,7 @@ export async function createBlogDraft(
     data: {
       slug,
       urls: articlePublicUrls(slug),
+      ...(collection.summary ?? {}),
       note: 'The draft is private. It is not on the site, in the sitemap, or reachable by URL.',
     },
   }
@@ -224,6 +352,13 @@ export async function updateBlogContent(
     }
   }
 
+  // Resolved against the article's *current* config, so naming a collection
+  // without naming maxProducts keeps the count the editor already chose.
+  const collection = await materializeProductCollection(
+    fields,
+    current.relatedProductsCarousel
+  )
+
   const before = await getArticleRawAdmin(id.trim())
 
   const outcome = await updateArticleFieldsAdmin(id.trim(), fields, {
@@ -275,8 +410,11 @@ export async function updateBlogContent(
     status: current.status,
     url: articlePublicUrl(slug),
     updatedAt: outcome.updatedAt,
-    warnings,
-    data: { updatedFields: Object.keys(fields).sort() },
+    warnings: [...warnings, ...collection.warnings],
+    data: {
+      updatedFields: Object.keys(fields).sort(),
+      ...(collection.summary ?? {}),
+    },
   }
 }
 
@@ -396,10 +534,22 @@ export async function uploadArticleImage(
     ])
   }
 
+  const purpose = input.purpose === 'inline' ? 'inline' : 'editorial'
+  const fit = typeof input.fit === 'string' ? input.fit : 'strict'
+
+  if (!['strict', 'cover'].includes(fit)) {
+    throw new McpValidationError('INVALID_REQUEST', [
+      'fit must be "strict" (refuse a source that is the wrong shape) or "cover" ' +
+        '(take the centre crop). It only applies to editorial images.',
+    ])
+  }
+
   const imported = await importArticleImage({
     imageBase64: typeof input.imageBase64 === 'string' ? input.imageBase64 : undefined,
     mimeType: typeof input.mimeType === 'string' ? input.mimeType : undefined,
     sourceUrl: typeof input.sourceUrl === 'string' ? input.sourceUrl : undefined,
+    purpose,
+    allowCrop: fit === 'cover',
   })
 
   await recordAudit({
@@ -417,18 +567,33 @@ export async function uploadArticleImage(
     contentType: 'image',
     contentId: imported.storagePath,
     url: imported.url,
-    warnings: imported.reused
-      ? ['This exact image was already stored; the existing copy was reused.']
-      : [],
+    warnings: [
+      ...imported.warnings,
+      ...(imported.reused
+        ? ['This exact image was already stored; the existing copy was reused.']
+        : []),
+    ],
     data: {
       storagePath: imported.storagePath,
       url: imported.url,
       contentType: imported.contentType,
       bytes: imported.bytes,
+      // Measured off the stored object, not assumed from the request. This is
+      // the number lib/seo.ts declares as og:image:width, so it has to be the
+      // truth about the asset rather than the size that was asked for.
+      width: imported.width,
+      height: imported.height,
+      purpose,
+      ...(imported.resized
+        ? { sourceDimensions: `${imported.source.width}x${imported.source.height}` }
+        : {}),
       alt: { he: altHe, en: altEn },
       usage:
-        'Pass this url as featuredImage (with featuredImageAlt set to the alt text above), ' +
-        'as ogImage, or in an <img src> inside the article content.',
+        purpose === 'editorial'
+          ? `Stored at ${imported.width}x${imported.height}. Pass this url as featuredImage ` +
+            '(with featuredImageAlt set to the alt text above) or as ogImage.'
+          : `Stored at ${imported.width}x${imported.height}. Use it in an <img src> inside ` +
+            'the article content.',
     },
   }
 }

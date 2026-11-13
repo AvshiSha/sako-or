@@ -11,6 +11,11 @@ import {
   fetchRemoteImage,
   type ImageImportDeps,
 } from '@/lib/mcp/image-fetch'
+import {
+  conformEditorialImage,
+  conformInlineImage,
+  type ImagePurpose,
+} from '@/lib/mcp/image-transform'
 import { McpValidationError } from '@/lib/mcp/validation'
 
 /**
@@ -21,13 +26,24 @@ import { McpValidationError } from '@/lib/mcp/validation'
  * one approved, which is why it is the only half that needs `server-only`.
  */
 
-export interface ImportedImage {
+interface StoredImage {
   storagePath: string
   url: string
   contentType: string
   bytes: number
   /** True when the object already existed and the upload was skipped. */
   reused: boolean
+}
+
+export interface ImportedImage extends StoredImage {
+  /** Dimensions of what was actually stored, measured rather than assumed. */
+  width: number
+  height: number
+  /** Dimensions and type of the file as supplied. */
+  source: { width: number; height: number; contentType: string }
+  /** True when the stored bytes differ from the supplied ones. */
+  resized: boolean
+  warnings: string[]
 }
 
 /**
@@ -42,7 +58,7 @@ export interface ImportedImage {
  * SDK has no getDownloadURL -- the token goes into the object's metadata and
  * the URL is assembled from it, again following the existing script.
  */
-async function storeImage(bytes: Buffer, contentType: string): Promise<ImportedImage> {
+async function storeImage(bytes: Buffer, contentType: string): Promise<StoredImage> {
   const extension = extensionFor(contentType)
   if (!extension) {
     // Unreachable while image-fetch gates the type, which it does. Checked
@@ -116,6 +132,10 @@ export async function importArticleImage(
     imageBase64?: string
     mimeType?: string
     sourceUrl?: string
+    /** 'editorial' (featured/OG, forced to 1200x628) or 'inline' (body images). */
+    purpose?: ImagePurpose
+    /** Consent to a centre crop when an editorial source is the wrong shape. */
+    allowCrop?: boolean
   },
   deps: ImageImportDeps = DEFAULT_DEPS
 ): Promise<ImportedImage> {
@@ -128,11 +148,30 @@ export async function importArticleImage(
     ])
   }
 
-  const { bytes, contentType } = hasBase64
+  const fetched = hasBase64
     ? decodeBase64Image(input.imageBase64!, input.mimeType)
     : await fetchRemoteImage(input.sourceUrl!, deps)
 
-  return storeImage(bytes, contentType)
+  // Dimensions are settled before anything is written, so a refusal costs a
+  // decode rather than an object in the bucket that nothing will ever
+  // reference.
+  const conformed =
+    input.purpose === 'inline'
+      ? await conformInlineImage(fetched.bytes, fetched.contentType)
+      : await conformEditorialImage(fetched.bytes, fetched.contentType, {
+          allowCrop: input.allowCrop === true,
+        })
+
+  const stored = await storeImage(conformed.bytes, conformed.contentType)
+
+  return {
+    ...stored,
+    width: conformed.width,
+    height: conformed.height,
+    source: conformed.source,
+    resized: !conformed.unchanged,
+    warnings: conformed.warnings,
+  }
 }
 
 export { MAX_IMAGE_BYTES, MAX_REMOTE_IMAGE_BYTES } from '@/lib/mcp/image-fetch'

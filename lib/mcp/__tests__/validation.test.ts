@@ -342,7 +342,9 @@ test('every allowlisted field has a validator', () => {
           ? MEDIA('content/news/a.webp')
           : field === 'canonicalUrl'
             ? ''
-            : { he: 'x', en: 'y' },
+            : field === 'productCollection'
+              ? { collectionId: 'abc123' }
+              : { he: 'x', en: 'y' },
     }
     const { fields } = parseFieldPayload(probe, BLOG_WRITABLE_FIELDS, 'probe', SITE)
     assert.ok(field in fields, `${field} produced no output — missing validator`)

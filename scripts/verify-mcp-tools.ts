@@ -28,6 +28,9 @@ import 'dotenv/config'
 const BASE = (process.env.MCP_VERIFY_BASE_URL ?? 'http://127.0.0.1:3100').replace(/\/+$/, '')
 const WRITE = process.argv.includes('--write')
 
+/** Kept in one place so adding a tool fails in exactly one assertion, not three. */
+const EXPECTED_TOOL_COUNT = 9
+
 let passed = 0
 let failed = 0
 let skipped = 0
@@ -50,6 +53,22 @@ function section(name: string) {
 function expect(condition: unknown, message: string): void {
   if (!condition) throw new Error(message)
 }
+/**
+ * A solid-colour PNG of a given size, for the image-dimension cases.
+ *
+ * Generated rather than checked in as base64 constants: the interesting part is
+ * the dimensions, and a handful of fixtures would be a handful of opaque blobs
+ * nobody could tell apart. Noise is drawn into it so the encoder cannot
+ * collapse every size to the same few bytes, which would make the
+ * content-addressed store treat them as one image.
+ */
+async function makePng(width: number, height: number): Promise<Buffer> {
+  const sharpLib = (await import('sharp')).default
+  const pixels = Buffer.alloc(width * height * 3)
+  for (let i = 0; i < pixels.length; i++) pixels[i] = (i * 31 + width * 7 + height) % 251
+  return sharpLib(pixels, { raw: { width, height, channels: 3 } }).png().toBuffer()
+}
+
 async function check(label: string, fn: () => Promise<string | void>) {
   try {
     const detail = await fn()
@@ -263,6 +282,9 @@ async function main() {
   const ro = new McpClient(readOnly.accessToken)
 
   let createdId: string | null = null
+  let collectionId: string | null = null
+  /** Storage paths this run uploaded, so the bucket is left as it was found. */
+  const uploadedPaths = new Set<string>()
 
   try {
     // ── Protocol ──────────────────────────────────────────────────────────
@@ -301,18 +323,19 @@ async function main() {
       )
       expect(Boolean(result.instructions), 'the server instructions should be advertised')
       const tools = await legacy.listTools()
-      expect(tools.length === 8, `legacy tools/list returned ${tools.length}`)
+      expect(tools.length === EXPECTED_TOOL_COUNT, `legacy tools/list returned ${tools.length}`)
       return `${result.protocolVersion}: ${tools.length} tools`
     })
 
     let tools: Array<{ name: string; annotations?: Record<string, unknown> }> = []
 
-    await check('exactly the expected eight tools are exposed', async () => {
+    await check('exactly the expected nine tools are exposed', async () => {
       tools = await rw.listTools()
       const names = tools.map((t) => t.name).sort()
       const expected = [
         'create_blog_draft',
         'get_content',
+        'list_product_collections',
         'schedule_blog_post',
         'search_content',
         'unschedule_blog_post',
@@ -321,6 +344,10 @@ async function main() {
         'upload_article_image',
       ]
       expect(
+        expected.length === EXPECTED_TOOL_COUNT,
+        'EXPECTED_TOOL_COUNT and this list disagree'
+      )
+      expect(
         JSON.stringify(names) === JSON.stringify(expected),
         `got ${JSON.stringify(names)}`
       )
@@ -328,7 +355,13 @@ async function main() {
     })
 
     await check('no tool exists for products, orders, users or raw queries', async () => {
-      const names = tools.map((t) => t.name)
+      // `list_product_collections` is the one tool whose name contains a
+      // forbidden word, and it is exempted by name rather than by loosening the
+      // substring check: it reads which collections exist and how many live
+      // products each holds, and nothing else in this surface may mention a
+      // product at all. Exempting the word instead of the tool would let a
+      // future `update_product_price` through.
+      const names = tools.map((t) => t.name).filter((n) => n !== 'list_product_collections')
       for (const forbidden of [
         'query',
         'sql',
@@ -356,7 +389,7 @@ async function main() {
       return 'none of the forbidden shapes present'
     })
 
-    await check('only the two read tools are marked read-only', async () => {
+    await check('only the three read tools are marked read-only', async () => {
       // readOnlyHint is what makes ChatGPT prompt for confirmation; a write tool
       // wrongly marked read-only would be applied without asking.
       const readOnlyNames = tools
@@ -364,7 +397,8 @@ async function main() {
         .map((t) => t.name)
         .sort()
       expect(
-        JSON.stringify(readOnlyNames) === JSON.stringify(['get_content', 'search_content']),
+        JSON.stringify(readOnlyNames) ===
+          JSON.stringify(['get_content', 'list_product_collections', 'search_content']),
         `got ${JSON.stringify(readOnlyNames)}`
       )
       return readOnlyNames.join(', ')
@@ -438,6 +472,64 @@ async function main() {
     })
 
     // ── Scope enforcement ─────────────────────────────────────────────────
+    // ── Product collections ───────────────────────────────────────────────
+    section('Product collections')
+
+    await check('list_product_collections returns ids, both locales and a live count', async () => {
+      const result = await rw.call('list_product_collections', { query: 'boots' })
+      expect(result.ok, `list failed: ${result.rawText}`)
+      const data = result.data as {
+        results: Array<{
+          collectionId: string
+          categoryIds: string[]
+          path: string
+          title: { he: string; en: string }
+          urls: { he: string; en: string }
+          liveProducts?: number | string
+        }>
+      }
+      expect(data.results.length > 0, 'no collection matched "boots"')
+
+      const boots = data.results.find((c) => c.path === 'women/shoes/boots')
+      expect(Boolean(boots), `women/shoes/boots not in ${data.results.map((c) => c.path).join(', ')}`)
+      expect(Boolean(boots!.title.he), 'the Hebrew title is empty')
+      expect(Boolean(boots!.title.en), 'the English title is empty')
+      expect(boots!.urls.he.includes('/he/collection/women/shoes/boots'), `bad he URL: ${boots!.urls.he}`)
+      expect(boots!.urls.en.includes('/en/collection/women/shoes/boots'), `bad en URL: ${boots!.urls.en}`)
+
+      // The chain, not the id. This is the field the storefront queries on, and
+      // a leaf id alone would select nothing.
+      expect(
+        boots!.categoryIds.length === 3 &&
+          boots!.categoryIds[boots!.categoryIds.length - 1] === boots!.collectionId,
+        `expected a 3-link chain ending at the leaf, got ${JSON.stringify(boots!.categoryIds)}`
+      )
+      collectionId = boots!.collectionId
+      return `${boots!.path} (${boots!.title.he} / ${boots!.title.en}), ${boots!.liveProducts} live products`
+    })
+
+    await check('a Hebrew query finds the same collection', async () => {
+      const result = await rw.call('list_product_collections', { query: 'מגפיים' })
+      expect(result.ok, `list failed: ${result.rawText}`)
+      const data = result.data as { results: Array<{ collectionId: string; path: string }> }
+      expect(
+        data.results.some((c) => c.collectionId === collectionId),
+        `Hebrew search missed it: ${data.results.map((c) => c.path).join(', ')}`
+      )
+      return `matched ${data.results.length} collection(s)`
+    })
+
+    await check('the collection listing carries no product detail', async () => {
+      // Only a count crosses this boundary. A name, price or stock level here
+      // would be a product read surface that nothing asked for.
+      const result = await rw.call('list_product_collections', {})
+      const raw = JSON.stringify(result.data)
+      for (const leaked of ['price', 'sku', 'stock', 'inventory', 'salePrice', 'barcode']) {
+        expect(!raw.toLowerCase().includes(leaked.toLowerCase()), `"${leaked}" appeared in the listing`)
+      }
+      return 'counts only'
+    })
+
     section('Scope enforcement')
 
     await check('a read-only token can read', async () => {
@@ -637,7 +729,7 @@ async function main() {
       // And the token actually works.
       const issued = new McpClient(tokens.access_token)
       const tools = await issued.listTools()
-      expect(tools.length === 8, `the issued token saw ${tools.length} tools`)
+      expect(tools.length === EXPECTED_TOOL_COUNT, `the issued token saw ${tools.length} tools`)
 
       // Replaying the code must fail: single use.
       const replay = await fetch(`${BASE}/api/mcp/oauth/token`, {
@@ -894,6 +986,295 @@ async function main() {
         return 'stripped, and reported as a warning'
       })
 
+      // ── The product collection association ──────────────────────────────
+
+      await check('a new draft starts with no product collection', async () => {
+        const current = await w.call('get_content', {
+          contentType: 'blog_article',
+          contentId: createdId,
+        })
+        const fields = (current.data as { fields: Record<string, unknown> }).fields
+        expect(
+          'productCollection' in fields,
+          'the field should always be present so a reader can tell it is readable'
+        )
+        expect(fields.productCollection === null, `expected null, got ${JSON.stringify(fields.productCollection)}`)
+        return 'null, and reported as null rather than omitted'
+      })
+
+      await check('assigning a collection saves the whole ancestor chain', async () => {
+        const current = await w.call('get_content', {
+          contentType: 'blog_article',
+          contentId: createdId,
+        })
+        const result = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: current.updatedAt,
+          productCollection: { collectionId },
+        })
+        expect(result.ok, `assign failed: ${result.rawText}`)
+
+        const { adminDb } = await import('@/lib/firebase-admin')
+        const stored = (await adminDb.collection('blogArticles').doc(createdId!).get()).data()
+        const config = stored?.relatedProductsCarousel
+        expect(config?.enabled === true, `enabled is ${config?.enabled}`)
+        expect(
+          Array.isArray(config?.categoryIds) && config.categoryIds.length === 3,
+          `expected a 3-link chain, stored ${JSON.stringify(config?.categoryIds)}`
+        )
+        expect(
+          config.categoryIds[2] === collectionId,
+          'the chain does not end at the chosen collection'
+        )
+        expect(config?.mode === 'random', `mode is ${config?.mode}`)
+        return `categoryIds ${JSON.stringify(config.categoryIds)}, maxProducts ${config.maxProducts}`
+      })
+
+      await check('reading it back returns the same selection, in both locales', async () => {
+        const current = await w.call('get_content', {
+          contentType: 'blog_article',
+          contentId: createdId,
+        })
+        const fields = (current.data as {
+          fields: { productCollection: { collectionId: string; title: { he: string; en: string }; urls: { he: string; en: string } } | null }
+        }).fields
+        expect(fields.productCollection !== null, 'the selection read back as null')
+        expect(
+          fields.productCollection!.collectionId === collectionId,
+          `read back ${fields.productCollection!.collectionId}`
+        )
+        expect(Boolean(fields.productCollection!.title.he), 'no Hebrew title')
+        expect(Boolean(fields.productCollection!.title.en), 'no English title')
+        return `${fields.productCollection!.title.he} / ${fields.productCollection!.title.en}`
+      })
+
+      await check('the storefront resolves products for that selection', async () => {
+        // The point of the whole feature: the stored chain is one the product
+        // query actually matches. Checked through the same module the article
+        // page renders with, so this fails if the chain is subtly wrong rather
+        // than merely well-formed.
+        const { adminDb } = await import('@/lib/firebase-admin')
+        const stored = (await adminDb.collection('blogArticles').doc(createdId!).get()).data()
+        const { fetchRelatedProductsForArticle } = await import('@/lib/blog-related-products')
+        const products = await fetchRelatedProductsForArticle(stored?.relatedProductsCarousel)
+        expect(products.length > 0, 'the saved selection resolves to no products')
+        expect(
+          products.length <= stored!.relatedProductsCarousel.maxProducts,
+          `returned ${products.length}, over the ${stored!.relatedProductsCarousel.maxProducts} cap`
+        )
+        return `${products.length} product cards would render`
+      })
+
+      await check('an unrelated edit leaves the selection alone', async () => {
+        const current = await w.call('get_content', {
+          contentType: 'blog_article',
+          contentId: createdId,
+        })
+        const result = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: current.updatedAt,
+          seoDescription: { he: 'תיאור חדש', en: 'A different description' },
+        })
+        expect(result.ok, `update failed: ${result.rawText}`)
+
+        const after = await w.call('get_content', {
+          contentType: 'blog_article',
+          contentId: createdId,
+        })
+        const fields = (after.data as { fields: { productCollection: { collectionId: string } | null } }).fields
+        expect(fields.productCollection !== null, 'an unrelated edit cleared the selection')
+        expect(fields.productCollection!.collectionId === collectionId, 'the selection changed')
+        return 'selection preserved through a partial update'
+      })
+
+      await check('maxProducts survives an edit that only names the collection', async () => {
+        // Partial-update behaviour inside the stored object: the whole field is
+        // rewritten on every write, so a re-assignment that says nothing about
+        // the count must not reset it.
+        let current = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const withCount = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: current.updatedAt,
+          productCollection: { collectionId, maxProducts: 4 },
+        })
+        expect(withCount.ok, `set failed: ${withCount.rawText}`)
+
+        current = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const reassign = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: current.updatedAt,
+          productCollection: { collectionId },
+        })
+        expect(reassign.ok, `reassign failed: ${reassign.rawText}`)
+
+        const { adminDb } = await import('@/lib/firebase-admin')
+        const stored = (await adminDb.collection('blogArticles').doc(createdId!).get()).data()
+        expect(
+          stored?.relatedProductsCarousel?.maxProducts === 4,
+          `maxProducts reset to ${stored?.relatedProductsCarousel?.maxProducts}`
+        )
+        return 'maxProducts 4 preserved'
+      })
+
+      await check('an unknown collection id is NOT_FOUND and changes nothing', async () => {
+        const current = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const result = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: current.updatedAt,
+          productCollection: { collectionId: 'definitely-not-a-collection' },
+        })
+        expect(!result.ok, 'an invented id was accepted')
+        expect(result.errorCode === 'NOT_FOUND', `expected NOT_FOUND, got ${result.errorCode}`)
+
+        const after = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const fields = (after.data as { fields: { productCollection: { collectionId: string } | null } }).fields
+        expect(fields.productCollection?.collectionId === collectionId, 'the refusal still wrote something')
+        return 'refused, previous selection intact'
+      })
+
+      await check('the raw carousel object cannot be written', async () => {
+        const current = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const result = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: current.updatedAt,
+          relatedProductsCarousel: { enabled: true, mode: 'random', categoryIds: ['x'], maxProducts: 99 },
+        })
+        expect(!result.ok, 'the raw field was accepted')
+        expect(result.errorCode === 'FORBIDDEN_FIELD', `expected FORBIDDEN_FIELD, got ${result.errorCode}`)
+        return 'refused by name'
+      })
+
+      await check('categoryIds cannot be smuggled in through productCollection', async () => {
+        const current = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const result = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: current.updatedAt,
+          productCollection: { collectionId, categoryIds: ['anything'] },
+        })
+        expect(!result.ok, 'a hand-built chain was accepted')
+        expect(result.errorCode === 'FORBIDDEN_FIELD', `expected FORBIDDEN_FIELD, got ${result.errorCode}`)
+        return 'the chain stays server-derived'
+      })
+
+      await check('a stale token aborts a collection change too', async () => {
+        const result = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: '1999-01-01T00:00:00.000Z',
+          productCollection: null,
+        })
+        expect(!result.ok, 'should have been rejected')
+        expect(result.errorCode === 'CONFLICT', `expected CONFLICT, got ${result.errorCode}`)
+
+        const after = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const fields = (after.data as { fields: { productCollection: unknown } }).fields
+        expect(fields.productCollection !== null, 'the stale write cleared the selection anyway')
+        return 'CONFLICT, selection untouched'
+      })
+
+      await check('null clears the selection and the section stops rendering', async () => {
+        const current = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const result = await w.call('update_blog_content', {
+          id: createdId,
+          expectedUpdatedAt: current.updatedAt,
+          productCollection: null,
+        })
+        expect(result.ok, `clear failed: ${result.rawText}`)
+
+        const after = await w.call('get_content', { contentType: 'blog_article', contentId: createdId })
+        const fields = (after.data as { fields: { productCollection: unknown } }).fields
+        expect(fields.productCollection === null, `expected null, got ${JSON.stringify(fields.productCollection)}`)
+
+        const { adminDb } = await import('@/lib/firebase-admin')
+        const stored = (await adminDb.collection('blogArticles').doc(createdId!).get()).data()
+        const { fetchRelatedProductsForArticle } = await import('@/lib/blog-related-products')
+        const products = await fetchRelatedProductsForArticle(stored?.relatedProductsCarousel)
+        expect(products.length === 0, `${products.length} products still resolve after clearing`)
+        return 'cleared, and no products resolve'
+      })
+
+      await check('the collection write touched nothing but the article', async () => {
+        // The permission boundary, asserted against the database rather than
+        // inferred from the tool schema.
+        const { adminDb } = await import('@/lib/firebase-admin')
+        const category = (await adminDb.collection('categories').doc(collectionId!).get()).data()
+        expect(category?.seoUpdatedVia === undefined, 'the category document was written')
+        expect(category?.isEnabled === true, 'the category visibility changed')
+        return 'the category document is untouched'
+      })
+
+      // ── Image dimensions ────────────────────────────────────────────────
+
+      await check('an undersized editorial image is refused with its measurements', async () => {
+        const result = await w.call('upload_article_image', {
+          altHe: 'תמונה קטנה מדי',
+          altEn: 'Too small',
+          imageBase64: (await makePng(600, 314)).toString('base64'),
+          mimeType: 'image/png',
+        })
+        expect(!result.ok, 'an undersized image was stored')
+        expect(/600x314/.test(result.rawText), `the message should measure it: ${result.rawText}`)
+        expect(/1200x628/.test(result.rawText), 'the message should state the target')
+        return 'refused, no upscaling'
+      })
+
+      await check('a wrong-shape editorial image is refused until a crop is asked for', async () => {
+        const base = {
+          altHe: 'יחס לא נכון',
+          altEn: 'Wrong ratio',
+          imageBase64: (await makePng(1920, 1080)).toString('base64'),
+          mimeType: 'image/png',
+        }
+        const strict = await w.call('upload_article_image', base)
+        expect(!strict.ok, 'a 16:9 source was cropped without being asked')
+        expect(/fit/.test(strict.rawText), `the message should name the escape hatch: ${strict.rawText}`)
+
+        const cropped = await w.call('upload_article_image', { ...base, fit: 'cover' })
+        expect(cropped.ok, `the explicit crop failed: ${cropped.rawText}`)
+        if (cropped.contentId) uploadedPaths.add(cropped.contentId)
+        const data = cropped.data as { width: number; height: number }
+        expect(data.width === 1200 && data.height === 628, `stored ${data.width}x${data.height}`)
+        return `refused, then 1920x1080 -> ${data.width}x${data.height} on request`
+      })
+
+      await check('an oversized editorial image is stored at exactly 1200x628', async () => {
+        const result = await w.call('upload_article_image', {
+          altHe: 'תמונה גדולה',
+          altEn: 'Oversized but correctly proportioned',
+          imageBase64: (await makePng(1650, 863)).toString('base64'),
+          mimeType: 'image/png',
+        })
+        expect(result.ok, `upload failed: ${result.rawText}`)
+        if (result.contentId) uploadedPaths.add(result.contentId)
+        const data = result.data as { width: number; height: number; sourceDimensions?: string }
+        expect(data.width === 1200 && data.height === 628, `stored ${data.width}x${data.height}`)
+        expect(data.sourceDimensions === '1650x863', `source not reported: ${data.sourceDimensions}`)
+
+        // Measured off the stored object, not taken from the response.
+        const stored = Buffer.from(await (await fetch(result.url!)).arrayBuffer())
+        const sharpLib = (await import('sharp')).default
+        const meta = await sharpLib(stored).metadata()
+        expect(
+          meta.width === 1200 && meta.height === 628,
+          `the stored file is ${meta.width}x${meta.height}`
+        )
+        return `1650x863 -> ${meta.width}x${meta.height} ${meta.format}`
+      })
+
+      await check('a body image keeps its own proportions', async () => {
+        const result = await w.call('upload_article_image', {
+          altHe: 'תמונה בגוף הכתבה',
+          altEn: 'In-body image',
+          purpose: 'inline',
+          imageBase64: (await makePng(900, 900)).toString('base64'),
+          mimeType: 'image/png',
+        })
+        expect(result.ok, `inline upload failed: ${result.rawText}`)
+        if (result.contentId) uploadedPaths.add(result.contentId)
+        const data = result.data as { width: number; height: number }
+        expect(data.width === 900 && data.height === 900, `stored ${data.width}x${data.height}`)
+        return 'a square body image stays square'
+      })
+
       await check('an incomplete article is refused by schedule_blog_post', async () => {
         // It has no featured image at this point.
         const result = await w.call('schedule_blog_post', {
@@ -906,15 +1287,17 @@ async function main() {
       })
 
       await check('schedule_blog_post stores UTC for a Jerusalem wall-clock time', async () => {
+        // A real 1200x628, not the 1x1 placeholder this used to send: the
+        // featured image is now measured, and a 1x1 is refused for the same
+        // reason any undersized source is.
         const image = await w.call('upload_article_image', {
           altHe: 'תמונת בדיקה',
           altEn: 'Verification image',
-          // A 1x1 PNG.
-          imageBase64:
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==',
+          imageBase64: (await makePng(1200, 628)).toString('base64'),
           mimeType: 'image/png',
         })
         expect(image.ok, `upload failed: ${image.rawText}`)
+        if (image.contentId) uploadedPaths.add(image.contentId)
 
         const current = await w.call('get_content', {
           contentType: 'blog_article',
@@ -960,6 +1343,23 @@ async function main() {
     }
   } finally {
     section('Cleanup')
+
+    if (uploadedPaths.size > 0) {
+      // The image cases upload real files now, not a 1x1 placeholder, and the
+      // store is content-addressed -- so without this the bucket accumulates a
+      // few hundred KB of noise every time anyone runs the script.
+      try {
+        const { adminStorage } = await import('@/lib/firebase-admin')
+        const bucket = adminStorage.bucket(
+          process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+            `${process.env.FIREBASE_PROJECT_ID ?? 'sako-or'}.firebasestorage.app`
+        )
+        for (const path of uploadedPaths) await bucket.file(path).delete({ ignoreNotFound: true })
+        console.log(`  Deleted ${uploadedPaths.size} verification image(s) from storage.`)
+      } catch (error) {
+        console.error('  Could NOT delete the verification images.', error)
+      }
+    }
 
     if (createdId) {
       try {

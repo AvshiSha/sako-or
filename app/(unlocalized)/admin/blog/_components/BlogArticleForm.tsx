@@ -6,7 +6,8 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import RichTextEditor from '@/app/(unlocalized)/admin/_components/RichTextEditorLazy'
-import { uploadCmsImage } from '@/lib/upload-cms-image'
+import { BlogImageError, uploadBlogEditorialImage, uploadCmsImage } from '@/lib/upload-cms-image'
+import { BLOG_IMAGE_HEIGHT, BLOG_IMAGE_WIDTH } from '@/lib/blog-image-spec'
 import { slugify, revalidateCmsPaths } from '@/lib/cms-utils'
 import { cleanupCmsHtml, cmsHtmlToPlainText, isCmsHtmlEmpty, normalizeInlineFieldHtml } from '@/lib/cms-html-cleanup'
 import { useAuth } from '@/app/hooks/useAuth'
@@ -182,12 +183,35 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
     return Object.keys(newErrors).length === 0
   }
 
+  /**
+   * The featured image is the hero on the article page, the picture on every
+   * listing card and the asset a link preview renders, so it goes in at exactly
+   * 1200×628 rather than at whatever the file happened to be. A source that is
+   * the right shape is scaled down silently; one that is not asks before
+   * cutting anything, because which part of a photograph survives a crop is a
+   * decision for the person who chose the photograph.
+   */
   const handleFeaturedImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setIsUploadingFeatured(true)
     try {
-      const url = await uploadCmsImage(file, 'blog')
+      let url: string
+      try {
+        url = await uploadBlogEditorialImage(file)
+      } catch (error) {
+        if (!(error instanceof BlogImageError)) throw error
+        // Only a wrong-shape source is offered a crop. A too-small one has no
+        // second option, so confirm() would be a question with one answer.
+        if (error.verdict !== 'crop') {
+          alert(error.message)
+          return
+        }
+        if (!window.confirm(`${error.message}\n\nCrop the centre and upload anyway?`)) {
+          return
+        }
+        url = await uploadBlogEditorialImage(file, { allowCrop: true })
+      }
       setFormData((prev) => ({ ...prev, featuredImage: url }))
     } catch {
       alert('Failed to upload featured image')
@@ -466,7 +490,9 @@ export default function BlogArticleForm({ initialData, isEdit = false }: BlogArt
                 {isUploadingFeatured ? 'Uploading…' : 'Choose image'}
               </label>
               <p className="mt-2 text-sm text-gray-500">
-                JPG, PNG, or WebP. Shown on the news listing and article page.
+                JPG, PNG, or WebP, at least {BLOG_IMAGE_WIDTH}×{BLOG_IMAGE_HEIGHT}. Saved at
+                exactly {BLOG_IMAGE_WIDTH}×{BLOG_IMAGE_HEIGHT} — shown on the news listing, the
+                article page and in link previews.
               </p>
             </div>
           )}

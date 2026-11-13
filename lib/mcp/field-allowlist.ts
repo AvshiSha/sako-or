@@ -30,6 +30,12 @@ export function isMcpContentType(value: unknown): value is McpContentType {
  * `id`, `status`, `createdAt` and `updatedAt` are included because the caller
  * needs them: `updatedAt` is the conflict token, and status is how it knows
  * whether a draft is already scheduled.
+ *
+ * `productCollection` is the one entry here that is not a stored field. It is
+ * derived from `relatedProductsCarousel` at read time (see
+ * lib/server/blog-collection.ts) so that what comes back out is the same shape
+ * that goes in -- a reader that saw the raw config would have to understand
+ * that `categoryIds` is an ancestor chain in order to write it back.
  */
 export const BLOG_READABLE_FIELDS = Object.freeze([
   'id',
@@ -47,6 +53,7 @@ export const BLOG_READABLE_FIELDS = Object.freeze([
   'ogDescription',
   'ogImage',
   'canonicalUrl',
+  'productCollection',
   'sourceRef',
   'createdBy',
   'updatedBy',
@@ -68,11 +75,24 @@ export const BLOG_READABLE_FIELDS = Object.freeze([
  *   - `sourceRef`. Set once on create and then immutable -- it is the
  *     idempotency key, and a caller that could rewrite it could create the
  *     duplicate the key exists to prevent.
- *   - `relatedProductsCarousel`. It selects which products appear beside the
- *     article, which is merchandising, not editorial.
+ *   - `relatedProductsCarousel`. Still absent, and still refused by name. Which
+ *     collection an article points at is reachable through `productCollection`
+ *     below, which is a narrower thing: it takes one collection id and the
+ *     server expands it into the stored config. The raw object stays
+ *     unwritable because it also carries `enabled` and `mode`, and a caller
+ *     that could set those could turn the section on with an empty selection
+ *     or name a selection mode the storefront does not implement.
  *   - `createdBy`, `updatedBy`, `lastEditedVia`, `createdAt`, `updatedAt`. The
  *     server stamps all five. A caller that could write them could forge the
  *     audit trail and defeat conflict detection in the same call.
+ *
+ * `productCollection` is an *association*, not a merchandising edit. It points
+ * an article at a collection that already exists and is already populated. It
+ * cannot create a collection, change which products are in one, reorder them,
+ * or touch a product's price, stock or visibility -- the category document is
+ * never written on this path, and the only document that changes is the
+ * article. Writing it is the editorial decision "this article is about boots";
+ * everything downstream of that is the existing carousel.
  */
 export const BLOG_WRITABLE_FIELDS = Object.freeze([
   'slug',
@@ -87,6 +107,7 @@ export const BLOG_WRITABLE_FIELDS = Object.freeze([
   'ogDescription',
   'ogImage',
   'canonicalUrl',
+  'productCollection',
 ] as const)
 
 /**

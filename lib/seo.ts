@@ -46,6 +46,44 @@ export interface SEOConfig {
    * money-page collection). Accepts a relative path or full URL. Falls back to `url`
    * (self-canonical) when omitted or empty. */
   canonicalUrl?: string
+  /** Real pixel dimensions of `image`. See resolveOgImageSize for why these matter. */
+  imageWidth?: number
+  imageHeight?: number
+}
+
+/**
+ * The brand logo's real size. Measured, not assumed.
+ *
+ * It is what `ensureAbsoluteImageUrl` falls back to for any page with no image
+ * of its own, which is most of them.
+ */
+const DEFAULT_OG_IMAGE_SIZE = { width: 865, height: 463 }
+
+/**
+ * What to declare as og:image:width and og:image:height.
+ *
+ * These were hardcoded to 1200x630 for every page on the site. Nothing on the
+ * site is 1200x630: blog editorial images are 1200x628 and the default logo is
+ * 865x463, so every page declared dimensions its own image did not have.
+ *
+ * That is not cosmetic. Facebook and LinkedIn lay out the preview card from the
+ * declared ratio before the image finishes downloading, so a wrong declaration
+ * is a card that reflows or letterboxes; and a scraper that trusts the
+ * declaration over the file renders the wrong aspect outright.
+ *
+ * A caller that knows the asset passes its size. Otherwise the only honest
+ * default is the one image we can identify by URL -- and when we cannot
+ * identify it, declaring nothing is better than declaring a guess: the
+ * dimensions are optional in the protocol and the scraper reads the file.
+ */
+function resolveOgImageSize(
+  absoluteImage: string,
+  width?: number,
+  height?: number
+): { width: number; height: number } | Record<string, never> {
+  if (width && height) return { width, height }
+  if (absoluteImage === seoConfig.defaultOGImage) return DEFAULT_OG_IMAGE_SIZE
+  return {}
 }
 
 /**
@@ -103,6 +141,8 @@ export function buildMetadata(config: SEOConfig): Metadata {
     alternateLocales = [],
     robots = seoConfig.defaultRobots,
     canonicalUrl,
+    imageWidth,
+    imageHeight,
   } = config
 
   // Ensure title includes brand suffix
@@ -175,8 +215,7 @@ export function buildMetadata(config: SEOConfig): Metadata {
       images: absoluteImage ? [
         {
           url: absoluteImage,
-          width: 1200,
-          height: 630,
+          ...resolveOgImageSize(absoluteImage, imageWidth, imageHeight),
           alt: fullTitle,
         }
       ] : undefined,

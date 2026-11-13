@@ -54,6 +54,13 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
     description,
     url: `/${lng}/news/${slug}`,
     image: ogImage,
+    // No imageWidth/imageHeight on purpose. Both upload paths now produce
+    // 1200x628, but articles published before that still carry 1650x863
+    // images, and this page cannot tell which it has without fetching the file
+    // on every render. Declaring nothing makes a scraper read the real
+    // dimensions; declaring 1200x628 would be right for new articles and wrong
+    // for old ones, which is how the hardcoded 1200x630 got here.
+    // scripts/audit-blog-image-dimensions.ts lists what is still off-spec.
     locale,
     alternateLocales: languages
       .filter((l) => l !== locale)

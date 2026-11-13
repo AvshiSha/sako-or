@@ -13,6 +13,11 @@ import { adminDb } from '@/lib/firebase-admin'
 import { cmsHtmlToPlainText } from '@/lib/cms-html-cleanup'
 import type { McpToolResult } from '@/lib/mcp/responses'
 import { articlePublicUrl, categoryPublicUrl } from '@/lib/mcp/urls'
+import {
+  countCollectionProducts,
+  describeStoredCollection,
+  listProductCollections,
+} from '@/lib/server/blog-collection'
 
 /**
  * search_content and get_content.
@@ -143,6 +148,68 @@ export async function searchContent(input: Record<string, unknown>): Promise<Mcp
 }
 
 /**
+ * The collections an article may be pointed at, with a live product count.
+ *
+ * Separate from search_content's `category` results on purpose. Those exist so
+ * a specialist can edit a collection page's own SEO text and are keyed to that
+ * job; this answers a different question -- "which collection should this
+ * article's product section draw from, and would it actually show anything?"
+ * -- and returns the ancestor chain and both locales' titles and URLs, none of
+ * which an SEO-editing result needs.
+ *
+ * The count is the only product data that crosses this boundary, and it is a
+ * count. No id, name, price, stock level or image comes back, because nothing
+ * here needs one and a browse tool is the wrong place to widen a read surface.
+ */
+const MAX_COLLECTION_RESULTS = 60
+
+export async function listCollections(input: Record<string, unknown>): Promise<McpToolResult> {
+  const query = typeof input.query === 'string' ? input.query.trim() : ''
+  const withCounts = input.includeProductCounts !== false
+
+  const collections = await listProductCollections({
+    query,
+    limit: MAX_COLLECTION_RESULTS,
+  })
+
+  // Counting is one query per collection, so it is capped rather than run
+  // across the whole tree: a browse of 36 categories should not fan out into
+  // 36 reads when the caller is only going to pick one. Past the cap the
+  // entries still come back, without a count.
+  const COUNT_BUDGET = 25
+  const results = await Promise.all(
+    collections.map(async (collection, index) => {
+      if (!withCounts || index >= COUNT_BUDGET) {
+        return { ...collection, liveProducts: undefined }
+      }
+      const { count, capped } = await countCollectionProducts(collection.categoryIds)
+      return { ...collection, liveProducts: capped ? `${count}+` : count }
+    })
+  )
+
+  return {
+    ok: true,
+    data: {
+      count: results.length,
+      truncated: results.length >= MAX_COLLECTION_RESULTS,
+      results,
+      usage:
+        'Pass a collectionId to create_blog_draft or update_blog_content as ' +
+        '{ "productCollection": { "collectionId": "..." } }. One selection serves both ' +
+        'Hebrew and English. Selecting a collection does not change the collection itself, ' +
+        'what is in it, or any product.',
+      ...(withCounts && collections.length > COUNT_BUDGET
+        ? {
+            note:
+              `Product counts were resolved for the first ${COUNT_BUDGET} results. ` +
+              'Narrow the query to get a count for the rest.',
+          }
+        : {}),
+    },
+  }
+}
+
+/**
  * Return only allowlisted fields of one permitted record.
  *
  * The projection is built from the allowlist rather than by deleting unwanted
@@ -177,6 +244,16 @@ export async function getContent(input: Record<string, unknown>): Promise<McpToo
     for (const field of allowed) {
       const value = (article as unknown as Record<string, unknown>)[field]
       if (value !== undefined) projected[field] = value
+    }
+
+    // Derived, not stored, so it is filled after the projection loop rather
+    // than by it. Always present -- `null` when nothing is selected -- because
+    // an absent key reads as "this integration cannot see that", which is the
+    // thing that sent the editor to the admin panel in the first place.
+    if ((allowed as readonly string[]).includes('productCollection')) {
+      projected.productCollection = await describeStoredCollection(
+        article.relatedProductsCarousel
+      )
     }
 
     return {

@@ -183,6 +183,85 @@ export function validateContentMediaUrl(value: unknown, field: string): string {
 }
 
 /**
+ * The article's product collection, as a caller supplies it.
+ *
+ * `null` is the documented way to clear the selection, and it is deliberately
+ * not `""` or `{}`: omitting the field means "leave it alone", so the clearing
+ * value has to be something nobody sends by accident. An empty object would be
+ * exactly what a model produces when it has nothing useful to say.
+ */
+export const MIN_CAROUSEL_PRODUCTS = 1
+export const MAX_CAROUSEL_PRODUCTS = 24
+
+const PRODUCT_COLLECTION_KEYS = ['collectionId', 'maxProducts'] as const
+
+export interface ProductCollectionSelection {
+  collectionId: string
+  maxProducts?: number
+}
+
+const SHAPE_HELP =
+  'productCollection must be either { "collectionId": "<id from list_product_collections>" } ' +
+  '— optionally with "maxProducts" — or null to remove the section. ' +
+  'Omit the field entirely to leave the current selection untouched.'
+
+export function validateProductCollection(raw: unknown): ProductCollectionSelection | null {
+  if (raw === null) return null
+
+  if (typeof raw !== 'object' || Array.isArray(raw)) {
+    invalid('INVALID_REQUEST', SHAPE_HELP)
+  }
+
+  const payload = raw as Record<string, unknown>
+
+  // Checked before the values, for the same reason rejectUnknownFields runs
+  // before shape validation: a caller sending `categoryIds` has misunderstood
+  // what this field is, and needs to be told that rather than handed a
+  // complaint about a field it did not mean to set.
+  const unknown = Object.keys(payload).filter(
+    (key) => !(PRODUCT_COLLECTION_KEYS as readonly string[]).includes(key)
+  )
+  if (unknown.length > 0) {
+    invalid(
+      'FORBIDDEN_FIELD',
+      `productCollection: ${unknown.map((k) => `"${k}"`).join(', ')} cannot be set. ` +
+        `Accepted keys: ${PRODUCT_COLLECTION_KEYS.join(', ')}. ` +
+        'The ancestor chain, the selection mode and whether the section is shown are all ' +
+        'derived by the server from collectionId.'
+    )
+  }
+
+  const { collectionId, maxProducts } = payload
+
+  if (typeof collectionId !== 'string' || !collectionId.trim()) {
+    invalid('INVALID_REQUEST', `collectionId is required. ${SHAPE_HELP}`)
+  }
+  if (collectionId.trim().length > 200) {
+    invalid('INVALID_REQUEST', 'collectionId is too long to be a collection id.')
+  }
+
+  const selection: ProductCollectionSelection = { collectionId: collectionId.trim() }
+
+  if (maxProducts !== undefined) {
+    if (
+      typeof maxProducts !== 'number' ||
+      !Number.isInteger(maxProducts) ||
+      maxProducts < MIN_CAROUSEL_PRODUCTS ||
+      maxProducts > MAX_CAROUSEL_PRODUCTS
+    ) {
+      invalid(
+        'INVALID_REQUEST',
+        `maxProducts must be a whole number between ${MIN_CAROUSEL_PRODUCTS} and ` +
+          `${MAX_CAROUSEL_PRODUCTS}. Omit it to keep whatever the article already uses.`
+      )
+    }
+    selection.maxProducts = maxProducts
+  }
+
+  return selection
+}
+
+/**
  * Canonical URLs may only point at our own site or be cleared.
  *
  * The admin form accepts free text here, which means a typo can de-index an
@@ -369,6 +448,13 @@ export function parseFieldPayload(
         break
       case 'canonicalUrl':
         fields.canonicalUrl = validateCanonicalUrl(raw, siteUrl)
+        break
+      case 'productCollection':
+        // Shape only. Whether the id names a real, enabled collection -- and
+        // what its ancestor chain is -- needs Firestore, so it is resolved in
+        // the tool layer. Keeping this function free of I/O is what lets the
+        // whole validation surface be tested without a database.
+        fields.productCollection = validateProductCollection(raw)
         break
       default:
         // Unreachable while allowlist and this switch agree; asserted by a test.

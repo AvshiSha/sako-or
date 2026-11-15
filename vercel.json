@@ -18,9 +18,6 @@
     "app/api/cron/verifone-invoice-retry/route.ts": {
       "maxDuration": 60
     },
-    "app/api/admin/orders/verifone-invoice/route.ts": {
-      "maxDuration": 60
-    },
     "app/api/cron/publish-scheduled-articles/route.ts": {
       "maxDuration": 60
     },

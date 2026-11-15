@@ -3,7 +3,11 @@ import 'server-only'
 import { prisma } from './prisma'
 import {
   buildCreateInvoiceEnvelope,
-  callVerifoneCreateInvoice
+  callVerifoneCreateInvoice,
+  InvoiceTotalsMismatchError,
+  resolveOrderLevelDiscount,
+  type InvoiceOrderItem,
+  type InvoiceTransactionInfo
 } from './verifone-invoice'
 import { parsePaymentData } from './orders'
 import { getVerifoneCustomerByCellular } from './verifone'
@@ -23,60 +27,48 @@ function roundPoints(value: number): number {
   return roundTwo(value)
 }
 
-type OrderItemForInvoice = {
-  productSku: string
-  colorName: string | null
-  size: string | null
-  quantity: number
-  price: number
-  salePrice: number | null
+export type OrderRecordForInvoice = {
+  id: string
+  orderNumber: string
+  total: number
+  customerName: string | null
+  createdAt: Date
+  deliveryFee: number
+  bogoDiscountAmount?: number | null
+  orderItems: InvoiceOrderItem[]
+  appliedCoupons: Array<{ discountAmount: number }>
+  user: { verifoneCustomerNo: string | null } | null
 }
 
 /**
- * Distribute a target total across order items proportionally (same logic as create-low-profile
- * for CardCom). Returns items with price/salePrice set so that sum(price * qty) = targetProductTotal.
+ * Build the CreateInvoice envelope for a loaded order.
+ *
+ * Coupons, BOGO and points are all handled by `buildDocumentLines`, which spreads
+ * the recorded order-level discount across every product line in agorot so the
+ * lines, the header and the charged amount reconcile exactly. It throws an
+ * `InvoiceTotalsMismatchError` rather than returning an unsendable document.
  */
-function orderItemsWithProportionalTotals(
-  orderItems: OrderItemForInvoice[],
-  targetProductTotal: number
-): OrderItemForInvoice[] {
-  if (orderItems.length === 0) return []
-  const subtotalBefore = orderItems.reduce((sum, item) => {
-    const effective = (item.salePrice != null && item.salePrice > 0 && item.salePrice < item.price)
-      ? item.salePrice
-      : item.price
-    return sum + effective * item.quantity
-  }, 0)
-  if (subtotalBefore <= 0) return orderItems
-
-  const lineTotalsAfter: number[] = []
-  let remaining = roundTwo(targetProductTotal)
-  for (let i = 0; i < orderItems.length; i++) {
-    const item = orderItems[i]
-    const effective = (item.salePrice != null && item.salePrice > 0 && item.salePrice < item.price)
-      ? item.salePrice
-      : item.price
-    const lineBefore = effective * item.quantity
-    let lineAfter: number
-    if (i === orderItems.length - 1) {
-      lineAfter = remaining
-    } else {
-      lineAfter = roundTwo((lineBefore / subtotalBefore) * targetProductTotal)
-      if (lineAfter > remaining) lineAfter = remaining
-      remaining = roundTwo(remaining - lineAfter)
-    }
-    lineTotalsAfter.push(lineAfter)
-  }
-
-  return orderItems.map((item, i) => {
-    const qty = item.quantity && item.quantity > 0 ? item.quantity : 1
-    const discountedUnitPrice = roundTwo(lineTotalsAfter[i]! / qty)
-    return {
-      ...item,
-      price: discountedUnitPrice,
-      salePrice: null
-    }
-  })
+export function buildInvoiceEnvelopeForOrder(
+  order: OrderRecordForInvoice,
+  transactionInfo: InvoiceTransactionInfo,
+  pointsUsed: number
+): string {
+  return buildCreateInvoiceEnvelope(
+    {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      total: order.total,
+      customerName: order.customerName,
+      createdAt: order.createdAt,
+      deliveryFee: order.deliveryFee || 0,
+      orderItems: order.orderItems,
+      appliedCoupons: order.appliedCoupons ?? [],
+      bogoDiscountAmount: order.bogoDiscountAmount ?? null,
+      user: order.user
+    },
+    transactionInfo,
+    pointsUsed
+  )
 }
 
 /**
@@ -89,19 +81,15 @@ function orderItemsWithProportionalTotals(
 export async function createVerifoneInvoiceAsync(
   orderId: string,
   cardcomTransactionData: {
-    transactionInfo?: {
-      FirstPaymentAmount?: number
-      ConstPaymentAmount?: number
-      NumberOfPayments?: number
-      Last4CardDigitsString?: string
-      CardMonth?: string
-      CardYear?: string
-      ApprovalNumber?: string
-      CardOwnerIdentityNumber?: string
-      Brand?: string
-      Last4Digits?: string
-    }
-  }
+    transactionInfo?: InvoiceTransactionInfo & { Last4Digits?: string }
+  },
+  options: {
+    /**
+     * Re-attempt an order whose previous attempt failed. Never bypasses the
+     * "already invoiced" guard below, so this can't produce a duplicate invoice.
+     */
+    force?: boolean
+  } = {}
 ): Promise<void> {
   try {
     // Fetch order with all required relations
@@ -124,8 +112,17 @@ export async function createVerifoneInvoiceAsync(
       return
     }
 
-    // Idempotency check: if already attempted, skip
-    if (order.verifoneInvoiceAttemptedAt) {
+    // Duplicate guard: an order that already carries an invoice number (or is
+    // marked successful) must never be sent again, not even with `force`.
+    if (order.verifoneInvoiceNo || order.verifoneInvoiceStatus === 'success') {
+      console.log(
+        `[VERIFONE_INVOICE] Order ${orderId} is already invoiced (invoiceNo: ${order.verifoneInvoiceNo ?? 'unknown'}), skipping`
+      )
+      return
+    }
+
+    // Idempotency check: if already attempted, skip unless this is an explicit retry
+    if (order.verifoneInvoiceAttemptedAt && !options.force) {
       console.log(
         `[VERIFONE_INVOICE] Invoice already attempted for order ${orderId}, skipping`
       )
@@ -137,7 +134,12 @@ export async function createVerifoneInvoiceAsync(
       where: { orderNumber: orderId },
       data: {
         verifoneInvoiceStatus: 'pending',
-        verifoneInvoiceAttemptedAt: new Date()
+        verifoneInvoiceAttemptedAt: new Date(),
+        // Clear the previous attempt's diagnostics so a retry can't be read as
+        // still carrying the old failure.
+        verifoneInvoiceError: null,
+        verifoneInvoiceRequest: null,
+        verifoneInvoiceResponse: null
       }
     })
 
@@ -190,47 +192,19 @@ export async function createVerifoneInvoiceAsync(
         credentialsDetail: { hasChainId, hasUserName, hasPassword }
       })
 
-      const hasOrderCoupons =
-        Array.isArray(order.appliedCoupons) && order.appliedCoupons.length > 0
-      const hasBogoDiscount =
-        !hasOrderCoupons &&
-        order.bogoDiscountAmount != null &&
-        order.bogoDiscountAmount > 0
+      console.log('[VERIFONE_INVOICE] Invoice inputs', {
+        orderId,
+        orderTotal: order.total,
+        deliveryFee: order.deliveryFee || 0,
+        pointsUsed,
+        orderLevelDiscount: resolveOrderLevelDiscount(order),
+        recordedDiscountTotal: order.discountTotal,
+        recordedSubtotal: order.subtotal
+      })
 
-      // When BOGO was applied, pass order items with the same discounted line totals as CardCom
-      // so Verifone document lines sum to order.total (no lump coupon on first line).
-      const targetProductTotal = roundTwo(
-        order.total - (order.deliveryFee || 0) + pointsUsed
-      )
-      const orderItemsForEnvelope = hasBogoDiscount
-        ? orderItemsWithProportionalTotals(
-            order.orderItems as OrderItemForInvoice[],
-            targetProductTotal
-          )
-        : order.orderItems
-
-      const couponsForInvoice = hasOrderCoupons
-        ? order.appliedCoupons.map(coupon => ({
-            discountAmount: coupon.discountAmount
-          }))
-        : []
-
-      soapEnvelope = buildCreateInvoiceEnvelope(
-        {
-          id: order.id,
-          orderNumber: order.orderNumber,
-          total: order.total,
-          customerName: order.customerName,
-          createdAt: order.createdAt,
-          deliveryFee: order.deliveryFee || 0,
-          orderItems: orderItemsForEnvelope,
-          appliedCoupons: couponsForInvoice,
-          user: order.user
-        },
-        transactionInfo,
-        pointsUsed
-      )
+      soapEnvelope = buildInvoiceEnvelopeForOrder(order, transactionInfo, pointsUsed)
     } catch (buildError) {
+      const isTotalsMismatch = buildError instanceof InvoiceTotalsMismatchError
       const errorMessage =
         buildError instanceof Error ? buildError.message : 'Failed to build SOAP envelope'
       console.error(`[VERIFONE_INVOICE] Failed to build envelope for order ${orderId}:`, errorMessage)
@@ -239,17 +213,34 @@ export async function createVerifoneInvoiceAsync(
       if (buildError instanceof Error && buildError.stack) {
         console.error('[VERIFONE_INVOICE] Debug - stack:', buildError.stack)
       }
-      console.error('[VERIFONE_INVOICE] Debug - credentials present:', {
-        VERIFON_CHAIN_ID: Boolean(process.env.VERIFON_CHAIN_ID),
-        VERIFON_USER_NAME: Boolean(process.env.VERIFON_USER_NAME),
-        VERIFON_PASSWORD: Boolean(process.env.VERIFON_PASSWORD)
-      })
+      if (!isTotalsMismatch) {
+        console.error('[VERIFONE_INVOICE] Debug - credentials present:', {
+          VERIFON_CHAIN_ID: Boolean(process.env.VERIFON_CHAIN_ID),
+          VERIFON_USER_NAME: Boolean(process.env.VERIFON_USER_NAME),
+          VERIFON_PASSWORD: Boolean(process.env.VERIFON_PASSWORD)
+        })
+      }
 
+      // Persist why nothing was sent, so a failed order is recoverable from its
+      // own record instead of only from the logs.
       await prisma.order.update({
         where: { orderNumber: orderId },
         data: {
           verifoneInvoiceStatus: 'failed',
-          verifoneInvoiceError: errorMessage
+          verifoneInvoiceError: isTotalsMismatch
+            ? `Totals mismatch, request not sent: ${errorMessage}`
+            : errorMessage,
+          verifoneInvoiceResponse: JSON.stringify({
+            success: false,
+            sentToVerifone: false,
+            error: errorMessage,
+            ...(isTotalsMismatch
+              ? {
+                  code: (buildError as InvoiceTotalsMismatchError).code,
+                  diagnostics: (buildError as InvoiceTotalsMismatchError).diagnostics
+                }
+              : {})
+          })
         }
       })
       return

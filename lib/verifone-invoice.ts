@@ -1,8 +1,38 @@
 import 'server-only'
 
 import { XMLParser } from 'fast-xml-parser'
-import { COLOR_SLUG_TO_CODE } from './inventory'
-import { parseSku } from './sku-parser'
+import {
+  assertInvoiceTotalsReconcile,
+  assertPaymentAmountMatchesOrderTotal,
+  buildDocumentLines,
+  calculateInvoiceTotals,
+  resolveOrderLevelDiscount,
+  roundToTwoDecimals,
+  type InvoiceOrderItem
+} from './verifone-invoice-lines'
+
+// The invoice arithmetic lives in a pure module so it can be unit-tested; it is
+// re-exported here so callers keep a single entry point.
+export {
+  InvoiceTotalsMismatchError,
+  allocateCents,
+  allocateProductLines,
+  assertInvoiceTotalsReconcile,
+  assertPaymentAmountMatchesOrderTotal,
+  buildDocumentLines,
+  calculateInvoiceTotals,
+  recordedUnitPrice,
+  resolveOrderLevelDiscount,
+  roundToTwoDecimals
+} from './verifone-invoice-lines'
+export type {
+  AllocatedProductLine,
+  BuildDocumentLinesInput,
+  InvoiceOrderItem,
+  InvoiceTotals,
+  InvoiceTotalsDiagnostics,
+  VerifoneInvoiceLine
+} from './verifone-invoice-lines'
 
 const VERIFONE_ENDPOINT =
   'http://62.219.182.125/R360.Server.IIS/Services/Services.asmx'
@@ -19,17 +49,7 @@ const xmlParser = new XMLParser({
   parseTagValue: true
 })
 
-// Type definitions
-export type VerifoneInvoiceLine = {
-  LineNo: number
-  ItemID: string
-  UnitPrice: number
-  Qty: number
-  DiscountPercent: number
-  TotalPrice: number
-  VatPercent: number
-  CreditPointsAccumPrecent: number
-}
+
 
 export type VerifoneReceiptLine = {
   Sum: number
@@ -58,22 +78,6 @@ export type VerifoneCreateInvoiceResult = {
   createTime?: string
 }
 
-export type InvoiceTotals = {
-  TotalBeforeDiscount_WithoutVAT: number
-  Discount: number
-  DiscountPercent: number
-  TotalAfterDiscount_WithoutVAT: number
-  VatPercent: number
-  VAT: number
-  TotalPriceIncludeVAT: number
-  TotalItems: number
-  TotalLines: number
-}
-
-// Helper utilities
-function roundToTwoDecimals(value: number): number {
-  return Math.round(value * 100) / 100
-}
 
 function formatDateYYYYMMDD(date: Date | null | undefined): string {
   if (!date || !(date instanceof Date) || Number.isNaN(date.getTime())) {
@@ -89,30 +93,6 @@ function formatDateYYYYMMDD(date: Date | null | undefined): string {
   return `${year}${month}${day}`
 }
 
-function getColorCodeFromSlug(colorSlug: string | null | undefined): string {
-  if (!colorSlug) return '00'
-  const normalized = colorSlug.toLowerCase().trim()
-  return COLOR_SLUG_TO_CODE[normalized] || '00'
-}
-
-function formatSizeToTwoDigits(size: string | null | undefined): string {
-  if (!size) return '00'
-
-  // Verifone expects "One size" as "OS" (two chars, not digits)
-  const normalized = `${size}`.trim().toLowerCase()
-  if (
-    normalized === 'one size' ||
-    normalized === 'one-size' ||
-    normalized === 'onesize' ||
-    normalized === 'os'
-  ) {
-    return 'OS'
-  }
-
-  const num = parseInt(size, 10)
-  if (Number.isNaN(num)) return '00'
-  return `${num}`.padStart(2, '0')
-}
 
 function mapCardBrandToVerifoneType(brand: string | null | undefined): string {
   if (!brand) return '9' // Other
@@ -146,244 +126,10 @@ function toInt(value: unknown): number {
   return 0
 }
 
-// Calculate VAT at line level (CRITICAL: must be done first)
-function calculateLineVAT(grossLineTotal: number, vatPercent: number = 18): {
-  netLine: number
-  vatLine: number
-} {
-  const vatRate = vatPercent / 100 // 0.18
-  const netLine = roundToTwoDecimals(grossLineTotal / (1 + vatRate))
-  const vatLine = roundToTwoDecimals(grossLineTotal - netLine)
-  return { netLine, vatLine }
-}
-
-// Calculate invoice totals from order total (header values only)
-export function calculateInvoiceTotalsFromLines(
-  documentLines: VerifoneInvoiceLine[],
-  orderItems: Array<{
-    quantity: number
-    price: number
-    salePrice: number | null
-  }>,
-  orderTotalPaid: number,
-  pointsUsed: number,
-  deliveryFee: number
-): InvoiceTotals {
-  const vatRate = 0.18
-
-  // Header totals are now derived directly from the paid order total (CardCom amount)
-  const TotalPriceIncludeVAT = roundToTwoDecimals(orderTotalPaid)
-  const TotalBeforeDiscount_WithoutVAT = roundToTwoDecimals(
-    TotalPriceIncludeVAT / (1 + vatRate)
-  )
-  const Discount = 0
-  const DiscountPercent = 0
-  const TotalAfterDiscount_WithoutVAT = TotalBeforeDiscount_WithoutVAT
-  const VatPercent = 18
-  const VAT = roundToTwoDecimals(TotalBeforeDiscount_WithoutVAT * vatRate)
-
-  // Count items
-  let productsCount = 0
-  for (const item of orderItems) {
-    productsCount += item.quantity
-  }
-  const distinctProducts = orderItems.length
-  const TotalItems = productsCount + (pointsUsed > 0 ? -1 : 0) + (deliveryFee > 0 ? 1 : 0)
-  const TotalLines = distinctProducts + (pointsUsed > 0 ? 1 : 0) + (deliveryFee > 0 ? 1 : 0)
-
-  return {
-    TotalBeforeDiscount_WithoutVAT,
-    Discount,
-    DiscountPercent,
-    TotalAfterDiscount_WithoutVAT,
-    VatPercent,
-    VAT,
-    TotalPriceIncludeVAT,
-    TotalItems,
-    TotalLines
-  }
-}
-
-// Build DocumentLines array
-export function buildDocumentLines(
-  orderItems: Array<{
-    productSku: string
-    colorName: string | null
-    size: string | null
-    quantity: number
-    price: number
-    salePrice: number | null
-  }>,
-  coupons: Array<{ discountAmount: number }>,
-  pointsUsed: number,
-  deliveryFee: number
-): VerifoneInvoiceLine[] {
-  const lines: VerifoneInvoiceLine[] = []
-  let lineNo = 1
-  const couponAmount = coupons.reduce((sum, c) => sum + c.discountAmount, 0)
-  let couponRemaining = couponAmount
-
-  // Add points line first if points were used
-  if (pointsUsed > 0) {
-    lines.push({
-      LineNo: 1,
-      ItemID: '777',
-      UnitPrice: roundToTwoDecimals(pointsUsed),
-      Qty: -1,
-      DiscountPercent: 0,
-      TotalPrice: roundToTwoDecimals(-pointsUsed),
-      VatPercent: 18,
-      CreditPointsAccumPrecent: 105
-    })
-    lineNo = 2
-  }
-
-  // Add shipping line after points (if deliveryFee > 0)
-  if (deliveryFee > 0) {
-    lines.push({
-      LineNo: lineNo++,
-      ItemID: '9000-99990038',
-      UnitPrice: roundToTwoDecimals(deliveryFee),
-      Qty: 1,
-      DiscountPercent: 0,
-      TotalPrice: roundToTwoDecimals(deliveryFee),
-      VatPercent: 18,
-      CreditPointsAccumPrecent: 0
-    })
-  }
-
-  // Add product lines
-  for (let i = 0; i < orderItems.length; i++) {
-    const item = orderItems[i]
-    const isFirstProductLine = i === 0
-
-    // Build ItemID: XXXX-XXXXYYZZ format
-    // XXXX-XXXX is the base SKU (with dash), YY is color code, ZZ is size
-    // Example: 0000-00010135 (0000-0001 is SKU, 01 is black, 35 is size)
-
-    // Extract and format base SKU (should be XXXX-XXXX format)
-    let baseSku = item.productSku.trim()
-
-    // If SKU doesn't have a dash, try to format it as XXXX-XXXX
-    if (!baseSku.includes('-')) {
-      // Remove any existing dashes and format as XXXX-XXXX
-      const digitsOnly = baseSku.replace(/-/g, '').replace(/\D/g, '')
-      if (digitsOnly.length >= 8) {
-        baseSku = `${digitsOnly.substring(0, 4)}-${digitsOnly.substring(4, 8)}`
-      } else {
-        // Pad with zeros if too short
-        const padded = digitsOnly.padEnd(8, '0')
-        baseSku = `${padded.substring(0, 4)}-${padded.substring(4, 8)}`
-      }
-    } else {
-      // SKU has dash, ensure it's in XXXX-XXXX format
-      const parts = baseSku.split('-')
-      if (parts.length >= 2) {
-        const part1 = parts[0].replace(/\D/g, '').padStart(4, '0').substring(0, 4)
-        const part2 = parts.slice(1).join('').replace(/\D/g, '').padStart(4, '0').substring(0, 4)
-        baseSku = `${part1}-${part2}`
-      } else {
-        // Fallback: format as XXXX-XXXX
-        const digitsOnly = baseSku.replace(/-/g, '').replace(/\D/g, '').padEnd(8, '0')
-        baseSku = `${digitsOnly.substring(0, 4)}-${digitsOnly.substring(4, 8)}`
-      }
-    }
-
-    const colorCode = getColorCodeFromSlug(item.colorName)
-
-    // Try to get size from item.size, if null try to parse from productSku
-    let sizeValue = item.size
-    if (!sizeValue && item.productSku) {
-      // Try to extract size from productSku using parseSku function
-      // Note: productSku in OrderItem might be baseSku only, but try anyway
-      const parsed = parseSku(item.productSku)
-      if (parsed.size) {
-        sizeValue = parsed.size
-      }
-    }
-
-    const sizeCode = formatSizeToTwoDigits(sizeValue)
-
-    // ItemID format: XXXX-XXXXYYZZ (base SKU with dash + 2-digit color + 2-digit size)
-    const itemID = `${baseSku}${colorCode}${sizeCode}`
-
-    if (!item.size || sizeCode === '00') {
-      console.warn(`[VERIFONE_INVOICE] Size missing or invalid for line ${lineNo}, itemID: ${itemID}`)
-    }
-
-    // Calculate prices
-    const qty = item.quantity
-    const baseUnitPrice = item.price // Full price before sale
-    // Use salePrice only if it exists, is > 0, AND is actually a discount (less than regular price)
-    // If salePrice is higher than price, it's invalid data - use regular price instead
-    const effectivePrice = (item.salePrice != null && item.salePrice > 0 && item.salePrice < item.price)
-      ? item.salePrice
-      : item.price
-
-    if (item.salePrice != null && item.salePrice > 0 && item.salePrice >= item.price) {
-      console.warn(`[VERIFONE_INVOICE] Invalid salePrice (salePrice >= price), using regular price for line ${lineNo}`)
-    }
-
-    const fullLineTotal = qty * baseUnitPrice
-    const baseLineTotal = qty * effectivePrice
-
-    // Apply coupon only to first product line
-    let couponApplied = 0
-    if (isFirstProductLine && couponRemaining > 0) {
-      couponApplied = Math.min(couponRemaining, baseLineTotal)
-      couponRemaining -= couponApplied
-    }
-
-    // Calculate line discount (difference between full price and effective price, plus coupon)
-    const lineDiscountFromSale = fullLineTotal - baseLineTotal
-    const lineDiscountTotal = lineDiscountFromSale + couponApplied
-    let lineDiscountPercent = fullLineTotal > 0
-      ? roundToTwoDecimals((lineDiscountTotal / fullLineTotal) * 100)
-      : 0
-
-    // Discount should never be negative (can happen due to rounding or data inconsistencies)
-    // If negative, it means there's no actual discount, so set to 0
-    if (lineDiscountPercent < 0) {
-      console.warn(`[VERIFONE_INVOICE] Negative discount detected, setting to 0 for line ${lineNo}`)
-      lineDiscountPercent = 0
-    }
-
-    // Final per-unit price actually paid (gross, with VAT) after coupon distribution
-    const grossLinePaid = baseLineTotal - couponApplied
-    const itemPaidPrice =
-      qty > 0 ? roundToTwoDecimals(grossLinePaid / qty) : roundToTwoDecimals(effectivePrice)
-
-    // TotalPrice for this line (VAT included) - UnitPrice * Qty
-    const totalPrice = roundToTwoDecimals(itemPaidPrice * qty)
-
-    lines.push({
-      LineNo: lineNo++,
-      ItemID: itemID,
-      UnitPrice: itemPaidPrice, // Final per-unit price actually paid (with VAT)
-      Qty: qty,
-      DiscountPercent: 0,
-      TotalPrice: totalPrice,
-      VatPercent: 18,
-      CreditPointsAccumPrecent: 5
-    })
-  }
-
-  return lines
-}
 
 // Build ReceiptLines
 export function buildReceiptLines(
-  transactionInfo: {
-    FirstPaymentAmount?: number
-    ConstPaymentAmount?: number
-    NumberOfPayments?: number
-    Last4CardDigitsString?: string
-    CardMonth?: string
-    CardYear?: string
-    ApprovalNumber?: string
-    CardOwnerIdentityNumber?: string
-    Brand?: string
-  },
+  transactionInfo: InvoiceTransactionInfo,
   totalPrice: number
 ): VerifoneReceiptLine {
   // Format expire date: MMYY (CardCom may send CardMonth/CardYear as numbers)
@@ -413,6 +159,20 @@ export function buildReceiptLines(
   }
 }
 
+export type InvoiceTransactionInfo = {
+  /** Amount CardCom actually charged, when available - cross-checked against Order.total. */
+  Amount?: number
+  FirstPaymentAmount?: number
+  ConstPaymentAmount?: number
+  NumberOfPayments?: number
+  Last4CardDigitsString?: string
+  CardMonth?: string
+  CardYear?: string
+  ApprovalNumber?: string
+  CardOwnerIdentityNumber?: string
+  Brand?: string
+}
+
 // Build SOAP envelope for CreateInvoice
 export function buildCreateInvoiceEnvelope(
   order: {
@@ -422,73 +182,51 @@ export function buildCreateInvoiceEnvelope(
     customerName: string | null
     createdAt: Date
     deliveryFee: number
-    orderItems: Array<{
-      productSku: string
-      colorName: string | null
-      size: string | null
-      quantity: number
-      price: number
-      salePrice: number | null
-    }>
+    orderItems: InvoiceOrderItem[]
     appliedCoupons: Array<{ discountAmount: number }>
+    bogoDiscountAmount?: number | null
     user: { verifoneCustomerNo: string | null } | null
   },
-  transactionInfo: {
-    FirstPaymentAmount?: number
-    ConstPaymentAmount?: number
-    NumberOfPayments?: number
-    Last4CardDigitsString?: string
-    CardMonth?: string
-    CardYear?: string
-    ApprovalNumber?: string
-    CardOwnerIdentityNumber?: string
-    Brand?: string
-  },
+  transactionInfo: InvoiceTransactionInfo,
   pointsUsed: number
 ): string {
   if (!VERIFON_CHAIN_ID || !VERIFON_USER_NAME || !VERIFON_PASSWORD) {
     throw new Error('Missing Verifone credentials')
   }
 
-  // Build document lines first
-  const documentLines = buildDocumentLines(
-    order.orderItems,
-    order.appliedCoupons,
+  const orderLevelDiscount = resolveOrderLevelDiscount(order)
+  const deliveryFee = order.deliveryFee || 0
+
+  // The invoice must equal the money actually taken. When CardCom told us the
+  // charged amount, require the order's recorded total to match it before
+  // anything is built from that total.
+  assertPaymentAmountMatchesOrderTotal(order.total, transactionInfo.Amount, order.orderNumber)
+
+  // Build document lines first (throws if the order's own records don't reconcile)
+  const documentLines = buildDocumentLines({
+    orderItems: order.orderItems,
+    orderLevelDiscount,
     pointsUsed,
-    order.deliveryFee || 0
-  )
+    deliveryFee,
+    orderTotal: order.total,
+    orderNumber: order.orderNumber
+  })
 
   // Calculate header totals from the paid order total (CardCom amount)
-  const totals = calculateInvoiceTotalsFromLines(
+  const totals = calculateInvoiceTotals(documentLines, order.total)
+
+  // Validation: lines, header and the amount charged must agree to the agora.
+  // Throws rather than sending an unsendable document.
+  assertInvoiceTotalsReconcile({
     documentLines,
-    order.orderItems.map(item => ({
-      quantity: item.quantity,
-      price: item.price,
-      salePrice: item.salePrice
-    })),
-    order.total,
+    totals,
+    orderNumber: order.orderNumber,
+    orderTotal: order.total,
+    verifiedPaymentAmount: transactionInfo.Amount,
+    deliveryFee,
     pointsUsed,
-    order.deliveryFee || 0
-  )
-
-  // Validation: ensure sums and header totals are internally consistent
-  const sumLinesWithVAT = roundToTwoDecimals(
-    documentLines.reduce((sum, line) => sum + line.TotalPrice, 0)
-  )
-  const headerTotalWithVAT = roundToTwoDecimals(
-    totals.TotalAfterDiscount_WithoutVAT + totals.VAT
-  )
-
-  if (
-    sumLinesWithVAT !== totals.TotalPriceIncludeVAT ||
-    headerTotalWithVAT !== totals.TotalPriceIncludeVAT
-  ) {
-    console.error('[VERIFONE_CREATE_INVOICE] Invoice totals validation failed', {
-      sumLinesWithVAT,
-      headerTotalWithVAT,
-      expectedTotalPriceIncludeVAT: totals.TotalPriceIncludeVAT
-    })
-  }
+    recordedDiscount: orderLevelDiscount
+  })
 
   // Build receipt lines
   const receiptLine = buildReceiptLines(transactionInfo, totals.TotalPriceIncludeVAT)

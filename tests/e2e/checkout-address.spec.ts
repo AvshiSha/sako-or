@@ -119,6 +119,20 @@ async function seedCartAndStubBackend(page: Page): Promise<Captured> {
     { apiKey: FIREBASE_API_KEY, uid: FAKE_UID, cartLine: CART_LINE }
   )
 
+  // Never fire at the production pixel or GTM. This spec is safe to point at
+  // https://www.sako-or.com to verify a deployment, and a verification run must not
+  // show up as real traffic in ad or analytics reporting. Answered 200 rather than
+  // aborted, because aborting sends the app into its scheduleFbqLoadRetry path.
+  await page.route('**/connect.facebook.net/**', route =>
+    route.fulfill({ status: 200, contentType: 'application/javascript', body: '' })
+  )
+  await page.route('**/facebook.com/tr**', route =>
+    route.fulfill({ status: 200, contentType: 'image/gif', body: '' })
+  )
+  await page.route('**/www.googletagmanager.com/**', route =>
+    route.fulfill({ status: 200, contentType: 'application/javascript', body: '' })
+  )
+
   await page.route('**/identitytoolkit.googleapis.com/**', route =>
     route.fulfill({
       status: 200,

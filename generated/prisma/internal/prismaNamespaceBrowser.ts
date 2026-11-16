@@ -372,6 +372,14 @@ export const OrderScalarFieldEnum = {
   verifoneInvoiceAttemptedAt: 'verifoneInvoiceAttemptedAt',
   verifoneInvoiceSyncedAt: 'verifoneInvoiceSyncedAt',
   verifoneInvoiceError: 'verifoneInvoiceError',
+  shippingCity: 'shippingCity',
+  shippingStreetName: 'shippingStreetName',
+  shippingStreetNumber: 'shippingStreetNumber',
+  shippingFloor: 'shippingFloor',
+  shippingApartment: 'shippingApartment',
+  shippingZip: 'shippingZip',
+  shippingNotes: 'shippingNotes',
+  customerIdNumber: 'customerIdNumber',
   termsAcceptedVersion: 'termsAcceptedVersion',
   termsAcceptedAt: 'termsAcceptedAt'
 } as const

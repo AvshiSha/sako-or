@@ -8,6 +8,7 @@
  */
 
 import { formatIsraelE164ToLocalDigits } from '@/lib/phone'
+import { isDeliveryAddressComplete } from '@/lib/delivery-address'
 import type { CheckoutFormData } from '@/app/types/checkout'
 // Type-only, so this module keeps no runtime dependency on the SWR cache.
 import type { UserProfile } from '@/lib/user-profile-cache'
@@ -109,10 +110,10 @@ export function applyProfileToCheckoutDetails(
 /**
  * Everything required before a low-profile payment session can be created.
  *
- * streetNumber is deliberately NOT required, and now has its own field: plenty
- * of Israeli addresses have no house number at all — block/parcel numbering in
- * נצרת and much of the north, named squares, kibbutzim. The server agrees
- * (app/api/payments/create-low-profile), so what passes here is accepted there.
+ * The address half defers to lib/delivery-address, which both API routes also use,
+ * so the client cannot enable the pay button for an address a route will reject —
+ * nor pass one that /api/checkout drops, which is how a paid order ended up with a
+ * blank address in its confirmation email.
  */
 export function isDetailsComplete(details: CheckoutFormData | null): boolean {
   if (!details) return false
@@ -125,8 +126,7 @@ export function isDetailsComplete(details: CheckoutFormData | null): boolean {
     !!payer.mobile.trim()
 
   if (!hasPayer) return false
-  // Pickup needs no address; delivery needs somewhere to send it.
-  if (shippingMethod === 'pickup') return true
-
-  return !!deliveryAddress.city.trim() && !!deliveryAddress.streetName.trim()
+  // Pickup needs no address; delivery needs somewhere to send it. Same rule the two
+  // API routes enforce, so what passes here is accepted by both of them.
+  return isDeliveryAddressComplete(deliveryAddress, shippingMethod)
 }

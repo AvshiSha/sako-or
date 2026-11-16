@@ -76,6 +76,14 @@ export type OrderMinAggregateOutputType = {
   verifoneInvoiceAttemptedAt: Date | null
   verifoneInvoiceSyncedAt: Date | null
   verifoneInvoiceError: string | null
+  shippingCity: string | null
+  shippingStreetName: string | null
+  shippingStreetNumber: string | null
+  shippingFloor: string | null
+  shippingApartment: string | null
+  shippingZip: string | null
+  shippingNotes: string | null
+  customerIdNumber: string | null
   termsAcceptedVersion: string | null
   termsAcceptedAt: Date | null
 }
@@ -114,6 +122,14 @@ export type OrderMaxAggregateOutputType = {
   verifoneInvoiceAttemptedAt: Date | null
   verifoneInvoiceSyncedAt: Date | null
   verifoneInvoiceError: string | null
+  shippingCity: string | null
+  shippingStreetName: string | null
+  shippingStreetNumber: string | null
+  shippingFloor: string | null
+  shippingApartment: string | null
+  shippingZip: string | null
+  shippingNotes: string | null
+  customerIdNumber: string | null
   termsAcceptedVersion: string | null
   termsAcceptedAt: Date | null
 }
@@ -152,6 +168,14 @@ export type OrderCountAggregateOutputType = {
   verifoneInvoiceAttemptedAt: number
   verifoneInvoiceSyncedAt: number
   verifoneInvoiceError: number
+  shippingCity: number
+  shippingStreetName: number
+  shippingStreetNumber: number
+  shippingFloor: number
+  shippingApartment: number
+  shippingZip: number
+  shippingNotes: number
+  customerIdNumber: number
   termsAcceptedVersion: number
   termsAcceptedAt: number
   _all: number
@@ -208,6 +232,14 @@ export type OrderMinAggregateInputType = {
   verifoneInvoiceAttemptedAt?: true
   verifoneInvoiceSyncedAt?: true
   verifoneInvoiceError?: true
+  shippingCity?: true
+  shippingStreetName?: true
+  shippingStreetNumber?: true
+  shippingFloor?: true
+  shippingApartment?: true
+  shippingZip?: true
+  shippingNotes?: true
+  customerIdNumber?: true
   termsAcceptedVersion?: true
   termsAcceptedAt?: true
 }
@@ -246,6 +278,14 @@ export type OrderMaxAggregateInputType = {
   verifoneInvoiceAttemptedAt?: true
   verifoneInvoiceSyncedAt?: true
   verifoneInvoiceError?: true
+  shippingCity?: true
+  shippingStreetName?: true
+  shippingStreetNumber?: true
+  shippingFloor?: true
+  shippingApartment?: true
+  shippingZip?: true
+  shippingNotes?: true
+  customerIdNumber?: true
   termsAcceptedVersion?: true
   termsAcceptedAt?: true
 }
@@ -284,6 +324,14 @@ export type OrderCountAggregateInputType = {
   verifoneInvoiceAttemptedAt?: true
   verifoneInvoiceSyncedAt?: true
   verifoneInvoiceError?: true
+  shippingCity?: true
+  shippingStreetName?: true
+  shippingStreetNumber?: true
+  shippingFloor?: true
+  shippingApartment?: true
+  shippingZip?: true
+  shippingNotes?: true
+  customerIdNumber?: true
   termsAcceptedVersion?: true
   termsAcceptedAt?: true
   _all?: true
@@ -409,6 +457,14 @@ export type OrderGroupByOutputType = {
   verifoneInvoiceAttemptedAt: Date | null
   verifoneInvoiceSyncedAt: Date | null
   verifoneInvoiceError: string | null
+  shippingCity: string | null
+  shippingStreetName: string | null
+  shippingStreetNumber: string | null
+  shippingFloor: string | null
+  shippingApartment: string | null
+  shippingZip: string | null
+  shippingNotes: string | null
+  customerIdNumber: string | null
   termsAcceptedVersion: string | null
   termsAcceptedAt: Date | null
   _count: OrderCountAggregateOutputType | null
@@ -470,6 +526,14 @@ export type OrderWhereInput = {
   verifoneInvoiceAttemptedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   verifoneInvoiceError?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingCity?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingStreetName?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingStreetNumber?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingFloor?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingApartment?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingZip?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingNotes?: Prisma.StringNullableFilter<"Order"> | string | null
+  customerIdNumber?: Prisma.StringNullableFilter<"Order"> | string | null
   termsAcceptedVersion?: Prisma.StringNullableFilter<"Order"> | string | null
   termsAcceptedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   appliedCoupons?: Prisma.OrderCouponListRelationFilter
@@ -516,6 +580,14 @@ export type OrderOrderByWithRelationInput = {
   verifoneInvoiceAttemptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   verifoneInvoiceSyncedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   verifoneInvoiceError?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingCity?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingStreetName?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingStreetNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingFloor?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingApartment?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingZip?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingNotes?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerIdNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   termsAcceptedVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   termsAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   appliedCoupons?: Prisma.OrderCouponOrderByRelationAggregateInput
@@ -565,6 +637,14 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   verifoneInvoiceAttemptedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   verifoneInvoiceError?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingCity?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingStreetName?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingStreetNumber?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingFloor?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingApartment?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingZip?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingNotes?: Prisma.StringNullableFilter<"Order"> | string | null
+  customerIdNumber?: Prisma.StringNullableFilter<"Order"> | string | null
   termsAcceptedVersion?: Prisma.StringNullableFilter<"Order"> | string | null
   termsAcceptedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   appliedCoupons?: Prisma.OrderCouponListRelationFilter
@@ -611,6 +691,14 @@ export type OrderOrderByWithAggregationInput = {
   verifoneInvoiceAttemptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   verifoneInvoiceSyncedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   verifoneInvoiceError?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingCity?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingStreetName?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingStreetNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingFloor?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingApartment?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingZip?: Prisma.SortOrderInput | Prisma.SortOrder
+  shippingNotes?: Prisma.SortOrderInput | Prisma.SortOrder
+  customerIdNumber?: Prisma.SortOrderInput | Prisma.SortOrder
   termsAcceptedVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   termsAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.OrderCountOrderByAggregateInput
@@ -657,6 +745,14 @@ export type OrderScalarWhereWithAggregatesInput = {
   verifoneInvoiceAttemptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
   verifoneInvoiceError?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  shippingCity?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  shippingStreetName?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  shippingStreetNumber?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  shippingFloor?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  shippingApartment?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  shippingZip?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  shippingNotes?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
+  customerIdNumber?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   termsAcceptedVersion?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   termsAcceptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
 }
@@ -694,6 +790,14 @@ export type OrderCreateInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponCreateNestedManyWithoutOrderInput
@@ -740,6 +844,14 @@ export type OrderUncheckedCreateInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedCreateNestedManyWithoutOrderInput
@@ -784,6 +896,14 @@ export type OrderUpdateInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUpdateManyWithoutOrderNestedInput
@@ -830,6 +950,14 @@ export type OrderUncheckedUpdateInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedUpdateManyWithoutOrderNestedInput
@@ -875,6 +1003,14 @@ export type OrderCreateManyInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
 }
@@ -912,6 +1048,14 @@ export type OrderUpdateManyMutationInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -950,6 +1094,14 @@ export type OrderUncheckedUpdateManyInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -998,6 +1150,14 @@ export type OrderCountOrderByAggregateInput = {
   verifoneInvoiceAttemptedAt?: Prisma.SortOrder
   verifoneInvoiceSyncedAt?: Prisma.SortOrder
   verifoneInvoiceError?: Prisma.SortOrder
+  shippingCity?: Prisma.SortOrder
+  shippingStreetName?: Prisma.SortOrder
+  shippingStreetNumber?: Prisma.SortOrder
+  shippingFloor?: Prisma.SortOrder
+  shippingApartment?: Prisma.SortOrder
+  shippingZip?: Prisma.SortOrder
+  shippingNotes?: Prisma.SortOrder
+  customerIdNumber?: Prisma.SortOrder
   termsAcceptedVersion?: Prisma.SortOrder
   termsAcceptedAt?: Prisma.SortOrder
 }
@@ -1044,6 +1204,14 @@ export type OrderMaxOrderByAggregateInput = {
   verifoneInvoiceAttemptedAt?: Prisma.SortOrder
   verifoneInvoiceSyncedAt?: Prisma.SortOrder
   verifoneInvoiceError?: Prisma.SortOrder
+  shippingCity?: Prisma.SortOrder
+  shippingStreetName?: Prisma.SortOrder
+  shippingStreetNumber?: Prisma.SortOrder
+  shippingFloor?: Prisma.SortOrder
+  shippingApartment?: Prisma.SortOrder
+  shippingZip?: Prisma.SortOrder
+  shippingNotes?: Prisma.SortOrder
+  customerIdNumber?: Prisma.SortOrder
   termsAcceptedVersion?: Prisma.SortOrder
   termsAcceptedAt?: Prisma.SortOrder
 }
@@ -1082,6 +1250,14 @@ export type OrderMinOrderByAggregateInput = {
   verifoneInvoiceAttemptedAt?: Prisma.SortOrder
   verifoneInvoiceSyncedAt?: Prisma.SortOrder
   verifoneInvoiceError?: Prisma.SortOrder
+  shippingCity?: Prisma.SortOrder
+  shippingStreetName?: Prisma.SortOrder
+  shippingStreetNumber?: Prisma.SortOrder
+  shippingFloor?: Prisma.SortOrder
+  shippingApartment?: Prisma.SortOrder
+  shippingZip?: Prisma.SortOrder
+  shippingNotes?: Prisma.SortOrder
+  customerIdNumber?: Prisma.SortOrder
   termsAcceptedVersion?: Prisma.SortOrder
   termsAcceptedAt?: Prisma.SortOrder
 }
@@ -1279,6 +1455,14 @@ export type OrderCreateWithoutUserInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponCreateNestedManyWithoutOrderInput
@@ -1323,6 +1507,14 @@ export type OrderUncheckedCreateWithoutUserInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedCreateNestedManyWithoutOrderInput
@@ -1397,6 +1589,14 @@ export type OrderScalarWhereInput = {
   verifoneInvoiceAttemptedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   verifoneInvoiceError?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingCity?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingStreetName?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingStreetNumber?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingFloor?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingApartment?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingZip?: Prisma.StringNullableFilter<"Order"> | string | null
+  shippingNotes?: Prisma.StringNullableFilter<"Order"> | string | null
+  customerIdNumber?: Prisma.StringNullableFilter<"Order"> | string | null
   termsAcceptedVersion?: Prisma.StringNullableFilter<"Order"> | string | null
   termsAcceptedAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
 }
@@ -1434,6 +1634,14 @@ export type OrderCreateWithoutShipmentsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponCreateNestedManyWithoutOrderInput
@@ -1479,6 +1687,14 @@ export type OrderUncheckedCreateWithoutShipmentsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedCreateNestedManyWithoutOrderInput
@@ -1538,6 +1754,14 @@ export type OrderUpdateWithoutShipmentsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUpdateManyWithoutOrderNestedInput
@@ -1583,6 +1807,14 @@ export type OrderUncheckedUpdateWithoutShipmentsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedUpdateManyWithoutOrderNestedInput
@@ -1626,6 +1858,14 @@ export type OrderCreateWithoutReviewRequestInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponCreateNestedManyWithoutOrderInput
@@ -1671,6 +1911,14 @@ export type OrderUncheckedCreateWithoutReviewRequestInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedCreateNestedManyWithoutOrderInput
@@ -1730,6 +1978,14 @@ export type OrderUpdateWithoutReviewRequestInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUpdateManyWithoutOrderNestedInput
@@ -1775,6 +2031,14 @@ export type OrderUncheckedUpdateWithoutReviewRequestInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedUpdateManyWithoutOrderNestedInput
@@ -1818,6 +2082,14 @@ export type OrderCreateWithoutReviewInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponCreateNestedManyWithoutOrderInput
@@ -1863,6 +2135,14 @@ export type OrderUncheckedCreateWithoutReviewInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedCreateNestedManyWithoutOrderInput
@@ -1922,6 +2202,14 @@ export type OrderUpdateWithoutReviewInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUpdateManyWithoutOrderNestedInput
@@ -1967,6 +2255,14 @@ export type OrderUncheckedUpdateWithoutReviewInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedUpdateManyWithoutOrderNestedInput
@@ -2010,6 +2306,14 @@ export type OrderCreateWithoutOrderItemsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponCreateNestedManyWithoutOrderInput
@@ -2055,6 +2359,14 @@ export type OrderUncheckedCreateWithoutOrderItemsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedCreateNestedManyWithoutOrderInput
@@ -2114,6 +2426,14 @@ export type OrderUpdateWithoutOrderItemsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUpdateManyWithoutOrderNestedInput
@@ -2159,6 +2479,14 @@ export type OrderUncheckedUpdateWithoutOrderItemsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedUpdateManyWithoutOrderNestedInput
@@ -2202,6 +2530,14 @@ export type OrderCreateWithoutPaymentsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponCreateNestedManyWithoutOrderInput
@@ -2247,6 +2583,14 @@ export type OrderUncheckedCreateWithoutPaymentsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedCreateNestedManyWithoutOrderInput
@@ -2306,6 +2650,14 @@ export type OrderUpdateWithoutPaymentsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUpdateManyWithoutOrderNestedInput
@@ -2351,6 +2703,14 @@ export type OrderUncheckedUpdateWithoutPaymentsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedUpdateManyWithoutOrderNestedInput
@@ -2394,6 +2754,14 @@ export type OrderCreateWithoutAppliedCouponsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   orderItems?: Prisma.OrderItemCreateNestedManyWithoutOrderInput
@@ -2439,6 +2807,14 @@ export type OrderUncheckedCreateWithoutAppliedCouponsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   orderItems?: Prisma.OrderItemUncheckedCreateNestedManyWithoutOrderInput
@@ -2498,6 +2874,14 @@ export type OrderUpdateWithoutAppliedCouponsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   orderItems?: Prisma.OrderItemUpdateManyWithoutOrderNestedInput
@@ -2543,6 +2927,14 @@ export type OrderUncheckedUpdateWithoutAppliedCouponsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   orderItems?: Prisma.OrderItemUncheckedUpdateManyWithoutOrderNestedInput
@@ -2586,6 +2978,14 @@ export type OrderCreateWithoutPointsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponCreateNestedManyWithoutOrderInput
@@ -2631,6 +3031,14 @@ export type OrderUncheckedCreateWithoutPointsInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedCreateNestedManyWithoutOrderInput
@@ -2690,6 +3098,14 @@ export type OrderUpdateWithoutPointsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUpdateManyWithoutOrderNestedInput
@@ -2735,6 +3151,14 @@ export type OrderUncheckedUpdateWithoutPointsInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedUpdateManyWithoutOrderNestedInput
@@ -2778,6 +3202,14 @@ export type OrderCreateManyUserInput = {
   verifoneInvoiceAttemptedAt?: Date | string | null
   verifoneInvoiceSyncedAt?: Date | string | null
   verifoneInvoiceError?: string | null
+  shippingCity?: string | null
+  shippingStreetName?: string | null
+  shippingStreetNumber?: string | null
+  shippingFloor?: string | null
+  shippingApartment?: string | null
+  shippingZip?: string | null
+  shippingNotes?: string | null
+  customerIdNumber?: string | null
   termsAcceptedVersion?: string | null
   termsAcceptedAt?: Date | string | null
 }
@@ -2815,6 +3247,14 @@ export type OrderUpdateWithoutUserInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUpdateManyWithoutOrderNestedInput
@@ -2859,6 +3299,14 @@ export type OrderUncheckedUpdateWithoutUserInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   appliedCoupons?: Prisma.OrderCouponUncheckedUpdateManyWithoutOrderNestedInput
@@ -2903,6 +3351,14 @@ export type OrderUncheckedUpdateManyWithoutUserInput = {
   verifoneInvoiceAttemptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   verifoneInvoiceError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingCity?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingStreetNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingFloor?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingApartment?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingZip?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  shippingNotes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  customerIdNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedVersion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   termsAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -3008,6 +3464,14 @@ export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   verifoneInvoiceAttemptedAt?: boolean
   verifoneInvoiceSyncedAt?: boolean
   verifoneInvoiceError?: boolean
+  shippingCity?: boolean
+  shippingStreetName?: boolean
+  shippingStreetNumber?: boolean
+  shippingFloor?: boolean
+  shippingApartment?: boolean
+  shippingZip?: boolean
+  shippingNotes?: boolean
+  customerIdNumber?: boolean
   termsAcceptedVersion?: boolean
   termsAcceptedAt?: boolean
   appliedCoupons?: boolean | Prisma.Order$appliedCouponsArgs<ExtArgs>
@@ -3055,6 +3519,14 @@ export type OrderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   verifoneInvoiceAttemptedAt?: boolean
   verifoneInvoiceSyncedAt?: boolean
   verifoneInvoiceError?: boolean
+  shippingCity?: boolean
+  shippingStreetName?: boolean
+  shippingStreetNumber?: boolean
+  shippingFloor?: boolean
+  shippingApartment?: boolean
+  shippingZip?: boolean
+  shippingNotes?: boolean
+  customerIdNumber?: boolean
   termsAcceptedVersion?: boolean
   termsAcceptedAt?: boolean
   user?: boolean | Prisma.Order$userArgs<ExtArgs>
@@ -3094,6 +3566,14 @@ export type OrderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   verifoneInvoiceAttemptedAt?: boolean
   verifoneInvoiceSyncedAt?: boolean
   verifoneInvoiceError?: boolean
+  shippingCity?: boolean
+  shippingStreetName?: boolean
+  shippingStreetNumber?: boolean
+  shippingFloor?: boolean
+  shippingApartment?: boolean
+  shippingZip?: boolean
+  shippingNotes?: boolean
+  customerIdNumber?: boolean
   termsAcceptedVersion?: boolean
   termsAcceptedAt?: boolean
   user?: boolean | Prisma.Order$userArgs<ExtArgs>
@@ -3133,11 +3613,19 @@ export type OrderSelectScalar = {
   verifoneInvoiceAttemptedAt?: boolean
   verifoneInvoiceSyncedAt?: boolean
   verifoneInvoiceError?: boolean
+  shippingCity?: boolean
+  shippingStreetName?: boolean
+  shippingStreetNumber?: boolean
+  shippingFloor?: boolean
+  shippingApartment?: boolean
+  shippingZip?: boolean
+  shippingNotes?: boolean
+  customerIdNumber?: boolean
   termsAcceptedVersion?: boolean
   termsAcceptedAt?: boolean
 }
 
-export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderNumber" | "status" | "total" | "shippingMethod" | "pickupLocation" | "currency" | "customerName" | "customerEmail" | "customerPhone" | "paymentStatus" | "paymentMethod" | "paymentData" | "cardcomLowProfileId" | "cardcomTransactionId" | "createdAt" | "updatedAt" | "emailMessageId" | "emailSentAt" | "smsSentAt" | "smsMessageId" | "subtotal" | "discountTotal" | "deliveryFee" | "bogoDiscountAmount" | "userId" | "verifoneInvoiceStatus" | "verifoneInvoiceNo" | "verifoneInvoiceRequest" | "verifoneInvoiceResponse" | "verifoneInvoiceAttemptedAt" | "verifoneInvoiceSyncedAt" | "verifoneInvoiceError" | "termsAcceptedVersion" | "termsAcceptedAt", ExtArgs["result"]["order"]>
+export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "orderNumber" | "status" | "total" | "shippingMethod" | "pickupLocation" | "currency" | "customerName" | "customerEmail" | "customerPhone" | "paymentStatus" | "paymentMethod" | "paymentData" | "cardcomLowProfileId" | "cardcomTransactionId" | "createdAt" | "updatedAt" | "emailMessageId" | "emailSentAt" | "smsSentAt" | "smsMessageId" | "subtotal" | "discountTotal" | "deliveryFee" | "bogoDiscountAmount" | "userId" | "verifoneInvoiceStatus" | "verifoneInvoiceNo" | "verifoneInvoiceRequest" | "verifoneInvoiceResponse" | "verifoneInvoiceAttemptedAt" | "verifoneInvoiceSyncedAt" | "verifoneInvoiceError" | "shippingCity" | "shippingStreetName" | "shippingStreetNumber" | "shippingFloor" | "shippingApartment" | "shippingZip" | "shippingNotes" | "customerIdNumber" | "termsAcceptedVersion" | "termsAcceptedAt", ExtArgs["result"]["order"]>
 export type OrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   appliedCoupons?: boolean | Prisma.Order$appliedCouponsArgs<ExtArgs>
   orderItems?: boolean | Prisma.Order$orderItemsArgs<ExtArgs>
@@ -3217,6 +3705,34 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     verifoneInvoiceAttemptedAt: Date | null
     verifoneInvoiceSyncedAt: Date | null
     verifoneInvoiceError: string | null
+    /**
+     * The delivery address exactly as submitted at checkout, frozen against THIS
+     * order. Written in the same call that creates the order, so an order can never
+     * exist without the address it is to be shipped to.
+     * 
+     * Nullable for two reasons, neither of them "optional": pickup orders have no
+     * delivery address, and orders placed before these columns existed have none
+     * recorded. Historical rows are deliberately NOT backfilled — the old source was
+     * the most recent checkout row for the customer's email address, which is not
+     * necessarily the address that order was shipped to, and a plausible guess in a
+     * shipping address is worse than a visible blank.
+     */
+    shippingCity: string | null
+    shippingStreetName: string | null
+    shippingStreetNumber: string | null
+    shippingFloor: string | null
+    shippingApartment: string | null
+    shippingZip: string | null
+    /**
+     * Free-text note for the courier, as submitted with this order.
+     */
+    shippingNotes: string | null
+    /**
+     * Optional tax ID collected by the legacy checkout modal; the routed checkout
+     * does not ask for one. Stored so the team notification email does not lose it
+     * when the address is read from the order rather than the checkout table.
+     */
+    customerIdNumber: string | null
     /**
      * "Last updated" ISO date of the /terms page (staticPages/terms) at the moment
      * the customer accepted it, captured server-side — not client-supplied.
@@ -3690,6 +4206,14 @@ export interface OrderFieldRefs {
   readonly verifoneInvoiceAttemptedAt: Prisma.FieldRef<"Order", 'DateTime'>
   readonly verifoneInvoiceSyncedAt: Prisma.FieldRef<"Order", 'DateTime'>
   readonly verifoneInvoiceError: Prisma.FieldRef<"Order", 'String'>
+  readonly shippingCity: Prisma.FieldRef<"Order", 'String'>
+  readonly shippingStreetName: Prisma.FieldRef<"Order", 'String'>
+  readonly shippingStreetNumber: Prisma.FieldRef<"Order", 'String'>
+  readonly shippingFloor: Prisma.FieldRef<"Order", 'String'>
+  readonly shippingApartment: Prisma.FieldRef<"Order", 'String'>
+  readonly shippingZip: Prisma.FieldRef<"Order", 'String'>
+  readonly shippingNotes: Prisma.FieldRef<"Order", 'String'>
+  readonly customerIdNumber: Prisma.FieldRef<"Order", 'String'>
   readonly termsAcceptedVersion: Prisma.FieldRef<"Order", 'String'>
   readonly termsAcceptedAt: Prisma.FieldRef<"Order", 'DateTime'>
 }

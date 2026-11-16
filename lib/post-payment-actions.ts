@@ -4,6 +4,7 @@ import { sendOrderConfirmationEmailIdempotent } from './email';
 import { triggerInforuAutomationIdempotent, e164ToLocalPhone } from './inforu';
 import { buildAbsoluteUrl } from './seo';
 import { normalizeColorSlug as normalizeColorSlugShared } from './colors';
+import { resolveOrderDeliveryAddress, hasStoredAddress } from './delivery-address';
 
 /** Normalize email for lookup: trim, remove RTL/LTR marks, collapse ".." so we can match despite typos. */
 function normalizeEmailForLookup(email: string): string {
@@ -48,27 +49,15 @@ export async function handlePostPaymentActions(
       return;
     }
 
-    // Fetch checkout: exact email first, then by normalized email (handles RTL/double-dot typos)
-    let checkout = await prisma.checkout.findFirst({
-      where: { customerEmail: order.customerEmail },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (!checkout) {
-      const normalizedOrderEmail = normalizeEmailForLookup(order.customerEmail);
-      if (normalizedOrderEmail) {
-        const windowStart = new Date(order.createdAt);
-        windowStart.setMinutes(windowStart.getMinutes() - 15);
-        const windowEnd = new Date(order.createdAt);
-        windowEnd.setMinutes(windowEnd.getMinutes() + 5);
-        const recent = await prisma.checkout.findMany({
-          where: { createdAt: { gte: windowStart, lte: windowEnd } },
-          orderBy: { createdAt: 'desc' },
-        });
-        checkout = recent.find(
-          (c) => normalizeEmailForLookup(c.customerEmail) === normalizedOrderEmail
-        ) ?? null;
-      }
-    }
+    // The order carries its own address and contact details (orders.shipping_*),
+    // written in the same call that created it.
+    //
+    // This used to look up the most recent `checkouts` row for the customer's email
+    // address instead. That was wrong twice over: a customer who checked out again
+    // would have their newer address rendered onto an older order, and when no row
+    // existed the email silently fell back to a blank address. Both are gone - the
+    // address shown for an order is now the address stored against that order, or
+    // nothing at all.
 
     // Extract language from request URL parameters (if provided)
     let if_he = true; // Default to Hebrew
@@ -116,28 +105,20 @@ export async function handlePostPaymentActions(
       };
     });
 
-    // Extract customer and delivery data: prefer checkout, fallback to order fields
-    const payer = checkout
-      ? {
-          firstName: checkout.customerFirstName,
-          lastName: checkout.customerLastName,
-          email: checkout.customerEmail,
-          mobile: checkout.customerPhone,
-          idNumber: checkout.customerID || '',
-        }
-      : (() => {
-          const fullName = (order.customerName || '').trim();
-          const spaceIndex = fullName.indexOf(' ');
-          const firstName = spaceIndex > 0 ? fullName.slice(0, spaceIndex) : fullName || '';
-          const lastName = spaceIndex > 0 ? fullName.slice(spaceIndex + 1) : '';
-          return {
-            firstName,
-            lastName,
-            email: order.customerEmail || '',
-            mobile: order.customerPhone || '',
-            idNumber: '',
-          };
-        })();
+    // Customer details, from this order's own columns.
+    const payer = (() => {
+      const fullName = (order.customerName || '').trim();
+      const spaceIndex = fullName.indexOf(' ');
+      const firstName = spaceIndex > 0 ? fullName.slice(0, spaceIndex) : fullName || '';
+      const lastName = spaceIndex > 0 ? fullName.slice(spaceIndex + 1) : '';
+      return {
+        firstName,
+        lastName,
+        email: order.customerEmail || '',
+        mobile: order.customerPhone || '',
+        idNumber: order.customerIdNumber || '',
+      };
+    })();
 
     const STORE_ADDRESS = 'Rothschild 51, Rishon Lezion';
     const STORE_CITY = 'Rishon Lezion';
@@ -151,39 +132,24 @@ export async function handlePostPaymentActions(
     const pickupLocation =
       order.pickupLocation ?? (if_he ? STORE_ADDRESS_HE : STORE_ADDRESS);
 
-    const deliveryAddress = checkout
-      ? {
-          city: checkout.customerCity,
-          streetName: checkout.customerStreetName,
-          streetNumber: checkout.customerStreetNumber,
-          floor: checkout.customerFloor || '',
-          apartmentNumber: checkout.customerApartment || '',
-          zipCode: checkout.customerZip || '',
-        }
-      : shippingMethod === 'pickup'
-      ? {
-          city: if_he ? STORE_CITY_HE : STORE_CITY,
-          streetName: if_he ? STORE_ADDRESS_HE : STORE_ADDRESS,
-          streetNumber: '',
-          floor: '',
-          apartmentNumber: '',
-          zipCode: '',
-        }
-      : {
-          city: '',
-          streetName: '',
-          streetNumber: '',
-          floor: '',
-          apartmentNumber: '',
-          zipCode: '',
-        };
+    // Only reachable for orders placed before orders.shipping_* existed. Nothing is
+    // guessed to fill it: a plausible-looking wrong shipping address is worse than a
+    // visible blank. Logged without any address values.
+    if (!hasStoredAddress(order) && shippingMethod !== 'pickup') {
+      console.error(
+        `[POST_PAYMENT] Order ${orderId} is a delivery order with no stored address (pre-migration order) - confirmation email will show an EMPTY address.`
+      );
+    }
+
+    const deliveryAddress = resolveOrderDeliveryAddress(order, shippingMethod, {
+      city: if_he ? STORE_CITY_HE : STORE_CITY,
+      streetName: if_he ? STORE_ADDRESS_HE : STORE_ADDRESS,
+    });
 
     // Send confirmation email with Resend (idempotent)
     // Use corrected email as recipient so typo addresses (e.g. user@gmail..com) still receive the email
     const sendToEmail = normalizeEmailForLookup(order.customerEmail) || order.customerEmail;
-    const displayName = checkout
-      ? `${checkout.customerFirstName} ${checkout.customerLastName}`.trim()
-      : (order.customerName || '');
+    const displayName = order.customerName || '';
 
     console.log(`[POST_PAYMENT] Processing order ${orderId} confirmation`);
 
@@ -222,7 +188,7 @@ export async function handlePostPaymentActions(
         })),
         payer: payer,
         deliveryAddress: deliveryAddress,
-        notes: checkout?.customerDeliveryNotes || undefined,
+        notes: order.shippingNotes || undefined,
         isHebrew: if_he,
         shippingMethod,
         // For Hebrew pickup emails, show address in Hebrew; order may store English pickupLocation from checkout
@@ -246,8 +212,7 @@ export async function handlePostPaymentActions(
 
     // Send purchase confirmation SMS via Inforu (idempotent)
     try {
-      // Get phone number with priority: checkout.customerPhone > order.customerPhone
-      const phoneNumber = checkout?.customerPhone || order.customerPhone;
+      const phoneNumber = order.customerPhone;
 
       if (phoneNumber) {
         // Convert E.164 format to local format for Inforu
@@ -256,9 +221,8 @@ export async function handlePostPaymentActions(
         if (localPhone) {
           // Split customer name into first and last name
           const customerNameParts = (order.customerName || '').trim().split(/\s+/);
-          const firstName = checkout?.customerFirstName || customerNameParts[0] || '';
-          const lastName =
-            checkout?.customerLastName || customerNameParts.slice(1).join(' ') || '';
+          const firstName = customerNameParts[0] || '';
+          const lastName = customerNameParts.slice(1).join(' ') || '';
 
           console.log(`[POST_PAYMENT] Triggering purchase confirmation SMS for order ${orderId}`);
 

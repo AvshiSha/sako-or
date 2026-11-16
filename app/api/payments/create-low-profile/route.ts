@@ -8,6 +8,7 @@ import { spendPointsForOrder } from '../../../../lib/points';
 import { getBearerToken, requireUserAuth } from '@/lib/server/auth';
 import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '../../../../lib/pricing';
 import { validateCartItems } from '../../../../lib/cart-validation';
+import { missingDeliveryAddressFields, formatStreetLine } from '../../../../lib/delivery-address';
 import { staticPageService } from '@/lib/firebase';
 
 export async function POST(request: NextRequest) {
@@ -214,24 +215,18 @@ export async function POST(request: NextRequest) {
 
     const shippingMethod = body.shippingMethod ?? 'delivery';
 
-    // streetNumber is deliberately NOT required, and must stay that way: block/parcel
-    // addresses ("5026/2" in נצרת and much of the north), named squares and kibbutzim
-    // have no house number at all. Requiring it here rejected those customers with a
-    // 400 they could not act on - one of them stripped items out of a 2,388 ILS cart
-    // trying to guess what was wrong. lib/checkout-session agrees on this.
-    if (shippingMethod !== 'pickup') {
-      const missingAddressFields = (['city', 'streetName'] as const)
-        .filter(field => !body.deliveryAddress?.[field]);
-      if (missingAddressFields.length > 0) {
-        return NextResponse.json(
-          {
-            error: 'Missing required delivery address information',
-            code: 'ADDRESS_INCOMPLETE',
-            fields: missingAddressFields,
-          },
-          { status: 400 }
-        );
-      }
+    // One shared rule with /api/checkout and the client (lib/delivery-address):
+    // city and street required for delivery, house number never required.
+    const missingAddressFields = missingDeliveryAddressFields(body.deliveryAddress, shippingMethod);
+    if (missingAddressFields.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Missing required delivery address information',
+          code: 'ADDRESS_INCOMPLETE',
+          fields: missingAddressFields,
+        },
+        { status: 400 }
+      );
     }
 
     // Generate order number - always use server-side generation for uniqueness
@@ -435,72 +430,78 @@ export async function POST(request: NextRequest) {
     const termsAcceptedVersion = termsPage?.updatedAt;
     const termsAcceptedAt = new Date();
 
-    // Create order in database
+    // One payload, used for both the first attempt and the duplicate-number retry.
+    // These were two hand-maintained copies and had already drifted - the retry copy
+    // silently dropped `couponId`, so a retried order lost its link to the coupon
+    // records. The address must never be able to drift the same way.
+    const orderPayload = {
+      total: body.amount,
+      subtotal: computedSubtotal,
+      discountTotal: computedDiscountTotal,
+      bogoDiscountAmount: hasBogoDiscount ? body.bogoDiscountAmount : undefined,
+      deliveryFee: computedDeliveryFee,
+      shippingMethod,
+      pickupLocation: body.pickupLocation,
+      currency: body.currencyIso === 2 ? 'USD' : 'ILS',
+      customerName: `${body.customer.firstName} ${body.customer.lastName}`,
+      customerEmail: body.customer.email,
+      customerPhone: body.customer.mobile,
+      customerIdNumber: body.customer.idNumber,
+      // Pickup orders carry no delivery address; the store's own is used downstream.
+      deliveryAddress: shippingMethod === 'pickup' ? undefined : {
+        city: body.deliveryAddress.city,
+        streetName: body.deliveryAddress.streetName,
+        streetNumber: body.deliveryAddress.streetNumber,
+        floor: body.deliveryAddress.floor,
+        apartmentNumber: body.deliveryAddress.apartmentNumber,
+        zipCode: body.deliveryAddress.zipCode,
+      },
+      deliveryNotes: body.notes,
+      userId,
+      termsAcceptedVersion,
+      termsAcceptedAt,
+      items: orderItems,
+      coupons: hasBogoDiscount
+        ? undefined
+        : body.coupons?.map(coupon => ({
+            code: coupon.code,
+            discountAmount: coupon.discountAmount,
+            discountType: coupon.discountType,
+            stackable: coupon.stackable,
+            description: coupon.description,
+            couponId: couponMap.get(coupon.code.toUpperCase())
+          }))
+    };
+
+    // The order - address included - must be stored BEFORE a payment session exists.
+    // If this fails the customer must not reach the gateway: a charge with no stored
+    // address is the failure this whole change exists to prevent. Nothing has been
+    // charged at this point, so returning an error here is always safe.
     let order;
     try {
-      order = await createOrder({
-        orderNumber,
-        total: body.amount,
-        subtotal: computedSubtotal,
-        discountTotal: computedDiscountTotal,
-        bogoDiscountAmount: hasBogoDiscount ? body.bogoDiscountAmount : undefined,
-        deliveryFee: computedDeliveryFee,
-        shippingMethod,
-        pickupLocation: body.pickupLocation,
-        currency: body.currencyIso === 2 ? 'USD' : 'ILS',
-        customerName: `${body.customer.firstName} ${body.customer.lastName}`,
-        customerEmail: body.customer.email,
-        customerPhone: body.customer.mobile,
-        userId,
-        termsAcceptedVersion,
-        termsAcceptedAt,
-        items: orderItems,
-        coupons: hasBogoDiscount
-          ? undefined
-          : body.coupons?.map(coupon => ({
-              code: coupon.code,
-              discountAmount: coupon.discountAmount,
-              discountType: coupon.discountType,
-              stackable: coupon.stackable,
-              description: coupon.description,
-              couponId: couponMap.get(coupon.code.toUpperCase())
-            }))
-      });
+      order = await createOrder({ ...orderPayload, orderNumber });
     } catch (createError: any) {
       Sentry.captureException(createError);
-      // If we still get a unique constraint error, retry with a new order number
+      // A duplicate order number is recoverable: take a new one and try once more.
       if (createError.code === 'P2002') {
-        console.log('Duplicate order number detected, generating new one');
+        console.log('[CREATE_LOW_PROFILE] Duplicate order number detected, generating new one');
         orderNumber = generateOrderNumber();
-        order = await createOrder({
-          orderNumber,
-          total: body.amount,
-          subtotal: computedSubtotal,
-          discountTotal: computedDiscountTotal,
-          bogoDiscountAmount: hasBogoDiscount ? body.bogoDiscountAmount : undefined,
-          deliveryFee: computedDeliveryFee,
-          shippingMethod,
-          pickupLocation: body.pickupLocation,
-          currency: body.currencyIso === 2 ? 'USD' : 'ILS',
-          customerName: `${body.customer.firstName} ${body.customer.lastName}`,
-          customerEmail: body.customer.email,
-          customerPhone: body.customer.mobile,
-          userId,
-          termsAcceptedVersion,
-          termsAcceptedAt,
-          items: orderItems,
-          coupons: hasBogoDiscount
-            ? undefined
-            : body.coupons?.map(coupon => ({
-                code: coupon.code,
-                discountAmount: coupon.discountAmount,
-                discountType: coupon.discountType,
-                stackable: coupon.stackable,
-                description: coupon.description
-              }))
-        });
+        try {
+          order = await createOrder({ ...orderPayload, orderNumber });
+        } catch (retryError) {
+          Sentry.captureException(retryError);
+          console.error('[CREATE_LOW_PROFILE] Order save failed on retry; not opening the gateway.');
+          return NextResponse.json(
+            { error: 'Could not save your order details. Please try again.', code: 'ORDER_SAVE_FAILED' },
+            { status: 503 }
+          );
+        }
       } else {
-        throw createError;
+        console.error('[CREATE_LOW_PROFILE] Order save failed; not opening the gateway.');
+        return NextResponse.json(
+          { error: 'Could not save your order details. Please try again.', code: 'ORDER_SAVE_FAILED' },
+          { status: 503 }
+        );
       }
     }
 
@@ -526,13 +527,11 @@ export async function POST(request: NextRequest) {
         language: body.language || 'he',
         // Receipt/Document options
         customerTaxId: "",
-        // Filtered join, not a template: an address with no house number would
-        // otherwise reach the invoice with a trailing space.
+        // Shared formatter: an address with no house number must not reach the
+        // invoice with a trailing space.
         customerAddress: shippingMethod === 'pickup'
           ? STORE_ADDRESS
-          : [body.deliveryAddress.streetName, body.deliveryAddress.streetNumber]
-              .filter(Boolean)
-              .join(' '),
+          : formatStreetLine(body.deliveryAddress),
         customerAddress2: "",
         customerCity: shippingMethod === 'pickup'
           ? STORE_CITY

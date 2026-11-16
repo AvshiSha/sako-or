@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs'
 import { prisma } from '../../../lib/prisma';
 import { CheckoutFormData } from '../../types/checkout';
+import { missingDeliveryAddressFields } from '../../../lib/delivery-address';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,13 +19,20 @@ export async function POST(request: NextRequest) {
 
     const shippingMethod = body.shippingMethod ?? 'delivery';
 
-    if (shippingMethod !== 'pickup') {
-      if (!body.deliveryAddress?.city || !body.deliveryAddress?.streetName || !body.deliveryAddress?.streetNumber) {
-        return NextResponse.json(
-          { error: 'Missing required delivery address information (city, streetName, streetNumber)' },
-          { status: 400 }
-        );
-      }
+    // One shared rule with create-low-profile (lib/delivery-address). This record is
+    // the ONLY place the confirmation email reads the delivery address from, and the
+    // caller (saveCheckoutInfo) is best-effort, so a rejection here is invisible to
+    // the customer and silently produces a paid order whose email has no address.
+    const missingAddressFields = missingDeliveryAddressFields(body.deliveryAddress, shippingMethod);
+    if (missingAddressFields.length > 0) {
+      return NextResponse.json(
+        {
+          error: 'Missing required delivery address information',
+          code: 'ADDRESS_INCOMPLETE',
+          fields: missingAddressFields,
+        },
+        { status: 400 }
+      );
     }
 
     // Validate email format (reject double dots e.g. user@gmail..com)
@@ -56,7 +64,8 @@ export async function POST(request: NextRequest) {
         customerLastName: body.payer.lastName,
         customerPhone: body.payer.mobile,
         customerStreetName: shippingMethod === 'pickup' ? STORE_ADDRESS : body.deliveryAddress.streetName,
-        customerStreetNumber: shippingMethod === 'pickup' ? '' : body.deliveryAddress.streetNumber,
+        // Column is non-null; an address with no house number stores an empty string.
+        customerStreetNumber: shippingMethod === 'pickup' ? '' : (body.deliveryAddress.streetNumber ?? ''),
         customerFloor: shippingMethod === 'pickup' ? null : body.deliveryAddress.floor || null,
         customerApartment: shippingMethod === 'pickup' ? null : body.deliveryAddress.apartmentNumber || null,
         customerCity: shippingMethod === 'pickup' ? 'Rishon Lezion' : body.deliveryAddress.city,

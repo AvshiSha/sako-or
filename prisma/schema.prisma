@@ -329,6 +329,28 @@ model Order {
   verifoneInvoiceAttemptedAt DateTime?     @map("verifone_invoice_attempted_at")
   verifoneInvoiceSyncedAt    DateTime?     @map("verifone_invoice_synced_at")
   verifoneInvoiceError       String?       @map("verifone_invoice_error")
+  /// The delivery address exactly as submitted at checkout, frozen against THIS
+  /// order. Written in the same call that creates the order, so an order can never
+  /// exist without the address it is to be shipped to.
+  ///
+  /// Nullable for two reasons, neither of them "optional": pickup orders have no
+  /// delivery address, and orders placed before these columns existed have none
+  /// recorded. Historical rows are deliberately NOT backfilled — the old source was
+  /// the most recent checkout row for the customer's email address, which is not
+  /// necessarily the address that order was shipped to, and a plausible guess in a
+  /// shipping address is worse than a visible blank.
+  shippingCity               String?       @map("shipping_city")
+  shippingStreetName         String?       @map("shipping_street_name")
+  shippingStreetNumber       String?       @map("shipping_street_number")
+  shippingFloor              String?       @map("shipping_floor")
+  shippingApartment          String?       @map("shipping_apartment")
+  shippingZip                String?       @map("shipping_zip")
+  /// Free-text note for the courier, as submitted with this order.
+  shippingNotes              String?       @map("shipping_notes")
+  /// Optional tax ID collected by the legacy checkout modal; the routed checkout
+  /// does not ask for one. Stored so the team notification email does not lose it
+  /// when the address is read from the order rather than the checkout table.
+  customerIdNumber           String?       @map("customer_id_number")
   /// "Last updated" ISO date of the /terms page (staticPages/terms) at the moment
   /// the customer accepted it, captured server-side — not client-supplied.
   termsAcceptedVersion       String?       @map("terms_accepted_version")

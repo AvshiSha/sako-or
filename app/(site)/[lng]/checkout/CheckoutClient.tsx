@@ -108,6 +108,7 @@ const content = {
     errPointsLimit: 'Points cannot cover more than 15% of the order.',
     errPointsAuth: 'Please sign in to use your points.',
     errCouponBogo: 'A coupon cannot be combined with the automatic pairs deal.',
+    errOrderSave: 'We could not save your order details, so payment was not started. Your details have been kept — please try again.',
     genericError: 'Something went wrong opening the payment page. Please try again.',
     cartInvalid:
       'One or more products in your cart are no longer available. Please update your cart before continuing.',
@@ -156,6 +157,7 @@ const content = {
     errPointsLimit: 'לא ניתן לממש יותר מ-15% מסכום ההזמנה בנקודות.',
     errPointsAuth: 'יש להתחבר לחשבון כדי לממש נקודות.',
     errCouponBogo: 'לא ניתן לשלב קופון עם מבצע הזוגות האוטומטי.',
+    errOrderSave: 'לא הצלחנו לשמור את פרטי ההזמנה, ולכן התשלום לא התבצע. הפרטים שמילאת נשמרו — נא לנסות שוב.',
     genericError: 'אירעה תקלה בפתיחת עמוד התשלום. נא לנסות שוב.',
     cartInvalid: 'אחד או יותר מהמוצרים בסל אינם זמינים יותר. נא לעדכן את הסל לפני שממשיכים.',
     backToCart: 'חזרה לסל',
@@ -220,6 +222,10 @@ function describeCheckoutError(t: Copy, code?: string, fields?: string[]): strin
       return t.errPointsAuth
     case 'COUPON_BOGO_CONFLICT':
       return t.errCouponBogo
+    // Nothing was charged: the order could not be stored, so the gateway was never
+    // opened. The form keeps everything the customer typed, so retrying is safe.
+    case 'ORDER_SAVE_FAILED':
+      return t.errOrderSave
     default:
       return null
   }

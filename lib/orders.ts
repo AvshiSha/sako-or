@@ -2,6 +2,7 @@ import { prisma } from './prisma';
 import { parseSku } from './sku-parser';
 import { CouponDiscountType } from '@prisma/client';
 import { markCartItemsAsCheckedOut } from './cart-status';
+import { toOrderAddressColumns } from './delivery-address';
 
 export interface CreateOrderData {
   orderNumber: string;
@@ -28,6 +29,29 @@ export interface CreateOrderData {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
+  /** Optional tax ID; only the legacy checkout modal collects one. */
+  customerIdNumber?: string;
+  /**
+   * The delivery address as submitted, frozen against this order.
+   *
+   * Written in the same `prisma.order.create` as the order itself, so an order
+   * cannot exist without the address it is to be shipped to — which is what makes
+   * a failure to store it block payment rather than surface later as a blank
+   * address in a confirmation email.
+   *
+   * Omitted for pickup orders, which have no delivery address.
+   */
+  deliveryAddress?: {
+    city: string;
+    streetName: string;
+    /** Optional: block/parcel addresses, named squares and kibbutzim have none. */
+    streetNumber?: string;
+    floor?: string;
+    apartmentNumber?: string;
+    zipCode?: string;
+  };
+  /** Free-text note for the courier. */
+  deliveryNotes?: string;
   userId?: string;
   /**
    * "Last updated" ISO date of the /terms page the customer accepted at
@@ -74,6 +98,11 @@ export async function createOrder(data: CreateOrderData) {
         customerName: data.customerName,
         customerEmail: data.customerEmail,
         customerPhone: data.customerPhone,
+        customerIdNumber: data.customerIdNumber?.trim() || null,
+        // Stored as submitted. Empty optional fields become null rather than "",
+        // so a missing house number reads the same way everywhere downstream.
+        ...toOrderAddressColumns(data.deliveryAddress),
+        shippingNotes: data.deliveryNotes?.trim() || null,
         termsAcceptedVersion: data.termsAcceptedVersion ?? null,
         termsAcceptedAt: data.termsAcceptedAt ?? null,
         ...(data.userId ? { userId: data.userId } : {}),

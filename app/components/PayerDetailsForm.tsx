@@ -142,9 +142,11 @@ export default function PayerDetailsForm({
       return false;
     }
 
-    // Delivery address validation (only for home delivery)
+    // Delivery address validation (only for home delivery).
+    // streetNumber is NOT required, matching the routed checkout and both API routes:
+    // block/parcel addresses ("אעבלין", "5026/2") have no house number at all.
     if (shippingMethod !== 'pickup') {
-      if (!deliveryAddress.city || !deliveryAddress.streetName || !deliveryAddress.streetNumber) {
+      if (!deliveryAddress.city?.trim() || !deliveryAddress.streetName?.trim()) {
         return false;
       }
     }
@@ -366,7 +368,7 @@ export default function PayerDetailsForm({
               
               <div>
                 <label htmlFor="streetNumber" className="block text-sm font-medium text-gray-700">
-                  {t.streetNumber} <span className="text-red-500">*</span>
+                  {t.streetNumber}
                 </label>
                 <input
                   type="text"
@@ -375,7 +377,6 @@ export default function PayerDetailsForm({
                   value={formData.deliveryAddress.streetNumber}
                   onChange={handleDeliveryAddressChange}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-[#856D55] focus:border-[#856D55]/80 sm:text-sm"
-                  required
                 />
               </div>
               

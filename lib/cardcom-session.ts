@@ -51,7 +51,16 @@ export const CART_INVALID_ERROR_CODES = new Set([
   'CART_PRICE_MISMATCH'
 ])
 
-/** Persists the address/contact block. Best-effort — never blocks payment. */
+/**
+ * Writes the `checkouts` row, which backs the abandoned-checkout and admin views.
+ *
+ * Genuinely best-effort now, and safe to be: the delivery address that an order is
+ * shipped to and emailed about is stored on the order itself, by the same call that
+ * creates it. This row used to be the only copy, which is how a rejection here —
+ * swallowed, because the call is best-effort — produced paid orders whose
+ * confirmation emails had no address at all. A failure is still logged loudly, but
+ * it no longer loses the address, and it still must not throw.
+ */
 export async function saveCheckoutInfo(details: CheckoutFormData): Promise<string | null> {
   try {
     const response = await fetch('/api/checkout', {
@@ -59,11 +68,20 @@ export async function saveCheckoutInfo(details: CheckoutFormData): Promise<strin
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(details)
     })
-    if (!response.ok) return null
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      // Codes and field names only — no address or contact values in the log.
+      console.error('[checkout] Delivery address was NOT saved; the confirmation email will have no address.', {
+        status: response.status,
+        code: errorData.code,
+        fields: errorData.fields
+      })
+      return null
+    }
     const result = await response.json().catch(() => null)
     return result?.checkoutId ?? null
   } catch (error) {
-    console.warn('[checkout] Failed to save checkout info:', error)
+    console.error('[checkout] Failed to save checkout info:', error)
     return null
   }
 }

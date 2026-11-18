@@ -24,19 +24,25 @@ const DEFAULT_PROMOS: PromoItem[] = [
     // then grow and shrink every 4s and walk the hero 12px down the page with
     // it. Measured at 320/360/390: an earlier, longer draft wrapped at all
     // three and scored 0.027 CLS on the homepage; this one is flat at 0. The
-    // Winter 27 copy below was re-measured in Ploni bold 12px at those same
-    // three widths when it replaced the Election line - one line and a 24px
-    // row at each, identical to the line it replaced.
+    // BLACK WEEK copy below is shorter than both the Winter 27 and Election
+    // lines it follows (18 characters against 24 and 44), so it clears that
+    // constraint with room to spare at all three widths.
+    //
+    // The wording deliberately mirrors the hero artwork, which says "Black
+    // Week", not "Black Friday", and names no discount - the band must not
+    // promise a percentage the campaign page does not show. If the campaign
+    // settles on a headline figure, this is the line to put it in.
     text: {
-      he: 'קולקציית WINTER 27 כבר כאן',
-      en: 'The WINTER 27 collection is here',
+      he: 'BLACK WEEK כבר כאן',
+      en: 'BLACK WEEK is here',
     },
-    href: '/collection/campaign/new-collection',
-    icon: '✨',
-    // Deliberately no countdownEnd - and now nothing to count down to either.
-    // This promo is an arrival, not an offer with a deadline: the Election
-    // Sale's clock was PromoCountdown, the band's second row, which retires
-    // itself once its date passes (it did, 28 Oct 2026 07:00 IST).
+    href: '/collection/campaign/black-friday',
+    icon: '🖤',
+    // Deliberately no countdownEnd. Black Week does have an end date, but the
+    // clock is PromoCountdown - the band's second row - and it is only worth
+    // mounting once that date is fixed; add `countdownEnd` here and the row
+    // appears and retires itself when the date passes (as the Election Sale's
+    // did, 28 Oct 2026 07:00 IST).
   },
   // The old "New Drop" line lived here, parked for the Election Sale. It is not
   // being restored: 'הדרופ החדש כבר כאן | NEW IN SAKO OR' and the Winter 27

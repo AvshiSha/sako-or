@@ -24,6 +24,8 @@ const imageUrlMappings: Record<string, string> = {
   "/images/hero/winter-27-poster-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fwinter-27-poster-mobile.webp?alt=media&token=9e408445-d2eb-429b-a556-015000e60f4b",
   "/images/hero/winter-27-poster-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fwinter-27-poster-desktop.webp?alt=media&token=d39ab5b5-8e0a-4aa8-9bce-5be0611e89fd",
   "/images/hero/election-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2FElection%2FElection_sale_mobile.webp?alt=media&token=f9ffa373-ede9-4c04-9b5d-f0837ae0d621",
+  "/images/hero/black-friday-desktop.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fblack-friday%2Fblack_friday_home_desktop.webp?alt=media&token=43bae4ca-eeaf-4a64-b14e-167506593892",
+  "/images/hero/black-friday-mobile.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhero%2Fblack-friday%2Fblack_friday_home_mobile.webp?alt=media&token=3e5215d1-4181-4b44-924f-6c7ab1d99a75",
   "/images/hero/main-hero.jpg": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fsummer_Sale_2026_fix_mobile.webp?alt=media&token=35f144d2-4cd8-479b-a2ac-c42cd6d6cf36",
   "/images/hero/bags-hero-poster.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fbags_image_hero_mobile.webp?alt=media&token=d55a6e62-028f-4793-988e-65aa54d63536",
   "home-collection-outlet.webp": "https://firebasestorage.googleapis.com/v0/b/sako-or.firebasestorage.app/o/images%2Fhome_collections%2Foutlet_collection.webp?alt=media&token=403aac3b-fd30-4412-bc84-14836f361038",
@@ -161,6 +163,26 @@ export function getElectionHeroDesktopImageUrl(): string {
 
 export function getElectionHeroMobileImageUrl(): string {
   return getImageUrl("/images/hero/election-mobile.webp");
+}
+
+/**
+ * "Black Week" / Black Friday (November 2026) homepage hero banners
+ * (desktop / mobile). Locale-agnostic: the "Black Week" headline and the
+ * "Shop now" pill are baked into the artwork in English at both breakpoints,
+ * which is why the hero carries no text node of its own.
+ *
+ * Intrinsic sizes are 1915x821 (desktop, ~2.33:1) and 941x1672 (mobile,
+ * ~9:16). HomeHero's aspect-ratio boxes are built from exactly these numbers,
+ * so object-cover crops nothing - which matters here because the mobile
+ * headline runs to within ~12% of both edges. Replacing an asset means
+ * re-measuring and updating those constants.
+ */
+export function getBlackFridayHeroDesktopImageUrl(): string {
+  return getImageUrl("/images/hero/black-friday-desktop.webp");
+}
+
+export function getBlackFridayHeroMobileImageUrl(): string {
+  return getImageUrl("/images/hero/black-friday-mobile.webp");
 }
 
 /** Homepage mobile hero video (first fold, mobile only). */

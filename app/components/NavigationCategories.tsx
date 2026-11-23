@@ -32,6 +32,12 @@ type Gender = 'women' | 'men'
 
 export type NavigationCategoriesLabels = {
   allProducts: string
+  /**
+   * The department-wide "all products" row under NEW COLLECTION. Separate from
+   * allProducts, which heads an expanded category's child grid and means "all of
+   * this category" rather than "all of this department".
+   */
+  allDepartmentProducts: string
   women: string
   men: string
 }
@@ -198,6 +204,23 @@ export default function NavigationCategories({
         >
           <span className={`font-ploni ${featureText} font-black ${featureLeading} text-text-primary`}>
             NEW COLLECTION
+          </span>
+        </ListingLink>
+
+        {/* Everything in the selected department, directly below the feature row and
+            above the categories. Set at the same Black feature weight and size as NEW
+            COLLECTION by request, so the two read as a pair of entry points standing
+            above the category ladder rather than one feature and one ordinary row.
+            The href follows the department tabs, so one row serves both women and men. */}
+        <ListingLink
+          href={`/${lng}/collection/${selectedGender}`}
+          onClick={onNavigate}
+          className={`flex ${rowH} items-center border-b border-sako-black transition-opacity hover:opacity-70`}
+          dir={dir}
+          suppressHydrationWarning
+        >
+          <span className={`font-ploni ${featureText} font-black ${featureLeading} text-text-primary`}>
+            {labels.allDepartmentProducts}
           </span>
         </ListingLink>
 

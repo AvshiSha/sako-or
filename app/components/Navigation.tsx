@@ -47,6 +47,7 @@ const translations = {
     allMen: 'All Men',
     categories: 'Categories',
     allProducts: 'Show All',
+    allDepartmentProducts: 'All Products',
     signIn: 'Sign in',
     myProfile: 'My Profile',
     favorites: 'Favorites',
@@ -62,6 +63,7 @@ const translations = {
     allMen: 'לכל קולקצית הגברים',
     categories: 'קטגוריות',
     allProducts: 'לכל המוצרים',
+    allDepartmentProducts: 'לכל המוצרים',
     signIn: 'התחברות',
     myProfile: 'הפרופיל שלי',
     favorites: 'מועדפים',
@@ -861,6 +863,8 @@ export default function Navigation({
             hasMen={hasMenCategory()}
             labels={{
               allProducts: translations[lng as keyof typeof translations].allProducts,
+              allDepartmentProducts:
+                translations[lng as keyof typeof translations].allDepartmentProducts,
               women: translations[lng as keyof typeof translations].women,
               men: translations[lng as keyof typeof translations].men,
             }}
@@ -945,6 +949,8 @@ export default function Navigation({
                 hasMen={hasMenCategory()}
                 labels={{
                   allProducts: translations[lng as keyof typeof translations].allProducts,
+                  allDepartmentProducts:
+                    translations[lng as keyof typeof translations].allDepartmentProducts,
                   women: translations[lng as keyof typeof translations].women,
                   men: translations[lng as keyof typeof translations].men,
                 }}

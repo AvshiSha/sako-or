@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { PaymentRedirectMessage } from '../types/checkout';
+import { Button } from './ui/button';
 
 interface PaymentIframeProps {
   redirectUrl: string;
@@ -169,11 +170,25 @@ export default function PaymentIframe({
 
   return (
     <div className="w-full h-full flex flex-col">
+      {/* Loading and error states for the gateway sheet. Neither is drawn in
+          Figma, so both compose from approved constructions rather than invent
+          anything: the ground is the same `surface-secondary` the sheet around
+          this component already uses (CheckoutClient / CheckoutModal), corners
+          are square, and there is no shadow - the design system documents no
+          elevation at all. */}
       {isLoading && (
-        <div className="flex items-center justify-center flex-1 bg-gray-50 rounded-lg">
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-1 items-center justify-center bg-surface-secondary"
+        >
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#856D55] mx-auto mb-4"></div>
-            <p className="text-gray-600">
+            {/* The storefront's v5 spinner, as drawn on the PDP and the profile
+                shell: same geometry, on border-default rather than a literal hex.
+                This carried #856D55 - the pre-v5 brand brown - until now. */}
+            <div className="mx-auto mb-[16px] h-12 w-12 animate-spin rounded-full border-b-2 border-border-default" />
+            {/* Typography/Body/Small - 14px Ploni. */}
+            <p className="font-ploni text-[14px] text-text-secondary">
               {isHebrew ? 'טוען דף תשלום...' : 'Loading payment page...'}
             </p>
           </div>
@@ -181,14 +196,28 @@ export default function PaymentIframe({
       )}
 
       {error && (
-        <div className="flex items-center justify-center flex-1 bg-red-50 rounded-lg">
-          <div className="text-center">
-            <div className="text-red-600 text-4xl mb-4">⚠️</div>
-            <p className="text-red-800 font-medium mb-2">
+        <div
+          role="alert"
+          className="flex flex-1 items-center justify-center bg-surface-secondary p-[16px]"
+        >
+          {/* Error is signalled the one way the system signals it: a 2px rule on
+              the inline-start edge in accent-error, never a coloured fill. There
+              is no red surface and no warning glyph in the palette - the 16
+              primitives carry no icon set and no success hue, so a filled red
+              panel would be inventing brand colour. Start-aligned because the
+              rule is on the inline start; `border-s` so it follows the locale. */}
+          <div className="w-full max-w-[360px] border-s-2 border-accent-error ps-[16px] text-start">
+            <p className="font-ploni text-[16px] font-bold text-text-primary">
               {isHebrew ? 'שגיאה בטעינת התשלום' : 'Payment Loading Error'}
             </p>
-            <p className="text-red-600 text-sm">{error}</p>
-            <button
+            <p className="mt-[8px] font-ploni text-[14px] text-text-secondary">{error}</p>
+            {/* CTA Button State=Filled at the height the system draws it (54px),
+                rather than the hand-rolled red button this replaces. */}
+            <Button
+              type="button"
+              variant="sako"
+              size="sakoBar"
+              className="mt-[24px]"
               onClick={() => {
                 setError(null);
                 setIsLoading(true);
@@ -196,10 +225,9 @@ export default function PaymentIframe({
                   iframeRef.current.src = redirectUrl;
                 }
               }}
-              className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               {isHebrew ? 'נסה שוב' : 'Try Again'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -207,7 +235,7 @@ export default function PaymentIframe({
       <iframe
         ref={iframeRef}
         src={redirectUrl}
-        className={`w-full flex-1 border-0 rounded-lg ${isLoading || error ? 'hidden' : 'block'}`}
+        className={`w-full flex-1 border-0 ${isLoading || error ? 'hidden' : 'block'}`}
         allow="payment *; clipboard-write"
         sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation" // remove allow-same-origin
         title={isHebrew ? 'דף תשלום מאובטח' : 'Secure Payment Page'}

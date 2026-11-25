@@ -195,12 +195,24 @@ export function createPaymentSessionRequest(
     );
   }
 
-  // Add UI Definition for better UX
+  // Prefill what checkout already collected, so the hosted page opens with its
+  // fields filled rather than asking for them a second time.
+  //
+  // These three keys are `CardOwner*Value`, not the `PrefillOwner*` this used
+  // to send. Those names are not in CardCom's v11 API; CardCom ignored them
+  // silently, the page rendered empty boxes, and - because IsCardOwnerPhoneRequired
+  // and IsCardOwnerEmailRequired both default to true at their end - the shopper
+  // had to retype a name, phone and email they had just given us. It also kept
+  // the Apple Pay button out of reach until the name was typed. Verbatim from
+  // https://secure.cardcom.solutions/swagger/v11/swagger.json; see UIDefinition.
+  //
+  // CardOwnerNameValue is capped at 50 characters at their end, so a long
+  // "first last" is truncated rather than rejected.
   if (options.customerEmail || options.customerName || options.customerPhone) {
     request.UIDefinition = {
-      PrefillOwnerEmail: options.customerEmail,
-      PrefillOwnerName: options.customerName,
-      PrefillOwnerPhone: options.customerPhone,
+      CardOwnerEmailValue: options.customerEmail,
+      CardOwnerNameValue: options.customerName,
+      CardOwnerPhoneValue: options.customerPhone,
     };
   }
 

@@ -237,7 +237,18 @@ export default function PaymentIframe({
         src={redirectUrl}
         className={`w-full flex-1 border-0 ${isLoading || error ? 'hidden' : 'block'}`}
         allow="payment *; clipboard-write"
-        sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation" // remove allow-same-origin
+        // Apple Pay: Cardcom runs its Apple Pay session in a popup, because Apple validates
+        // the merchant session against the TOP-LEVEL document's host - inside this iframe that
+        // host is ours, which is not registered with Apple. The popup makes Cardcom's own page
+        // top-level again. A popup opened from a sandboxed frame inherits that frame's sandbox
+        // flags unless allow-popups-to-escape-sandbox is present, so without it the popup is
+        // sandboxed too and Apple Pay still cannot run. allow-modals covers Cardcom's own
+        // alert()/confirm() error paths.
+        // allow-same-origin must STAY (the old "remove allow-same-origin" note was wrong):
+        // this is a cross-origin frame, so dropping it does not isolate Cardcom from us - it
+        // gives the Cardcom document an opaque origin, which breaks its cookies/storage and
+        // makes event.origin arrive as "null" in the postMessage handler above.
+        sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-modals allow-top-navigation-by-user-activation"
         title={isHebrew ? 'דף תשלום מאובטח' : 'Secure Payment Page'}
         onLoad={() => setIsLoading(false)}
         onError={() => {

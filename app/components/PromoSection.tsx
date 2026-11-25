@@ -38,11 +38,12 @@ const DEFAULT_PROMOS: PromoItem[] = [
     },
     href: '/collection/campaign/black-friday',
     icon: '🖤',
-    // Deliberately no countdownEnd. Black Week does have an end date, but the
-    // clock is PromoCountdown - the band's second row - and it is only worth
-    // mounting once that date is fixed; add `countdownEnd` here and the row
-    // appears and retires itself when the date passes (as the Election Sale's
-    // did, 28 Oct 2026 07:00 IST).
+    // Deliberately no countdownEnd. Black Week's clock is live, but it is
+    // PromoCountdown - the band's second row, see CAMPAIGN_END there (end of
+    // 27 Nov 2026, IST). Setting `countdownEnd` here too would print a second,
+    // smaller clock inside the ribbon itself, and - because this is the only
+    // promo and expireMode defaults to 'remove' - would delete the message
+    // from the band the moment it hit zero, leaving an empty black strip.
   },
   // The old "New Drop" line lived here, parked for the Election Sale. It is not
   // being restored: 'הדרופ החדש כבר כאן | NEW IN SAKO OR' and the Winter 27
@@ -295,7 +296,16 @@ export default function PromoSection({
                       // out-of-flow row cannot size the band it sits in - which is
                       // what forced the nowrap/ellipsis clamp below and swallowed
                       // the message.
-                      className="flex items-center justify-center gap-2 font-ploni text-[12px] font-bold text-text-inverse"
+                      //
+                      // leading-[18px] is the inherited 12px x 1.5 written out,
+                      // so it is identical on screen. It is spelled because the
+                      // band's vertical rhythm is measured off it: this row is
+                      // min-h-[24px]/[26px], so the slack above and below the
+                      // headline is (24-18)/2 and (26-18)/2, and PromoCountdown
+                      // matches its own gaps to that. Left to inherit, a change
+                      // to the global line-height would silently unbalance the
+                      // band instead of just resizing this row.
+                      className="flex items-center justify-center gap-2 font-ploni text-[12px] font-bold leading-[18px] text-text-inverse"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
@@ -320,6 +330,29 @@ export default function PromoSection({
                           is never the better outcome. If it ever outgrows a narrow
                           viewport it wraps, and the band above grows with it. */}
                       <span className="text-text-inverse">{activeItem.text[lng]}</span>
+                      {/* The icon's counterweight, and the reason the headline
+                          sits on the band's centre line. justify-center centres
+                          the WHOLE row - icon, gap and text - so a leading icon
+                          slot pushes the words off centre by half its footprint
+                          ((20px + 8px gap) / 2 = 14px), away from the centre the
+                          clock below is on. An empty slot of the same width on
+                          the far side cancels that exactly, in both directions,
+                          with no measuring: the text is then centred on the row
+                          and the icon hangs off its start edge.
+
+                          It costs 28px of line width, which this copy has to
+                          spare at 320px (see the length constraint on the promo
+                          above); should a future promo ever need every pixel, it
+                          wraps - the behaviour already chosen for that case -
+                          rather than silently going off centre again.
+
+                          Conditional on the same icon, not rendered always: a
+                          promo with no icon has nothing to counterweight, and an
+                          unconditional spacer would throw that one off centre by
+                          14px in the other direction. */}
+                      {activeItem.icon ? (
+                        <span aria-hidden="true" className="w-5 shrink-0" />
+                      ) : null}
                     </motion.div>
                   )}
                 </AnimatePresence>

@@ -3,9 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 
 /**
- * The Election Sale countdown, rendered as the second row of the announcement
+ * The campaign countdown, rendered as the second row of the announcement
  * band - directly under PromoSection, sharing its ground, its type and its
  * gutter so the two read as one element rather than two stacked bars.
+ *
+ * It currently counts down to the close of Black Week; it carried the Election
+ * Sale before that. One campaign at a time: the live deadline is the constant
+ * below, and retiring a campaign means pointing that constant at the next one,
+ * not stacking a second clock beside this one.
  *
  * It is ordinary page content, exactly like the ribbon above it: in flow, a
  * sibling of the sticky <header> rather than a child of it. That is what keeps
@@ -15,22 +20,28 @@ import { useEffect, useMemo, useState } from 'react'
  */
 
 /**
- * End of the campaign: 07:00 on Wednesday 28 October 2026, Israel time
- * (extended from the original midnight close).
+ * End of the live campaign - Black Week: the end of Friday 27 November 2026,
+ * Israel time, i.e. midnight as the 27th closes and the 28th begins.
  *
  * The offset is written out rather than left to the visitor's clock, so the
  * deadline is the same instant for a shopper in Tel Aviv and one in New York.
  * +02:00 is correct *for this date*: Israel leaves IDT on the last Sunday in
- * October (25 Oct 2026), so the campaign closes on IST. A different campaign
- * date needs this checked again - between late March and late October the
- * right literal is +03:00. Resolved against the IANA database, not assumed.
+ * October (25 Oct 2026), so late November is on IST. A different campaign date
+ * needs this checked again - between late March and late October the right
+ * literal is +03:00. Resolved against the IANA database, not assumed.
  *
- * This is also the coupon's expiry. ELEC10's `endDate` in the database is set
- * from this exact constant by scripts/election-coupon-deadline.ts, which
- * imports it rather than restating it - so the clock on screen and the code at
- * the till cannot drift apart by one of them being edited alone. Changing the
- * literal below means re-running that script with `--apply`; running it without
- * the flag reports whether the two currently agree.
+ * Written as 00:00 on the 28th rather than 23:59:59 on the 27th on purpose: the
+ * 27th is then included in full, and the clock runs to a round zero instead of
+ * stopping a second short of it.
+ */
+export const CAMPAIGN_END = '2026-11-28T00:00:00+02:00'
+
+/**
+ * The Election Sale's close, kept only because scripts/election-coupon-deadline.ts
+ * imports it to reconcile ELEC10's `endDate` in the database with the clock that
+ * campaign ran. That campaign is over and this is now history - do NOT repoint it
+ * at a new campaign, or that script will move a dead coupon's expiry. The live
+ * deadline is CAMPAIGN_END above.
  */
 export const ELECTION_SALE_END = '2026-10-28T07:00:00+02:00'
 
@@ -38,7 +49,7 @@ export const ELECTION_SALE_END = '2026-10-28T07:00:00+02:00'
  * Date.parse of an ISO string with an explicit offset gives the same instant on
  * the server and in the browser - so nothing here depends on either clock's
  * timezone, only on the current time. */
-const ELECTION_SALE_END_MS = new Date(ELECTION_SALE_END).getTime()
+const CAMPAIGN_END_MS = new Date(CAMPAIGN_END).getTime()
 
 interface Remaining {
   days: number
@@ -91,9 +102,9 @@ interface PromoCountdownProps {
 
 export default function PromoCountdown({ lng, endsAt }: PromoCountdownProps) {
   const endMs = useMemo(() => {
-    if (endsAt === undefined) return ELECTION_SALE_END_MS
+    if (endsAt === undefined) return CAMPAIGN_END_MS
     const parsed = endsAt instanceof Date ? endsAt.getTime() : new Date(endsAt).getTime()
-    return Number.isFinite(parsed) ? parsed : ELECTION_SALE_END_MS
+    return Number.isFinite(parsed) ? parsed : CAMPAIGN_END_MS
   }, [endsAt])
 
   // null until the first client tick. The server has no business rendering a
@@ -109,8 +120,8 @@ export default function PromoCountdown({ lng, endsAt }: PromoCountdownProps) {
     // Stop the clock the moment it reaches zero. Returning null below does not
     // unmount this component, so without this the interval kept firing once a
     // second - for every visitor, on every page, forever - re-rendering a
-    // component whose only output is null. Harmless on 27 Oct 2026, pure waste
-    // on 29 Oct.
+    // component whose only output is null. Harmless on 27 Nov 2026, pure waste
+    // on 29 Nov.
     const tick = () => {
       const next = getRemaining(endMs)
       setRemaining(next)
@@ -143,7 +154,12 @@ export default function PromoCountdown({ lng, endsAt }: PromoCountdownProps) {
     <div className="w-full bg-sako-ink-800 text-text-inverse">
       <div className="mx-auto max-w-7xl px-4">
         <div
-          className={`mx-auto flex w-full max-w-3xl flex-col items-center justify-center pb-[7px] text-center font-ploni transition-opacity duration-300 sm:pb-1.5 ${
+          // pb is the band's bottom margin, and it is set to the gap the ribbon
+          // above leaves over the headline: 7px of the link's own padding plus
+          // the (24-18)/2 of slack around its 18px line = 10px on a phone, and
+          // (26-18)/2 = 4px from sm up. The band is then evenly inset top and
+          // bottom instead of sitting 3px lower in its own ground.
+          className={`mx-auto flex w-full max-w-3xl flex-col items-center justify-center pb-[10px] text-center font-ploni transition-opacity duration-300 sm:pb-1 ${
             ready ? 'opacity-100' : 'opacity-0'
           }`}
           dir={lng === 'he' ? 'rtl' : 'ltr'}
@@ -164,8 +180,18 @@ export default function PromoCountdown({ lng, endsAt }: PromoCountdownProps) {
               days -> seconds, and that order is left-to-right in Hebrew too;
               letting the RTL context mirror it would put seconds first.
               items-start, so the colons align to the digits rather than to the
-              centre of the two-line group. */}
-          <div dir="ltr" className="mt-[3px] flex items-start justify-center">
+              centre of the two-line group - and the colons carry the digits'
+              line-height, so top-aligning the two boxes lands them on the same
+              baseline instead of 1.5px under it.
+
+              The top margin is the same 10px / 4px as the gap above the label
+              and the padding below the clock, so the three lines of the band -
+              headline, message, clock - are evenly spaced rather than the
+              message being pressed against the digits. The 3px inside Segment
+              is deliberately NOT part of that rhythm: a number and its unit are
+              one object, and they have to read as closer to each other than to
+              anything else on the band. */}
+          <div dir="ltr" className="mt-[10px] flex items-start justify-center sm:mt-1">
             <Segment value={remaining?.days ?? 0} unit={t.days} />
             <Colon />
             <Segment value={remaining?.hours ?? 0} unit={t.hours} />
@@ -187,7 +213,11 @@ export default function PromoCountdown({ lng, endsAt }: PromoCountdownProps) {
  * make its own column wider than "Days" and the separators would step across
  * the row. It is sized off the widest label in either language, which is the
  * English "SECONDS" rather than anything in Hebrew: at 46px that one overran
- * its own column on a phone and closed the gap to "MINUTES". */
+ * its own column on a phone and closed the gap to "MINUTES" - so these numbers
+ * are a measured floor, and the way to tighten the row is the Colon column
+ * below, not these. Four equal columns and three equal gutters also make the
+ * row symmetrical about its own centre, which is how it lands on the same
+ * centre line as the two lines of type above it. */
 function Segment({ value, unit }: { value: number; unit: string }) {
   return (
     <span className="flex w-[50px] flex-col items-center sm:w-[58px]">
@@ -196,21 +226,46 @@ function Segment({ value, unit }: { value: number; unit: string }) {
       <span className="text-[15px] font-bold leading-none tabular-nums text-text-inverse sm:text-[17px]">
         {pad2(value)}
       </span>
-      <span className="mt-[3px] text-[8px] font-medium uppercase leading-none tracking-[0.06em] text-white/55 sm:text-[9px]">
+      {/* -mr trims the tracking's overhang so the WORD, not its box, sits on the
+          number's axis: tracking adds its 0.06em after every character, the last
+          one included, so the span is a sliver wider than its glyphs and
+          items-center centres that sliver - leaving the word half a letter-space
+          off true.
+
+          Physical right, in both languages, which is not what the logical
+          property would do. Blink puts that surplus on the right of the last
+          glyph even when the run is RTL, so the Hebrew labels drift the same way
+          the English ones do; -me-[0.06em] under dir="auto" resolves to the left
+          for them and doubles the error instead of cancelling it. Measured in
+          Chromium with the tracking temporarily dialled up to 3px to make a
+          quarter-pixel visible - an engine that does the opposite for RTL is
+          wrong here by 0.27px, which is under one device pixel. */}
+      <span className="-mr-[0.06em] mt-[3px] text-[8px] font-medium uppercase leading-none tracking-[0.06em] text-white/55 sm:text-[9px]">
         {unit}
       </span>
     </span>
   )
 }
 
-/** Separator. Dimmed and a size down from the digits so it reads as punctuation,
- * and line-height-matched to them so it sits on the digit row, not between the
- * two lines of the groups it divides. */
+/** Separator. Dimmed and a size down from the digits so it reads as punctuation.
+ *
+ * It is a fixed-width column of its own rather than an intrinsically sized
+ * glyph, for the same reason Segment is: the gutter between two groups then has
+ * a declared width instead of inheriting whatever advance the ':' happens to
+ * have in Ploni, in its fallback, and at each of the two sizes - four different
+ * gutters for one design. Centred in that column, the three separators sit at
+ * exactly even x positions between four equal columns, which is the whole point
+ * of fixing the Segment width in the first place.
+ *
+ * leading matches the digits' box (15/17px, their size at leading-none) rather
+ * than this glyph's own, so the row's items-start puts the colon on the digits'
+ * baseline. At leading-none its smaller box top-aligned ~1.5px high, which is
+ * visible when the ':' is read against two digits either side of it. */
 function Colon() {
   return (
     <span
       aria-hidden="true"
-      className="text-[13px] font-bold leading-none text-white/35 sm:text-[15px]"
+      className="w-2 shrink-0 text-center text-[13px] font-bold leading-[15px] text-white/35 sm:w-[10px] sm:text-[15px] sm:leading-[17px]"
     >
       :
     </span>

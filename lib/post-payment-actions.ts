@@ -5,15 +5,7 @@ import { triggerInforuAutomationIdempotent, e164ToLocalPhone } from './inforu';
 import { buildAbsoluteUrl } from './seo';
 import { normalizeColorSlug as normalizeColorSlugShared } from './colors';
 import { resolveOrderDeliveryAddress, hasStoredAddress } from './delivery-address';
-
-/** Normalize email for lookup: trim, remove RTL/LTR marks, collapse ".." so we can match despite typos. */
-function normalizeEmailForLookup(email: string): string {
-  if (!email || typeof email !== 'string') return '';
-  return email
-    .trim()
-    .replace(/\u200f|\u200e/g, '') // RTL mark, LTR mark
-    .replace(/\.\.+/g, '.');
-}
+import { normalizeEmailAddress } from './email-address';
 
 function normalizeOrderItemColorSlug(input: unknown): string | undefined {
   if (typeof input !== 'string') return undefined;
@@ -146,9 +138,11 @@ export async function handlePostPaymentActions(
       streetName: if_he ? STORE_ADDRESS_HE : STORE_ADDRESS,
     });
 
-    // Send confirmation email with Resend (idempotent)
-    // Use corrected email as recipient so typo addresses (e.g. user@gmail..com) still receive the email
-    const sendToEmail = normalizeEmailForLookup(order.customerEmail) || order.customerEmail;
+    // Send confirmation email with Resend (idempotent).
+    // Repair the typos that are repairable without guessing, so addresses like
+    // user@gmail..com or name.@walla.com still reach the customer instead of
+    // being refused by Resend as malformed.
+    const sendToEmail = normalizeEmailAddress(order.customerEmail) || order.customerEmail;
     const displayName = order.customerName || '';
 
     console.log(`[POST_PAYMENT] Processing order ${orderId} confirmation`);
@@ -199,15 +193,38 @@ export async function handlePostPaymentActions(
       orderId
     );
 
-    if (!emailResult.success) {
+    if ('skipped' in emailResult && emailResult.skipped) {
+      console.log(`[POST_PAYMENT] Email skipped for order ${orderId} - already sent`);
+    } else if (!emailResult.success) {
       console.error(
         `[POST_PAYMENT] Failed to send email for order ${orderId}:`,
         'error' in emailResult ? emailResult.error : 'Unknown error'
       );
-    } else if ('skipped' in emailResult && emailResult.skipped) {
-      console.log(`[POST_PAYMENT] Email skipped for order ${orderId} - already sent`);
     } else {
-      console.log(`[POST_PAYMENT] Order ${orderId} email confirmation sent successfully`);
+      // Partial success is the common case worth seeing: the shop and team were
+      // told about the order even though the customer's address was unusable.
+      const results = 'results' in emailResult ? emailResult.results : undefined;
+      if (results) {
+        const failed = results.filter((r) => !r.success);
+        if (failed.length) {
+          console.error(
+            `[POST_PAYMENT] Order ${orderId} email partially sent - delivered to ` +
+              `${results.filter((r) => r.success).map((r) => r.label).join(', ') || 'nobody'}; ` +
+              `failed for ${failed.map((r) => `${r.label} (${r.recipient})`).join(', ')}`
+          );
+        } else {
+          console.log(`[POST_PAYMENT] Order ${orderId} email confirmation sent to all recipients`);
+        }
+      } else {
+        console.log(`[POST_PAYMENT] Order ${orderId} email confirmation sent successfully`);
+      }
+
+      if ('customerSuccess' in emailResult && !emailResult.customerSuccess) {
+        console.error(
+          `[POST_PAYMENT] Order ${orderId} customer confirmation NOT delivered to ` +
+            `"${sendToEmail}" - contact the customer for a valid address.`
+        );
+      }
     }
 
     // Send purchase confirmation SMS via Inforu (idempotent)

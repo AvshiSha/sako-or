@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/nextjs'
 import { prisma } from '../../../lib/prisma';
 import { CheckoutFormData } from '../../types/checkout';
 import { missingDeliveryAddressFields } from '../../../lib/delivery-address';
+import { isValidEmailAddress, normalizeEmailAddress } from '../../../lib/email-address';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,10 +36,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate email format (reject double dots e.g. user@gmail..com)
-    const email = body.payer.email;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (email.includes('..') || !emailRegex.test(email)) {
+    // Validate email format (rejects user@gmail..com and name.@walla.com alike)
+    const email = normalizeEmailAddress(body.payer.email);
+    body.payer.email = email;
+    if (!isValidEmailAddress(email)) {
       return NextResponse.json(
         { error: 'Invalid email format' },
         { status: 400 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { CheckoutFormData, PayerDetails, DeliveryAddress } from '../types/checkout';
+import { isValidEmailAddress } from '../../lib/email-address';
 
 interface PayerDetailsFormProps {
   formData: CheckoutFormData;
@@ -59,12 +60,9 @@ export default function PayerDetailsForm({
     if (!email.trim()) {
       return t.emailRequired;
     }
-    // Reject common typos: double dots (e.g. user@gmail..com)
-    if (email.includes('..')) {
-      return t.emailInvalid;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    // Rejects user@gmail..com and name.@walla.com alike. Asking the customer to
+    // correct it here is the only chance to get a working address on the order.
+    if (!isValidEmailAddress(email)) {
       return t.emailInvalid;
     }
     return null;
@@ -135,7 +133,7 @@ export default function PayerDetailsForm({
     if (!payer.firstName || !payer.lastName || !payer.email || !payer.mobile) {
       return false;
     }
-    if (payer.email.includes('..') || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payer.email)) {
+    if (!isValidEmailAddress(payer.email)) {
       return false;
     }
     if (!/^(\+972|0)([23489]|5[012345689]|77)[0-9]{7}$/.test(payer.mobile.replace(/\s/g, ''))) {

@@ -1,9 +1,11 @@
+import type { ReactElement } from 'react';
 import { Resend } from 'resend';
 import { OrderConfirmationEmail } from '../app/emails/order-confirmation';
 import { OrderConfirmationEmailHebrew } from '../app/emails/order-confirmation-hebrew';
 import { prisma } from './prisma';
 import { OrderConfirmationTeamEmail } from '../app/emails/order-confirmation-team-mail';
 import { EmailOtp } from '../app/emails/email-otp';
+import { isValidEmailAddress } from './email-address';
 
 let resendClient: Resend | null = null;
 function getResendClient(): Resend {
@@ -19,6 +21,139 @@ function getResendClient(): Resend {
 
 // In-memory cache for test orders (since they don't exist in database)
 const testOrderEmailCache = new Map<string, { emailSentAt: Date; emailMessageId: string }>();
+
+const FROM_ADDRESS = 'Sako Or <info@sako-or.com>';
+const SHOP_EMAIL = 'info@sako-or.com';
+const TEAM_EMAIL = 'moshe@sako-or.com';
+const EMAIL_TIMEOUT_MS = 15000;
+
+/** Which of the three order-confirmation emails a result belongs to. */
+export type EmailRecipientLabel = 'customer' | 'shop' | 'team';
+
+export interface EmailRecipientResult {
+  label: EmailRecipientLabel;
+  recipient: string;
+  success: boolean;
+  messageId?: string;
+  /** Resend did not answer in time; the message may or may not have gone out. */
+  timedOut?: boolean;
+  error?: unknown;
+}
+
+/**
+ * Outcome of an order-confirmation send attempt.
+ *
+ * `success` means at least one of the three emails went out; `customerSuccess`
+ * is the one to check when what matters is whether the customer was told.
+ */
+export interface OrderEmailSendResult {
+  success: boolean;
+  messageId?: string;
+  idempotencyKey?: string;
+  /** Per-recipient outcomes, absent when the attempt failed before sending. */
+  results?: EmailRecipientResult[];
+  customerSuccess?: boolean;
+  error?: unknown;
+  /** Set when a previous send for this order was already recorded. */
+  skipped?: boolean;
+  reason?: string;
+}
+
+class EmailTimeoutError extends Error {}
+
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new EmailTimeoutError(`Resend API timeout (${label}) after ${EMAIL_TIMEOUT_MS}ms`)),
+      EMAIL_TIMEOUT_MS
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
+/**
+ * Send one order email to one recipient. Never throws and never rejects: every
+ * outcome - an invalid address, a Resend validation error, a network exception,
+ * a timeout - comes back as a resolved {@link EmailRecipientResult}.
+ *
+ * This isolation is the point. The customer, the shop and the team each get
+ * their own message with their own recipient array and their own idempotency
+ * key, so a bad customer address can no longer take the other two down with it.
+ * Previously all three shared one Resend call (customer + shop) plus one call
+ * gated behind its success (team), so a single 422 on the customer's address
+ * meant nobody was told about the order at all.
+ */
+async function sendOrderEmailToRecipient(
+  resend: Resend,
+  params: {
+    label: EmailRecipientLabel;
+    recipient: string;
+    orderNumber: string;
+    subject: string;
+    react: ReactElement;
+    idempotencyKey: string;
+  }
+): Promise<EmailRecipientResult> {
+  const { label, recipient, orderNumber, subject, react, idempotencyKey } = params;
+  const base = { label, recipient } as const;
+
+  // Reject locally rather than spending a round trip on an address Resend will
+  // refuse anyway - and so the log names the address that is actually wrong.
+  if (!isValidEmailAddress(recipient)) {
+    const error = {
+      name: 'validation_error',
+      message: `Invalid recipient address for ${label}: "${recipient}"`,
+      statusCode: 422,
+    };
+    console.error(
+      `[EMAIL ${label.toUpperCase()} FAILED] Order ${orderNumber} - invalid address, not attempted:`,
+      error
+    );
+    return { ...base, success: false, error };
+  }
+
+  try {
+    const result = await withTimeout(
+      resend.emails.send(
+        { from: FROM_ADDRESS, to: [recipient], subject, react },
+        { idempotencyKey }
+      ),
+      label
+    );
+
+    const { data: emailData, error } = result as { data?: any; error?: any };
+
+    if (error) {
+      console.error(
+        `[EMAIL ${label.toUpperCase()} FAILED] Order ${orderNumber} to ${recipient}:`,
+        error
+      );
+      return { ...base, success: false, error };
+    }
+
+    console.log(
+      `[EMAIL ${label.toUpperCase()} SENT] Order ${orderNumber} to ${recipient}, messageId: ${emailData?.id}`
+    );
+    return { ...base, success: true, messageId: emailData?.id };
+  } catch (err) {
+    if (err instanceof EmailTimeoutError) {
+      // Preserved from the previous implementation: a timeout is treated as
+      // probably-sent rather than retried, to avoid double-sending.
+      console.error(
+        `[EMAIL ${label.toUpperCase()} TIMEOUT] Order ${orderNumber} to ${recipient} - assuming sent`
+      );
+      return { ...base, success: true, timedOut: true, messageId: `timeout-${Date.now()}` };
+    }
+    console.error(
+      `[EMAIL ${label.toUpperCase()} FAILED] Order ${orderNumber} to ${recipient} threw:`,
+      err
+    );
+    return { ...base, success: false, error: err };
+  }
+}
 
 export interface OrderEmailData {
   customerEmail: string;
@@ -119,7 +254,10 @@ export async function sendEmailOtp(data: EmailOtpData) {
   return { messageId: emailData?.id, idempotencyKey };
 }
 
-export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?: string) {
+export async function sendOrderConfirmationEmail(
+  data: OrderEmailData,
+  orderId?: string
+): Promise<OrderEmailSendResult> {
   try {
     const resend = getResendClient();
 
@@ -144,105 +282,95 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
       endpoint: 'sendOrderConfirmationEmail'
     });
 
-    // Production email with proper template and recipients
-    const emailPromise = resend.emails.send({
-      from: 'Sako Or <info@sako-or.com>',
-      to: [data.customerEmail, 'info@sako-or.com'],
-      subject: subject,
-      react: EmailTemplate({
-        customerName: data.customerName,
+    // The customer and the shop get the customer-facing confirmation; the team
+    // gets the operations template. Built once, sent three times.
+    const confirmationProps = {
+      customerName: data.customerName,
+      orderNumber: data.orderNumber,
+      orderDate: data.orderDate,
+      items: data.items,
+      total: data.total,
+      subtotal: data.subtotal,
+      deliveryFee: data.deliveryFee,
+      discountTotal: data.discountTotal,
+      coupons: data.coupons,
+      payer: data.payer,
+      deliveryAddress: data.deliveryAddress,
+      notes: data.notes,
+      isHebrew: data.isHebrew,
+      shippingMethod: data.shippingMethod,
+      pickupLocation: data.pickupLocation,
+      pointsSpent: data.pointsSpent,
+    };
+
+    // Three independent sends, started together and all awaited to completion.
+    // Each helper resolves rather than throwing, and allSettled is the belt to
+    // that braces: nothing any one recipient does can interrupt the other two.
+    //
+    // The keys must differ per recipient - Resend rejects a reused idempotency
+    // key carrying a different payload. They keep the timestamp so a deliberate
+    // resend (scripts/resend-order-email.ts) is not silently deduplicated.
+    const settled = await Promise.allSettled([
+      sendOrderEmailToRecipient(resend, {
+        label: 'customer',
+        recipient: data.customerEmail,
         orderNumber: data.orderNumber,
-        orderDate: data.orderDate,
-        items: data.items,
-        total: data.total,
-        subtotal: data.subtotal,
-        deliveryFee: data.deliveryFee,
-        discountTotal: data.discountTotal,
-        coupons: data.coupons,
-        payer: data.payer,
-        deliveryAddress: data.deliveryAddress,
-        notes: data.notes,
-        isHebrew: data.isHebrew,
-        shippingMethod: data.shippingMethod,
-        pickupLocation: data.pickupLocation,
-        pointsSpent: data.pointsSpent,
+        subject,
+        react: EmailTemplate(confirmationProps),
+        idempotencyKey,
       }),
-    }, {
-      idempotencyKey: idempotencyKey,
-    });
+      sendOrderEmailToRecipient(resend, {
+        label: 'shop',
+        recipient: SHOP_EMAIL,
+        orderNumber: data.orderNumber,
+        subject,
+        react: EmailTemplate(confirmationProps),
+        idempotencyKey: `order-confirmation-shop-${data.orderNumber}-${Date.now()}`,
+      }),
+      sendOrderEmailToRecipient(resend, {
+        label: 'team',
+        recipient: TEAM_EMAIL,
+        orderNumber: data.orderNumber,
+        subject: `New Order Received - ${data.orderNumber}`,
+        react: OrderConfirmationTeamEmail(confirmationProps),
+        idempotencyKey: `order-confirmation-team-${data.orderNumber}-${Date.now()}`,
+      }),
+    ]);
 
-    // Create a timeout wrapper for the email promise
-    const timeoutMs = 15000; // 15 seconds
-    
-    try {
-      const result = await Promise.race([
-        emailPromise,
-        new Promise((_, reject) => {
-          setTimeout(() => {
-            reject(new Error(`Resend API timeout after ${timeoutMs}ms`));
-          }, timeoutMs);
-        })
-      ]);
-      
-      console.log(`[EMAIL] Successfully sent confirmation for order ${data.orderNumber}`);
-      
-      const { data: emailData, error } = result as { data?: any; error?: any };
-      
-      if (error) {
-        console.error(`[EMAIL ERROR] Failed to send email for order ${data.orderNumber}:`, error);
-        return { success: false, error: error };
-      }
+    const labels: EmailRecipientLabel[] = ['customer', 'shop', 'team'];
+    const recipients = [data.customerEmail, SHOP_EMAIL, TEAM_EMAIL];
+    const results: EmailRecipientResult[] = settled.map((outcome, index) =>
+      outcome.status === 'fulfilled'
+        ? outcome.value
+        : {
+            label: labels[index],
+            recipient: recipients[index],
+            success: false,
+            error: outcome.reason,
+          }
+    );
 
-      console.log(`[EMAIL] Confirmation sent for order ${data.orderNumber}, messageId: ${emailData?.id}`);
+    const customerResult = results[0];
+    const delivered = results.filter((r) => r.success);
+    const failed = results.filter((r) => !r.success);
 
-      // Send team notification email (does not affect the main result)
-      try {
-        const teamIdempotencyKey = `order-confirmation-team-${data.orderNumber}-${Date.now()}`;
-        await Promise.race([
-          resend.emails.send({
-            from: 'Sako Or <info@sako-or.com>',
-            to: ['moshe@sako-or.com'],
-            subject: `New Order Received - ${data.orderNumber}`,
-            react: OrderConfirmationTeamEmail({
-              customerName: data.customerName,
-              orderNumber: data.orderNumber,
-              orderDate: data.orderDate,
-              items: data.items,
-              total: data.total,
-              subtotal: data.subtotal,
-              deliveryFee: data.deliveryFee,
-              discountTotal: data.discountTotal,
-              coupons: data.coupons,
-              payer: data.payer,
-              deliveryAddress: data.deliveryAddress,
-              notes: data.notes,
-              isHebrew: data.isHebrew,
-              shippingMethod: data.shippingMethod,
-              pickupLocation: data.pickupLocation,
-              pointsSpent: data.pointsSpent,
-            }),
-          }, { idempotencyKey: teamIdempotencyKey }),
-          new Promise((_, reject) => {
-            setTimeout(() => reject(new Error(`Resend API timeout (team) after ${timeoutMs}ms`)), timeoutMs);
-          }),
-        ]);
-        console.log(`[EMAIL] Team notification sent for order ${data.orderNumber}`);
-      } catch (teamError) {
-        console.error(`[EMAIL TEAM ERROR] Failed to send team email for order ${data.orderNumber}:`, teamError);
-      }
+    console.log(
+      `[EMAIL] Order ${data.orderNumber} confirmation: ${delivered.length}/3 sent` +
+        (failed.length ? ` - failed: ${failed.map((r) => r.label).join(', ')}` : '')
+    );
 
-      return { success: true, messageId: emailData?.id, idempotencyKey };
-      
-    } catch (timeoutError) {
-      console.error(`[EMAIL TIMEOUT] API timeout for order ${data.orderNumber}, assuming email sent`);
-      
-      // Fallback: assume email was sent successfully despite timeout
-      return { 
-        success: true, 
-        messageId: `timeout-${Date.now()}`, 
-        idempotencyKey
-      };
-    }
+    return {
+      // Any delivered email counts as progress, so the order is marked processed
+      // and a webhook retry cannot spray duplicates at the recipients that did
+      // get through. A failed customer send is reported separately below, and
+      // logged above as [EMAIL CUSTOMER FAILED].
+      success: delivered.length > 0,
+      messageId: customerResult.messageId ?? delivered[0]?.messageId,
+      idempotencyKey,
+      results,
+      customerSuccess: customerResult.success,
+      ...(customerResult.success ? {} : { error: customerResult.error }),
+    };
   } catch (error) {
     console.error(`[EMAIL ERROR] Exception sending email for order ${data.orderNumber}:`, error);
     return { success: false, error: error };
@@ -253,7 +381,10 @@ export async function sendOrderConfirmationEmail(data: OrderEmailData, orderId?:
  * Idempotent function to send order confirmation email
  * Checks if email was already sent before attempting to send
  */
-export async function sendOrderConfirmationEmailIdempotent(data: OrderEmailData, orderId?: string) {
+export async function sendOrderConfirmationEmailIdempotent(
+  data: OrderEmailData,
+  orderId?: string
+): Promise<OrderEmailSendResult> {
   try {
     // Check if email was already sent for this order
     if (orderId) {
@@ -282,7 +413,7 @@ export async function sendOrderConfirmationEmailIdempotent(data: OrderEmailData,
           console.log(`[EMAIL] Skipped - order ${data.orderNumber} already processed`);
           return { 
             success: true, 
-            messageId: existingOrder.emailMessageId,
+            messageId: existingOrder.emailMessageId ?? undefined,
             skipped: true,
             reason: 'Email already sent'
           };

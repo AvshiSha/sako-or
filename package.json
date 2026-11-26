@@ -21,6 +21,7 @@
     "email": "npx email dev --dir app/emails",
     "fix-email": "tsx scripts/fix-user-email.ts",
     "resend-order-email": "tsx scripts/resend-order-email.ts",
+    "fix-order-email": "tsx scripts/fix-order-email.ts",
     "verifone:invoice": "node --conditions=react-server --import tsx scripts/retry-verifone-invoice.ts",
     "review-link": "tsx --conditions=react-server scripts/review-link.ts",
     "hfd:inspect": "tsx scripts/hfd-webhook-inspect.ts",

@@ -9,6 +9,7 @@ import { getBearerToken, requireUserAuth } from '@/lib/server/auth';
 import { FREE_DELIVERY_THRESHOLD_ILS, DELIVERY_FEE_ILS } from '../../../../lib/pricing';
 import { validateCartItems } from '../../../../lib/cart-validation';
 import { missingDeliveryAddressFields, formatStreetLine } from '../../../../lib/delivery-address';
+import { isValidEmailAddress, normalizeEmailAddress } from '../../../../lib/email-address';
 import { staticPageService } from '@/lib/firebase';
 
 export async function POST(request: NextRequest) {
@@ -125,10 +126,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate email format (reject double dots e.g. user@gmail..com)
-    const customerEmail = body.customer.email;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (customerEmail.includes('..') || !emailRegex.test(customerEmail)) {
+    // Validate email format (rejects user@gmail..com and name.@walla.com alike).
+    // This is the last gate before Cardcom: an address that gets past it reaches
+    // the confirmation email and the tax invoice, where it can only fail.
+    // Normalise in place so the order record, the Cardcom UI fields and the tax
+    // invoice all carry the same cleaned address rather than the raw input.
+    const customerEmail = normalizeEmailAddress(body.customer.email);
+    body.customer.email = customerEmail;
+    if (!isValidEmailAddress(customerEmail)) {
       return NextResponse.json(
         { error: 'Invalid email format', code: 'EMAIL_INVALID', fields: ['email'] },
         { status: 400 }

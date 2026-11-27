@@ -20,8 +20,9 @@ import { useEffect, useMemo, useState } from 'react'
  */
 
 /**
- * End of the live campaign - Black Week: the end of Friday 27 November 2026,
- * Israel time, i.e. midnight as the 27th closes and the 28th begins.
+ * End of the live campaign - Black Week: the end of Saturday 28 November 2026,
+ * Israel time, i.e. midnight as the 28th closes and the 29th begins. The sale
+ * was extended by one day from its original close (end of the 27th).
  *
  * The offset is written out rather than left to the visitor's clock, so the
  * deadline is the same instant for a shopper in Tel Aviv and one in New York.
@@ -30,11 +31,11 @@ import { useEffect, useMemo, useState } from 'react'
  * needs this checked again - between late March and late October the right
  * literal is +03:00. Resolved against the IANA database, not assumed.
  *
- * Written as 00:00 on the 28th rather than 23:59:59 on the 27th on purpose: the
- * 27th is then included in full, and the clock runs to a round zero instead of
+ * Written as 00:00 on the 29th rather than 23:59:59 on the 28th on purpose: the
+ * 28th is then included in full, and the clock runs to a round zero instead of
  * stopping a second short of it.
  */
-export const CAMPAIGN_END = '2026-11-28T00:00:00+02:00'
+export const CAMPAIGN_END = '2026-11-29T00:00:00+02:00'
 
 /**
  * The Election Sale's close, kept only because scripts/election-coupon-deadline.ts
@@ -120,8 +121,8 @@ export default function PromoCountdown({ lng, endsAt }: PromoCountdownProps) {
     // Stop the clock the moment it reaches zero. Returning null below does not
     // unmount this component, so without this the interval kept firing once a
     // second - for every visitor, on every page, forever - re-rendering a
-    // component whose only output is null. Harmless on 27 Nov 2026, pure waste
-    // on 29 Nov.
+    // component whose only output is null. Harmless on 28 Nov 2026, pure waste
+    // on 30 Nov.
     const tick = () => {
       const next = getRemaining(endMs)
       setRemaining(next)

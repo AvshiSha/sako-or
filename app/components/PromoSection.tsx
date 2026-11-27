@@ -24,23 +24,29 @@ const DEFAULT_PROMOS: PromoItem[] = [
     // then grow and shrink every 4s and walk the hero 12px down the page with
     // it. Measured at 320/360/390: an earlier, longer draft wrapped at all
     // three and scored 0.027 CLS on the homepage; this one is flat at 0. The
-    // BLACK WEEK copy below is shorter than both the Winter 27 and Election
-    // lines it follows (18 characters against 24 and 44), so it clears that
-    // constraint with room to spare at all three widths.
+    // BLACK WEEK copy below is 25 characters in Hebrew and 24 in English - no
+    // longer than the Winter 27 line it follows, which set on one line at all
+    // three widths, and well short of the 44-character Election line that was
+    // the longest the band ever carried.
     //
     // The wording deliberately mirrors the hero artwork, which says "Black
     // Week", not "Black Friday", and names no discount - the band must not
     // promise a percentage the campaign page does not show. If the campaign
     // settles on a headline figure, this is the line to put it in.
+    //
+    // "Last hours" is the closing-day line: the sale was extended by a day and
+    // now ends with the 28th (CAMPAIGN_END in PromoCountdown). The urgency is
+    // in words only - the actual time left is the clock on the band's second
+    // row, which is why this stays a fixed line and not a second countdown.
     text: {
-      he: 'BLACK WEEK כבר כאן',
-      en: 'BLACK WEEK is here',
+      he: 'BLACK WEEK · שעות אחרונות',
+      en: 'BLACK WEEK · final hours',
     },
     href: '/collection/campaign/black-friday',
     icon: '🖤',
     // Deliberately no countdownEnd. Black Week's clock is live, but it is
     // PromoCountdown - the band's second row, see CAMPAIGN_END there (end of
-    // 27 Nov 2026, IST). Setting `countdownEnd` here too would print a second,
+    // 28 Nov 2026, IST). Setting `countdownEnd` here too would print a second,
     // smaller clock inside the ribbon itself, and - because this is the only
     // promo and expireMode defaults to 'remove' - would delete the message
     // from the band the moment it hit zero, leaving an empty black strip.
